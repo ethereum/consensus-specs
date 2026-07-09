@@ -91,12 +91,13 @@ def build_message(signed_agg, current_time_ms, offset_ms, expected, reason=None)
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_start(spec, state):
     """Test that an aggregate is accepted one millisecond before its slot starts."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     store, signed_anchor, signed_agg = prepare_signed_aggregate_and_proof(spec, state, spec.Slot(1))
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = (
@@ -127,12 +128,13 @@ def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_at_slot_start(spec, state):
     """Test that an aggregate is accepted exactly at its slot start."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     store, signed_anchor, signed_agg = prepare_signed_aggregate_and_proof(spec, state, spec.Slot(1))
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
@@ -166,6 +168,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_wind
     Test that a first-slot aggregate is ignored just before the Deneb epoch
     window opens, with the future-slot check taking precedence.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -174,7 +177,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_wind
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_open_time(spec, state, attestation_epoch) - 1
@@ -203,6 +206,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_wind
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window_opens(spec, state):
     """Test that a first-slot aggregate is accepted when the Deneb epoch window opens."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -211,7 +215,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_open_time(spec, state, attestation_epoch)
@@ -242,6 +246,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     spec, state
 ):
     """Test that a first-slot aggregate is accepted at the last valid Deneb epoch time."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -250,7 +255,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch)
@@ -281,6 +286,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_windo
     spec, state
 ):
     """Test that a first-slot aggregate is ignored after the Deneb epoch window closes."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -289,7 +295,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_windo
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch) + 1
@@ -323,6 +329,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
     Test that a last-slot aggregate is accepted one millisecond before its slot
     starts.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -334,7 +341,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = (
@@ -365,6 +372,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec, state):
     """Test that a last-slot aggregate is accepted exactly at its slot start."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -376,7 +384,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
@@ -405,6 +413,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_when_epoch_window_closes(spec, state):
     """Test that a last-slot aggregate is accepted at the last valid Deneb epoch time."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -416,7 +425,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_when_epoch_window_
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch)
@@ -447,6 +456,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_last_slot_after_epoch_window
     spec, state
 ):
     """Test that a last-slot aggregate is ignored after the Deneb epoch window closes."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
 
     attestation_epoch = spec.Epoch(2)
@@ -458,7 +468,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_last_slot_after_epoch_window
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch) + 1

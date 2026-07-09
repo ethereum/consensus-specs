@@ -78,7 +78,8 @@ def test_gossip_data_column_sidecar__valid(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -143,7 +144,8 @@ def test_gossip_data_column_sidecar__reject_index_out_of_range(spec, state):
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -195,7 +197,8 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -252,7 +255,8 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -308,7 +312,8 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -362,7 +367,8 @@ def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, sta
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -423,6 +429,7 @@ def test_gossip_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, 
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -430,7 +437,7 @@ def test_gossip_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, 
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
@@ -490,7 +497,8 @@ def test_gossip_data_column_sidecar__reject_proposer_index_out_of_range(spec, st
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -543,7 +551,8 @@ def test_gossip_data_column_sidecar__reject_invalid_proposer_signature(spec, sta
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -595,7 +604,8 @@ def test_gossip_data_column_sidecar__ignore_parent_not_seen(spec, state):
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -650,7 +660,8 @@ def test_gossip_data_column_sidecar__reject_parent_failed_validation(spec, state
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -725,7 +736,8 @@ def test_gossip_data_column_sidecar__reject_slot_not_higher_than_parent(spec, st
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -794,7 +806,8 @@ def test_gossip_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(sp
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -852,7 +865,8 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -906,7 +920,8 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -974,7 +989,8 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -1045,7 +1061,8 @@ def test_gossip_data_column_sidecar__reject_wrong_proposer_index(spec, state):
     yield "topic", "meta", "data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)

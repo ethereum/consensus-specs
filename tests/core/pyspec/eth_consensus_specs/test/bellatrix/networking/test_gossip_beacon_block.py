@@ -42,7 +42,8 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -91,7 +92,8 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_incomplete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -138,7 +140,8 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -196,7 +199,8 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -286,7 +290,8 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -374,7 +379,8 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -464,7 +470,8 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -546,7 +553,8 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)

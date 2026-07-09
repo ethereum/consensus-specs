@@ -87,12 +87,13 @@ def build_message(attestation, subnet_id, current_time_ms, offset_ms, expected, 
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(spec, state):
     """Test that an attestation is accepted one millisecond before its slot starts."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     store, signed_anchor, attestation = prepare_attestation(spec, state, spec.Slot(1))
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot) - 1
@@ -123,12 +124,13 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     """Test that an attestation is accepted exactly at its slot start."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     store, signed_anchor, attestation = prepare_attestation(spec, state, spec.Slot(1))
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
@@ -162,6 +164,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     Test that a first-slot attestation is ignored just before the Deneb epoch
     window opens, with the future-slot check taking precedence.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -170,7 +173,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_open_time(spec, state, attestation_epoch) - 1
@@ -205,6 +208,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(spec, state):
     """Test that a first-slot attestation is accepted when the Deneb epoch window opens."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -213,7 +217,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_open_time(spec, state, attestation_epoch)
@@ -244,6 +248,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is accepted at the last valid Deneb epoch time."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -252,7 +257,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch)
@@ -283,6 +288,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is ignored after the Deneb epoch window closes."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -291,7 +297,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
     )
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch) + 1
@@ -331,6 +337,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     Test that a last-slot attestation is accepted one millisecond before its
     slot starts.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -340,7 +347,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     store, signed_anchor, attestation = prepare_attestation(spec, state, attestation_slot)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot) - 1
@@ -371,6 +378,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state):
     """Test that a last-slot attestation is accepted exactly at its slot start."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -380,7 +388,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
     store, signed_anchor, attestation = prepare_attestation(spec, state, attestation_slot)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
@@ -411,6 +419,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is accepted at the last valid Deneb epoch time."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -420,7 +429,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
     store, signed_anchor, attestation = prepare_attestation(spec, state, attestation_slot)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch)
@@ -451,6 +460,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is ignored after the Deneb epoch window closes."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
 
     attestation_epoch = spec.Epoch(2)
@@ -460,7 +470,7 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
     store, signed_anchor, attestation = prepare_attestation(spec, state, attestation_slot)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, state, attestation_epoch) + 1

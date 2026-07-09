@@ -50,8 +50,9 @@ def test_gossip_beacon_attestation__valid(spec, state):
     """
     Test that a valid unaggregated attestation passes gossip validation.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -123,8 +124,9 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     """
     Test that an attestation with committee index out of range is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -190,8 +192,9 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     """
     Test that an attestation sent to the wrong subnet is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -253,8 +256,9 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     """
     Test that an attestation with slot not in propagation range is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -324,8 +328,9 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     """
     Test that an attestation at exactly the clock disparity boundary is valid.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -397,8 +402,9 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     """
     Test that an attestation at exactly the old boundary (expiry + clock disparity) is still valid.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -469,8 +475,9 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     """
     Test that an attestation that is too old (past propagation range + clock disparity) is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -542,8 +549,9 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
     Test that an attestation with mismatched epoch and target is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -607,8 +615,9 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     """
     Test that an aggregated attestation (more than one bit set) is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -675,8 +684,9 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     """
     Test that an attestation with wrong aggregation bits size is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -741,8 +751,9 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     """
     Test that a duplicate attestation from same validator/epoch is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -837,8 +848,9 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     """
     Test that an attestation for an unseen block is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -912,8 +924,9 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     """
     Test that an attestation for a block that failed validation is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1001,8 +1014,9 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     """
     Test that an attestation with invalid signature is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1072,8 +1086,9 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     """
     Test that an attestation whose target is not an ancestor of LMD vote is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1147,8 +1162,9 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     """
     Test that an attestation for a block not descending from finalized checkpoint is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)

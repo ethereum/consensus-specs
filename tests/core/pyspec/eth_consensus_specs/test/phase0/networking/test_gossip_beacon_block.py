@@ -38,8 +38,9 @@ def test_gossip_beacon_block__valid_block(spec, state):
     """
     Test that a valid block passes gossip validation.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -87,8 +88,9 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
     """
     Test that a block from a future slot is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -144,8 +146,9 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     """
     Test that a block from a slightly future slot is valid within clock disparity.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -194,8 +197,9 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     """
     Test that a duplicate block for the same proposer/slot is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -268,8 +272,9 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
     """
     Test that a block at or before the finalized slot is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -351,8 +356,9 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     """
     Test that a block whose parent is not in the store is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -426,8 +432,9 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
 
     if is_post_bellatrix(spec):
         state = build_state_with_incomplete_transition(spec, state)
+    anchor_state = state.copy()
 
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -517,8 +524,9 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """
     Test that a block with slot <= parent slot is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -602,8 +610,9 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
     """
     Test that a block whose finalized checkpoint is not an ancestor is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -699,8 +708,9 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     """
     Test that a block with an invalid proposer signature is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -758,8 +768,9 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     """
     Test that a block with an out-of-range proposer_index is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -817,8 +828,9 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
     """
     Test that a block with wrong proposer_index is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)

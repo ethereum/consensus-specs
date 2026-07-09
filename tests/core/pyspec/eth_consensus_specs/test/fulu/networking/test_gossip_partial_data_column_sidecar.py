@@ -70,7 +70,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -130,7 +131,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -190,7 +192,8 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -271,7 +274,8 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -337,7 +341,8 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -406,7 +411,8 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -474,7 +480,8 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -559,7 +566,8 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -616,7 +624,8 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -673,7 +682,8 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -730,6 +740,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -737,7 +748,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
@@ -799,7 +810,8 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -860,7 +872,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -917,7 +930,8 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -976,7 +990,8 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1048,7 +1063,8 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1125,7 +1141,8 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1188,7 +1205,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1247,7 +1265,8 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1309,7 +1328,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1367,7 +1387,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1450,6 +1471,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -1457,7 +1479,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
@@ -1540,7 +1562,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -1617,7 +1640,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)

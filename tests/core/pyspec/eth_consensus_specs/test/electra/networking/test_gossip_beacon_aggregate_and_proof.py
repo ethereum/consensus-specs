@@ -64,8 +64,9 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     [New in Electra:EIP7549] Test that two committee-local aggregates with equal
     ``AttestationData`` and disjoint ``committee_bits`` are both accepted.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -151,8 +152,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
     [New in Electra:EIP7549] Test that an aggregate with ``aggregate.data.index != 0``
     is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -203,8 +205,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     [New in Electra:EIP7549] Test that an aggregate with no committee bits set
     is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -255,8 +258,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     [New in Electra:EIP7549] Test that an aggregate with more than one committee
     bit set is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)

@@ -1014,10 +1014,6 @@ def validate_proposer_preferences_gossip(
     if not is_valid_proposal_slot(lookahead_state, preferences):
         raise GossipReject("validator is not the proposer for the given slot")
 
-    # [REJECT] The validator index is valid
-    if preferences.validator_index >= len(state.validators):
-        raise GossipReject("validator index out of range")
-
     # [REJECT] The signature is valid with respect to the validator's public key
     validator = state.validators[preferences.validator_index]
     domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)

@@ -56,11 +56,12 @@ def setup_store_with_advanced_state(spec, state, target_slot):
 @spec_state_test
 def test_gossip_proposer_preferences__valid(spec, state):
     """A well-formed SignedProposerPreferences for an upcoming proposal passes gossip."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -100,11 +101,12 @@ def test_gossip_proposer_preferences__valid(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
     """Preferences whose proposal slot is past the proposer lookahead are ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -158,11 +160,12 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
     """Preferences whose proposal slot is already current/past are ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -205,11 +208,12 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
     """Preferences whose dependent_root has no corresponding block in the store are ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -253,11 +257,12 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     """The second valid preferences for the same dependent_root and proposal slot is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -319,11 +324,12 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
     """Preferences signed by a validator that is not the slot's proposer are rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -371,11 +377,12 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     """Preferences with an invalid signature are rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -416,11 +423,12 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
     """Preferences whose proposal slot is in a past epoch are ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -472,35 +480,35 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(spec, state):
     """Preferences whose dependent_root has no corresponding state are ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_blocks, post_states = advance_state_with_blocks(spec, state, target_slot)
-    yield "state", state
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
 
-    signed_prefs = build_signed_proposer_preferences(spec, state)
-    dependent_root = signed_prefs.message.dependent_root
-    assert dependent_root in [b.message.hash_tree_root() for b in signed_blocks]
+    # Build a fork block off the head that has been seen but not yet imported,
+    # so its post-state is unavailable. The pending block must be a chain tip:
+    # descendants of an unimported block cannot be imported.
+    fork_state = state.copy()
+    fork_block = build_empty_block_for_next_slot(spec, fork_state)
+    fork_block.body.graffiti = spec.Bytes32(b"\x42" * 32)
+    signed_fork_block = state_transition_and_sign_block(spec, fork_state, fork_block)
+    add_pending_block_to_store(store, signed_fork_block)
+    dependent_root = signed_fork_block.message.hash_tree_root()
 
-    # Import every block normally, except the dependent block: it has been
-    # seen but not yet imported, so its post-state is unavailable.
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield get_filename(signed_fork_block), signed_fork_block
+    yield (
+        "blocks",
+        "meta",
+        [{"block": get_filename(b)} for b in blocks]
+        + [{"block": get_filename(signed_fork_block), "pending": True}],
+    )
+
     seen = get_seen(spec)
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    for signed_block, post_state in zip(signed_blocks, post_states, strict=True):
-        block_root = signed_block.message.hash_tree_root()
-        yield get_filename(signed_block), signed_block
-        if block_root == dependent_root:
-            add_pending_block_to_store(store, signed_block)
-            blocks_meta.append({"block": get_filename(signed_block), "pending": True})
-        else:
-            store.blocks[block_root] = signed_block.message
-            store.block_states[block_root] = post_state
-            blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
-
+    signed_prefs = build_signed_proposer_preferences(spec, state, dependent_root=dependent_root)
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = spec.compute_time_at_slot_ms(state, state.slot)
@@ -539,11 +547,12 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
     dependent_root cannot be the proposer-lookahead dependent block, and
     advancing its post-state would otherwise trip process_slots.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -590,56 +599,6 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
     )
     assert result == "reject"
     assert reason == "dependent root is not before the proposer lookahead epoch"
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_proposer_preferences__reject_validator_index_out_of_range(spec, state):
-    """Preferences whose validator index is past the validator registry are rejected."""
-    yield "topic", "meta", "proposer_preferences"
-
-    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    seen = get_seen(spec)
-
-    # Build a valid prefs signed by the real proposer for the upcoming slot.
-    signed_prefs = build_signed_proposer_preferences(spec, state)
-    validator_index = signed_prefs.message.validator_index
-    # Trim the head state's validator registry so the proposer's index is now
-    # past the end. The dependent_root's stored state still has the full
-    # registry, so is_valid_proposal_slot continues to pass.
-    state.validators = type(state.validators)(*list(state.validators)[:validator_index])
-    yield "state", state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-    yield get_filename(signed_prefs), signed_prefs
-
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
-    messages = []
-
-    time_ms += 100
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        state=state,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "reject"
-    assert reason == "validator index out of range"
     messages.append(
         {
             "current_time_ms": int(time_ms),

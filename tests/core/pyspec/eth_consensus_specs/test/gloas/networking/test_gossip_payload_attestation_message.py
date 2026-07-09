@@ -64,10 +64,11 @@ def build_payload_attestation_message(
 @spec_state_test
 def test_gossip_payload_attestation_message__valid(spec, state):
     """A PayloadAttestationMessage from a PTC member for the current slot passes."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -110,10 +111,11 @@ def test_gossip_payload_attestation_message__valid(spec, state):
 @spec_state_test
 def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state):
     """A message whose slot is not the current slot is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -157,10 +159,11 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
 @spec_state_test
 def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     """The second valid message from the same validator for the same slot is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -223,10 +226,11 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
 @spec_state_test
 def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     """A message attesting to an unknown beacon block is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, _ = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -271,10 +275,11 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
 @spec_state_test
 def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, state):
     """A message from a validator not in the PTC is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -316,10 +321,11 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
 @spec_state_test
 def test_gossip_payload_attestation_message__reject_invalid_signature(spec, state):
     """A message with an invalid signature is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -363,11 +369,12 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
 @spec_state_test
 def test_gossip_payload_attestation_message__reject_block_failed_validation(spec, state):
     """A message whose block failed validation is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, signed_anchor, signed_block = setup_store_with_failed_block(spec, state)
     block_root = signed_block.message.hash_tree_root()
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
@@ -418,10 +425,11 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
 @spec_state_test
 def test_gossip_payload_attestation_message__reject_validator_index_out_of_range(spec, state):
     """A message whose validator index is past the validator registry is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
@@ -474,6 +482,7 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
 @spec_state_test
 def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(spec, state):
     """A PTC message whose block.slot does not equal data.slot is ignored (assigned slot was empty)."""
+    anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
     # Apply a block at slot 1, advance state to slot 2 without applying a block
@@ -482,7 +491,7 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
     store, blocks, block_1_root = setup_store_with_one_block(spec, state)
     next_slot(spec, state)
     assert state.slot == 2
-    yield "state", state
+    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]

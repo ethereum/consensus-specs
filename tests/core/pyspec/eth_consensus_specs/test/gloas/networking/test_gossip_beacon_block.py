@@ -42,11 +42,12 @@ def setup_store_with_anchor_and_parent(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_empty(spec, state):
     """A block building on an empty parent (to execution payload)."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
@@ -90,12 +91,13 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_full(spec, state):
     """A block building on a full parent (with an execution payload)."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     anchor_root = anchor_block.hash_tree_root()
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
 
     # The parent's payload has been received and verified, recorded in the
@@ -156,11 +158,12 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
     """A block building on a full parent whose payload is not verified is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
@@ -205,10 +208,11 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """A block whose slot is not strictly greater than its parent's slot is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, signed_anchor, signed_parent = setup_store_with_anchor_and_parent(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_parent), signed_parent
     yield (
@@ -257,10 +261,11 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, state):
     """A block whose ancestry does not include the finalized checkpoint is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, signed_anchor, signed_parent = setup_store_with_anchor_and_parent(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_parent), signed_parent
     yield (
@@ -319,11 +324,12 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     """A block whose bid carries more KZG commitments than the per-epoch limit is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
@@ -368,11 +374,12 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
     """A block whose bid parent_block_root does not match its parent_root is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
@@ -414,11 +421,12 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     """A block whose parent failed validation is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, signed_anchor, signed_parent = setup_store_with_failed_block(spec, state)
     parent_root = signed_parent.message.hash_tree_root()
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_parent), signed_parent
     yield (
@@ -479,11 +487,12 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
     The empty-parent base is otherwise valid, so it serves both the limit (valid) and
     limit+1 (reject) count tests: only the mutated count differs between them.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
@@ -836,11 +845,12 @@ def test_gossip_beacon_block__reject_too_many_payload_attestations(spec, state):
 @spec_state_test
 def test_gossip_beacon_block__reject_wrong_proposer(spec, state):
     """A block whose proposer index is not the expected proposer for the slot is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 

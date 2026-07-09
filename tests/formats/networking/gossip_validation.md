@@ -22,6 +22,9 @@ validation rules for messages received via gossip topics.
 topic: string                -- The gossip topic name (e.g., "beacon_block", "blob_sidecar",
                              -- "data_column_sidecar", "partial_data_column_sidecar").
 blocks: [{                   -- Optional. Blocks to import before validation (oldest to newest).
+                             -- The first entry is the anchor block, consistent with
+                             -- `state.ssz_snappy` (the anchor state); it initializes
+                             -- the store and is not state-transitioned.
     block: string,           -- The block file (without extension).
     failed: bool,            -- Optional. If true, the block fails state transition.
                              -- Track it as seen but invalid, with no post-state
@@ -37,7 +40,10 @@ blocks: [{                   -- Optional. Blocks to import before validation (ol
                              -- this block. The envelope has been received and
                              -- verified, as recorded by `on_execution_payload_envelope`.
 }]
-finalized_checkpoint:        -- Optional. Custom finalized checkpoint.
+finalized_checkpoint:        -- Optional. Custom finalized checkpoint. Use it wherever
+                             -- validation consults finalization: the store's finalized
+                             -- checkpoint and any state-based finalized checkpoint view
+                             -- (e.g. builder activation).
   epoch: int                 -- The epoch of the finalized checkpoint.
   root: string               -- Hex-encoded root (use this OR block, not both).
   block: string              -- Block file whose root to use (use this OR root, not both).
@@ -64,8 +70,12 @@ messages: [{                 -- List of messages to validate in sequence.
 
 ### `state.ssz_snappy`
 
-An SSZ-snappy encoded `BeaconState`. This state provides:
+An SSZ-snappy encoded `BeaconState`: the anchor state on which the blocks in
+`blocks` (if any) are replayed. It is consistent with the first block in
+`blocks` (that block's `state_root` is this state's root). This state provides:
 
+- The anchor for the fork choice store, from which per-block post-states are
+  derived by importing the remaining blocks.
 - `genesis_time`: Used for time calculations.
 - `finalized_checkpoint`: Used for finalization checks (unless overridden).
 - Validator public keys: Used for signature verification.
@@ -100,12 +110,13 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
 ## Condition
 
-1. Deserialize `state.ssz_snappy` to get the beacon state.
-2. Initialize a minimal store with:
-   - `genesis_time` from the state.
-   - `finalized_checkpoint` from the state (or `meta.finalized_checkpoint` if
-     specified).
-   - Import each entry in `blocks` into the store.
+1. Deserialize `state.ssz_snappy` to get the anchor state.
+2. Initialize the store from the anchor state and the first block in `blocks`
+   (whose `state_root` matches the anchor state), as `get_forkchoice_store`
+   would. Do not state-transition the anchor block. Then, for each subsequent
+   entry in `blocks` (oldest to newest):
+   - Import the block by applying the state transition to its parent's
+     post-state, deriving the block's post-state.
      - If `failed: true`, the block fails state transition. Track it as seen but
        invalid: the block is known, but no post-state is available (for testing
        descendant rejection).
@@ -123,14 +134,19 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
      - For `beacon_block` gossip validation, `NOT_VALIDATED` represents the
        optimistic case where no valid/invalid payload result is yet available
        for the parent block.
-   - If `seen_partial_data_column_headers` is present, preload each referenced
-     `PartialDataColumnHeader` into `seen.partial_data_column_headers` using its
-     `block_root`.
-3. Iterate sequentially through `messages`:
+3. If `meta.finalized_checkpoint` is specified, use it as the finalized
+   checkpoint wherever validation consults finalization (in place of both the
+   store's finalized checkpoint and any state-based finalized checkpoint view).
+4. If `seen_partial_data_column_headers` is present, preload each referenced
+   `PartialDataColumnHeader` into `seen.partial_data_column_headers` using its
+   `block_root`.
+5. Iterate sequentially through `messages`:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
      `offset_ms` values are independent and need not be monotonic.
    - Deserialize the message file based on the topic type.
-   - Execute the appropriate validation function.
+   - Execute the appropriate validation function, using the store built above
+     and the head state derived from the imported blocks (advanced with empty
+     slots to the current slot where required).
      - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
        and `data_column_sidecar`, pass `message.subnet_id`.
      - For `partial_data_column_sidecar`, pass the `PartialDataColumnGroupID`

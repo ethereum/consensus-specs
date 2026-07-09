@@ -34,10 +34,11 @@ def setup_gloas_sidecar(spec, state, block_in_store=True):
 @spec_state_test
 def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     """A sidecar whose beacon_block_root has no corresponding block in the store is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "data_column_sidecar"
 
     store, signed_anchor, _, sidecar = setup_gloas_sidecar(spec, state, block_in_store=False)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     # The signed_block from setup_gloas_sidecar is not added here
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
@@ -79,10 +80,11 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
 @spec_state_test
 def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     """A sidecar already in seen.data_column_sidecar_tuples is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "data_column_sidecar"
 
     store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
@@ -96,14 +98,36 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     yield get_filename(sidecar), sidecar
 
     seen = get_seen(spec)
-    seen.data_column_sidecar_tuples.add((sidecar.beacon_block_root, sidecar.index))
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
     time_ms = spec.compute_time_at_slot_ms(state, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
+    # The first validation is fully valid and seeds the seen cache.
     time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        sidecar=sidecar,
+        current_time_ms=time_ms,
+        subnet_id=correct_subnet,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "subnet_id": int(correct_subnet),
+            "current_time_ms": int(time_ms),
+            "message": get_filename(sidecar),
+            "expected": result,
+        }
+    )
+
+    # The same sidecar received again is ignored as already seen.
+    time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -132,12 +156,13 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     """A sidecar whose slot does not match the referenced block's slot is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "data_column_sidecar"
 
     store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
     # Corrupt the sidecar's slot so it no longer matches the block.
     sidecar.slot = spec.Slot(sidecar.slot + 1)
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
@@ -186,6 +211,7 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     """A sidecar whose structural validation fails is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "data_column_sidecar"
 
     store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
@@ -194,7 +220,7 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     sidecar.column = spec.List[spec.Cell, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         *sidecar.column, spec.Cell()
     )
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (

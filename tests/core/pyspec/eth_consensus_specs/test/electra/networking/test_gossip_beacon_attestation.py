@@ -45,8 +45,9 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
     [New in Electra:EIP7549] Test that a ``SingleAttestation`` with
     ``data.index != 0`` is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, attestation = prepare_single_attestation(spec, state)
@@ -100,8 +101,9 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
     [New in Electra:EIP7549] Test that a ``SingleAttestation`` whose
     ``attester_index`` is not a member of the encoded committee is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, attestation = prepare_single_attestation(spec, state)

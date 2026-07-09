@@ -61,8 +61,9 @@ def prepare_signed_aggregate(spec, state):
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_data_index_too_high(spec, state):
     """An aggregate with data.index >= 2 is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -157,8 +158,9 @@ def prepare_past_slot_aggregate(spec, state, payload_index):
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, state):
     """A same-slot aggregate with data.index != 0 is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, signed_agg, _ = prepare_same_slot_aggregate(
         spec, state, payload_index=1
@@ -208,8 +210,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec, state):
     """A data.index=1 aggregate with no known payload envelope is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, signed_agg, _ = prepare_past_slot_aggregate(
         spec, state, payload_index=1
@@ -259,8 +262,9 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec,
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation(spec, state):
     """A data.index=1 aggregate with payload pending EL validation is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, signed_agg, block_root = prepare_past_slot_aggregate(
         spec, state, payload_index=1
@@ -315,8 +319,9 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(spec, state):
     """A data.index=1 aggregate whose payload was EL-invalidated is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, signed_agg, block_root = prepare_past_slot_aggregate(
         spec, state, payload_index=1
@@ -371,8 +376,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid_payload_validated(spec, state):
     """A data.index=1 aggregate whose payload passed EL validation is valid."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, signed_agg, block_root = prepare_past_slot_aggregate(
         spec, state, payload_index=1

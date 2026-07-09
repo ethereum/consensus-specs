@@ -33,7 +33,8 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -82,7 +83,8 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)

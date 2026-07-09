@@ -44,8 +44,9 @@ def prepare_single_attestation(spec, state):
 @spec_state_test
 def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
     """A SingleAttestation with data.index >= 2 is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, attestation = prepare_single_attestation(spec, state)
@@ -117,8 +118,9 @@ def prepare_same_slot_attestation(spec, state, payload_index):
 @spec_state_test
 def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     """A same-slot attestation with data.index != 0 is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, attestation, subnet_id = prepare_same_slot_attestation(
         spec, state, payload_index=1
@@ -198,8 +200,9 @@ def prepare_past_slot_attestation(spec, state, payload_index):
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     """A data.index=1 attestation whose payload envelope is unknown is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, attestation, subnet_id, _ = prepare_past_slot_attestation(
         spec, state, payload_index=1
@@ -251,8 +254,9 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, state):
     """A data.index=1 attestation whose payload is pending EL is ignored."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
         prepare_past_slot_attestation(spec, state, payload_index=1)
@@ -309,8 +313,9 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
 @spec_state_test
 def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, state):
     """A data.index=1 attestation whose payload was EL-invalidated is rejected."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
         prepare_past_slot_attestation(spec, state, payload_index=1)
@@ -367,8 +372,9 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
 @spec_state_test
 def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     """A data.index=1 attestation whose payload passed EL validation is valid."""
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
         prepare_past_slot_attestation(spec, state, payload_index=1)

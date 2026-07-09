@@ -42,7 +42,8 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
