@@ -773,6 +773,103 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
+    """A bid whose value merely equals (does not exceed) the best bid is ignored.
+
+    The highest-value check is ``bid.value <= best``, so a second bid from
+    another builder whose value exactly equals the seeded best bid must be
+    ignored rather than forwarded.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, blocks, parent_root, messages, time_ms)
+    )
+
+    best_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(100),
+    )
+    yield get_filename(best_bid), best_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=best_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(best_bid),
+            "expected": result,
+        }
+    )
+
+    # A second bid from a different builder (so the duplicate check does not
+    # apply) with value exactly equal to the best is not strictly higher.
+    equal_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(1),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(100),
+    )
+    yield get_filename(equal_bid), equal_bid
+
+    time_ms += 10
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=equal_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "bid is not the highest value bid seen for this slot and parent"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(equal_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, state):
     """A bid whose builder_index is past the builder registry is rejected.
 
@@ -1081,6 +1178,74 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
+    """A bid with exactly the per-epoch blob KZG commitment limit is valid.
+
+    This is the valid upper boundary of the ``len(...) > max_blobs`` reject
+    check, complementing the max+1 reject case.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, blocks, parent_root, messages, time_ms)
+    )
+
+    # Fill blob commitments to exactly the per-epoch limit.
+    max_blobs = spec.get_blob_parameters(
+        spec.compute_epoch_at_slot(proposal_slot)
+    ).max_blobs_per_block
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
+            *([spec.KZGCommitment()] * int(max_blobs))
+        ),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
         }
     )
 

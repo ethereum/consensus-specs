@@ -158,6 +158,62 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state):
+    """Preferences for a proposal at the lookahead upper edge are valid.
+
+    The proposal lands in ``current_epoch + MIN_SEED_LOOKAHEAD`` -- the highest
+    epoch the ``proposal_epoch > current_epoch + MIN_SEED_LOOKAHEAD`` ignore
+    check still accepts, pinning that boundary against an off-by-one.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    # Advance to the last slot of the epoch so the next upcoming proposal falls
+    # in the following epoch, i.e. current_epoch + MIN_SEED_LOOKAHEAD.
+    target_slot = spec.Slot(
+        spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)) - 1
+    )
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(spec, state)
+    proposal_epoch = spec.compute_epoch_at_slot(signed_prefs.message.proposal_slot)
+    assert proposal_epoch == spec.get_current_epoch(state) + spec.Epoch(spec.MIN_SEED_LOOKAHEAD)
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
     """Preferences whose proposal slot is already current/past are ignored."""
     anchor_state = state.copy()
@@ -182,6 +238,110 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
     messages = []
 
     time_ms += 1000
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "proposal slot has already passed"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
+    """Preferences validated 1ms inside the clock-disparity window are still valid.
+
+    The "already passed" ignore fires once ``current_time_ms + DISPARITY``
+    reaches the proposal slot's start, so one ms before that edge is valid.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(spec, state)
+    yield get_filename(signed_prefs), signed_prefs
+
+    proposal_slot = signed_prefs.message.proposal_slot
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, proposal_slot)
+        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        - 1
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state):
+    """Preferences validated exactly at the clock-disparity edge are ignored as already passed."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(spec, state)
+    yield get_filename(signed_prefs), signed_prefs
+
+    # At exactly start(proposal_slot) - DISPARITY the slot is treated as no
+    # longer in the future, so the preferences are ignored.
+    proposal_slot = signed_prefs.message.proposal_slot
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, proposal_slot)
+        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
     result, reason = run_validate_gossip(
         spec,
         seen=seen,

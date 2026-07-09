@@ -168,6 +168,59 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     yield "messages", "meta", messages
 
 
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_beacon_attestation__valid_same_slot_index_zero(spec, state):
+    """A same-slot attestation with data.index == 0 (payload not yet revealed) is valid."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_attestation"
+    yield "state", anchor_state
+
+    store, signed_anchor, signed_block, attestation, subnet_id = prepare_same_slot_attestation(
+        spec, state, payload_index=0
+    )
+    seen = get_seen(spec)
+    yield get_filename(signed_anchor), signed_anchor
+    yield get_filename(signed_block), signed_block
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {"block": get_filename(signed_block)},
+        ],
+    )
+    yield get_filename(attestation), attestation
+
+    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
+        current_time_ms=time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses={},
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "subnet_id": int(subnet_id),
+            "current_time_ms": int(time_ms),
+            "message": get_filename(attestation),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
 def prepare_past_slot_attestation(spec, state, payload_index):
     """
     Build a block at the next slot, register it, then advance state once more

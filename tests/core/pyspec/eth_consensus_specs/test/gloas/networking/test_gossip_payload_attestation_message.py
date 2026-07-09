@@ -157,6 +157,209 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec, state):
+    """A message validated exactly at the lower clock-disparity edge is valid."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "payload_attestation_message"
+
+    store, blocks, block_root = setup_store_with_one_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    ptc = spec.get_ptc(state, state.slot)
+    validator_index = ptc[0]
+    message = build_payload_attestation_message(
+        spec, state, state.slot, block_root, validator_index
+    )
+    yield get_filename(message), message
+
+    # Lower edge: start(slot) - MAXIMUM_GOSSIP_CLOCK_DISPARITY is the earliest
+    # time still counted as the current slot.
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, state.slot) - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(message),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity(spec, state):
+    """A message 1ms before the lower clock-disparity edge is ignored."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "payload_attestation_message"
+
+    store, blocks, block_root = setup_store_with_one_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    ptc = spec.get_ptc(state, state.slot)
+    validator_index = ptc[0]
+    message = build_payload_attestation_message(
+        spec, state, state.slot, block_root, validator_index
+    )
+    yield get_filename(message), message
+
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, state.slot)
+        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        - 1
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "payload attestation message slot is not the current slot"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(message),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec, state):
+    """A message validated exactly at the upper clock-disparity edge is valid."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "payload_attestation_message"
+
+    store, blocks, block_root = setup_store_with_one_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    ptc = spec.get_ptc(state, state.slot)
+    validator_index = ptc[0]
+    message = build_payload_attestation_message(
+        spec, state, state.slot, block_root, validator_index
+    )
+    yield get_filename(message), message
+
+    # Upper edge: start(slot + 1) + MAXIMUM_GOSSIP_CLOCK_DISPARITY is the latest
+    # time still counted as the current slot.
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, spec.Slot(state.slot + 1))
+        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(message),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity(spec, state):
+    """A message 1ms past the upper clock-disparity edge is ignored."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "payload_attestation_message"
+
+    store, blocks, block_root = setup_store_with_one_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    ptc = spec.get_ptc(state, state.slot)
+    validator_index = ptc[0]
+    message = build_payload_attestation_message(
+        spec, state, state.slot, block_root, validator_index
+    )
+    yield get_filename(message), message
+
+    time_ms = (
+        spec.compute_time_at_slot_ms(state, spec.Slot(state.slot + 1))
+        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        + 1
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "payload attestation message slot is not the current slot"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(message),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     """The second valid message from the same validator for the same slot is ignored."""
     anchor_state = state.copy()
