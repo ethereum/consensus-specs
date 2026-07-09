@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in Gloas](#modification-in-gloas)
+- [Modifications in Gloas](#modifications-in-gloas)
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
@@ -25,8 +25,8 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
         - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
         - [New `execution_payload`](#new-execution_payload)
         - [New `payload_attestation_message`](#new-payload_attestation_message)
         - [New `execution_payload_bid`](#new-execution_payload_bid)
@@ -51,7 +51,7 @@ This document contains the consensus-layer networking specifications for Gloas.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modification in Gloas
+## Modifications in Gloas
 
 ### Preset
 
@@ -339,6 +339,163 @@ are given in this table:
 
 ##### Global topics
 
+###### Modified `beacon_block`
+
+*Note*: This function is modified per EIP-7732. The execution payload is no
+longer carried inside `BeaconBlock`. As a result, all validations referring to
+`block.body.execution_payload` are removed and replaced with validations of the
+bid carried at `block.body.signed_execution_payload_bid.message`.
+
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: uint64,
+    # [Modified in Gloas:EIP7732]
+    # Removed `block_payload_statuses`
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
+    bid = block.body.signed_execution_payload_bid.message
+
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
+
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
+
+    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
+    if (block.proposer_index, block.slot) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [New in Gloas:EIP7732]
+    # [IGNORE] If the parent block is full, the parent payload is valid
+    # (MAY be queued until the parent payload is verified)
+    if is_parent_node_full(store, block):
+        if not is_payload_verified(store, block.parent_root):
+            raise GossipIgnore("parent payload is not verified")
+
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    checkpoint_block = get_checkpoint_block(
+        store, block.parent_root, store.finalized_checkpoint.epoch
+    )
+    if checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
+
+    # [Modified in Gloas:EIP7732]
+    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
+    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    if len(bid.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
+
+    parent_requests = block.body.parent_execution_requests
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent withdrawal request count is within the limit
+    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent withdrawal requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent consolidation request count is within the limit
+    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent consolidation requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder deposit request count is within the limit
+    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder exit request count is within the limit
+    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder exit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The proposer slashing count is within the limit
+    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attester slashing count is within the limit
+    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attestation count is within the limit
+    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The block contains no deposits
+    if len(block.body.deposits) != 0:
+        raise GossipReject("block must not contain deposits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The voluntary exit count is within the limit
+    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The payload attestation count is within the limit
+    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+
+    # [Modified in Gloas:EIP7732]
+    # [REJECT] The bid's parent equals the block's parent
+    if bid.parent_block_root != block.parent_root:
+        raise GossipReject("bid's parent does not equal block's parent")
+
+    # [REJECT] The block's parent passes validation
+    if block.parent_root not in store.block_states:
+        raise GossipReject("block's parent is invalid")
+
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer does not match the expected proposer")
+
+    # Mark this block as seen
+    seen.proposer_slots.add((block.proposer_index, block.slot))
+```
+
 ###### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified per EIP-7732. `aggregate.data.index` is now
@@ -510,163 +667,6 @@ def validate_beacon_aggregate_and_proof_gossip(
     if aggregate_cache_key not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_cache_key] = set()
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
-```
-
-###### Modified `beacon_block`
-
-*Note*: This function is modified per EIP-7732. The execution payload is no
-longer carried inside `BeaconBlock`. As a result, all validations referring to
-`block.body.execution_payload` are removed and replaced with validations of the
-bid carried at `block.body.signed_execution_payload_bid.message`.
-
-```python
-def validate_beacon_block_gossip(
-    seen: Seen,
-    store: Store,
-    state: BeaconState,
-    signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
-    # [Modified in Gloas:EIP7732]
-    # Removed `block_payload_statuses`
-) -> None:
-    """
-    Validate a SignedBeaconBlock for gossip propagation.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    block = signed_beacon_block.message
-    bid = block.body.signed_execution_payload_bid.message
-
-    # [IGNORE] The block is not from a future slot
-    # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
-        raise GossipIgnore("block is from a future slot")
-
-    # [IGNORE] The block is from a slot greater than the latest finalized slot
-    # (MAY choose to validate and store such blocks for additional purposes
-    # -- e.g. slashing detection, archive nodes, etc)
-    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    if block.slot <= finalized_slot:
-        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
-
-    # [REJECT] The proposer index is a valid validator index
-    if block.proposer_index >= len(state.validators):
-        raise GossipReject("proposer index out of range")
-
-    # [REJECT] The proposer signature is valid
-    proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
-    signing_root = compute_signing_root(block, domain)
-    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
-        raise GossipReject("invalid proposer signature")
-
-    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until parent is retrieved)
-    if block.parent_root not in store.blocks:
-        raise GossipIgnore("block's parent has not been seen")
-
-    # [New in Gloas:EIP7732]
-    # [IGNORE] If the parent block is full, the parent payload is valid
-    # (MAY be queued until the parent payload is verified)
-    if is_parent_node_full(store, block):
-        if not is_payload_verified(store, block.parent_root):
-            raise GossipIgnore("parent payload is not verified")
-
-    # [REJECT] The block is from a higher slot than its parent
-    if block.slot <= store.blocks[block.parent_root].slot:
-        raise GossipReject("block is not from a higher slot than its parent")
-
-    # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
-        raise GossipReject("finalized checkpoint is not an ancestor of block")
-
-    # [Modified in Gloas:EIP7732]
-    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
-    if len(bid.blob_kzg_commitments) > max_blobs:
-        raise GossipReject("too many blob kzg commitments")
-
-    parent_requests = block.body.parent_execution_requests
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent withdrawal request count is within the limit
-    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent withdrawal requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent consolidation request count is within the limit
-    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent consolidation requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder deposit request count is within the limit
-    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder deposit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder exit request count is within the limit
-    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder exit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The proposer slashing count is within the limit
-    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
-        raise GossipReject("too many proposer slashings")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The attester slashing count is within the limit
-    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
-        raise GossipReject("too many attester slashings")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The attestation count is within the limit
-    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
-        raise GossipReject("too many attestations")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The block contains no deposits
-    if len(block.body.deposits) != 0:
-        raise GossipReject("block must not contain deposits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The voluntary exit count is within the limit
-    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
-        raise GossipReject("too many voluntary exits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The BLS to execution change count is within the limit
-    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
-        raise GossipReject("too many bls to execution changes")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The payload attestation count is within the limit
-    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
-        raise GossipReject("too many payload attestations")
-
-    # [Modified in Gloas:EIP7732]
-    # [REJECT] The bid's parent equals the block's parent
-    if bid.parent_block_root != block.parent_root:
-        raise GossipReject("bid's parent does not equal block's parent")
-
-    # [REJECT] The block's parent passes validation
-    if block.parent_root not in store.block_states:
-        raise GossipReject("block's parent is invalid")
-
-    # [REJECT] The block is proposed by the expected proposer for the slot
-    parent_state = store.block_states[block.parent_root].copy()
-    process_slots(parent_state, block.slot)
-    expected_proposer = get_beacon_proposer_index(parent_state)
-    if block.proposer_index != expected_proposer:
-        raise GossipReject("block proposer does not match the expected proposer")
-
-    # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
 ###### New `execution_payload`
@@ -949,8 +949,6 @@ highest bid by a minimum threshold, or (2) forwarding only the highest observed
 bid at regular time intervals.
 
 ###### New `proposer_preferences`
-
-*[New in Gloas:EIP7732]*
 
 This topic is used to propagate signed proposer preferences as
 `SignedProposerPreferences`. These messages allow validators to communicate
