@@ -262,10 +262,18 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
 
     yield get_filename(sidecar), sidecar
 
