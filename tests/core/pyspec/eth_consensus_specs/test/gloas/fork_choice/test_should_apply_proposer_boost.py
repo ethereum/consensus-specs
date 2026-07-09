@@ -131,9 +131,7 @@ def _assert_weight_reflects_boost(spec, store, block_root, boost_applied):
     emitted in `viable_for_head_roots_and_weights` for clients that validate it.
     """
     justified_state = store.checkpoint_states[store.justified_checkpoint]
-    boost_node = spec.ForkChoiceNode(
-        root=block_root, payload_status=spec.PAYLOAD_STATUS_PENDING
-    )
+    boost_node = spec.ForkChoiceNode(root=block_root, payload_status=spec.PAYLOAD_STATUS_PENDING)
     attestation_score = spec.get_attestation_score(store, boost_node, justified_state)
     proposer_score = spec.get_proposer_score(store)
     assert proposer_score > 0
