@@ -207,3 +207,8 @@ def run_validate_gossip(spec, **kwargs):
 def get_seen(spec):
     """Create an empty Seen object by instantiating each annotated field's container type."""
     return spec.Seen(**{name: get_origin(t)() for name, t in get_type_hints(spec.Seen).items()})
+
+
+def make_progressive_list(spec, element_type, count):
+    """A progressive list of ``count`` default ``element_type`` values."""
+    return spec.ProgressiveList[element_type](*([element_type()] * count))

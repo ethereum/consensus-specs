@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
+    make_progressive_list,
     run_validate_gossip,
     setup_store_with_failed_block,
     wrap_genesis_block,
@@ -474,11 +475,6 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     yield "messages", "meta", messages
 
 
-def _progressive(spec, element_type, count):
-    """A progressive list of ``count`` default ``element_type`` values."""
-    return spec.ProgressiveList[element_type](*([element_type()] * count))
-
-
 def _assert_envelope_requests(spec, state, execution_requests, expected, reason=None):
     """Assert an envelope carrying ``execution_requests`` returns ``expected``.
 
@@ -550,7 +546,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     # Set the payload's withdrawals, then re-sign so the withdrawal count is the only
     # check under test.
     envelope = signed_envelope.message
-    envelope.payload.withdrawals = _progressive(spec, spec.Withdrawal, count)
+    envelope.payload.withdrawals = make_progressive_list(spec, spec.Withdrawal, count)
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         privkey = privkeys[signed_block.message.proposer_index]
     else:
