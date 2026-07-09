@@ -13,7 +13,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
-from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+from eth_consensus_specs.test.helpers.state import next_epoch, state_transition_and_sign_block
 
 
 def check_head_against_root(spec, store, root):
@@ -742,3 +742,30 @@ def setup_one_block_store(spec, state):
         spec, store, state, test_steps
     )
     return store, block_root, block_state, signed_block, test_steps
+
+
+def setup_finalized_store(spec, state):
+    """
+    Bootstrap a fork choice store and drive a justifying and finalizing chain by
+    filling three epochs with attestations from the genesis anchor.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    tick_store_to_slot(spec, store, state.slot, test_steps)
+    next_epoch(spec, state)
+    tick_store_to_slot(spec, store, state.slot, test_steps)
+
+    for _ in range(3):
+        state, store, _ = yield from apply_next_epoch_with_attestations(
+            spec,
+            state,
+            store,
+            fill_cur_epoch=True,
+            fill_prev_epoch=True,
+            test_steps=test_steps,
+        )
+    return store, state, test_steps
