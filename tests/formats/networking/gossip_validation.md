@@ -162,3 +162,12 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 | `valid`  | Message passes all validation checks.  |
 | `ignore` | Message fails an `[IGNORE]` condition. |
 | `reject` | Message fails a `[REJECT]` condition.  |
+
+Test cases are constructed so that every failing validation condition yields the
+same expected result: clients may evaluate independent conditions in any order
+without changing the outcome. Some conditions can only be evaluated after
+another condition has passed (e.g. a check that reads a builder record requires
+the builder index bounds check, and checks that use the parent block's state
+require the parent to be known) -- such dependencies are always respected by the
+vectors. The `reason` string reflects the specification's check order and is
+informational.
