@@ -348,15 +348,16 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
 @spec_state_test
 def test_matching_payload_gets_head_flag(spec, state):
     """
-    Test get_attestation_participation_flag_indices for historical slots where
-    is_matching_payload = data.index == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
-    and is_matching_head = is_matching_blockroot and is_matching_payload.
+    Test that ``get_attestation_participation_flag_indices`` compares
+    ``data.index`` against the availability bit of the attested block's slot,
+    not ``data.slot``, when the attestation is for a skipped slot.
     """
     # Use missed slot scenario: blocks for slots 1, 2, 3 but skip slot 4
     slot_4_block_root = _setup_missed_slot_scenario(spec, state)
 
-    # Set payload availability bit to 1 for slot 4
-    state.execution_payload_availability[4] = 1
+    # The attested block is at slot 3, so its availability bit is the one
+    # that matters. Set it to 1 to indicate the payload was revealed.
+    state.execution_payload_availability[3] = 1
 
     # Create attestation with index = 1 to match the availability bit
     attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
@@ -388,8 +389,9 @@ def test_mismatched_payload_no_head_flag(spec, state):
     # Use missed slot scenario: blocks for slots 1, 2, 3 but skip slot 4
     slot_4_block_root = _setup_missed_slot_scenario(spec, state)
 
-    # Set payload availability bit to 0 for slot 4
-    state.execution_payload_availability[4] = 0
+    # The attested block is at slot 3, so its availability bit is the one
+    # that matters. Set it to 0 to indicate the payload was withheld.
+    state.execution_payload_availability[3] = 0
 
     # Create attestation with index = 1 which does NOT match availability bit = 0
     attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
@@ -409,6 +411,37 @@ def test_mismatched_payload_no_head_flag(spec, state):
     final_head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
     assert not final_head_flag, "Should not get head flag when payload doesn't match"
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_attested_block_out_of_range_no_head_flag(spec, state):
+    """
+    Test that an attestation does not receive the timely head flag when the
+    attested block is more than ``SLOTS_PER_HISTORICAL_ROOT`` slots old, since
+    the availability bit for the attested block's slot is no longer known.
+    """
+    # Skip every slot since genesis, so the walk back from data.slot runs off
+    # the end of the historical roots without finding the attested block
+    attestation_slot = spec.Slot(spec.SLOTS_PER_HISTORICAL_ROOT)
+    next_slots(spec, state, attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    attestation = get_valid_attestation(spec, state, slot=attestation_slot, signed=True)
+
+    assert attestation.data.index == 0
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    # The attested block (genesis) still matches the historical block roots
+    assert attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, attestation_slot
+    )
+
+    attesting_indices = spec.get_attesting_indices(state, attestation)
+    validator_index = next(iter(attesting_indices))
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    final_participation = state.current_epoch_participation[validator_index]
+    assert not spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
 
 @with_gloas_and_later
