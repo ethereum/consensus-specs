@@ -111,6 +111,11 @@ def validate_partial_data_column_sidecar_gossip(
     if group_id.beacon_block_root not in store.blocks:
         raise GossipIgnore("group id's beacon block has not been seen")
 
+    # [New in Gloas]
+    # [REJECT] The group ID's block passes validation
+    if group_id.beacon_block_root not in store.block_states:
+        raise GossipReject("group id's beacon block failed validation")
+
     block = store.blocks[group_id.beacon_block_root]
 
     # [New in Gloas]

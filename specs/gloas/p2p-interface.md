@@ -1072,11 +1072,15 @@ def validate_data_column_sidecar_gossip(
     if not is_not_from_future_slot(state, sidecar.slot, current_time_ms):
         raise GossipIgnore("sidecar is from a future slot")
 
-    # [IGNORE] A valid block for the sidecar has been seen (via gossip or non-gossip sources)
+    # [IGNORE] A block for the sidecar has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     # (SHOULD queue at least one sidecar per peer per subnet)
     if sidecar.beacon_block_root not in store.blocks:
         raise GossipIgnore("block for sidecar's beacon block root has not been seen")
+
+    # [REJECT] The block for the sidecar passes validation
+    if sidecar.beacon_block_root not in store.block_states:
+        raise GossipReject("block for sidecar's beacon block root failed validation")
 
     block = store.blocks[sidecar.beacon_block_root]
 
