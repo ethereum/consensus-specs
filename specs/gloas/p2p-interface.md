@@ -885,6 +885,10 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [REJECT] The builder is a payload builder
+    if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
+        raise GossipReject("builder is not a payload builder")
+
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
     max_blobs = get_blob_parameters(proposal_epoch).max_blobs_per_block

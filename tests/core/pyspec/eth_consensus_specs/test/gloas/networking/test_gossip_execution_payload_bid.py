@@ -1119,6 +1119,73 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, state):
+    """A bid from a builder whose version is not PAYLOAD_BUILDER_VERSION is rejected.
+
+    The builder is active and can cover the bid, so its version is the only
+    failing condition and any client rejects regardless of check order. The
+    version is baked into the anchor state so replaying the blocks preserves it.
+    """
+    # Mark builder 0 as a non-payload-version builder.
+    builder_index = spec.BuilderIndex(0)
+    state.builders[builder_index].version = spec.uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
+    assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, blocks, parent_root, messages, time_ms)
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "builder is not a payload builder"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     """A bid whose blob KZG commitment count exceeds the per-epoch limit is rejected."""
     anchor_state = state.copy()
