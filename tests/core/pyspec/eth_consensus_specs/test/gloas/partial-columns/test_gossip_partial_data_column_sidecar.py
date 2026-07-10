@@ -76,10 +76,13 @@ def test_gossip_partial_data_column_sidecar__valid(spec, state):
     """A well-formed partial sidecar with cells matching the bid passes."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
+    # Capture the genesis anchor state before the setup helper advances it, so
+    # the yielded anchor state matches the first (anchor) block for replay.
+    anchor_state = state.copy()
     store, signed_anchor, signed_block, partial, group_id, column_index = (
         setup_gloas_partial_sidecar(spec, state)
     )
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
@@ -127,13 +130,16 @@ def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     """A partial sidecar whose group_id.slot doesn't match the block is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
+    # Capture the genesis anchor state before the setup helper advances it, so
+    # the yielded anchor state matches the first (anchor) block for replay.
+    anchor_state = state.copy()
     store, signed_anchor, signed_block, partial, group_id, column_index = (
         setup_gloas_partial_sidecar(spec, state)
     )
     # Bump the slot so it no longer matches.
     group_id.slot = spec.Slot(group_id.slot + 1)
 
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
@@ -182,12 +188,15 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     """A partial sidecar whose group_id references an unknown block is ignored."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
+    # Capture the genesis anchor state before the setup helper advances it, so
+    # the yielded anchor state matches the first (anchor) block for replay.
+    anchor_state = state.copy()
     store, signed_anchor, signed_block, partial, group_id, column_index = (
         setup_gloas_partial_sidecar(spec, state)
     )
     group_id.beacon_block_root = spec.Root(b"\xab" * 32)
 
-    yield "state", state
+    yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
     yield (
