@@ -7,6 +7,9 @@ from eth_consensus_specs.test.helpers.attestations import (
     to_single_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -221,11 +224,14 @@ def test_gossip_beacon_attestation__valid_same_slot_index_zero(spec, state):
     yield "messages", "meta", messages
 
 
-def prepare_past_slot_attestation(spec, state, payload_index):
+def prepare_past_slot_attestation(spec, state, payload_index, install_payload=False):
     """
     Build a block at the next slot, register it, then advance state once more
     so the attestation refers to a *past*-slot block (block.slot != data.slot).
-    Returns (store, signed_anchor, signed_block, attestation, subnet_id, block_root).
+    When ``install_payload`` is set, the block's execution payload envelope is
+    delivered to the store so ``is_payload_verified`` returns True.
+    Returns (store, signed_anchor, signed_block, attestation, subnet_id,
+    block_root, signed_envelope).
     """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -234,6 +240,14 @@ def prepare_past_slot_attestation(spec, state, payload_index):
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
+
+    signed_envelope = None
+    if install_payload:
+        signed_envelope = build_signed_execution_payload_envelope(
+            spec, state, block_root, signed_block
+        )
+        store.payloads[block_root] = signed_envelope.message
+
     # Advance state to a later slot so data.slot != block.slot.
     next_slot(spec, state)
 
@@ -246,7 +260,7 @@ def prepare_past_slot_attestation(spec, state, payload_index):
     )
     single = to_single_attestation(spec, state, attestation)
     subnet_id = get_correct_subnet(spec, state, single)
-    return store, signed_anchor, signed_block, single, subnet_id, block_root
+    return store, signed_anchor, signed_block, single, subnet_id, block_root, signed_envelope
 
 
 @with_gloas_and_later
@@ -257,8 +271,8 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     yield "topic", "meta", "beacon_attestation"
     yield "state", anchor_state
 
-    store, signed_anchor, signed_block, attestation, subnet_id, _ = prepare_past_slot_attestation(
-        spec, state, payload_index=1
+    store, signed_anchor, signed_block, attestation, subnet_id, _, _ = (
+        prepare_past_slot_attestation(spec, state, payload_index=1)
     )
     seen = get_seen(spec)
     yield get_filename(signed_anchor), signed_anchor
@@ -311,12 +325,13 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
     yield "topic", "meta", "beacon_attestation"
     yield "state", anchor_state
 
-    store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
-        prepare_past_slot_attestation(spec, state, payload_index=1)
+    store, signed_anchor, signed_block, attestation, subnet_id, block_root, signed_envelope = (
+        prepare_past_slot_attestation(spec, state, payload_index=1, install_payload=True)
     )
     seen = get_seen(spec)
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
+    yield get_filename(signed_envelope), signed_envelope
     yield (
         "blocks",
         "meta",
@@ -324,6 +339,7 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
             {"block": get_filename(signed_anchor)},
             {
                 "block": get_filename(signed_block),
+                "payload": get_filename(signed_envelope),
                 "payload_status": PAYLOAD_STATUS_NOT_VALIDATED,
             },
         ],
@@ -370,12 +386,13 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
     yield "topic", "meta", "beacon_attestation"
     yield "state", anchor_state
 
-    store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
-        prepare_past_slot_attestation(spec, state, payload_index=1)
+    store, signed_anchor, signed_block, attestation, subnet_id, block_root, signed_envelope = (
+        prepare_past_slot_attestation(spec, state, payload_index=1, install_payload=True)
     )
     seen = get_seen(spec)
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block
+    yield get_filename(signed_envelope), signed_envelope
     yield (
         "blocks",
         "meta",
@@ -383,6 +400,7 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
             {"block": get_filename(signed_anchor)},
             {
                 "block": get_filename(signed_block),
+                "payload": get_filename(signed_envelope),
                 "payload_status": PAYLOAD_STATUS_INVALIDATED,
             },
         ],
@@ -429,7 +447,74 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     yield "topic", "meta", "beacon_attestation"
     yield "state", anchor_state
 
-    store, signed_anchor, signed_block, attestation, subnet_id, block_root = (
+    store, signed_anchor, signed_block, attestation, subnet_id, block_root, signed_envelope = (
+        prepare_past_slot_attestation(spec, state, payload_index=1, install_payload=True)
+    )
+    seen = get_seen(spec)
+    yield get_filename(signed_anchor), signed_anchor
+    yield get_filename(signed_block), signed_block
+    yield get_filename(signed_envelope), signed_envelope
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {
+                "block": get_filename(signed_block),
+                "payload": get_filename(signed_envelope),
+                "payload_status": PAYLOAD_STATUS_VALID,
+            },
+        ],
+    )
+    yield get_filename(attestation), attestation
+
+    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
+        current_time_ms=time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses=get_spec_block_payload_statuses(
+            spec, {block_root: PAYLOAD_STATUS_VALID}
+        ),
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "subnet_id": int(subnet_id),
+            "current_time_ms": int(time_ms),
+            "message": get_filename(attestation),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_beacon_attestation__ignore_payload_status_without_envelope(spec, state):
+    """A data.index=1 attestation is ignored when the payload envelope was not delivered.
+
+    An EL validation status may be present for a block whose payload envelope
+    has not been locally delivered. The payload-present vote must still be
+    ignored, since ``is_payload_verified`` is False, rather than accepted on the
+    strength of a status entry alone.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_attestation"
+    yield "state", anchor_state
+
+    # Note: install_payload is left False, so the envelope is never delivered.
+    store, signed_anchor, signed_block, attestation, subnet_id, block_root, _ = (
         prepare_past_slot_attestation(spec, state, payload_index=1)
     )
     seen = get_seen(spec)
@@ -465,14 +550,15 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
             spec, {block_root: PAYLOAD_STATUS_VALID}
         ),
     )
-    assert result == "valid"
-    assert reason is None
+    assert result == "ignore"
+    assert reason == "execution payload envelope has not been seen"
     messages.append(
         {
             "subnet_id": int(subnet_id),
             "current_time_ms": int(time_ms),
             "message": get_filename(attestation),
             "expected": result,
+            "reason": reason,
         }
     )
 

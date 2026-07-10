@@ -638,16 +638,16 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     if aggregate.data.index == 1:
         # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload envelope has been seen
+        # [IGNORE] The corresponding execution payload envelope has been seen and verified
         # (MAY queue attestations for processing once the payload is retrieved and
         # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
         # using aggregate.data.beacon_block_root)
-        payload_status = block_payload_statuses.get(block_root)
-        if payload_status is None:
+        if not is_payload_verified(store, block_root):
             raise GossipIgnore("execution payload envelope has not been seen")
 
         # [New in Gloas:EIP7732]
         # [IGNORE] The corresponding execution payload has been validated
+        payload_status = block_payload_statuses.get(block_root)
         if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
             raise GossipIgnore("execution payload pending EL validation")
 
@@ -1206,16 +1206,16 @@ def validate_beacon_attestation_gossip(
 
     if data.index == 1:
         # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload envelope has been seen
+        # [IGNORE] The corresponding execution payload envelope has been seen and verified
         # (MAY queue attestations for processing once the payload is retrieved and
         # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
         # using data.beacon_block_root)
-        payload_status = block_payload_statuses.get(beacon_block_root)
-        if payload_status is None:
+        if not is_payload_verified(store, beacon_block_root):
             raise GossipIgnore("execution payload envelope has not been seen")
 
         # [New in Gloas:EIP7732]
         # [IGNORE] The corresponding execution payload has been validated
+        payload_status = block_payload_statuses.get(beacon_block_root)
         if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
             raise GossipIgnore("execution payload pending EL validation")
 
