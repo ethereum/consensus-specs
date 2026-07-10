@@ -492,6 +492,12 @@ def validate_beacon_block_gossip(
     if block.proposer_index != expected_proposer:
         raise GossipReject("block proposer does not match the expected proposer")
 
+    # [New in Gloas:EIP7732]
+    # [REJECT] If the parent is not full, the bid builds on the parent's execution head
+    if not is_parent_node_full(store, block):
+        if bid.parent_block_hash != parent_state.latest_block_hash:
+            raise GossipReject("bid does not build on the parent's execution head")
+
     # Mark this block as seen
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```

@@ -207,6 +207,65 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, state):
+    """A block whose bid builds on an unrelated execution head is rejected.
+
+    The bid's parent_block_hash is neither the parent bid's block_hash (which
+    would make the parent full) nor the parent state's latest_block_hash (the
+    empty-parent branch), so it is classified as an empty parent yet does not
+    build on the parent's execution head. Block processing rejects such a block,
+    so gossip must reject it too.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    # An arbitrary execution head that is neither the parent's payload hash
+    # (full) nor the parent state's latest_block_hash (empty). Every other
+    # condition is satisfied, so any client rejects regardless of check order.
+    bid = block.body.signed_execution_payload_bid.message
+    bid.parent_block_hash = spec.Hash32(b"\xab" * 32)
+    assert not spec.is_parent_node_full(store, block)
+    assert bid.parent_block_hash != state.latest_block_hash
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid does not build on the parent's execution head"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_block),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """A block whose slot is not strictly greater than its parent's slot is rejected."""
     anchor_state = state.copy()
