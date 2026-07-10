@@ -493,6 +493,9 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The block with root `preferences.dependent_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
+- _[REJECT]_ The block with root `preferences.dependent_root` is a valid
+  dependent block for the proposal slot -- i.e. its slot is strictly less than
+  `compute_start_slot_at_epoch(compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD)`.
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at the epoch
   `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD` and
