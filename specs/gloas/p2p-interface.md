@@ -863,9 +863,9 @@ def validate_execution_payload_bid_gossip(
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
-    best_bid_value = seen.best_execution_payload_bid.get(best_bid_key, Gwei(0))
-    if bid.value <= best_bid_value:
-        raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
+    if best_bid_key in seen.best_execution_payload_bid:
+        if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
+            raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
 
     # [REJECT] The bid is for a higher slot than its parent block
     if bid.slot <= state.slot:
