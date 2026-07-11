@@ -78,16 +78,20 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_block, _block_root = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    # Re-target the envelope at a block root that is not in the store.
-    signed_envelope.message.beacon_block_root = spec.Root(b"\xab" * 32)
+    # Build the envelope already targeting a block root that is not in the
+    # store, so its signature stays valid over the final message and the only
+    # failing condition is the unseen block (order-independent).
+    unknown_root = spec.Root(b"\xab" * 32)
+    signed_envelope = build_signed_execution_payload_envelope(
+        spec, state, unknown_root, signed_block
+    )
     yield get_filename(signed_envelope), signed_envelope
 
     time_ms = spec.compute_time_at_slot_ms(state, state.slot)

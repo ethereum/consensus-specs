@@ -508,41 +508,23 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_agg_1), "expected": "valid"})
 
-    # Build a second aggregate with the same data root but a different bitfield
-    # that is not a subset of the first one.
-    modified_bits = [bool(bit) for bit in signed_agg_1.message.aggregate.aggregation_bits]
-    assert len(modified_bits) > 1, "Need committee size > 1 for this test"
-    for i, bit in enumerate(modified_bits):
-        if not bit:
-            modified_bits[i] = True
-            break
-    else:
-        raise AssertionError("Need at least one additional committee participant for this test")
-
-    if is_post_electra(spec):
-        # Post-Electra ``Attestation`` includes ``committee_bits`` and uses the
-        # fork's ``AggregationBits`` type, which is a progressive bitlist since
-        # Gloas. Preserve both from the first aggregate.
-        aggregate_2 = spec.Attestation(
-            aggregation_bits=spec.AggregationBits(*modified_bits),
-            data=signed_agg_1.message.aggregate.data,
-            committee_bits=signed_agg_1.message.aggregate.committee_bits,
-            signature=signed_agg_1.message.aggregate.signature,
-        )
-    else:
-        aggregate_2 = spec.Attestation(
-            aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*modified_bits),
-            data=signed_agg_1.message.aggregate.data,
-            signature=signed_agg_1.message.aggregate.signature,
-        )
-
-    signed_agg_2 = spec.SignedAggregateAndProof(
-        message=spec.AggregateAndProof(
-            aggregator_index=signed_agg_1.message.aggregator_index,
-            aggregate=aggregate_2,
-            selection_proof=signed_agg_1.message.selection_proof,
-        ),
-        signature=signed_agg_1.signature,
+    # Build a second, fully-signed aggregate for the same data whose bits are a
+    # superset of (hence not a subset of) the first, so dedup cannot trigger.
+    # Aggregate it under the same aggregator so only the aggregator-uniqueness
+    # rule can produce the ignore. Building and signing with the final bits keeps
+    # the inner and outer signatures valid, so the result is order-independent.
+    assert len(signed_agg_1.message.aggregate.aggregation_bits) > 1, (
+        "Need committee size > 1 for this test"
+    )
+    attestation_2 = get_valid_attestation(
+        spec,
+        state,
+        signed=True,
+        beacon_block_root=anchor_root,
+        filter_participant_set=lambda participants: set(sorted(participants)[:2]),
+    )
+    signed_agg_2 = create_signed_aggregate_and_proof(
+        spec, state, attestation_2, aggregator_index=signed_agg_1.message.aggregator_index
     )
 
     yield get_filename(signed_agg_2), signed_agg_2
@@ -920,10 +902,12 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     assert result == "valid"
     messages.append({"offset_ms": 500, "message": get_filename(signed_agg1), "expected": "valid"})
 
-    # Create a second attestation with different data but same aggregator
-    attestation2 = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
-    attestation2.data.beacon_block_root = spec.Root(b"\xab" * 32)
-
+    # Create a second attestation with different data but the same aggregator.
+    # Build it already targeting the different block root so its inner signature
+    # stays valid over the final data and the result is order-independent.
+    attestation2 = get_valid_attestation(
+        spec, state, signed=True, beacon_block_root=spec.Root(b"\xab" * 32)
+    )
     aggregator_index = signed_agg1.message.aggregator_index
     signed_agg2 = create_signed_aggregate_and_proof(spec, state, attestation2, aggregator_index)
 

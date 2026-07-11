@@ -1011,6 +1011,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent root state is unavailable")
 
     # [REJECT] The dependent root is a valid dependent block for the proposal slot
+    assert proposal_epoch >= MIN_SEED_LOOKAHEAD
     lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     lookahead_state = store.block_states[preferences.dependent_root].copy()
