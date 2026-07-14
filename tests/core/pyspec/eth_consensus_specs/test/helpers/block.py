@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_empty_signed_execution_payload_bid,
+    compute_and_sign_execution_payload_bid,
 )
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
@@ -127,6 +128,62 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_requests.consolidations = []
 
     return empty_block
+
+
+def build_block_and_payload(
+    spec, state, slot=None, proposer_index=None, parent_payload=None, execution_requests=None
+):
+    """
+    Build block and a payload for ``slot``, built upon the latest block header seen by ``state``.
+    Slot must be greater than or equal to the current slot in ``state``.
+    """
+    if slot is None:
+        slot = state.slot
+    if slot < state.slot:
+        raise Exception("build_block_and_payload cannot build blocks for past slots")
+    if state.slot < slot:
+        # transition forward in copied state to grab relevant data from state
+        state = state.copy()
+        spec.process_slots(state, slot)
+
+    state, parent_block_root = get_state_and_beacon_parent_root_at_slot(spec, state, slot)
+    proposer_index = get_beacon_proposer_to_build(spec, state, proposer_index)
+    block = spec.BeaconBlock()
+    block.slot = slot
+    block.proposer_index = proposer_index
+    block.body.eth1_data.deposit_count = state.eth1_deposit_index
+    block.parent_root = parent_block_root
+
+    apply_randao_reveal(spec, state, block, proposer_index)
+
+    if is_post_altair(spec):
+        block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
+
+    if not is_post_bellatrix(spec):
+        return block, None
+
+    if is_post_electra(spec) and execution_requests is None:
+        execution_requests = spec.ExecutionRequests()
+
+    prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    payload = build_empty_execution_payload(
+        spec,
+        state,
+        randao_mix=prev_randao,
+        parent_payload=parent_payload,
+        execution_requests=execution_requests,
+    )
+    if is_post_gloas(spec):
+        signed_bid = compute_and_sign_execution_payload_bid(
+            spec, state, payload, execution_requests=execution_requests
+        )
+        block.body.signed_execution_payload_bid = signed_bid
+    else:
+        block.body.execution_payload = payload
+        if is_post_electra(spec):
+            block.body.execution_requests = execution_requests
+
+    return block, payload
 
 
 def get_beacon_proposer_to_build(spec, state, proposer_index=None):

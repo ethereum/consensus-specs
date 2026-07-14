@@ -11,10 +11,10 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.block import (
-    build_empty_block,
+    build_block_and_payload,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    compute_and_sign_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attester_slashing,
@@ -28,6 +28,9 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_electra,
     is_post_gloas,
+)
+from eth_consensus_specs.test.helpers.genesis import (
+    get_sample_genesis_execution_payload,
 )
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -194,6 +197,28 @@ class FCRTest:
         else:
             return self.spec.MAX_ATTESTATIONS
 
+    def get_parent_payload(self, parent_root):
+        if not is_post_bellatrix(self.spec):
+            return None
+
+        root, block = parent_root, self.store.blocks[parent_root]
+        while (
+            is_post_gloas(self.spec)
+            and not self.spec.is_payload_verified(self.store, root)
+            and block.slot > self.spec.GENESIS_SLOT
+        ):
+            block = self.store.blocks[root]
+            root = block.parent_root
+
+        if block.slot == self.spec.GENESIS_SLOT:
+            eth1_block_hash = self.store.block_states[parent_root].eth1_data.block_hash
+            return get_sample_genesis_execution_payload(self.spec, eth1_block_hash=eth1_block_hash)
+
+        if is_post_gloas(self.spec):
+            return self.store.payloads[root].payload
+        else:
+            return block.body.execution_payload
+
     def add_and_apply_block(
         self,
         parent_root=None,
@@ -219,9 +244,28 @@ class FCRTest:
         parent_state = self.store.block_states[parent_root].copy()
         assert parent_state.slot < current_slot
 
+        # Obtain parent payload or its header
+        parent_payload = self.get_parent_payload(parent_root)
+
+        # Execution requests
+        execution_requests = None
+        if is_post_electra(self.spec):
+            execution_requests = self.spec.ExecutionRequests()
+            if deposit_requests is not None:
+                if not is_post_gloas(self.spec):
+                    assert len(deposit_requests) <= self.spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+                for d in deposit_requests:
+                    execution_requests.deposits.append(d)
+
         # Build a block for current_slot with attestations from pool
-        # build_empty_block will advance the state to current_slot if necessary
-        block = build_empty_block(self.spec, parent_state, current_slot)
+        # build_block_and_payload will advance the state to current_slot if necessary
+        block, payload = build_block_and_payload(
+            self.spec,
+            parent_state,
+            current_slot,
+            parent_payload=parent_payload,
+            execution_requests=execution_requests,
+        )
 
         # Graffiti
         if graffiti is not None:
@@ -263,27 +307,9 @@ class FCRTest:
             for e in exits:
                 block.body.voluntary_exits.append(e)
 
-        # Execution requests
-        if is_post_electra(self.spec):
-            execution_requests = self.spec.ExecutionRequests()
-        if deposit_requests is not None:
-            assert is_post_electra(self.spec)
-            if not is_post_gloas(self.spec):
-                assert len(deposit_requests) <= self.spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
-            for d in deposit_requests:
-                execution_requests.deposits.append(d)
-            if is_post_gloas(self.spec):
-                bid = block.body.signed_execution_payload_bid.message
-                bid.execution_requests_root = self.spec.hash_tree_root(execution_requests)
-            else:
-                block.body.execution_requests = execution_requests
-
-        # Always build on full block post-Gloas
+        # Set parent execution requests post-Gloas
         if is_post_gloas(self.spec) and self.spec.is_payload_verified(self.store, parent_root):
-            bid = block.body.signed_execution_payload_bid.message
             parent_envelope = self.store.payloads[parent_root]
-            bid.parent_block_hash = parent_envelope.payload.block_hash
-            # Set parent execution requests
             block.body.parent_execution_requests = parent_envelope.execution_requests
 
         # Sign block and add it to the Store
@@ -294,8 +320,8 @@ class FCRTest:
 
         # Build and reveal execution payload post-Gloas
         if is_post_gloas(self.spec):
-            signed_envelope = build_signed_execution_payload_envelope(
-                self.spec, parent_state, block_root, signed_block, execution_requests
+            signed_envelope = compute_and_sign_execution_payload_envelope(
+                self.spec, parent_state, block_root, signed_block, payload, execution_requests
             )
             for artefact in add_execution_payload(
                 self.spec, self.store, signed_envelope, self.test_steps
