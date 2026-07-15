@@ -198,8 +198,7 @@ class FCRTest:
             return self.spec.MAX_ATTESTATIONS
 
     def get_parent_payload(self, parent_root):
-        if not is_post_bellatrix(self.spec):
-            return None
+        assert is_post_bellatrix(self.spec)
 
         root, block = parent_root, self.store.blocks[parent_root]
         while (
@@ -245,7 +244,10 @@ class FCRTest:
         assert parent_state.slot < current_slot
 
         # Obtain parent payload or its header
-        parent_payload = self.get_parent_payload(parent_root)
+        if is_post_bellatrix(self.spec):
+            parent_payload = self.get_parent_payload(parent_root)
+        else:
+            parent_payload = None
 
         # Execution requests
         execution_requests = None

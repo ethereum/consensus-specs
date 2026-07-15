@@ -137,6 +137,9 @@ def build_block_and_payload(
     Build block and a payload for ``slot``, built upon the latest block header seen by ``state``.
     Slot must be greater than or equal to the current slot in ``state``.
     """
+    if not is_post_electra(spec):
+        assert execution_requests is None
+
     if slot is None:
         slot = state.slot
     if slot < state.slot:

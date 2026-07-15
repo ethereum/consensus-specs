@@ -294,8 +294,8 @@ def compute_el_block_hash_for_block(spec, block):
 
 
 def build_empty_post_gloas_execution_payload_bid(spec, state):
-    if not is_post_gloas(spec):
-        return
+    assert is_post_gloas(spec)
+
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
     # Use self-build: builder_index is the same as the beacon proposer index
@@ -337,8 +337,8 @@ def sign_execution_payload_bid(spec, state, bid):
 
 
 def build_empty_signed_execution_payload_bid(spec, state):
-    if not is_post_gloas(spec):
-        return
+    assert is_post_gloas(spec)
+
     message = build_empty_post_gloas_execution_payload_bid(spec, state)
     return sign_execution_payload_bid(spec, state, message)
 
