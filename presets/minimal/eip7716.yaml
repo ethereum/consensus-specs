@@ -1,0 +1,10 @@
+# Minimal preset - EIP7716
+
+# Penalty factor
+# ---------------------------------------------------------------
+# 2**7 (= 128)
+MAX_PENALTY_FACTOR: 128
+# 3 * (MAX_PENALTY_FACTOR - 1)
+PENALTY_SLOPE: 381
+# 2**17 (= 131,072)
+MISS_EMA_SMOOTHING_FACTOR: 131072
