@@ -270,20 +270,8 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("aggregate epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
     if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
@@ -429,20 +417,8 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("attestation epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
     if target_epoch != compute_epoch_at_slot(data.slot):
