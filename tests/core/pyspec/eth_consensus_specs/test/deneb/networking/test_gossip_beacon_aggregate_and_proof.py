@@ -315,7 +315,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_windo
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "aggregate epoch is not previous or current epoch"
+    assert reason == "aggregate epoch is not current or previous epoch"
 
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "ignore", reason)]
 
@@ -488,6 +488,6 @@ def test_gossip_beacon_aggregate_and_proof__ignores_last_slot_after_epoch_window
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "aggregate epoch is not previous or current epoch"
+    assert reason == "aggregate epoch is not current or previous epoch"
 
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "ignore", reason)]
