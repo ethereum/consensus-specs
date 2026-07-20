@@ -290,7 +290,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
         subnet_id=subnet_id,
     )
     assert result == "ignore"
-    assert reason == "attestation epoch is not previous or current epoch"
+    assert reason == "attestation epoch is not current or previous epoch"
 
     yield (
         "messages",
@@ -443,7 +443,7 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
         subnet_id=subnet_id,
     )
     assert result == "ignore"
-    assert reason == "attestation epoch is not previous or current epoch"
+    assert reason == "attestation epoch is not current or previous epoch"
 
     yield (
         "messages",
