@@ -156,10 +156,12 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
         return False
 
-    # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
-        sidecar.kzg_proofs
-    ):
+    # The column length must be equal to the number of commitments
+    if len(sidecar.column) != len(sidecar.kzg_commitments):
+        return False
+
+    # The column length must be equal to the number of proofs
+    if len(sidecar.column) != len(sidecar.kzg_proofs):
         return False
 
     return True
