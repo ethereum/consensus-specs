@@ -221,7 +221,7 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
         column_index=column_index,
     )
     assert result == "ignore"
-    assert reason == "group id's beacon block has not been seen"
+    assert reason == "group id's block has not been seen"
 
     yield (
         "messages",
@@ -281,7 +281,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_failed_validation(spec
         column_index=column_index,
     )
     assert result == "reject"
-    assert reason == "group id's beacon block failed validation"
+    assert reason == "group id's block failed validation"
 
     yield (
         "messages",

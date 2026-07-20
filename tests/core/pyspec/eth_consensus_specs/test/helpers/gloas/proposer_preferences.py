@@ -30,9 +30,10 @@ def build_signed_proposer_preferences(
         proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
 
     if dependent_root is None:
-        dependent_root = spec.get_proposer_dependent_root(
-            state, spec.compute_epoch_at_slot(proposal_slot)
-        )
+        proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
+        lookahead_epoch = spec.Epoch(proposal_epoch - spec.MIN_SEED_LOOKAHEAD)
+        dependent_slot = spec.Slot(spec.compute_start_slot_at_epoch(lookahead_epoch) - 1)
+        dependent_root = spec.get_block_root_at_slot(state, dependent_slot)
 
     if fee_recipient is None:
         fee_recipient = spec.ExecutionAddress(b"\x11" * 20)

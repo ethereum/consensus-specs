@@ -21,7 +21,6 @@
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_proposal_slot`](#new-is_valid_proposal_slot)
-    - [New `get_proposer_dependent_root`](#new-get_proposer_dependent_root)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -31,10 +30,10 @@
         - [New `payload_attestation_message`](#new-payload_attestation_message)
         - [New `execution_payload_bid`](#new-execution_payload_bid)
         - [New `proposer_preferences`](#new-proposer_preferences)
-      - [Blob subnets](#blob-subnets)
-        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+      - [Blob subnets](#blob-subnets)
+        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -254,10 +253,12 @@ def is_current_or_next_slot(
     current_time_ms: uint64,
 ) -> bool:
     """
-    Check if ``slot`` is the current slot or the next slot
+    Check if the given slot is the current slot or the next slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(state, slot, 1, current_time_ms + SLOT_DURATION_MS)
+    is_current = is_current_slot(state, slot, current_time_ms)
+    is_next = is_current_slot(state, Slot(slot - 1), current_time_ms)
+    return is_current or is_next
 ```
 
 #### New `is_gas_limit_target_compatible`
@@ -274,11 +275,11 @@ def is_gas_limit_target_compatible(
     min_gas_limit = parent_gas_limit - max_gas_limit_difference
     max_gas_limit = parent_gas_limit + max_gas_limit_difference
 
-    if target_gas_limit >= min_gas_limit and target_gas_limit <= max_gas_limit:
-        return gas_limit == target_gas_limit
+    if target_gas_limit < min_gas_limit:
+        return gas_limit == min_gas_limit
     if target_gas_limit > max_gas_limit:
         return gas_limit == max_gas_limit
-    return gas_limit == min_gas_limit
+    return gas_limit == target_gas_limit
 ```
 
 #### New `is_valid_proposal_slot`
@@ -299,18 +300,6 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
     index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
-```
-
-#### New `get_proposer_dependent_root`
-
-```python
-def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
-    """
-    Return the dependent root for the proposer lookahead at ``epoch``.
-    """
-    return get_block_root_at_slot(
-        state, Slot(compute_start_slot_at_epoch(Epoch(epoch - MIN_SEED_LOOKAHEAD)) - 1)
-    )
 ```
 
 ### The gossip domain: gossipsub
@@ -1034,75 +1023,6 @@ def validate_proposer_preferences_gossip(
     seen.proposer_preferences[prefs_key] = preferences
 ```
 
-##### Blob subnets
-
-###### Modified `data_column_sidecar_{subnet_id}`
-
-The KZG commitments needed to verify a sidecar are now carried by the bid at
-`block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
-`block` is the `BeaconBlock` with root `sidecar.beacon_block_root`.
-
-*Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
-downscored retroactively. If validation succeeds, the client MUST re-broadcast
-the sidecar.
-
-```python
-def validate_data_column_sidecar_gossip(
-    seen: Seen,
-    store: Store,
-    state: BeaconState,
-    sidecar: DataColumnSidecar,
-    current_time_ms: uint64,
-    subnet_id: SubnetID,
-) -> None:
-    """
-    Validate a DataColumnSidecar for gossip propagation on a subnet.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    # [IGNORE] This is the first sidecar seen for this block root and column index
-    sidecar_tuple = (sidecar.beacon_block_root, sidecar.index)
-    if sidecar_tuple in seen.data_column_sidecar_tuples:
-        raise GossipIgnore("already seen sidecar for this block root and index")
-
-    # [REJECT] The sidecar is for the correct subnet
-    if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
-        raise GossipReject("sidecar is for wrong subnet")
-
-    # [IGNORE] The sidecar is not from a future slot
-    # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, sidecar.slot, current_time_ms):
-        raise GossipIgnore("sidecar is from a future slot")
-
-    # [IGNORE] A block for the sidecar has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until block is retrieved)
-    # (SHOULD queue at least one sidecar per peer per subnet)
-    if sidecar.beacon_block_root not in store.blocks:
-        raise GossipIgnore("block for sidecar's beacon block root has not been seen")
-
-    # [REJECT] The block for the sidecar passes validation
-    if sidecar.beacon_block_root not in store.block_states:
-        raise GossipReject("block for sidecar's beacon block root failed validation")
-
-    block = store.blocks[sidecar.beacon_block_root]
-
-    # [REJECT] The sidecar's slot matches the slot of the block
-    if sidecar.slot != block.slot:
-        raise GossipReject("sidecar's slot does not match block's slot")
-
-    bid = block.body.signed_execution_payload_bid.message
-
-    # [REJECT] The sidecar passes structural validation
-    if not verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments):
-        raise GossipReject("invalid sidecar")
-
-    # [REJECT] The sidecar's column data passes KZG verification
-    if not verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments):
-        raise GossipReject("invalid sidecar kzg proofs")
-
-    # Mark this data column sidecar as seen
-    seen.data_column_sidecar_tuples.add(sidecar_tuple)
-```
-
 ##### Attestation subnets
 
 ###### Modified `beacon_attestation_{subnet_id}`
@@ -1243,6 +1163,75 @@ def validate_beacon_attestation_gossip(
 
     # Mark this attestation as seen
     seen.attestation_validator_epochs.add((attester_index, target_epoch))
+```
+
+##### Blob subnets
+
+###### Modified `data_column_sidecar_{subnet_id}`
+
+The KZG commitments needed to verify a sidecar are now carried by the bid at
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
+`block` is the `BeaconBlock` with root `sidecar.beacon_block_root`.
+
+*Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
+downscored retroactively. If validation succeeds, the client MUST re-broadcast
+the sidecar.
+
+```python
+def validate_data_column_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sidecar: DataColumnSidecar,
+    current_time_ms: uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a DataColumnSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    # [IGNORE] This is the first sidecar seen for this block root and column index
+    sidecar_tuple = (sidecar.beacon_block_root, sidecar.index)
+    if sidecar_tuple in seen.data_column_sidecar_tuples:
+        raise GossipIgnore("already seen sidecar for this block root and index")
+
+    # [REJECT] The sidecar is for the correct subnet
+    if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
+        raise GossipReject("sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, sidecar.slot, current_time_ms):
+        raise GossipIgnore("sidecar is from a future slot")
+
+    # [IGNORE] A block for the sidecar has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    # (SHOULD queue at least one sidecar per peer per subnet)
+    if sidecar.beacon_block_root not in store.blocks:
+        raise GossipIgnore("block for sidecar's beacon block root has not been seen")
+
+    # [REJECT] The block for the sidecar passes validation
+    if sidecar.beacon_block_root not in store.block_states:
+        raise GossipReject("block for sidecar's beacon block root failed validation")
+
+    block = store.blocks[sidecar.beacon_block_root]
+
+    # [REJECT] The sidecar's slot matches the slot of the block
+    if sidecar.slot != block.slot:
+        raise GossipReject("sidecar's slot does not match block's slot")
+
+    bid = block.body.signed_execution_payload_bid.message
+
+    # [REJECT] The sidecar passes structural validation
+    if not verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments):
+        raise GossipReject("invalid sidecar")
+
+    # [REJECT] The sidecar's column data passes KZG verification
+    if not verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments):
+        raise GossipReject("invalid sidecar kzg proofs")
+
+    # Mark this data column sidecar as seen
+    seen.data_column_sidecar_tuples.add(sidecar_tuple)
 ```
 
 ### The Req/Resp domain

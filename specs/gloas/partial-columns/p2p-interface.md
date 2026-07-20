@@ -72,6 +72,11 @@ by the bid at
 header-related validations from Fulu are removed; their role is taken over by
 the bid commitments and the corresponding block validation.
 
+*Note*: The optional check "for cells the receiver already has, the sidecar's
+cell and proof data are equal to the local copy" is not encoded below. The
+sender MUST always send valid cell and proof data; receivers MAY perform this
+equality check against their local copy as an additional safeguard.
+
 ```python
 def validate_partial_data_column_sidecar_gossip(
     # [Modified in Gloas:EIP7732]
@@ -91,7 +96,7 @@ def validate_partial_data_column_sidecar_gossip(
     """
     num_cells_present = sum(1 for b in sidecar.cells_present_bitmap if b)
 
-    # [Modified in Gloas]
+    # [Modified in Gloas:EIP7732]
     # [REJECT] The message contains at least one cell
     if num_cells_present == 0:
         raise GossipReject("partial message is semantically empty")
@@ -104,31 +109,33 @@ def validate_partial_data_column_sidecar_gossip(
     if len(sidecar.kzg_proofs) != num_cells_present:
         raise GossipReject("number of proofs does not match number of set bits")
 
-    # [New in Gloas]
+    # [New in Gloas:EIP7732]
     # [IGNORE] The group ID's block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     # (SHOULD queue at least one sidecar per peer per subnet)
     if group_id.beacon_block_root not in store.blocks:
-        raise GossipIgnore("group id's beacon block has not been seen")
+        raise GossipIgnore("group id's block has not been seen")
 
-    # [New in Gloas]
+    # [New in Gloas:EIP7732]
     # [REJECT] The group ID's block passes validation
     if group_id.beacon_block_root not in store.block_states:
-        raise GossipReject("group id's beacon block failed validation")
+        raise GossipReject("group id's block failed validation")
 
     block = store.blocks[group_id.beacon_block_root]
 
-    # [New in Gloas]
+    # [New in Gloas:EIP7732]
     # [REJECT] The group ID's slot matches the slot of the block
     if group_id.slot != block.slot:
         raise GossipReject("group id's slot does not match the block's slot")
 
     bid = block.body.signed_execution_payload_bid.message
 
+    # [Modified in Gloas:EIP7732]
     # [REJECT] The cells present bitmap length equals the number of bid commitments
     if len(sidecar.cells_present_bitmap) != len(bid.blob_kzg_commitments):
-        raise GossipReject("bitmap length does not match the number of bid commitments")
+        raise GossipReject("bitmap length does not match commitments length")
 
+    # [Modified in Gloas:EIP7732]
     # [REJECT] The sidecar's cell and proof data passes KZG verification
     if not verify_partial_data_column_sidecar_kzg_proofs(
         sidecar, bid.blob_kzg_commitments, column_index

@@ -1708,8 +1708,8 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     lookahead dependent root) for proposals within MIN_SEED_LOOKAHEAD epochs of
     the parent's epoch. A bid building on a parent that is two or more epochs
     stale -- e.g. while the chain recovers from a multi-epoch halt -- must be
-    ignored rather than trip the get_block_root_at_slot lookup inside
-    get_proposer_dependent_root.
+    ignored rather than matched against a dependent root the parent cannot
+    determine.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1796,7 +1796,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
-    # get_proposer_dependent_root subtracts MIN_SEED_LOOKAHEAD from the epoch,
+    # The dependent root lookup subtracts MIN_SEED_LOOKAHEAD from the epoch,
     # so the parent state must already be at least MIN_SEED_LOOKAHEAD + 1 epochs
     # in for the lookup to land on a non-underflowing slot.
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)

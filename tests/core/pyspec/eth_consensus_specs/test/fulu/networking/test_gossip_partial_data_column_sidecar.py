@@ -1611,10 +1611,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         **kwargs,
     )
     assert result == "reject"
-    if is_post_gloas(spec):
-        assert reason == "bitmap length does not match the number of bid commitments"
-    else:
-        assert reason == "bitmap length does not match commitments length"
+    assert reason == "bitmap length does not match commitments length"
 
     yield (
         "messages",
