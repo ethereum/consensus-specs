@@ -175,7 +175,8 @@ even if their associated `InclusionList`s have subsequently been pruned.
 *Note*: A `NOT_VALIDATED` payload is optimistically recorded as satisfying the
 inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
 `VALID`, whether the payload satisfies the inclusion list constraints MUST be
-recorded according to the [Optimistic sync](../../sync/optimistic.md)
+recorded according to the
+[Optimistic sync](../../sync/optimistic.md#how-to-track-inclusion-list-satisfaction)
 specification.
 
 *Note*: Whether a payload satisfies the inclusion list constraints MUST NOT
