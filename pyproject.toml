@@ -38,7 +38,7 @@ test = [
   "trie==3.1.0",
 ]
 lint = [
-  "codespell==2.4.2",
+  "codespell==2.4.3",
   "mdformat-frontmatter==2.1.2",
   "mdformat-gfm-alerts==2.0.0",
   "mdformat-gfm==1.0.0",
