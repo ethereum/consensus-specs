@@ -266,10 +266,13 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     """
     inclusion_list = signed_inclusion_list.message
 
+    # The inclusion list is timely if it was received within its own slot,
+    # before the inclusion list deadline
     seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    inclusion_list_due_ms = get_inclusion_list_due_ms()
-    is_timely = time_into_slot_ms < inclusion_list_due_ms
+    arrival_ms = seconds_to_milliseconds(seconds_since_genesis)
+    slot_start_ms = inclusion_list.slot * SLOT_DURATION_MS
+    inclusion_list_deadline_ms = slot_start_ms + get_inclusion_list_due_ms()
+    is_timely = slot_start_ms <= arrival_ms < inclusion_list_deadline_ms
 
     process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_timely)
 ```
