@@ -265,6 +265,29 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     Run ``on_inclusion_list`` upon receiving a new inclusion list.
     """
     inclusion_list = signed_inclusion_list.message
+    current_slot = get_current_slot(store)
+
+    # The inclusion list must not be from a future slot
+    assert inclusion_list.slot <= current_slot
+
+    # The inclusion list must be within the retention window
+    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
+
+    # Use the head state processed up to the current slot to validate the
+    # inclusion list against the canonical view
+    head_state = copy(store.block_states[get_head(store).root])
+    if head_state.slot < current_slot:
+        process_slots(head_state, current_slot)
+
+    # The validator must be in the inclusion list committee for the slot
+    committee = get_inclusion_list_committee(head_state, inclusion_list.slot)
+    assert inclusion_list.validator_index in committee
+
+    # The committee root must match the canonical committee
+    assert inclusion_list.inclusion_list_committee_root == hash_tree_root(committee)
+
+    # The signature must be valid
+    assert is_valid_inclusion_list_signature(head_state, signed_inclusion_list)
 
     # The inclusion list is timely if it was received within its own slot,
     # before the inclusion list deadline
