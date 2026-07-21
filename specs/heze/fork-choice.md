@@ -33,8 +33,8 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          |     Unit     |          Duration          |
-| ------------------------ | -------------- | :----------: | :------------------------: |
+| Name                     | Value          | Unit         | Duration                   |
+| ------------------------ | -------------- | ------------ | -------------------------- |
 | `INCLUSION_LIST_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Protocols
@@ -168,9 +168,16 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ### New `record_payload_inclusion_list_satisfaction`
 
-*Note*: Payloads previously validated as satisfying the inclusion list
-constraints SHOULD NOT be invalidated even if their associated `InclusionList`s
-have subsequently been pruned.
+*Note*: Payloads declared `VALID` by an execution engine and recorded as
+satisfying the inclusion list constraints SHOULD NOT be marked as unsatisfied
+even if their associated `InclusionList`s have subsequently been pruned.
+
+*Note*: A `NOT_VALIDATED` payload is optimistically recorded as satisfying the
+inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
+`VALID`, whether the payload satisfies the inclusion list constraints MUST be
+recorded according to the
+[Optimistic sync](../../sync/optimistic.md#how-to-track-inclusion-list-satisfaction)
+specification.
 
 *Note*: Whether a payload satisfies the inclusion list constraints MUST NOT
 affect payload validation. A valid payload that fails to satisfy those

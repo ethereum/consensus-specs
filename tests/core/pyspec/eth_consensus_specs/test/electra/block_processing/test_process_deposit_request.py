@@ -4,13 +4,13 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
     with_electra_only,
 )
-from eth_consensus_specs.test.helpers.deposits import (
-    prepare_deposit_request,
-)
-from tests.infra.helpers.deposit_requests import (
+from eth_consensus_specs.test.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
     run_deposit_request_processing,
+)
+from eth_consensus_specs.test.helpers.deposits import (
+    prepare_deposit_request,
 )
 
 

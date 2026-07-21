@@ -92,4 +92,4 @@ def trusted_setup():
     load_trusted_setup()
 
 
-pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]
+pytest_plugins = ["eth_consensus_specs.test.pytest_plugins.yield_generator"]

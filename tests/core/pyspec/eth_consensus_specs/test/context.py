@@ -9,8 +9,8 @@ import pytest
 from frozendict import frozendict
 from lru import LRU
 
+from eth_consensus_specs.test.utils.yield_generator import MultiPhaseResult, vector_test
 from eth_consensus_specs.utils import bls
-from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
 from .helpers.constants import (

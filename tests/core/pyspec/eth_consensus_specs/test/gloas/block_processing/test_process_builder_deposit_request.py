@@ -1,12 +1,12 @@
 from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
-from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
-from eth_consensus_specs.utils import bls
-from tests.infra.helpers.builder_deposit_requests import (
+from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     assert_process_builder_deposit_request,
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
+from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
+from eth_consensus_specs.utils import bls
 
 
 def run_builder_deposit_processing(
@@ -80,17 +80,14 @@ def test_process_builder_deposit_request__new_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_builder_deposit_request__new_builder_nonzero_version(spec, state):
+def test_process_builder_deposit_request__new_builder_non_builder_withdrawal_prefix(spec, state):
     """
-    Test fresh builder deposit with a non-zero version.
+    Test fresh builder deposit with a non-builder withdrawal prefix.
 
-    The version (the first byte of the withdrawal credentials) is not
-    constrained: it is recorded on the builder verbatim and is committed to by
-    the proof of possession.
+    Gloas drops new builder deposits that do not use BUILDER_WITHDRAWAL_PREFIX.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    version = spec.uint8(7)
-    withdrawal_credentials = bytes([version]) + b"\x00" * 11 + b"\x42" * 20
+    withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x42" * 20
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
@@ -103,15 +100,8 @@ def test_process_builder_deposit_request__new_builder_nonzero_version(spec, stat
         state,
         pre_state,
         builder_deposit_request=builder_deposit_request,
-        expected_builder_balance=amount,
-        expected_execution_address=spec.ExecutionAddress(
-            builder_deposit_request.withdrawal_credentials[12:]
-        ),
-        expected_builder_withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+        state_unchanged=True,
     )
-
-    builder_index = [b.pubkey for b in state.builders].index(builder_deposit_request.pubkey)
-    assert state.builders[builder_index].version == version
 
 
 @with_gloas_and_later
@@ -275,7 +265,7 @@ def test_process_builder_deposit_request__top_up(spec, state):
 
     Input State Configured:
         - Existing builder pubkey
-        - Builder withdrawal credentials (0x03 prefix)
+        - Builder withdrawal credentials
 
     Output State Verified:
         - Builder balance increased (top-up)
@@ -403,8 +393,8 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
 @spec_state_test
 def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, state):
     """
-    Test that a top-up for an existing builder ignores the supplied withdrawal
-    credentials. The existing registration is unchanged.
+    Test that a top-up for an existing builder ignores the supplied execution
+    address. The existing registration is unchanged.
     """
     builder_pubkey = state.builders[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
@@ -412,7 +402,7 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
     pre_builder_count = len(state.builders)
 
     # Use withdrawal credentials that differ from the registration
-    withdrawal_credentials = b"\x07" + b"\x00" * 11 + b"\x42" * 20
+    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x42" * 20
     assert state.builders[0].version != spec.uint8(withdrawal_credentials[0])
     assert state.builders[0].execution_address != spec.ExecutionAddress(withdrawal_credentials[12:])
 
@@ -439,6 +429,34 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
     )
     assert state.builders[0].version == pre_state.builders[0].version
     assert state.builders[0].execution_address == pre_state.builders[0].execution_address
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_builder_deposit_request__top_up_non_builder_withdrawal_prefix(spec, state):
+    """Test that top-ups with a non-builder withdrawal prefix are ignored."""
+    builder_pubkey = state.builders[0].pubkey
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x42" * 20
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec,
+        state,
+        amount,
+        pubkey=builder_pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+    pre_state = state.copy()
+
+    yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
+
+    assert_process_builder_deposit_request(
+        spec,
+        state,
+        pre_state,
+        builder_deposit_request=builder_deposit_request,
+        state_unchanged=True,
+    )
 
 
 #

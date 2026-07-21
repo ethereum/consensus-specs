@@ -12,6 +12,8 @@
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `is_within_epoch`](#new-is_within_epoch)
+    - [New `is_current_or_previous_epoch`](#new-is_current_or_previous_epoch)
     - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
     - [New `verify_blob_sidecar_inclusion_proof`](#new-verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -58,11 +60,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                    | Description                                                        |
-| --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                       |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | The number of blob sidecar subnets used in the gossipsub protocol  |
+| Name                                    | Value                    | Description                                                    |
+| --------------------------------------- | ------------------------ | -------------------------------------------------------------- |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                   |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | Minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | Number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Containers
 
@@ -130,6 +132,43 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+#### New `is_within_epoch`
+
+```python
+def is_within_epoch(
+    state: BeaconState,
+    epoch: Epoch,
+    current_time_ms: uint64,
+) -> bool:
+    """
+    Check if the current time is within the given epoch
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
+    """
+    return is_within_slot_range(
+        state,
+        compute_start_slot_at_epoch(epoch),
+        SLOTS_PER_EPOCH - 1,
+        current_time_ms,
+    )
+```
+
+#### New `is_current_or_previous_epoch`
+
+```python
+def is_current_or_previous_epoch(
+    state: BeaconState,
+    epoch: Epoch,
+    current_time_ms: uint64,
+) -> bool:
+    """
+    Check if the given epoch is the current or previous epoch
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    is_current = is_within_epoch(state, epoch, current_time_ms)
+    is_previous = is_within_epoch(state, Epoch(epoch + 1), current_time_ms)
+    return is_current or is_previous
 ```
 
 #### New `compute_max_request_blob_sidecars`
@@ -329,20 +368,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("aggregate epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
     if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
@@ -535,20 +562,8 @@ def validate_beacon_attestation_gossip(
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("attestation epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
     if target_epoch != compute_epoch_at_slot(data.slot):
@@ -794,6 +809,9 @@ Response Content:
   List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
 )
 ```
+
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 

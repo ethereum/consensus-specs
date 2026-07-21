@@ -66,19 +66,19 @@ specification.
 
 ### Size parameters
 
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
+| Name                | Value                        | Description                                   |
+| ------------------- | ---------------------------- | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `CELLS_PER_EXT_BLOB` (= 128) | Number of columns in the extended data matrix |
 
 ## Configuration
 
 ### Custody setting
 
-| Name                       | Value | Description                                                                       |
-| -------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
-| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
-| `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+| Name                       | Value         | Description                                                                       |
+| -------------------------- | ------------- | --------------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`         | `uint64(8)`   | Minimum number of samples for an honest node                                      |
+| `NUMBER_OF_CUSTODY_GROUPS` | `uint64(128)` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ## Containers
 
