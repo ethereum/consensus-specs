@@ -47,7 +47,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                     | Value             | Description                                                     |
 | ---------------------------------------- | ----------------- | --------------------------------------------------------------- |
 | `MAX_REQUEST_INCLUSION_LIST`             | `2**4` (= 16)     | Maximum number of inclusion lists in a single request           |
-| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `2`               | Minimum slot range over which a node must serve inclusion lists |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `1`               | Minimum slot range over which a node must serve inclusion lists |
 | `MAX_BYTES_PER_INCLUSION_LIST`           | `2**13` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
 
 ### Helpers

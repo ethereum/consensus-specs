@@ -94,7 +94,8 @@ calculated based on the current state. When `only_timely` is `True`, only
 otherwise, timeliness is not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
-`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots, after which they MAY be pruned.
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
+they MAY be pruned.
 
 ```python
 def get_inclusion_list_transactions(
