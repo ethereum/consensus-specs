@@ -192,7 +192,7 @@ def record_payload_inclusion_list_satisfaction(
     execution_engine: ExecutionEngine,
 ) -> None:
     inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), state, Slot(state.slot - 1)
+        get_inclusion_list_store(), state, Slot(state.slot - 1), only_timely=True
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
         payload, inclusion_list_transactions
