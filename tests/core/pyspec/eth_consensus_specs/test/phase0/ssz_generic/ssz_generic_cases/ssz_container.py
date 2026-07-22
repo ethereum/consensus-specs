@@ -7,7 +7,7 @@ from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
-    byte,
+    Byte,
     ByteList,
     Container,
     List,
@@ -25,7 +25,7 @@ from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 class SingleFieldTestStruct(Container):
-    A: byte
+    A: Byte
 
 
 class SmallTestStruct(Container):
@@ -56,7 +56,7 @@ class ComplexTestStruct(Container):
 
 
 class ProgressiveTestStruct(Container):
-    A: ProgressiveList[byte]
+    A: ProgressiveList[Byte]
     B: ProgressiveList[uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]

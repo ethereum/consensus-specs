@@ -192,7 +192,7 @@ Data:
 
 ```python
 class SingleFieldTestStruct(Container):
-    A: byte
+    A: Byte
 
 
 class SmallTestStruct(Container):
@@ -223,7 +223,7 @@ class ComplexTestStruct(Container):
 
 
 class ProgressiveTestStruct(Container):
-    A: ProgressiveList[byte]
+    A: ProgressiveList[Byte]
     B: ProgressiveList[uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]
@@ -270,7 +270,7 @@ Data:
 
 ```python
 class ProgressiveSingleFieldContainerTestStruct(ProgressiveContainer(active_fields=[1])):
-    A: byte
+    A: Byte
 
 
 class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_fields=[0, 0, 0, 0, 1])):
@@ -278,7 +278,7 @@ class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_field
 
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
-    A: byte
+    A: Byte
     B: List[uint16, 123]
     C: ProgressiveBitlist
 
@@ -288,7 +288,7 @@ class ProgressiveComplexTestStruct(
         active_fields=[1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1]
     )
 ):
-    A: byte
+    A: Byte
     B: List[uint16, 123]
     C: ProgressiveBitlist
     D: ProgressiveList[uint64]

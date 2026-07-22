@@ -1227,7 +1227,7 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: List[byte, 256]
+  error_message: List[Byte, 256]
 )
 ```
 

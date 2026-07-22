@@ -5,7 +5,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
     Boolean,
-    byte,
+    Byte,
     ByteList,
     ByteVector,
     Container,
@@ -23,7 +23,7 @@ def decode(data: Any, typ):
     if issubclass(typ, uint | Boolean):
         return typ(data)
     elif issubclass(typ, Bitlist | ProgressiveBitlist | Bitvector) or (
-        issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), byte)
+        issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), Byte)
     ):
         return deserialize(typ, bytes.fromhex(data[2:]))
     elif issubclass(typ, List | ProgressiveList | Vector):
