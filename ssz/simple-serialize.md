@@ -14,7 +14,7 @@
   - [Illegal types](#illegal-types)
     - [Compatible Merkleization](#compatible-merkleization)
 - [Serialization](#serialization)
-  - [`uintN`](#uintn)
+  - [`UintN`](#uintn)
   - [`Boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
@@ -41,9 +41,9 @@
 
 ### Basic types
 
-- `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+- `UintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 - `Byte`: 8-bit opaque data container, equivalent in serialization and hashing
-  to `uint8`
+  to `Uint8`
 - `Boolean`: `True` or `False`
 
 ### Composite types
@@ -52,7 +52,7 @@
   - python dataclass notation with key-type pairs, e.g.
   ```python
   class ContainerExample(Container):
-      foo: uint64
+      foo: Uint64
       bar: Boolean
   ```
 - **progressive container** _[EIP-7495]_: ordered heterogeneous collection of
@@ -60,22 +60,22 @@
   - python dataclass notation with key-type pairs, e.g.
   ```python
   class Square(ProgressiveContainer(active_fields=[1, 0, 1])):
-      side: uint16  # Merkleized at field index #0 (location of first 1 in `active_fields`)
-      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
+      side: Uint16  # Merkleized at field index #0 (location of first 1 in `active_fields`)
+      color: Uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
 
 
   class Circle(ProgressiveContainer(active_fields=[0, 1, 1])):
-      radius: uint16  # Merkleized at field index #1 (location of first 1 in `active_fields`)
-      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
+      radius: Uint16  # Merkleized at field index #1 (location of first 1 in `active_fields`)
+      color: Uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
   ```
 - **vector**: ordered fixed-length homogeneous collection, with `N` values
-  - notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
+  - notation `Vector[type, N]`, e.g. `Vector[Uint64, N]`
 - **list**: ordered variable-length homogeneous collection, limited to `N`
   values
-  - notation `List[type, N]`, e.g. `List[uint64, N]`
+  - notation `List[type, N]`, e.g. `List[Uint64, N]`
 - **progressive list** _[EIP-7916]_: ordered variable-length homogeneous
   collection, without limit
-  - notation `ProgressiveList[type]`, e.g. `ProgressiveList[uint64]`
+  - notation `ProgressiveList[type]`, e.g. `ProgressiveList[Uint64]`
 - **bitvector**: ordered fixed-length collection of `Boolean` values, with `N`
   bits
   - notation `Bitvector[N]`
@@ -86,7 +86,7 @@
   `Boolean` values, without limit
   - notation `ProgressiveBitlist`
 - **union**: union type containing one of the given subtypes
-  - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
+  - notation `Union[type_0, type_1, ...]`, e.g. `union[None, Uint64, Uint32]`
 - **compatible union** _[EIP-8016, currently unused]_: union type containing one
   of the given subtypes with compatible Merkleization
   - notation `CompatibleUnion({selector: type})`, e.g.
@@ -107,7 +107,7 @@ types that contain a variable-size type. All other types are said to be
 
 ### Byte
 
-Although the SSZ serialization of `Byte` is equivalent to that of `uint8`, the
+Although the SSZ serialization of `Byte` is equivalent to that of `Uint8`, the
 former is used for opaque data while the latter is intended as a number.
 
 ### Aliases
@@ -128,7 +128,7 @@ Assuming a helper function `default(type)` which returns the default value for
 
 | Type                                  | Default Value                                       |
 | ------------------------------------- | --------------------------------------------------- |
-| `uintN`                               | `0`                                                 |
+| `UintN`                               | `0`                                                 |
 | `Boolean`                             | `False`                                             |
 | `Container`                           | `[default(type) for type in container]`             |
 | `ProgressiveContainer(active_fields)` | `[default(type) for type in progressive_container]` |
@@ -160,15 +160,15 @@ is equal to the default value for that type.
 - The `None` type option in a `Union` type is only legal as the first option
   (i.e. with index zero).
 - `CompatibleUnion({})` without any type options are illegal.
-- `CompatibleUnion({selector: type})` with a selector outside `uint8(1)` through
-  `uint8(127)` are illegal.
+- `CompatibleUnion({selector: type})` with a selector outside `Uint8(1)` through
+  `Uint8(127)` are illegal.
 - `CompatibleUnion({selector: type})` with a type option that has incompatible
   Merkleization with another type option are illegal.
 
 #### Compatible Merkleization
 
 - Types are compatible with themselves.
-- `Byte` is compatible with `uint8` and vice versa.
+- `Byte` is compatible with `Uint8` and vice versa.
 - `Bitlist[N]` are compatible if they share the same capacity `N`.
 - `Bitvector[N]` are compatible if they share the same capacity `N`.
 - `List[type, N]` are compatible if `type` is compatible and they share the same
@@ -193,7 +193,7 @@ We recursively define the `serialize` function which consumes an object `value`
 *Note*: In the function definitions below (`serialize`, `hash_tree_root`,
 `is_variable_size`, etc.) objects implicitly carry their type.
 
-### `uintN`
+### `UintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
@@ -244,7 +244,7 @@ assert sum(fixed_lengths + variable_lengths) < 2 ** (BYTES_PER_LENGTH_OFFSET * B
 
 # Interleave offsets of variable-size parts with fixed-size parts
 variable_offsets = [
-    serialize(uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))
+    serialize(Uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))
 ]
 fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
 
@@ -395,10 +395,10 @@ We first define helper functions:
 - `mix_in_active_fields`: Given a Merkle root `root` and an `active_fields`
   configuration return `hash(root, pack_bits(active_fields))`. Note that
   `active_fields` is restricted to ≤ 256 bits.
-- `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"`
+- `mix_in_length`: Given a Merkle root `root` and a length `length` (`"Uint256"`
   little-endian serialization) return `hash(root, length)`.
 - `mix_in_selector`: Given a Merkle root `root` and a type selector `selector`
-  (`"uint8"` serialization) return `hash(root, selector)`.
+  (`"Uint8"` serialization) return `hash(root, selector)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value`
 recursively:
@@ -459,7 +459,7 @@ value. Parsers may ignore additional JSON fields.
 
 | SSZ                                   | JSON            | Example                                  |
 | ------------------------------------- | --------------- | ---------------------------------------- |
-| `uintN`                               | string          | `"0"`                                    |
+| `UintN`                               | string          | `"0"`                                    |
 | `Byte`                                | hex-byte-string | `"0x00"`                                 |
 | `Boolean`                             | bool            | `false`                                  |
 | `Container`                           | object          | `{ "field": ... }`                       |

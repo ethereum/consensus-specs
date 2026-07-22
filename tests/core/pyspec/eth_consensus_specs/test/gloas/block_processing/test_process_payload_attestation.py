@@ -131,7 +131,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
-            random_bytes = spec.hash(seed + spec.uint_to_bytes(spec.uint64(i // 16)))
+            random_bytes = spec.hash(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
         candidate_index = indices[i % total]
         effective_balance = state.validators[candidate_index].effective_balance
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])

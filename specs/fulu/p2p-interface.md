@@ -57,7 +57,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                    | Value                                                                                     | Description                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
 ### Configuration
 
@@ -65,8 +65,8 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                           | Value                     | Description                                                           |
 | ---------------------------------------------- | ------------------------- | --------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -92,9 +92,9 @@ class Seen:
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[Boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
     # Removed `blob_sidecar_tuples`
@@ -129,11 +129,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 #### New `compute_max_request_data_column_sidecars`
 
 ```python
-def compute_max_request_data_column_sidecars() -> uint64:
+def compute_max_request_data_column_sidecars() -> Uint64:
     """
     Return the maximum number of data column sidecars in a single request.
     """
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
 #### New `verify_data_column_sidecar`
@@ -214,10 +214,10 @@ communicate the custody group count.
 
 ```
 (
-  seq_number: uint64
+  seq_number: Uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_group_count: uint64 # cgc
+  custody_group_count: Uint64 # cgc
 )
 ```
 
@@ -248,7 +248,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     block_payload_statuses: Optional[Dict[Root, PayloadValidationStatus]] = None,
 ) -> None:
     """
@@ -359,7 +359,7 @@ def validate_data_column_sidecar_gossip(
     store: Store,
     state: BeaconState,
     sidecar: DataColumnSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -553,7 +553,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
   columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
@@ -745,7 +745,7 @@ Request Content:
 ```
 (
   beacon_root: Root
-  count: uint64
+  count: Uint64
 )
 ```
 
@@ -860,7 +860,7 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
-| `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+| `cgc` | Custody group count, `Uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
 
 ##### Next fork digest
 

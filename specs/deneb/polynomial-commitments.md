@@ -71,7 +71,7 @@ cryptographic normalization before invoking any internal functions.
 
 | Name                                                                                                                                                  | SSZ equivalent                                     | Description                                                                   |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
-| [`BLSFieldElement`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L18-L19) | `uint256`                                          | <!-- predefined-type --> A value in the finite field defined by `BLS_MODULUS` |
+| [`BLSFieldElement`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L18-L19) | `Uint256`                                          | <!-- predefined-type --> A value in the finite field defined by `BLS_MODULUS` |
 | [`Polynomial`](https://github.com/ethereum/consensus-specs/blob/36a5719b78523c057065515c8f8fcaeba75d065b/pysetup/spec_builders/deneb.py#L22-L28)      | `Vector[BLSFieldElement, FIELD_ELEMENTS_PER_BLOB]` | <!-- predefined-type --> A polynomial in evaluation form                      |
 
 ## Constants
@@ -80,9 +80,9 @@ cryptographic normalization before invoking any internal functions.
 | ------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `PRIMITIVE_ROOT_OF_UNITY` | `7`                                                                             | The primitive root of unity from which all roots of unity should be derived |
 | `BLS_MODULUS`             | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381                                           |
-| `BYTES_PER_COMMITMENT`    | `uint64(48)`                                                                    | The number of bytes in a KZG commitment                                     |
-| `BYTES_PER_PROOF`         | `uint64(48)`                                                                    | The number of bytes in a KZG proof                                          |
-| `BYTES_PER_FIELD_ELEMENT` | `uint64(32)`                                                                    | Bytes used to encode a BLS scalar field element                             |
+| `BYTES_PER_COMMITMENT`    | `Uint64(48)`                                                                    | The number of bytes in a KZG commitment                                     |
+| `BYTES_PER_PROOF`         | `Uint64(48)`                                                                    | The number of bytes in a KZG proof                                          |
+| `BYTES_PER_FIELD_ELEMENT` | `Uint64(32)`                                                                    | Bytes used to encode a BLS scalar field element                             |
 | `BYTES_PER_BLOB`          | `BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB`                             | The number of bytes in a blob                                               |
 | `G1_POINT_AT_INFINITY`    | `Bytes48(b'\xc0' + b'\x00' * 47)`                                               | Serialized form of the point at infinity on the G1 group                    |
 | `KZG_ENDIANNESS`          | `'big'`                                                                         | The endianness of the field elements including blobs                        |
@@ -93,7 +93,7 @@ cryptographic normalization before invoking any internal functions.
 
 | Name                                | Value                     |
 | ----------------------------------- | ------------------------- |
-| `FIELD_ELEMENTS_PER_BLOB`           | `uint64(2**12)` (= 4,096) |
+| `FIELD_ELEMENTS_PER_BLOB`           | `Uint64(2**12)` (= 4,096) |
 | `FIAT_SHAMIR_PROTOCOL_DOMAIN`       | `b'FSBLOBVERIFY_V1_'`     |
 | `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'`     |
 
@@ -101,7 +101,7 @@ cryptographic normalization before invoking any internal functions.
 
 | Name                    | Value                                      |
 | ----------------------- | ------------------------------------------ |
-| `KZG_SETUP_G2_LENGTH`   | `uint64(65)`                               |
+| `KZG_SETUP_G2_LENGTH`   | `Uint64(65)`                               |
 | `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
@@ -278,7 +278,7 @@ def g1_lincomb(
 #### `compute_powers`
 
 ```python
-def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
+def compute_powers(x: BLSFieldElement, n: Uint64) -> Sequence[BLSFieldElement]:
     """
     Return ``x`` to power of [0, n-1], if n > 0. When n==0, an empty array is returned.
     """
@@ -293,7 +293,7 @@ def compute_powers(x: BLSFieldElement, n: uint64) -> Sequence[BLSFieldElement]:
 #### `compute_roots_of_unity`
 
 ```python
-def compute_roots_of_unity(order: uint64) -> Sequence[BLSFieldElement]:
+def compute_roots_of_unity(order: Uint64) -> Sequence[BLSFieldElement]:
     """
     Return roots of unity of ``order``.
     """

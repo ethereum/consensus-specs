@@ -38,7 +38,7 @@ and the [Gloas networking specification](../p2p-interface.md).
 
 | Name                                   | Value                        |
 | -------------------------------------- | ---------------------------- |
-| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `uint64(8585741)` (= ~8 MiB) |
+| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `Uint64(8585741)` (= ~8 MiB) |
 
 ### Containers
 

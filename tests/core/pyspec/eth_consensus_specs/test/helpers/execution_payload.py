@@ -311,7 +311,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         block_hash=empty_payload_hash,
         prev_randao=prev_randao,
         fee_recipient=spec.ExecutionAddress(),
-        gas_limit=spec.uint64(0),
+        gas_limit=spec.Uint64(0),
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),

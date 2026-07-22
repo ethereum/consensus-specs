@@ -61,9 +61,9 @@ class Seen:
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[Boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
@@ -91,12 +91,12 @@ def compute_fork_version(epoch: Epoch) -> Version:
 #### Modified `compute_max_request_blob_sidecars`
 
 ```python
-def compute_max_request_blob_sidecars() -> uint64:
+def compute_max_request_blob_sidecars() -> Uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
     # [Modified in Electra:EIP7691]
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
 ### The gossip domain: gossipsub
@@ -133,7 +133,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
@@ -236,7 +236,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -380,7 +380,7 @@ def validate_beacon_attestation_gossip(
     state: BeaconState,
     # [Modified in Electra:EIP7549]
     attestation: SingleAttestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -482,7 +482,7 @@ def validate_blob_sidecar_gossip(
     store: Store,
     state: BeaconState,
     blob_sidecar: BlobSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """

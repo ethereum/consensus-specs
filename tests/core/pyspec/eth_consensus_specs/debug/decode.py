@@ -12,7 +12,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     List,
     ProgressiveBitlist,
     ProgressiveList,
-    uint,
+    Uint,
     Union,
     Vector,
     View,
@@ -20,7 +20,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
 
 
 def decode(data: Any, typ):
-    if issubclass(typ, uint | Boolean):
+    if issubclass(typ, Uint | Boolean):
         return typ(data)
     elif issubclass(typ, Bitlist | ProgressiveBitlist | Bitvector) or (
         issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), Byte)

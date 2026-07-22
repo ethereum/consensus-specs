@@ -302,12 +302,12 @@ ignored_dependencies = [
     "Sequence",
     "Set",
     "Tuple",
-    "uint128",
-    "uint16",
-    "uint256",
-    "uint32",
-    "uint64",
-    "uint8",
+    "Uint128",
+    "Uint16",
+    "Uint256",
+    "Uint32",
+    "Uint64",
+    "Uint8",
     "Vector",
 ]
 

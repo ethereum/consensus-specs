@@ -203,8 +203,8 @@ Request Content:
 
 ```
 (
-  start_period: uint64
-  count: uint64
+  start_period: Uint64
+  count: Uint64
 )
 ```
 

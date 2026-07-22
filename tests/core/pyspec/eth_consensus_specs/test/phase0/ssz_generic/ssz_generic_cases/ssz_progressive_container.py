@@ -10,8 +10,8 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
-    uint16,
-    uint64,
+    Uint16,
+    Uint64,
     View,
 )
 
@@ -35,7 +35,7 @@ class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_field
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
 
 
@@ -45,9 +45,9 @@ class ProgressiveComplexTestStruct(
     )
 ):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
@@ -61,17 +61,17 @@ class ModifiedTestStruct1(ProgressiveContainer(active_fields=[1, 1])):
 
 class ModifiedTestStruct2(ProgressiveContainer(active_fields=[1, 0, 1])):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
 
 
 class ModifiedTestStruct3(ProgressiveContainer(active_fields=[1, 1, 1])):
     A: Byte
     X: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
 
 
 class ModifiedTestStruct4(ProgressiveContainer(active_fields=[0, 0, 1, 0, 1])):
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
 
 
@@ -83,15 +83,15 @@ class ModifiedTestStruct5(ProgressiveContainer(active_fields=[1, 0, 0, 0, 1])):
 class ModifiedTestStruct6(ProgressiveContainer(active_fields=[1, 1, 1, 0, 1, 0, 0, 0, 1])):
     A: Byte
     X: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
 
 
 class ModifiedTestStruct7(ProgressiveContainer(active_fields=[1, 0, 1, 0, 0, 0, 0, 0, 1])):
     A: Byte
-    B: List[uint16, 123]
-    D: ProgressiveList[uint64]
+    B: List[Uint16, 123]
+    D: ProgressiveList[Uint64]
 
 
 class ModifiedTestStruct8(
@@ -101,9 +101,9 @@ class ModifiedTestStruct8(
 ):
     A: Byte
     X: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
@@ -116,9 +116,9 @@ class ModifiedTestStruct9(
     )
 ):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
     H: ProgressiveList[ProgressiveVarTestStruct]

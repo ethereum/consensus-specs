@@ -61,11 +61,11 @@ class Seen:
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
 ```
 
 #### Modified `compute_fork_version`
@@ -86,7 +86,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def is_current_slot(
     state: BeaconState,
     slot: Slot,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given slot is the current slot
@@ -99,7 +99,7 @@ def is_current_slot(
 
 ```python
 def get_sync_subcommittee_pubkeys(
-    state: BeaconState, subcommittee_index: uint64
+    state: BeaconState, subcommittee_index: Uint64
 ) -> Sequence[BLSPubkey]:
     # Committees assigned to `slot` sign for `slot - 1`
     # This creates the exceptional logic below when transitioning between sync committee periods
@@ -124,7 +124,7 @@ communicate the sync committee subnet subscriptions:
 
 ```
 (
-  seq_number: uint64
+  seq_number: Uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
   syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
 )
@@ -161,14 +161,14 @@ of the `Message` Protobuf, and interpreted as empty byte strings if missing. The
 - If `message.data` has a valid snappy decompression, set `message-id` to the
   first 20 bytes of the `SHA256` hash of the concatenation of the following
   data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string
-  (encoded as little-endian `uint64`), the topic byte string, and the snappy
+  (encoded as little-endian `Uint64`), the topic byte string, and the snappy
   decompressed message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
+  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
 - Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of the
   concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the
-  length of the topic byte string (encoded as little-endian `uint64`), the topic
+  length of the topic byte string (encoded as little-endian `Uint64`), the topic
   byte string, and the raw message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + message.data)[:20]`.
 
 Implementations may need to carefully handle the function that computes the
 `message-id`. In particular, messages on topics with the Phase 0 fork digest
@@ -219,7 +219,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
     state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedContributionAndProof for gossip propagation.
@@ -336,7 +336,7 @@ def validate_sync_committee_message_gossip(
     seen: Seen,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """

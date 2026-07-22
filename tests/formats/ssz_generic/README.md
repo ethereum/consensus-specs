@@ -196,26 +196,26 @@ class SingleFieldTestStruct(Container):
 
 
 class SmallTestStruct(Container):
-    A: uint16
-    B: uint16
+    A: Uint16
+    B: Uint16
 
 
 class FixedTestStruct(Container):
-    A: uint8
-    B: uint64
-    C: uint32
+    A: Uint8
+    B: Uint64
+    C: Uint32
 
 
 class VarTestStruct(Container):
-    A: uint16
-    B: List[uint16, 1024]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 1024]
+    C: Uint8
 
 
 class ComplexTestStruct(Container):
-    A: uint16
-    B: List[uint16, 128]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 128]
+    C: Uint8
     D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
@@ -224,7 +224,7 @@ class ComplexTestStruct(Container):
 
 class ProgressiveTestStruct(Container):
     A: ProgressiveList[Byte]
-    B: ProgressiveList[uint64]
+    B: ProgressiveList[Uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]
 
@@ -279,7 +279,7 @@ class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_field
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
 
 
@@ -289,9 +289,9 @@ class ProgressiveComplexTestStruct(
     )
 ):
     A: Byte
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]

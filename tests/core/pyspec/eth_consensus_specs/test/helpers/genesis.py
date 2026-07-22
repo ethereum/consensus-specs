@@ -153,7 +153,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if is_post_altair(spec):
             state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(spec.uint64(0))
+            state.inactivity_scores.append(spec.Uint64(0))
 
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
