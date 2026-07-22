@@ -34,7 +34,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name        | SSZ equivalent | Description                       |
 | ----------- | -------------- | --------------------------------- |
-| `ProofType` | `uint8`        | The type identifier for the proof |
+| `ProofType` | `Uint8`        | The type identifier for the proof |
 
 ## Constants
 
@@ -44,7 +44,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name             | Value                                  |
 | ---------------- | -------------------------------------- |
-| `MAX_PROOF_SIZE` | `uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+| `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
 
 ### Domains
 

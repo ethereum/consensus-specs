@@ -141,7 +141,7 @@ def prepare_execution_payload(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
-    target_gas_limit: uint64,
+    target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     parent_bid = state.latest_execution_payload_bid

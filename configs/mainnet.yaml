@@ -35,7 +35,7 @@ GENESIS_DELAY: 604800
 # ---------------------------------------------------------------
 # Some forks are disabled for now:
 #  - These may be re-assigned to another fork-version later
-#  - Temporarily set to max uint64 value: 2**64 - 1
+#  - Temporarily set to max Uint64 value: 2**64 - 1
 
 # Altair
 ALTAIR_FORK_VERSION: 0x01000000

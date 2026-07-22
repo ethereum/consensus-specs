@@ -204,7 +204,7 @@ class MarkdownToSpec:
                 # Check for short type declarations
                 if value.startswith(
                     (
-                        "uint",
+                        "Uint",
                         "Bitlist",
                         "Bitvector",
                         "ByteList",
@@ -301,9 +301,9 @@ class MarkdownToSpec:
         Example of input:
             | Name   | Calories      | Description   |
             | ------ | ------------- | ------------- |
-            | Apple  | `uint64(96)`  | 5.3oz serving |
-            | Orange | `uint64(75)`  | 5.6oz serving |
-            | Banana | `uint64(111)` | 4.4oz serving |
+            | Apple  | `Uint64(96)`  | 5.3oz serving |
+            | Orange | `Uint64(75)`  | 5.6oz serving |
+            | Banana | `Uint64(111)` | 4.4oz serving |
 
         The method _process_html_block calls this method when it encounters a comment
         of the form `<!-- list-of-records:name -->`.

@@ -38,10 +38,10 @@
 | Name           | SSZ equivalent                                                  | Description                                                |
 | -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
 | `Cell`         | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellIndex`    | `uint64`                                                        | Cell identifier in an extended blob                        |
-| `RowIndex`     | `uint64`                                                        | Row identifier in the matrix of cells                      |
-| `ColumnIndex`  | `uint64`                                                        | Column identifier in the matrix of cells                   |
-| `CustodyIndex` | `uint64`                                                        | Custody group identifier in the set of custody groups      |
+| `CellIndex`    | `Uint64`                                                        | Cell identifier in an extended blob                        |
+| `RowIndex`     | `Uint64`                                                        | Row identifier in the matrix of cells                      |
+| `ColumnIndex`  | `Uint64`                                                        | Column identifier in the matrix of cells                   |
+| `CustodyIndex` | `Uint64`                                                        | Custody group identifier in the set of custody groups      |
 
 ## Constants
 
@@ -52,7 +52,7 @@ specification.
 
 | Name          | Value                 |
 | ------------- | --------------------- |
-| `UINT256_MAX` | `uint256(2**256 - 1)` |
+| `UINT256_MAX` | `Uint256(2**256 - 1)` |
 
 ## Preset
 
@@ -61,7 +61,7 @@ specification.
 | Name                          | Value                                                    | Description                                              |
 | ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB`                            | Number of field elements in a Reed-Solomon extended blob |
-| `FIELD_ELEMENTS_PER_CELL`     | `uint64(64)`                                             | Number of field elements in a cell                       |
+| `FIELD_ELEMENTS_PER_CELL`     | `Uint64(64)`                                             | Number of field elements in a cell                       |
 | `CELLS_PER_EXT_BLOB`          | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 
 ### Size parameters
@@ -76,9 +76,9 @@ specification.
 
 | Name                       | Value         | Description                                                                       |
 | -------------------------- | ------------- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `uint64(8)`   | Minimum number of samples for an honest node                                      |
-| `NUMBER_OF_CUSTODY_GROUPS` | `uint64(128)` | Number of custody groups available for nodes to custody                           |
-| `CUSTODY_REQUIREMENT`      | `uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
+| `SAMPLES_PER_SLOT`         | `Uint64(8)`   | Minimum number of samples for an honest node                                      |
+| `NUMBER_OF_CUSTODY_GROUPS` | `Uint64(128)` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `Uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ## Containers
 
@@ -109,14 +109,14 @@ class MatrixEntry(Container):
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     # Skip computation if all groups are custodied
     if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
-    current_id = uint256(node_id)
+    current_id = Uint256(node_id)
     custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
@@ -126,7 +126,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = uint256(0)
+            current_id = Uint256(0)
         else:
             current_id += 1
 
@@ -174,7 +174,7 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
 
 ```python
 def recover_matrix(
-    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+    partial_matrix: Sequence[MatrixEntry], blob_count: Uint64
 ) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.

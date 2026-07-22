@@ -40,13 +40,13 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `Uint64(4)` |
 
 ### Type-specific SSZ bounds
 
 | Name                              | Value                        |
 | --------------------------------- | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `uint64(4194449)` (= ~4 MiB) |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
 ## Containers
 
@@ -63,11 +63,11 @@ class ProofByRootIdentifier(Container):
 ### New `compute_max_request_execution_proofs`
 
 ```python
-def compute_max_request_execution_proofs() -> uint64:
+def compute_max_request_execution_proofs() -> Uint64:
     """
     Return the maximum number of execution proofs in a single request.
     """
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
 
 ## The gossip domain: gossipsub
@@ -124,7 +124,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
   proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
@@ -257,7 +257,7 @@ of nodes that are aware of optional execution proofs.
 
 | Key      | Value                                    |
 | -------- | ---------------------------------------- |
-| `eproof` | Execution layer proof awareness, `uint8` |
+| `eproof` | Execution layer proof awareness, `Uint8` |
 
 A node is considered optional execution proof–aware if the `eproof` key is
 present and its value is not 0.

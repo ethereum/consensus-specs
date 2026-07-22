@@ -254,7 +254,7 @@ def get_voting_source(spec, state, target):
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
-    pseudo_vrn = spec.uint64((proposer_index + 1) * (epoch + 1))
+    pseudo_vrn = spec.Uint64((proposer_index + 1) * (epoch + 1))
     pseudo_vrn_bytes = spec.uint_to_bytes(pseudo_vrn)
     randao_reveal_bytes = bytes(96 - len(pseudo_vrn_bytes)) + pseudo_vrn_bytes
     return spec.BLSSignature(randao_reveal_bytes)
