@@ -103,7 +103,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # [New in Capella]
         next_withdrawal_validator_index=ValidatorIndex(0),
         # [New in Capella]
-        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),
+        historical_summaries=HistoricalSummaries(),
     )
 
     return post

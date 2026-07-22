@@ -4,6 +4,11 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `ExecutionAddress`](#new-executionaddress)
+  - [New `ExtraData`](#new-extradata)
+  - [New `LogsBloom`](#new-logsbloom)
+  - [New `Transaction`](#new-transaction)
+  - [New `Transactions`](#new-transactions)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -52,12 +57,46 @@ Including:
 
 ## Types
 
+### New `ExecutionAddress`
+
+```python
+class ExecutionAddress(Bytes20):
+    pass
+```
+
+### New `ExtraData`
+
+```python
+class ExtraData(ByteList[MAX_EXTRA_DATA_BYTES]):
+    pass
+```
+
+### New `LogsBloom`
+
+```python
+class LogsBloom(ByteVector[BYTES_PER_LOGS_BLOOM]):
+    pass
+```
+
+### New `Transaction`
+
 *Note*: The `Transaction` type is a stub which is not final.
 
-| Name               | SSZ equivalent                        | Description                                                                                                                                       |
-| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
-| `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
+*Note*: The `Transaction` is a \[typed transaction
+envelope\](https://eips.ethereum.org/EIPS/eip-2
+718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction.
+
+```python
+class Transaction(ByteList[MAX_BYTES_PER_TRANSACTION]):
+    pass
+```
+
+### New `Transactions`
+
+```python
+class Transactions(List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]):
+    pass
+```
 
 ## Constants
 
@@ -108,11 +147,11 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     # [New in Bellatrix]
     execution_payload: ExecutionPayload
@@ -127,23 +166,23 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [New in Bellatrix]
@@ -165,16 +204,16 @@ class ExecutionPayload(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
     block_number: Uint64
     gas_limit: Uint64
     gas_used: Uint64
     timestamp: Uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    extra_data: ExtraData
     base_fee_per_gas: Uint256
     block_hash: Hash32
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    transactions: Transactions
 ```
 
 #### `ExecutionPayloadHeader`
@@ -187,13 +226,13 @@ class ExecutionPayloadHeader(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
     block_number: Uint64
     gas_limit: Uint64
     gas_used: Uint64
     timestamp: Uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    extra_data: ExtraData
     base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root

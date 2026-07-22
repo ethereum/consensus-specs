@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `PayloadStatus`](#new-payloadstatus)
 - [Constants](#constants)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
@@ -69,9 +70,12 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Types
 
-| Name            | SSZ equivalent | Description                                     |
-| --------------- | -------------- | ----------------------------------------------- |
-| `PayloadStatus` | `Uint8`        | Possible status of a payload in the fork-choice |
+### New `PayloadStatus`
+
+```python
+class PayloadStatus(Uint8):
+    pass
+```
 
 ## Constants
 

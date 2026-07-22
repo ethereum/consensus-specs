@@ -10,6 +10,8 @@
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
+    - [`NodeID`](#nodeid)
+    - [`SubnetID`](#subnetid)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
@@ -215,10 +217,19 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name       | SSZ equivalent | Description       |
-| ---------- | -------------- | ----------------- |
-| `NodeID`   | `Uint256`      | Node identifier   |
-| `SubnetID` | `Uint64`       | Subnet identifier |
+#### `NodeID`
+
+```python
+class NodeID(Uint256):
+    pass
+```
+
+#### `SubnetID`
+
+```python
+class SubnetID(Uint64):
+    pass
+```
 
 ### Constants
 

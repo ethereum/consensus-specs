@@ -4,6 +4,11 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`Blob`](#blob)
+  - [`G1Point`](#g1point)
+  - [`G2Point`](#g2point)
+  - [`KZGCommitment`](#kzgcommitment)
+  - [`KZGProof`](#kzgproof)
 - [Cryptographic types](#cryptographic-types)
 - [Constants](#constants)
 - [Preset](#preset)
@@ -59,13 +64,46 @@ cryptographic normalization before invoking any internal functions.
 
 ## Types
 
-| Name            | SSZ equivalent                                                  | Description                                                                                                                                                                  |
-| --------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `G1Point`       | `Bytes48`                                                       |                                                                                                                                                                              |
-| `G2Point`       | `Bytes96`                                                       |                                                                                                                                                                              |
-| `KZGCommitment` | `Bytes48`                                                       | Validation: Perform [BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5) "KeyValidate" check but do allow the identity point |
-| `KZGProof`      | `Bytes48`                                                       | Same as for `KZGCommitment`                                                                                                                                                  |
-| `Blob`          | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob                                                                                                                                                            |
+### `Blob`
+
+```python
+class Blob(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]):
+    pass
+```
+
+### `G1Point`
+
+```python
+class G1Point(Bytes48):
+    pass
+```
+
+### `G2Point`
+
+```python
+class G2Point(Bytes96):
+    pass
+```
+
+### `KZGCommitment`
+
+*Note*: `KZGCommitment` values must pass the
+[BLS standard's](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-2.5)
+`KeyValidate` check, except that the identity point is allowed.
+
+```python
+class KZGCommitment(Bytes48):
+    pass
+```
+
+### `KZGProof`
+
+*Note*: The same validation as for `KZGCommitment` applies.
+
+```python
+class KZGProof(Bytes48):
+    pass
+```
 
 ## Cryptographic types
 

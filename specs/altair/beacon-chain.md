@@ -4,6 +4,11 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `EpochParticipation`](#new-epochparticipation)
+  - [New `InactivityScores`](#new-inactivityscores)
+  - [New `ParticipationFlags`](#new-participationflags)
+  - [New `SyncCommitteeBits`](#new-synccommitteebits)
+  - [New `SyncCommitteePubkeys`](#new-synccommitteepubkeys)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
@@ -63,9 +68,40 @@ Altair is the first beacon-chain upgrade. Its main features are:
 
 ## Types
 
-| Name                 | SSZ equivalent | Description                                                |
-| -------------------- | -------------- | ---------------------------------------------------------- |
-| `ParticipationFlags` | `Uint8`        | A succinct representation of 8 boolean participation flags |
+### New `EpochParticipation`
+
+```python
+class EpochParticipation(List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]):
+    pass
+```
+
+### New `InactivityScores`
+
+```python
+class InactivityScores(List[Uint64, VALIDATOR_REGISTRY_LIMIT]):
+    pass
+```
+
+### New `ParticipationFlags`
+
+```python
+class ParticipationFlags(Uint8):
+    pass
+```
+
+### New `SyncCommitteeBits`
+
+```python
+class SyncCommitteeBits(Bitvector[SYNC_COMMITTEE_SIZE]):
+    pass
+```
+
+### New `SyncCommitteePubkeys`
+
+```python
+class SyncCommitteePubkeys(Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]):
+    pass
+```
 
 ## Constants
 
@@ -144,11 +180,11 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
     # [New in Altair]
     sync_aggregate: SyncAggregate
 ```
@@ -162,26 +198,26 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
     # [Modified in Altair]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    previous_epoch_participation: EpochParticipation
     # [Modified in Altair]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # [New in Altair]
-    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: InactivityScores
     # [New in Altair]
     current_sync_committee: SyncCommittee
     # [New in Altair]
@@ -194,7 +230,7 @@ class BeaconState(Container):
 
 ```python
 class SyncAggregate(Container):
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    sync_committee_bits: SyncCommitteeBits
     sync_committee_signature: BLSSignature
 ```
 
@@ -202,7 +238,7 @@ class SyncAggregate(Container):
 
 ```python
 class SyncCommittee(Container):
-    pubkeys: Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]
+    pubkeys: SyncCommitteePubkeys
     aggregate_pubkey: BLSPubkey
 ```
 
@@ -766,9 +802,9 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
     state.previous_epoch_participation = state.current_epoch_participation
-    state.current_epoch_participation = [
+    state.current_epoch_participation = EpochParticipation(
         ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))
-    ]
+    )
 ```
 
 #### Sync committee updates

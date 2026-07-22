@@ -269,59 +269,26 @@ def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T
     return {**old_dict, **new_dict}
 
 
-ignored_dependencies = [
-    "Bitlist",
-    "Bitvector",
-    "Boolean",
-    "Byte",
-    "ByteList",
-    "bytes",
-    "Bytes1",
-    "Bytes20",
-    "Bytes31",
-    "Bytes32",
-    "Bytes4",
-    "Bytes48",
-    "Bytes8",
-    "Bytes96",
-    "ByteVector",
-    "ceillog2",
-    "Container",
-    "defaultdict",
-    "DefaultDict",
-    "dict",
-    "Dict",
-    "field",
-    "floorlog2",
-    "list",
-    "List",
-    "Optional",
-    "ProgressiveBitlist",
-    "ProgressiveByteList",
-    "ProgressiveList",
-    "Sequence",
-    "Set",
-    "Tuple",
-    "Uint128",
-    "Uint16",
-    "Uint256",
-    "Uint32",
-    "Uint64",
-    "Uint8",
-    "Vector",
-]
-
-
-def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[str, str]) -> None:
+def dependency_order_class_objects(objects: dict[str, str]) -> None:
     """
     Determines which SSZ Object is dependent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
         dependencies = []
-        for i, line in enumerate(value.split("\n")):
+        lines = value.split("\n")
+        # Join a class signature that wraps over multiple lines, so that its
+        # base class expression is matched as a whole. Strip comments from
+        # each line first, so that a comment on one line does not swallow the
+        # rest of the signature.
+        signature_end = next((i for i, line in enumerate(lines) if line.rstrip().endswith("):")), 0)
+        signature = " ".join(
+            line[: line.index("#")] if "#" in line else line for line in lines[: signature_end + 1]
+        )
+        lines = [signature] + lines[signature_end + 1 :]
+        for i, line in enumerate(lines):
             if i == 0:
-                match = re.match(r".+\((.+)\):", line)
+                match = re.match(r".+?\((.+)\):", line)
             else:
                 match = re.match(r"\s+\w+: (.+)", line)
             if not match:
@@ -332,11 +299,9 @@ def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[s
             dependencies.extend(
                 re.findall(r"(\w+)", line)
             )  # catch all legible words, potential dependencies
-        dependencies = filter(
-            lambda x: "_" not in x and x.upper() != x, dependencies
-        )  # filter out constants
-        dependencies = filter(lambda x: x not in ignored_dependencies, dependencies)
-        dependencies = filter(lambda x: x not in custom_types, dependencies)
+        # Only other class objects count as dependencies. Everything else
+        # (constants, builtin types, custom types) is defined before them.
+        dependencies = filter(lambda x: x in objects and x != key, dependencies)
         for dep in dependencies:
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep) + 1 :]:

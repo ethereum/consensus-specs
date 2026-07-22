@@ -6,6 +6,8 @@
 - [Modifications in Deneb](#modifications-in-deneb)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
   - [Containers](#containers)
     - [New `BlobSidecar`](#new-blobsidecar)
     - [New `BlobIdentifier`](#new-blobidentifier)
@@ -66,6 +68,15 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | Minimum epoch range over which a node must serve blob sidecars |
 | `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | Number of blob sidecar subnets used in the gossipsub protocol  |
 
+### Types
+
+#### New `KZGCommitmentInclusionProof`
+
+```python
+class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+    pass
+```
+
 ### Containers
 
 #### New `BlobSidecar`
@@ -81,7 +92,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: KZGCommitmentInclusionProof
 ```
 
 #### New `BlobIdentifier`

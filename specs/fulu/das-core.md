@@ -3,6 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Types](#types)
+  - [`ColumnIndex`](#columnindex)
+  - [`CustodyIndex`](#custodyindex)
+  - [`DataColumn`](#datacolumn)
+  - [`KZGCommitmentsInclusionProof`](#kzgcommitmentsinclusionproof)
+  - [`RowIndex`](#rowindex)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Preset](#preset)
@@ -34,11 +39,40 @@
 
 ## Types
 
-| Name           | SSZ equivalent | Description                                           |
-| -------------- | -------------- | ----------------------------------------------------- |
-| `RowIndex`     | `Uint64`       | Row identifier in the matrix of cells                 |
-| `ColumnIndex`  | `Uint64`       | Column identifier in the matrix of cells              |
-| `CustodyIndex` | `Uint64`       | Custody group identifier in the set of custody groups |
+### `ColumnIndex`
+
+```python
+class ColumnIndex(Uint64):
+    pass
+```
+
+### `CustodyIndex`
+
+```python
+class CustodyIndex(Uint64):
+    pass
+```
+
+### `DataColumn`
+
+```python
+class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    pass
+```
+
+### `KZGCommitmentsInclusionProof`
+
+```python
+class KZGCommitmentsInclusionProof(Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]):
+    pass
+```
+
+### `RowIndex`
+
+```python
+class RowIndex(Uint64):
+    pass
+```
 
 ## Constants
 
@@ -76,11 +110,11 @@ specification.
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    column: DataColumn
+    kzg_commitments: BlobKZGCommitments
+    kzg_proofs: KZGProofs
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof
 ```
 
 ### `MatrixEntry`

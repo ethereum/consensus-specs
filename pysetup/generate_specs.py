@@ -97,10 +97,7 @@ def build_spec(
     new_objects: dict[str, str] = {}
     while OrderedDict(new_objects) != OrderedDict(class_objects):
         new_objects = copy.deepcopy(class_objects)
-        dependency_order_class_objects(
-            class_objects,
-            spec_object.custom_types,
-        )
+        dependency_order_class_objects(class_objects)
 
     return objects_to_spec(preset_name, spec_object, fork, class_objects)
 

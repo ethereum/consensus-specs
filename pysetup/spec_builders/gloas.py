@@ -42,7 +42,9 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",
+            "KZGCommitmentsInclusionProof",
             "PartialDataColumnHeader",
+            "PartialDataColumnHeaderList",
         }
 
     @classmethod
@@ -66,8 +68,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return """
 def retrieve_column_sidecars_and_kzg_commitments(
     beacon_block_root: Root
-) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
-    return [], []
+) -> tuple[Sequence[DataColumnSidecar], BlobKZGCommitments]:
+    return [], BlobKZGCommitments()
 
 _get_parent_payload_status = get_parent_payload_status
 get_parent_payload_status = cache_this(

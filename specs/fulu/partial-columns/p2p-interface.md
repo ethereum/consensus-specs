@@ -3,6 +3,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
+  - [New `CellsBitlist`](#new-cellsbitlist)
+  - [New `PartialDataColumnHeaderList`](#new-partialdatacolumnheaderlist)
 - [Containers](#containers)
   - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
   - [New `PartialDataColumnPartsMetadata`](#new-partialdatacolumnpartsmetadata)
@@ -40,6 +43,22 @@ specifications of previous upgrades, and assumes them as pre-requisite. In
 particular, this document builds on the
 [Fulu networking specification](../p2p-interface.md).
 
+## Types
+
+### New `CellsBitlist`
+
+```python
+class CellsBitlist(Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    pass
+```
+
+### New `PartialDataColumnHeaderList`
+
+```python
+class PartialDataColumnHeaderList(List[PartialDataColumnHeader, 1]):
+    pass
+```
+
 ## Containers
 
 ### New `PartialDataColumnSidecar`
@@ -51,11 +70,11 @@ except that only the cells and proofs identified by the bitmap are present.
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: CellsBitlist
+    partial_column: DataColumn
+    kzg_proofs: KZGProofs
     # Optional header, only sent on eager pushes
-    header: List[PartialDataColumnHeader, 1]
+    header: PartialDataColumnHeaderList
 ```
 
 ### New `PartialDataColumnPartsMetadata`
@@ -71,8 +90,8 @@ This is encoded as the following SSZ container:
 
 ```python
 class PartialDataColumnPartsMetadata(Container):
-    available: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    available: CellsBitlist
+    requests: CellsBitlist
 ```
 
 This means that for each cell there are two bits of state. Where the first bit
@@ -98,9 +117,9 @@ This header can be derived from a beacon block or a `DataColumnSidecar`.
 
 ```python
 class PartialDataColumnHeader(Container):
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_commitments: BlobKZGCommitments
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof
 ```
 
 ### New `PartialDataColumnGroupID`
@@ -133,7 +152,7 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
 ```python
 def verify_partial_data_column_sidecar_kzg_proofs(
     sidecar: PartialDataColumnSidecar,
-    all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    all_commitments: BlobKZGCommitments,
     column_index: ColumnIndex,
 ) -> bool:
     """

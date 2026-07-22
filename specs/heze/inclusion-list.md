@@ -156,7 +156,7 @@ def is_inclusion_list_bits_inclusive(
     store: InclusionListStore,
     state: BeaconState,
     slot: Slot,
-    inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE],
+    inclusion_list_bits: InclusionListBits,
     only_timely: bool = True,
 ) -> bool:
     """

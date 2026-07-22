@@ -6,6 +6,8 @@
 - [Modifications in Fulu](#modifications-in-fulu)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [New `DataColumnIndices`](#new-datacolumnindices)
   - [Containers](#containers)
     - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
@@ -68,6 +70,15 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
+### Types
+
+#### New `DataColumnIndices`
+
+```python
+class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
+    pass
+```
+
 ### Containers
 
 #### New `DataColumnsByRootIdentifier`
@@ -75,7 +86,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 class DataColumnsByRootIdentifier(Container):
     block_root: Root
-    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+    columns: DataColumnIndices
 ```
 
 ### Helpers
@@ -554,7 +565,7 @@ Request Content:
 (
   start_slot: Slot
   count: Uint64
-  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+  columns: DataColumnIndices
 )
 ```
 

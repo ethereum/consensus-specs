@@ -5,6 +5,38 @@
 - [Introduction](#introduction)
 - [Notation](#notation)
 - [Types](#types)
+  - [`AggregationBits`](#aggregationbits)
+  - [`Attestations`](#attestations)
+  - [`AttesterSlashings`](#attesterslashings)
+  - [`AttestingIndices`](#attestingindices)
+  - [`Balances`](#balances)
+  - [`BlockRoots`](#blockroots)
+  - [`BLSPubkey`](#blspubkey)
+  - [`BLSSignature`](#blssignature)
+  - [`CommitteeIndex`](#committeeindex)
+  - [`DepositDataList`](#depositdatalist)
+  - [`DepositProof`](#depositproof)
+  - [`Deposits`](#deposits)
+  - [`Domain`](#domain)
+  - [`DomainType`](#domaintype)
+  - [`Epoch`](#epoch)
+  - [`Eth1DataVotes`](#eth1datavotes)
+  - [`ForkDigest`](#forkdigest)
+  - [`Gwei`](#gwei)
+  - [`Hash32`](#hash32)
+  - [`HistoricalRoots`](#historicalroots)
+  - [`JustificationBits`](#justificationbits)
+  - [`PendingAttestations`](#pendingattestations)
+  - [`ProposerSlashings`](#proposerslashings)
+  - [`RandaoMixes`](#randaomixes)
+  - [`Root`](#root)
+  - [`Slashings`](#slashings)
+  - [`Slot`](#slot)
+  - [`StateRoots`](#stateroots)
+  - [`ValidatorIndex`](#validatorindex)
+  - [`Validators`](#validators)
+  - [`Version`](#version)
+  - [`VoluntaryExits`](#voluntaryexits)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
@@ -160,21 +192,229 @@ Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name             | SSZ equivalent | Description                       |
-| ---------------- | -------------- | --------------------------------- |
-| `Slot`           | `Uint64`       | A slot number                     |
-| `Epoch`          | `Uint64`       | An epoch number                   |
-| `CommitteeIndex` | `Uint64`       | A committee index at a slot       |
-| `ValidatorIndex` | `Uint64`       | A validator registry index        |
-| `Gwei`           | `Uint64`       | An amount in Gwei                 |
-| `Root`           | `Bytes32`      | A Merkle root                     |
-| `Hash32`         | `Bytes32`      | A 256-bit hash                    |
-| `Version`        | `Bytes4`       | A fork version number             |
-| `DomainType`     | `Bytes4`       | A domain type                     |
-| `ForkDigest`     | `Bytes4`       | A digest of the current fork data |
-| `Domain`         | `Bytes32`      | A signature domain                |
-| `BLSPubkey`      | `Bytes48`      | A BLS12-381 public key            |
-| `BLSSignature`   | `Bytes96`      | A BLS12-381 signature             |
+### `AggregationBits`
+
+```python
+class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE]):
+    pass
+```
+
+### `Attestations`
+
+```python
+class Attestations(List[Attestation, MAX_ATTESTATIONS]):
+    pass
+```
+
+### `AttesterSlashings`
+
+```python
+class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]):
+    pass
+```
+
+### `AttestingIndices`
+
+```python
+class AttestingIndices(List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]):
+    pass
+```
+
+### `Balances`
+
+```python
+class Balances(List[Gwei, VALIDATOR_REGISTRY_LIMIT]):
+    pass
+```
+
+### `BlockRoots`
+
+```python
+class BlockRoots(Vector[Root, SLOTS_PER_HISTORICAL_ROOT]):
+    pass
+```
+
+### `BLSPubkey`
+
+```python
+class BLSPubkey(Bytes48):
+    pass
+```
+
+### `BLSSignature`
+
+```python
+class BLSSignature(Bytes96):
+    pass
+```
+
+### `CommitteeIndex`
+
+```python
+class CommitteeIndex(Uint64):
+    pass
+```
+
+### `DepositDataList`
+
+```python
+class DepositDataList(List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH]):
+    pass
+```
+
+### `DepositProof`
+
+```python
+class DepositProof(Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]):
+    pass
+```
+
+### `Deposits`
+
+```python
+class Deposits(List[Deposit, MAX_DEPOSITS]):
+    pass
+```
+
+### `Domain`
+
+```python
+class Domain(Bytes32):
+    pass
+```
+
+### `DomainType`
+
+```python
+class DomainType(Bytes4):
+    pass
+```
+
+### `Epoch`
+
+```python
+class Epoch(Uint64):
+    pass
+```
+
+### `Eth1DataVotes`
+
+```python
+class Eth1DataVotes(List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]):
+    pass
+```
+
+### `ForkDigest`
+
+```python
+class ForkDigest(Bytes4):
+    pass
+```
+
+### `Gwei`
+
+```python
+class Gwei(Uint64):
+    pass
+```
+
+### `Hash32`
+
+```python
+class Hash32(Bytes32):
+    pass
+```
+
+### `HistoricalRoots`
+
+```python
+class HistoricalRoots(List[Root, HISTORICAL_ROOTS_LIMIT]):
+    pass
+```
+
+### `JustificationBits`
+
+```python
+class JustificationBits(Bitvector[JUSTIFICATION_BITS_LENGTH]):
+    pass
+```
+
+### `PendingAttestations`
+
+```python
+class PendingAttestations(List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]):
+    pass
+```
+
+### `ProposerSlashings`
+
+```python
+class ProposerSlashings(List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]):
+    pass
+```
+
+### `RandaoMixes`
+
+```python
+class RandaoMixes(Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]):
+    pass
+```
+
+### `Root`
+
+```python
+class Root(Bytes32):
+    pass
+```
+
+### `Slashings`
+
+```python
+class Slashings(Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]):
+    pass
+```
+
+### `Slot`
+
+```python
+class Slot(Uint64):
+    pass
+```
+
+### `StateRoots`
+
+```python
+class StateRoots(Vector[Root, SLOTS_PER_HISTORICAL_ROOT]):
+    pass
+```
+
+### `ValidatorIndex`
+
+```python
+class ValidatorIndex(Uint64):
+    pass
+```
+
+### `Validators`
+
+```python
+class Validators(List[Validator, VALIDATOR_REGISTRY_LIMIT]):
+    pass
+```
+
+### `Version`
+
+```python
+class Version(Bytes4):
+    pass
+```
+
+### `VoluntaryExits`
+
+```python
+class VoluntaryExits(List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]):
+    pass
+```
 
 ## Constants
 
@@ -414,7 +654,7 @@ class AttestationData(Container):
 
 ```python
 class IndexedAttestation(Container):
-    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    attesting_indices: AttestingIndices
     data: AttestationData
     signature: BLSSignature
 ```
@@ -423,7 +663,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: AggregationBits
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -442,8 +682,8 @@ class Eth1Data(Container):
 
 ```python
 class HistoricalBatch(Container):
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
 ```
 
 #### `DepositMessage`
@@ -508,7 +748,7 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
 ```
@@ -519,7 +759,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]
+    proof: DepositProof
     data: DepositData
 ```
 
@@ -540,11 +780,11 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
 ```
 
 #### `BeaconBlock`
@@ -569,19 +809,19 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_attestations: PendingAttestations
+    current_epoch_attestations: PendingAttestations
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -1317,7 +1557,7 @@ def initialize_beacon_state_from_eth1(
     # Process deposits
     leaves = [deposit.data for deposit in deposits]
     for index, deposit in enumerate(deposits):
-        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[: index + 1])
+        deposit_data_list = DepositDataList(*leaves[: index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
         process_deposit(state, deposit)
 
@@ -1805,7 +2045,7 @@ def process_eth1_data_reset(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
     # Reset eth1 data votes
     if next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
-        state.eth1_data_votes = []
+        state.eth1_data_votes = Eth1DataVotes()
 ```
 
 #### Effective balances updates
@@ -1867,7 +2107,7 @@ def process_historical_roots_update(state: BeaconState) -> None:
 def process_participation_record_updates(state: BeaconState) -> None:
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
-    state.current_epoch_attestations = []
+    state.current_epoch_attestations = PendingAttestations()
 ```
 
 ### Block processing

@@ -4,6 +4,9 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [Modified `CurrentSyncCommitteeBranch`](#modified-currentsynccommitteebranch)
+  - [Modified `FinalityBranch`](#modified-finalitybranch)
+  - [Modified `NextSyncCommitteeBranch`](#modified-nextsynccommitteebranch)
 - [Constants](#constants)
   - [Frozen constants](#frozen-constants)
   - [New constants](#new-constants)
@@ -28,11 +31,29 @@ Additional documents describe the impact of the upgrade on certain roles:
 
 ## Types
 
-| Name                         | SSZ equivalent                                                      | Description                                                       |
-| ---------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
-| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
+### Modified `CurrentSyncCommitteeBranch`
+
+```python
+# [Modified in Electra]
+class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]):
+    pass
+```
+
+### Modified `FinalityBranch`
+
+```python
+# [Modified in Electra]
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]):
+    pass
+```
+
+### Modified `NextSyncCommitteeBranch`
+
+```python
+# [Modified in Electra]
+class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]):
+    pass
+```
 
 ## Constants
 

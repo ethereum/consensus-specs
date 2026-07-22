@@ -184,7 +184,7 @@ Request Content:
 (
   slot: Slot
   inclusion_list_committee_root: Root
-  indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
+  indices: InclusionListBits
 )
 ```
 

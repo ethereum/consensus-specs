@@ -13,6 +13,8 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Constants](#constants)
   - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Types](#types)
+  - [New `ProofTypes`](#new-prooftypes)
 - [Containers](#containers)
   - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -48,6 +50,15 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 | --------------------------------- | ---------------------------- |
 | `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
+## Types
+
+### New `ProofTypes`
+
+```python
+class ProofTypes(List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]):
+    pass
+```
+
 ## Containers
 
 ### New `ProofByRootIdentifier`
@@ -55,7 +66,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+    proof_types: ProofTypes
 ```
 
 ## Helpers
@@ -125,7 +136,7 @@ Request Content:
 (
   start_slot: Slot
   count: Uint64
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  proof_types: ProofTypes
 )
 ```
 
@@ -215,7 +226,7 @@ Request, Response Content:
 (
   block_root: Root
   slot: Slot
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  proof_types: ProofTypes
 )
 ```
 

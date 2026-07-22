@@ -5,6 +5,11 @@
 - [Introduction](#introduction)
 - [Public methods](#public-methods)
 - [Types](#types)
+  - [`Cell`](#cell)
+  - [`CellIndex`](#cellindex)
+  - [`Cells`](#cells)
+  - [`CommitmentIndex`](#commitmentindex)
+  - [`Proofs`](#proofs)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
@@ -70,11 +75,40 @@ The following is a list of the public methods:
 
 ## Types
 
-| Name              | SSZ equivalent                                                  | Description                                                                  |
-| ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Cell`            | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof                   |
-| `CellIndex`       | `Uint64`                                                        | Validation: `x < CELLS_PER_EXT_BLOB`                                         |
-| `CommitmentIndex` | `Uint64`                                                        | The type which represents the index of an element in the list of commitments |
+### `Cell`
+
+```python
+class Cell(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]):
+    pass
+```
+
+### `CellIndex`
+
+```python
+class CellIndex(Uint64):
+    pass
+```
+
+### `Cells`
+
+```python
+class Cells(Vector[Cell, CELLS_PER_EXT_BLOB]):
+    pass
+```
+
+### `CommitmentIndex`
+
+```python
+class CommitmentIndex(Uint64):
+    pass
+```
+
+### `Proofs`
+
+```python
+class Proofs(Vector[KZGProof, CELLS_PER_EXT_BLOB]):
+    pass
+```
 
 ## Cryptographic types
 
@@ -551,7 +585,7 @@ def coset_for_cell(cell_index: CellIndex) -> Coset:
 #### `compute_cells`
 
 ```python
-def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
+def compute_cells(blob: Blob) -> Cells:
     """
     Given a blob, extend it and return all the cells of the extended blob.
 
@@ -567,7 +601,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
         coset = coset_for_cell(CellIndex(i))
         ys = CosetEvals([evaluate_polynomialcoeff(polynomial_coeff, z) for z in coset])
         cells.append(coset_evals_to_cell(CosetEvals(ys)))
-    return cells
+    return Cells(cells)
 ```
 
 #### `compute_cells_and_kzg_proofs_polynomialcoeff`
@@ -575,7 +609,7 @@ def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
 ```python
 def compute_cells_and_kzg_proofs_polynomialcoeff(
     polynomial_coeff: PolynomialCoeff,
-) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+) -> Tuple[Cells, Proofs]:
     """
     Helper function which computes cells/proofs for a polynomial in coefficient form.
     """
@@ -585,7 +619,7 @@ def compute_cells_and_kzg_proofs_polynomialcoeff(
         proof, ys = compute_kzg_proof_multi_impl(polynomial_coeff, coset)
         cells.append(coset_evals_to_cell(CosetEvals(ys)))
         proofs.append(proof)
-    return cells, proofs
+    return Cells(cells), Proofs(proofs)
 ```
 
 #### `compute_cells_and_kzg_proofs`
@@ -593,7 +627,7 @@ def compute_cells_and_kzg_proofs_polynomialcoeff(
 ```python
 def compute_cells_and_kzg_proofs(
     blob: Blob,
-) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+) -> Tuple[Cells, Proofs]:
     """
     Compute all the cell proofs for an extended blob. This is an inefficient O(n^2) algorithm,
     for performant implementation the FK20 algorithm that runs in O(n log n) should be
@@ -777,7 +811,7 @@ def recover_polynomialcoeff(
 ```python
 def recover_cells_and_kzg_proofs(
     cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
-) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+) -> Tuple[Cells, Proofs]:
     """
     Given at least 50% of cells for a blob, recover all the cells/proofs.
     This algorithm uses FFTs to recover cells faster than using Lagrange

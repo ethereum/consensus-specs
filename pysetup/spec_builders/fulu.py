@@ -46,6 +46,7 @@ class CosetEvals(list):
         return {
             "BlobIdentifier",
             "BlobSidecar",
+            "KZGCommitmentInclusionProof",
         }
 
     @classmethod
