@@ -114,7 +114,6 @@ former is used for opaque data while the latter is intended as a number.
 
 For convenience we alias:
 
-- `bit` to `Boolean`
 - `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
 - `ByteList[N]` to `List[byte, N]`
 - `ProgressiveByteList` to `ProgressiveList[byte]`

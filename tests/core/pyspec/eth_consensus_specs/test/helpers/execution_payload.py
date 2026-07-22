@@ -17,7 +17,9 @@ from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawal
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 
-def get_execution_payload_header(spec, state, execution_payload):
+def get_execution_payload_header(spec, execution_payload):
+    assert not is_post_gloas(spec)
+
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
         fee_recipient=execution_payload.fee_recipient,
@@ -89,68 +91,71 @@ def compute_requests_hash(block_requests):
 # https://eips.ethereum.org/EIPS/eip-4844
 def compute_el_header_block_hash(
     spec,
-    payload_header,
+    payload,
     transactions_trie_root,
     withdrawals_trie_root=None,
     parent_beacon_block_root=None,
     requests_hash=None,
+    block_access_list_hash=None,
 ):
     """
-    Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
+    Computes the RLP execution block hash described by an `ExecutionPayload`.
     """
-    if is_post_gloas(spec):
-        return spec.Hash32()
-
     execution_payload_header_rlp = [
         # parent_hash
-        (Binary(32, 32), payload_header.parent_hash),
+        (Binary(32, 32), payload.parent_hash),
         # ommers_hash
         (
             Binary(32, 32),
             bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
         ),
         # coinbase
-        (Binary(20, 20), payload_header.fee_recipient),
+        (Binary(20, 20), payload.fee_recipient),
         # state_root
-        (Binary(32, 32), payload_header.state_root),
+        (Binary(32, 32), payload.state_root),
         # txs_root
         (Binary(32, 32), transactions_trie_root),
         # receipts_root
-        (Binary(32, 32), payload_header.receipts_root),
+        (Binary(32, 32), payload.receipts_root),
         # logs_bloom
-        (Binary(256, 256), payload_header.logs_bloom),
+        (Binary(256, 256), payload.logs_bloom),
         # difficulty
         (big_endian_int, 0),
         # number
-        (big_endian_int, payload_header.block_number),
+        (big_endian_int, payload.block_number),
         # gas_limit
-        (big_endian_int, payload_header.gas_limit),
+        (big_endian_int, payload.gas_limit),
         # gas_used
-        (big_endian_int, payload_header.gas_used),
+        (big_endian_int, payload.gas_used),
         # timestamp
-        (big_endian_int, payload_header.timestamp),
+        (big_endian_int, payload.timestamp),
         # extradata
-        (Binary(0, 32), payload_header.extra_data),
+        (Binary(0, 32), payload.extra_data),
         # prev_randao
-        (Binary(32, 32), payload_header.prev_randao),
+        (Binary(32, 32), payload.prev_randao),
         # nonce
         (Binary(8, 8), bytes.fromhex("0000000000000000")),
         # base_fee_per_gas
-        (big_endian_int, payload_header.base_fee_per_gas),
+        (big_endian_int, payload.base_fee_per_gas),
     ]
     if is_post_capella(spec):
         # withdrawals_root
         execution_payload_header_rlp.append((Binary(32, 32), withdrawals_trie_root))
     if is_post_deneb(spec):
         # blob_gas_used
-        execution_payload_header_rlp.append((big_endian_int, payload_header.blob_gas_used))
+        execution_payload_header_rlp.append((big_endian_int, payload.blob_gas_used))
         # excess_blob_gas
-        execution_payload_header_rlp.append((big_endian_int, payload_header.excess_blob_gas))
+        execution_payload_header_rlp.append((big_endian_int, payload.excess_blob_gas))
         # parent_beacon_root
         execution_payload_header_rlp.append((Binary(32, 32), parent_beacon_block_root))
     if is_post_electra(spec):
         # requests_hash
         execution_payload_header_rlp.append((Binary(32, 32), requests_hash))
+    if is_post_gloas(spec):
+        # block access list
+        execution_payload_header_rlp.append((Binary(32, 32), block_access_list_hash))
+        # slot number
+        execution_payload_header_rlp.append((big_endian_int, payload.slot_number))
 
     sedes = List([schema for schema, _ in execution_payload_header_rlp])
     values = [value for _, value in execution_payload_header_rlp]
@@ -227,34 +232,35 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
 
 
 def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_root, requests_hash):
-    if is_post_gloas(spec):
-        return spec.Hash32()
     if payload == spec.ExecutionPayload():
         return spec.Hash32()
 
     transactions_trie_root = compute_trie_root_from_indexed_data(payload.transactions)
 
     withdrawals_trie_root = None
+    block_access_list_hash = None
 
     if is_post_capella(spec):
         withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
-
-    payload_header = get_execution_payload_header(spec, spec.BeaconState(), payload)
+    if is_post_gloas(spec):
+        block_access_list_rlp = encode(bytearray(payload.block_access_list), Binary(0))
+        block_access_list_hash = keccak(block_access_list_rlp)
 
     return compute_el_header_block_hash(
         spec,
-        payload_header,
+        payload,
         transactions_trie_root,
         withdrawals_trie_root,
         parent_beacon_block_root,
         requests_hash,
+        block_access_list_hash,
     )
 
 
-def compute_el_block_hash(spec, payload, pre_state):
+def compute_el_block_hash(spec, payload, pre_state, execution_requests=None):
     parent_beacon_block_root = None
     requests_hash = None
 
@@ -264,7 +270,11 @@ def compute_el_block_hash(spec, payload, pre_state):
             previous_block_header.state_root = pre_state.hash_tree_root()
         parent_beacon_block_root = previous_block_header.hash_tree_root()
     if is_post_electra(spec):
-        requests_hash = compute_requests_hash([])
+        if execution_requests is None:
+            requests_list = []
+        else:
+            requests_list = spec.get_execution_requests_list(execution_requests)
+        requests_hash = compute_requests_hash(requests_list)
 
     return compute_el_block_hash_with_new_fields(
         spec, payload, parent_beacon_block_root, requests_hash
@@ -284,8 +294,8 @@ def compute_el_block_hash_for_block(spec, block):
 
 
 def build_empty_post_gloas_execution_payload_bid(spec, state):
-    if not is_post_gloas(spec):
-        return
+    assert is_post_gloas(spec)
+
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
     # Use self-build: builder_index is the same as the beacon proposer index
@@ -310,38 +320,56 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     )
 
 
-def build_empty_signed_execution_payload_bid(spec, state):
-    if not is_post_gloas(spec):
-        return
-    message = build_empty_post_gloas_execution_payload_bid(spec, state)
+def sign_execution_payload_bid(spec, state, bid):
+    assert is_post_gloas(spec)
 
     # For self-builds, use point at infinity signature as per spec
-    if message.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+    if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         signature = spec.G2_POINT_AT_INFINITY
     else:
-        privkey = builder_privkeys[message.builder_index]
-        signature = spec.get_execution_payload_bid_signature(state, message, privkey)
+        privkey = builder_privkeys[bid.builder_index]
+        signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
 
     return spec.SignedExecutionPayloadBid(
-        message=message,
+        message=bid,
         signature=signature,
     )
 
 
-def build_empty_execution_payload(spec, state, randao_mix=None):
+def build_empty_signed_execution_payload_bid(spec, state):
+    assert is_post_gloas(spec)
+
+    message = build_empty_post_gloas_execution_payload_bid(spec, state)
+    return sign_execution_payload_bid(spec, state, message)
+
+
+def build_empty_execution_payload(
+    spec, state, randao_mix=None, parent_payload=None, execution_requests=None
+):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
+    payload_bid = None
     if is_post_gloas(spec):
-        latest = state.latest_execution_payload_bid
-        parent_hash = latest.parent_block_hash
-        if randao_mix is None:
-            randao_mix = state.latest_execution_payload_bid.prev_randao
+        payload_bid = state.latest_execution_payload_bid
+    elif parent_payload is None:
+        parent_payload = state.latest_execution_payload_header
+
+    assert parent_payload is not None or payload_bid is not None
+
+    if parent_payload is not None:
+        parent_hash = parent_payload.block_hash
+        gas_limit = parent_payload.gas_limit
     else:
-        latest = state.latest_execution_payload_header
-        parent_hash = latest.block_hash
-        if randao_mix is None:
+        parent_hash = payload_bid.parent_block_hash
+        gas_limit = payload_bid.gas_limit
+
+    if randao_mix is None:
+        if is_post_gloas(spec):
+            randao_mix = payload_bid.prev_randao
+        else:
             randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
     timestamp = spec.compute_time_at_slot(state, state.slot)
 
     payload = spec.ExecutionPayload(
@@ -355,15 +383,17 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         ](),  # TODO: zeroed logs bloom for empty logs ok?
         prev_randao=randao_mix,
         gas_used=0,  # empty block, 0 gas
-        gas_limit=latest.gas_limit,
+        gas_limit=gas_limit,
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
     )
-    if not is_post_gloas(spec):
-        payload.state_root = latest.state_root  # no changes to the state
-        payload.block_number = latest.block_number + 1
-        payload.gas_limit = latest.gas_limit  # retain same limit
-        payload.base_fee_per_gas = latest.base_fee_per_gas  # retain same base_fee
+
+    if parent_payload is not None:
+        payload.state_root = parent_payload.state_root  # no changes to the state
+        payload.block_number = parent_payload.block_number + 1
+        payload.gas_limit = parent_payload.gas_limit  # retain same limit
+        payload.base_fee_per_gas = parent_payload.base_fee_per_gas  # retain same base_fee
+
     if is_post_capella(spec):
         payload.withdrawals = get_expected_withdrawals(spec, state)
     if is_post_deneb(spec):
@@ -373,7 +403,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
         payload.slot_number = state.slot
 
-    payload.block_hash = compute_el_block_hash(spec, payload, state)
+    payload.block_hash = compute_el_block_hash(spec, payload, state, execution_requests)
 
     return payload
 
@@ -428,7 +458,7 @@ def build_state_with_complete_transition(spec, state):
         payload_bid = get_execution_payload_bid(spec, state, pre_state_payload)
         state = build_state_with_execution_payload_bid(spec, state, payload_bid)
     else:
-        payload_header = get_execution_payload_header(spec, state, pre_state_payload)
+        payload_header = get_execution_payload_header(spec, pre_state_payload)
         state = build_state_with_execution_payload_header(spec, state, payload_header)
         if not is_post_capella(spec):
             assert spec.is_merge_transition_complete(state)
@@ -446,6 +476,20 @@ def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     pre_state = state.copy()
     pre_state.latest_execution_payload_bid = execution_payload_bid
     return pre_state
+
+
+def sign_execution_payload_envelope(spec, state, signed_block, envelope):
+    # Sign the envelope: self-builds use proposer key, external builds use builder key
+    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        privkey = privkeys[signed_block.message.proposer_index]
+    else:
+        privkey = builder_privkeys[envelope.builder_index]
+    signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
+
+    return spec.SignedExecutionPayloadEnvelope(
+        message=envelope,
+        signature=signature,
+    )
 
 
 def build_signed_execution_payload_envelope(
@@ -473,17 +517,59 @@ def build_signed_execution_payload_envelope(
         parent_beacon_block_root=signed_block.message.parent_root,
     )
 
-    # Sign the envelope: self-builds use proposer key, external builds use builder key
-    if envelope_message.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        privkey = privkeys[signed_block.message.proposer_index]
-    else:
-        privkey = builder_privkeys[envelope_message.builder_index]
-    signature = spec.get_execution_payload_envelope_signature(state, envelope_message, privkey)
+    return sign_execution_payload_envelope(spec, state, signed_block, envelope_message)
 
-    return spec.SignedExecutionPayloadEnvelope(
-        message=envelope_message,
-        signature=signature,
+
+def compute_execution_payload_bid(spec, state, payload, execution_requests=None):
+    assert is_post_gloas(spec)
+
+    if execution_requests is None:
+        execution_requests = spec.ExecutionRequests()
+
+    parent_block_root = hash_tree_root(state.latest_block_header)
+    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    # Use self-build: builder_index is the same as the beacon proposer index
+    builder_index = spec.BUILDER_INDEX_SELF_BUILD
+    return spec.ExecutionPayloadBid(
+        parent_block_hash=payload.parent_hash,
+        parent_block_root=parent_block_root,
+        block_hash=payload.block_hash,
+        prev_randao=payload.prev_randao,
+        fee_recipient=payload.fee_recipient,
+        gas_limit=payload.gas_limit,
+        builder_index=builder_index,
+        slot=state.slot,
+        value=spec.Gwei(0),
+        blob_kzg_commitments=kzg_list,
+        execution_requests_root=spec.hash_tree_root(execution_requests),
     )
+
+
+def compute_and_sign_execution_payload_bid(spec, state, payload, execution_requests=None):
+    assert is_post_gloas(spec)
+    bid = compute_execution_payload_bid(spec, state, payload, execution_requests=execution_requests)
+    return sign_execution_payload_bid(spec, state, bid)
+
+
+def compute_and_sign_execution_payload_envelope(
+    spec, state, block_root, signed_block, payload, execution_requests=None
+):
+    # Get builder_index from the block's execution payload bid
+    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
+
+    if execution_requests is None:
+        execution_requests = spec.ExecutionRequests()
+
+    # Create the execution payload envelope message
+    envelope = spec.ExecutionPayloadEnvelope(
+        payload=payload,
+        execution_requests=execution_requests,
+        builder_index=builder_index,
+        beacon_block_root=block_root,
+        parent_beacon_block_root=signed_block.message.parent_root,
+    )
+
+    return sign_execution_payload_envelope(spec, state, signed_block, envelope)
 
 
 def get_random_tx(rng):
