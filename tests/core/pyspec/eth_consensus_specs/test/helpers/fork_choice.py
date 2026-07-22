@@ -262,11 +262,8 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
         # Match the genesis block body bid to what ``genesis.py`` set on the
         # state's committed bid; this keeps ``genesis_block`` consistent with
         # ``genesis_state.latest_block_header`` (body_root).
-        genesis_block.body.signed_execution_payload_bid.message = spec.ExecutionPayloadBid(
-            # The genesis bid's block hash is the empty hash
-            block_hash=spec.Hash32(),
-            parent_block_hash=spec.Hash32(genesis_state.latest_block_hash),
-            execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        genesis_block.body.signed_execution_payload_bid.message = (
+            genesis_state.latest_execution_payload_bid
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
     return store, genesis_block
