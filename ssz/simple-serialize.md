@@ -15,7 +15,7 @@
     - [Compatible Merkleization](#compatible-merkleization)
 - [Serialization](#serialization)
   - [`uintN`](#uintn)
-  - [`boolean`](#boolean)
+  - [`Boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
   - [Vectors, containers, progressive containers, lists, progressive lists](#vectors-containers-progressive-containers-lists-progressive-lists)
@@ -44,7 +44,7 @@
 - `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 - `byte`: 8-bit opaque data container, equivalent in serialization and hashing
   to `uint8`
-- `boolean`: `True` or `False`
+- `Boolean`: `True` or `False`
 
 ### Composite types
 
@@ -53,7 +53,7 @@
   ```python
   class ContainerExample(Container):
       foo: uint64
-      bar: boolean
+      bar: Boolean
   ```
 - **progressive container** _[EIP-7495]_: ordered heterogeneous collection of
   values with stable Merkleization
@@ -76,14 +76,14 @@
 - **progressive list** _[EIP-7916]_: ordered variable-length homogeneous
   collection, without limit
   - notation `ProgressiveList[type]`, e.g. `ProgressiveList[uint64]`
-- **bitvector**: ordered fixed-length collection of `boolean` values, with `N`
+- **bitvector**: ordered fixed-length collection of `Boolean` values, with `N`
   bits
   - notation `Bitvector[N]`
-- **bitlist**: ordered variable-length collection of `boolean` values, limited
+- **bitlist**: ordered variable-length collection of `Boolean` values, limited
   to `N` bits
   - notation `Bitlist[N]`
 - **progressive bitlist** _[EIP-7916]_: ordered variable-length collection of
-  `boolean` values, without limit
+  `Boolean` values, without limit
   - notation `ProgressiveBitlist`
 - **union**: union type containing one of the given subtypes
   - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
@@ -92,9 +92,9 @@
   - notation `CompatibleUnion({selector: type})`, e.g.
     `CompatibleUnion({1: Square, 2: Circle})`
 
-*Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due
+*Note*: Both `Vector[Boolean, N]` and `Bitvector[N]` are valid, yet distinct due
 to their different serialization requirements. Similarly, both
-`List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally
+`List[Boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally
 `Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization
 efficiencies.
 
@@ -114,7 +114,7 @@ former is used for opaque data while the latter is intended as a number.
 
 For convenience we alias:
 
-- `bit` to `boolean`
+- `bit` to `Boolean`
 - `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
 - `ByteList[N]` to `List[byte, N]`
 - `ProgressiveByteList` to `ProgressiveList[byte]`
@@ -130,7 +130,7 @@ Assuming a helper function `default(type)` which returns the default value for
 | Type                                  | Default Value                                       |
 | ------------------------------------- | --------------------------------------------------- |
 | `uintN`                               | `0`                                                 |
-| `boolean`                             | `False`                                             |
+| `Boolean`                             | `False`                                             |
 | `Container`                           | `[default(type) for type in container]`             |
 | `ProgressiveContainer(active_fields)` | `[default(type) for type in progressive_container]` |
 | `Vector[type, N]`                     | `[default(type)] * N`                               |
@@ -201,7 +201,7 @@ assert N in [8, 16, 32, 64, 128, 256]
 return value.to_bytes(N // BITS_PER_BYTE, "little")
 ```
 
-### `boolean`
+### `Boolean`
 
 ```python
 assert value in (True, False)
@@ -462,7 +462,7 @@ value. Parsers may ignore additional JSON fields.
 | ------------------------------------- | --------------- | ---------------------------------------- |
 | `uintN`                               | string          | `"0"`                                    |
 | `byte`                                | hex-byte-string | `"0x00"`                                 |
-| `boolean`                             | bool            | `false`                                  |
+| `Boolean`                             | bool            | `false`                                  |
 | `Container`                           | object          | `{ "field": ... }`                       |
 | `ProgressiveContainer(active_fields)` | object          | `{ "field": ... }`                       |
 | `Vector[type, N]`                     | array           | `[element, ...]`                         |

@@ -55,7 +55,7 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -63,7 +63,7 @@ class Seen:
     # [New in Altair]
     sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[Boolean, ...]]]
     # [New in Altair]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
 ```

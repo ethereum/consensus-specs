@@ -5,7 +5,7 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    boolean,
+    Boolean,
     ProgressiveList,
     uint8,
     uint16,
@@ -34,7 +34,7 @@ def progressive_list_case_fn(
 
 
 BASIC_TYPES: dict[str, type[BasicView]] = {
-    "bool": boolean,
+    "bool": Boolean,
     "uint8": uint8,
     "uint16": uint16,
     "uint32": uint32,

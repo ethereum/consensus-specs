@@ -31,7 +31,7 @@ from typing import (
 
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth_consensus_specs.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
+    View, Boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
     Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
 from eth_consensus_specs.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth_consensus_specs.utils import bls

@@ -2,7 +2,7 @@
 
 from remerkleable.basic import (
     bit,
-    boolean,
+    boolean as Boolean,
     byte,
     uint,
     uint8,

@@ -4,7 +4,7 @@ from eth_consensus_specs.debug.random_value import get_random_ssz_object, Random
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    boolean,
+    Boolean,
     uint8,
     uint16,
     uint32,
@@ -32,7 +32,7 @@ def basic_vector_case_fn(
 
 
 BASIC_TYPES: dict[str, type[BasicView]] = {
-    "bool": boolean,
+    "bool": Boolean,
     "uint8": uint8,
     "uint16": uint16,
     "uint32": uint32,

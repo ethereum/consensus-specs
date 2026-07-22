@@ -33,7 +33,7 @@ class InclusionListStore:
     inclusion_lists: DefaultDict[Root, Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
-    inclusion_list_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    inclusion_list_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
     equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
         default_factory=lambda: defaultdict(set)
     )

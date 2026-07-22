@@ -392,7 +392,7 @@ class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     effective_balance: Gwei
-    slashed: boolean
+    slashed: Boolean
     activation_eligibility_epoch: Epoch
     activation_epoch: Epoch
     exit_epoch: Epoch
