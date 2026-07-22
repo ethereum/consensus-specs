@@ -202,6 +202,13 @@ inclusion list committee `indices`. The response is a list of
 requested inclusion lists. It may be less in the case that the responding peer
 is missing inclusion lists.
 
+Before consuming the next response chunk, the response reader SHOULD verify that
+the signature of the `SignedInclusionList` is valid with respect to the
+validator's public key, that `slot` and `inclusion_list_committee_root` of the
+inclusion list match the requested `slot` and `inclusion_list_committee_root`,
+and that `validator_index` of the inclusion list corresponds to a requested
+index in `indices`.
+
 No more than `MAX_REQUEST_INCLUSION_LIST` may be requested at a time.
 
 `InclusionListsByIndices` is primarily used to fetch inclusion lists that may
