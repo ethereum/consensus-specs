@@ -745,7 +745,9 @@ Request Content:
 ```
 (
   beacon_root: Root
+  offset: uint64
   count: uint64
+  min_slot: Slot
 )
 ```
 
@@ -757,11 +759,22 @@ Response Content:
 )
 ```
 
-Requests beacon blocks along the ancestry of `beacon_root`, inclusive of the
-block at `beacon_root`, in descending slot order. The walk stops as soon as the
-response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks or the next
-ancestor falls outside the epoch range that clients are required to serve (see
-below).
+Requests beacon blocks along the ancestry of `beacon_root`.
+
+The walk starts at `start_root` which is computed like so:
+
+```py
+start_root = block_root
+for _ in range(offset): start_root = get_block(start_root).parent_root
+```
+
+The walk is inclusive of the block at `start_root`, in descending slot order.
+The walk stops as soon as one of the following is true:
+
+- the response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks
+- the slot of a block in the response is `<= min_slot`
+- the next ancestor falls outside the epoch range that clients are required to
+  serve (see below).
 
 `BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
 relative to a known head.
@@ -784,6 +797,9 @@ Clients MUST respond with at least one block, if they have the block at
 Clients SHOULD include a block in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with blocks that fail the
 beacon-chain state transition.
+
+Clients MAY respond with error code `3: ResourceUnavailable` to requests whose
+offset is greater than 1024.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
