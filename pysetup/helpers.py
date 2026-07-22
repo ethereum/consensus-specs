@@ -273,7 +273,7 @@ ignored_dependencies = [
     "Bitlist",
     "Bitvector",
     "Boolean",
-    "byte",
+    "Byte",
     "ByteList",
     "bytes",
     "Bytes1",

@@ -42,7 +42,7 @@
 ### Basic types
 
 - `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-- `byte`: 8-bit opaque data container, equivalent in serialization and hashing
+- `Byte`: 8-bit opaque data container, equivalent in serialization and hashing
   to `uint8`
 - `Boolean`: `True` or `False`
 
@@ -107,16 +107,16 @@ types that contain a variable-size type. All other types are said to be
 
 ### Byte
 
-Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the
+Although the SSZ serialization of `Byte` is equivalent to that of `uint8`, the
 former is used for opaque data while the latter is intended as a number.
 
 ### Aliases
 
 For convenience we alias:
 
-- `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
-- `ByteList[N]` to `List[byte, N]`
-- `ProgressiveByteList` to `ProgressiveList[byte]`
+- `BytesN` and `ByteVector[N]` to `Vector[Byte, N]` (this is *not* a basic type)
+- `ByteList[N]` to `List[Byte, N]`
+- `ProgressiveByteList` to `ProgressiveList[Byte]`
 
 Aliases are semantically equivalent to their underlying type and therefore share
 canonical representations both in SSZ and in related formats.
@@ -168,7 +168,7 @@ is equal to the default value for that type.
 #### Compatible Merkleization
 
 - Types are compatible with themselves.
-- `byte` is compatible with `uint8` and vice versa.
+- `Byte` is compatible with `uint8` and vice versa.
 - `Bitlist[N]` are compatible if they share the same capacity `N`.
 - `Bitvector[N]` are compatible if they share the same capacity `N`.
 - `List[type, N]` are compatible if `type` is compatible and they share the same
@@ -460,17 +460,17 @@ value. Parsers may ignore additional JSON fields.
 | SSZ                                   | JSON            | Example                                  |
 | ------------------------------------- | --------------- | ---------------------------------------- |
 | `uintN`                               | string          | `"0"`                                    |
-| `byte`                                | hex-byte-string | `"0x00"`                                 |
+| `Byte`                                | hex-byte-string | `"0x00"`                                 |
 | `Boolean`                             | bool            | `false`                                  |
 | `Container`                           | object          | `{ "field": ... }`                       |
 | `ProgressiveContainer(active_fields)` | object          | `{ "field": ... }`                       |
 | `Vector[type, N]`                     | array           | `[element, ...]`                         |
-| `Vector[byte, N]`                     | hex-byte-string | `"0x1122"`                               |
+| `Vector[Byte, N]`                     | hex-byte-string | `"0x1122"`                               |
 | `Bitvector[N]`                        | hex-byte-string | `"0x1122"`                               |
 | `List[type, N]`                       | array           | `[element, ...]`                         |
-| `List[byte, N]`                       | hex-byte-string | `"0x1122"`                               |
+| `List[Byte, N]`                       | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveList[type]`               | array           | `[element, ...]`                         |
-| `ProgressiveList[byte]`               | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveList[Byte]`               | hex-byte-string | `"0x1122"`                               |
 | `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": string, "data": type_N }` |
@@ -483,7 +483,7 @@ Aliases are encoded as their underlying type.
 `hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would
 appear in an SSZ stream.
 
-`List`, `ProgressiveList`, and `Vector` of `byte` (and aliases thereof) are
+`List`, `ProgressiveList`, and `Vector` of `Byte` (and aliases thereof) are
 encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
 similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
