@@ -9,6 +9,8 @@
   - [Types](#types)
     - [New `DataColumnIndices`](#new-datacolumnindices)
   - [Containers](#containers)
+    - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
+    - [New `DataColumnSidecars`](#new-datacolumnsidecars)
     - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
@@ -80,6 +82,20 @@ class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
 ```
 
 ### Containers
+
+#### New `DataColumnsByRootIdentifiers`
+
+```python
+class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
+#### New `DataColumnSidecars`
+
+```python
+class DataColumnSidecars(List[DataColumnSidecar, compute_max_request_data_column_sidecars()]):
+    pass
+```
 
 #### New `DataColumnsByRootIdentifier`
 
@@ -226,8 +242,8 @@ communicate the custody group count.
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: Attnets
+  syncnets: Syncnets
   custody_group_count: Uint64 # cgc
 )
 ```
@@ -573,7 +589,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
+  DataColumnSidecars
 )
 ```
 
@@ -671,7 +687,7 @@ Request Content:
 
 ```
 (
-  List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  DataColumnsByRootIdentifiers
 )
 ```
 
@@ -679,7 +695,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
+  DataColumnSidecars
 )
 ```
 
@@ -764,7 +780,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 

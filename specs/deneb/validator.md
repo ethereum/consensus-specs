@@ -44,16 +44,12 @@ specifications before continuing and use them as a reference throughout.
 
 ### `Blobs`
 
-*[New in Deneb:EIP4844]*
-
 ```python
 class Blobs(List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     pass
 ```
 
 ### `KZGProofs`
-
-*[New in Deneb:EIP4844]*
 
 ```python
 class KZGProofs(List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]):

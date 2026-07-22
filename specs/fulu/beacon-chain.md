@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `ProposerIndices`](#new-proposerindices)
   - [New `ProposerLookahead`](#new-proposerlookahead)
 - [Configuration](#configuration)
   - [Blob schedule](#blob-schedule)
@@ -46,6 +47,13 @@ Fulu is a consensus-layer upgrade containing a number of features. Including:
   Hardforks
 
 ## Types
+
+### New `ProposerIndices`
+
+```python
+class ProposerIndices(Vector[ValidatorIndex, SLOTS_PER_EPOCH]):
+    pass
+```
 
 ### New `ProposerLookahead`
 
@@ -327,13 +335,13 @@ def compute_fork_digest(
 ```python
 def compute_proposer_indices(
     state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
-) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
     seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
-    return [compute_proposer_index(state, indices, seed) for seed in seeds]
+    return ProposerIndices(compute_proposer_index(state, indices, seed) for seed in seeds)
 ```
 
 ### Beacon state accessors
@@ -354,9 +362,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 #### New `get_beacon_proposer_indices`
 
 ```python
-def get_beacon_proposer_indices(
-    state: BeaconState, epoch: Epoch
-) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.
     """

@@ -14,7 +14,9 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
   - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Types](#types)
+  - [New `ProofByRootIdentifiers`](#new-proofbyrootidentifiers)
   - [New `ProofTypes`](#new-prooftypes)
+  - [New `SignedExecutionProofs`](#new-signedexecutionproofs)
 - [Containers](#containers)
   - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -52,10 +54,24 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Types
 
+### New `ProofByRootIdentifiers`
+
+```python
+class ProofByRootIdentifiers(List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
 ### New `ProofTypes`
 
 ```python
 class ProofTypes(List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]):
+    pass
+```
+
+### New `SignedExecutionProofs`
+
+```python
+class SignedExecutionProofs(List[SignedExecutionProof, compute_max_request_execution_proofs()]):
     pass
 ```
 
@@ -144,7 +160,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 
@@ -184,7 +200,7 @@ Request Content:
 
 ```
 (
-  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  ProofByRootIdentifiers
 )
 ```
 
@@ -192,7 +208,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 

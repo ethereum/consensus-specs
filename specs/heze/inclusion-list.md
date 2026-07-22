@@ -125,7 +125,7 @@ def get_inclusion_list_transactions(
 ```python
 def get_inclusion_list_bits(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
-) -> Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]:
+) -> InclusionListBits:
     """
     Return a ``Bitvector`` over inclusion list committee indices with bits set
     for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
@@ -144,9 +144,7 @@ def get_inclusion_list_bits(
         if not only_timely or timeliness[inclusion_list_root]
     ]
 
-    return Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](
-        validator_index in validator_indices for validator_index in committee
-    )
+    return InclusionListBits(validator_index in validator_indices for validator_index in committee)
 ```
 
 ### New `is_inclusion_list_bits_inclusive`

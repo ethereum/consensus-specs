@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Types](#types)
   - [New `InclusionListBits`](#new-inclusionlistbits)
+  - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
 - [Constants](#constants)
   - [Domains](#domains)
 - [Preset](#preset)
@@ -44,6 +45,13 @@ from the latest published version of the EIPs.
 
 ```python
 class InclusionListBits(Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]):
+    pass
+```
+
+### New `InclusionListCommittee`
+
+```python
+class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]):
     pass
 ```
 
@@ -195,9 +203,7 @@ def is_valid_inclusion_list_signature(
 #### New `get_inclusion_list_committee`
 
 ```python
-def get_inclusion_list_committee(
-    state: BeaconState, slot: Slot
-) -> Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]:
+def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionListCommittee:
     """
     Get the inclusion list committee for the given ``slot``.
     """
@@ -208,7 +214,7 @@ def get_inclusion_list_committee(
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]([
+    return InclusionListCommittee(
         indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)
-    ])
+    )
 ```

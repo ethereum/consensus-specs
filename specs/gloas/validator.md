@@ -445,9 +445,7 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob

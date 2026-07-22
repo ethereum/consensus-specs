@@ -56,8 +56,6 @@ document and used throughout.
 
 ### `CellKZGProofs`
 
-*[New in Fulu:EIP7594]*
-
 ```python
 class CellKZGProofs(List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     pass

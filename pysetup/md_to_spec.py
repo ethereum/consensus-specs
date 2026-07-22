@@ -221,15 +221,34 @@ class MarkdownToSpec:
                 r"^(.*ProgressiveContainer.*)$", r"\1  # type: ignore", source, flags=re.MULTILINE
             )
         elif parent_class in COLLECTION_BASE_CLASSES:
-            # mypy accepts a subscripted base class only when all of its
-            # arguments are plain names or literals. Expressions like `A + 1`
-            # or `A * B` make the base class invalid and require an ignore
-            # comment.
             base = cls.bases[0]
             args = []
             if isinstance(base, ast.Subscript):
                 args = base.slice.elts if isinstance(base.slice, ast.Tuple) else [base.slice]
-            if not all(isinstance(arg, ast.Name | ast.Constant) for arg in args):
+            # Types whose length is given by a helper function only appear in
+            # networking schemas. They cannot be compiled, since helpers are
+            # defined after types in the generated specification. Math helpers
+            # like ceillog2 and floorlog2 are excluded, as they are defined
+            # before types.
+            if any(
+                isinstance(node, ast.Call)
+                and not (
+                    isinstance(node.func, ast.Name) and node.func.id in ("ceillog2", "floorlog2")
+                )
+                for arg in args
+                for node in ast.walk(arg)
+            ):
+                return
+            # mypy accepts a subscripted base class only when all of its
+            # arguments are plain names or literals. Expressions like `A + 1`
+            # or `A * B` make the base class invalid and require an ignore
+            # comment. Configuration variables also require one, since they
+            # are rewritten to `config.X` attribute expressions.
+            if not all(
+                isinstance(arg, ast.Constant)
+                or (isinstance(arg, ast.Name) and arg.id not in self.config)
+                for arg in args
+            ):
                 # The comment must go on the line where the base class
                 # expression ends, as that is where mypy reports the error.
                 source_lines = source.split("\n")

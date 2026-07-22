@@ -7,7 +7,11 @@
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Types](#types)
+    - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
+    - [New `BlobIdentifiers`](#new-blobidentifiers)
+    - [New `BlobSidecars`](#new-blobsidecars)
     - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
+    - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
   - [Containers](#containers)
     - [New `BlobSidecar`](#new-blobsidecar)
     - [New `BlobIdentifier`](#new-blobidentifier)
@@ -70,10 +74,40 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Types
 
+#### Modified `BeaconBlockRoots`
+
+```python
+# [Modified in Deneb:EIP4844]
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
+#### New `BlobIdentifiers`
+
+```python
+class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
+    pass
+```
+
+#### New `BlobSidecars`
+
+```python
+class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
+    pass
+```
+
 #### New `KZGCommitmentInclusionProof`
 
 ```python
 class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+    pass
+```
+
+#### Modified `SignedBeaconBlocks`
+
+```python
+# [Modified in Deneb:EIP4844]
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
     pass
 ```
 
@@ -782,7 +816,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -809,7 +843,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+  BeaconBlockRoots
 )
 ```
 
@@ -817,7 +851,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -859,7 +893,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 
@@ -950,7 +984,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, compute_max_request_blob_sidecars()]
+  BlobIdentifiers
 )
 ```
 
@@ -958,7 +992,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 

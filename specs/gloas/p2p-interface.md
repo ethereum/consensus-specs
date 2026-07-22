@@ -11,7 +11,9 @@
   - [Configuration](#configuration)
   - [Types](#types)
     - [Modified `DataColumn`](#modified-datacolumn)
+    - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
     - [Modified `KZGProofs`](#modified-kzgproofs)
+    - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
     - [New `ProposerPreferences`](#new-proposerpreferences)
@@ -87,11 +89,25 @@ class DataColumn(ProgressiveList[Cell]):
     pass
 ```
 
+#### New `ExecutionPayloadEnvelopeRoots`
+
+```python
+class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
+    pass
+```
+
 #### Modified `KZGProofs`
 
 ```python
 # [Modified in Gloas:EIP7688]
 class KZGProofs(ProgressiveList[KZGProof]):
+    pass
+```
+
+#### New `SignedExecutionPayloadEnvelopes`
+
+```python
+class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]):
     pass
 ```
 
@@ -664,7 +680,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
+  SignedExecutionPayloadEnvelopes
 )
 ```
 
@@ -693,7 +709,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_PAYLOADS]
+  ExecutionPayloadEnvelopeRoots
 )
 ```
 
@@ -701,7 +717,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
+  SignedExecutionPayloadEnvelopes
 )
 ```
 
