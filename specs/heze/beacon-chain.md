@@ -50,7 +50,7 @@ from the latest published version of the EIPs.
 
 | Name                            | Value                 |
 | ------------------------------- | --------------------- |
-| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (= 16) |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `Uint64(2**4)` (= 16) |
 
 ## Containers
 
@@ -85,7 +85,7 @@ class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 13)):
     block_hash: Hash32
     prev_randao: Bytes32
     fee_recipient: ExecutionAddress
-    gas_limit: uint64
+    gas_limit: Uint64
     builder_index: BuilderIndex
     slot: Slot
     value: Gwei
@@ -109,7 +109,7 @@ class SignedExecutionPayloadBid(Container):
 
 ```python
 class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -119,7 +119,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: ProgressiveList[Validator]
     balances: ProgressiveList[Gwei]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -130,14 +130,14 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: ProgressiveList[uint64]
+    inactivity_scores: ProgressiveList[Uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
+    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch

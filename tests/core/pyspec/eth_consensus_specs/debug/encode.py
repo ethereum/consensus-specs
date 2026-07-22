@@ -10,14 +10,14 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
-    uint,
+    Uint,
     Union,
     Vector,
 )
 
 
 def encode(value, include_hash_tree_roots=False):
-    if isinstance(value, uint):
+    if isinstance(value, Uint):
         # Larger uints are boxed and the class declares their byte length
         if value.__class__.type_byte_length() > 8:
             return str(int(value))

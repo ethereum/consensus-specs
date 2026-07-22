@@ -14,8 +14,8 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
-    uint,
-    uint8,
+    Uint,
+    Uint8,
     Union,
     Vector,
     View,
@@ -93,7 +93,7 @@ def get_random_ssz_object(
             return typ(b"\xff" * typ.type_byte_length())
         else:
             return typ(get_random_bytes_list(rng, typ.type_byte_length()))
-    elif issubclass(typ, Boolean | uint):
+    elif issubclass(typ, Boolean | Uint):
         # Basic types
         if mode == RandomizationMode.mode_zero:
             return get_min_basic_value(typ)
@@ -158,7 +158,7 @@ def get_random_ssz_object(
         return typ(selector=selector, value=elem)
     elif issubclass(typ, CompatibleUnion):
         options = typ.options()
-        selector: uint8
+        selector: Uint8
         if mode == RandomizationMode.mode_zero:
             selector = min(options.keys())
         elif mode == RandomizationMode.mode_max:
@@ -183,7 +183,7 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
 def get_random_basic_value(rng: Random, typ) -> BasicView:
     if issubclass(typ, Boolean):
         return typ(rng.choice((True, False)))
-    elif issubclass(typ, uint):
+    elif issubclass(typ, Uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
         return typ(rng.randint(0, 256 ** typ.type_byte_length() - 1))
     else:
@@ -193,7 +193,7 @@ def get_random_basic_value(rng: Random, typ) -> BasicView:
 def get_min_basic_value(typ) -> BasicView:
     if issubclass(typ, Boolean):
         return typ(False)  # noqa: FBT003
-    elif issubclass(typ, uint):
+    elif issubclass(typ, Uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
         return typ(0)
     else:
@@ -203,7 +203,7 @@ def get_min_basic_value(typ) -> BasicView:
 def get_max_basic_value(typ) -> BasicView:
     if issubclass(typ, Boolean):
         return typ(True)  # noqa: FBT003
-    elif issubclass(typ, uint):
+    elif issubclass(typ, Uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
         return typ(256 ** typ.type_byte_length() - 1)
     else:

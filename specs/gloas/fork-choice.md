@@ -71,7 +71,7 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 | Name            | SSZ equivalent | Description                                     |
 | --------------- | -------------- | ----------------------------------------------- |
-| `PayloadStatus` | `uint8`        | Possible status of a payload in the fork-choice |
+| `PayloadStatus` | `Uint8`        | Possible status of a payload in the fork-choice |
 
 ## Constants
 
@@ -124,15 +124,15 @@ class ForkChoiceNode:
 ```python
 @dataclass
 class PayloadAttributes:
-    timestamp: uint64
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
     # [New in Gloas:EIP7843]
-    slot_number: uint64
+    slot_number: Uint64
     # [New in Gloas]
-    target_gas_limit: uint64
+    target_gas_limit: Uint64
 ```
 
 ### Modified `LatestMessage`
@@ -152,8 +152,8 @@ class LatestMessage:
 ```python
 @dataclass
 class Store:
-    time: uint64
-    genesis_time: uint64
+    time: Uint64
+    genesis_time: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -188,7 +188,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
+        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -461,7 +461,7 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 ### New `get_payload_status_tiebreaker`
 
 ```python
-def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
+def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
     if is_previous_slot_payload_decision(store, node):
         # To decide on a payload from the previous slot, choose
         # between FULL and EMPTY based on `should_extend_payload`
@@ -670,7 +670,7 @@ def verify_execution_payload_envelope(
 ### Modified `get_attestation_due_ms`
 
 ```python
-def get_attestation_due_ms() -> uint64:
+def get_attestation_due_ms() -> Uint64:
     # [Modified in Gloas]
     return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
 ```
@@ -678,7 +678,7 @@ def get_attestation_due_ms() -> uint64:
 ### Modified `get_aggregate_due_ms`
 
 ```python
-def get_aggregate_due_ms() -> uint64:
+def get_aggregate_due_ms() -> Uint64:
     # [Modified in Gloas]
     return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
 ```
@@ -686,7 +686,7 @@ def get_aggregate_due_ms() -> uint64:
 ### Modified `get_sync_message_due_ms`
 
 ```python
-def get_sync_message_due_ms() -> uint64:
+def get_sync_message_due_ms() -> Uint64:
     # [Modified in Gloas]
     return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
 ```
@@ -694,7 +694,7 @@ def get_sync_message_due_ms() -> uint64:
 ### Modified `get_contribution_due_ms`
 
 ```python
-def get_contribution_due_ms() -> uint64:
+def get_contribution_due_ms() -> Uint64:
     # [Modified in Gloas]
     return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
 ```
@@ -702,14 +702,14 @@ def get_contribution_due_ms() -> uint64:
 ### New `get_payload_due_ms`
 
 ```python
-def get_payload_due_ms() -> uint64:
+def get_payload_due_ms() -> Uint64:
     return get_slot_component_duration_ms(PAYLOAD_DUE_BPS)
 ```
 
 ### New `get_payload_attestation_due_ms`
 
 ```python
-def get_payload_attestation_due_ms() -> uint64:
+def get_payload_attestation_due_ms() -> Uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
 ```
 

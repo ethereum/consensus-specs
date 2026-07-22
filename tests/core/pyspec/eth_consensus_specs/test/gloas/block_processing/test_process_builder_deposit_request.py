@@ -403,7 +403,7 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
 
     # Use withdrawal credentials that differ from the registration
     withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x42" * 20
-    assert state.builders[0].version != spec.uint8(withdrawal_credentials[0])
+    assert state.builders[0].version != spec.Uint8(withdrawal_credentials[0])
     assert state.builders[0].execution_address != spec.ExecutionAddress(withdrawal_credentials[12:])
 
     builder_deposit_request = prepare_builder_deposit_request(

@@ -13,10 +13,10 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     List,
     ProgressiveBitlist,
     ProgressiveList,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
     Vector,
     View,
 )
@@ -29,26 +29,26 @@ class SingleFieldTestStruct(Container):
 
 
 class SmallTestStruct(Container):
-    A: uint16
-    B: uint16
+    A: Uint16
+    B: Uint16
 
 
 class FixedTestStruct(Container):
-    A: uint8
-    B: uint64
-    C: uint32
+    A: Uint8
+    B: Uint64
+    C: Uint32
 
 
 class VarTestStruct(Container):
-    A: uint16
-    B: List[uint16, 1024]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 1024]
+    C: Uint8
 
 
 class ComplexTestStruct(Container):
-    A: uint16
-    B: List[uint16, 128]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 128]
+    C: Uint8
     D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
@@ -57,7 +57,7 @@ class ComplexTestStruct(Container):
 
 class ProgressiveTestStruct(Container):
     A: ProgressiveList[Byte]
-    B: ProgressiveList[uint64]
+    B: ProgressiveList[Uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]
 

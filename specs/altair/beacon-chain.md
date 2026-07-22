@@ -65,7 +65,7 @@ Altair is the first beacon-chain upgrade. Its main features are:
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |
-| `ParticipationFlags` | `uint8`        | A succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `Uint8`        | A succinct representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -81,12 +81,12 @@ Altair is the first beacon-chain upgrade. Its main features are:
 
 | Name                   | Value        |
 | ---------------------- | ------------ |
-| `TIMELY_SOURCE_WEIGHT` | `uint64(14)` |
-| `TIMELY_TARGET_WEIGHT` | `uint64(26)` |
-| `TIMELY_HEAD_WEIGHT`   | `uint64(14)` |
-| `SYNC_REWARD_WEIGHT`   | `uint64(2)`  |
-| `PROPOSER_WEIGHT`      | `uint64(8)`  |
-| `WEIGHT_DENOMINATOR`   | `uint64(64)` |
+| `TIMELY_SOURCE_WEIGHT` | `Uint64(14)` |
+| `TIMELY_TARGET_WEIGHT` | `Uint64(26)` |
+| `TIMELY_HEAD_WEIGHT`   | `Uint64(14)` |
+| `SYNC_REWARD_WEIGHT`   | `Uint64(2)`  |
+| `PROPOSER_WEIGHT`      | `Uint64(8)`  |
+| `WEIGHT_DENOMINATOR`   | `Uint64(64)` |
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
@@ -113,16 +113,16 @@ to their final, maximum security values.
 
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |
-| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`    | `uint64(2**6)` (= 64)              |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `uint64(2)`                        |
+| `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `Uint64(3 * 2**24)` (= 50,331,648) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR`    | `Uint64(2**6)` (= 64)              |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR` | `Uint64(2)`                        |
 
 ### Sync committee
 
 | Name                               | Value                  | Unit       |
 | ---------------------------------- | ---------------------- | ---------- |
-| `SYNC_COMMITTEE_SIZE`              | `uint64(2**9)` (= 512) | validators |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs     |
+| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) | validators |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Uint64(2**8)` (= 256) | epochs     |
 
 ## Configuration
 
@@ -130,8 +130,8 @@ to their final, maximum security values.
 
 | Name                             | Value                 | Description                      |
 | -------------------------------- | --------------------- | -------------------------------- |
-| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | Score points per inactive epoch  |
-| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | Score points per leak-free epoch |
+| `INACTIVITY_SCORE_BIAS`          | `Uint64(2**2)` (= 4)  | Score points per inactive epoch  |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `Uint64(2**4)` (= 16) | Score points per leak-free epoch |
 
 ## Containers
 
@@ -157,7 +157,7 @@ class BeaconBlockBody(Container):
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -167,7 +167,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -181,7 +181,7 @@ class BeaconState(Container):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # [New in Altair]
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
     # [New in Altair]
     current_sync_committee: SyncCommittee
     # [New in Altair]
@@ -270,16 +270,16 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
     MAX_RANDOM_BYTE = 2**8 - 1
     active_validator_indices = get_active_validator_indices(state, epoch)
-    active_validator_count = uint64(len(active_validator_indices))
+    active_validator_count = Uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     i = 0
     sync_committee_indices: List[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(
-            uint64(i % active_validator_count), active_validator_count, seed
+            Uint64(i % active_validator_count), active_validator_count, seed
         )
         candidate_index = active_validator_indices[shuffled_index]
-        random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
+        random_byte = hash(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             sync_committee_indices.append(candidate_index)
@@ -357,7 +357,7 @@ def get_unslashed_participating_indices(
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -554,7 +554,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -563,7 +563,7 @@ def add_validator_to_registry(
     # [New in Altair]
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, uint64(0))
+    set_or_append_list(state.inactivity_scores, index, Uint64(0))
 ```
 
 #### Sync aggregate processing
@@ -751,7 +751,7 @@ def process_slashings(state: BeaconState) -> None:
             validator.slashed
             and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
         ):
-            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid Uint64 overflow
             penalty_numerator = (
                 validator.effective_balance // increment * adjusted_total_slashing_balance
             )
