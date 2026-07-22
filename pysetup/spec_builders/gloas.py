@@ -43,8 +43,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return {
             "ExecutionPayloadHeader",
             "KZGCommitmentsInclusionProof",
+            "OptionalPartialDataColumnHeader",
             "PartialDataColumnHeader",
-            "PartialDataColumnHeaderList",
         }
 
     @classmethod

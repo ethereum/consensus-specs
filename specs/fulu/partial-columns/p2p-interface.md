@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Types](#types)
   - [New `CellsBitlist`](#new-cellsbitlist)
-  - [New `PartialDataColumnHeaderList`](#new-partialdatacolumnheaderlist)
+  - [New `OptionalPartialDataColumnHeader`](#new-optionalpartialdatacolumnheader)
 - [Containers](#containers)
   - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
   - [New `PartialDataColumnPartsMetadata`](#new-partialdatacolumnpartsmetadata)
@@ -52,10 +52,10 @@ class CellsBitlist(Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     pass
 ```
 
-### New `PartialDataColumnHeaderList`
+### New `OptionalPartialDataColumnHeader`
 
 ```python
-class PartialDataColumnHeaderList(List[PartialDataColumnHeader, 1]):
+class OptionalPartialDataColumnHeader(List[PartialDataColumnHeader, 1]):
     pass
 ```
 
@@ -74,7 +74,7 @@ class PartialDataColumnSidecar(Container):
     partial_column: DataColumn
     kzg_proofs: KZGProofs
     # Optional header, only sent on eager pushes
-    header: PartialDataColumnHeaderList
+    header: OptionalPartialDataColumnHeader
 ```
 
 ### New `PartialDataColumnPartsMetadata`
