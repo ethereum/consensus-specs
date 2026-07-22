@@ -306,8 +306,8 @@ class BuilderExitRequest(Container):
 class PayloadAttestationData(Container):
     beacon_block_root: Root
     slot: Slot
-    payload_present: boolean
-    blob_data_available: boolean
+    payload_present: Boolean
+    blob_data_available: Boolean
 ```
 
 #### `PayloadAttestation`

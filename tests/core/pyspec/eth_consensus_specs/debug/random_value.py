@@ -5,7 +5,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
     Bitlist,
     Bitvector,
-    boolean,
+    Boolean,
     ByteList,
     ByteVector,
     CompatibleUnion,
@@ -93,7 +93,7 @@ def get_random_ssz_object(
             return typ(b"\xff" * typ.type_byte_length())
         else:
             return typ(get_random_bytes_list(rng, typ.type_byte_length()))
-    elif issubclass(typ, boolean | uint):
+    elif issubclass(typ, Boolean | uint):
         # Basic types
         if mode == RandomizationMode.mode_zero:
             return get_min_basic_value(typ)
@@ -102,7 +102,7 @@ def get_random_ssz_object(
         else:
             return get_random_basic_value(rng, typ)
     elif issubclass(typ, Vector | Bitvector):
-        elem_type = typ.element_cls() if issubclass(typ, Vector) else boolean
+        elem_type = typ.element_cls() if issubclass(typ, Vector) else Boolean
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.vector_length())
@@ -121,7 +121,7 @@ def get_random_ssz_object(
         elif mode == RandomizationMode.mode_nil_count:
             length = 0
 
-        elem_type = boolean if issubclass(typ, Bitlist | ProgressiveBitlist) else typ.element_cls()
+        elem_type = Boolean if issubclass(typ, Bitlist | ProgressiveBitlist) else typ.element_cls()
         max_list_length = 1 << (max_list_length.bit_length() >> 1)
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
@@ -181,7 +181,7 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
 
 
 def get_random_basic_value(rng: Random, typ) -> BasicView:
-    if issubclass(typ, boolean):
+    if issubclass(typ, Boolean):
         return typ(rng.choice((True, False)))
     elif issubclass(typ, uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
@@ -191,7 +191,7 @@ def get_random_basic_value(rng: Random, typ) -> BasicView:
 
 
 def get_min_basic_value(typ) -> BasicView:
-    if issubclass(typ, boolean):
+    if issubclass(typ, Boolean):
         return typ(False)  # noqa: FBT003
     elif issubclass(typ, uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
@@ -201,7 +201,7 @@ def get_min_basic_value(typ) -> BasicView:
 
 
 def get_max_basic_value(typ) -> BasicView:
-    if issubclass(typ, boolean):
+    if issubclass(typ, Boolean):
         return typ(True)  # noqa: FBT003
     elif issubclass(typ, uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES

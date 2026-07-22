@@ -144,7 +144,7 @@ class PayloadAttributes:
 class LatestMessage:
     slot: Slot
     root: Root
-    payload_present: boolean
+    payload_present: Boolean
 ```
 
 ### Modified `Store`
@@ -163,16 +163,16 @@ class Store:
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     # [Modified in Gloas:EIP7732]
-    block_timeliness: Dict[Root, list[boolean]] = field(default_factory=dict)
+    block_timeliness: Dict[Root, list[Boolean]] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, list[Optional[boolean]]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, list[Optional[boolean]]] = field(
+    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]] = field(
         default_factory=dict
     )
 ```

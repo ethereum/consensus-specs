@@ -1,7 +1,7 @@
 # ruff: noqa: F401
 
 from remerkleable.basic import (
-    boolean,
+    boolean as Boolean,
     byte,
     uint,
     uint8,
