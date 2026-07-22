@@ -188,10 +188,6 @@ same `Withdrawal` container can be used for validators and builders.
 
 ### Withdrawal prefixes
 
-*Note*: `BUILDER_WITHDRAWAL_PREFIX` is a temporary constant which is only used
-to onboard builders at the fork. It will be deprecated after the upgrade and a
-future validator withdrawal prefix may reuse this value.
-
 | Name                        | Value            |
 | --------------------------- | ---------------- |
 | `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |

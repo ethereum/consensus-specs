@@ -93,6 +93,10 @@ calculated based on the current state. When `only_timely` is `True`, only
 `InclusionList`s received in a timely manner on the p2p network are considered;
 otherwise, timeliness is not considered.
 
+*Note*: Inclusion lists MUST be retained for at least
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
+they MAY be pruned.
+
 ```python
 def get_inclusion_list_transactions(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
