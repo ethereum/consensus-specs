@@ -53,15 +53,15 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     # [Modified in Electra:EIP7549]
     aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
@@ -155,9 +155,9 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    if (block.slot, block.proposer_index) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -219,7 +219,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add((block.slot, block.proposer_index))
 ```
 
 ###### Modified `beacon_aggregate_and_proof`
@@ -295,11 +295,11 @@ def validate_beacon_aggregate_and_proof_gossip(
     if is_non_strict_superset(seen_bits, aggregate_bits):
         raise GossipIgnore("already seen aggregate for this data")
 
-    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
+    if (target_epoch, aggregator_index) in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
@@ -350,7 +350,7 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    seen.aggregator_epochs.add((target_epoch, aggregator_index))
     if aggregate_cache_key not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_cache_key] = set()
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
@@ -430,9 +430,9 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attester is not a member of the committee")
 
     # [Modified in Electra:EIP7549]
-    # [IGNORE] No other valid attestation seen for this validator and target epoch
-    if (attester_index, target_epoch) in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation from this validator for this epoch")
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    if (target_epoch, attester_index) in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [Modified in Electra:EIP7549]
     # [REJECT] The attestation signature is valid
@@ -465,7 +465,7 @@ def validate_beacon_attestation_gossip(
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((attester_index, target_epoch))
+    seen.attestation_validator_epochs.add((target_epoch, attester_index))
 ```
 
 ##### Blob subnets

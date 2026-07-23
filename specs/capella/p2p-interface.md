@@ -37,14 +37,14 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Capella]
@@ -134,9 +134,9 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    if (block.slot, block.proposer_index) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -193,7 +193,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add((block.slot, block.proposer_index))
 ```
 
 ###### New `bls_to_execution_change`

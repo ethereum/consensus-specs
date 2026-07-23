@@ -724,7 +724,7 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "already seen valid bid from this builder for this slot"
+    assert reason == "already seen valid bid for this slot and builder"
     messages.append(
         {
             "current_time_ms": int(time_ms),

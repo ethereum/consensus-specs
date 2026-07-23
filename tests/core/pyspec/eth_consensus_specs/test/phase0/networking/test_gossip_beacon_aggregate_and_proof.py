@@ -544,7 +544,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "already seen aggregate from this aggregator for this epoch"
+    assert reason == "already seen aggregate for this epoch and aggregator"
     messages.append(
         {
             "offset_ms": 600,
@@ -927,7 +927,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "already seen aggregate from this aggregator for this epoch"
+    assert reason == "already seen aggregate for this epoch and aggregator"
     messages.append(
         {
             "offset_ms": 600,

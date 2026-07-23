@@ -252,7 +252,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "block is not the first valid block for this proposer and slot"
+    assert reason == "block is not the first valid block for this slot and proposer"
     messages.append(
         {
             "offset_ms": 600,

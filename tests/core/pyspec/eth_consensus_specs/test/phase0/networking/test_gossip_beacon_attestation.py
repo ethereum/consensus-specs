@@ -828,7 +828,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         **kwargs,
     )
     assert result == "ignore"
-    assert reason == "already seen attestation from this validator for this epoch"
+    assert reason == "already seen attestation for this epoch and validator"
     messages.append(
         {
             "subnet_id": int(subnet_id),

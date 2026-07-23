@@ -137,14 +137,14 @@ class SignedProposerPreferences(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
@@ -159,7 +159,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: Set[Tuple[BuilderIndex, Slot]]
+    execution_payload_bids: Set[Tuple[Slot, BuilderIndex]]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -366,9 +366,66 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    if (block.slot, block.proposer_index) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The proposer slashing count is within the limit
+    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attester slashing count is within the limit
+    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attestation count is within the limit
+    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The block contains no deposits
+    if len(block.body.deposits) != 0:
+        raise GossipReject("block must not contain deposits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The voluntary exit count is within the limit
+    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The payload attestation count is within the limit
+    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+
+    parent_requests = block.body.parent_execution_requests
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent withdrawal request count is within the limit
+    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent withdrawal requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent consolidation request count is within the limit
+    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent consolidation requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder deposit request count is within the limit
+    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder exit request count is within the limit
+    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder exit requests")
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -409,63 +466,6 @@ def validate_beacon_block_gossip(
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
-    parent_requests = block.body.parent_execution_requests
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent withdrawal request count is within the limit
-    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent withdrawal requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent consolidation request count is within the limit
-    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent consolidation requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder deposit request count is within the limit
-    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder deposit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder exit request count is within the limit
-    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder exit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The proposer slashing count is within the limit
-    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
-        raise GossipReject("too many proposer slashings")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The attester slashing count is within the limit
-    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
-        raise GossipReject("too many attester slashings")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The attestation count is within the limit
-    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
-        raise GossipReject("too many attestations")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The block contains no deposits
-    if len(block.body.deposits) != 0:
-        raise GossipReject("block must not contain deposits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The voluntary exit count is within the limit
-    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
-        raise GossipReject("too many voluntary exits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The BLS to execution change count is within the limit
-    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
-        raise GossipReject("too many bls to execution changes")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The payload attestation count is within the limit
-    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
-        raise GossipReject("too many payload attestations")
-
     # [Modified in Gloas:EIP7732]
     # [REJECT] The bid's parent equals the block's parent
     if bid.parent_block_root != block.parent_root:
@@ -489,7 +489,7 @@ def validate_beacon_block_gossip(
             raise GossipReject("bid does not build on the parent's execution head")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add((block.slot, block.proposer_index))
 ```
 
 ###### Modified `beacon_aggregate_and_proof`
@@ -566,11 +566,11 @@ def validate_beacon_aggregate_and_proof_gossip(
     if is_non_strict_superset(seen_bits, aggregate_bits):
         raise GossipIgnore("already seen aggregate for this data")
 
-    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
+    if (target_epoch, aggregator_index) in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
@@ -647,7 +647,7 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    seen.aggregator_epochs.add((target_epoch, aggregator_index))
     if aggregate_cache_key not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_cache_key] = set()
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
@@ -834,10 +834,10 @@ def validate_execution_payload_bid_gossip(
     if not is_current_or_next_slot(state, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
 
-    # [IGNORE] This is the first bid from this builder for this slot
-    bid_key = (bid.builder_index, bid.slot)
+    # [IGNORE] This is the first bid for this slot and builder
+    bid_key = (bid.slot, bid.builder_index)
     if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid from this builder for this slot")
+        raise GossipIgnore("already seen valid bid for this slot and builder")
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
@@ -1077,9 +1077,9 @@ def validate_beacon_attestation_gossip(
     if attester_index not in committee:
         raise GossipReject("attester is not a member of the committee")
 
-    # [IGNORE] No other valid attestation seen for this validator and target epoch
-    if (attester_index, target_epoch) in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation from this validator for this epoch")
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    if (target_epoch, attester_index) in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]
@@ -1137,7 +1137,7 @@ def validate_beacon_attestation_gossip(
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((attester_index, target_epoch))
+    seen.attestation_validator_epochs.add((target_epoch, attester_index))
 ```
 
 ##### Blob subnets
