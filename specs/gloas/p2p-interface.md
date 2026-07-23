@@ -709,7 +709,7 @@ def validate_execution_payload_envelope_gossip(
 
     # [REJECT] The envelope's execution requests root matches the bid's execution requests root
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
-        raise GossipReject("envelope's execution requests root does not match the bid")
+        raise GossipReject("envelope's execution requests root does not match the bid's")
 
     execution_requests = envelope.execution_requests
 

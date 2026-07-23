@@ -466,7 +466,7 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
         spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
-    assert reason == "envelope's execution requests root does not match the bid"
+    assert reason == "envelope's execution requests root does not match the bid's"
     messages.append(
         {
             "current_time_ms": int(time_ms),
