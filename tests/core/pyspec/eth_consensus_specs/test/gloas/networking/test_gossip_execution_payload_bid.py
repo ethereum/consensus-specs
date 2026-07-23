@@ -272,7 +272,7 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid slot is not the current or next slot"
+    assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -340,7 +340,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid slot is not the current or next slot"
+    assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -627,7 +627,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid slot is not the current or next slot"
+    assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -2074,7 +2074,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid gas limit is not compatible with the proposer's target"
+    assert reason == "bid's gas limit is not compatible with the proposer's target"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -2473,7 +2473,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_increase_exceeding_limit
         bid_gas_limit=60_058_593,
         target_gas_limit=100_000_000,
         expected_result="ignore",
-        expected_reason="bid gas limit is not compatible with the proposer's target",
+        expected_reason="bid's gas limit is not compatible with the proposer's target",
     )
 
 
@@ -2520,7 +2520,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_decrease_exceeding_limit
         bid_gas_limit=59_941_407,
         target_gas_limit=30_000_000,
         expected_result="ignore",
-        expected_reason="bid gas limit is not compatible with the proposer's target",
+        expected_reason="bid's gas limit is not compatible with the proposer's target",
     )
 
 

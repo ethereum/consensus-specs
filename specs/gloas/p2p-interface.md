@@ -398,10 +398,9 @@ def validate_beacon_block_gossip(
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [Modified in Gloas:EIP7732]
@@ -481,7 +480,7 @@ def validate_beacon_block_gossip(
     process_slots(parent_state, block.slot)
     expected_proposer = get_beacon_proposer_index(parent_state)
     if block.proposer_index != expected_proposer:
-        raise GossipReject("block proposer does not match the expected proposer")
+        raise GossipReject("block proposer_index does not match expected proposer")
 
     # [New in Gloas:EIP7732]
     # [REJECT] If the parent is not full, the bid builds on the parent's execution head
@@ -833,7 +832,7 @@ def validate_execution_payload_bid_gossip(
 
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(state, bid.slot, current_time_ms):
-        raise GossipIgnore("bid slot is not the current or next slot")
+        raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [IGNORE] This is the first bid from this builder for this slot
     bid_key = (bid.builder_index, bid.slot)
@@ -889,7 +888,7 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_hash not in seen.execution_payloads:
         raise GossipIgnore("bid's parent block hash is not a known execution payload")
 
-    # [IGNORE] The bid's parent block state has been seen
+    # [IGNORE] The bid's parent block state passes validation
     if bid.parent_block_root not in store.block_states:
         raise GossipIgnore("bid's parent block state is unavailable")
 
@@ -906,7 +905,6 @@ def validate_execution_payload_bid_gossip(
 
     proposer_preferences = seen.proposer_preferences[prefs_key]
 
-    # [Modified in Gloas:EIP7732]
     # [IGNORE] The bid's fee recipient matches the proposer's preference
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
@@ -916,7 +914,7 @@ def validate_execution_payload_bid_gossip(
     if not is_gas_limit_target_compatible(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
-        raise GossipIgnore("bid gas limit is not compatible with the proposer's target")
+        raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
     # [REJECT] The bid's previous randao is correct
     if bid.prev_randao != get_randao_mix(parent_state, get_current_epoch(parent_state)):
@@ -1092,15 +1090,15 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    beacon_block_root = data.beacon_block_root
-    if beacon_block_root not in store.blocks:
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
-    block = store.blocks[beacon_block_root]
+    block = store.blocks[block_root]
 
     # [New in Gloas:EIP7732]
     # [REJECT] For same-slot attestations, the payload cannot yet be present
@@ -1113,12 +1111,12 @@ def validate_beacon_attestation_gossip(
         # (MAY queue attestations for processing once the payload is retrieved and
         # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
         # using data.beacon_block_root)
-        if not is_payload_verified(store, beacon_block_root):
+        if not is_payload_verified(store, block_root):
             raise GossipIgnore("execution payload envelope has not been seen")
 
         # [New in Gloas:EIP7732]
         # [IGNORE] The corresponding execution payload has been validated
-        payload_status = block_payload_statuses.get(beacon_block_root)
+        payload_status = block_payload_statuses.get(block_root)
         if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
             raise GossipIgnore("execution payload pending EL validation")
 
@@ -1128,14 +1126,13 @@ def validate_beacon_attestation_gossip(
             raise GossipReject("execution payload failed EL validation")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
-    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The current finalized checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
