@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
     upgrade_attester_slashing_to_new_spec,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
@@ -386,7 +387,7 @@ def run_transition_with_operation(
     elif operation_type == OperationType.DEPOSIT:
         # create a new deposit
         selected_validator_index = len(state.validators)
-        amount = spec.MAX_EFFECTIVE_BALANCE
+        amount = get_min_activation_balance(spec)
         deposit = prepare_state_and_deposit(
             spec, state, selected_validator_index, amount, signed=True
         )

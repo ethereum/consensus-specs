@@ -5,13 +5,12 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_full_genesis_deposits,
 )
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_altair,
-)
+from eth_consensus_specs.test.helpers.forks import is_post_altair
 
 
 def get_post_altair_description(spec):
@@ -22,7 +21,7 @@ def create_valid_beacon_state(spec):
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
-        amount=spec.MAX_EFFECTIVE_BALANCE,
+        amount=get_min_activation_balance(spec),
         deposit_count=deposit_count,
         signed=True,
     )
@@ -80,7 +79,7 @@ def test_extra_balance(spec):
         yield "description", "meta", get_post_altair_description(spec)
 
     state = create_valid_beacon_state(spec)
-    state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE + 1
+    state.validators[0].effective_balance = get_min_activation_balance(spec) + 1
 
     yield from run_is_valid_genesis_state(spec, state)
 
@@ -96,7 +95,7 @@ def test_one_more_validator(spec):
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
-        amount=spec.MAX_EFFECTIVE_BALANCE,
+        amount=get_min_activation_balance(spec),
         deposit_count=deposit_count,
         signed=True,
     )
@@ -119,7 +118,7 @@ def test_invalid_not_enough_validator_count(spec):
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     deposits, _, _ = prepare_full_genesis_deposits(
         spec,
-        amount=spec.MAX_EFFECTIVE_BALANCE,
+        amount=get_min_activation_balance(spec),
         deposit_count=deposit_count,
         signed=True,
     )

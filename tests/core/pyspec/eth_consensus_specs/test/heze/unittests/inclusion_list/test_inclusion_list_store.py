@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_heze_and_later,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth_consensus_specs.test.helpers.inclusion_list import (
     get_empty_signed_inclusion_list,
@@ -253,7 +254,7 @@ def test_inclusion_list_store_equivocation(spec, state):
 @with_heze_and_later
 @spec_test
 @with_custom_state(
-    balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * 2,
+    balances_fn=lambda spec: [get_min_activation_balance(spec)] * spec.SLOTS_PER_EPOCH * 2,
     threshold_fn=default_activation_threshold,
 )
 @single_phase

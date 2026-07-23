@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_heze_and_later,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.inclusion_list import get_empty_inclusion_list
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.phase0.unittests.validator.test_validator_unittest import (
@@ -17,7 +18,11 @@ from eth_consensus_specs.test.phase0.unittests.validator.test_validator_unittest
 
 
 def inclusion_committee_balances(spec):
-    return [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * spec.INCLUSION_LIST_COMMITTEE_SIZE
+    return (
+        [get_min_activation_balance(spec)]
+        * spec.SLOTS_PER_EPOCH
+        * spec.INCLUSION_LIST_COMMITTEE_SIZE
+    )
 
 
 def run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True):

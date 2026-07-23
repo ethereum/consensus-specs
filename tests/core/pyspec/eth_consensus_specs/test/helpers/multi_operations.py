@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_max_attester_slashings,
     get_valid_attester_slashing_by_indices,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -149,7 +150,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
             deposit_data_leaves,
             pubkeys[index],
             privkeys[index],
-            spec.MAX_EFFECTIVE_BALANCE,
+            get_min_activation_balance(spec),
             withdrawal_credentials=withdrawal_credentials,
             signed=True,
         )

@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
     sign_attestation,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -48,7 +49,7 @@ def large_validator_balances(spec):
     so that there's a chance of non-aggregators (modulo >= 2).
     """
     num_validators = 32 * spec.SLOTS_PER_EPOCH
-    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+    return [get_min_activation_balance(spec)] * num_validators
 
 
 def create_signed_aggregate_and_proof(spec, state, attestation, aggregator_index=None):

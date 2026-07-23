@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import always_bls, spec_state_test, with_all_phases_from_to
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
 from eth_consensus_specs.test.helpers.deposits import (
     build_deposit,
@@ -17,7 +18,7 @@ def test_new_deposit_under_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
-    amount = spec.MAX_EFFECTIVE_BALANCE - 1
+    amount = get_min_activation_balance(spec) - 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
@@ -29,7 +30,7 @@ def test_new_deposit_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # effective balance will be exactly the same as balance.
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
@@ -41,7 +42,7 @@ def test_new_deposit_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # just 1 over the limit, effective balance should be set MAX_EFFECTIVE_BALANCE during processing
-    amount = spec.MAX_EFFECTIVE_BALANCE + 1
+    amount = get_min_activation_balance(spec) + 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
@@ -57,7 +58,7 @@ def test_new_deposit_eth1_withdrawal_credentials(spec, state):
         + b"\x00" * 11  # specified 0s
         + b"\x59" * 20  # a 20-byte eth1 address
     )
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(
         spec,
         state,
@@ -78,7 +79,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     withdrawal_credentials = (
         b"\xff" + b"\x02" * 31  # Non specified withdrawal credentials version  # Garbage bytes
     )
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(
         spec,
         state,
@@ -96,7 +97,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 @always_bls
 def test_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     # deposits will always be valid, regardless of the current fork
     state.fork.current_version = spec.Version("0x1234abcd")
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
@@ -109,7 +110,7 @@ def test_correct_sig_but_forked_state(spec, state):
 def test_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
     yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
 
@@ -118,28 +119,30 @@ def test_incorrect_sig_new_deposit(spec, state):
 @spec_state_test
 def test_top_up__max_effective_balance(spec, state):
     validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
-    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    state.balances[validator_index] = get_min_activation_balance(spec)
+    state.validators[validator_index].effective_balance = get_min_activation_balance(spec)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     if not is_post_electra(spec):
-        assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
-        assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+        assert state.balances[validator_index] == get_min_activation_balance(spec) + amount
+        assert state.validators[validator_index].effective_balance == get_min_activation_balance(
+            spec
+        )
 
 
 @with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_top_up__less_effective_balance(spec, state):
     validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
-    initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+    initial_balance = get_min_activation_balance(spec) - 1000
+    initial_effective_balance = get_min_activation_balance(spec) - spec.EFFECTIVE_BALANCE_INCREMENT
     state.balances[validator_index] = initial_balance
     state.validators[validator_index].effective_balance = initial_effective_balance
 
@@ -155,7 +158,7 @@ def test_top_up__less_effective_balance(spec, state):
 @spec_state_test
 def test_top_up__zero_balance(spec, state):
     validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     initial_balance = 0
@@ -176,7 +179,7 @@ def test_top_up__zero_balance(spec, state):
 @always_bls
 def test_incorrect_sig_top_up(spec, state):
     validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
@@ -187,7 +190,7 @@ def test_incorrect_sig_top_up(spec, state):
 @spec_state_test
 def test_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
     deposit = prepare_state_and_deposit(
         spec, state, validator_index, amount, withdrawal_credentials=withdrawal_credentials
@@ -211,7 +214,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
         deposit_data_leaves,
         pubkey_1,
         privkey_1,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
         withdrawal_credentials=b"\x00" * 32,
         signed=True,
     )
@@ -226,7 +229,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
         deposit_data_leaves,
         pubkey_2,
         privkey_2,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
         withdrawal_credentials=b"\x00" * 32,
         signed=True,
     )
@@ -242,7 +245,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
 @spec_state_test
 def test_invalid_bad_merkle_proof(spec, state):
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # mess up merkle branch
@@ -257,7 +260,7 @@ def test_invalid_bad_merkle_proof(spec, state):
 @spec_state_test
 def test_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
 
     # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
     pubkey = b"\x00" * 48
@@ -273,7 +276,7 @@ def test_key_validate_invalid_subgroup(spec, state):
 @spec_state_test
 def test_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
 
     # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
     # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.

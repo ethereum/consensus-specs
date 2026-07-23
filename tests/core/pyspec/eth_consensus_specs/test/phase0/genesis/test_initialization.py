@@ -5,15 +5,13 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_full_genesis_deposits,
     prepare_random_genesis_deposits,
 )
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_altair,
-    is_post_electra,
-)
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra
 
 
 def get_post_altair_description(spec):
@@ -41,7 +39,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     deposits, deposit_root, _ = prepare_full_genesis_deposits(
         spec,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
         deposit_count,
         signed=True,
     )
@@ -60,7 +58,7 @@ def test_initialize_beacon_state_from_eth1(spec):
     assert state.eth1_data.deposit_root == deposit_root
     assert state.eth1_data.deposit_count == deposit_count
     assert state.eth1_data.block_hash == eth1_block_hash
-    assert spec.get_total_active_balance(state) == deposit_count * spec.MAX_EFFECTIVE_BALANCE
+    assert spec.get_total_active_balance(state) == deposit_count * get_min_activation_balance(spec)
 
     # yield state
     yield "state", state
@@ -77,7 +75,7 @@ def test_initialize_beacon_state_some_small_balances(spec):
     if is_post_electra(spec):
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     else:
-        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
+        max_effective_balance = get_min_activation_balance(spec)
 
     main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
@@ -114,7 +112,9 @@ def test_initialize_beacon_state_some_small_balances(spec):
     # only main deposits participate to the active balance
     # NOTE: they are pre-ELECTRA deposits with BLS_WITHDRAWAL_PREFIX,
     # so `MAX_EFFECTIVE_BALANCE` is used
-    assert spec.get_total_active_balance(state) == main_deposit_count * spec.MAX_EFFECTIVE_BALANCE
+    assert spec.get_total_active_balance(state) == main_deposit_count * get_min_activation_balance(
+        spec
+    )
 
     # yield state
     yield "state", state
@@ -132,7 +132,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     main_deposit_count = spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     main_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
         deposit_count=main_deposit_count,
         signed=True,
     )
@@ -140,7 +140,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
     # Submit last pubkey deposit as MAX_EFFECTIVE_BALANCE - MIN_DEPOSIT_AMOUNT
     partial_deposits, _, deposit_data_list = prepare_full_genesis_deposits(
         spec,
-        spec.MAX_EFFECTIVE_BALANCE - spec.MIN_DEPOSIT_AMOUNT,
+        get_min_activation_balance(spec) - spec.MIN_DEPOSIT_AMOUNT,
         deposit_count=1,
         min_pubkey_index=main_deposit_count,
         signed=True,
@@ -219,7 +219,7 @@ def test_initialize_beacon_state_random_valid_genesis(spec):
     # Then make spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT full deposits
     full_deposits, _, _ = prepare_full_genesis_deposits(
         spec,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
         deposit_count=spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT,
         signed=True,
         deposit_data_list=deposit_data_list,

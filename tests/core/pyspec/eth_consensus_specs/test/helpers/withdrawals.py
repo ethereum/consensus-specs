@@ -1,5 +1,6 @@
 import pytest
 
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.forks import (
     is_post_eip8148,
     is_post_electra,
@@ -48,13 +49,13 @@ def set_eth1_withdrawal_credential_with_balance(
     spec, state, index, effective_balance=None, balance=None, address=None
 ):
     if balance is None and effective_balance is None:
-        balance = spec.MAX_EFFECTIVE_BALANCE
-        effective_balance = spec.MAX_EFFECTIVE_BALANCE
+        balance = get_min_activation_balance(spec)
+        effective_balance = get_min_activation_balance(spec)
     elif balance is None:
         balance = effective_balance
     elif effective_balance is None:
         effective_balance = min(
-            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, get_min_activation_balance(spec)
         )
 
     if address is None:
@@ -76,8 +77,8 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
             spec,
             state,
             index,
-            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
-            balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance,
+            effective_balance=get_min_activation_balance(spec),
+            balance=get_min_activation_balance(spec) + excess_balance,
         )
 
     assert check_is_partially_withdrawable_validator(spec, state, index)
