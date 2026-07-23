@@ -1190,7 +1190,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     """
     # Mark builder 0 as a non-payload-version builder.
     builder_index = spec.BuilderIndex(0)
-    state.builders[builder_index].version = spec.uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
+    state.builders[builder_index].version = spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
     assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
