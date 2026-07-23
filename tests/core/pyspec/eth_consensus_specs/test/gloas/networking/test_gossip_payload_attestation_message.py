@@ -142,7 +142,7 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation message slot is not the current slot"
+    assert reason == "payload attestation's slot is not the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -243,7 +243,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation message slot is not the current slot"
+    assert reason == "payload attestation's slot is not the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -345,7 +345,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation message slot is not the current slot"
+    assert reason == "payload attestation's slot is not the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -412,7 +412,7 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "already seen payload attestation message from this validator"
+    assert reason == "already seen payload attestation from this validator"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -461,7 +461,7 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "message's block has not been seen"
+    assert reason == "payload attestation's block has not been seen"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -555,7 +555,7 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
         current_time_ms=time_ms,
     )
     assert result == "reject"
-    assert reason == "invalid payload attestation message signature"
+    assert reason == "invalid payload attestation signature"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -611,7 +611,7 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
         current_time_ms=time_ms,
     )
     assert result == "reject"
-    assert reason == "message's block failed validation"
+    assert reason == "payload attestation's block failed validation"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -721,7 +721,7 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "message's block is not at the assigned slot"
+    assert reason == "payload attestation's block is not at the assigned slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),

@@ -678,6 +678,10 @@ def validate_execution_payload_envelope_gossip(
     if block_root not in store.blocks:
         raise GossipIgnore("envelope's block has not been seen")
 
+    # [REJECT] The envelope's block passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("envelope's block failed validation")
+
     # [IGNORE] The node has not seen another valid envelope for this block root from this builder
     envelope_key = (block_root, envelope.builder_index)
     if envelope_key in seen.execution_payload_envelopes:
@@ -687,10 +691,6 @@ def validate_execution_payload_envelope_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if payload.slot_number < finalized_slot:
         raise GossipIgnore("envelope is from a slot before the latest finalized slot")
-
-    # [REJECT] The envelope's block passes validation
-    if block_root not in store.block_states:
-        raise GossipReject("envelope's block failed validation")
 
     block = store.blocks[block_root]
     bid = block.body.signed_execution_payload_bid.message
@@ -766,33 +766,33 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
-    # [IGNORE] The message's slot is the current slot
+    # [IGNORE] The payload attestation's slot is the current slot
     if not is_current_slot(state, data.slot, current_time_ms):
-        raise GossipIgnore("payload attestation message slot is not the current slot")
+        raise GossipIgnore("payload attestation's slot is not the current slot")
 
-    # [IGNORE] The message is the first valid message from this validator index
+    # [IGNORE] This is the first valid payload attestation from this validator index
     seen_key = (data.slot, validator_index)
     if seen_key in seen.payload_attestation_validators:
-        raise GossipIgnore("already seen payload attestation message from this validator")
+        raise GossipIgnore("already seen payload attestation from this validator")
 
-    # [IGNORE] The message's block has been seen (via gossip or non-gossip sources)
+    # [IGNORE] The payload attestation's block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     if data.beacon_block_root not in store.blocks:
-        raise GossipIgnore("message's block has not been seen")
+        raise GossipIgnore("payload attestation's block has not been seen")
 
-    # [REJECT] The message's block passes validation
+    # [REJECT] The payload attestation's block passes validation
     if data.beacon_block_root not in store.block_states:
-        raise GossipReject("message's block failed validation")
+        raise GossipReject("payload attestation's block failed validation")
 
-    # [IGNORE] The message's block is at the assigned slot
+    # [IGNORE] The payload attestation's block is at the assigned slot
     if store.blocks[data.beacon_block_root].slot != data.slot:
-        raise GossipIgnore("message's block is not at the assigned slot")
+        raise GossipIgnore("payload attestation's block is not at the assigned slot")
 
     # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
 
-    # [REJECT] The validator is a member of the payload committee
+    # [REJECT] The validator is a member of the payload timeliness committee
     if validator_index not in get_ptc(state, data.slot):
         raise GossipReject("validator is not in the payload timeliness committee")
 
@@ -801,9 +801,9 @@ def validate_payload_attestation_message_gossip(
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     if not bls.Verify(validator.pubkey, signing_root, payload_attestation_message.signature):
-        raise GossipReject("invalid payload attestation message signature")
+        raise GossipReject("invalid payload attestation signature")
 
-    # Mark this message as seen
+    # Mark this payload_attestation as seen
     seen.payload_attestation_validators.add(seen_key)
 ```
 
