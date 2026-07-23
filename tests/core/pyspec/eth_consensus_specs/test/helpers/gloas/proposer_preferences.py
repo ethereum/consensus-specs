@@ -39,7 +39,7 @@ def build_signed_proposer_preferences(
         fee_recipient = spec.ExecutionAddress(b"\x11" * 20)
 
     if target_gas_limit is None:
-        target_gas_limit = spec.uint64(30_000_000)
+        target_gas_limit = spec.Uint64(30_000_000)
 
     preferences = spec.ProposerPreferences(
         dependent_root=dependent_root,

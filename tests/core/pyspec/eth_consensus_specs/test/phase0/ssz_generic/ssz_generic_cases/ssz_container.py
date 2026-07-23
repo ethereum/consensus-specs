@@ -7,16 +7,16 @@ from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
-    byte,
+    Byte,
     ByteList,
     Container,
     List,
     ProgressiveBitlist,
     ProgressiveList,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
     Vector,
     View,
 )
@@ -25,30 +25,30 @@ from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 class SingleFieldTestStruct(Container):
-    A: byte
+    A: Byte
 
 
 class SmallTestStruct(Container):
-    A: uint16
-    B: uint16
+    A: Uint16
+    B: Uint16
 
 
 class FixedTestStruct(Container):
-    A: uint8
-    B: uint64
-    C: uint32
+    A: Uint8
+    B: Uint64
+    C: Uint32
 
 
 class VarTestStruct(Container):
-    A: uint16
-    B: List[uint16, 1024]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 1024]
+    C: Uint8
 
 
 class ComplexTestStruct(Container):
-    A: uint16
-    B: List[uint16, 128]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 128]
+    C: Uint8
     D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
@@ -56,8 +56,8 @@ class ComplexTestStruct(Container):
 
 
 class ProgressiveTestStruct(Container):
-    A: ProgressiveList[byte]
-    B: ProgressiveList[uint64]
+    A: ProgressiveList[Byte]
+    B: ProgressiveList[Uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]
 

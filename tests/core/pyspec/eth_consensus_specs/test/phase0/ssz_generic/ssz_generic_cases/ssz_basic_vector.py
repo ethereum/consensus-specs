@@ -4,13 +4,13 @@ from eth_consensus_specs.debug.random_value import get_random_ssz_object, Random
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    boolean,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
-    uint128,
-    uint256,
+    Boolean,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Uint128,
+    Uint256,
     Vector,
 )
 
@@ -32,13 +32,13 @@ def basic_vector_case_fn(
 
 
 BASIC_TYPES: dict[str, type[BasicView]] = {
-    "bool": boolean,
-    "uint8": uint8,
-    "uint16": uint16,
-    "uint32": uint32,
-    "uint64": uint64,
-    "uint128": uint128,
-    "uint256": uint256,
+    "bool": Boolean,
+    "uint8": Uint8,
+    "uint16": Uint16,
+    "uint32": Uint32,
+    "uint64": Uint64,
+    "uint128": Uint128,
+    "uint256": Uint256,
 }
 
 
@@ -130,7 +130,7 @@ def invalid_cases():
                         Vector[typ, length],
                         lambda rng, mode=mode, typ=typ, length=length: (
                             serialize(basic_vector_case_fn(rng, mode, typ, length))
-                            + serialize(basic_vector_case_fn(rng, mode, uint8, 1))
+                            + serialize(basic_vector_case_fn(rng, mode, Uint8, 1))
                         ),
                         rng,
                     ),

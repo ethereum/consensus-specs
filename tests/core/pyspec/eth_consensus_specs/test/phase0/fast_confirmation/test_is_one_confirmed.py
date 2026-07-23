@@ -1263,6 +1263,89 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=default_balances,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_is_one_confirmed_passes_with_new_validator_activated_in_head_state(spec, state):
+    """
+    1. Deposit a new validator with enough balance to affect total balance significantly.
+    2. Move to the activationn epoch, validator is not yet active in the balance source,
+       but already active in the head state.
+    3. Check that is_one_confirmed passes, even though it would not pass with the safety threshold
+       computed over the head state because the total balance has significantly shifted.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    # Move to Epoch 2 Slot 1
+    while fcr.current_slot() < 2 * spec.SLOTS_PER_EPOCH + 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Create a block with a large validator deposit
+    new_val_index = len(state.validators)
+    new_val_balance = 8 * spec.MIN_ACTIVATION_BALANCE
+    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    deposit = prepare_deposit_request(
+        spec,
+        new_val_index,
+        new_val_balance,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+    fcr.add_and_apply_block(deposit_requests=[deposit])
+    fcr.attest()
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Wait for a new validator to get onboarded
+    while fcr.current_slot() < 10 * spec.SLOTS_PER_EPOCH:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert len(store.block_states[fcr.head_root()].validators) > new_val_index
+
+    # Run to the activation epoch
+    while (
+        fcr.current_epoch()
+        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+    ):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Propose and attest with all validators
+    b_root = fcr.add_and_apply_block()
+    fcr.attest(participation_rate=100)
+    fcr.next_slot()
+
+    # Check precondition
+    balance_source = spec.get_current_balance_source(fcr_store)
+    head_state = spec.get_pulled_up_head_state(store)
+    # New validator is not yet active in the balance source
+    assert not spec.is_active_validator(
+        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+    )
+    # But it is already active in the head state
+    assert spec.is_active_validator(
+        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+    )
+    # Compute support with the balance_source
+    support = spec.get_attestation_score(store, spec.get_node_for_root(b_root), balance_source)
+    # Block must be confirmed with a threshold computed over the balance_source
+    assert support > spec.compute_safety_threshold(store, b_root, balance_source)
+    # Block must not be confirmed with a threshold computed over the head_state
+    assert support <= spec.compute_safety_threshold(store, b_root, head_state)
+
+    # The block must be confirmed
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == b_root
+
+    yield from fcr.get_test_artefacts()
+
+
 _consecutive_slots_val_idx = 35
 
 

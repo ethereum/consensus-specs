@@ -2050,7 +2050,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     )
 
     # Pick a gas_limit far outside the EIP-1559 step from parent.
-    incompatible_gas_limit = spec.uint64(int(parent_gas_limit) + 1_000_000)
+    incompatible_gas_limit = spec.Uint64(int(parent_gas_limit) + 1_000_000)
     signed_bid = build_signed_bid(
         spec,
         state,
@@ -2331,7 +2331,7 @@ def _run_bid_gas_limit_scenario(
     parent_signed_block = blocks[-1]
     # Override the parent's bid gas_limit so the envelope's payload.gas_limit
     # (which gets seeded into seen.execution_payloads) equals our target value.
-    state.latest_execution_payload_bid.gas_limit = spec.uint64(parent_gas_limit)
+    state.latest_execution_payload_bid.gas_limit = spec.Uint64(parent_gas_limit)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
@@ -2352,7 +2352,7 @@ def _run_bid_gas_limit_scenario(
         proposal_slot=proposal_slot,
         validator_index=validator_index,
         fee_recipient=common_fee,
-        target_gas_limit=spec.uint64(target_gas_limit),
+        target_gas_limit=spec.Uint64(target_gas_limit),
     )
     yield get_filename(signed_prefs), signed_prefs
     result, reason = run_validate_gossip(
@@ -2401,7 +2401,7 @@ def _run_bid_gas_limit_scenario(
         parent_block_hash=signed_envelope.message.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
-        gas_limit=spec.uint64(bid_gas_limit),
+        gas_limit=spec.Uint64(bid_gas_limit),
         value=spec.Gwei(1),
     )
     yield get_filename(signed_bid), signed_bid

@@ -1,16 +1,15 @@
 # ruff: noqa: F401
 
 from remerkleable.basic import (
-    bit,
-    boolean,
-    byte,
-    uint,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
-    uint128,
-    uint256,
+    boolean as Boolean,
+    byte as Byte,
+    uint as Uint,
+    uint8 as Uint8,
+    uint16 as Uint16,
+    uint32 as Uint32,
+    uint64 as Uint64,
+    uint128 as Uint128,
+    uint256 as Uint256,
 )
 from remerkleable.bitfields import Bitlist, Bitvector
 from remerkleable.byte_arrays import (

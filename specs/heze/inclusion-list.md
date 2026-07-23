@@ -33,7 +33,7 @@ class InclusionListStore:
     inclusion_lists: DefaultDict[Root, Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
-    inclusion_list_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    inclusion_list_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
     equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
         default_factory=lambda: defaultdict(set)
     )
@@ -94,7 +94,8 @@ calculated based on the current state. When `only_timely` is `True`, only
 otherwise, timeliness is not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
-`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots, after which they MAY be pruned.
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
+they MAY be pruned.
 
 ```python
 def get_inclusion_list_transactions(

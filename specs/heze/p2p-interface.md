@@ -39,15 +39,15 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB) |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8348)` (= ~8 KiB)     |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
 
 ### Configuration
 
 | Name                                     | Value             | Description                                                     |
 | ---------------------------------------- | ----------------- | --------------------------------------------------------------- |
 | `MAX_REQUEST_INCLUSION_LIST`             | `2**4` (= 16)     | Maximum number of inclusion lists in a single request           |
-| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `2`               | Minimum slot range over which a node must serve inclusion lists |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `1`               | Minimum slot range over which a node must serve inclusion lists |
 | `MAX_BYTES_PER_INCLUSION_LIST`           | `2**13` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
 
 ### Helpers

@@ -183,7 +183,7 @@ def build_signed_bid(
         fee_recipient=fee_recipient
         if fee_recipient is not None
         else spec.ExecutionAddress(b"\x11" * 20),
-        gas_limit=gas_limit if gas_limit is not None else spec.uint64(30_000_000),
+        gas_limit=gas_limit if gas_limit is not None else spec.Uint64(30_000_000),
         builder_index=builder_index,
         slot=slot,
         value=value if value is not None else spec.Gwei(0),

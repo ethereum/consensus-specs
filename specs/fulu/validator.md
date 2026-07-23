@@ -79,7 +79,7 @@ object.
 @dataclass
 class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     # [Modified in Fulu:EIP7594]
     blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
@@ -97,7 +97,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
 ```
 
@@ -121,7 +121,7 @@ of `NUMBER_OF_CUSTODY_GROUPS`.
 ```python
 def get_validators_custody_requirement(
     state: BeaconState, validator_indices: Sequence[ValidatorIndex]
-) -> uint64:
+) -> Uint64:
     total_node_balance = sum(
         state.validators[index].effective_balance for index in validator_indices
     )

@@ -66,10 +66,10 @@ libp2p messages.
 
 | Name                                    | Value                         |
 | --------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `uint64(16829)` (= ~16 KiB)   |
-| `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
-| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
+| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
 ### Configuration
 
@@ -117,7 +117,7 @@ class ProposerPreferences(Container):
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
-    target_gas_limit: uint64
+    target_gas_limit: Uint64
 ```
 
 #### New `SignedProposerPreferences`
@@ -139,14 +139,14 @@ class SignedProposerPreferences(Container):
 class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Gloas:EIP7732]
     data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
@@ -252,7 +252,7 @@ def verify_data_column_sidecar(
 def is_current_or_next_slot(
     state: BeaconState,
     slot: Slot,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given slot is the current slot or the next slot
@@ -267,7 +267,7 @@ def is_current_or_next_slot(
 
 ```python
 def is_gas_limit_target_compatible(
-    parent_gas_limit: uint64, gas_limit: uint64, target_gas_limit: uint64
+    parent_gas_limit: Uint64, gas_limit: Uint64, target_gas_limit: Uint64
 ) -> bool:
     """
     Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
@@ -343,7 +343,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     # [Modified in Gloas:EIP7732]
     # Removed `block_payload_statuses`
 ) -> None:
@@ -507,7 +507,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     # [New in Gloas:EIP7732]
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
@@ -758,7 +758,7 @@ def validate_payload_attestation_message_gossip(
     store: Store,
     state: BeaconState,
     payload_attestation_message: PayloadAttestationMessage,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a PayloadAttestationMessage for gossip propagation.
@@ -823,7 +823,7 @@ def validate_execution_payload_bid_gossip(
     store: Store,
     state: BeaconState,
     signed_execution_payload_bid: SignedExecutionPayloadBid,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedExecutionPayloadBid for gossip propagation.
@@ -953,7 +953,7 @@ def validate_proposer_preferences_gossip(
     store: Store,
     state: BeaconState,
     signed_proposer_preferences: SignedProposerPreferences,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedProposerPreferences for gossip propagation.
@@ -1029,7 +1029,7 @@ def validate_beacon_attestation_gossip(
     store: Store,
     state: BeaconState,
     attestation: SingleAttestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
     # [New in Gloas:EIP7732]
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
@@ -1161,7 +1161,7 @@ def validate_data_column_sidecar_gossip(
     store: Store,
     state: BeaconState,
     sidecar: DataColumnSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -1266,7 +1266,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
 )
 ```
 

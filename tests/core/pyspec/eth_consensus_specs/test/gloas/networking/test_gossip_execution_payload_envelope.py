@@ -184,7 +184,7 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
 
     seen = get_seen(spec)
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.message.payload.slot_number = spec.uint64(state.slot + 1)
+    signed_envelope.message.payload.slot_number = spec.Uint64(state.slot + 1)
     yield get_filename(signed_envelope), signed_envelope
 
     time_ms = spec.compute_time_at_slot_ms(state, state.slot)
@@ -406,7 +406,7 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     bid_builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
     # Pick any builder index that differs from the bid's. We subtract 1 instead
-    # of adding so the value stays inside uint64 range when the bid uses the
+    # of adding so the value stays inside Uint64 range when the bid uses the
     # max-value sentinel BUILDER_INDEX_SELF_BUILD.
     signed_envelope.message.builder_index = spec.BuilderIndex(int(bid_builder_index) - 1)
     yield get_filename(signed_envelope), signed_envelope
