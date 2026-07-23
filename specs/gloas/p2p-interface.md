@@ -11,8 +11,8 @@
   - [Configuration](#configuration)
   - [Types](#types)
     - [Modified `DataColumn`](#modified-datacolumn)
-    - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
     - [Modified `KZGProofs`](#modified-kzgproofs)
+    - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
     - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
@@ -89,18 +89,18 @@ class DataColumn(ProgressiveList[Cell]):
     pass
 ```
 
-#### New `ExecutionPayloadEnvelopeRoots`
-
-```python
-class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
-    pass
-```
-
 #### Modified `KZGProofs`
 
 ```python
 # [Modified in Gloas:EIP7688]
 class KZGProofs(ProgressiveList[KZGProof]):
+    pass
+```
+
+#### New `ExecutionPayloadEnvelopeRoots`
+
+```python
+class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
     pass
 ```
 

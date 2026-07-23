@@ -12,35 +12,35 @@
   - [Modified `AttestingIndices`](#modified-attestingindices)
   - [Modified `Balances`](#modified-balances)
   - [Modified `BlobKZGCommitments`](#modified-blobkzgcommitments)
-  - [New `BlockAccessList`](#new-blockaccesslist)
   - [Modified `BLSToExecutionChanges`](#modified-blstoexecutionchanges)
-  - [New `BuilderDepositRequests`](#new-builderdepositrequests)
-  - [New `BuilderExitRequests`](#new-builderexitrequests)
-  - [New `BuilderIndex`](#new-builderindex)
-  - [New `BuilderPendingPayments`](#new-builderpendingpayments)
-  - [New `BuilderPendingWithdrawals`](#new-builderpendingwithdrawals)
-  - [New `Builders`](#new-builders)
   - [Modified `ConsolidationRequests`](#modified-consolidationrequests)
   - [Modified `DepositRequests`](#modified-depositrequests)
   - [Modified `Deposits`](#modified-deposits)
   - [Modified `EpochParticipation`](#modified-epochparticipation)
-  - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
   - [Modified `InactivityScores`](#modified-inactivityscores)
-  - [New `PayloadAttestations`](#new-payloadattestations)
   - [Modified `PendingConsolidations`](#modified-pendingconsolidations)
   - [Modified `PendingDeposits`](#modified-pendingdeposits)
   - [Modified `PendingPartialWithdrawals`](#modified-pendingpartialwithdrawals)
   - [Modified `ProposerSlashings`](#modified-proposerslashings)
-  - [New `PTC`](#new-ptc)
-  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
-  - [New `PTCBits`](#new-ptcbits)
-  - [New `PTCWindow`](#new-ptcwindow)
   - [Modified `Transaction`](#modified-transaction)
   - [Modified `Transactions`](#modified-transactions)
   - [Modified `Validators`](#modified-validators)
   - [Modified `VoluntaryExits`](#modified-voluntaryexits)
   - [Modified `WithdrawalRequests`](#modified-withdrawalrequests)
   - [Modified `Withdrawals`](#modified-withdrawals)
+  - [New `BlockAccessList`](#new-blockaccesslist)
+  - [New `BuilderDepositRequests`](#new-builderdepositrequests)
+  - [New `BuilderExitRequests`](#new-builderexitrequests)
+  - [New `BuilderIndex`](#new-builderindex)
+  - [New `BuilderPendingPayments`](#new-builderpendingpayments)
+  - [New `BuilderPendingWithdrawals`](#new-builderpendingwithdrawals)
+  - [New `Builders`](#new-builders)
+  - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
+  - [New `PayloadAttestations`](#new-payloadattestations)
+  - [New `PTC`](#new-ptc)
+  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
+  - [New `PTCBits`](#new-ptcbits)
+  - [New `PTCWindow`](#new-ptcwindow)
 - [Constants](#constants)
   - [Index flags](#index-flags)
   - [Domains](#domains)
@@ -227,60 +227,11 @@ class BlobKZGCommitments(ProgressiveList[KZGCommitment]):
     pass
 ```
 
-### New `BlockAccessList`
-
-```python
-class BlockAccessList(ProgressiveByteList):
-    pass
-```
-
 ### Modified `BLSToExecutionChanges`
 
 ```python
 # [Modified in Gloas:EIP7688]
 class BLSToExecutionChanges(ProgressiveList[SignedBLSToExecutionChange]):
-    pass
-```
-
-### New `BuilderDepositRequests`
-
-```python
-class BuilderDepositRequests(ProgressiveList[BuilderDepositRequest]):
-    pass
-```
-
-### New `BuilderExitRequests`
-
-```python
-class BuilderExitRequests(ProgressiveList[BuilderExitRequest]):
-    pass
-```
-
-### New `BuilderIndex`
-
-```python
-class BuilderIndex(Uint64):
-    pass
-```
-
-### New `BuilderPendingPayments`
-
-```python
-class BuilderPendingPayments(Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]):
-    pass
-```
-
-### New `BuilderPendingWithdrawals`
-
-```python
-class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
-    pass
-```
-
-### New `Builders`
-
-```python
-class Builders(ProgressiveList[Builder]):
     pass
 ```
 
@@ -316,25 +267,11 @@ class EpochParticipation(ProgressiveList[ParticipationFlags]):
     pass
 ```
 
-### New `ExecutionPayloadAvailability`
-
-```python
-class ExecutionPayloadAvailability(Bitvector[SLOTS_PER_HISTORICAL_ROOT]):
-    pass
-```
-
 ### Modified `InactivityScores`
 
 ```python
 # [Modified in Gloas:EIP7688]
 class InactivityScores(ProgressiveList[Uint64]):
-    pass
-```
-
-### New `PayloadAttestations`
-
-```python
-class PayloadAttestations(ProgressiveList[PayloadAttestation]):
     pass
 ```
 
@@ -367,34 +304,6 @@ class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
 ```python
 # [Modified in Gloas:EIP7688]
 class ProposerSlashings(ProgressiveList[ProposerSlashing]):
-    pass
-```
-
-### New `PTC`
-
-```python
-class PTC(Vector[ValidatorIndex, PTC_SIZE]):
-    pass
-```
-
-### New `PTCAttestingIndices`
-
-```python
-class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
-    pass
-```
-
-### New `PTCBits`
-
-```python
-class PTCBits(Bitvector[PTC_SIZE]):
-    pass
-```
-
-### New `PTCWindow`
-
-```python
-class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
     pass
 ```
 
@@ -443,6 +352,97 @@ class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Withdrawals(ProgressiveList[Withdrawal]):
+    pass
+```
+
+### New `BlockAccessList`
+
+```python
+class BlockAccessList(ProgressiveByteList):
+    pass
+```
+
+### New `BuilderDepositRequests`
+
+```python
+class BuilderDepositRequests(ProgressiveList[BuilderDepositRequest]):
+    pass
+```
+
+### New `BuilderExitRequests`
+
+```python
+class BuilderExitRequests(ProgressiveList[BuilderExitRequest]):
+    pass
+```
+
+### New `BuilderIndex`
+
+```python
+class BuilderIndex(Uint64):
+    pass
+```
+
+### New `BuilderPendingPayments`
+
+```python
+class BuilderPendingPayments(Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]):
+    pass
+```
+
+### New `BuilderPendingWithdrawals`
+
+```python
+class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
+    pass
+```
+
+### New `Builders`
+
+```python
+class Builders(ProgressiveList[Builder]):
+    pass
+```
+
+### New `ExecutionPayloadAvailability`
+
+```python
+class ExecutionPayloadAvailability(Bitvector[SLOTS_PER_HISTORICAL_ROOT]):
+    pass
+```
+
+### New `PayloadAttestations`
+
+```python
+class PayloadAttestations(ProgressiveList[PayloadAttestation]):
+    pass
+```
+
+### New `PTC`
+
+```python
+class PTC(Vector[ValidatorIndex, PTC_SIZE]):
+    pass
+```
+
+### New `PTCAttestingIndices`
+
+```python
+class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
+    pass
+```
+
+### New `PTCBits`
+
+```python
+class PTCBits(Bitvector[PTC_SIZE]):
+    pass
+```
+
+### New `PTCWindow`
+
+```python
+class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
     pass
 ```
 

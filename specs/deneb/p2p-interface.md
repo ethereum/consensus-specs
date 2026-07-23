@@ -8,10 +8,10 @@
   - [Configuration](#configuration)
   - [Types](#types)
     - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
+    - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
     - [New `BlobIdentifiers`](#new-blobidentifiers)
     - [New `BlobSidecars`](#new-blobsidecars)
     - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
-    - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
   - [Containers](#containers)
     - [New `BlobSidecar`](#new-blobsidecar)
     - [New `BlobIdentifier`](#new-blobidentifier)
@@ -82,6 +82,14 @@ class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
     pass
 ```
 
+#### Modified `SignedBeaconBlocks`
+
+```python
+# [Modified in Deneb:EIP4844]
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
 #### New `BlobIdentifiers`
 
 ```python
@@ -100,14 +108,6 @@ class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
 
 ```python
 class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
-    pass
-```
-
-#### Modified `SignedBeaconBlocks`
-
-```python
-# [Modified in Deneb:EIP4844]
-class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
     pass
 ```
 
