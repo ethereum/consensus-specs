@@ -44,7 +44,7 @@ specifications before continuing and use them as a reference throughout.
 @dataclass
 class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
 ```
 
 ## Protocols
@@ -59,7 +59,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload and uint256 objects.
+    Return ExecutionPayload and Uint256 objects.
     """
 ```
 

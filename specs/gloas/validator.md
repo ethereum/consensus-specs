@@ -40,12 +40,12 @@ validator" to implement Gloas.
 
 | Name                          | Value          | Unit         | Duration                  |
 | ----------------------------- | -------------- | ------------ | ------------------------- |
-| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_DUE_BPS`             | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -167,7 +167,7 @@ def get_signed_proposer_preferences(
     proposal_slot: Slot,
     validator_index: ValidatorIndex,
     fee_recipient: ExecutionAddress,
-    target_gas_limit: uint64,
+    target_gas_limit: Uint64,
     privkey: int,
 ) -> SignedProposerPreferences:
     proposal_epoch = compute_epoch_at_slot(proposal_slot)
@@ -335,7 +335,7 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     # [New in Gloas]
-    target_gas_limit: uint64,
+    target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]

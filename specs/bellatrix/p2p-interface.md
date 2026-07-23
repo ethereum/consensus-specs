@@ -45,7 +45,7 @@ understand the changes outlined in this document.
 
 | Name                      | SSZ equivalent | Description                                     |
 | ------------------------- | -------------- | ----------------------------------------------- |
-| `PayloadValidationStatus` | `uint8`        | Execution payload validation status for a block |
+| `PayloadValidationStatus` | `Uint8`        | Execution payload validation status for a block |
 
 ### Constants
 
@@ -115,7 +115,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     # [New in Bellatrix]
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:

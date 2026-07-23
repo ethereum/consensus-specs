@@ -117,8 +117,8 @@ class LightClientStore:
     best_valid_update: Optional[LightClientUpdate]
     # [Modified in Capella]
     optimistic_header: LightClientHeader
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
 ## Helpers

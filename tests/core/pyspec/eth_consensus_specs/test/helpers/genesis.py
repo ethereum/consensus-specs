@@ -4,14 +4,14 @@ from eth_consensus_specs.test.helpers.constants import (
     PHASE0,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    compute_el_header_block_hash,
+    compute_el_block_hash_with_new_fields,
+    get_execution_payload_header,
 )
 from eth_consensus_specs.test.helpers.forks import (
     get_fork_version,
     get_previous_fork_version,
     is_post_altair,
     is_post_bellatrix,
-    is_post_capella,
     is_post_deneb,
     is_post_eip8148,
     is_post_electra,
@@ -72,10 +72,11 @@ def build_mock_validator(spec, i: int, balance: int):
     return validator
 
 
-def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None):
+def get_sample_genesis_execution_payload(spec, eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b"\x55" * 32
-    payload_header = spec.ExecutionPayloadHeader(
+
+    payload = spec.ExecutionPayload(
         parent_hash=b"\x30" * 32,
         fee_recipient=b"\x42" * 20,
         state_root=b"\x20" * 32,
@@ -85,21 +86,11 @@ def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None
         block_number=0,
         gas_limit=30000000,
         base_fee_per_gas=1000000000,
-        block_hash=eth1_block_hash,
-        transactions_root=spec.Root(b"\x56" * 32),
     )
 
-    transactions_trie_root = bytes.fromhex(
-        "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-    )
-    withdrawals_trie_root = None
     parent_beacon_block_root = None
     requests_hash = None
 
-    if is_post_capella(spec):
-        withdrawals_trie_root = bytes.fromhex(
-            "56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
-        )
     if is_post_deneb(spec):
         parent_beacon_block_root = bytes.fromhex(
             "0000000000000000000000000000000000000000000000000000000000000000"
@@ -107,15 +98,13 @@ def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None
     if is_post_electra(spec):
         requests_hash = sha256(b"").digest()
 
-    payload_header.block_hash = compute_el_header_block_hash(
+    payload.block_hash = compute_el_block_hash_with_new_fields(
         spec,
-        payload_header,
-        transactions_trie_root,
-        withdrawals_trie_root,
+        payload,
         parent_beacon_block_root,
         requests_hash,
     )
-    return payload_header
+    return payload
 
 
 def create_genesis_state(spec, validator_balances, activation_threshold):
@@ -164,7 +153,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if is_post_altair(spec):
             state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
             state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
-            state.inactivity_scores.append(spec.uint64(0))
+            state.inactivity_scores.append(spec.Uint64(0))
 
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
@@ -175,12 +164,21 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
+    if is_post_bellatrix(spec):
+        # Initialize the execution payload (with block number and genesis time set to 0)
+        genesis_payload = get_sample_genesis_execution_payload(
+            spec,
+            eth1_block_hash=eth1_block_hash,
+        )
+    else:
+        genesis_payload = None
+
     if is_post_gloas(spec):
-        state.latest_block_hash = spec.Hash32(eth1_block_hash)
+        state.latest_block_hash = genesis_payload.block_hash
         state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
             # The genesis bid's block hash is the empty hash
             block_hash=spec.Hash32(),
-            parent_block_hash=spec.Hash32(eth1_block_hash),
+            parent_block_hash=genesis_payload.block_hash,
             execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
         )
         # Use realistic body root in the latest block header
@@ -190,12 +188,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             body_root=spec.hash_tree_root(genesis_block_body)
         )
     elif is_post_bellatrix(spec):
-        # Initialize the execution payload header (with block number and genesis time set to 0)
-        state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
-            spec,
-            spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH),
-            eth1_block_hash=eth1_block_hash,
-        )
+        state.latest_execution_payload_header = get_execution_payload_header(spec, genesis_payload)
 
     if is_post_fulu(spec):
         state.deposit_requests_start_index = state.eth1_data.deposit_count
