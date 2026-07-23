@@ -849,29 +849,9 @@ def validate_execution_payload_bid_gossip(
     if bid.slot <= state.slot:
         raise GossipReject("bid's slot is not higher than its parent's slot")
 
-    # Advance state
-    state = state.copy()
-    process_slots(state, bid.slot)
-
-    # [REJECT] The builder index is valid
-    if bid.builder_index >= len(state.builders):
-        raise GossipReject("builder index out of range")
-
-    # [IGNORE] The builder can cover the bid
-    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
-        raise GossipIgnore("builder cannot cover bid value")
-
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
         raise GossipReject("bid's execution payment must be zero")
-
-    # [REJECT] The builder is active
-    if not is_active_builder(state, bid.builder_index):
-        raise GossipReject("builder is not active")
-
-    # [REJECT] The builder is a payload builder
-    if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
-        raise GossipReject("builder is not a payload builder")
 
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
@@ -884,17 +864,15 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_root not in store.blocks:
         raise GossipIgnore("bid's parent block root is not a known beacon block")
 
-    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
-    if bid.parent_block_hash not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent block hash is not a known execution payload")
-
-    # [IGNORE] The bid's parent block state passes validation
-    if bid.parent_block_root not in store.block_states:
-        raise GossipIgnore("bid's parent block state is unavailable")
+    # [IGNORE] The state is the bid's parent block post-state
+    parent_block = store.blocks[bid.parent_block_root]
+    header = state.latest_block_header.copy()
+    header.state_root = parent_block.state_root
+    if hash_tree_root(header) != bid.parent_block_root:
+        raise GossipIgnore("state is not the bid's parent block post-state")
 
     # [IGNORE] The bid's slot is within the parent's proposer lookahead
-    parent_state = store.block_states[bid.parent_block_root]
-    if proposal_epoch > get_current_epoch(parent_state) + Epoch(MIN_SEED_LOOKAHEAD):
+    if proposal_epoch > get_current_epoch(state) + Epoch(MIN_SEED_LOOKAHEAD):
         raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
 
     # [IGNORE] The matching proposer preferences have been seen
@@ -909,6 +887,10 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
+    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
+    if bid.parent_block_hash not in seen.execution_payloads:
+        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
     parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
     if not is_gas_limit_target_compatible(
@@ -917,8 +899,28 @@ def validate_execution_payload_bid_gossip(
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
     # [REJECT] The bid's previous randao is correct
-    if bid.prev_randao != get_randao_mix(parent_state, get_current_epoch(parent_state)):
+    if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
         raise GossipReject("bid's previous randao is incorrect")
+
+    # Advance state
+    state = state.copy()
+    process_slots(state, bid.slot)
+
+    # [REJECT] The builder index is valid
+    if bid.builder_index >= len(state.builders):
+        raise GossipReject("builder index out of range")
+
+    # [IGNORE] The builder can cover the bid
+    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
+        raise GossipIgnore("builder cannot cover bid value")
+
+    # [REJECT] The builder is active
+    if not is_active_builder(state, bid.builder_index):
+        raise GossipReject("builder is not active")
+
+    # [REJECT] The builder is a payload builder
+    if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
+        raise GossipReject("builder is not a payload builder")
 
     # [REJECT] The bid signature is valid
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):

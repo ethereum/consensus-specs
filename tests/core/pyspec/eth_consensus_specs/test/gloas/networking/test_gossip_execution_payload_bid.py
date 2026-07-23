@@ -1684,7 +1684,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid's parent block state is unavailable"
+    assert reason == "state is not the bid's parent block post-state"
     messages.append(
         {
             "current_time_ms": int(time_ms),
