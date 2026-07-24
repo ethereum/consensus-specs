@@ -1,15 +1,17 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
+    with_electra_and_later,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU, MINIMAL
+from eth_consensus_specs.test.helpers.constants import ELECTRA, GLOAS, MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -54,7 +56,7 @@ def prepare_signed_aggregate(spec, state):
     return store, signed_anchor, signed_agg
 
 
-@with_phases([ELECTRA, FULU])
+@with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL], "need multiple committees per slot")
 def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_committees(spec, state):
@@ -62,8 +64,9 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     [New in Electra:EIP7549] Test that two committee-local aggregates with equal
     ``AttestationData`` and disjoint ``committee_bits`` are both accepted.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -107,6 +110,9 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     block_time_ms = spec.compute_time_at_slot_ms(state, attestation_1.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -114,11 +120,15 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         state=state,
         signed_aggregate_and_proof=signed_agg_1,
         current_time_ms=block_time_ms + 500,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_agg_1), "expected": "valid"})
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -126,6 +136,7 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         state=state,
         signed_aggregate_and_proof=signed_agg_2,
         current_time_ms=block_time_ms + 600,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -134,15 +145,16 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     yield "messages", "meta", messages
 
 
-@with_phases([ELECTRA, FULU])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, state):
     """
     [New in Electra:EIP7549] Test that an aggregate with ``aggregate.data.index != 0``
     is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -157,6 +169,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -164,6 +179,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
         state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate data index is non-zero"
@@ -182,15 +198,16 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
     )
 
 
-@with_phases([ELECTRA, FULU])
+@with_electra_and_later
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     """
     [New in Electra:EIP7549] Test that an aggregate with no committee bits set
     is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -205,6 +222,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -212,6 +232,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
         state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate committee bits must specify exactly one committee"
@@ -230,15 +251,16 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     )
 
 
-@with_phases([ELECTRA, FULU])
+@with_electra_and_later
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, state):
     """
     [New in Electra:EIP7549] Test that an aggregate with more than one committee
     bit set is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, signed_anchor, signed_agg = prepare_signed_aggregate(spec, state)
@@ -259,6 +281,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -266,6 +291,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
         state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate committee bits must specify exactly one committee"

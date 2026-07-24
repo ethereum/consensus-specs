@@ -53,15 +53,15 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
     sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     # [New in Altair]
@@ -269,11 +269,11 @@ def validate_sync_committee_contribution_and_proof_gossip(
         raise GossipIgnore("already seen contribution for this data")
 
     # [IGNORE] The sync committee contribution is the first valid contribution received
-    # for the aggregator with index contribution_and_proof.aggregator_index
-    # for the slot contribution.slot and subcommittee index contribution.subcommittee_index
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
     aggregator_key = (
-        contribution_and_proof.aggregator_index,
         contribution.slot,
+        contribution_and_proof.aggregator_index,
         contribution.subcommittee_index,
     )
     if aggregator_key in seen.sync_contribution_aggregator_slots:

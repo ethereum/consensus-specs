@@ -4,20 +4,25 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
+    with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     get_block_with_blob_and_sidecars,
     get_max_blob_count,
+    make_partial_data_column_group_id,
+    make_partial_header,
+    make_partial_sidecar,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import FULU
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -47,42 +52,6 @@ def setup_store_with_anchor(spec, state):
     return store, anchor_block
 
 
-def make_partial_header(spec, sidecar):
-    """Build a PartialDataColumnHeader from a DataColumnSidecar."""
-    return spec.PartialDataColumnHeader(
-        kzg_commitments=sidecar.kzg_commitments,
-        signed_block_header=sidecar.signed_block_header,
-        kzg_commitments_inclusion_proof=sidecar.kzg_commitments_inclusion_proof,
-    )
-
-
-def make_partial_sidecar(spec, sidecar, blob_indices=None, include_header=True):
-    """
-    Build a PartialDataColumnSidecar from a DataColumnSidecar.
-    ``blob_indices`` controls which blob indices are present (default: all).
-    """
-    num_blobs = len(sidecar.kzg_commitments)
-    if blob_indices is None:
-        blob_indices = list(range(num_blobs))
-
-    bitmap = [i in blob_indices for i in range(num_blobs)]
-    cells = [sidecar.column[i] for i in blob_indices]
-    proofs = [sidecar.kzg_proofs[i] for i in blob_indices]
-
-    header = [make_partial_header(spec, sidecar)] if include_header else []
-
-    return spec.PartialDataColumnSidecar(
-        cells_present_bitmap=bitmap,
-        partial_column=cells,
-        kzg_proofs=proofs,
-        header=header,
-    )
-
-
-def block_root_of(spec, sidecar):
-    return spec.hash_tree_root(sidecar.signed_block_header.message)
-
-
 def resign_header(spec, state, header):
     proposer_index = header.signed_block_header.message.proposer_index
     domain = spec.get_domain(
@@ -94,14 +63,15 @@ def resign_header(spec, state, header):
     header.signed_block_header.signature = spec.bls.Sign(privkeys[proposer_index], signing_root)
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     """Test that a header-only partial sidecar passes gossip validation."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -112,8 +82,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -150,7 +119,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
@@ -162,7 +131,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -178,8 +148,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=max_blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -216,14 +185,15 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header(spec, state):
     """Test that a cells-only partial sidecar passes when a header was cached previously."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -233,8 +203,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     # First message: header only, populates the cache.
@@ -297,43 +266,53 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield "messages", "meta", messages
 
 
-@with_phases([FULU])
+@with_fulu_and_later
 @spec_state_test
-def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, state):
-    """Test that a partial sidecar with no header and no cells is rejected."""
+def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
+    """A partial sidecar with no header and no cells is rejected as semantically empty."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
-    state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
-    seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    column_index = sidecar.index
+
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
+    partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, sidecar.signed_block_header.message.slot)
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        store.blocks[sidecar.beacon_block_root] = signed_block.message
+        store.block_states[sidecar.beacon_block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    column_index = sidecar.index
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["seen"] = get_seen(spec)
+        kwargs["state"] = state
+        kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
-        seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
         group_id=group_id,
         column_index=column_index,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "partial message is semantically empty"
@@ -347,52 +326,63 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
-                "expected": "reject",
+                "expected": result,
                 "reason": reason,
             }
         ],
     )
 
 
-@with_phases([FULU])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, state):
-    """Test that a partial sidecar with cell count != set bits is rejected."""
+    """A partial sidecar whose cell count does not match the set bits is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
-    state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
-    seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    partial = make_partial_sidecar(spec, sidecar, include_header=True)
-    # Drop a cell so the count no longer matches the bitmap.
-    partial.partial_column = list(partial.partial_column)[:-1]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    column_index = sidecar.index
+
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
+    # Append an extra cell so the count no longer matches the set bits.
+    partial = make_partial_sidecar(spec, sidecar)
+    cells_type = type(partial.partial_column)
+    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, sidecar.signed_block_header.message.slot)
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        store.blocks[sidecar.beacon_block_root] = signed_block.message
+        store.block_states[sidecar.beacon_block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    column_index = sidecar.index
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["seen"] = get_seen(spec)
+        kwargs["state"] = state
+        kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
-        seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
         group_id=group_id,
         column_index=column_index,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "number of cells does not match number of set bits"
@@ -406,52 +396,63 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
-                "expected": "reject",
+                "expected": result,
                 "reason": reason,
             }
         ],
     )
 
 
-@with_phases([FULU])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, state):
-    """Test that a partial sidecar with proof count != set bits is rejected."""
+    """A partial sidecar whose proof count does not match the set bits is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
-    state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
-    seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    partial = make_partial_sidecar(spec, sidecar, include_header=True)
-    # Drop a proof so the count no longer matches the bitmap.
-    partial.kzg_proofs = list(partial.kzg_proofs)[:-1]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    column_index = sidecar.index
+
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
+    # Append an extra proof so the count no longer matches the set bits.
+    partial = make_partial_sidecar(spec, sidecar)
+    proofs_type = type(partial.kzg_proofs)
+    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, sidecar.signed_block_header.message.slot)
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        store.blocks[sidecar.beacon_block_root] = signed_block.message
+        store.block_states[sidecar.beacon_block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    column_index = sidecar.index
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["seen"] = get_seen(spec)
+        kwargs["state"] = state
+        kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
-        seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
         group_id=group_id,
         column_index=column_index,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "number of proofs does not match number of set bits"
@@ -465,21 +466,22 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
-                "expected": "reject",
+                "expected": result,
                 "reason": reason,
             }
         ],
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, state):
     """Test that a header differing from a previously cached one is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -489,8 +491,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     good = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -558,14 +559,15 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield "messages", "meta", messages
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, state):
     """Test that a header whose block root differs from the group id is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -615,14 +617,15 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, state):
     """Test that a header with empty kzg_commitments is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -634,8 +637,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].kzg_commitments = []
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -673,14 +675,15 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     """Test that a header from a future slot is ignored."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -691,8 +694,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -731,13 +733,14 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     """Test that a header at the latest finalized slot is ignored."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -745,13 +748,12 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     block_header = sidecar.signed_block_header.message
@@ -801,14 +803,15 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(spec, state):
     """Test that a header with proposer_index out of range is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -861,7 +864,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @always_bls
 def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(spec, state):
@@ -869,7 +872,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -881,8 +885,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.signature = spec.BLSSignature(b"\x00" * 96)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -920,14 +923,15 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state):
     """Test that a header whose parent is unknown to the store is ignored."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -979,14 +983,15 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spec, state):
     """Test that a header whose parent failed validation is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1013,8 +1018,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1052,14 +1056,15 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(spec, state):
     """Test that a header whose slot is not greater than its parent's is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1129,14 +1134,15 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(spec, state):
     """Test that a header is rejected if the finalized checkpoint is not an ancestor."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1147,8 +1153,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     fake_finalized_root = spec.Root(b"\xab" * 32)
@@ -1193,14 +1198,15 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec, state):
     """Test that a header with a broken inclusion proof is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1214,8 +1220,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     partial.header[0].kzg_commitments_inclusion_proof = spec.compute_merkle_proof(
         spec.BeaconBlockBody(), 0
     )
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1253,14 +1258,15 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, state):
     """Test that a header with the wrong proposer_index is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1315,14 +1321,15 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(spec, state):
     """Test that a cells-only partial sidecar is ignored when no header is cached."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1333,8 +1340,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=False)
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1372,7 +1378,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_future_slot(
     spec, state
@@ -1381,7 +1387,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -1391,8 +1398,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -1456,7 +1462,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not_later_than_finalized_slot(
     spec, state
@@ -1465,6 +1471,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -1472,12 +1479,11 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
     header = make_partial_header(spec, sidecar)
@@ -1491,6 +1497,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     block_time_ms = spec.compute_time_at_slot_ms(state, block_header.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    block_root = group_id.beacon_block_root
     seen.partial_data_column_headers[block_root] = header
 
     yield (
@@ -1547,134 +1554,133 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     )
 
 
-@with_phases([FULU])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec, state):
-    """
-    Test that a cells-bearing partial sidecar whose bitmap length does not match
-    the corresponding header's commitment count is rejected.
-    """
+    """A partial sidecar whose bitmap length does not match the commitment count is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
-    state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
-    seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
-    yield get_filename(group_id), group_id
-
-    # Seed the cache with a valid header for `block_root`.
-    header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    cells_msg = make_partial_sidecar(spec, sidecar, blob_indices=[0], include_header=False)
-    # Stretch the bitmap so its length exceeds the corresponding header's commitments.
-    Bitlist = type(cells_msg.cells_present_bitmap)
-    cells_msg.cells_present_bitmap = Bitlist(list(cells_msg.cells_present_bitmap) + [False, False])
-
-    yield get_filename(header_msg), header_msg
-    yield get_filename(cells_msg), cells_msg
-
-    block_time_ms = spec.compute_time_at_slot_ms(state, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     column_index = sidecar.index
 
-    messages = []
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        state=state,
-        sidecar=header_msg,
-        current_time_ms=block_time_ms + 500,
-        group_id=group_id,
-        column_index=column_index,
-    )
-    assert result == "valid"
-    messages.append(
-        {
-            "group_id": get_filename(group_id),
-            "column_index": int(column_index),
-            "offset_ms": 500,
-            "message": get_filename(header_msg),
-            "expected": "valid",
-        }
-    )
+    group_id = make_partial_data_column_group_id(spec, sidecar)
+    yield get_filename(group_id), group_id
 
+    # Pad bitmap, cells, and proofs in lockstep so the count checks pass but the
+    # bitmap length no longer matches the commitment count.
+    partial = make_partial_sidecar(spec, sidecar)
+    bitmap_type = type(partial.cells_present_bitmap)
+    cells_type = type(partial.partial_column)
+    proofs_type = type(partial.kzg_proofs)
+    partial.cells_present_bitmap = bitmap_type(list(partial.cells_present_bitmap) + [True])
+    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
+    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
+    yield get_filename(partial), partial
+
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        store.blocks[sidecar.beacon_block_root] = signed_block.message
+        store.block_states[sidecar.beacon_block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["seen"] = get_seen(spec)
+        kwargs["state"] = state
+        kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
-        seen=seen,
         store=store,
-        state=state,
-        sidecar=cells_msg,
-        current_time_ms=block_time_ms + 600,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "bitmap length does not match commitments length"
-    messages.append(
-        {
-            "group_id": get_filename(group_id),
-            "column_index": int(column_index),
-            "offset_ms": 600,
-            "message": get_filename(cells_msg),
-            "expected": "reject",
-            "reason": reason,
-        }
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "group_id": get_filename(group_id),
+                "column_index": int(column_index),
+                "offset_ms": 500,
+                "message": get_filename(partial),
+                "expected": result,
+                "reason": reason,
+            }
+        ],
     )
 
-    yield "messages", "meta", messages
 
-
-@with_phases([FULU])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
-    """Test that cells with invalid KZG proofs are rejected."""
+    """A partial sidecar whose KZG proofs fail verification is rejected."""
     yield "topic", "meta", "partial_data_column_sidecar"
 
-    state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
-    seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    yield get_filename(signed_anchor), signed_anchor
-    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
-    partial = make_partial_sidecar(spec, sidecar, include_header=True)
-    # Corrupt every KZG proof to the point at infinity, which won't verify
-    # against the real commitments.
-    bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
-    partial.kzg_proofs = [bad_proof for _ in partial.kzg_proofs]
-    block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    column_index = sidecar.index
+
+    group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
+    # Swap the two proofs so each cell carries the other's proof: still
+    # well-formed, but verification returns False rather than raising.
+    partial = make_partial_sidecar(spec, sidecar)
+    proofs_type = type(partial.kzg_proofs)
+    first, second = partial.kzg_proofs[0], partial.kzg_proofs[1]
+    partial.kzg_proofs = proofs_type([second, first])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, sidecar.signed_block_header.message.slot)
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        store.blocks[sidecar.beacon_block_root] = signed_block.message
+        store.block_states[sidecar.beacon_block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    column_index = sidecar.index
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["seen"] = get_seen(spec)
+        kwargs["state"] = state
+        kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
-        seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
         group_id=group_id,
         column_index=column_index,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "invalid sidecar kzg proofs"
@@ -1688,7 +1694,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
-                "expected": "reject",
+                "expected": result,
                 "reason": reason,
             }
         ],

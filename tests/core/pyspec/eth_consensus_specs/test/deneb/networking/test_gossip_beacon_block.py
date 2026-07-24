@@ -2,17 +2,17 @@ import random
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_deneb_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA, FULU
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -24,7 +24,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     """
@@ -33,7 +33,8 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -51,6 +52,9 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -58,7 +62,7 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
         state=state,
         signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        block_payload_statuses={},
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -70,7 +74,7 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     """
@@ -79,7 +83,8 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -99,6 +104,9 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, block.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -106,7 +114,7 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
         state=state,
         signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        block_payload_statuses={},
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"

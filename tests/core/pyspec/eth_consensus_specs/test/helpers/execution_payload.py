@@ -475,6 +475,13 @@ def build_state_with_execution_payload_header(spec, state, execution_payload_hea
 def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     pre_state = state.copy()
     pre_state.latest_execution_payload_bid = execution_payload_bid
+    # The committed bid is part of the latest block's body, so refresh the
+    # header's body root to match, as ``create_genesis_state`` does. Otherwise
+    # blocks built on this state reference a parent root that differs from the
+    # anchor block reconstructed by ``get_genesis_forkchoice_store_and_block``.
+    block_body = spec.BeaconBlockBody()
+    block_body.signed_execution_payload_bid.message = execution_payload_bid
+    pre_state.latest_block_header.body_root = spec.hash_tree_root(block_body)
     return pre_state
 
 

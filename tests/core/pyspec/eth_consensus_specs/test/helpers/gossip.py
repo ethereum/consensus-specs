@@ -3,6 +3,16 @@ from typing import get_origin, get_type_hints
 
 from eth_utils import encode_hex
 
+from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.block import (
+    build_empty_block_for_next_slot,
+    sign_block,
+)
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+
 PAYLOAD_STATUS_VALID = "VALID"
 PAYLOAD_STATUS_INVALIDATED = "INVALIDATED"
 PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
@@ -11,6 +21,44 @@ PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
 def wrap_genesis_block(spec, block):
     """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
     return spec.SignedBeaconBlock(message=block)
+
+
+def add_pending_block_to_store(store, signed_block):
+    """
+    Record a block that has been seen but not yet imported: present in
+    ``store.blocks`` with no post-state. The corresponding blocks meta entry
+    must set ``pending: true``.
+    """
+    store.blocks[signed_block.message.hash_tree_root()] = signed_block.message
+
+
+def setup_store_with_failed_block(spec, state):
+    """
+    Build the genesis store plus a correctly signed block for the next slot
+    whose state root is wrong, so it passes gossip checks but fails state
+    transition on import. The failed block is recorded as seen, with no
+    post-state. The corresponding blocks meta entry must set ``failed: true``.
+
+    Advances ``state`` past the valid version of the block so callers can
+    build descendants and messages on top of it.
+    Returns (store, signed_anchor, signed_failed_block).
+    """
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    pre_state = state.copy()
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    failed_block = signed_block.message.copy()
+    failed_block.state_root = spec.Root(b"\xab" * 32)
+    signed_failed_block = sign_block(
+        spec, state, failed_block, proposer_index=failed_block.proposer_index
+    )
+    # Prove the block genuinely fails import before recording it as failed.
+    expect_assertion_error(
+        lambda: spec.state_transition(pre_state, signed_failed_block, validate_result=True)
+    )
+    store.blocks[signed_failed_block.message.hash_tree_root()] = signed_failed_block.message
+    return store, signed_anchor, signed_failed_block
 
 
 def get_spec_block_payload_statuses(spec, block_payload_statuses):
@@ -103,6 +151,25 @@ _MESSAGE_INFO = {
         "file_prefix": "partial_data_column_sidecar",
         "validation_fn": "validate_partial_data_column_sidecar_gossip",
     },
+    ###########################################################################
+    # gloas
+    ###########################################################################
+    "PayloadAttestationMessage": {
+        "file_prefix": "payload_attestation_message",
+        "validation_fn": "validate_payload_attestation_message_gossip",
+    },
+    "SignedExecutionPayloadBid": {
+        "file_prefix": "execution_payload_bid",
+        "validation_fn": "validate_execution_payload_bid_gossip",
+    },
+    "SignedExecutionPayloadEnvelope": {
+        "file_prefix": "execution_payload_envelope",
+        "validation_fn": "validate_execution_payload_envelope_gossip",
+    },
+    "SignedProposerPreferences": {
+        "file_prefix": "proposer_preferences",
+        "validation_fn": "validate_proposer_preferences_gossip",
+    },
 }
 
 
@@ -140,3 +207,8 @@ def run_validate_gossip(spec, **kwargs):
 def get_seen(spec):
     """Create an empty Seen object by instantiating each annotated field's container type."""
     return spec.Seen(**{name: get_origin(t)() for name, t in get_type_hints(spec.Seen).items()})
+
+
+def make_progressive_list(spec, element_type, count):
+    """A progressive list of ``count`` default ``element_type`` values."""
+    return spec.ProgressiveList[element_type](*([element_type()] * count))
