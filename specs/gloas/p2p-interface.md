@@ -73,7 +73,7 @@ libp2p messages.
 | Name                            | Value          |
 | ------------------------------- | -------------- |
 | `MAX_REQUEST_PAYLOADS`          | `2**7` (= 128) |
-| `MAX_BIDS_PER_BUILDER_PER_SLOT` | `6`            |
+| `MAX_BIDS_PER_BUILDER_PER_SLOT` | `3`            |
 
 ### Containers
 
