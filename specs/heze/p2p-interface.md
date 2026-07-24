@@ -100,7 +100,7 @@ The following validations are added, assuming the alias
 
 - _[IGNORE]_ `bid.inclusion_list_bits` is inclusive of the node's view of
   inclusion lists for the slot preceding the bid's slot -- i.e.
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, Slot(bid.slot - 1), bid.inclusion_list_bits, only_timely=False)`
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, Slot(bid.slot - 1), bid.inclusion_list_bits, only_timely=True)`
   returns `True`, where `state` is the head state corresponding to processing
   the block up to the current slot as determined by the fork choice.
 
