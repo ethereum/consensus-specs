@@ -58,7 +58,9 @@ document and used throughout.
 
 ```python
 class CellKZGProofs(List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]):
-    pass
+    """
+    The KZG cell proofs for every blob in a block, one proof per cell.
+    """
 ```
 
 ## Helpers

@@ -66,21 +66,28 @@ Additional documents describe how the light client sync protocol can be used:
 
 ```python
 class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]):
-    pass
+    """
+    A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
+    """
 ```
 
 ### `FinalityBranch`
 
 ```python
 class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]):
-    pass
+    """
+    A Merkle branch proving ``finalized_checkpoint.root`` within
+    ``BeaconState``.
+    """
 ```
 
 ### `NextSyncCommitteeBranch`
 
 ```python
 class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]):
-    pass
+    """
+    A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
+    """
 ```
 
 ## Constants

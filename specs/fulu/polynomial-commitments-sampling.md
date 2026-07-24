@@ -79,35 +79,45 @@ The following is a list of the public methods:
 
 ```python
 class Cell(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]):
-    pass
+    """
+    The unit of blob data that can be verified with its own KZG proof.
+    """
 ```
 
 ### `CellIndex`
 
 ```python
 class CellIndex(Uint64):
-    pass
+    """
+    The index of a cell within an extended blob.
+    """
 ```
 
 ### `Cells`
 
 ```python
 class Cells(Vector[Cell, CELLS_PER_EXT_BLOB]):
-    pass
+    """
+    The cells of a single extended blob.
+    """
 ```
 
 ### `CommitmentIndex`
 
 ```python
 class CommitmentIndex(Uint64):
-    pass
+    """
+    The index of a commitment in a block's list of blob KZG commitments.
+    """
 ```
 
 ### `Proofs`
 
 ```python
 class Proofs(Vector[KZGProof, CELLS_PER_EXT_BLOB]):
-    pass
+    """
+    One KZG proof per cell of a single extended blob.
+    """
 ```
 
 ## Cryptographic types

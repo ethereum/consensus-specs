@@ -48,7 +48,9 @@ understand the changes outlined in this document.
 
 ```python
 class PayloadValidationStatus(Uint8):
-    pass
+    """
+    The status of an execution payload's validation by the execution engine.
+    """
 ```
 
 ### Constants

@@ -38,14 +38,18 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ```python
 class ProofData(ProgressiveByteList):
-    pass
+    """
+    The opaque proof bytes of an execution proof.
+    """
 ```
 
 ### New `ProofType`
 
 ```python
 class ProofType(Uint8):
-    pass
+    """
+    The identifier of the proof system that produced an execution proof.
+    """
 ```
 
 ## Constants

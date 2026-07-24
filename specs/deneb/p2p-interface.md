@@ -79,7 +79,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 # [Modified in Deneb:EIP4844]
 class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
-    pass
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
 ```
 
 #### Modified `SignedBeaconBlocks`
@@ -87,28 +89,40 @@ class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
 ```python
 # [Modified in Deneb:EIP4844]
 class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
-    pass
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
 ```
 
 #### New `BlobIdentifiers`
 
 ```python
 class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
-    pass
+    """
+    The identifiers of the blob sidecars requested in a
+    ``BlobSidecarsByRoot`` request.
+    """
 ```
 
 #### New `BlobSidecars`
 
 ```python
 class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
-    pass
+    """
+    Blob sidecars returned in a ``BlobSidecarsByRange`` or
+    ``BlobSidecarsByRoot`` response.
+    """
 ```
 
 #### New `KZGCommitmentInclusionProof`
 
 ```python
 class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
-    pass
+    """
+    A Merkle branch proving a blob's KZG commitment within
+    ``BeaconBlockBody``.
+    """
 ```
 
 ### Containers

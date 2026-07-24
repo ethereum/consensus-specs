@@ -86,7 +86,10 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
-    pass
+    """
+    Signed inclusion lists returned in an ``InclusionListsByIndices``
+    response.
+    """
 ```
 
 ### The gossip domain: gossipsub

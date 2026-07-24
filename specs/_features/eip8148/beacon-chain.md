@@ -58,14 +58,20 @@ control their balance withdrawals more precisely.
 
 ```python
 class SweepThresholdRequests(ProgressiveList[SetSweepThresholdRequest]):
-    pass
+    """
+    The set-sweep-threshold requests pertaining to a single execution
+    payload.
+    """
 ```
 
 ### New `SweepThresholds`
 
 ```python
 class SweepThresholds(ProgressiveList[Gwei]):
-    pass
+    """
+    Per-validator withdrawal sweep thresholds. The list is aligned with
+    ``state.validators``, one entry per validator.
+    """
 ```
 
 ## Constants

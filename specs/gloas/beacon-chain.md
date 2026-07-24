@@ -184,7 +184,10 @@ from the latest published version of the EIPs.
 ```python
 # [Modified in Gloas:EIP7688]
 class AggregationBits(ProgressiveBitlist):
-    pass
+    """
+    The participation bits of all committees participating in an attestation,
+    concatenated in committee order.
+    """
 ```
 
 ### Modified `Attestations`
@@ -192,7 +195,9 @@ class AggregationBits(ProgressiveBitlist):
 ```python
 # [Modified in Gloas:EIP7688]
 class Attestations(ProgressiveList[Attestation]):
-    pass
+    """
+    The attestations included in a beacon block.
+    """
 ```
 
 ### Modified `AttesterSlashings`
@@ -200,7 +205,9 @@ class Attestations(ProgressiveList[Attestation]):
 ```python
 # [Modified in Gloas:EIP7688]
 class AttesterSlashings(ProgressiveList[AttesterSlashing]):
-    pass
+    """
+    The attester slashings included in a beacon block.
+    """
 ```
 
 ### Modified `AttestingIndices`
@@ -208,7 +215,10 @@ class AttesterSlashings(ProgressiveList[AttesterSlashing]):
 ```python
 # [Modified in Gloas:EIP7688]
 class AttestingIndices(ProgressiveList[ValidatorIndex]):
-    pass
+    """
+    The indices of the validators participating in an attestation, sorted and
+    without duplicates.
+    """
 ```
 
 ### Modified `Balances`
@@ -216,7 +226,10 @@ class AttestingIndices(ProgressiveList[ValidatorIndex]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Balances(ProgressiveList[Gwei]):
-    pass
+    """
+    The balances of all validators, in Gwei. The list is aligned with
+    ``state.validators``, one entry per validator.
+    """
 ```
 
 ### Modified `BlobKZGCommitments`
@@ -224,7 +237,9 @@ class Balances(ProgressiveList[Gwei]):
 ```python
 # [Modified in Gloas:EIP7688]
 class BlobKZGCommitments(ProgressiveList[KZGCommitment]):
-    pass
+    """
+    The KZG commitments to the blobs of a beacon block.
+    """
 ```
 
 ### Modified `BLSToExecutionChanges`
@@ -232,7 +247,10 @@ class BlobKZGCommitments(ProgressiveList[KZGCommitment]):
 ```python
 # [Modified in Gloas:EIP7688]
 class BLSToExecutionChanges(ProgressiveList[SignedBLSToExecutionChange]):
-    pass
+    """
+    The signed BLS-to-execution credential changes included in a beacon
+    block.
+    """
 ```
 
 ### Modified `ConsolidationRequests`
@@ -240,7 +258,9 @@ class BLSToExecutionChanges(ProgressiveList[SignedBLSToExecutionChange]):
 ```python
 # [Modified in Gloas:EIP7688]
 class ConsolidationRequests(ProgressiveList[ConsolidationRequest]):
-    pass
+    """
+    The consolidation requests pertaining to a single execution payload.
+    """
 ```
 
 ### Modified `DepositRequests`
@@ -248,7 +268,9 @@ class ConsolidationRequests(ProgressiveList[ConsolidationRequest]):
 ```python
 # [Modified in Gloas:EIP7688]
 class DepositRequests(ProgressiveList[DepositRequest]):
-    pass
+    """
+    The deposit requests pertaining to a single execution payload.
+    """
 ```
 
 ### Modified `Deposits`
@@ -256,7 +278,9 @@ class DepositRequests(ProgressiveList[DepositRequest]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Deposits(ProgressiveList[Deposit]):
-    pass
+    """
+    The deposits included in a beacon block.
+    """
 ```
 
 ### Modified `EpochParticipation`
@@ -264,7 +288,10 @@ class Deposits(ProgressiveList[Deposit]):
 ```python
 # [Modified in Gloas:EIP7688]
 class EpochParticipation(ProgressiveList[ParticipationFlags]):
-    pass
+    """
+    Participation flags tracked over an epoch. The list is aligned with
+    ``state.validators``, one entry per validator.
+    """
 ```
 
 ### Modified `InactivityScores`
@@ -272,7 +299,11 @@ class EpochParticipation(ProgressiveList[ParticipationFlags]):
 ```python
 # [Modified in Gloas:EIP7688]
 class InactivityScores(ProgressiveList[Uint64]):
-    pass
+    """
+    Inactivity scores, which grow during inactivity leaks and determine the
+    associated penalties. The list is aligned with ``state.validators``, one
+    entry per validator.
+    """
 ```
 
 ### Modified `PendingConsolidations`
@@ -280,7 +311,9 @@ class InactivityScores(ProgressiveList[Uint64]):
 ```python
 # [Modified in Gloas:EIP7688]
 class PendingConsolidations(ProgressiveList[PendingConsolidation]):
-    pass
+    """
+    The queue of consolidations awaiting processing at epoch boundaries.
+    """
 ```
 
 ### Modified `PendingDeposits`
@@ -288,7 +321,9 @@ class PendingConsolidations(ProgressiveList[PendingConsolidation]):
 ```python
 # [Modified in Gloas:EIP7688]
 class PendingDeposits(ProgressiveList[PendingDeposit]):
-    pass
+    """
+    The queue of deposits awaiting processing at epoch boundaries.
+    """
 ```
 
 ### Modified `PendingPartialWithdrawals`
@@ -296,7 +331,9 @@ class PendingDeposits(ProgressiveList[PendingDeposit]):
 ```python
 # [Modified in Gloas:EIP7688]
 class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
-    pass
+    """
+    The queue of partial withdrawals awaiting processing at epoch boundaries.
+    """
 ```
 
 ### Modified `ProposerSlashings`
@@ -304,7 +341,9 @@ class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
 ```python
 # [Modified in Gloas:EIP7688]
 class ProposerSlashings(ProgressiveList[ProposerSlashing]):
-    pass
+    """
+    The proposer slashings included in a beacon block.
+    """
 ```
 
 ### Modified `Transaction`
@@ -312,7 +351,10 @@ class ProposerSlashings(ProgressiveList[ProposerSlashing]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Transaction(ProgressiveByteList):
-    pass
+    """
+    An opaque execution-layer transaction, either a typed transaction
+    envelope or a legacy RLP-encoded transaction.
+    """
 ```
 
 ### Modified `Transactions`
@@ -320,7 +362,9 @@ class Transaction(ProgressiveByteList):
 ```python
 # [Modified in Gloas:EIP7688]
 class Transactions(ProgressiveList[Transaction]):
-    pass
+    """
+    The transactions included in an execution payload.
+    """
 ```
 
 ### Modified `Validators`
@@ -328,7 +372,10 @@ class Transactions(ProgressiveList[Transaction]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Validators(ProgressiveList[Validator]):
-    pass
+    """
+    The validator registry. Validators are appended on deposit and are never
+    removed.
+    """
 ```
 
 ### Modified `VoluntaryExits`
@@ -336,7 +383,9 @@ class Validators(ProgressiveList[Validator]):
 ```python
 # [Modified in Gloas:EIP7688]
 class VoluntaryExits(ProgressiveList[SignedVoluntaryExit]):
-    pass
+    """
+    The signed voluntary exits included in a beacon block.
+    """
 ```
 
 ### Modified `WithdrawalRequests`
@@ -344,7 +393,9 @@ class VoluntaryExits(ProgressiveList[SignedVoluntaryExit]):
 ```python
 # [Modified in Gloas:EIP7688]
 class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
-    pass
+    """
+    The withdrawal requests pertaining to a single execution payload.
+    """
 ```
 
 ### Modified `Withdrawals`
@@ -352,98 +403,132 @@ class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
 ```python
 # [Modified in Gloas:EIP7688]
 class Withdrawals(ProgressiveList[Withdrawal]):
-    pass
+    """
+    The withdrawals included in an execution payload.
+    """
 ```
 
 ### New `BlockAccessList`
 
 ```python
 class BlockAccessList(ProgressiveByteList):
-    pass
+    """
+    The serialized block access list of an execution payload.
+    """
 ```
 
 ### New `BuilderDepositRequests`
 
 ```python
 class BuilderDepositRequests(ProgressiveList[BuilderDepositRequest]):
-    pass
+    """
+    The builder deposit requests pertaining to a single execution payload.
+    """
 ```
 
 ### New `BuilderExitRequests`
 
 ```python
 class BuilderExitRequests(ProgressiveList[BuilderExitRequest]):
-    pass
+    """
+    The builder exit requests pertaining to a single execution payload.
+    """
 ```
 
 ### New `BuilderIndex`
 
 ```python
 class BuilderIndex(Uint64):
-    pass
+    """
+    The index of a builder in the builder registry.
+    """
 ```
 
 ### New `BuilderPendingPayments`
 
 ```python
 class BuilderPendingPayments(Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]):
-    pass
+    """
+    A rolling window of pending builder payments, indexed by slot modulo two
+    epochs of slots.
+    """
 ```
 
 ### New `BuilderPendingWithdrawals`
 
 ```python
 class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
-    pass
+    """
+    The queue of builder withdrawals awaiting processing.
+    """
 ```
 
 ### New `Builders`
 
 ```python
 class Builders(ProgressiveList[Builder]):
-    pass
+    """
+    The builder registry. Builders are appended on deposit and are never
+    removed.
+    """
 ```
 
 ### New `ExecutionPayloadAvailability`
 
 ```python
 class ExecutionPayloadAvailability(Bitvector[SLOTS_PER_HISTORICAL_ROOT]):
-    pass
+    """
+    Bits tracking payload availability for recent slots, indexed by slot
+    modulo ``SLOTS_PER_HISTORICAL_ROOT``.
+    """
 ```
 
 ### New `PayloadAttestations`
 
 ```python
 class PayloadAttestations(ProgressiveList[PayloadAttestation]):
-    pass
+    """
+    The payload attestations included in a beacon block.
+    """
 ```
 
 ### New `PTC`
 
 ```python
 class PTC(Vector[ValidatorIndex, PTC_SIZE]):
-    pass
+    """
+    The payload timeliness committee of a slot, with possible duplicates.
+    """
 ```
 
 ### New `PTCAttestingIndices`
 
 ```python
 class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
-    pass
+    """
+    The indices of the PTC members participating in a payload attestation,
+    sorted and without duplicates.
+    """
 ```
 
 ### New `PTCBits`
 
 ```python
 class PTCBits(Bitvector[PTC_SIZE]):
-    pass
+    """
+    The participation bits of the payload timeliness committee, one bit per
+    member in committee order.
+    """
 ```
 
 ### New `PTCWindow`
 
 ```python
 class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
-    pass
+    """
+    A rolling window of payload timeliness committees for the previous,
+    current, and lookahead epochs.
+    """
 ```
 
 ## Constants

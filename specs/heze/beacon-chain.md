@@ -45,14 +45,19 @@ from the latest published version of the EIPs.
 
 ```python
 class InclusionListBits(Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]):
-    pass
+    """
+    A bitfield over the inclusion list committee, one bit per member in
+    committee order.
+    """
 ```
 
 ### New `InclusionListCommittee`
 
 ```python
 class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]):
-    pass
+    """
+    The inclusion list committee of a slot, with possible duplicates.
+    """
 ```
 
 ## Constants

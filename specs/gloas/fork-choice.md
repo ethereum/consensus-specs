@@ -74,7 +74,10 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ```python
 class PayloadStatus(Uint8):
-    pass
+    """
+    The fork-choice status of an execution payload, one of the
+    ``PAYLOAD_STATUS_*`` values.
+    """
 ```
 
 ## Constants

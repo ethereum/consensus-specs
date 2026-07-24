@@ -78,7 +78,10 @@ and use as a reference throughout.
 
 ```python
 class SyncSubcommitteeBits(Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]):
-    pass
+    """
+    The participation bits of a single sync subcommittee, one bit per member
+    in subcommittee order.
+    """
 ```
 
 ## Constants

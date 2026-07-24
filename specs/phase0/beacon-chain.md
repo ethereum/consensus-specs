@@ -196,224 +196,309 @@ We define the following Python custom types for type hinting and readability:
 
 ```python
 class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE]):
-    pass
+    """
+    The participation bits of a single committee, one bit per member in
+    committee order.
+    """
 ```
 
 ### `Attestations`
 
 ```python
 class Attestations(List[Attestation, MAX_ATTESTATIONS]):
-    pass
+    """
+    The attestations included in a beacon block.
+    """
 ```
 
 ### `AttesterSlashings`
 
 ```python
 class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]):
-    pass
+    """
+    The attester slashings included in a beacon block.
+    """
 ```
 
 ### `AttestingIndices`
 
 ```python
 class AttestingIndices(List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]):
-    pass
+    """
+    The indices of the validators participating in an attestation, sorted and
+    without duplicates.
+    """
 ```
 
 ### `Balances`
 
 ```python
 class Balances(List[Gwei, VALIDATOR_REGISTRY_LIMIT]):
-    pass
+    """
+    The balances of all validators, in Gwei. The list is aligned with
+    ``state.validators``, one entry per validator.
+    """
 ```
 
 ### `BlockRoots`
 
 ```python
 class BlockRoots(Vector[Root, SLOTS_PER_HISTORICAL_ROOT]):
-    pass
+    """
+    A rolling window of recent block roots, indexed by slot modulo
+    ``SLOTS_PER_HISTORICAL_ROOT``.
+    """
 ```
 
 ### `BLSPubkey`
 
 ```python
 class BLSPubkey(Bytes48):
-    pass
+    """
+    A BLS12-381 public key, a compressed point in the ``G1`` group.
+    """
 ```
 
 ### `BLSSignature`
 
 ```python
 class BLSSignature(Bytes96):
-    pass
+    """
+    A BLS12-381 signature, a compressed point in the ``G2`` group.
+    """
 ```
 
 ### `CommitteeIndex`
 
 ```python
 class CommitteeIndex(Uint64):
-    pass
+    """
+    The index of a committee within a slot.
+    """
 ```
 
 ### `DepositDataList`
 
 ```python
 class DepositDataList(List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH]):
-    pass
+    """
+    All deposits made to the deposit contract, whose hash tree root matches
+    the contract's deposit root.
+    """
 ```
 
 ### `DepositProof`
 
 ```python
 class DepositProof(Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]):
-    pass
+    """
+    A Merkle proof of a deposit in the deposit contract's tree. The node
+    beyond the tree depth accounts for the deposit count mix-in.
+    """
 ```
 
 ### `Deposits`
 
 ```python
 class Deposits(List[Deposit, MAX_DEPOSITS]):
-    pass
+    """
+    The deposits included in a beacon block.
+    """
 ```
 
 ### `Domain`
 
 ```python
 class Domain(Bytes32):
-    pass
+    """
+    A signature domain. Mixed into signed messages so that signatures are not
+    replayable across message types, forks, or chains.
+    """
 ```
 
 ### `DomainType`
 
 ```python
 class DomainType(Bytes4):
-    pass
+    """
+    A signature domain type, identifying the kind of message being signed.
+    """
 ```
 
 ### `Epoch`
 
 ```python
 class Epoch(Uint64):
-    pass
+    """
+    An epoch number. An epoch is a span of ``SLOTS_PER_EPOCH`` slots, and most
+    validator accounting happens at epoch boundaries.
+    """
 ```
 
 ### `Eth1DataVotes`
 
 ```python
 class Eth1DataVotes(List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]):
-    pass
+    """
+    The ``Eth1Data`` votes cast by block proposers during the current voting
+    period.
+    """
 ```
 
 ### `ForkDigest`
 
 ```python
 class ForkDigest(Bytes4):
-    pass
+    """
+    A short digest of the fork version and the genesis validators root, used
+    on the networking layer to separate forks.
+    """
 ```
 
 ### `Gwei`
 
 ```python
 class Gwei(Uint64):
-    pass
+    """
+    An amount in Gwei, the smallest unit of Ether on the beacon chain. One
+    Ether is equal to ``10**9`` Gwei, and one Gwei is equal to ``10**9`` Wei.
+    """
 ```
 
 ### `Hash32`
 
 ```python
 class Hash32(Bytes32):
-    pass
+    """
+    A 256-bit hash that is not a Merkle root, like the hash of an
+    execution-layer block.
+    """
 ```
 
 ### `HistoricalRoots`
 
 ```python
 class HistoricalRoots(List[Root, HISTORICAL_ROOTS_LIMIT]):
-    pass
+    """
+    Roots of ``HistoricalBatch`` objects, appended every
+    ``SLOTS_PER_HISTORICAL_ROOT`` slots as an append-only history of the chain.
+    """
 ```
 
 ### `JustificationBits`
 
 ```python
 class JustificationBits(Bitvector[JUSTIFICATION_BITS_LENGTH]):
-    pass
+    """
+    Justification status of the last ``JUSTIFICATION_BITS_LENGTH`` epochs,
+    used to decide finality under Casper FFG.
+    """
 ```
 
 ### `PendingAttestations`
 
 ```python
 class PendingAttestations(List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]):
-    pass
+    """
+    Attestations included in blocks during an epoch, held in the state until
+    they are processed at the epoch boundary.
+    """
 ```
 
 ### `ProposerSlashings`
 
 ```python
 class ProposerSlashings(List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]):
-    pass
+    """
+    The proposer slashings included in a beacon block.
+    """
 ```
 
 ### `RandaoMixes`
 
 ```python
 class RandaoMixes(Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]):
-    pass
+    """
+    A rolling window of accumulated RANDAO mixes, indexed by epoch modulo
+    ``EPOCHS_PER_HISTORICAL_VECTOR``.
+    """
 ```
 
 ### `Root`
 
 ```python
 class Root(Bytes32):
-    pass
+    """
+    A Merkle root, usually the hash tree root of an SSZ object.
+    """
 ```
 
 ### `Slashings`
 
 ```python
 class Slashings(Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]):
-    pass
+    """
+    Per-epoch sums of slashed effective balances, indexed by epoch modulo
+    ``EPOCHS_PER_SLASHINGS_VECTOR`` and used to scale slashing penalties.
+    """
 ```
 
 ### `Slot`
 
 ```python
 class Slot(Uint64):
-    pass
+    """
+    A slot number. Time is divided into fixed-length slots, and at most one
+    beacon block may be proposed per slot.
+    """
 ```
 
 ### `StateRoots`
 
 ```python
 class StateRoots(Vector[Root, SLOTS_PER_HISTORICAL_ROOT]):
-    pass
+    """
+    A rolling window of recent state roots, indexed by slot modulo
+    ``SLOTS_PER_HISTORICAL_ROOT``.
+    """
 ```
 
 ### `ValidatorIndex`
 
 ```python
 class ValidatorIndex(Uint64):
-    pass
+    """
+    The index of a validator in the validator registry.
+    """
 ```
 
 ### `Validators`
 
 ```python
 class Validators(List[Validator, VALIDATOR_REGISTRY_LIMIT]):
-    pass
+    """
+    The validator registry. Validators are appended on deposit and are never
+    removed.
+    """
 ```
 
 ### `Version`
 
 ```python
 class Version(Bytes4):
-    pass
+    """
+    A fork version number, unique per upgrade and per chain to keep signature
+    domains distinct.
+    """
 ```
 
 ### `VoluntaryExits`
 
 ```python
 class VoluntaryExits(List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]):
-    pass
+    """
+    The signed voluntary exits included in a beacon block.
+    """
 ```
 
 ## Constants

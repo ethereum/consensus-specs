@@ -65,21 +65,28 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ```python
 class BlobIndex(Uint64):
-    pass
+    """
+    The index of a blob within a block.
+    """
 ```
 
 ### New `BlobKZGCommitments`
 
 ```python
 class BlobKZGCommitments(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
-    pass
+    """
+    The KZG commitments to the blobs of a beacon block.
+    """
 ```
 
 ### New `VersionedHash`
 
 ```python
 class VersionedHash(Bytes32):
-    pass
+    """
+    A hash prefixed with a version byte, used on the execution layer to
+    reference blob KZG commitments.
+    """
 ```
 
 ## Constants

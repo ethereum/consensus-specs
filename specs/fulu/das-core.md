@@ -43,35 +43,46 @@
 
 ```python
 class ColumnIndex(Uint64):
-    pass
+    """
+    The index of a column in the matrix of extended blob data.
+    """
 ```
 
 ### `CustodyIndex`
 
 ```python
 class CustodyIndex(Uint64):
-    pass
+    """
+    The index of a custody group, a unit of column custody assigned to nodes.
+    """
 ```
 
 ### `DataColumn`
 
 ```python
 class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
-    pass
+    """
+    A column of the extended blob data matrix, holding one cell per blob.
+    """
 ```
 
 ### `KZGCommitmentsInclusionProof`
 
 ```python
 class KZGCommitmentsInclusionProof(Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]):
-    pass
+    """
+    A Merkle branch proving a block's blob KZG commitments within
+    ``BeaconBlockBody``.
+    """
 ```
 
 ### `RowIndex`
 
 ```python
 class RowIndex(Uint64):
-    pass
+    """
+    The index of a row in the matrix of extended blob data.
+    """
 ```
 
 ## Constants

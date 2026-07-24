@@ -36,7 +36,9 @@ messages, topics and data to the Req-Resp and Gossip domains.
 
 ```python
 class LightClientUpdates(List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]):
-    pass
+    """
+    Light client updates returned in a ``LightClientUpdatesByRange`` response.
+    """
 ```
 
 ### Configuration

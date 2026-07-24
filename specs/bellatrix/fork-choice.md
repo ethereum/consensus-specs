@@ -37,7 +37,9 @@ first PoS block.
 
 ```python
 class PayloadId(Bytes8):
-    pass
+    """
+    An identifier of a payload build process on the execution engine.
+    """
 ```
 
 ## Protocols

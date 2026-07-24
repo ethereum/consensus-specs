@@ -61,21 +61,27 @@ Including:
 
 ```python
 class ExecutionAddress(Bytes20):
-    pass
+    """
+    The address of an account on the execution layer.
+    """
 ```
 
 ### New `ExtraData`
 
 ```python
 class ExtraData(ByteList[MAX_EXTRA_DATA_BYTES]):
-    pass
+    """
+    Arbitrary extra data included in an execution payload.
+    """
 ```
 
 ### New `LogsBloom`
 
 ```python
 class LogsBloom(ByteVector[BYTES_PER_LOGS_BLOOM]):
-    pass
+    """
+    A Bloom filter aggregating the logs emitted by an execution payload.
+    """
 ```
 
 ### New `Transaction`
@@ -88,14 +94,19 @@ envelope\](https://eips.ethereum.org/EIPS/eip-2
 
 ```python
 class Transaction(ByteList[MAX_BYTES_PER_TRANSACTION]):
-    pass
+    """
+    An opaque execution-layer transaction, either a typed transaction
+    envelope or a legacy RLP-encoded transaction.
+    """
 ```
 
 ### New `Transactions`
 
 ```python
 class Transactions(List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]):
-    pass
+    """
+    The transactions included in an execution payload.
+    """
 ```
 
 ## Constants

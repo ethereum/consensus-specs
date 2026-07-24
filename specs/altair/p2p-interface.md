@@ -125,7 +125,9 @@ def get_sync_subcommittee_pubkeys(
 
 ```python
 class Syncnets(Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]):
-    pass
+    """
+    The sync committee subnets a node is subscribed to, one bit per subnet.
+    """
 ```
 
 ### MetaData

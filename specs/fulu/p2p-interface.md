@@ -78,7 +78,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ```python
 class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
-    pass
+    """
+    The indices of the columns requested in a ``DataColumnSidecarsByRange``
+    request.
+    """
 ```
 
 ### Containers
@@ -87,14 +90,20 @@ class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
 
 ```python
 class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
-    pass
+    """
+    The identifiers of the data column sidecars requested in a
+    ``DataColumnSidecarsByRoot`` request.
+    """
 ```
 
 #### New `DataColumnSidecars`
 
 ```python
 class DataColumnSidecars(List[DataColumnSidecar, compute_max_request_data_column_sidecars()]):
-    pass
+    """
+    Data column sidecars returned in a ``DataColumnSidecarsByRange`` or
+    ``DataColumnSidecarsByRoot`` response.
+    """
 ```
 
 #### New `DataColumnsByRootIdentifier`

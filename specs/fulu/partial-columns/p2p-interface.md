@@ -49,14 +49,19 @@ particular, this document builds on the
 
 ```python
 class CellsBitlist(Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
-    pass
+    """
+    A bitfield over the cells of a column, one bit per blob.
+    """
 ```
 
 ### New `OptionalPartialDataColumnHeader`
 
 ```python
 class OptionalPartialDataColumnHeader(List[PartialDataColumnHeader, 1]):
-    pass
+    """
+    A header that may or may not be present, encoded as a list of length zero
+    or one.
+    """
 ```
 
 ## Containers

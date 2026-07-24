@@ -68,21 +68,28 @@ cryptographic normalization before invoking any internal functions.
 
 ```python
 class Blob(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]):
-    pass
+    """
+    A blob of ``FIELD_ELEMENTS_PER_BLOB`` field elements, the unit of data
+    committed to with a KZG commitment.
+    """
 ```
 
 ### `G1Point`
 
 ```python
 class G1Point(Bytes48):
-    pass
+    """
+    A compressed point in the BLS12-381 ``G1`` group.
+    """
 ```
 
 ### `G2Point`
 
 ```python
 class G2Point(Bytes96):
-    pass
+    """
+    A compressed point in the BLS12-381 ``G2`` group.
+    """
 ```
 
 ### `KZGCommitment`
@@ -93,7 +100,9 @@ class G2Point(Bytes96):
 
 ```python
 class KZGCommitment(Bytes48):
-    pass
+    """
+    A KZG commitment to a blob, a compressed ``G1`` point.
+    """
 ```
 
 ### `KZGProof`
@@ -102,7 +111,9 @@ class KZGCommitment(Bytes48):
 
 ```python
 class KZGProof(Bytes48):
-    pass
+    """
+    A KZG proof of a polynomial evaluation, a compressed ``G1`` point.
+    """
 ```
 
 ## Cryptographic types

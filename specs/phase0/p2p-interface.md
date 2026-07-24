@@ -225,42 +225,56 @@ We define the following Python custom types for type hinting and readability:
 
 ```python
 class Attnets(Bitvector[ATTESTATION_SUBNET_COUNT]):
-    pass
+    """
+    The attestation subnets a node is subscribed to, one bit per subnet.
+    """
 ```
 
 #### `BeaconBlockRoots`
 
 ```python
 class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS]):
-    pass
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
 ```
 
 #### `ErrorMessage`
 
 ```python
 class ErrorMessage(List[Byte, 256]):
-    pass
+    """
+    The error message of an unsuccessful response chunk.
+    """
 ```
 
 #### `NodeID`
 
 ```python
 class NodeID(Uint256):
-    pass
+    """
+    A node identifier on the discovery network, derived from the node's
+    identity key.
+    """
 ```
 
 #### `SignedBeaconBlocks`
 
 ```python
 class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]):
-    pass
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
 ```
 
 #### `SubnetID`
 
 ```python
 class SubnetID(Uint64):
-    pass
+    """
+    The identifier of a gossip subnet, like an attestation subnet.
+    """
 ```
 
 ### Constants

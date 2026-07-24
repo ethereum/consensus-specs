@@ -145,7 +145,10 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 ```python
 # [Modified in Electra:EIP7549]
 class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]):
-    pass
+    """
+    The participation bits of all committees participating in an attestation,
+    concatenated in committee order.
+    """
 ```
 
 ### Modified `Attestations`
@@ -153,7 +156,9 @@ class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_
 ```python
 # [Modified in Electra:EIP7549]
 class Attestations(List[Attestation, MAX_ATTESTATIONS_ELECTRA]):
-    pass
+    """
+    The attestations included in a beacon block.
+    """
 ```
 
 ### Modified `AttesterSlashings`
@@ -161,7 +166,9 @@ class Attestations(List[Attestation, MAX_ATTESTATIONS_ELECTRA]):
 ```python
 # [Modified in Electra:EIP7549]
 class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]):
-    pass
+    """
+    The attester slashings included in a beacon block.
+    """
 ```
 
 ### Modified `AttestingIndices`
@@ -171,56 +178,73 @@ class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]):
 class AttestingIndices(
     List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
 ):
-    pass
+    """
+    The indices of the validators participating in an attestation, sorted and
+    without duplicates.
+    """
 ```
 
 ### New `CommitteeBits`
 
 ```python
 class CommitteeBits(Bitvector[MAX_COMMITTEES_PER_SLOT]):
-    pass
+    """
+    Bits marking which committees of a slot participate in an attestation.
+    """
 ```
 
 ### New `ConsolidationRequests`
 
 ```python
 class ConsolidationRequests(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]):
-    pass
+    """
+    The consolidation requests pertaining to a single execution payload.
+    """
 ```
 
 ### New `DepositRequests`
 
 ```python
 class DepositRequests(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]):
-    pass
+    """
+    The deposit requests pertaining to a single execution payload.
+    """
 ```
 
 ### New `PendingConsolidations`
 
 ```python
 class PendingConsolidations(List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]):
-    pass
+    """
+    The queue of consolidations awaiting processing at epoch boundaries.
+    """
 ```
 
 ### New `PendingDeposits`
 
 ```python
 class PendingDeposits(List[PendingDeposit, PENDING_DEPOSITS_LIMIT]):
-    pass
+    """
+    The queue of deposits awaiting processing at epoch boundaries.
+    """
 ```
 
 ### New `PendingPartialWithdrawals`
 
 ```python
 class PendingPartialWithdrawals(List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]):
-    pass
+    """
+    The queue of partial withdrawals awaiting processing at epoch boundaries.
+    """
 ```
 
 ### New `WithdrawalRequests`
 
 ```python
 class WithdrawalRequests(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]):
-    pass
+    """
+    The withdrawal requests pertaining to a single execution payload.
+    """
 ```
 
 ## Constants

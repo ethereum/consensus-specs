@@ -86,7 +86,9 @@ libp2p messages.
 ```python
 # [Modified in Gloas:EIP7688]
 class DataColumn(ProgressiveList[Cell]):
-    pass
+    """
+    A column of the extended blob data matrix, holding one cell per blob.
+    """
 ```
 
 #### Modified `KZGProofs`
@@ -94,21 +96,31 @@ class DataColumn(ProgressiveList[Cell]):
 ```python
 # [Modified in Gloas:EIP7688]
 class KZGProofs(ProgressiveList[KZGProof]):
-    pass
+    """
+    One KZG proof per blob, used to verify the blobs against their
+    commitments.
+    """
 ```
 
 #### New `ExecutionPayloadEnvelopeRoots`
 
 ```python
 class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
-    pass
+    """
+    The beacon block roots of the payload envelopes requested in an
+    ``ExecutionPayloadEnvelopesByRoot`` request.
+    """
 ```
 
 #### New `SignedExecutionPayloadEnvelopes`
 
 ```python
 class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]):
-    pass
+    """
+    Signed execution payload envelopes returned in an
+    ``ExecutionPayloadEnvelopesByRange`` or
+    ``ExecutionPayloadEnvelopesByRoot`` response.
+    """
 ```
 
 ### Containers

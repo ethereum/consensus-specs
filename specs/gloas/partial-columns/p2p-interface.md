@@ -49,7 +49,9 @@ and the [Gloas networking specification](../p2p-interface.md).
 ```python
 # [Modified in Gloas:EIP7688]
 class CellsBitlist(ProgressiveBitlist):
-    pass
+    """
+    A bitfield over the cells of a column, one bit per blob.
+    """
 ```
 
 ### Containers
