@@ -872,11 +872,21 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 #### Modified `get_attestation_participation_flag_indices`
 
 *Note*: The function `get_attestation_participation_flag_indices` is modified to
-include a new payload matching constraint to `is_matching_head`.
+include a new payload matching constraint to `is_matching_head`. The new
+`parent_slot` parameter is the slot of the parent block of the block being
+processed. Since the timely head flag requires both the minimum inclusion delay
+and a head root that matches the block root at the attestation slot, an
+attestation can only receive the flag if it attests to the parent block. The
+payload availability of the attested block is therefore tracked at
+`parent_slot`, even when `data.slot` is a skipped slot.
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
+    state: BeaconState,
+    data: AttestationData,
+    inclusion_delay: Uint64,
+    # [New in Gloas:EIP7732]
+    parent_slot: Slot,
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -898,7 +908,7 @@ def get_attestation_participation_flag_indices(
         assert data.index == 0
         payload_matches = True
     else:
-        slot_index = data.slot % SLOTS_PER_HISTORICAL_ROOT
+        slot_index = parent_slot % SLOTS_PER_HISTORICAL_ROOT
         payload_index = state.execution_payload_availability[slot_index]
         payload_matches = data.index == payload_index
 
@@ -1251,11 +1261,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     # Removed `process_execution_payload`
     # [New in Gloas:EIP7732]
-    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
+    parent_slot = process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     # [Modified in Gloas:EIP7732]
-    process_operations(state, block.body)
+    process_operations(state, block.body, parent_slot)
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -1607,10 +1617,14 @@ def verify_execution_payload_bid_signature(
 
 ##### New `process_execution_payload_bid`
 
+*Note*: This function returns the slot of the parent block, read from the bid in
+the state before it is overwritten by the new bid. The slot is later given to
+`process_attestation` to look up the payload availability of the attested block.
+
 ```python
 def process_execution_payload_bid(
     state: BeaconState, signed_bid: SignedExecutionPayloadBid
-) -> None:
+) -> Slot:
     bid = signed_bid.message
     builder_index = bid.builder_index
     amount = bid.value
@@ -1658,25 +1672,37 @@ def process_execution_payload_bid(
             pending_payment
         )
 
+    # Cache the parent block's slot before overwriting the bid
+    parent_slot = state.latest_execution_payload_bid.slot
+
     # Cache the signed execution payload bid
     state.latest_execution_payload_bid = bid
+
+    return parent_slot
 ```
 
 #### Operations
 
 ##### Modified `process_operations`
 
-*Note*: `process_operations` is modified to process PTC attestations and removes
-calls to `process_deposit_request`, `process_withdrawal_request`, and
+*Note*: `process_operations` is modified to process PTC attestations, to pass
+the parent block's slot to `process_attestation`, and removes calls to
+`process_deposit_request`, `process_withdrawal_request`, and
 `process_consolidation_request`.
 
 ```python
-def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+def process_operations(
+    state: BeaconState,
+    body: BeaconBlockBody,
+    # [New in Gloas:EIP7732]
+    parent_slot: Slot,
+) -> None:
     assert len(body.deposits) == 0
 
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+    # [Modified in Gloas:EIP7732]
+    def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
-            fn(state, operation)
+            fn(state, operation, *args)
 
     # [New in Gloas:EIP7688]
     assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
@@ -1690,7 +1716,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
     # [Modified in Gloas:EIP7732]
-    for_ops(body.attestations, process_attestation)
+    for_ops(body.attestations, process_attestation, parent_slot)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     # [Modified in Gloas:EIP7732]
@@ -1827,10 +1853,16 @@ def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest
 
 *Note*: The function is modified to track the weight for pending builder
 payments and to use the `index` field in the `AttestationData` to signal the
-payload availability.
+payload availability. The new `parent_slot` parameter, the slot of the parent
+block, is where the payload availability of the attested block is looked up.
 
 ```python
-def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+def process_attestation(
+    state: BeaconState,
+    attestation: Attestation,
+    # [New in Gloas:EIP7732]
+    parent_slot: Slot,
+) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
@@ -1855,8 +1887,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == committee_offset
 
     # Participation flag indices
+    # [Modified in Gloas:EIP7732]
     participation_flag_indices = get_attestation_participation_flag_indices(
-        state, data, state.slot - data.slot
+        state, data, state.slot - data.slot, parent_slot
     )
 
     # Verify signature

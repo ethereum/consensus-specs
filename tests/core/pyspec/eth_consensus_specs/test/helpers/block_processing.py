@@ -1,3 +1,6 @@
+from eth_consensus_specs.test.helpers.attestations import process_attestation
+
+
 def for_ops(state, operations, fn) -> None:
     for operation in operations:
         fn(state, operation)
@@ -19,7 +22,9 @@ def get_process_calls(spec):
             state, block.body.shard_headers, spec.process_shard_header
         ),
         "process_attestation": lambda state, block: for_ops(
-            state, block.body.attestations, spec.process_attestation
+            state,
+            block.body.attestations,
+            lambda state, attestation: process_attestation(spec, state, attestation),
         ),
         "process_deposit": lambda state, block: for_ops(
             state, block.body.deposits, spec.process_deposit
