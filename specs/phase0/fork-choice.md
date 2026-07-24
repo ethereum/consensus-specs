@@ -119,15 +119,15 @@ handlers must not modify `store`.
 
 | Name           | Value           |
 | -------------- | --------------- |
-| `BASIS_POINTS` | `uint64(10000)` |
+| `BASIS_POINTS` | `Uint64(10000)` |
 
 ### Configuration
 
 | Name                                  | Value         |
 | ------------------------------------- | ------------- |
-| `PROPOSER_SCORE_BOOST`                | `uint64(40)`  |
-| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)`  |
-| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)` |
+| `PROPOSER_SCORE_BOOST`                | `Uint64(40)`  |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `Uint64(20)`  |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `Uint64(160)` |
 | `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`    |
 
 - The proposer score boost and re-org weight threshold are percentage values
@@ -138,7 +138,7 @@ handlers must not modify `store`.
 
 | Name                        | Value          | Unit         | Duration                   |
 | --------------------------- | -------------- | ------------ | -------------------------- |
-| `PROPOSER_REORG_CUTOFF_BPS` | `uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
+| `PROPOSER_REORG_CUTOFF_BPS` | `Uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
 
@@ -184,8 +184,8 @@ algorithm. The important fields being tracked are described below:
 ```python
 @dataclass
 class Store:
-    time: uint64
-    genesis_time: uint64
+    time: Uint64
+    genesis_time: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -194,7 +194,7 @@ class Store:
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    block_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
@@ -220,7 +220,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
+        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -284,7 +284,7 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 #### `calculate_committee_fraction`
 
 ```python
-def calculate_committee_fraction(state: BeaconState, committee_percent: uint64) -> Gwei:
+def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
     committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
     return Gwei((committee_weight * committee_percent) // 100)
 ```
@@ -535,7 +535,7 @@ def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
 #### `seconds_to_milliseconds`
 
 ```python
-def seconds_to_milliseconds(seconds: uint64) -> uint64:
+def seconds_to_milliseconds(seconds: Uint64) -> Uint64:
     """
     Convert seconds to milliseconds with overflow protection.
     Returns ``UINT64_MAX`` if the result would overflow.
@@ -548,7 +548,7 @@ def seconds_to_milliseconds(seconds: uint64) -> uint64:
 #### `get_slot_component_duration_ms`
 
 ```python
-def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
+def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
     """
     Calculate the duration of a slot component in milliseconds.
     """
@@ -558,21 +558,21 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
 #### `get_attestation_due_ms`
 
 ```python
-def get_attestation_due_ms() -> uint64:
+def get_attestation_due_ms() -> Uint64:
     return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
 ```
 
 #### `get_proposer_reorg_cutoff_ms`
 
 ```python
-def get_proposer_reorg_cutoff_ms() -> uint64:
+def get_proposer_reorg_cutoff_ms() -> Uint64:
     return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
 ```
 
 #### `get_aggregate_due_ms`
 
 ```python
-def get_aggregate_due_ms() -> uint64:
+def get_aggregate_due_ms() -> Uint64:
     return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
 ```
 
@@ -747,7 +747,7 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 ##### `on_tick_per_slot`
 
 ```python
-def on_tick_per_slot(store: Store, time: uint64) -> None:
+def on_tick_per_slot(store: Store, time: Uint64) -> None:
     previous_slot = get_current_slot(store)
 
     # Update store time
@@ -891,7 +891,7 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
 #### `on_tick`
 
 ```python
-def on_tick(store: Store, time: uint64) -> None:
+def on_tick(store: Store, time: Uint64) -> None:
     # If the ``store.time`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
     tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS

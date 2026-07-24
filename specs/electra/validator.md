@@ -53,7 +53,7 @@ specifications before continuing and use them as a reference throughout.
 @dataclass
 class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     blobs_bundle: BlobsBundle
     # [New in Electra]
     execution_requests: Sequence[bytes]
@@ -94,7 +94,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
 ```
 
@@ -150,14 +150,14 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 result of the following function:
 
 ```python
-def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
+def get_eth1_pending_deposit_count(state: BeaconState) -> Uint64:
     eth1_deposit_index_limit = min(
         state.eth1_data.deposit_count, state.deposit_requests_start_index
     )
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
-        return uint64(0)
+        return Uint64(0)
 ```
 
 *Note*: Clients will be able to remove the `Eth1Data` polling mechanism in an

@@ -35,7 +35,7 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 | Name                     | Value          | Unit         | Duration                   |
 | ------------------------ | -------------- | ------------ | -------------------------- |
-| `INCLUSION_LIST_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| `INCLUSION_LIST_DUE_BPS` | `Uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Protocols
 
@@ -92,13 +92,13 @@ def notify_forkchoice_updated(
 ```python
 @dataclass
 class PayloadAttributes:
-    timestamp: uint64
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
-    slot_number: uint64
-    target_gas_limit: uint64
+    slot_number: Uint64
+    target_gas_limit: Uint64
     # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
@@ -111,8 +111,8 @@ inclusion list constraints.
 ```python
 @dataclass
 class Store:
-    time: uint64
-    genesis_time: uint64
+    time: Uint64
+    genesis_time: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -121,17 +121,17 @@ class Store:
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, list[boolean]] = field(default_factory=dict)
+    block_timeliness: Dict[Root, list[Boolean]] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
-    payload_timeliness_vote: Dict[Root, list[Optional[boolean]]] = field(default_factory=dict)
-    payload_data_availability_vote: Dict[Root, list[Optional[boolean]]] = field(
+    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]] = field(default_factory=dict)
+    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]] = field(
         default_factory=dict
     )
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: Dict[Root, boolean] = field(default_factory=dict)
+    payload_inclusion_list_satisfaction: Dict[Root, Boolean] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -145,7 +145,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
+        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -246,7 +246,7 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 ### New `get_inclusion_list_due_ms`
 
 ```python
-def get_inclusion_list_due_ms() -> uint64:
+def get_inclusion_list_due_ms() -> Uint64:
     return get_slot_component_duration_ms(INCLUSION_LIST_DUE_BPS)
 ```
 

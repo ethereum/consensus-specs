@@ -154,7 +154,7 @@ from the latest published version of the EIPs.
 | `ConsolidationRequests`  | `ProgressiveList[ConsolidationRequest]`  |
 | `BuilderDepositRequests` | `ProgressiveList[BuilderDepositRequest]` |
 | `BuilderExitRequests`    | `ProgressiveList[BuilderExitRequest]`    |
-| `BuilderIndex`           | `uint64`                                 |
+| `BuilderIndex`           | `Uint64`                                 |
 | `BlockAccessList`        | `ProgressiveByteList`                    |
 
 ## Constants
@@ -167,7 +167,7 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                 | Value           |
 | -------------------- | --------------- |
-| `BUILDER_INDEX_FLAG` | `uint64(2**40)` |
+| `BUILDER_INDEX_FLAG` | `Uint64(2**40)` |
 
 ### Domains
 
@@ -183,8 +183,8 @@ same `Withdrawal` container can be used for validators and builders.
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
 | `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` |
-| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |
-| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |
+| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `Uint64(6)`                |
+| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `Uint64(10)`               |
 
 ### Withdrawal prefixes
 
@@ -196,7 +196,7 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                      | Value      |
 | ------------------------- | ---------- |
-| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
+| `PAYLOAD_BUILDER_VERSION` | `Uint8(0)` |
 
 ### Execution-layer triggered requests
 
@@ -211,26 +211,26 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name       | Value                  |
 | ---------- | ---------------------- |
-| `PTC_SIZE` | `uint64(2**9)` (= 512) |
+| `PTC_SIZE` | `Uint64(2**9)` (= 512) |
 
 ### Max operations per block
 
 | Name                       | Value                |
 | -------------------------- | -------------------- |
-| `MAX_PAYLOAD_ATTESTATIONS` | `uint64(2**2)` (= 4) |
+| `MAX_PAYLOAD_ATTESTATIONS` | `Uint64(2**2)` (= 4) |
 
 ### Execution
 
 | Name                                       | Value                 |
 | ------------------------------------------ | --------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**6)` (= 64) |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16) |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `Uint64(2**6)` (= 64) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `Uint64(2**4)` (= 16) |
 
 ### Withdrawals processing
 
 | Name                                 | Value                      |
 | ------------------------------------ | -------------------------- |
-| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `uint64(2**14)` (= 16,384) |
+| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `Uint64(2**14)` (= 16,384) |
 
 ## Configuration
 
@@ -238,15 +238,15 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                                         | Value                                    |
 | -------------------------------------------- | ---------------------------------------- |
-| `CHURN_LIMIT_QUOTIENT_GLOAS`                 | `uint64(2**15)` (= 32,768)               |
-| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`         | `uint64(2**16)` (= 65,536)               |
+| `CHURN_LIMIT_QUOTIENT_GLOAS`                 | `Uint64(2**15)` (= 32,768)               |
+| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`         | `Uint64(2**16)` (= 65,536)               |
 | `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
 
 ### Time parameters
 
 | Name                                | Value                 | Unit   |
 | ----------------------------------- | --------------------- | ------ |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Uint64(2**6)` (= 64) | epochs |
 
 ## Containers
 
@@ -257,7 +257,7 @@ same `Withdrawal` container can be used for validators and builders.
 ```python
 class Builder(Container):
     pubkey: BLSPubkey
-    version: uint8
+    version: Uint8
     execution_address: ExecutionAddress
     balance: Gwei
     deposit_epoch: Epoch
@@ -306,8 +306,8 @@ class BuilderExitRequest(Container):
 class PayloadAttestationData(Container):
     beacon_block_root: Root
     slot: Slot
-    payload_present: boolean
-    blob_data_available: boolean
+    payload_present: Boolean
+    blob_data_available: Boolean
 ```
 
 #### `PayloadAttestation`
@@ -346,7 +346,7 @@ class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 12)):
     block_hash: Hash32
     prev_randao: Bytes32
     fee_recipient: ExecutionAddress
-    gas_limit: uint64
+    gas_limit: Uint64
     builder_index: BuilderIndex
     slot: Slot
     value: Gwei
@@ -448,7 +448,7 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 13)):
 ```python
 # [Modified in Gloas:EIP7688]
 class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -458,7 +458,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     # [Modified in Gloas:EIP7688]
     validators: ProgressiveList[Validator]
     # [Modified in Gloas:EIP7688]
@@ -474,7 +474,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # [Modified in Gloas:EIP7688]
-    inactivity_scores: ProgressiveList[uint64]
+    inactivity_scores: ProgressiveList[Uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Gloas:EIP7732]
@@ -484,7 +484,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
+    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -526,23 +526,23 @@ class ExecutionPayload(ProgressiveContainer(active_fields=[1] * 19)):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     # [Modified in Gloas:EIP7688]
     transactions: ProgressiveList[Transaction]
     # [Modified in Gloas:EIP7688]
     withdrawals: ProgressiveList[Withdrawal]
-    blob_gas_used: uint64
-    excess_blob_gas: uint64
+    blob_gas_used: Uint64
+    excess_blob_gas: Uint64
     # [New in Gloas:EIP7928]
     block_access_list: BlockAccessList
     # [New in Gloas:EIP7843]
-    slot_number: uint64
+    slot_number: Uint64
 ```
 
 #### `ExecutionRequests`
@@ -570,11 +570,11 @@ class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 5)):
 class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Gloas:EIP7732]
-    processed_builder_withdrawals_count: uint64
-    processed_partial_withdrawals_count: uint64
+    processed_builder_withdrawals_count: Uint64
+    processed_partial_withdrawals_count: Uint64
     # [New in Gloas:EIP7732]
-    processed_builders_sweep_count: uint64
-    processed_sweep_withdrawals_count: uint64
+    processed_builders_sweep_count: Uint64
+    processed_sweep_withdrawals_count: Uint64
 ```
 
 ## Helpers
@@ -752,7 +752,7 @@ def compute_balance_weighted_selection(
     state: BeaconState,
     indices: Sequence[ValidatorIndex],
     seed: Bytes32,
-    size: uint64,
+    size: Uint64,
     shuffle_indices: bool,
 ) -> Sequence[ValidatorIndex]:
     """
@@ -762,11 +762,11 @@ def compute_balance_weighted_selection(
     ``indices`` is traversed in order. The returned list can contain duplicates.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
-    total = uint64(len(indices))
+    total = Uint64(len(indices))
     assert total > 0
     effective_balances = [state.validators[index].effective_balance for index in indices]
     selected: List[ValidatorIndex] = []
-    i = uint64(0)
+    i = Uint64(0)
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
@@ -876,7 +876,7 @@ include a new payload matching constraint to `is_matching_head`.
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -962,13 +962,13 @@ def get_indexed_payload_attestation(
 #### New `get_builder_payment_quorum_threshold`
 
 ```python
-def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
+def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
     per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+    return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
 
 #### New `get_activation_churn_limit`
@@ -1067,7 +1067,7 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
 #### New `settle_builder_payment`
 
 ```python
-def settle_builder_payment(state: BeaconState, payment_index: uint64) -> None:
+def settle_builder_payment(state: BeaconState, payment_index: Uint64) -> None:
     assert payment_index < len(state.builder_pending_payments)
     payment = state.builder_pending_payments[payment_index]
     if payment.withdrawal.amount > 0:
@@ -1085,7 +1085,7 @@ The post-state corresponding to a pre-state `state` and a signed beacon block
 `signed_block` is defined as `state_transition(state, signed_block)`. State
 transitions that trigger an unhandled exception (e.g. a failed `assert` or an
 out-of-range list access) are considered invalid. State transitions that cause a
-`uint64` overflow or underflow are also considered invalid.
+`Uint64` overflow or underflow are also considered invalid.
 
 The validity of a signed execution payload envelope `signed_envelope` against a
 pre-state `state` is checked by
@@ -1093,7 +1093,7 @@ pre-state `state` is checked by
 Payload processing is deferred to the next beacon block via
 `process_parent_execution_payload`. Payloads that trigger an unhandled exception
 (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
-Payloads that cause a `uint64` overflow or underflow are also considered
+Payloads that cause a `Uint64` overflow or underflow are also considered
 invalid.
 
 ### Modified `process_slot`
@@ -1349,11 +1349,11 @@ def get_builder_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
     assert len(prior_withdrawals) <= withdrawals_limit
 
-    processed_count: uint64 = 0
+    processed_count: Uint64 = 0
     withdrawals: List[Withdrawal] = []
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
@@ -1383,13 +1383,13 @@ def get_builders_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
     assert len(prior_withdrawals) <= withdrawals_limit
 
-    processed_count: uint64 = 0
+    processed_count: Uint64 = 0
     withdrawals: List[Withdrawal] = []
     builder_index = state.next_withdrawal_builder_index
     for _ in range(builders_limit):
@@ -1487,7 +1487,7 @@ def update_payload_expected_withdrawals(
 
 ```python
 def update_builder_pending_withdrawals(
-    state: BeaconState, processed_builder_withdrawals_count: uint64
+    state: BeaconState, processed_builder_withdrawals_count: Uint64
 ) -> None:
     state.builder_pending_withdrawals = state.builder_pending_withdrawals[
         processed_builder_withdrawals_count:
@@ -1498,7 +1498,7 @@ def update_builder_pending_withdrawals(
 
 ```python
 def update_next_withdrawal_builder_index(
-    state: BeaconState, processed_builders_sweep_count: uint64
+    state: BeaconState, processed_builders_sweep_count: Uint64
 ) -> None:
     if len(state.builders) > 0:
         # Update the next builder index to start the next withdrawal sweep
@@ -1740,9 +1740,9 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 def add_builder_to_registry(
     state: BeaconState,
     pubkey: BLSPubkey,
-    version: uint8,
+    version: Uint8,
     execution_address: ExecutionAddress,
-    amount: uint64,
+    amount: Uint64,
     slot: Slot,
 ) -> None:
     set_or_append_list(

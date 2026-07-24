@@ -700,7 +700,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a12"
+version = "1.7.0a13"
 source = { editable = "." }
 dependencies = [
     { name = "eth-remerkleable" },

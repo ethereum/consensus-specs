@@ -182,7 +182,7 @@ def validate_partial_data_column_sidecar_gossip(
     store: Store,
     state: BeaconState,
     sidecar: PartialDataColumnSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     group_id: PartialDataColumnGroupID,
     column_index: ColumnIndex,
 ) -> None:

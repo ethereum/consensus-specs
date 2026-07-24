@@ -15,12 +15,12 @@ from eth_consensus_specs.test.helpers.random import (
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import Container, ProgressiveList, uint64
+from eth_consensus_specs.utils.ssz.ssz_typing import Container, ProgressiveList, Uint64
 
 
 class Deltas(Container):
-    rewards: ProgressiveList[uint64]
-    penalties: ProgressiveList[uint64]
+    rewards: ProgressiveList[Uint64]
+    penalties: ProgressiveList[Uint64]
 
 
 def get_inactivity_penalty_quotient(spec):

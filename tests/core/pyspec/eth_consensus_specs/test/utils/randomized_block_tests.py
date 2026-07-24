@@ -465,7 +465,7 @@ def _build_random_signed_bid(spec, state, block, rng):
         block_hash=block_hash,
         prev_randao=spec.get_randao_mix(state, spec.get_current_epoch(state)),
         fee_recipient=fee_recipient,
-        gas_limit=spec.uint64(30000000),
+        gas_limit=spec.Uint64(30000000),
         builder_index=builder_index,
         slot=block.slot,
         value=value,

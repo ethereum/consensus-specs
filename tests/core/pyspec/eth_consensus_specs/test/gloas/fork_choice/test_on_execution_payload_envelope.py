@@ -251,7 +251,7 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
                     withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
                     amount=spec.Gwei(32000000000),
                     signature=spec.BLSSignature(b"\x03" * 96),
-                    index=spec.uint64(0),
+                    index=spec.Uint64(0),
                 )
             ]
         ),

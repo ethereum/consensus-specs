@@ -73,8 +73,8 @@ The following is a list of the public methods:
 | Name              | SSZ equivalent                                                  | Description                                                                  |
 | ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `Cell`            | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof                   |
-| `CellIndex`       | `uint64`                                                        | Validation: `x < CELLS_PER_EXT_BLOB`                                         |
-| `CommitmentIndex` | `uint64`                                                        | The type which represents the index of an element in the list of commitments |
+| `CellIndex`       | `Uint64`                                                        | Validation: `x < CELLS_PER_EXT_BLOB`                                         |
+| `CommitmentIndex` | `Uint64`                                                        | The type which represents the index of an element in the list of commitments |
 
 ## Cryptographic types
 
@@ -95,7 +95,7 @@ cell or line).
 | Name                                     | Value                                                    | Description                                              |
 | ---------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
 | `FIELD_ELEMENTS_PER_EXT_BLOB`            | `2 * FIELD_ELEMENTS_PER_BLOB`                            | Number of field elements in a Reed-Solomon extended blob |
-| `FIELD_ELEMENTS_PER_CELL`                | `uint64(2**6)` (= 64)                                    | Number of field elements in a cell                       |
+| `FIELD_ELEMENTS_PER_CELL`                | `Uint64(2**6)` (= 64)                                    | Number of field elements in a cell                       |
 | `BYTES_PER_CELL`                         | `FIELD_ELEMENTS_PER_CELL * BYTES_PER_FIELD_ELEMENT`      | The number of bytes in a cell                            |
 | `CELLS_PER_EXT_BLOB`                     | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'`                                    |                                                          |

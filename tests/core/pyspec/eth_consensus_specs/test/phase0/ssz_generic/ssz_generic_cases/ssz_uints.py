@@ -3,12 +3,12 @@ from random import Random
 from eth_consensus_specs.debug.random_value import get_random_ssz_object, RandomizationMode
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
-    uint128,
-    uint256,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Uint128,
+    Uint256,
 )
 
 from .ssz_test_case import invalid_test_case, valid_test_case
@@ -20,7 +20,7 @@ def uint_case_fn(rng: Random, mode: RandomizationMode, typ: type[BasicView]):
     )
 
 
-UINT_TYPES = [uint8, uint16, uint32, uint64, uint128, uint256]
+UINT_TYPES = [Uint8, Uint16, Uint32, Uint64, Uint128, Uint256]
 
 
 def valid_cases():
@@ -64,7 +64,7 @@ def invalid_cases():
                 lambda byte_len=byte_len: (2 ** (byte_len * 8)).to_bytes(byte_len + 1, "little"),
             ),
         )
-    for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
+    for uint_type in [Uint8, Uint16, Uint32, Uint64, Uint128, Uint256]:
         byte_len = uint_type.type_byte_length()
         yield (
             f"uint_{byte_len * 8}_one_byte_longer",
@@ -75,7 +75,7 @@ def invalid_cases():
                 ),
             ),
         )
-    for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
+    for uint_type in [Uint8, Uint16, Uint32, Uint64, Uint128, Uint256]:
         byte_len = uint_type.type_byte_length()
         yield (
             f"uint_{byte_len * 8}_one_byte_shorter",

@@ -217,14 +217,14 @@ We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
 | ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | Node identifier   |
-| `SubnetID` | `uint64`       | Subnet identifier |
+| `NodeID`   | `Uint256`      | Node identifier   |
+| `SubnetID` | `Uint64`       | Subnet identifier |
 
 ### Constants
 
 | Name           | Value | Unit                             |
 | -------------- | ----- | -------------------------------- |
-| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
+| `NODE_ID_BITS` | `256` | The bit length of Uint256 is 256 |
 
 ### Configuration
 
@@ -257,7 +257,7 @@ propagation.
 class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -295,12 +295,12 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
+def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `is_not_from_future_slot`
@@ -309,7 +309,7 @@ def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
 def is_not_from_future_slot(
     state: BeaconState,
     slot: Slot,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given slot is not from the future
@@ -325,8 +325,8 @@ def is_not_from_future_slot(
 def is_within_slot_range(
     state: BeaconState,
     slot: Slot,
-    slot_range: uint64,
-    current_time_ms: uint64,
+    slot_range: Uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
@@ -344,29 +344,29 @@ def is_within_slot_range(
 #### `compute_attestation_subnet_prefix_bits`
 
 ```python
-def compute_attestation_subnet_prefix_bits() -> uint64:
+def compute_attestation_subnet_prefix_bits() -> Uint64:
     """
     Return the number of NodeId bits to use when mapping to a subscribed subnet.
     """
-    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+    return Uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
 ```
 
 #### `compute_min_epochs_for_block_requests`
 
 ```python
-def compute_min_epochs_for_block_requests() -> uint64:
+def compute_min_epochs_for_block_requests() -> Uint64:
     """
     Return the minimum epoch range over which a node must serve blocks.
     """
-    return uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
+    return Uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
 ```
 
 #### `is_non_strict_superset`
 
 ```python
 def is_non_strict_superset(
-    seen_bits_set: Set[Tuple[boolean, ...]],
-    new_bits: Tuple[boolean, ...],
+    seen_bits_set: Set[Tuple[Boolean, ...]],
+    new_bits: Tuple[Boolean, ...],
 ) -> bool:
     """
     Return True if any prior bitset in ``seen_bits_set`` is a non-strict
@@ -389,14 +389,14 @@ Clients MUST locally store the following `MetaData`:
 
 ```
 (
-  seq_number: uint64
+  seq_number: Uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
 )
 ```
 
 Where
 
-- `seq_number` is a `uint64` starting at `0` used to version the node's
+- `seq_number` is a `Uint64` starting at `0` used to version the node's
   metadata. If any other field in the local `MetaData` changes, the node MUST
   increment `seq_number` by 1.
 - `attnets` is a `Bitvector` representing the node's persistent attestation
@@ -414,16 +414,16 @@ can carry according to the following functions:
 #### `max_compressed_len`
 
 ```python
-def max_compressed_len(n: uint64) -> uint64:
+def max_compressed_len(n: Uint64) -> Uint64:
     # Worst-case compressed length for a given payload of size n when using snappy:
     # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-    return uint64(32 + n + n / 6)
+    return Uint64(32 + n + n / 6)
 ```
 
 #### `max_message_size`
 
 ```python
-def max_message_size() -> uint64:
+def max_message_size() -> Uint64:
     # Allow 1024 bytes for framing and encoding overhead but at least 1MiB in case MAX_PAYLOAD_SIZE is small.
     return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024 * 1024)
 ```
@@ -560,7 +560,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -640,7 +640,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -939,7 +939,7 @@ def validate_beacon_attestation_gossip(
     store: Store,
     state: BeaconState,
     attestation: Attestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -1227,7 +1227,7 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: List[byte, 256]
+  error_message: List[Byte, 256]
 )
 ```
 
@@ -1286,9 +1286,9 @@ Before reading the payload, the header MUST be validated:
 
 - The length-prefix MUST be encoded as an unsigned protobuf varint. It SHOULD be
   minimally encoded (i.e., without any redundant bytes) and MUST not exceed 10
-  bytes in length, which is sufficient to represent any `uint64` value. The
+  bytes in length, which is sufficient to represent any `Uint64` value. The
   length-prefix MUST be decoded into a type which supports the full range of
-  `uint64` values.
+  `Uint64` values.
 - The length-prefix is within the expected
   [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds)
   or `MAX_PAYLOAD_SIZE`, whichever is smaller.
@@ -1391,7 +1391,7 @@ Request, Response Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1420,8 +1420,8 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
-  step: uint64 # Deprecated, must be set to 1
+  count: Uint64
+  step: Uint64 # Deprecated, must be set to 1
 )
 ```
 
@@ -1556,7 +1556,7 @@ Request Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1564,7 +1564,7 @@ Response Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1743,7 +1743,7 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
     node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
-        uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+        uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
