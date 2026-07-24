@@ -335,14 +335,14 @@ def verify_attestation_payload_status(
     if not is_payload_verified(store, block_root):
         raise GossipIgnore("execution payload envelope has not been seen")
 
-    # [IGNORE] The corresponding execution payload has been validated
+    # [IGNORE] The attested execution payload is optimistic
     payload_status = block_payload_statuses.get(block_root, PAYLOAD_STATUS_NOT_VALIDATED)
     if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-        raise GossipIgnore("execution payload pending EL validation")
+        raise GossipIgnore("attested payload is optimistic")
 
-    # [REJECT] The corresponding execution payload passes EL validation
+    # [REJECT] The attested execution payload is processed and invalid
     if payload_status == PAYLOAD_STATUS_INVALIDATED:
-        raise GossipReject("execution payload failed EL validation")
+        raise GossipReject("attested payload is invalid")
 ```
 
 #### New `verify_block_body_operation_limits`

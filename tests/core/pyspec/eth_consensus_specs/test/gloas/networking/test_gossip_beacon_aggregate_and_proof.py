@@ -275,7 +275,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec,
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation(spec, state):
-    """A data.index=1 aggregate with payload pending EL validation is ignored."""
+    """A data.index=1 aggregate with an optimistic payload is ignored."""
     anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
     yield "state", anchor_state
@@ -318,7 +318,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
         ),
     )
     assert result == "ignore"
-    assert reason == "execution payload pending EL validation"
+    assert reason == "attested payload is optimistic"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -377,7 +377,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
         ),
     )
     assert result == "reject"
-    assert reason == "execution payload failed EL validation"
+    assert reason == "attested payload is invalid"
     messages.append(
         {
             "current_time_ms": int(time_ms),

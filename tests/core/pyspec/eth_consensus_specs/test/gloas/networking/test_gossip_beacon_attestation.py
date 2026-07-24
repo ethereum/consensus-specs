@@ -364,7 +364,7 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
         ),
     )
     assert result == "ignore"
-    assert reason == "execution payload pending EL validation"
+    assert reason == "attested payload is optimistic"
     messages.append(
         {
             "subnet_id": int(subnet_id),
@@ -425,7 +425,7 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
         ),
     )
     assert result == "reject"
-    assert reason == "execution payload failed EL validation"
+    assert reason == "attested payload is invalid"
     messages.append(
         {
             "subnet_id": int(subnet_id),
