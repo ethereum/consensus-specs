@@ -431,8 +431,8 @@ where `store` is the fork choice store, and the alias
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for the tuple
   `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
-- _[IGNORE]_ this bid is one of the first `MAX_BIDS_PER_BUILDER_PER_SLOT` signed
-  bids seen with a valid signature from the given builder for this slot.
+- _[IGNORE]_ no more than `MAX_BIDS_PER_BUILDER_PER_SLOT` signed bids with a
+  valid signature have been seen from the given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
   `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
