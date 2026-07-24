@@ -1002,9 +1002,9 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     process_slots(lookahead_state, lookahead_epoch_start_slot)
-    index = MIN_SEED_LOOKAHEAD * SLOTS_PER_EPOCH
-    index += preferences.proposal_slot % SLOTS_PER_EPOCH
-    if lookahead_state.proposer_lookahead[index] != preferences.validator_index:
+    lookahead_index = MIN_SEED_LOOKAHEAD * SLOTS_PER_EPOCH
+    lookahead_index += preferences.proposal_slot % SLOTS_PER_EPOCH
+    if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid with respect to the validator's public key
