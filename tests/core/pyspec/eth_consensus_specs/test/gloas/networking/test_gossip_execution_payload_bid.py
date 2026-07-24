@@ -932,6 +932,101 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
+    """A bid whose value strictly exceeds the best bid for this slot/parent is valid.
+
+    A first fully valid bid from another builder seeds the best-bid cache, so
+    the second builder's higher-value bid passes the highest-value check.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, blocks, parent_root, messages, time_ms)
+    )
+
+    best_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(100),
+    )
+    yield get_filename(best_bid), best_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=best_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(best_bid),
+            "expected": result,
+        }
+    )
+
+    # A second bid from a different builder (so the duplicate check does not
+    # apply) with a strictly higher value is the new highest bid.
+    higher_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(1),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(200),
+    )
+    yield get_filename(higher_bid), higher_bid
+
+    time_ms += 10
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=higher_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(higher_bid),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, state):
     """A bid whose builder_index is past the builder registry is rejected.
 
