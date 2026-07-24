@@ -185,7 +185,12 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)
     spec.process_eth1_data(state, block.body)
-    spec.process_operations(state, block.body)
+    if is_post_gloas(spec):
+        # The bid is not processed here, so the bid in the state is still
+        # the parent block's bid and its slot is the parent block's slot.
+        spec.process_operations(state, block.body, state.latest_execution_payload_bid.slot)
+    else:
+        spec.process_operations(state, block.body)
     if is_post_altair(spec):
         spec.process_sync_aggregate(state, block.body.sync_aggregate)
 
