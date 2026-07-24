@@ -5,6 +5,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
+  - [New `InclusionListBits`](#new-inclusionlistbits)
+  - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
 - [Constants](#constants)
   - [Domains](#domains)
 - [Preset](#preset)
@@ -36,6 +39,22 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 points to the specific version targeted by this specification, which may differ
 from the latest published version of the EIPs.
 
+## Types
+
+### New `InclusionListBits`
+
+```python
+class InclusionListBits(Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]):
+    pass
+```
+
+### New `InclusionListCommittee`
+
+```python
+class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]):
+    pass
+```
+
 ## Constants
 
 ### Domains
@@ -63,7 +82,7 @@ class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
     inclusion_list_committee_root: Root
-    transactions: ProgressiveList[Transaction]
+    transactions: Transactions
 ```
 
 #### `SignedInclusionList`
@@ -90,10 +109,10 @@ class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 13)):
     slot: Slot
     value: Gwei
     execution_payment: Gwei
-    blob_kzg_commitments: ProgressiveList[KZGCommitment]
+    blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
     # [New in Heze:EIP7805]
-    inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
+    inclusion_list_bits: InclusionListBits
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -114,48 +133,48 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: ProgressiveList[Validator]
-    balances: ProgressiveList[Gwei]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: ProgressiveList[ParticipationFlags]
-    current_epoch_participation: ProgressiveList[ParticipationFlags]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: ProgressiveList[Uint64]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
     deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
-    pending_deposits: ProgressiveList[PendingDeposit]
-    pending_partial_withdrawals: ProgressiveList[PendingPartialWithdrawal]
-    pending_consolidations: ProgressiveList[PendingConsolidation]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    builders: ProgressiveList[Builder]
+    pending_deposits: PendingDeposits
+    pending_partial_withdrawals: PendingPartialWithdrawals
+    pending_consolidations: PendingConsolidations
+    proposer_lookahead: ProposerLookahead
+    builders: Builders
     next_withdrawal_builder_index: BuilderIndex
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
-    builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
+    execution_payload_availability: ExecutionPayloadAvailability
+    builder_pending_payments: BuilderPendingPayments
+    builder_pending_withdrawals: BuilderPendingWithdrawals
     # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
-    payload_expected_withdrawals: ProgressiveList[Withdrawal]
-    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
+    payload_expected_withdrawals: Withdrawals
+    ptc_window: PTCWindow
 ```
 
 ## Helpers
@@ -184,9 +203,7 @@ def is_valid_inclusion_list_signature(
 #### New `get_inclusion_list_committee`
 
 ```python
-def get_inclusion_list_committee(
-    state: BeaconState, slot: Slot
-) -> Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]:
+def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionListCommittee:
     """
     Get the inclusion list committee for the given ``slot``.
     """
@@ -197,7 +214,7 @@ def get_inclusion_list_committee(
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]([
+    return InclusionListCommittee(
         indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)
-    ])
+    )
 ```

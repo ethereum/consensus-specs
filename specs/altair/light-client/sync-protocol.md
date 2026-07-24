@@ -4,6 +4,9 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`CurrentSyncCommitteeBranch`](#currentsynccommitteebranch)
+  - [`FinalityBranch`](#finalitybranch)
+  - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -59,11 +62,26 @@ Additional documents describe how the light client sync protocol can be used:
 
 ## Types
 
-| Name                         | SSZ equivalent                                              | Description                                                       |
-| ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
-| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
+### `CurrentSyncCommitteeBranch`
+
+```python
+class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]):
+    pass
+```
+
+### `FinalityBranch`
+
+```python
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]):
+    pass
+```
+
+### `NextSyncCommitteeBranch`
+
+```python
+class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]):
+    pass
+```
 
 ## Constants
 

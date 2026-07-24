@@ -9,6 +9,8 @@
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [New `is_current_slot`](#new-is_current_slot)
     - [New `get_sync_subcommittee_pubkeys`](#new-get_sync_subcommittee_pubkeys)
+  - [Types](#types)
+    - [New `Syncnets`](#new-syncnets)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -117,6 +119,15 @@ def get_sync_subcommittee_pubkeys(
     return sync_committee.pubkeys[i : i + sync_subcommittee_size]
 ```
 
+### Types
+
+#### New `Syncnets`
+
+```python
+class Syncnets(Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]):
+    pass
+```
+
 ### MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to
@@ -125,8 +136,8 @@ communicate the sync committee subnet subscriptions:
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: Attnets
+  syncnets: Syncnets
 )
 ```
 

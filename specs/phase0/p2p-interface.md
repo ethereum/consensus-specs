@@ -10,6 +10,12 @@
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
+    - [`Attnets`](#attnets)
+    - [`BeaconBlockRoots`](#beaconblockroots)
+    - [`ErrorMessage`](#errormessage)
+    - [`NodeID`](#nodeid)
+    - [`SignedBeaconBlocks`](#signedbeaconblocks)
+    - [`SubnetID`](#subnetid)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
@@ -215,10 +221,47 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name       | SSZ equivalent | Description       |
-| ---------- | -------------- | ----------------- |
-| `NodeID`   | `Uint256`      | Node identifier   |
-| `SubnetID` | `Uint64`       | Subnet identifier |
+#### `Attnets`
+
+```python
+class Attnets(Bitvector[ATTESTATION_SUBNET_COUNT]):
+    pass
+```
+
+#### `BeaconBlockRoots`
+
+```python
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS]):
+    pass
+```
+
+#### `ErrorMessage`
+
+```python
+class ErrorMessage(List[Byte, 256]):
+    pass
+```
+
+#### `NodeID`
+
+```python
+class NodeID(Uint256):
+    pass
+```
+
+#### `SignedBeaconBlocks`
+
+```python
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]):
+    pass
+```
+
+#### `SubnetID`
+
+```python
+class SubnetID(Uint64):
+    pass
+```
 
 ### Constants
 
@@ -390,7 +433,7 @@ Clients MUST locally store the following `MetaData`:
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  attnets: Attnets
 )
 ```
 
@@ -1227,7 +1270,7 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: List[Byte, 256]
+  error_message: ErrorMessage
 )
 ```
 
@@ -1429,7 +1472,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 
@@ -1505,7 +1548,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS]
+  BeaconBlockRoots
 )
 ```
 
@@ -1513,7 +1556,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 

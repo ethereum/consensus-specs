@@ -11,6 +11,8 @@
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Types](#types)
+    - [New `SignedInclusionLists`](#new-signedinclusionlists)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -76,6 +78,15 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### Types
+
+#### New `SignedInclusionLists`
+
+```python
+class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+    pass
 ```
 
 ### The gossip domain: gossipsub
@@ -184,7 +195,7 @@ Request Content:
 (
   slot: Slot
   inclusion_list_committee_root: Root
-  indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
+  indices: InclusionListBits
 )
 ```
 
@@ -192,7 +203,7 @@ Response Content:
 
 ```
 (
-  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+  SignedInclusionLists
 )
 ```
 

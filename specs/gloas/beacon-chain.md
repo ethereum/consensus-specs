@@ -6,6 +6,41 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [Modified `AggregationBits`](#modified-aggregationbits)
+  - [Modified `Attestations`](#modified-attestations)
+  - [Modified `AttesterSlashings`](#modified-attesterslashings)
+  - [Modified `AttestingIndices`](#modified-attestingindices)
+  - [Modified `Balances`](#modified-balances)
+  - [Modified `BlobKZGCommitments`](#modified-blobkzgcommitments)
+  - [Modified `BLSToExecutionChanges`](#modified-blstoexecutionchanges)
+  - [Modified `ConsolidationRequests`](#modified-consolidationrequests)
+  - [Modified `DepositRequests`](#modified-depositrequests)
+  - [Modified `Deposits`](#modified-deposits)
+  - [Modified `EpochParticipation`](#modified-epochparticipation)
+  - [Modified `InactivityScores`](#modified-inactivityscores)
+  - [Modified `PendingConsolidations`](#modified-pendingconsolidations)
+  - [Modified `PendingDeposits`](#modified-pendingdeposits)
+  - [Modified `PendingPartialWithdrawals`](#modified-pendingpartialwithdrawals)
+  - [Modified `ProposerSlashings`](#modified-proposerslashings)
+  - [Modified `Transaction`](#modified-transaction)
+  - [Modified `Transactions`](#modified-transactions)
+  - [Modified `Validators`](#modified-validators)
+  - [Modified `VoluntaryExits`](#modified-voluntaryexits)
+  - [Modified `WithdrawalRequests`](#modified-withdrawalrequests)
+  - [Modified `Withdrawals`](#modified-withdrawals)
+  - [New `BlockAccessList`](#new-blockaccesslist)
+  - [New `BuilderDepositRequests`](#new-builderdepositrequests)
+  - [New `BuilderExitRequests`](#new-builderexitrequests)
+  - [New `BuilderIndex`](#new-builderindex)
+  - [New `BuilderPendingPayments`](#new-builderpendingpayments)
+  - [New `BuilderPendingWithdrawals`](#new-builderpendingwithdrawals)
+  - [New `Builders`](#new-builders)
+  - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
+  - [New `PayloadAttestations`](#new-payloadattestations)
+  - [New `PTC`](#new-ptc)
+  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
+  - [New `PTCBits`](#new-ptcbits)
+  - [New `PTCWindow`](#new-ptcwindow)
 - [Constants](#constants)
   - [Index flags](#index-flags)
   - [Domains](#domains)
@@ -144,18 +179,272 @@ from the latest published version of the EIPs.
 
 ## Types
 
-| Name                     | SSZ equivalent                           |
-| ------------------------ | ---------------------------------------- |
-| `AggregationBits`        | `ProgressiveBitlist`                     |
-| `AttestingIndices`       | `ProgressiveList[ValidatorIndex]`        |
-| `Transaction`            | `ProgressiveByteList`                    |
-| `DepositRequests`        | `ProgressiveList[DepositRequest]`        |
-| `WithdrawalRequests`     | `ProgressiveList[WithdrawalRequest]`     |
-| `ConsolidationRequests`  | `ProgressiveList[ConsolidationRequest]`  |
-| `BuilderDepositRequests` | `ProgressiveList[BuilderDepositRequest]` |
-| `BuilderExitRequests`    | `ProgressiveList[BuilderExitRequest]`    |
-| `BuilderIndex`           | `Uint64`                                 |
-| `BlockAccessList`        | `ProgressiveByteList`                    |
+### Modified `AggregationBits`
+
+```python
+# [Modified in Gloas:EIP7688]
+class AggregationBits(ProgressiveBitlist):
+    pass
+```
+
+### Modified `Attestations`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Attestations(ProgressiveList[Attestation]):
+    pass
+```
+
+### Modified `AttesterSlashings`
+
+```python
+# [Modified in Gloas:EIP7688]
+class AttesterSlashings(ProgressiveList[AttesterSlashing]):
+    pass
+```
+
+### Modified `AttestingIndices`
+
+```python
+# [Modified in Gloas:EIP7688]
+class AttestingIndices(ProgressiveList[ValidatorIndex]):
+    pass
+```
+
+### Modified `Balances`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Balances(ProgressiveList[Gwei]):
+    pass
+```
+
+### Modified `BlobKZGCommitments`
+
+```python
+# [Modified in Gloas:EIP7688]
+class BlobKZGCommitments(ProgressiveList[KZGCommitment]):
+    pass
+```
+
+### Modified `BLSToExecutionChanges`
+
+```python
+# [Modified in Gloas:EIP7688]
+class BLSToExecutionChanges(ProgressiveList[SignedBLSToExecutionChange]):
+    pass
+```
+
+### Modified `ConsolidationRequests`
+
+```python
+# [Modified in Gloas:EIP7688]
+class ConsolidationRequests(ProgressiveList[ConsolidationRequest]):
+    pass
+```
+
+### Modified `DepositRequests`
+
+```python
+# [Modified in Gloas:EIP7688]
+class DepositRequests(ProgressiveList[DepositRequest]):
+    pass
+```
+
+### Modified `Deposits`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Deposits(ProgressiveList[Deposit]):
+    pass
+```
+
+### Modified `EpochParticipation`
+
+```python
+# [Modified in Gloas:EIP7688]
+class EpochParticipation(ProgressiveList[ParticipationFlags]):
+    pass
+```
+
+### Modified `InactivityScores`
+
+```python
+# [Modified in Gloas:EIP7688]
+class InactivityScores(ProgressiveList[Uint64]):
+    pass
+```
+
+### Modified `PendingConsolidations`
+
+```python
+# [Modified in Gloas:EIP7688]
+class PendingConsolidations(ProgressiveList[PendingConsolidation]):
+    pass
+```
+
+### Modified `PendingDeposits`
+
+```python
+# [Modified in Gloas:EIP7688]
+class PendingDeposits(ProgressiveList[PendingDeposit]):
+    pass
+```
+
+### Modified `PendingPartialWithdrawals`
+
+```python
+# [Modified in Gloas:EIP7688]
+class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
+    pass
+```
+
+### Modified `ProposerSlashings`
+
+```python
+# [Modified in Gloas:EIP7688]
+class ProposerSlashings(ProgressiveList[ProposerSlashing]):
+    pass
+```
+
+### Modified `Transaction`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Transaction(ProgressiveByteList):
+    pass
+```
+
+### Modified `Transactions`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Transactions(ProgressiveList[Transaction]):
+    pass
+```
+
+### Modified `Validators`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Validators(ProgressiveList[Validator]):
+    pass
+```
+
+### Modified `VoluntaryExits`
+
+```python
+# [Modified in Gloas:EIP7688]
+class VoluntaryExits(ProgressiveList[SignedVoluntaryExit]):
+    pass
+```
+
+### Modified `WithdrawalRequests`
+
+```python
+# [Modified in Gloas:EIP7688]
+class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
+    pass
+```
+
+### Modified `Withdrawals`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Withdrawals(ProgressiveList[Withdrawal]):
+    pass
+```
+
+### New `BlockAccessList`
+
+```python
+class BlockAccessList(ProgressiveByteList):
+    pass
+```
+
+### New `BuilderDepositRequests`
+
+```python
+class BuilderDepositRequests(ProgressiveList[BuilderDepositRequest]):
+    pass
+```
+
+### New `BuilderExitRequests`
+
+```python
+class BuilderExitRequests(ProgressiveList[BuilderExitRequest]):
+    pass
+```
+
+### New `BuilderIndex`
+
+```python
+class BuilderIndex(Uint64):
+    pass
+```
+
+### New `BuilderPendingPayments`
+
+```python
+class BuilderPendingPayments(Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]):
+    pass
+```
+
+### New `BuilderPendingWithdrawals`
+
+```python
+class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
+    pass
+```
+
+### New `Builders`
+
+```python
+class Builders(ProgressiveList[Builder]):
+    pass
+```
+
+### New `ExecutionPayloadAvailability`
+
+```python
+class ExecutionPayloadAvailability(Bitvector[SLOTS_PER_HISTORICAL_ROOT]):
+    pass
+```
+
+### New `PayloadAttestations`
+
+```python
+class PayloadAttestations(ProgressiveList[PayloadAttestation]):
+    pass
+```
+
+### New `PTC`
+
+```python
+class PTC(Vector[ValidatorIndex, PTC_SIZE]):
+    pass
+```
+
+### New `PTCAttestingIndices`
+
+```python
+class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
+    pass
+```
+
+### New `PTCBits`
+
+```python
+class PTCBits(Bitvector[PTC_SIZE]):
+    pass
+```
+
+### New `PTCWindow`
+
+```python
+class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
+    pass
+```
 
 ## Constants
 
@@ -314,7 +603,7 @@ class PayloadAttestationData(Container):
 
 ```python
 class PayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    aggregation_bits: Bitvector[PTC_SIZE]
+    aggregation_bits: PTCBits
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -332,7 +621,7 @@ class PayloadAttestationMessage(Container):
 
 ```python
 class IndexedPayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    attesting_indices: List[ValidatorIndex, PTC_SIZE]
+    attesting_indices: PTCAttestingIndices
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -351,7 +640,7 @@ class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 12)):
     slot: Slot
     value: Gwei
     execution_payment: Gwei
-    blob_kzg_commitments: ProgressiveList[KZGCommitment]
+    blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
 ```
 
@@ -392,7 +681,7 @@ class Attestation(ProgressiveContainer(active_fields=[1] * 4)):
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
-    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]
+    committee_bits: CommitteeBits
 ```
 
 #### `IndexedAttestation`
@@ -417,20 +706,20 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 13)):
     eth1_data: Eth1Data
     graffiti: Bytes32
     # [Modified in Gloas:EIP7688]
-    proposer_slashings: ProgressiveList[ProposerSlashing]
+    proposer_slashings: ProposerSlashings
     # [Modified in Gloas:EIP7688]
-    attester_slashings: ProgressiveList[AttesterSlashing]
+    attester_slashings: AttesterSlashings
     # [Modified in Gloas:EIP7688]
-    attestations: ProgressiveList[Attestation]
+    attestations: Attestations
     # [Modified in Gloas:EIP7688]
-    deposits: ProgressiveList[Deposit]
+    deposits: Deposits
     # [Modified in Gloas:EIP7688]
-    voluntary_exits: ProgressiveList[SignedVoluntaryExit]
+    voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     # [Modified in Gloas:EIP7732]
     # Removed `execution_payload`
     # [Modified in Gloas:EIP7688]
-    bls_to_execution_changes: ProgressiveList[SignedBLSToExecutionChange]
+    bls_to_execution_changes: BLSToExecutionChanges
     # [Modified in Gloas:EIP7732]
     # Removed `blob_kzg_commitments`
     # [Modified in Gloas:EIP7732]
@@ -438,7 +727,7 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 13)):
     # [New in Gloas:EIP7732]
     signed_execution_payload_bid: SignedExecutionPayloadBid
     # [New in Gloas:EIP7732]
-    payload_attestations: ProgressiveList[PayloadAttestation]
+    payload_attestations: PayloadAttestations
     # [New in Gloas:EIP7732]
     parent_execution_requests: ExecutionRequests
 ```
@@ -453,28 +742,28 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
     # [Modified in Gloas:EIP7688]
-    validators: ProgressiveList[Validator]
+    validators: Validators
     # [Modified in Gloas:EIP7688]
-    balances: ProgressiveList[Gwei]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
     # [Modified in Gloas:EIP7688]
-    previous_epoch_participation: ProgressiveList[ParticipationFlags]
+    previous_epoch_participation: EpochParticipation
     # [Modified in Gloas:EIP7688]
-    current_epoch_participation: ProgressiveList[ParticipationFlags]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # [Modified in Gloas:EIP7688]
-    inactivity_scores: ProgressiveList[Uint64]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Gloas:EIP7732]
@@ -483,7 +772,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
     deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
@@ -491,28 +780,28 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
     # [Modified in Gloas:EIP7688]
-    pending_deposits: ProgressiveList[PendingDeposit]
+    pending_deposits: PendingDeposits
     # [Modified in Gloas:EIP7688]
-    pending_partial_withdrawals: ProgressiveList[PendingPartialWithdrawal]
+    pending_partial_withdrawals: PendingPartialWithdrawals
     # [Modified in Gloas:EIP7688]
-    pending_consolidations: ProgressiveList[PendingConsolidation]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
+    pending_consolidations: PendingConsolidations
+    proposer_lookahead: ProposerLookahead
     # [New in Gloas:EIP7732]
-    builders: ProgressiveList[Builder]
+    builders: Builders
     # [New in Gloas:EIP7732]
     next_withdrawal_builder_index: BuilderIndex
     # [New in Gloas:EIP7732]
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
+    execution_payload_availability: ExecutionPayloadAvailability
     # [New in Gloas:EIP7732]
-    builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
+    builder_pending_payments: BuilderPendingPayments
     # [New in Gloas:EIP7732]
-    builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
+    builder_pending_withdrawals: BuilderPendingWithdrawals
     # [New in Gloas:EIP7732]
     latest_execution_payload_bid: ExecutionPayloadBid
     # [New in Gloas:EIP7732]
-    payload_expected_withdrawals: ProgressiveList[Withdrawal]
+    payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
-    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
+    ptc_window: PTCWindow
 ```
 
 #### `ExecutionPayload`
@@ -524,19 +813,19 @@ class ExecutionPayload(ProgressiveContainer(active_fields=[1] * 19)):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
     block_number: Uint64
     gas_limit: Uint64
     gas_used: Uint64
     timestamp: Uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    extra_data: ExtraData
     base_fee_per_gas: Uint256
     block_hash: Hash32
     # [Modified in Gloas:EIP7688]
-    transactions: ProgressiveList[Transaction]
+    transactions: Transactions
     # [Modified in Gloas:EIP7688]
-    withdrawals: ProgressiveList[Withdrawal]
+    withdrawals: Withdrawals
     blob_gas_used: Uint64
     excess_blob_gas: Uint64
     # [New in Gloas:EIP7928]
@@ -792,23 +1081,23 @@ sampling process.
 ```python
 def compute_proposer_indices(
     state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
-) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
     seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
-    return [
+    return ProposerIndices(
         compute_balance_weighted_selection(state, indices, seed, size=1, shuffle_indices=True)[0]
         for seed in seeds
-    ]
+    )
 ```
 
 #### New `compute_ptc`
 
 ```python
-def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
+def compute_ptc(state: BeaconState, slot: Slot) -> PTC:
     """
     Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
@@ -820,8 +1109,10 @@ def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SI
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return compute_balance_weighted_selection(
-        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+    return PTC(
+        compute_balance_weighted_selection(
+            state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+        )
     )
 ```
 
@@ -834,9 +1125,7 @@ from the candidate pool before invoking `compute_proposer_indices`, so the newly
 computed proposer indices only contain active and unslashed validators.
 
 ```python
-def get_beacon_proposer_indices(
-    state: BeaconState, epoch: Epoch
-) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.
     """
@@ -924,7 +1213,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_ptc`
 
 ```python
-def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
+def get_ptc(state: BeaconState, slot: Slot) -> PTC:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
@@ -1480,7 +1769,7 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
 def update_payload_expected_withdrawals(
     state: BeaconState, withdrawals: Sequence[Withdrawal]
 ) -> None:
-    state.payload_expected_withdrawals = ProgressiveList[Withdrawal](withdrawals)
+    state.payload_expected_withdrawals = Withdrawals(withdrawals)
 ```
 
 ##### New `update_builder_pending_withdrawals`

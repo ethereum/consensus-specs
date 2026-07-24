@@ -13,6 +13,10 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Constants](#constants)
   - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Types](#types)
+  - [New `ProofByRootIdentifiers`](#new-proofbyrootidentifiers)
+  - [New `ProofTypes`](#new-prooftypes)
+  - [New `SignedExecutionProofs`](#new-signedexecutionproofs)
 - [Containers](#containers)
   - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -48,6 +52,29 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 | --------------------------------- | ---------------------------- |
 | `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
+## Types
+
+### New `ProofByRootIdentifiers`
+
+```python
+class ProofByRootIdentifiers(List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
+### New `ProofTypes`
+
+```python
+class ProofTypes(List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]):
+    pass
+```
+
+### New `SignedExecutionProofs`
+
+```python
+class SignedExecutionProofs(List[SignedExecutionProof, compute_max_request_execution_proofs()]):
+    pass
+```
+
 ## Containers
 
 ### New `ProofByRootIdentifier`
@@ -55,7 +82,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+    proof_types: ProofTypes
 ```
 
 ## Helpers
@@ -125,7 +152,7 @@ Request Content:
 (
   start_slot: Slot
   count: Uint64
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  proof_types: ProofTypes
 )
 ```
 
@@ -133,7 +160,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 
@@ -173,7 +200,7 @@ Request Content:
 
 ```
 (
-  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  ProofByRootIdentifiers
 )
 ```
 
@@ -181,7 +208,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 
@@ -215,7 +242,7 @@ Request, Response Content:
 (
   block_root: Root
   slot: Slot
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  proof_types: ProofTypes
 )
 ```
 

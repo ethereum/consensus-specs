@@ -5,6 +5,7 @@
 - [Introduction](#introduction)
 - [Modifications in Bellatrix](#modifications-in-bellatrix)
   - [Types](#types)
+    - [New `PayloadValidationStatus`](#new-payloadvalidationstatus)
   - [Constants](#constants)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -43,9 +44,12 @@ understand the changes outlined in this document.
 
 ### Types
 
-| Name                      | SSZ equivalent | Description                                     |
-| ------------------------- | -------------- | ----------------------------------------------- |
-| `PayloadValidationStatus` | `Uint8`        | Execution payload validation status for a block |
+#### New `PayloadValidationStatus`
+
+```python
+class PayloadValidationStatus(Uint8):
+    pass
+```
 
 ### Constants
 

@@ -3,6 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Networking](#networking)
+  - [Types](#types)
+    - [`LightClientUpdates`](#lightclientupdates)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -27,6 +29,15 @@
 This section extends the
 [networking specification for Altair](../p2p-interface.md) with additional
 messages, topics and data to the Req-Resp and Gossip domains.
+
+### Types
+
+#### `LightClientUpdates`
+
+```python
+class LightClientUpdates(List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]):
+    pass
+```
 
 ### Configuration
 
@@ -212,7 +223,7 @@ Response Content:
 
 ```
 (
-  List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]
+  LightClientUpdates
 )
 ```
 

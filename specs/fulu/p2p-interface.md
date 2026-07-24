@@ -6,7 +6,11 @@
 - [Modifications in Fulu](#modifications-in-fulu)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [New `DataColumnIndices`](#new-datacolumnindices)
   - [Containers](#containers)
+    - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
+    - [New `DataColumnSidecars`](#new-datacolumnsidecars)
     - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
@@ -68,14 +72,37 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
+### Types
+
+#### New `DataColumnIndices`
+
+```python
+class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
+    pass
+```
+
 ### Containers
+
+#### New `DataColumnsByRootIdentifiers`
+
+```python
+class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+    pass
+```
+
+#### New `DataColumnSidecars`
+
+```python
+class DataColumnSidecars(List[DataColumnSidecar, compute_max_request_data_column_sidecars()]):
+    pass
+```
 
 #### New `DataColumnsByRootIdentifier`
 
 ```python
 class DataColumnsByRootIdentifier(Container):
     block_root: Root
-    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+    columns: DataColumnIndices
 ```
 
 ### Helpers
@@ -215,8 +242,8 @@ communicate the custody group count.
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: Attnets
+  syncnets: Syncnets
   custody_group_count: Uint64 # cgc
 )
 ```
@@ -554,7 +581,7 @@ Request Content:
 (
   start_slot: Slot
   count: Uint64
-  columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+  columns: DataColumnIndices
 )
 ```
 
@@ -562,7 +589,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
+  DataColumnSidecars
 )
 ```
 
@@ -660,7 +687,7 @@ Request Content:
 
 ```
 (
-  List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  DataColumnsByRootIdentifiers
 )
 ```
 
@@ -668,7 +695,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
+  DataColumnSidecars
 )
 ```
 
@@ -753,7 +780,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 

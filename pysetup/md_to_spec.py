@@ -16,6 +16,37 @@ from marko.inline import CodeSpan
 
 from .typing import ProtocolDefinition, SpecObject, VariableDefinition
 
+COLLECTION_BASE_CLASSES = (
+    "Bitlist",
+    "Bitvector",
+    "ByteList",
+    "ByteVector",
+    "List",
+    "ProgressiveBitlist",
+    "ProgressiveByteList",
+    "ProgressiveList",
+    "Vector",
+)
+
+SCALAR_BASE_CLASSES = (
+    "Boolean",
+    "Byte",
+    "Bytes1",
+    "Bytes4",
+    "Bytes8",
+    "Bytes20",
+    "Bytes31",
+    "Bytes32",
+    "Bytes48",
+    "Bytes96",
+    "Uint8",
+    "Uint16",
+    "Uint32",
+    "Uint64",
+    "Uint128",
+    "Uint256",
+)
+
 
 class MarkdownToSpec:
     def __init__(
@@ -179,10 +210,50 @@ class MarkdownToSpec:
         if class_name != self.current_heading_name:
             raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
 
+        if parent_class in SCALAR_BASE_CLASSES and isinstance(cls.bases[0], ast.Name):
+            # Scalar aliases are handled as custom types, so that those used in
+            # the types of configurations, presets, and constants are defined
+            # before them in the generated specification.
+            self.spec["custom_types"][class_name] = parent_class
+            return
         if parent_class == "ProgressiveContainer":
             source = re.sub(
                 r"^(.*ProgressiveContainer.*)$", r"\1  # type: ignore", source, flags=re.MULTILINE
             )
+        elif parent_class in COLLECTION_BASE_CLASSES:
+            base = cls.bases[0]
+            args = []
+            if isinstance(base, ast.Subscript):
+                args = base.slice.elts if isinstance(base.slice, ast.Tuple) else [base.slice]
+            # Types whose length is given by a helper function only appear in
+            # networking schemas. They cannot be compiled, since helpers are
+            # defined after types in the generated specification. Math helpers
+            # like ceillog2 and floorlog2 are excluded, as they are defined
+            # before types.
+            if any(
+                isinstance(node, ast.Call)
+                and not (
+                    isinstance(node.func, ast.Name) and node.func.id in ("ceillog2", "floorlog2")
+                )
+                for arg in args
+                for node in ast.walk(arg)
+            ):
+                return
+            # mypy accepts a subscripted base class only when all of its
+            # arguments are plain names or literals. Expressions like `A + 1`
+            # or `A * B` make the base class invalid and require an ignore
+            # comment. Configuration variables also require one, since they
+            # are rewritten to `config.X` attribute expressions.
+            if not all(
+                isinstance(arg, ast.Constant)
+                or (isinstance(arg, ast.Name) and arg.id not in self.config)
+                for arg in args
+            ):
+                # The comment must go on the line where the base class
+                # expression ends, as that is where mypy reports the error.
+                source_lines = source.split("\n")
+                source_lines[base.end_lineno - cls.lineno] += "  # type: ignore"
+                source = "\n".join(source_lines)
         else:
             assert parent_class is None or parent_class == "Container"
         self.spec["ssz_objects"][class_name] = source

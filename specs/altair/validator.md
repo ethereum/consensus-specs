@@ -8,6 +8,8 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Types](#types)
+  - [`SyncSubcommitteeBits`](#syncsubcommitteebits)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Configuration](#configuration)
@@ -70,6 +72,15 @@ All terminology, constants, functions, and protocol mechanics defined in the
 this document and used throughout. Please see this document before continuing
 and use as a reference throughout.
 
+## Types
+
+### `SyncSubcommitteeBits`
+
+```python
+class SyncSubcommitteeBits(Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]):
+    pass
+```
+
 ## Constants
 
 ### Misc
@@ -107,7 +118,7 @@ class SyncCommitteeContribution(Container):
     slot: Slot
     beacon_block_root: Root
     subcommittee_index: Uint64
-    aggregation_bits: Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
+    aggregation_bits: SyncSubcommitteeBits
     signature: BLSSignature
 ```
 
