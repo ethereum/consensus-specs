@@ -20,6 +20,7 @@
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
+    - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
     - [New `is_valid_proposal_slot`](#new-is_valid_proposal_slot)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -282,6 +283,25 @@ def is_gas_limit_target_compatible(
     if target_gas_limit > max_gas_limit:
         return gas_limit == max_gas_limit
     return gas_limit == target_gas_limit
+```
+
+#### New `is_valid_dependent_root`
+
+```python
+def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
+    """
+    Check if the block with the given ``root`` is a possible dependent block
+    for the given ``epoch``, meaning that on some branch it is, or could
+    become, the latest block prior to the start of the epoch.
+    """
+    epoch_start_slot = compute_start_slot_at_epoch(epoch)
+    for block in store.blocks.values():
+        if block.parent_root == root:
+            if block.slot >= epoch_start_slot:
+                return True
+    if root == get_head(store).root:
+        return True
+    return False
 ```
 
 #### New `is_valid_proposal_slot`
@@ -996,6 +1016,10 @@ def validate_proposer_preferences_gossip(
     lookahead_state = store.block_states[preferences.dependent_root].copy()
     if lookahead_state.slot >= lookahead_epoch_start_slot:
         raise GossipReject("dependent root is not before the proposer lookahead epoch")
+
+    # [IGNORE] The dependent root is a possible dependent block for the lookahead epoch
+    if not is_valid_dependent_root(store, preferences.dependent_root, lookahead_epoch):
+        raise GossipIgnore("dependent root is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     process_slots(lookahead_state, lookahead_epoch_start_slot)
