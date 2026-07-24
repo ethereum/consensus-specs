@@ -7,7 +7,7 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
 - [Helper functions](#helper-functions)
-  - [New `get_fork_initial_offline_balance_ema`](#new-get_fork_initial_offline_balance_ema)
+  - [New `get_fork_initial_smoothed_offline_balance`](#new-get_fork_initial_smoothed_offline_balance)
 - [Fork to EIP-7716](#fork-to-eip-7716)
 
 <!-- mdformat-toc end -->
@@ -27,14 +27,14 @@ Warning: this configuration is not definitive.
 
 ## Helper functions
 
-### New `get_fork_initial_offline_balance_ema`
+### New `get_fork_initial_smoothed_offline_balance`
 
 The moving average is seeded with the observed mean per-slot offline balance of
 the epoch preceding the fork, so that no spurious penalty factor occurs at
 activation.
 
 ```python
-def get_fork_initial_offline_balance_ema(state: BeaconState) -> Gwei:
+def get_fork_initial_smoothed_offline_balance(state: BeaconState) -> Gwei:
     total = Gwei(0)
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
@@ -108,10 +108,10 @@ def upgrade_to_eip7716(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP7716]
-        offline_balance_ema=Gwei(0),
+        smoothed_offline_balance=Gwei(0),
     )
     # [New in EIP7716]
-    post.offline_balance_ema = get_fork_initial_offline_balance_ema(post)
+    post.smoothed_offline_balance = get_fork_initial_smoothed_offline_balance(post)
 
     return post
 ```

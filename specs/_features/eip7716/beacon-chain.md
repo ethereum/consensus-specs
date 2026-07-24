@@ -16,7 +16,7 @@
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_slot_offline_balance`](#new-get_slot_offline_balance)
     - [New `get_slot_reference_balance`](#new-get_slot_reference_balance)
-    - [New `get_updated_offline_balance_ema`](#new-get_updated_offline_balance_ema)
+    - [New `get_updated_smoothed_offline_balance`](#new-get_updated_smoothed_offline_balance)
     - [New `get_slot_penalty_factors`](#new-get_slot_penalty_factors)
     - [New `get_validator_slot_offsets`](#new-get_validator_slot_offsets)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -24,7 +24,7 @@
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Rewards and penalties](#rewards-and-penalties)
       - [Modified `get_flag_index_deltas`](#modified-get_flag_index_deltas)
-    - [New `process_offline_balance_ema`](#new-process_offline_balance_ema)
+    - [New `process_smoothed_offline_balance`](#new-process_smoothed_offline_balance)
 
 <!-- mdformat-toc end -->
 
@@ -50,11 +50,11 @@ takes over as the protocol's correlation pricing mechanism.
 
 ### Penalty factor
 
-| Name                        | Value                       | Description                                                                                                     |
-| --------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `MAX_PENALTY_FACTOR`        | `uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                 |
-| `PENALTY_SLOPE`             | `uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)` |
-| `MISS_EMA_SMOOTHING_FACTOR` | `uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance EMA; half-life of roughly 91,000 slots (~12.6 days) |
+| Name                               | Value                       | Description                                                                                                                |
+| ---------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `MAX_PENALTY_FACTOR`               | `uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                            |
+| `PENALTY_SLOPE`                    | `uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`            |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots (~12.6 days) |
 
 ## Containers
 
@@ -62,8 +62,9 @@ takes over as the protocol's correlation pricing mechanism.
 
 #### `BeaconState`
 
-*Note*: The `BeaconState` container is modified to track `offline_balance_ema`,
-an exponential moving average of the per-slot offline balance.
+*Note*: The `BeaconState` container is modified to track
+`smoothed_offline_balance`, an exponential moving average of the per-slot
+offline balance.
 
 ```python
 class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
@@ -114,7 +115,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     payload_expected_withdrawals: ProgressiveList[Withdrawal]
     ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
     # [New in EIP7716]
-    offline_balance_ema: Gwei
+    smoothed_offline_balance: Gwei
 ```
 
 ## Helper functions
@@ -167,17 +168,23 @@ def get_slot_reference_balance(state: BeaconState) -> Gwei:
     return Gwei(get_total_active_balance(state) // SLOTS_PER_EPOCH)
 ```
 
-#### New `get_updated_offline_balance_ema`
+#### New `get_updated_smoothed_offline_balance`
 
 ```python
-def get_updated_offline_balance_ema(ema: Gwei, offline_balance: Gwei) -> Gwei:
+def get_updated_smoothed_offline_balance(smoothed_balance: Gwei, offline_balance: Gwei) -> Gwei:
     """
     Return the exponential moving average updated with one slot's offline balance.
     """
-    if offline_balance > ema:
-        return Gwei(ema + (offline_balance - ema) // MISS_EMA_SMOOTHING_FACTOR)
+    if offline_balance > smoothed_balance:
+        return Gwei(
+            smoothed_balance
+            + (offline_balance - smoothed_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
+        )
     else:
-        return Gwei(ema - (ema - offline_balance) // MISS_EMA_SMOOTHING_FACTOR)
+        return Gwei(
+            smoothed_balance
+            - (smoothed_balance - offline_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
+        )
 ```
 
 #### New `get_slot_penalty_factors`
@@ -186,21 +193,21 @@ def get_updated_offline_balance_ema(ema: Gwei, offline_balance: Gwei) -> Gwei:
 def get_slot_penalty_factors(state: BeaconState) -> Sequence[uint64]:
     """
     Return the penalty factor for each slot of the previous epoch.
-    Does not mutate ``state``; the EMA is persisted by ``process_offline_balance_ema``.
+    Does not mutate ``state``; the moving average is persisted by ``process_smoothed_offline_balance``.
     """
     factors = []
-    ema = state.offline_balance_ema
+    smoothed_balance = state.smoothed_offline_balance
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
         slot = Slot(start_slot + slot_offset)
         offline_balance = get_slot_offline_balance(state, slot)
-        excess = offline_balance - min(offline_balance, ema)
+        excess = offline_balance - min(offline_balance, smoothed_balance)
         penalty_factor = min(
             uint64(1) + PENALTY_SLOPE * excess // get_slot_reference_balance(state),
             MAX_PENALTY_FACTOR,
         )
         factors.append(penalty_factor)
-        ema = get_updated_offline_balance_ema(ema, offline_balance)
+        smoothed_balance = get_updated_smoothed_offline_balance(smoothed_balance, offline_balance)
     return factors
 ```
 
@@ -231,9 +238,9 @@ def get_validator_slot_offsets(state: BeaconState) -> Sequence[uint64]:
 #### Modified `process_epoch`
 
 *Note*: The function `process_epoch` is modified to call the new helper
-`process_offline_balance_ema` after `process_rewards_and_penalties`, so that the
-penalty factors applied for the previous epoch are computed against the moving
-average as of the start of that epoch.
+`process_smoothed_offline_balance` after `process_rewards_and_penalties`, so
+that the penalty factors applied for the previous epoch are computed against the
+moving average as of the start of that epoch.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -241,7 +248,7 @@ def process_epoch(state: BeaconState) -> None:
     process_inactivity_updates(state)
     process_rewards_and_penalties(state)
     # [New in EIP7716]
-    process_offline_balance_ema(state)
+    process_smoothed_offline_balance(state)
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
@@ -311,14 +318,14 @@ def get_flag_index_deltas(
     return rewards, penalties
 ```
 
-#### New `process_offline_balance_ema`
+#### New `process_smoothed_offline_balance`
 
 ```python
-def process_offline_balance_ema(state: BeaconState) -> None:
+def process_smoothed_offline_balance(state: BeaconState) -> None:
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
         slot = Slot(start_slot + slot_offset)
-        state.offline_balance_ema = get_updated_offline_balance_ema(
-            state.offline_balance_ema, get_slot_offline_balance(state, slot)
+        state.smoothed_offline_balance = get_updated_smoothed_offline_balance(
+            state.smoothed_offline_balance, get_slot_offline_balance(state, slot)
         )
 ```
