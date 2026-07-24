@@ -623,11 +623,34 @@ def is_proposing_on_time(store: Store) -> bool:
 
 ##### `is_head_weak`
 
+*Note*: The function `is_head_weak` counts weight also from equivocating
+validators from the committees of the head slot. This ensures that the counted
+weight and the output of `is_head_weak` are monotonic: more attestations can
+only increase the weight and change the output from `True` to `False`, not
+vice-versa.
+
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
+    # Calculate weight threshold for weak head
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
-    head_weight = get_weight(store, ForkChoiceNode(root=head_root))
+
+    # Compute head weight including equivocations
+    head_state = store.block_states[head_root]
+    head_block = store.blocks[head_root]
+    epoch = compute_epoch_at_slot(head_block.slot)
+    head_node = ForkChoiceNode(root=head_root)
+    head_weight = get_attestation_score(store, head_node, justified_state)
+    for index in range(get_committee_count_per_slot(head_state, epoch)):
+        committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
+        head_weight += Gwei(
+            sum(
+                justified_state.validators[i].effective_balance
+                for i in committee
+                if i in store.equivocating_indices
+            )
+        )
+
     return head_weight < reorg_threshold
 ```
 
@@ -639,7 +662,7 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
     parent_root = store.blocks[root].parent_root
     parent_node = ForkChoiceNode(root=parent_root)
-    parent_weight = get_weight(store, parent_node)
+    parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
 ```
 
