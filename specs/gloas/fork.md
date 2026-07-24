@@ -171,7 +171,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
         # [Modified in Gloas:EIP7688]
-        inactivity_scores=ProgressiveList[uint64](list(pre.inactivity_scores)),
+        inactivity_scores=ProgressiveList[Uint64](list(pre.inactivity_scores)),
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [Modified in Gloas:EIP7732]

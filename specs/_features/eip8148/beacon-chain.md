@@ -76,7 +76,7 @@ control their balance withdrawals more precisely.
 
 | Name                                           | Value                 | Description                                                                                       |
 | ---------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
-| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | *[New in EIP8148]* Maximum number of execution layer set sweep threshold requests in each payload |
+| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `Uint64(2**4)` (= 16) | *[New in EIP8148]* Maximum number of execution layer set sweep threshold requests in each payload |
 
 ## Containers
 
@@ -86,7 +86,7 @@ control their balance withdrawals more precisely.
 
 ```python
 class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -96,7 +96,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: ProgressiveList[Validator]
     balances: ProgressiveList[Gwei]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -107,14 +107,14 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: ProgressiveList[uint64]
+    inactivity_scores: ProgressiveList[Uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
+    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -211,7 +211,7 @@ item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -219,7 +219,7 @@ def add_validator_to_registry(
     set_or_append_list(state.balances, index, amount)
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, uint64(0))
+    set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8148]
     set_or_append_list(
         state.validator_sweep_thresholds,
@@ -269,14 +269,14 @@ def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: uint64 = 0
+    processed_count: Uint64 = 0
     withdrawals: List[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):

@@ -28,7 +28,7 @@ mapping: List[int]
 
 - The `bytes32` is encoded as a string, hexadecimal encoding, prefixed with
   `0x`.
-- Integers are validator indices. These are `uint64`, but realistically they are
+- Integers are validator indices. These are `Uint64`, but realistically they are
   not as big.
 
 The `count` specifies the validator registry size. One should compute the

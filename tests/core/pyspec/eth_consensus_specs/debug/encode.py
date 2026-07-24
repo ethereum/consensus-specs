@@ -2,30 +2,30 @@ from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
-    boolean,
-    byte,
+    Boolean,
+    Byte,
     CompatibleUnion,
     Container,
     List,
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
-    uint,
+    Uint,
     Union,
     Vector,
 )
 
 
 def encode(value, include_hash_tree_roots=False):
-    if isinstance(value, uint):
+    if isinstance(value, Uint):
         # Larger uints are boxed and the class declares their byte length
         if value.__class__.type_byte_length() > 8:
             return str(int(value))
         return int(value)
-    elif isinstance(value, boolean):
+    elif isinstance(value, Boolean):
         return value == 1
     elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector) or (
-        isinstance(value, ProgressiveList) and issubclass(value.element_cls(), byte)
+        isinstance(value, ProgressiveList) and issubclass(value.element_cls(), Byte)
     ):
         return "0x" + serialize(value).hex()
     elif isinstance(value, (list, List | ProgressiveList | Vector)):  # normal python lists

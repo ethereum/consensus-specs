@@ -405,7 +405,7 @@ def test_activation_queue_activation_and_ejection__exceed_scaled_churn_limit(spe
 def test_invalid_large_withdrawable_epoch(spec, state):
     """
     This test forces a validator into a withdrawable epoch that overflows the
-    epoch (uint64) type. To do this we need two validators, one validator that
+    epoch (Uint64) type. To do this we need two validators, one validator that
     already has an exit epoch and another with a low effective balance. When
     calculating the withdrawable epoch for the second validator, it will
     use the greatest exit epoch of all of the validators. If the first

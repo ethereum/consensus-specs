@@ -33,7 +33,7 @@ class InclusionListStore:
     inclusion_lists: DefaultDict[Root, Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
-    inclusion_list_timeliness: Dict[Root, boolean] = field(default_factory=dict)
+    inclusion_list_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
     equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
         default_factory=lambda: defaultdict(set)
     )
@@ -92,6 +92,10 @@ which the `inclusion_list_committee_root` in the `InclusionList` matches the one
 calculated based on the current state. When `only_timely` is `True`, only
 `InclusionList`s received in a timely manner on the p2p network are considered;
 otherwise, timeliness is not considered.
+
+*Note*: Inclusion lists MUST be retained for at least
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
+they MAY be pruned.
 
 ```python
 def get_inclusion_list_transactions(

@@ -56,14 +56,14 @@ class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     # [Modified in Electra:EIP7549]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
@@ -91,12 +91,12 @@ def compute_fork_version(epoch: Epoch) -> Version:
 #### Modified `compute_max_request_blob_sidecars`
 
 ```python
-def compute_max_request_blob_sidecars() -> uint64:
+def compute_max_request_blob_sidecars() -> Uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
     # [Modified in Electra:EIP7691]
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
 ### The gossip domain: gossipsub
@@ -133,7 +133,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
@@ -236,7 +236,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -270,20 +270,8 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("aggregate epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
     if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
@@ -392,7 +380,7 @@ def validate_beacon_attestation_gossip(
     state: BeaconState,
     # [Modified in Electra:EIP7549]
     attestation: SingleAttestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -429,20 +417,8 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    is_previous_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(Epoch(attestation_epoch + 1)),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    is_current_epoch_attestation = is_within_slot_range(
-        state,
-        compute_start_slot_at_epoch(attestation_epoch),
-        SLOTS_PER_EPOCH - 1,
-        current_time_ms,
-    )
-    if not (is_previous_epoch_attestation or is_current_epoch_attestation):
-        raise GossipIgnore("attestation epoch is not previous or current epoch")
+    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+        raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
     if target_epoch != compute_epoch_at_slot(data.slot):
@@ -506,7 +482,7 @@ def validate_blob_sidecar_gossip(
     store: Store,
     state: BeaconState,
     blob_sidecar: BlobSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """

@@ -63,10 +63,10 @@ libp2p messages.
 
 | Name                                    | Value                         |
 | --------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `uint64(16829)` (= ~16 KiB)   |
-| `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
-| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
+| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
 ### Configuration
 
@@ -114,7 +114,7 @@ class ProposerPreferences(Container):
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
-    target_gas_limit: uint64
+    target_gas_limit: Uint64
 ```
 
 #### New `SignedProposerPreferences`
@@ -136,14 +136,14 @@ class SignedProposerPreferences(Container):
 class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
     # [Modified in Gloas:EIP7732]
@@ -450,7 +450,7 @@ where `store` is the fork choice store, and the alias
 
 ```python
 def is_gas_limit_target_compatible(
-    parent_gas_limit: uint64, gas_limit: uint64, target_gas_limit: uint64
+    parent_gas_limit: Uint64, gas_limit: Uint64, target_gas_limit: Uint64
 ) -> bool:
     """
     Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
@@ -493,6 +493,12 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The block with root `preferences.dependent_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
+- _[REJECT]_ The slot of the block with root `preferences.dependent_root` is
+  strictly less than
+  `compute_start_slot_at_epoch(compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD)`.
+- _[IGNORE]_ `is_valid_dependent_root(store, preferences.dependent_root, epoch)`
+  returns `True`, where `epoch` is
+  `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD`.
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at the epoch
   `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD` and
@@ -502,6 +508,22 @@ The following validations MUST pass before forwarding the
   `(preferences.dependent_root, preferences.proposal_slot, preferences.validator_index)`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
+
+```python
+def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
+    """
+    Check if the block with the given ``root`` is a possible dependent block
+    for the given ``epoch``, meaning that on some branch it is, or could
+    become, the latest block prior to the start of the epoch.
+    """
+    epoch_start_slot = compute_start_slot_at_epoch(epoch)
+    if store.blocks[root].slot >= epoch_start_slot:
+        return False
+    for block in store.blocks.values():
+        if block.parent_root == root and block.slot >= epoch_start_slot:
+            return True
+    return root == get_head(store).root
+```
 
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
@@ -635,7 +657,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
 )
 ```
 

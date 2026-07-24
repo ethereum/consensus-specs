@@ -4,15 +4,15 @@ from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, hash_tree_root
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
-    boolean,
-    byte,
+    Boolean,
+    Byte,
     ByteList,
     ByteVector,
     Container,
     List,
     ProgressiveBitlist,
     ProgressiveList,
-    uint,
+    Uint,
     Union,
     Vector,
     View,
@@ -20,10 +20,10 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
 
 
 def decode(data: Any, typ):
-    if issubclass(typ, uint | boolean):
+    if issubclass(typ, Uint | Boolean):
         return typ(data)
     elif issubclass(typ, Bitlist | ProgressiveBitlist | Bitvector) or (
-        issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), byte)
+        issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), Byte)
     ):
         return deserialize(typ, bytes.fromhex(data[2:]))
     elif issubclass(typ, List | ProgressiveList | Vector):
