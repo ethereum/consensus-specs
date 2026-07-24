@@ -21,7 +21,6 @@
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
-    - [New `is_valid_proposal_slot`](#new-is_valid_proposal_slot)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -302,26 +301,6 @@ def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
     if root == get_head(store).root:
         return True
     return False
-```
-
-#### New `is_valid_proposal_slot`
-
-```python
-def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
-    """
-    Check if the validator is the proposer for the given slot within the
-    proposer lookahead.
-    """
-    current_epoch = get_current_epoch(state)
-    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
-    if proposal_epoch < current_epoch:
-        return False
-    if proposal_epoch > current_epoch + Epoch(MIN_SEED_LOOKAHEAD):
-        return False
-
-    index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
-    index += preferences.proposal_slot % SLOTS_PER_EPOCH
-    return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
 ### The gossip domain: gossipsub
@@ -1023,7 +1002,9 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     process_slots(lookahead_state, lookahead_epoch_start_slot)
-    if not is_valid_proposal_slot(lookahead_state, preferences):
+    index = MIN_SEED_LOOKAHEAD * SLOTS_PER_EPOCH
+    index += preferences.proposal_slot % SLOTS_PER_EPOCH
+    if lookahead_state.proposer_lookahead[index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid with respect to the validator's public key
