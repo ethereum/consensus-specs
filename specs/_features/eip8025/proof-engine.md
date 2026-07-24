@@ -10,6 +10,7 @@
 - [Introduction](#introduction)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
+  - [New `verify_beacon_chain_proof`](#new-verify_beacon_chain_proof)
   - [New `notify_new_payload`](#new-notify_new_payload)
   - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
   - [New `ProofAttributes`](#new-proofattributes)
@@ -31,6 +32,8 @@ sub-system logic via:
   proofs
 - a verification function `self.verify_execution_proof` to verify individual
   proofs
+- a verification function `self.verify_beacon_chain_proof` to verify beacon
+  chain proofs
 - a notification function `self.notify_new_payload` to notify the proof engine
   of the new payload
 - a notification function `self.notify_forkchoice_updated` to notify the proof
@@ -51,6 +54,19 @@ def verify_execution_proof(
 ) -> bool:
     """
     Verify an execution proof.
+    Return ``True`` if proof is valid.
+    """
+```
+
+### New `verify_beacon_chain_proof`
+
+```python
+def verify_beacon_chain_proof(
+    self: ProofEngine,
+    beacon_chain_proof: BeaconChainProof,
+) -> bool:
+    """
+    Verify a beacon chain proof.
     Return ``True`` if proof is valid.
     """
 ```

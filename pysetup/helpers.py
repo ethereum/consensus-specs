@@ -95,6 +95,10 @@ def objects_to_spec(
     deprecate_containers = reduce(
         lambda obj, builder: obj.union(builder.deprecate_containers()), builders, set()
     )
+    undeprecate_containers = reduce(
+        lambda obj, builder: obj.union(builder.undeprecate_containers()), builders, set()
+    )
+    deprecate_containers -= undeprecate_containers
     ordered_class_objects = {
         k: v for k, v in ordered_class_objects.items() if k not in deprecate_containers
     }
