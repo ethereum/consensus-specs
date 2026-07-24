@@ -70,9 +70,10 @@ libp2p messages.
 
 ### Configuration
 
-| Name                   | Value          |
-| ---------------------- | -------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
+| Name                            | Value          |
+| ------------------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS`          | `2**7` (= 128) |
+| `MAX_BIDS_PER_BUILDER_PER_SLOT` | `6`            |
 
 ### Containers
 
@@ -428,7 +429,10 @@ where `store` is the fork choice store, and the alias
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
-  given builder for this slot.
+  given builder for the tuple
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
+- _[IGNORE]_ fewer than `MAX_BIDS_PER_BUILDER_PER_SLOT` signed bids with a valid
+  signature have been seen from the given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
   `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
