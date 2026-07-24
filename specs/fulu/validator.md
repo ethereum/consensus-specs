@@ -190,7 +190,7 @@ cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
+    cell_proofs = zip(kzg.compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
 ```
 

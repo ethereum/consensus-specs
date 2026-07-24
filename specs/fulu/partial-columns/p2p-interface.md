@@ -146,7 +146,7 @@ def verify_partial_data_column_sidecar_kzg_proofs(
     cell_indices = [CellIndex(column_index)] * len(blob_indices)
 
     # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
+    return kzg.verify_cell_kzg_proof_batch(
         commitments_bytes=[all_commitments[i] for i in blob_indices],
         cell_indices=cell_indices,
         cells=sidecar.partial_column,

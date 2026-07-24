@@ -200,10 +200,6 @@ test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(preset),--preset=$(preset),)
 # Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
-#
-# Libraries
-test: KZG := --kzg-type=$(if $(kzg),$(kzg),ckzg)
-#
 # Output
 test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
@@ -221,7 +217,6 @@ test: _pyspec
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
-		$(KZG) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		--html=$(TEST_REPORT_DIR)/test_results.html \
 		--self-contained-html \

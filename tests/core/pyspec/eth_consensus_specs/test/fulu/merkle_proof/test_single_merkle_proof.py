@@ -23,6 +23,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
+from eth_consensus_specs.utils import kzg
 
 
 def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_count=1):
@@ -44,7 +45,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
         spec, block.body.execution_payload, state
     )
     signed_block = sign_block(spec, state, block, proposer_index=0)
-    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    cells_and_kzg_proofs = [kzg.compute_cells_and_kzg_proofs(blob) for blob in blobs]
     column_sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     column_sidecar = column_sidecars[0]
 

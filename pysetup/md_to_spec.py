@@ -1,6 +1,5 @@
 import ast
 import contextlib
-import json
 import re
 import string
 from collections.abc import Iterator, Mapping
@@ -56,7 +55,6 @@ class MarkdownToSpec:
         """
         while (child := self._get_next_element()) is not None:
             self._process_child(child)
-        self._finalize_types()
         return self._build_spec_object()
 
     def _get_next_element(self) -> Element | None:
@@ -258,7 +256,7 @@ class MarkdownToSpec:
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
-                if name in ("ENDIANNESS", "KZG_ENDIANNESS"):
+                if name == "ENDIANNESS":
                     # Deal with mypy Literal typing check
                     value_def = _parse_value(name, value, type_hint="Final")
                 if any(k in value for k in self.preset) or any(
@@ -432,16 +430,6 @@ class MarkdownToSpec:
                 )
             self._process_list_of_records_table(table_element, match.group(1).upper())
 
-    def _finalize_types(self) -> None:
-        """
-        Calls helper functions to update KZG setups if needed.
-        """
-        # Update KZG trusted setup if needed
-        if any("KZG_SETUP" in name for name in self.spec["constant_vars"]):
-            _update_constant_vars_with_kzg_setups(
-                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
-            )
-
     def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
@@ -514,30 +502,6 @@ def _is_constant_id(name: str) -> bool:
 
 
 @cache
-def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], list[str]]:
-    trusted_setups_file_path = (
-        str(Path(__file__).parent.parent)
-        + "/presets/"
-        + preset_name
-        + "/trusted_setups/trusted_setup_4096.json"
-    )
-
-    with Path(trusted_setups_file_path).open() as f:
-        json_data = json.load(f)
-        trusted_setup_G1_monomial = json_data["g1_monomial"]
-        trusted_setup_G1_lagrange = json_data["g1_lagrange"]
-        trusted_setup_G2_monomial = json_data["g2_monomial"]
-
-    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
-
-
-ALL_KZG_SETUPS = {
-    "minimal": _load_kzg_trusted_setups("minimal"),
-    "mainnet": _load_kzg_trusted_setups("mainnet"),
-}
-
-
-@cache
 def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -553,24 +517,6 @@ def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> V
 
     return VariableDefinition(
         type_name=type_name, value=typed_value[i + 1 : -1], comment=comment, type_hint=type_hint
-    )
-
-
-def _update_constant_vars_with_kzg_setups(
-    constant_vars: dict[str, VariableDefinition],
-    preset_dep_constant_vars: dict[str, VariableDefinition],
-    preset_name: str,
-) -> None:
-    comment = "noqa: E501"
-    kzg_setups = ALL_KZG_SETUPS[preset_name]
-    preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(kzg_setups[0]), comment, None
-    )
-    preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(kzg_setups[1]), comment, None
-    )
-    constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
-        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
     )
 
 

@@ -35,10 +35,7 @@ IGNORE_SPEC_FILES = ["specs/phase0/deposit-contract.md"]
 
 EXTRA_SPEC_FILES = {BELLATRIX: "sync/optimistic.md"}
 
-DEFAULT_ORDER = (
-    "beacon-chain",
-    "polynomial-commitments",
-)
+DEFAULT_ORDER = ("beacon-chain",)
 
 
 def is_post_fork(a, b) -> bool:

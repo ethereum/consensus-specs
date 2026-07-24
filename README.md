@@ -50,6 +50,7 @@ ready.
 - [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
 - [Builder Specs](https://github.com/ethereum/builder-specs)
+- [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
 
 ### Reference tests
 
