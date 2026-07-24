@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     default_activation_threshold,
+    expect_assertion_error,
     single_phase,
     spec_state_test,
     spec_test,
@@ -179,7 +180,11 @@ def test_inclusion_list_store_by_slot_and_committee_root__different_committee_ro
         signed_inclusion_list_1 = sign_inclusion_list(spec, state, inclusion_list_1)
 
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
-        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+        # IL1 is rejected because its committee root does not match the
+        # canonical committee.
+        expect_assertion_error(
+            lambda: spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+        )
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
             inclusion_list_store, state, state.slot
@@ -292,6 +297,10 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
                 found_different_committee = True
                 break
         assert found_different_committee
+
+        # Advance the fork choice store clock to the new slot.
+        time = state.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000
+        spec.on_tick(forkchoice_store, time)
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.
         signed_inclusion_list_3 = get_sample_signed_inclusion_list(
