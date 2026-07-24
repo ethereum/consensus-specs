@@ -316,6 +316,11 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
 ```python
 def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus:
     parent = store.blocks[block.parent_root]
+    parent_state = store.block_states[block.parent_root]
+    # pre-Gloas parent has no bid field hence, treat as PENDING
+    if parent_state.fork.current_version < GLOAS_FORK_VERSION:
+        return PAYLOAD_STATUS_PENDING
+
     parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
     message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
     return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
