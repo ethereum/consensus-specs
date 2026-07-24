@@ -207,7 +207,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
         block_payload_statuses={},
     )
     assert result == "reject"
-    assert reason == "same-slot aggregate must attest with index 0"
+    assert reason == "same-slot attestation must attest with index 0"
     messages.append(
         {
             "current_time_ms": int(time_ms),

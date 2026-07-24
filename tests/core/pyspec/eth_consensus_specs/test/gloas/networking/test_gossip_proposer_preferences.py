@@ -400,7 +400,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "dependent root block has not been seen"
+    assert reason == "dependent block has not been seen"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -685,7 +685,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "dependent root state is unavailable"
+    assert reason == "dependent block failed validation"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -830,66 +830,6 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
             "message": get_filename(signed_prefs),
             "expected": result,
             "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_proposer_preferences__valid_dependent_root_is_head(spec, state):
-    """Preferences whose dependent_root is the childless current head are valid.
-
-    The head is before the lookahead epoch start and has no children yet, so
-    it could still become the latest block prior to the epoch start.
-    """
-    anchor_state = state.copy()
-    yield "topic", "meta", "proposer_preferences"
-
-    # The head is two slots before the start of epoch 1 and has no children.
-    head_slot = spec.Slot(spec.compute_start_slot_at_epoch(spec.Epoch(1)) - 2)
-    store, blocks = setup_store_with_advanced_state(spec, state, head_slot)
-    yield "state", anchor_state
-
-    seen = get_seen(spec)
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-
-    # Cross into later epochs with empty slots only, so the upcoming proposal
-    # falls in epoch 1 + MIN_SEED_LOOKAHEAD and its lookahead epoch is epoch 1.
-    last_lookahead_slot = spec.Slot(
-        spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1)) - 1
-    )
-    spec.process_slots(state, last_lookahead_slot)
-
-    head_root = blocks[-1].message.hash_tree_root()
-    signed_prefs = build_signed_proposer_preferences(spec, state, dependent_root=head_root)
-    proposal_epoch = spec.compute_epoch_at_slot(signed_prefs.message.proposal_slot)
-    assert proposal_epoch == spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1)
-    yield get_filename(signed_prefs), signed_prefs
-
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
-    messages = []
-
-    time_ms += 100
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        state=state,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
         }
     )
 

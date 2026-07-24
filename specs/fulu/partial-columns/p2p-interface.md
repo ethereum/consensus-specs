@@ -258,10 +258,11 @@ def validate_partial_data_column_sidecar_gossip(
             raise GossipReject("header is not from a higher slot than its parent")
 
         # [REJECT] The current finalized_checkpoint is an ancestor of the header's block
-        checkpoint_block = get_checkpoint_block(
-            store, block_header.parent_root, store.finalized_checkpoint.epoch
+        finalized_epoch = store.finalized_checkpoint.epoch
+        finalized_checkpoint_block = get_checkpoint_block(
+            store, block_header.parent_root, finalized_epoch
         )
-        if checkpoint_block != store.finalized_checkpoint.root:
+        if finalized_checkpoint_block != store.finalized_checkpoint.root:
             raise GossipReject("finalized checkpoint is not an ancestor of header's block")
 
         # [REJECT] The header's kzg_commitments inclusion proof is valid

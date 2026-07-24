@@ -479,7 +479,7 @@ def test_gossip_beacon_block__reject_too_many_parent_withdrawal_requests(spec, s
         )
 
     yield from _assert_beacon_block_gossip(
-        spec, state, mutate, "reject", "too many parent withdrawal requests"
+        spec, state, mutate, "reject", "too many withdrawal requests"
     )
 
 
@@ -509,7 +509,7 @@ def test_gossip_beacon_block__reject_too_many_parent_consolidation_requests(spec
         )
 
     yield from _assert_beacon_block_gossip(
-        spec, state, mutate, "reject", "too many parent consolidation requests"
+        spec, state, mutate, "reject", "too many consolidation requests"
     )
 
 
@@ -539,7 +539,7 @@ def test_gossip_beacon_block__reject_too_many_parent_builder_deposit_requests(sp
         )
 
     yield from _assert_beacon_block_gossip(
-        spec, state, mutate, "reject", "too many parent builder deposit requests"
+        spec, state, mutate, "reject", "too many builder deposit requests"
     )
 
 
@@ -569,7 +569,7 @@ def test_gossip_beacon_block__reject_too_many_parent_builder_exit_requests(spec,
         )
 
     yield from _assert_beacon_block_gossip(
-        spec, state, mutate, "reject", "too many parent builder exit requests"
+        spec, state, mutate, "reject", "too many builder exit requests"
     )
 
 

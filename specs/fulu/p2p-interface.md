@@ -273,7 +273,8 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
     # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    if (block.slot, block.proposer_index) in seen.proposer_slots:
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
@@ -337,7 +338,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.slot, block.proposer_index))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ##### Blob subnets
@@ -369,8 +370,8 @@ def validate_data_column_sidecar_gossip(
 
     # [IGNORE] The sidecar is the first sidecar for the tuple
     # (block_header.slot, block_header.proposer_index, sidecar.index)
-    sidecar_tuple = (block_header.slot, block_header.proposer_index, sidecar.index)
-    if sidecar_tuple in seen.data_column_sidecar_tuples:
+    sidecar_key = (block_header.slot, block_header.proposer_index, sidecar.index)
+    if sidecar_key in seen.data_column_sidecar_tuples:
         raise GossipIgnore("already seen sidecar from this proposer for this slot and index")
 
     # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar
@@ -416,10 +417,11 @@ def validate_data_column_sidecar_gossip(
         raise GossipReject("sidecar is not from a higher slot than its parent")
 
     # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
-    checkpoint_block = get_checkpoint_block(
-        store, block_header.parent_root, store.finalized_checkpoint.epoch
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(
+        store, block_header.parent_root, finalized_epoch
     )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of sidecar's block")
 
     # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_inclusion_proof
@@ -439,7 +441,7 @@ def validate_data_column_sidecar_gossip(
         raise GossipReject("sidecar proposer_index does not match expected proposer")
 
     # Mark this data column sidecar as seen
-    seen.data_column_sidecar_tuples.add(sidecar_tuple)
+    seen.data_column_sidecar_tuples.add(sidecar_key)
 ```
 
 *Note*: In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for

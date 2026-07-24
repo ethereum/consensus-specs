@@ -135,7 +135,8 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
     # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    if (block.slot, block.proposer_index) in seen.proposer_slots:
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
@@ -193,7 +194,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.slot, block.proposer_index))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### New `bls_to_execution_change`

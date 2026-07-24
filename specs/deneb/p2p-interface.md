@@ -264,7 +264,8 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
     # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    if (block.slot, block.proposer_index) in seen.proposer_slots:
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
@@ -327,7 +328,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.slot, block.proposer_index))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### Modified `beacon_aggregate_and_proof`
@@ -394,7 +395,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (target_epoch, aggregator_index) in seen.aggregator_epochs:
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
         raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
@@ -424,29 +426,28 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    if aggregate.data.beacon_block_root not in store.blocks:
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if aggregate.data.beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
-    checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
-    )
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
     if checkpoint_block != aggregate.data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The finalized checkpoint is an ancestor of the block
     finalized_checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
+        store, block_root, store.finalized_checkpoint.epoch
     )
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((target_epoch, aggregator_index))
+    seen.aggregator_epochs.add(aggregator_epoch_key)
     if aggregate_data_root not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_data_root] = set()
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
@@ -580,7 +581,8 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
     participant_index = committee[aggregation_bits.index(True)]
-    if (target_epoch, participant_index) in seen.attestation_validator_epochs:
+    attestation_epoch_key = (target_epoch, participant_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
@@ -590,28 +592,28 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    beacon_block_root = data.beacon_block_root
-    if beacon_block_root not in store.blocks:
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
-    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The current finalized_checkpoint is an ancestor of the block
     finalized_checkpoint_block = get_checkpoint_block(
-        store, beacon_block_root, store.finalized_checkpoint.epoch
+        store, block_root, store.finalized_checkpoint.epoch
     )
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((target_epoch, participant_index))
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
 ##### Blob subnets
@@ -681,10 +683,11 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("blob sidecar is not from a higher slot than its parent")
 
     # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
-    checkpoint_block = get_checkpoint_block(
-        store, block_header.parent_root, store.finalized_checkpoint.epoch
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(
+        store, block_header.parent_root, finalized_epoch
     )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
 
     # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof

@@ -21,6 +21,9 @@
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
+    - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
+    - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
+    - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -303,6 +306,107 @@ def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
     return False
 ```
 
+#### New `verify_attestation_payload_status`
+
+```python
+def verify_attestation_payload_status(
+    store: Store,
+    data: AttestationData,
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+) -> None:
+    """
+    Verify that the attested payload status is consistent with the block's payload.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block_root = data.beacon_block_root
+    block = store.blocks[block_root]
+
+    # [REJECT] For same-slot attestations, the payload cannot yet be present
+    if block.slot == data.slot and data.index != 0:
+        raise GossipReject("same-slot attestation must attest with index 0")
+
+    if data.index != 1:
+        return
+
+    # [IGNORE] The corresponding execution payload envelope has been seen and verified
+    # (MAY queue attestations for processing once the payload is retrieved and
+    # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
+    # using data.beacon_block_root)
+    if not is_payload_verified(store, block_root):
+        raise GossipIgnore("execution payload envelope has not been seen")
+
+    # [IGNORE] The corresponding execution payload has been validated
+    payload_status = block_payload_statuses.get(block_root, PAYLOAD_STATUS_NOT_VALIDATED)
+    if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+        raise GossipIgnore("execution payload pending EL validation")
+
+    # [REJECT] The corresponding execution payload passes EL validation
+    if payload_status == PAYLOAD_STATUS_INVALIDATED:
+        raise GossipReject("execution payload failed EL validation")
+```
+
+#### New `verify_block_body_operation_limits`
+
+```python
+def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
+    """
+    Verify that each block body operation count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The proposer slashing count is within the limit
+    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [REJECT] The attester slashing count is within the limit
+    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [REJECT] The attestation count is within the limit
+    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [REJECT] The block contains no deposits
+    if len(body.deposits) != 0:
+        raise GossipReject("block must not contain deposits")
+
+    # [REJECT] The voluntary exit count is within the limit
+    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [REJECT] The payload attestation count is within the limit
+    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+```
+
+#### New `verify_execution_requests_limits`
+
+```python
+def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
+    """
+    Verify that each execution request count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The withdrawal request count is within the limit
+    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawal requests")
+
+    # [REJECT] The consolidation request count is within the limit
+    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many consolidation requests")
+
+    # [REJECT] The builder deposit request count is within the limit
+    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder deposit requests")
+
+    # [REJECT] The builder exit request count is within the limit
+    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder exit requests")
+```
+
 ### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Gloas to support upgraded types.
@@ -366,65 +470,17 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
     # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    if (block.slot, block.proposer_index) in seen.proposer_slots:
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [New in Gloas:EIP7688]
-    # [REJECT] The proposer slashing count is within the limit
-    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
-        raise GossipReject("too many proposer slashings")
+    # [REJECT] The block body operation counts are within their limits
+    verify_block_body_operation_limits(block.body)
 
     # [New in Gloas:EIP7688]
-    # [REJECT] The attester slashing count is within the limit
-    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
-        raise GossipReject("too many attester slashings")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The attestation count is within the limit
-    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
-        raise GossipReject("too many attestations")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The block contains no deposits
-    if len(block.body.deposits) != 0:
-        raise GossipReject("block must not contain deposits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The voluntary exit count is within the limit
-    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
-        raise GossipReject("too many voluntary exits")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The BLS to execution change count is within the limit
-    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
-        raise GossipReject("too many bls to execution changes")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The payload attestation count is within the limit
-    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
-        raise GossipReject("too many payload attestations")
-
-    parent_requests = block.body.parent_execution_requests
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent withdrawal request count is within the limit
-    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent withdrawal requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent consolidation request count is within the limit
-    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent consolidation requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder deposit request count is within the limit
-    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder deposit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent builder exit request count is within the limit
-    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent builder exit requests")
+    # [REJECT] The parent execution request counts are within their limits
+    verify_execution_requests_limits(block.body.parent_execution_requests)
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -488,7 +544,7 @@ def validate_beacon_block_gossip(
             raise GossipReject("bid does not build on the parent's execution head")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.slot, block.proposer_index))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### Modified `beacon_aggregate_and_proof`
@@ -568,7 +624,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (target_epoch, aggregator_index) in seen.aggregator_epochs:
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
         raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
@@ -606,33 +663,6 @@ def validate_beacon_aggregate_and_proof_gossip(
     if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
-    block = store.blocks[block_root]
-
-    # [New in Gloas:EIP7732]
-    # [REJECT] For same-slot aggregates, the payload cannot yet be present
-    if block.slot == aggregate.data.slot and aggregate.data.index != 0:
-        raise GossipReject("same-slot aggregate must attest with index 0")
-
-    if aggregate.data.index == 1:
-        # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload envelope has been seen and verified
-        # (MAY queue attestations for processing once the payload is retrieved and
-        # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
-        # using aggregate.data.beacon_block_root)
-        if not is_payload_verified(store, block_root):
-            raise GossipIgnore("execution payload envelope has not been seen")
-
-        # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload has been validated
-        payload_status = block_payload_statuses.get(block_root)
-        if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-            raise GossipIgnore("execution payload pending EL validation")
-
-        # [New in Gloas:EIP7732]
-        # [REJECT] The corresponding execution payload passes EL validation
-        if payload_status == PAYLOAD_STATUS_INVALIDATED:
-            raise GossipReject("execution payload failed EL validation")
-
     # [REJECT] The target block is an ancestor of the LMD vote block
     checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
     if checkpoint_block != aggregate.data.target.root:
@@ -645,8 +675,12 @@ def validate_beacon_aggregate_and_proof_gossip(
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
+    # [New in Gloas:EIP7732]
+    # The attested payload status is consistent with the block's execution payload
+    verify_attestation_payload_status(store, aggregate.data, block_payload_statuses)
+
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((target_epoch, aggregator_index))
+    seen.aggregator_epochs.add(aggregator_epoch_key)
     if aggregate_cache_key not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_cache_key] = set()
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
@@ -710,29 +744,9 @@ def validate_execution_payload_envelope_gossip(
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
         raise GossipReject("envelope's execution requests root does not match the bid's")
 
-    execution_requests = envelope.execution_requests
+    # [REJECT] The execution request counts are within their limits
+    verify_execution_requests_limits(envelope.execution_requests)
 
-    # [New in Gloas:EIP7688]
-    # [REJECT] The withdrawal request count is within the limit
-    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many withdrawal requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The consolidation request count is within the limit
-    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many consolidation requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The builder deposit request count is within the limit
-    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder deposit requests")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The builder exit request count is within the limit
-    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder exit requests")
-
-    # [New in Gloas:EIP7688]
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
@@ -770,8 +784,8 @@ def validate_payload_attestation_message_gossip(
         raise GossipIgnore("payload attestation's slot is not the current slot")
 
     # [IGNORE] This is the first valid payload attestation from this validator index
-    seen_key = (data.slot, validator_index)
-    if seen_key in seen.payload_attestation_validators:
+    payload_attestation_key = (data.slot, validator_index)
+    if payload_attestation_key in seen.payload_attestation_validators:
         raise GossipIgnore("already seen payload attestation from this validator")
 
     # [IGNORE] The payload attestation's block has been seen (via gossip or non-gossip sources)
@@ -803,7 +817,7 @@ def validate_payload_attestation_message_gossip(
         raise GossipReject("invalid payload attestation signature")
 
     # Mark this payload_attestation as seen
-    seen.payload_attestation_validators.add(seen_key)
+    seen.payload_attestation_validators.add(payload_attestation_key)
 ```
 
 ###### New `execution_payload_bid`
@@ -977,16 +991,16 @@ def validate_proposer_preferences_gossip(
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     if preferences.dependent_root not in store.blocks:
-        raise GossipIgnore("dependent root block has not been seen")
+        raise GossipIgnore("dependent block has not been seen")
 
     # [IGNORE] These are the first valid preferences seen for this dependent root and slot
     prefs_key = (preferences.dependent_root, preferences.proposal_slot)
     if prefs_key in seen.proposer_preferences:
         raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
-    # [IGNORE] The dependent root's state has been seen
+    # [IGNORE] The dependent block passes validation
     if preferences.dependent_root not in store.block_states:
-        raise GossipIgnore("dependent root state is unavailable")
+        raise GossipIgnore("dependent block failed validation")
 
     # [REJECT] The dependent root is a valid dependent block for the proposal slot
     assert proposal_epoch >= MIN_SEED_LOOKAHEAD
@@ -1085,7 +1099,8 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attester is not a member of the committee")
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
-    if (target_epoch, attester_index) in seen.attestation_validator_epochs:
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
@@ -1105,33 +1120,6 @@ def validate_beacon_attestation_gossip(
     if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
-    block = store.blocks[block_root]
-
-    # [New in Gloas:EIP7732]
-    # [REJECT] For same-slot attestations, the payload cannot yet be present
-    if block.slot == data.slot and data.index != 0:
-        raise GossipReject("same-slot attestation must attest with index 0")
-
-    if data.index == 1:
-        # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload envelope has been seen and verified
-        # (MAY queue attestations for processing once the payload is retrieved and
-        # SHOULD request the payload envelope via ExecutionPayloadEnvelopesByRoot
-        # using data.beacon_block_root)
-        if not is_payload_verified(store, block_root):
-            raise GossipIgnore("execution payload envelope has not been seen")
-
-        # [New in Gloas:EIP7732]
-        # [IGNORE] The corresponding execution payload has been validated
-        payload_status = block_payload_statuses.get(block_root)
-        if payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-            raise GossipIgnore("execution payload pending EL validation")
-
-        # [New in Gloas:EIP7732]
-        # [REJECT] The corresponding execution payload passes EL validation
-        if payload_status == PAYLOAD_STATUS_INVALIDATED:
-            raise GossipReject("execution payload failed EL validation")
-
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
     target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
@@ -1143,8 +1131,12 @@ def validate_beacon_attestation_gossip(
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
+    # [New in Gloas:EIP7732]
+    # The attested payload status is consistent with the block's execution payload
+    verify_attestation_payload_status(store, data, block_payload_statuses)
+
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((target_epoch, attester_index))
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
 ##### Blob subnets
@@ -1173,8 +1165,8 @@ def validate_data_column_sidecar_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] This is the first sidecar seen for this block root and column index
-    sidecar_tuple = (sidecar.beacon_block_root, sidecar.index)
-    if sidecar_tuple in seen.data_column_sidecar_tuples:
+    sidecar_key = (sidecar.beacon_block_root, sidecar.index)
+    if sidecar_key in seen.data_column_sidecar_tuples:
         raise GossipIgnore("already seen sidecar for this block root and index")
 
     # [REJECT] The sidecar is for the correct subnet
@@ -1213,7 +1205,7 @@ def validate_data_column_sidecar_gossip(
         raise GossipReject("invalid sidecar kzg proofs")
 
     # Mark this data column sidecar as seen
-    seen.data_column_sidecar_tuples.add(sidecar_tuple)
+    seen.data_column_sidecar_tuples.add(sidecar_key)
 ```
 
 ### The Req/Resp domain
