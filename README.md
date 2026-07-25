@@ -14,33 +14,34 @@ specifications can be made through pull requests.
 ## Specifications
 
 Core specifications for Ethereum proof-of-stake clients can be found in
-[specs](specs). These are divided into features. Features are researched and
-developed in parallel, and then consolidated into sequential upgrades when
-ready.
+[specs](specs). These are divided into [features](specs/_features). Features are
+researched and developed in parallel, and then consolidated into sequential
+upgrades when ready.
 
 ### Stable specifications
 
-| Seq. | Code Name     | Fork Epoch | Link                               |
-| ---- | ------------- | ---------- | ---------------------------------- |
-| 0    | **Phase0**    | `0`        | [specs/phase0](specs/phase0)       |
-| 1    | **Altair**    | `74240`    | [specs/altair](specs/altair)       |
-| 2    | **Bellatrix** | `144896`   | [specs/bellatrix](specs/bellatrix) |
-| 3    | **Capella**   | `194048`   | [specs/capella](specs/capella)     |
-| 4    | **Deneb**     | `269568`   | [specs/deneb](specs/deneb)         |
-| 5    | **Electra**   | `364032`   | [specs/electra](specs/electra)     |
-| 6    | **Fulu**      | `411392`   | [specs/fulu](specs/fulu)           |
+| Seq. | Code Name     | Fork Epoch | Link                    |
+| ---- | ------------- | ---------- | ----------------------- |
+| 0    | **Phase0**    | `0`        | [Spec](specs/phase0)    |
+| 1    | **Altair**    | `74240`    | [Spec](specs/altair)    |
+| 2    | **Bellatrix** | `144896`   | [Spec](specs/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Spec](specs/capella)   |
+| 4    | **Deneb**     | `269568`   | [Spec](specs/deneb)     |
+| 5    | **Electra**   | `364032`   | [Spec](specs/electra)   |
+| 6    | **Fulu**      | `411392`   | [Spec](specs/fulu)      |
 
 ### Unstable specifications
 
-| Seq. | Code Name | Fork Epoch | Link                       |
-| ---- | --------- | ---------- | -------------------------- |
-| 7    | **Gloas** | TBD        | [specs/gloas](specs/gloas) |
-| 8    | **Heze**  | TBD        | [specs/heze](specs/heze)   |
+| Seq. | Code Name | Fork Epoch | Link                |
+| ---- | --------- | ---------- | ------------------- |
+| 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
+| 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
 ### Accompanying documents
 
-- [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
-- [Merkle proof formats](ssz/merkle-proofs.md)
+- [Merkle Proofs](ssz/merkle-proofs.md)
+- [SimpleSerialize (SSZ)](ssz/simple-serialize.md)
+- [Optimistic Sync](sync/optimistic.md)
 
 ### External specifications
 
