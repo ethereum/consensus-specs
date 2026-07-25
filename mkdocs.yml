@@ -15,7 +15,6 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.tabs
     - search
 markdown_extensions:
   - toc:
@@ -29,6 +28,8 @@ markdown_extensions:
       anchor_linenums: true
   - mdx_truly_sane_lists:
       nested_indent: 4
+hooks:
+  - scripts/mkdocs_hooks.py
 plugins:
   - search
   - awesome-pages

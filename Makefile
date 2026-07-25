@@ -241,10 +241,12 @@ SYNC_DIR = ./sync
 
 # Copy files to the docs directory.
 _copy_docs:
-	@cp -r $(SPEC_DIR) $(DOCS_DIR)
-	@cp -r $(SYNC_DIR) $(DOCS_DIR)
-	@cp -r $(SSZ_DIR) $(DOCS_DIR)
-	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
+	@rm -rf $(DOCS_DIR)
+	@mkdir -p $(DOCS_DIR)
+	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
+	@cp -r $(SYNC_DIR) $(DOCS_DIR)/sync
+	@cp -r $(SSZ_DIR) $(DOCS_DIR)/ssz
+	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
 
 # Start a local documentation server.
 serve_docs: _pyspec _copy_docs
