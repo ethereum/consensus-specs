@@ -20,28 +20,27 @@ ready.
 
 ### Stable specifications
 
-| Seq. | Code Name     | Fork Epoch | Links                                                                                   |
-| ---- | ------------- | ---------- | --------------------------------------------------------------------------------------- |
-| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth_consensus_specs/test/phase0)       |
-| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth_consensus_specs/test/altair)       |
-| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth_consensus_specs/test/bellatrix) |
-| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth_consensus_specs/test/capella)     |
-| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth_consensus_specs/test/deneb)         |
-| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth_consensus_specs/test/electra)     |
-| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth_consensus_specs/test/fulu)           |
+| Seq. | Code Name     | Fork Epoch | Link                               |
+| ---- | ------------- | ---------- | ---------------------------------- |
+| 0    | **Phase0**    | `0`        | [specs/phase0](specs/phase0)       |
+| 1    | **Altair**    | `74240`    | [specs/altair](specs/altair)       |
+| 2    | **Bellatrix** | `144896`   | [specs/bellatrix](specs/bellatrix) |
+| 3    | **Capella**   | `194048`   | [specs/capella](specs/capella)     |
+| 4    | **Deneb**     | `269568`   | [specs/deneb](specs/deneb)         |
+| 5    | **Electra**   | `364032`   | [specs/electra](specs/electra)     |
+| 6    | **Fulu**      | `411392`   | [specs/fulu](specs/fulu)           |
 
 ### Unstable specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                                           |
-| ---- | --------- | ---------- | ------------------------------------------------------------------------------- |
-| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth_consensus_specs/test/gloas) |
-| 8    | **Heze**  | TBD        | [Specs](specs/heze), [Tests](tests/core/pyspec/eth_consensus_specs/test/heze)   |
+| Seq. | Code Name | Fork Epoch | Link                       |
+| ---- | --------- | ---------- | -------------------------- |
+| 7    | **Gloas** | TBD        | [specs/gloas](specs/gloas) |
+| 8    | **Heze**  | TBD        | [specs/heze](specs/heze)   |
 
 ### Accompanying documents
 
 - [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
 - [Merkle proof formats](ssz/merkle-proofs.md)
-- [General test format](tests/formats/README.md)
 
 ### External specifications
 
@@ -110,4 +109,3 @@ consensus specifications:
 - [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
-- [PySpec Tests](tests/core/pyspec/README.md)
