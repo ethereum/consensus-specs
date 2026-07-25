@@ -52,9 +52,9 @@ takes over as the protocol's correlation pricing mechanism.
 
 | Name                               | Value                       | Description                                                                                                                |
 | ---------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `MAX_PENALTY_FACTOR`               | `uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                            |
-| `PENALTY_SLOPE`                    | `uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`            |
-| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots (~12.6 days) |
+| `MAX_PENALTY_FACTOR`               | `Uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                            |
+| `PENALTY_SLOPE`                    | `Uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`            |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots (~12.6 days) |
 
 ## Containers
 
@@ -68,7 +68,7 @@ offline balance.
 
 ```python
 class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -78,7 +78,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: ProgressiveList[Validator]
     balances: ProgressiveList[Gwei]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -89,14 +89,14 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: ProgressiveList[uint64]
+    inactivity_scores: ProgressiveList[Uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
+    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -190,7 +190,7 @@ def get_updated_smoothed_offline_balance(smoothed_balance: Gwei, offline_balance
 #### New `get_slot_penalty_factors`
 
 ```python
-def get_slot_penalty_factors(state: BeaconState) -> Sequence[uint64]:
+def get_slot_penalty_factors(state: BeaconState) -> Sequence[Uint64]:
     """
     Return the penalty factor for each slot of the previous epoch.
     Does not mutate ``state``; the moving average is persisted by ``process_smoothed_offline_balance``.
@@ -203,7 +203,7 @@ def get_slot_penalty_factors(state: BeaconState) -> Sequence[uint64]:
         offline_balance = get_slot_offline_balance(state, slot)
         excess = offline_balance - min(offline_balance, smoothed_balance)
         penalty_factor = min(
-            uint64(1) + PENALTY_SLOPE * excess // get_slot_reference_balance(state),
+            Uint64(1) + PENALTY_SLOPE * excess // get_slot_reference_balance(state),
             MAX_PENALTY_FACTOR,
         )
         factors.append(penalty_factor)
@@ -214,12 +214,12 @@ def get_slot_penalty_factors(state: BeaconState) -> Sequence[uint64]:
 #### New `get_validator_slot_offsets`
 
 ```python
-def get_validator_slot_offsets(state: BeaconState) -> Sequence[uint64]:
+def get_validator_slot_offsets(state: BeaconState) -> Sequence[Uint64]:
     """
     Return the slot offset within the previous epoch of each validator's
     committee assignment.
     """
-    slot_offsets = [uint64(0)] * len(state.validators)
+    slot_offsets = [Uint64(0)] * len(state.validators)
     previous_epoch = get_previous_epoch(state)
     start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot_offset in range(SLOTS_PER_EPOCH):
@@ -227,7 +227,7 @@ def get_validator_slot_offsets(state: BeaconState) -> Sequence[uint64]:
         for committee_index in range(get_committee_count_per_slot(state, previous_epoch)):
             committee = get_beacon_committee(state, slot, CommitteeIndex(committee_index))
             for index in committee:
-                slot_offsets[index] = uint64(slot_offset)
+                slot_offsets[index] = Uint64(slot_offset)
     return slot_offsets
 ```
 
