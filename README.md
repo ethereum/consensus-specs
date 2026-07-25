@@ -107,6 +107,6 @@ consensus specifications:
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 - [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
 - [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-- [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
+- [Specifications viewer (zensical)](https://ethereum.github.io/consensus-specs/)
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
