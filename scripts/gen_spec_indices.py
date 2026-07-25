@@ -112,8 +112,12 @@ spec_forks = []
 if os.path.exists("specs"):
     for item in sorted(os.listdir("specs")):
         item_path = os.path.join("specs", item)
-        if os.path.isdir(item_path) and item not in {"_deprecated"}:
+        if os.path.isdir(item_path):
             spec_forks.append(item)
+
+print("  - Generating .pages for the site root")
+with mkdocs_gen_files.open(".pages", "w") as f:
+    f.write("nav:\n  - Specs: specs\n")
 
 
 def generate_pages_recursively(base_path: str) -> None:
