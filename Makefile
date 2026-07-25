@@ -247,6 +247,7 @@ _copy_docs:
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)/sync
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)/ssz
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
+	@$(UV_RUN) python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
 
 # Start a local documentation server.
 serve_docs: _pyspec _copy_docs
