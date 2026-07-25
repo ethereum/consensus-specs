@@ -105,7 +105,7 @@ Where:
 - `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 *Note*: `get_safe_execution_block_hash` is modified in Gloas, see
-[Fast Confirmation](./fast-confirmation.md#get_safe_execution_block_hash).
+[Fast Confirmation](./fast-confirmation.md#modified-get_safe_execution_block_hash).
 
 ## Helpers
 
