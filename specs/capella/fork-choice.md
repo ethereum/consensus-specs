@@ -52,7 +52,7 @@ def notify_forkchoice_updated(
 ```python
 @dataclass
 class PayloadAttributes:
-    timestamp: uint64
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     # [New in Capella]

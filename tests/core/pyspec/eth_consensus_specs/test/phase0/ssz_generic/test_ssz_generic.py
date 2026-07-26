@@ -9,8 +9,8 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.test.helpers.constants import PHASE0
-from tests.infra.manifest import Manifest, manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import Manifest, manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 from .ssz_generic_cases import (
     ssz_basic_progressive_list,

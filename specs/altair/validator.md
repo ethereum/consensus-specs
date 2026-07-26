@@ -74,19 +74,19 @@ and use as a reference throughout.
 
 ### Misc
 
-| Name                                       | Value         |                                      Unit                                       |
-| ------------------------------------------ | ------------- | :-----------------------------------------------------------------------------: |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                   validators                                    |
-| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol |
+| Name                                       | Value                 | Unit       |
+| ------------------------------------------ | --------------------- | ---------- |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `Uint64(2**4)` (= 16) | validators |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `Uint64(2**2)` (= 4)  | subnets    |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                   | Value          |     Unit     |          Duration          |
-| ---------------------- | -------------- | :----------: | :------------------------: |
-| `SYNC_MESSAGE_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                   | Value          | Unit         | Duration                   |
+| ---------------------- | -------------- | ------------ | -------------------------- |
+| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -106,7 +106,7 @@ class SyncCommitteeMessage(Container):
 class SyncCommitteeContribution(Container):
     slot: Slot
     beacon_block_root: Root
-    subcommittee_index: uint64
+    subcommittee_index: Uint64
     aggregation_bits: Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
     signature: BLSSignature
 ```
@@ -133,7 +133,7 @@ class SignedContributionAndProof(Container):
 ```python
 class SyncAggregatorSelectionData(Container):
     slot: Slot
-    subcommittee_index: uint64
+    subcommittee_index: Uint64
 ```
 
 ## Validator assignments
@@ -160,7 +160,7 @@ To reduce complexity during the Altair upgrade, sync committees are not expected
 to produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
-def compute_sync_committee_period(epoch: Epoch) -> uint64:
+def compute_sync_committee_period(epoch: Epoch) -> Uint64:
     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
 ```
 
@@ -421,7 +421,7 @@ the BLS private key associated with the validator.
 
 ```python
 def get_sync_committee_selection_proof(
-    state: BeaconState, slot: Slot, subcommittee_index: uint64, privkey: int
+    state: BeaconState, slot: Slot, subcommittee_index: Uint64, privkey: int
 ) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_data = SyncAggregatorSelectionData(

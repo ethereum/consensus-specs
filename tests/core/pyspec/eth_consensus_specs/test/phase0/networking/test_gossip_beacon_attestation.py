@@ -151,7 +151,7 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    subnet_id = spec.uint64(0)
+    subnet_id = spec.Uint64(0)
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -206,7 +206,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
 
     # Get correct subnet and use a different one
     correct_subnet = get_correct_subnet_for_attestation(spec, state, attestation)
-    wrong_subnet = spec.uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
+    wrong_subnet = spec.Uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
     block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)

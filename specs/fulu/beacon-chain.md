@@ -205,7 +205,7 @@ reflecting how far ahead proposer indices are computed based on the
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -215,7 +215,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -226,14 +226,14 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_execution_payload_header: ExecutionPayloadHeader
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
+    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -256,7 +256,7 @@ class BeaconState(Container):
 @dataclass
 class BlobParameters:
     epoch: Epoch
-    max_blobs_per_block: uint64
+    max_blobs_per_block: Uint64
 ```
 
 #### New `get_blob_parameters`
@@ -303,8 +303,8 @@ def compute_fork_digest(
             xor(
                 base_digest,
                 hash(
-                    uint_to_bytes(uint64(blob_parameters.epoch))
-                    + uint_to_bytes(uint64(blob_parameters.max_blobs_per_block))
+                    uint_to_bytes(Uint64(blob_parameters.epoch))
+                    + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
                 ),
             )
         )[:4]

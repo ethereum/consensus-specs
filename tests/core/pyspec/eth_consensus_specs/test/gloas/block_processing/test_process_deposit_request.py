@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
-from tests.infra.helpers.deposit_requests import (
+from eth_consensus_specs.test.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
     run_deposit_request_processing,
@@ -21,14 +21,14 @@ def test_process_deposit_request__builder_credentials_queued(spec, state):
 
     Input State Configured:
         - New pubkey (not an existing validator or builder)
-        - Builder withdrawal credentials (0x03 prefix)
+        - Builder withdrawal credentials
 
     Output State Verified:
         - Pending deposit added to the validator queue
         - No builder created (builder count unchanged)
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    # Builder withdrawal credentials (0x03 prefix) on an otherwise ordinary deposit
+    # Builder withdrawal credentials on an otherwise ordinary deposit
     withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
         spec,
@@ -60,14 +60,14 @@ def test_process_deposit_request__builder_pubkey_queued(spec, state):
 
     Input State Configured:
         - Existing builder pubkey
-        - Builder withdrawal credentials (0x03 prefix)
+        - Builder withdrawal credentials
 
     Output State Verified:
         - Pending deposit added to the validator queue
         - Builder unchanged (no top-up)
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    # Deposit for a pubkey that is already a builder, with builder (0x03) credentials
+    # Deposit for a pubkey that is already a builder, with builder credentials
     builder_pubkey = state.builders[0].pubkey
     withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(

@@ -30,7 +30,7 @@ LEADING_NUMBER = re.compile(r"^\d[\d,]*\d|\d")
 
 
 def strip_type_wrapper(expr):
-    """Strip type wrappers like uint64(...), Gwei(...), etc."""
+    """Strip type wrappers like Uint64(...), Gwei(...), etc."""
     m = TYPE_WRAPPER.match(expr.strip())
     if m:
         return m.group(1)

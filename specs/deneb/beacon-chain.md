@@ -61,7 +61,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 | Name            | SSZ equivalent | Description        |
 | --------------- | -------------- | ------------------ |
 | `VersionedHash` | `Bytes32`      | A versioned hash   |
-| `BlobIndex`     | `uint64`       | An index of a blob |
+| `BlobIndex`     | `Uint64`       | An index of a blob |
 
 ## Constants
 
@@ -77,7 +77,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                             | Value                     | Description                                                                     |
 | -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `Uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
@@ -85,7 +85,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                  | Value       | Description                                                                           |
 | --------------------- | ----------- | ------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `MAX_BLOBS_PER_BLOCK` | `Uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the
 EL/builder with their corresponding blobs being independently transmitted and
@@ -96,7 +96,7 @@ independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 | Name                                   | Value                |
 | -------------------------------------- | -------------------- |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `Uint64(2**3)` (= 8) |
 
 ## Containers
 
@@ -134,19 +134,19 @@ class ExecutionPayload(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `ExecutionPayloadHeader`
@@ -159,26 +159,26 @@ class ExecutionPayloadHeader(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `BeaconState`
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -188,7 +188,7 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -199,7 +199,7 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Deneb:EIP4844]
@@ -232,7 +232,7 @@ EIP-7045.
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -271,7 +271,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_validator_activation_churn_limit`
 
 ```python
-def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
+def get_validator_activation_churn_limit(state: BeaconState) -> Uint64:
     """
     Return the validator activation churn limit for the current epoch.
     """

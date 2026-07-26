@@ -12,13 +12,13 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MAINNET, MINIMAL, TESTGEN_FORKS
+from eth_consensus_specs.test.utils.manifest import Manifest, manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 from eth_consensus_specs.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
 )
 from eth_consensus_specs.utils.ssz.ssz_typing import Container, ProgressiveContainer
-from tests.infra.manifest import Manifest, manifest
-from tests.infra.template_test import template_test
 
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10

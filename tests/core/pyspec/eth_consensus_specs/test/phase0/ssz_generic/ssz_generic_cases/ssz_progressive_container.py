@@ -5,13 +5,13 @@ from eth_consensus_specs.debug.random_value import RandomizationMode
 from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
-    byte,
+    Byte,
     List,
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
-    uint16,
-    uint64,
+    Uint16,
+    Uint64,
     View,
 )
 
@@ -26,7 +26,7 @@ from .ssz_test_case import invalid_test_case
 
 
 class ProgressiveSingleFieldContainerTestStruct(ProgressiveContainer(active_fields=[1])):
-    A: byte
+    A: Byte
 
 
 class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_fields=[0, 0, 0, 0, 1])):
@@ -34,8 +34,8 @@ class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_field
 
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
-    A: byte
-    B: List[uint16, 123]
+    A: Byte
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
 
 
@@ -44,10 +44,10 @@ class ProgressiveComplexTestStruct(
         active_fields=[1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1]
     )
 ):
-    A: byte
-    B: List[uint16, 123]
+    A: Byte
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
@@ -55,43 +55,43 @@ class ProgressiveComplexTestStruct(
 
 
 class ModifiedTestStruct1(ProgressiveContainer(active_fields=[1, 1])):
-    A: byte
-    X: byte
+    A: Byte
+    X: Byte
 
 
 class ModifiedTestStruct2(ProgressiveContainer(active_fields=[1, 0, 1])):
-    A: byte
-    B: List[uint16, 123]
+    A: Byte
+    B: List[Uint16, 123]
 
 
 class ModifiedTestStruct3(ProgressiveContainer(active_fields=[1, 1, 1])):
-    A: byte
-    X: byte
-    B: List[uint16, 123]
+    A: Byte
+    X: Byte
+    B: List[Uint16, 123]
 
 
 class ModifiedTestStruct4(ProgressiveContainer(active_fields=[0, 0, 1, 0, 1])):
-    B: List[uint16, 123]
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
 
 
 class ModifiedTestStruct5(ProgressiveContainer(active_fields=[1, 0, 0, 0, 1])):
-    A: byte
+    A: Byte
     C: ProgressiveBitlist
 
 
 class ModifiedTestStruct6(ProgressiveContainer(active_fields=[1, 1, 1, 0, 1, 0, 0, 0, 1])):
-    A: byte
-    X: byte
-    B: List[uint16, 123]
+    A: Byte
+    X: Byte
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
 
 
 class ModifiedTestStruct7(ProgressiveContainer(active_fields=[1, 0, 1, 0, 0, 0, 0, 0, 1])):
-    A: byte
-    B: List[uint16, 123]
-    D: ProgressiveList[uint64]
+    A: Byte
+    B: List[Uint16, 123]
+    D: ProgressiveList[Uint64]
 
 
 class ModifiedTestStruct8(
@@ -99,11 +99,11 @@ class ModifiedTestStruct8(
         active_fields=[1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1]
     )
 ):
-    A: byte
-    X: byte
-    B: List[uint16, 123]
+    A: Byte
+    X: Byte
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
@@ -115,10 +115,10 @@ class ModifiedTestStruct9(
         active_fields=[1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1]
     )
 ):
-    A: byte
-    B: List[uint16, 123]
+    A: Byte
+    B: List[Uint16, 123]
     C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    D: ProgressiveList[Uint64]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
     H: ProgressiveList[ProgressiveVarTestStruct]

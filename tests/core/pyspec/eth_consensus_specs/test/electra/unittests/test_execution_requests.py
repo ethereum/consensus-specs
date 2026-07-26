@@ -53,7 +53,7 @@ def test_requests_serialization_round_trip__one_request_with_real_data(spec):
                 withdrawal_credentials=spec.Bytes32(32 * "bb"),
                 amount=spec.Gwei(11111111),
                 signature=spec.BLSSignature(96 * "cc"),
-                index=spec.uint64(22222222),
+                index=spec.Uint64(22222222),
             ),
         ]
     )

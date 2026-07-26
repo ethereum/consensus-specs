@@ -13,8 +13,8 @@ from eth_consensus_specs.test.utils.kzg_tests import (
     INVALID_BLOBS,
     VALID_BLOBS,
 )
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 @template_test

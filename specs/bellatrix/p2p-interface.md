@@ -45,7 +45,7 @@ understand the changes outlined in this document.
 
 | Name                      | SSZ equivalent | Description                                     |
 | ------------------------- | -------------- | ----------------------------------------------- |
-| `PayloadValidationStatus` | `uint8`        | Execution payload validation status for a block |
+| `PayloadValidationStatus` | `Uint8`        | Execution payload validation status for a block |
 
 ### Constants
 
@@ -115,7 +115,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     # [New in Bellatrix]
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
@@ -170,15 +170,15 @@ def validate_beacon_block_gossip(
 
         if block.parent_root not in store.block_states:
             if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-                # [REJECT] The block's parent passes validation
-                raise GossipReject("block's parent is invalid and EL result is unknown")
+                # [REJECT] The block's parent failed validation and its execution payload is optimistic
+                raise GossipReject("block's parent is invalid and its payload is optimistic")
 
-            # [IGNORE] The block's parent passes validation
-            raise GossipIgnore("block's parent is invalid and EL result is known")
+            # [IGNORE] The block's parent failed validation and its execution payload is processed
+            raise GossipIgnore("block's parent is invalid and its payload is processed")
 
-        # [IGNORE] The block's parent's execution payload passes validation
+        # [IGNORE] The block's parent passed validation but its execution payload is invalid
         if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
-            raise GossipIgnore("block's parent is valid and EL result is invalid")
+            raise GossipIgnore("block's parent is valid and its payload is invalid")
 
     # [REJECT] The block's parent passes validation
     elif block.parent_root not in store.block_states:

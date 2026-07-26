@@ -166,8 +166,8 @@ class LightClientStore:
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
 ## Helpers
@@ -280,7 +280,7 @@ def is_next_sync_committee_known(store: LightClientStore) -> bool:
 ### `get_safety_threshold`
 
 ```python
-def get_safety_threshold(store: LightClientStore) -> uint64:
+def get_safety_threshold(store: LightClientStore) -> Uint64:
     return (
         max(
             store.previous_max_active_participants,
@@ -293,8 +293,8 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 ### `get_subtree_index`
 
 ```python
-def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
+def get_subtree_index(generalized_index: GeneralizedIndex) -> Uint64:
+    return Uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
 ```
 
 ### `is_valid_normalized_merkle_branch`
@@ -315,7 +315,7 @@ def is_valid_normalized_merkle_branch(
 ### `compute_sync_committee_period_at_slot`
 
 ```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+def compute_sync_committee_period_at_slot(slot: Slot) -> Uint64:
     return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 

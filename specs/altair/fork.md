@@ -99,7 +99,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
+        inactivity_scores=[Uint64(0) for _ in range(len(pre.validators))],
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)

@@ -5,14 +5,14 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    boolean,
+    Boolean,
     ProgressiveList,
-    uint8,
-    uint16,
-    uint32,
-    uint64,
-    uint128,
-    uint256,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Uint128,
+    Uint256,
 )
 
 from .ssz_boolean import INVALID_BOOL_CASES
@@ -34,13 +34,13 @@ def progressive_list_case_fn(
 
 
 BASIC_TYPES: dict[str, type[BasicView]] = {
-    "bool": boolean,
-    "uint8": uint8,
-    "uint16": uint16,
-    "uint32": uint32,
-    "uint64": uint64,
-    "uint128": uint128,
-    "uint256": uint256,
+    "bool": Boolean,
+    "uint8": Uint8,
+    "uint16": Uint16,
+    "uint32": Uint32,
+    "uint64": Uint64,
+    "uint128": Uint128,
+    "uint256": Uint256,
 }
 
 
@@ -107,7 +107,7 @@ def invalid_cases():
                             ProgressiveList[typ],
                             lambda rng, mode=mode, typ=typ, length=length: (
                                 serialize(progressive_list_case_fn(rng, mode, typ, length))
-                                + serialize(uint_case_fn(rng, mode, uint8))
+                                + serialize(uint_case_fn(rng, mode, Uint8))
                             ),
                             rng,
                         ),

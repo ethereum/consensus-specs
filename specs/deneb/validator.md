@@ -57,7 +57,7 @@ class BlobsBundle:
 @dataclass
 class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     # [New in Deneb:EIP4844]
     blobs_bundle: BlobsBundle
 ```
@@ -87,7 +87,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, and BlobsBundle objects.
+    Return ExecutionPayload, Uint256, and BlobsBundle objects.
     """
 ```
 

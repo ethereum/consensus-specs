@@ -22,7 +22,7 @@ generalized indices of [`BeaconState`](../beacon-chain.md). It extends the
 The [fork document](./fork.md) explains how to upgrade existing Deneb based
 deployments to Electra.
 
-Additional documents describes the impact of the upgrade on certain roles:
+Additional documents describe the impact of the upgrade on certain roles:
 
 - [Networking](./p2p-interface.md)
 

@@ -42,10 +42,10 @@ Add a comment only when the code alone would leave something important unclear
 to the reader. Do not restate what the code already does.
 
 Docstrings and comments must be wrapped at 80 characters. In docstrings, inline
-code must use double backticks so it renders correctly in mkdocs. The linter
-does not enforce this, so it must be done manually. Only apply these rules to
-the docstrings and comments you add or change. Leave those outside the scope of
-your change untouched.
+code must use double backticks so it renders correctly on the website. The
+linter does not enforce this, so it must be done manually. Only apply these
+rules to the docstrings and comments you add or change. Leave those outside the
+scope of your change untouched.
 
 The specs make heavy use of SSZ types. Functions that operate on chain data
 should accept and return SSZ types, since the chain itself is stored entirely as

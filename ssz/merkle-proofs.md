@@ -72,7 +72,7 @@ We will define Merkle proofs in terms of generalized indices.
 
 We can describe the hash tree of any SSZ object, rooted in
 `hash_tree_root(object)`, as a binary Merkle tree whose depth may vary. For
-example, an object `{x: bytes32, y: List[uint64]}` would look as follows:
+example, an object `{x: bytes32, y: List[Uint64]}` would look as follows:
 
 ```
      root
@@ -90,7 +90,7 @@ takes as input an SSZ object and outputs some specific (possibly deeply nested)
 member. For example, `foo -> foo.x` is a path, as are `foo -> len(foo.y)` and
 `foo -> foo.y[5].w`. We'll describe paths as lists, which can have two
 representations. In "human-readable form", they are `["x"]`, `["y", "__len__"]`
-and `["y", 5, "w"]` respectively. In "encoded form", they are lists of `uint64`
+and `["y", 5, "w"]` respectively. In "encoded form", they are lists of `Uint64`
 values, in these cases (assuming the fields of `foo` in order are `x` then `y`,
 and `w` is the first field of `y[i]`) `[0]`, `[1, 2**64-1]`, `[1, 5, 0]`. We
 define `SSZVariableName` as the member variable name string, i.e., a path is
@@ -149,7 +149,7 @@ def get_item_position(
         (i) the index of the chunk in which the given element of the item is represented;
         (ii) the starting byte position within the chunk;
         (iii) the ending byte position within the chunk.
-    For example: for a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
+    For example: for a 6-item list of Uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
     if issubclass(typ, Elements):
         index = int(index_or_variable_name)
@@ -178,7 +178,7 @@ def get_generalized_index(typ: SSZType, *path: PyUnion[int, SSZVariableName]) ->
         assert not issubclass(typ, BasicValue)
         if p == "__len__":
             assert issubclass(typ, (List, ByteList))
-            typ = uint64
+            typ = Uint64
             root = GeneralizedIndex(root * 2 + 1)
         else:
             pos, _, _ = get_item_position(typ, p)

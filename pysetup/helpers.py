@@ -270,11 +270,10 @@ def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T
 
 
 ignored_dependencies = [
-    "bit",
     "Bitlist",
     "Bitvector",
-    "boolean",
-    "byte",
+    "Boolean",
+    "Byte",
     "ByteList",
     "bytes",
     "Bytes1",
@@ -298,16 +297,17 @@ ignored_dependencies = [
     "List",
     "Optional",
     "ProgressiveBitlist",
+    "ProgressiveByteList",
     "ProgressiveList",
     "Sequence",
     "Set",
     "Tuple",
-    "uint128",
-    "uint16",
-    "uint256",
-    "uint32",
-    "uint64",
-    "uint8",
+    "Uint128",
+    "Uint16",
+    "Uint256",
+    "Uint32",
+    "Uint64",
+    "Uint8",
     "Vector",
 ]
 

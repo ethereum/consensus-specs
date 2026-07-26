@@ -17,8 +17,8 @@ from eth_consensus_specs.test.helpers.state import (
 from eth_consensus_specs.test.helpers.withdrawals import (
     prepare_withdrawal_request,
     set_eth1_withdrawal_credential_with_balance,
+    set_parent_block_full,
 )
-from tests.infra.helpers.withdrawals import set_parent_block_full
 
 
 def _get_last_slot_of_current_epoch(spec, state):

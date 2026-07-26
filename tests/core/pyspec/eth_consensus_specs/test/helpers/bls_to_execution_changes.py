@@ -15,7 +15,7 @@ def get_signed_address_change(
         validator_index = 0
 
     if withdrawal_pubkey is None:
-        key_index = -1 - validator_index
+        key_index = ((32 * 256) - 1 - validator_index) % len(pubkeys)
         withdrawal_pubkey = pubkeys[key_index]
         withdrawal_privkey = privkeys[key_index]
     else:

@@ -36,9 +36,9 @@
 
 | Name           | SSZ equivalent | Description                                           |
 | -------------- | -------------- | ----------------------------------------------------- |
-| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
-| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
-| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
+| `RowIndex`     | `Uint64`       | Row identifier in the matrix of cells                 |
+| `ColumnIndex`  | `Uint64`       | Column identifier in the matrix of cells              |
+| `CustodyIndex` | `Uint64`       | Custody group identifier in the set of custody groups |
 
 ## Constants
 
@@ -49,25 +49,25 @@ specification.
 
 | Name          | Value                 |
 | ------------- | --------------------- |
-| `UINT256_MAX` | `uint256(2**256 - 1)` |
+| `UINT256_MAX` | `Uint256(2**256 - 1)` |
 
 ## Preset
 
 ### Size parameters
 
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
+| Name                | Value                        | Description                                   |
+| ------------------- | ---------------------------- | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `CELLS_PER_EXT_BLOB` (= 128) | Number of columns in the extended data matrix |
 
 ## Configuration
 
 ### Custody setting
 
-| Name                       | Value | Description                                                                       |
-| -------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
-| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
-| `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+| Name                       | Value         | Description                                                                       |
+| -------------------------- | ------------- | --------------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`         | `Uint64(8)`   | Minimum number of samples for an honest node                                      |
+| `NUMBER_OF_CUSTODY_GROUPS` | `Uint64(128)` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `Uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ## Containers
 
@@ -98,14 +98,14 @@ class MatrixEntry(Container):
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     # Skip computation if all groups are custodied
     if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
-    current_id = uint256(node_id)
+    current_id = Uint256(node_id)
     custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
@@ -115,7 +115,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = uint256(0)
+            current_id = Uint256(0)
         else:
             current_id += 1
 
@@ -163,7 +163,7 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
 
 ```python
 def recover_matrix(
-    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+    partial_matrix: Sequence[MatrixEntry], blob_count: Uint64
 ) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.

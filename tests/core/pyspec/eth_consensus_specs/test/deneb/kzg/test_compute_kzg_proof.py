@@ -12,8 +12,8 @@ from eth_consensus_specs.test.utils.kzg_tests import (
     VALID_BLOBS,
     VALID_FIELD_ELEMENTS,
 )
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 def _run_compute_kzg_proof_test(spec, blob, z, valid: bool):

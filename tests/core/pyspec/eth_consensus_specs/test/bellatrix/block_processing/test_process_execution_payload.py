@@ -69,7 +69,7 @@ def run_execution_payload_processing(
     yield "post", state
 
     assert state.latest_execution_payload_header == get_execution_payload_header(
-        spec, state, body.execution_payload
+        spec, body.execution_payload
     )
 
 

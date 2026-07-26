@@ -5,13 +5,13 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.block_header import sign_block_header
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
-from eth_consensus_specs.test.helpers.state import next_epoch, next_slots
-from tests.infra.helpers.proposer_slashings import (
+from eth_consensus_specs.test.helpers.proposer_slashings import (
     assert_process_proposer_slashing,
+    get_valid_proposer_slashing,
     prepare_process_proposer_slashing,
     run_proposer_slashing_processing,
 )
+from eth_consensus_specs.test.helpers.state import next_epoch, next_slots
 
 
 @with_all_phases

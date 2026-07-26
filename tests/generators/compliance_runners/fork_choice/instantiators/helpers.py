@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 
 from eth_consensus_specs.test.context import spec_test
 from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
     get_valid_attestation,
+)
+from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_max_attester_slashings,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
@@ -250,7 +254,7 @@ def get_voting_source(spec, state, target):
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
-    pseudo_vrn = spec.uint64((proposer_index + 1) * (epoch + 1))
+    pseudo_vrn = spec.Uint64((proposer_index + 1) * (epoch + 1))
     pseudo_vrn_bytes = spec.uint_to_bytes(pseudo_vrn)
     randao_reveal_bytes = bytes(96 - len(pseudo_vrn_bytes)) + pseudo_vrn_bytes
     return spec.BLSSignature(randao_reveal_bytes)
@@ -282,7 +286,7 @@ def produce_block(
     )
 
     # Prepare attestations
-    limit = type(block.body.attestations).limit()
+    limit = get_max_attestations(spec)
     attestation_in_block = [
         a
         for a in attestations
@@ -298,7 +302,7 @@ def produce_block(
         block.body.attestations.append(a)
 
     # Add attester slashings
-    limit = type(block.body.attester_slashings).limit()
+    limit = get_max_attester_slashings(spec)
     attester_slashings_in_block = attester_slashings[:limit]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)

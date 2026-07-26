@@ -56,14 +56,14 @@ def test_hysteresis_quotient(spec, state):
 @spec_state_test
 def test_incentives(spec, state):
     # Ensure no ETH is minted in slash_validator
-    if is_post_bellatrix(spec):
-        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
-    elif is_post_altair(spec):
-        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
-    elif is_post_electra(spec):
+    if is_post_electra(spec):
         assert (
             spec.MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA <= spec.WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
         )
+    elif is_post_bellatrix(spec):
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
+    elif is_post_altair(spec):
+        assert spec.MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
     else:
         assert spec.MIN_SLASHING_PENALTY_QUOTIENT <= spec.WHISTLEBLOWER_REWARD_QUOTIENT
 

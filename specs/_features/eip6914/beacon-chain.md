@@ -31,7 +31,7 @@ validator records. Refers to
 
 | Name                         | Value                      | Unit   |
 | ---------------------------- | -------------------------- | ------ |
-| `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs |
+| `SAFE_EPOCHS_TO_REUSE_INDEX` | `Uint64(2**16)` (= 65,536) | epochs |
 
 ## Helpers
 

@@ -11,17 +11,26 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.block import (
-    build_empty_block,
+    build_block_and_payload,
+)
+from eth_consensus_specs.test.helpers.execution_payload import (
+    compute_and_sign_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attester_slashing,
     add_block,
+    add_execution_payload,
     get_attestation_file_name,
     get_basic_store_checks,
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import (
+    is_post_bellatrix,
     is_post_electra,
+    is_post_gloas,
+)
+from eth_consensus_specs.test.helpers.genesis import (
+    get_sample_genesis_execution_payload,
 )
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -55,6 +64,12 @@ def output_fast_confirmation_checks(spec, fcr_store, test_steps):
         "current_slot_head": encode_hex(fcr_store.current_slot_head),
         "confirmed_root": encode_hex(fcr_store.confirmed_root),
     }
+
+    if is_post_bellatrix(spec):
+        fcr_checks["safe_execution_block_hash"] = encode_hex(
+            spec.get_safe_execution_block_hash(fcr_store)
+        )
+
     test_steps.append({"checks": basic_checks | fcr_checks})
 
 
@@ -182,6 +197,27 @@ class FCRTest:
         else:
             return self.spec.MAX_ATTESTATIONS
 
+    def get_parent_payload(self, parent_root):
+        assert is_post_bellatrix(self.spec)
+
+        root, block = parent_root, self.store.blocks[parent_root]
+        while (
+            is_post_gloas(self.spec)
+            and not self.spec.is_payload_verified(self.store, root)
+            and block.slot > self.spec.GENESIS_SLOT
+        ):
+            block = self.store.blocks[root]
+            root = block.parent_root
+
+        if block.slot == self.spec.GENESIS_SLOT:
+            eth1_block_hash = self.store.block_states[parent_root].eth1_data.block_hash
+            return get_sample_genesis_execution_payload(self.spec, eth1_block_hash=eth1_block_hash)
+
+        if is_post_gloas(self.spec):
+            return self.store.payloads[root].payload
+        else:
+            return block.body.execution_payload
+
     def add_and_apply_block(
         self,
         parent_root=None,
@@ -190,6 +226,8 @@ class FCRTest:
         include_atts=True,
         attestations=None,
         include_att_fn: Callable[[object, object], bool] | None = None,
+        deposit_requests=None,
+        exits=None,
     ):
         if parent_root is None:
             parent_root = self.head_root()
@@ -205,13 +243,37 @@ class FCRTest:
         parent_state = self.store.block_states[parent_root].copy()
         assert parent_state.slot < current_slot
 
-        # Build a block for current_slot with attestations from pool
-        # build_empty_block will advance the state to current_slot if necessary
-        block = build_empty_block(self.spec, parent_state, current_slot)
+        # Obtain parent payload or its header
+        if is_post_bellatrix(self.spec):
+            parent_payload = self.get_parent_payload(parent_root)
+        else:
+            parent_payload = None
 
+        # Execution requests
+        execution_requests = None
+        if is_post_electra(self.spec):
+            execution_requests = self.spec.ExecutionRequests()
+            if deposit_requests is not None:
+                if not is_post_gloas(self.spec):
+                    assert len(deposit_requests) <= self.spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+                for d in deposit_requests:
+                    execution_requests.deposits.append(d)
+
+        # Build a block for current_slot with attestations from pool
+        # build_block_and_payload will advance the state to current_slot if necessary
+        block, payload = build_block_and_payload(
+            self.spec,
+            parent_state,
+            current_slot,
+            parent_payload=parent_payload,
+            execution_requests=execution_requests,
+        )
+
+        # Graffiti
         if graffiti is not None:
             block.body.graffiti = str_to_graffiti(graffiti)
 
+        # Attestations
         if attestations is not None:
             for att in attestations[: self.max_attestations()]:
                 block.body.attestations.append(att)
@@ -241,14 +303,43 @@ class FCRTest:
                     att for att in self.attestation_pool if att not in included_atts
                 ]
 
+        # Beacon operations
+        if exits is not None:
+            assert len(exits) <= self.spec.MAX_VOLUNTARY_EXITS
+            for e in exits:
+                block.body.voluntary_exits.append(e)
+
+        # Set parent execution requests post-Gloas
+        if is_post_gloas(self.spec) and self.spec.is_payload_verified(self.store, parent_root):
+            parent_envelope = self.store.payloads[parent_root]
+            block.body.parent_execution_requests = parent_envelope.execution_requests
+
         # Sign block and add it to the Store
         signed_block = state_transition_and_sign_block(self.spec, parent_state, block)
+        block_root = self.spec.hash_tree_root(block)
         for artefact in add_block(self.spec, self.store, signed_block, self.test_steps):
             self.blockchain_artefacts.append(artefact)
 
-        return self.spec.Root(block.hash_tree_root())
+        # Build and reveal execution payload post-Gloas
+        if is_post_gloas(self.spec):
+            signed_envelope = compute_and_sign_execution_payload_envelope(
+                self.spec, parent_state, block_root, signed_block, payload, execution_requests
+            )
+            for artefact in add_execution_payload(
+                self.spec, self.store, signed_envelope, self.test_steps
+            ):
+                self.blockchain_artefacts.append(artefact)
 
-    def attest(self, block_root=None, slot=None, participation_rate=100, pool_and_disseminate=True):
+        return block_root
+
+    def attest(
+        self,
+        block_root=None,
+        slot=None,
+        participation_rate=100,
+        pool_and_disseminate=True,
+        attester_indices=None,
+    ):
         assert 0 <= participation_rate <= 100
 
         # Do not attest if participation is zero
@@ -274,10 +365,22 @@ class FCRTest:
         assert self.spec.get_current_epoch(att_state) == self.spec.compute_epoch_at_slot(slot)
 
         # Sample active validators
-        if participation_rate < 100:
+        if attester_indices is not None:
+            active_set = set(attester_indices)
+        elif participation_rate < 100:
             active_set = self.sample_fraction_of_participants(att_state, slot, participation_rate)
         else:
             active_set = None
+
+        # Compute payload index post-Gloas
+        if is_post_gloas(self.spec):
+            block = self.store.blocks[block_root]
+            if slot > block.slot and self.spec.is_payload_verified(self.store, block_root):
+                payload_index = 1
+            else:
+                payload_index = 0
+        else:
+            payload_index = None
 
         # Attest and add attestations to the pool
         attestations = get_valid_attestations_for_block_at_slot(
@@ -290,6 +393,7 @@ class FCRTest:
                     committee & active_set if active_set is not None else committee
                 )
             ),
+            payload_index=payload_index,
         )
         if pool_and_disseminate:
             self.attestation_pool.extend(attestations)

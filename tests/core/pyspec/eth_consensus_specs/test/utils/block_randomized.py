@@ -7,20 +7,20 @@ various combinations of epoch/slot skips, block production, and leak states.
 
 How to run (from project root):
     # Regenerate all random test files (default behavior)
-    .venv/bin/python -m tests.infra.block_randomized
+    .venv/bin/python -m eth_consensus_specs.test.utils.block_randomized
 
     # Then format with ruff
     .venv/bin/ruff check --fix tests/core/pyspec/eth_consensus_specs/test/*/random/test_random.py
     .venv/bin/ruff format tests/core/pyspec/eth_consensus_specs/test/*/random/test_random.py
 
     # Generate for specific fork only
-    .venv/bin/python -m tests.infra.block_randomized --fork phase0
+    .venv/bin/python -m eth_consensus_specs.test.utils.block_randomized --fork phase0
 
     # Print to stdout instead of writing files
-    .venv/bin/python -m tests.infra.block_randomized --stdout
+    .venv/bin/python -m eth_consensus_specs.test.utils.block_randomized --stdout
 
     # List available forks
-    .venv/bin/python -m tests.infra.block_randomized --list-forks
+    .venv/bin/python -m eth_consensus_specs.test.utils.block_randomized --list-forks
 """
 
 from __future__ import annotations

@@ -21,7 +21,7 @@ from eth_consensus_specs.test.helpers.pow_block import (
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import uint256
+from eth_consensus_specs.utils.ssz.ssz_typing import Uint256
 
 
 def with_pow_block_patch(spec, blocks, func):
@@ -64,7 +64,7 @@ def test_all_valid(spec, state):
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec, rng=Random(1234))
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(1)
     pow_block = prepare_random_pow_block(spec, rng=Random(2345))
     pow_block.parent_hash = pow_block_parent.block_hash
     pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
@@ -101,7 +101,7 @@ def test_block_lookup_failed(spec, state):
     assert store.time == current_time
 
     pow_block = prepare_random_pow_block(spec, rng=Random(1234))
-    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(1)
     pow_blocks = [pow_block]
     for pb in pow_blocks:
         yield from add_pow_block(spec, store, pb, test_steps)
@@ -141,10 +141,10 @@ def test_too_early_for_merge(spec, state):
     assert store.time == current_time
 
     pow_block_parent = prepare_random_pow_block(spec, rng=Random(1234))
-    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
+    pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(2)
     pow_block = prepare_random_pow_block(spec, rng=Random(2345))
     pow_block.parent_hash = pow_block_parent.block_hash
-    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(1)
     pow_blocks = [pow_block, pow_block_parent]
     for pb in pow_blocks:
         yield from add_pow_block(spec, store, pb, test_steps)
@@ -181,7 +181,7 @@ def test_too_late_for_merge(spec, state):
     pow_block_parent.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     pow_block = prepare_random_pow_block(spec, rng=Random(2345))
     pow_block.parent_hash = pow_block_parent.block_hash
-    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
+    pow_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + Uint256(1)
     pow_blocks = [pow_block, pow_block_parent]
     for pb in pow_blocks:
         yield from add_pow_block(spec, store, pb, test_steps)

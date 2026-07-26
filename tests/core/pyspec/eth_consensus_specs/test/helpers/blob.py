@@ -145,8 +145,8 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.List[
-            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.ProgressiveList[
+            spec.KZGCommitment
         ](blob_kzg_commitments)
         # For self-builds, use point at infinity signature as per spec
         if (

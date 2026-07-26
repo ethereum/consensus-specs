@@ -46,8 +46,8 @@ def compute_data_column_sidecar(spec, state):
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.List[
-            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.ProgressiveList[
+            spec.KZGCommitment
         ](blob_kzg_commitments)
     else:
         block.body.blob_kzg_commitments = blob_kzg_commitments

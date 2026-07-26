@@ -5,6 +5,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_max_attester_slashings,
     get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -12,7 +13,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.deposits import build_deposit, deposit_from_context
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
@@ -78,11 +79,9 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     that will be slashed by other operations in the same block as the one that
     contains the output of this function.
     """
-    # ensure at least one attester slashing, the max count
-    # is small so not much room for random inclusion
     if slashed_indices is None:
         slashed_indices = []
-    num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
+    num_slashings = rng.randint(0, get_max_attester_slashings(spec))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index
@@ -114,8 +113,9 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     return slashings
 
 
-def get_random_attestations(spec, state, rng):
-    num_attestations = rng.randrange(1, get_max_attestations(spec))
+def get_random_attestations(spec, state, rng, num_attestations=None):
+    if num_attestations is None:
+        num_attestations = rng.randrange(1, get_max_attestations(spec))
 
     attestations = [
         get_valid_attestation(
@@ -142,7 +142,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     # First build deposit data leaves
     for i in range(num_deposits):
         index = len(state.validators) + i
-        withdrawal_pubkey = pubkeys[-1 - index]
+        withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
@@ -303,7 +303,13 @@ def get_random_execution_requests(spec, state, rng):
 
 def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     if num_deposits is None:
-        num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
+        if is_post_gloas(spec):
+            # Starting in Gloas, this limitation is removed in the consensus layer
+            # and is now controlled by the gas limit on the execution layer.
+            # Set this to reasonably high arbitrary limit.
+            num_deposits = rng.randint(0, 40_000)
+        else:
+            num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 

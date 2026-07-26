@@ -91,7 +91,7 @@ MUST be set to the hash of a terminal PoW block in this case.
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_block_hash(fcr_store)`](./fast-confirmation.md#get_safe_execution_block_hash)
+[`get_safe_execution_block_hash(fcr_store)`](./fast-confirmation.md#new-get_safe_execution_block_hash)
 function.
 
 ## Helpers
@@ -104,7 +104,7 @@ Used to signal to initiate the payload build process via
 ```python
 @dataclass
 class PayloadAttributes:
-    timestamp: uint64
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
 ```
@@ -115,7 +115,7 @@ class PayloadAttributes:
 class PowBlock(Container):
     block_hash: Hash32
     parent_hash: Hash32
-    total_difficulty: uint256
+    total_difficulty: Uint256
 ```
 
 ### `get_pow_block`

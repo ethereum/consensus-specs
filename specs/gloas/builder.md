@@ -38,24 +38,27 @@ builders.
 ### Submit deposit
 
 Builders are created by submitting a builder deposit request to the builder
-deposit contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request must include:
+deposit contract on the execution layer, as defined in EIP-8282. The request
+must include:
 
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
-  the builder version and the last 20 bytes are the execution-layer address that
-  will receive withdrawals. For the version, execution payload builders should
-  use `PAYLOAD_BUILDER_VERSION`.
+  `BUILDER_WITHDRAWAL_PREFIX` and the last 20 bytes are the execution-layer
+  address that will receive withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
 
+*Note*: A builder deposit request with withdrawal credentials that do not start
+with `BUILDER_WITHDRAWAL_PREFIX` will be ignored and the funds will be lost.
+
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
-validator deposit contract with a `0x03` withdrawal credential. This must be
-done late enough that the deposit is still pending at the fork, but early enough
-that the slot in which the deposit is added to the pending deposit queue is
-finalized so that the builder is considered active. Such a deposit signs over
-`DepositMessage` under `DOMAIN_DEPOSIT`, with withdrawal credentials of the form
+validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
+credential. This must be done late enough that the deposit is still pending at
+the fork, but early enough that the slot in which the deposit is added to the
+pending deposit queue is finalized so that the builder is considered active.
+Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`, with
+withdrawal credentials of the form
 `BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
@@ -85,10 +88,9 @@ finalized at the fork, the builder will be immediately active. See
 ### Exiting
 
 A builder exits by submitting a builder exit request to the builder exit
-contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request contains the
-builder's `pubkey` and is authorized by the builder's `execution_address` (the
-transaction sender), not the BLS key.
+contract on the execution layer, as defined in EIP-8282. The request contains
+the builder's `pubkey` and is authorized by the builder's `execution_address`
+(the transaction sender), not the BLS key.
 
 The consensus layer initiates the exit only if the builder is active, the
 request's `source_address` matches the builder's `execution_address`, and the

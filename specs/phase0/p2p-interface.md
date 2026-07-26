@@ -65,7 +65,7 @@
     - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
-    - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
+    - [Why is QUIC the primary transport?](#why-is-quic-the-primary-transport)
   - [Multiplexing](#multiplexing-1)
     - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
   - [Protocol negotiation](#protocol-negotiation-1)
@@ -145,10 +145,14 @@ Even though libp2p is a multi-transport stack (designed to listen on multiple
 simultaneous transports and endpoints transparently), we hereby define a profile
 for basic interoperability.
 
-All implementations MUST support the TCP libp2p transport, MAY support the QUIC
-(UDP) libp2p transport, and MUST be enabled for both dialing and listening (i.e.
-outbound and inbound connections). The libp2p TCP and QUIC (UDP) transports
-support listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
+All implementations MUST support the QUIC (UDP) libp2p transport and the TCP
+libp2p transport. Any supported transport MUST be enabled for both dialing and
+listening (i.e. outbound and inbound connections). The libp2p QUIC (UDP) and TCP
+transports support listening on IPv4 and IPv6 addresses (and on multiple
+simultaneously).
+
+QUIC is the primary transport. When a peer is reachable over both TCP and QUIC,
+clients SHOULD prioritise peer's QUIC addresses.
 
 Clients must support listening on at least one of IPv4 or IPv6. Clients that do
 _not_ have support for listening on IPv4 SHOULD be cognizant of the potential
@@ -166,11 +170,13 @@ inbound traffic on the announced public listening endpoint.
 
 ### Encryption and identification
 
-The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
-channel handshake with `secp256k1` identities will be used for encryption.
+The QUIC transport is secured using TLS 1.3, configured according to the
+[libp2p TLS specification](https://github.com/libp2p/specs/blob/master/tls/tls.md).
 
-As specified in the libp2p specification, clients MUST support the `XX`
-handshake pattern.
+For the TCP fallback transport, the
+[Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure channel
+handshake with `secp256k1` identities will be used for encryption. As specified
+in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
 ### Protocol negotiation
 
@@ -195,8 +201,10 @@ Two multiplexers are commonplace in libp2p implementations:
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). Their
 protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
-Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support
+Because the primary QUIC transport multiplexes natively, a stream multiplexer is
+only required for the TCP fallback transport. Clients that support the TCP
+transport MUST support
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). If both
 are supported by the client, yamux MUST take precedence during negotiation. See
 the [Rationale](#design-decision-rationale) section below for tradeoffs.
@@ -209,32 +217,32 @@ We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
 | ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | Node identifier   |
-| `SubnetID` | `uint64`       | Subnet identifier |
+| `NodeID`   | `Uint256`      | Node identifier   |
+| `SubnetID` | `Uint64`       | Subnet identifier |
 
 ### Constants
 
-| Name           | Value |               Unit               |
-| -------------- | ----- | :------------------------------: |
-| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
+| Name           | Value | Unit                             |
+| -------------- | ----- | -------------------------------- |
+| `NODE_ID_BITS` | `256` | The bit length of Uint256 is 256 |
 
 ### Configuration
 
 This section outlines configurations that are used in this specification.
 
-| Name                                 | Value                               | Description                                                                           |
-| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                          |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                             |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | The maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
-| `SUBNETS_PER_NODE`                   | `2`                                 | The number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | The number of attestation subnets used in the gossipsub protocol                      |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue         |
+| Name                                 | Value                               | Description                                                                       |
+| ------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                      |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                         |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | Maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
+| `SUBNETS_PER_NODE`                   | `2`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue     |
 
 ### Helpers
 
@@ -249,7 +257,7 @@ propagation.
 class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -287,12 +295,12 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
+def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `is_not_from_future_slot`
@@ -301,7 +309,7 @@ def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
 def is_not_from_future_slot(
     state: BeaconState,
     slot: Slot,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given slot is not from the future
@@ -317,8 +325,8 @@ def is_not_from_future_slot(
 def is_within_slot_range(
     state: BeaconState,
     slot: Slot,
-    slot_range: uint64,
-    current_time_ms: uint64,
+    slot_range: Uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
@@ -336,29 +344,29 @@ def is_within_slot_range(
 #### `compute_attestation_subnet_prefix_bits`
 
 ```python
-def compute_attestation_subnet_prefix_bits() -> uint64:
+def compute_attestation_subnet_prefix_bits() -> Uint64:
     """
     Return the number of NodeId bits to use when mapping to a subscribed subnet.
     """
-    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+    return Uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
 ```
 
 #### `compute_min_epochs_for_block_requests`
 
 ```python
-def compute_min_epochs_for_block_requests() -> uint64:
+def compute_min_epochs_for_block_requests() -> Uint64:
     """
     Return the minimum epoch range over which a node must serve blocks.
     """
-    return uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
+    return Uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
 ```
 
 #### `is_non_strict_superset`
 
 ```python
 def is_non_strict_superset(
-    seen_bits_set: Set[Tuple[boolean, ...]],
-    new_bits: Tuple[boolean, ...],
+    seen_bits_set: Set[Tuple[Boolean, ...]],
+    new_bits: Tuple[Boolean, ...],
 ) -> bool:
     """
     Return True if any prior bitset in ``seen_bits_set`` is a non-strict
@@ -381,14 +389,14 @@ Clients MUST locally store the following `MetaData`:
 
 ```
 (
-  seq_number: uint64
+  seq_number: Uint64
   attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
 )
 ```
 
 Where
 
-- `seq_number` is a `uint64` starting at `0` used to version the node's
+- `seq_number` is a `Uint64` starting at `0` used to version the node's
   metadata. If any other field in the local `MetaData` changes, the node MUST
   increment `seq_number` by 1.
 - `attnets` is a `Bitvector` representing the node's persistent attestation
@@ -406,16 +414,16 @@ can carry according to the following functions:
 #### `max_compressed_len`
 
 ```python
-def max_compressed_len(n: uint64) -> uint64:
+def max_compressed_len(n: Uint64) -> Uint64:
     # Worst-case compressed length for a given payload of size n when using snappy:
     # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-    return uint64(32 + n + n / 6)
+    return Uint64(32 + n + n / 6)
 ```
 
 #### `max_message_size`
 
 ```python
-def max_message_size() -> uint64:
+def max_message_size() -> Uint64:
     # Allow 1024 bytes for framing and encoding overhead but at least 1MiB in case MAX_PAYLOAD_SIZE is small.
     return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024 * 1024)
 ```
@@ -468,7 +476,7 @@ data being sent on the topic and how the data field of the message is encoded.
   - `epoch` is the context epoch of the message to be sent on the topic
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of
-  bytes that will be transmitted over the wire. See the [Encodings](#Encodings)
+  bytes that will be transmitted over the wire. See the [Encodings](#encodings)
   section for further details.
 
 Clients MUST reject messages with an unknown topic.
@@ -552,7 +560,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -632,7 +640,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -931,7 +939,7 @@ def validate_beacon_attestation_gossip(
     store: Store,
     state: BeaconState,
     attestation: Attestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -1088,7 +1096,7 @@ With:
   versioned to facilitate backward and forward-compatibility when possible.
 - `Encoding` - while the schema defines the data types in more abstract terms,
   the encoding strategy describes a specific representation of bytes that will
-  be transmitted over the wire. See the [Encodings](#Encoding-strategies)
+  be transmitted over the wire. See the [Encodings](#encoding-strategies)
   section for further details.
 
 This protocol segregation allows libp2p `multistream-select 1.0` /
@@ -1219,7 +1227,7 @@ The `ErrorMessage` schema is:
 
 ```
 (
-  error_message: List[byte, 256]
+  error_message: List[Byte, 256]
 )
 ```
 
@@ -1278,9 +1286,9 @@ Before reading the payload, the header MUST be validated:
 
 - The length-prefix MUST be encoded as an unsigned protobuf varint. It SHOULD be
   minimally encoded (i.e., without any redundant bytes) and MUST not exceed 10
-  bytes in length, which is sufficient to represent any `uint64` value. The
+  bytes in length, which is sufficient to represent any `Uint64` value. The
   length-prefix MUST be decoded into a type which supports the full range of
-  `uint64` values.
+  `Uint64` values.
 - The length-prefix is within the expected
   [size bounds derived from the payload SSZ type](#what-are-ssz-type-size-bounds)
   or `MAX_PAYLOAD_SIZE`, whichever is smaller.
@@ -1383,7 +1391,7 @@ Request, Response Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1412,8 +1420,8 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
-  step: uint64 # Deprecated, must be set to 1
+  count: Uint64
+  step: Uint64 # Deprecated, must be set to 1
 )
 ```
 
@@ -1548,7 +1556,7 @@ Request Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1556,7 +1564,7 @@ Response Content:
 
 ```
 (
-  uint64
+  Uint64
 )
 ```
 
@@ -1635,10 +1643,10 @@ present in an ENR):
 The ENR MAY contain the following entries:
 
 - An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
-- An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening
-  port and/or the corresponding IPv6 port (`tcp6` field).
 - An IPv4 QUIC port (`quic` field) representing the local libp2p QUIC (UDP)
   listening port and/or the corresponding IPv6 port (`quic6` field).
+- An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening
+  port and/or the corresponding IPv6 port (`tcp6` field).
 - An IPv4 UDP port (`udp` field) representing the local discv5 listening port
   and/or the corresponding IPv6 port (`udp6` field).
 
@@ -1652,7 +1660,7 @@ following form to more easily discover peers participating in particular
 attestation gossip subnets.
 
 | Key       | Value                                     |
-| :-------- | :---------------------------------------- |
+| --------- | ----------------------------------------- |
 | `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
@@ -1668,7 +1676,7 @@ fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
 | Key    | Value           |
-| :----- | :-------------- |
+| ------ | --------------- |
 | `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
@@ -1735,7 +1743,7 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
     node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
-        uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+        uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
@@ -1775,18 +1783,12 @@ purposes.
 
 #### Can clients support other transports/handshakes than the ones mandated by the specification?
 
-Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
-transports, if available in the language of choice. While interoperability shall
-not be harmed by lack of such support, the advantages are desirable:
+Beyond the mandated QUIC transport and the TCP fallback, clients may support
+other transports such as WebSockets and WebRTC, if available in the language of
+choice. While interoperability shall not be harmed by lack of such support, the
+advantages are desirable:
 
-- Better latency, performance, and other QoS characteristics (QUIC).
 - Paving the way for interfacing with future light clients (WebSockets, WebRTC).
-
-The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in
-section 7 of the
-[QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7)
-and the accompanying
-[QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
 
 The usage of one handshake procedure or the other shall be transparent to the
 application layer, once the libp2p Host/Node object has been configured
@@ -1798,21 +1800,21 @@ TCP is a reliable, ordered, full-duplex, congestion-controlled network protocol
 that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run
 atop TCP.
 
-QUIC is a new protocol that’s in the final stages of specification by the IETF
-QUIC WG. It emerged from Google’s SPDY experiment. The QUIC transport is
-undoubtedly promising. It’s UDP-based yet reliable, ordered, multiplexed,
-natively secure (TLS 1.3), reduces latency vs. TCP, and offers stream-level and
-connection-level congestion control (thus removing head-of-line blocking), 0-RTT
-connection establishment, and endpoint migration, amongst other features. UDP
-also has better NAT traversal properties than TCP—something we desperately
-pursue in peer-to-peer networks.
+QUIC is a UDP-based transport standardized by the IETF in
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000). It’s reliable, ordered,
+multiplexed, natively secure (TLS 1.3), reduces connection establishment latency
+vs. TCP, offers stream-level flow control (thus removing head-of-line blocking),
+0-RTT connection establishment, and endpoint migration, amongst other features.
+UDP also has better NAT traversal properties than TCP—something we desperately
+pursue in peer-to-peer networks. These characteristics are why QUIC is the
+primary transport for the consensus-layer network.
 
-QUIC is being adopted as the underlying protocol for HTTP/3. This has the
-potential to award us censorship resistance via deep packet inspection for free.
-Provided that we use the same port numbers and encryption mechanisms as HTTP/3,
-our traffic may be indistinguishable from standard web traffic, and we may only
-become subject to standard IP-based firewall filtering—something we can
-counteract via other mechanisms.
+QUIC is also the underlying protocol for HTTP/3. This has the potential to award
+us censorship resistance against deep packet inspection for free. Provided that
+we use the same port numbers and encryption mechanisms as HTTP/3, our traffic
+may be indistinguishable from standard web traffic, and we may only become
+subject to standard IP-based firewall filtering—something we can counteract via
+other mechanisms.
 
 WebSockets and/or WebRTC transports are necessary for interaction with browsers,
 and will become increasingly important as we incorporate browser-based light
@@ -1834,24 +1836,20 @@ browsers, embedded devices) to interact with the network as first-class citizens
 via suitable/native transports (e.g. WSS), without the need for proxying or
 trust delegation to servers.
 
-#### Why are we not using QUIC from the start?
+#### Why is QUIC the primary transport?
 
-The QUIC standard is still not finalized (at working draft 22 at the time of
-writing), and not all mainstream runtimes/languages have mature, standard,
-and/or fully-interoperable
-[QUIC support](https://github.com/quicwg/base-drafts/wiki/Implementations). One
-remarkable example is node.js, where the QUIC implementation is
-[in early development](https://github.com/nodejs/quic).
+When this networking specification was first written, the QUIC standard was not
+yet finalized (working draft 22 at the time), and mainstream runtimes lacked
+mature, interoperable QUIC support. TCP was therefore mandated as the baseline
+transport, with QUIC offered as an optional improvement.
 
-*Note*:
-[TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7),
-although an experiment exists to integrate Noise as the QUIC crypto layer:
-[nQUIC](https://eprint.iacr.org/2019/028).
-
-On the other hand, TLS 1.3 is the newest, simplified iteration of TLS. Old,
-insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as
-the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is
-supported, and session resumption is a reality, amongst other features.
+QUIC has since been standardized as
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and is widely implemented
+across the libp2p ecosystem. Its native stream multiplexing, built-in TLS 1.3
+security, lower connection-establishment latency (including 0-RTT), and superior
+NAT-traversal properties make it a better fit for the consensus-layer p2p
+network than TCP. It is therefore now the primary transport, with TCP retained
+as a fallback for environments where QUIC or UDP is unavailable or blocked.
 
 ### Multiplexing
 
@@ -2384,7 +2382,7 @@ epoch range, we use the worst case event of a very large validator size
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 
-When backfilling blocks in a database from a know safe block/state (e.g. when
+When backfilling blocks in a database from a known safe block/state (e.g. when
 starting from a weak subjectivity state), the node not only must ensure the
 `BeaconBlock`s form a chain to the known safe block, but also must check that
 the proposer signature is valid in the `SignedBeaconBlock` wrapper.

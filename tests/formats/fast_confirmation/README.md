@@ -42,9 +42,11 @@ previous_epoch_greatest_unrealized_checkpoint: {
     epoch: int,               -- Integer value from fast_confirmation_store.previous_epoch_greatest_unrealized_checkpoint.epoch
     root: string,             -- Encoded 32-byte value from fast_confirmation_store.previous_epoch_greatest_unrealized_checkpoint.root
 }
-previous_slot_head: string    -- Encoded 32-byte value of fast_confirmation_store.previous_slot_head
-current_slot_head: string     -- Encoded 32-byte value of fast_confirmation_store.current_slot_head
-confirmed_root: string        -- Encoded 32-byte value of fast_confirmation_store.confirmed_root
+previous_slot_head: string          -- Encoded 32-byte value of fast_confirmation_store.previous_slot_head
+current_slot_head: string           -- Encoded 32-byte value of fast_confirmation_store.current_slot_head
+confirmed_root: string              -- Encoded 32-byte value of fast_confirmation_store.confirmed_root
+safe_execution_block_hash: string   -- [New in Bellatrix]
+                                       Encoded 32-byte value of the response to get_safe_execution_block_hash(fast_confirmation_store) call
 ```
 
 For example:

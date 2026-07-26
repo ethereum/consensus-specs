@@ -257,7 +257,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
 
 
 def get_valid_attestations_at_slot(
-    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None
+    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None, payload_index=None
 ):
     """
     Return attestations at slot `slot_to_attest`.
@@ -282,6 +282,7 @@ def get_valid_attestations_at_slot(
             signed=True,
             filter_participant_set=participants_filter,
             beacon_block_root=beacon_block_root,
+            payload_index=payload_index,
         )
 
         # Valid attestation must have at least one aggregation bit set
@@ -293,7 +294,7 @@ def get_valid_attestations_at_slot(
 
 
 def get_valid_attestation_at_slot(
-    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None
+    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None, payload_index=None
 ):
     """
     Return the aggregate attestation post Electra.
@@ -306,6 +307,7 @@ def get_valid_attestation_at_slot(
         slot_to_attest,
         participation_fn=participation_fn,
         beacon_block_root=beacon_block_root,
+        payload_index=payload_index,
     )
     if not attestations:
         raise Exception("No valid attestations found")
@@ -335,7 +337,7 @@ def next_slots_with_attestations(
 
 
 def get_valid_attestations_for_block_at_slot(
-    spec, state, slot_to_attest, beacon_block_root=None, participation_fn=None
+    spec, state, slot_to_attest, beacon_block_root=None, participation_fn=None, payload_index=None
 ):
     if is_post_electra(spec):
         return [
@@ -345,6 +347,7 @@ def get_valid_attestations_for_block_at_slot(
                 slot_to_attest,
                 participation_fn=participation_fn,
                 beacon_block_root=beacon_block_root,
+                payload_index=payload_index,
             )
         ]
     else:
@@ -532,9 +535,7 @@ def get_empty_eip7549_aggregation_bits(spec, state, committee_bits, slot):
     for index in committee_indices:
         committee = spec.get_beacon_committee(state, slot, index)
         participants_count += len(committee)
-    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT](
-        [False] * participants_count
-    )
+    aggregation_bits = spec.AggregationBits([False] * participants_count)
     return aggregation_bits
 
 
@@ -551,3 +552,24 @@ def get_eip7549_aggregation_bits_offset(spec, state, slot, committee_bits, commi
         committee = spec.get_beacon_committee(state, slot, committee_indices[i])
         offset += len(committee)
     return offset
+
+
+def needs_upgrade_to_gloas(spec, new_spec):
+    return is_post_gloas(new_spec) and not is_post_gloas(spec)
+
+
+def check_attestation_equal(spec, new_spec, data, upgraded):
+    assert list(data.aggregation_bits) == list(upgraded.aggregation_bits)
+    assert data.data == upgraded.data
+    assert data.signature == upgraded.signature
+    assert list(data.committee_bits) == list(upgraded.committee_bits)
+
+
+def upgrade_attestation_to_new_spec(spec, new_spec, data):
+    upgraded = data
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = new_spec.upgrade_attestation_to_gloas(upgraded)
+        check_attestation_equal(spec, new_spec, data, upgraded)
+
+    return upgraded
