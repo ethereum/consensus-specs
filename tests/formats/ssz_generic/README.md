@@ -32,7 +32,7 @@ into a SSZ type:
 - ProgressiveContainer
   - [`progressive_containers`](#progressive_containers)
 - CompatibleUnion
-  - [`compatible_unions`](#compatible_uniosn)
+  - [`compatible_unions`](#compatible_unions)
 
 ## Format
 

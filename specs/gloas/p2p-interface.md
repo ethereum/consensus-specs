@@ -493,6 +493,12 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The block with root `preferences.dependent_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
+- _[REJECT]_ The slot of the block with root `preferences.dependent_root` is
+  strictly less than
+  `compute_start_slot_at_epoch(compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD)`.
+- _[IGNORE]_ `is_valid_dependent_root(store, preferences.dependent_root, epoch)`
+  returns `True`, where `epoch` is
+  `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD`.
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at the epoch
   `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD` and
@@ -502,6 +508,22 @@ The following validations MUST pass before forwarding the
   `(preferences.dependent_root, preferences.proposal_slot, preferences.validator_index)`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
+
+```python
+def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
+    """
+    Check if the block with the given ``root`` is a possible dependent block
+    for the given ``epoch``, meaning that on some branch it is, or could
+    become, the latest block prior to the start of the epoch.
+    """
+    epoch_start_slot = compute_start_slot_at_epoch(epoch)
+    if store.blocks[root].slot >= epoch_start_slot:
+        return False
+    for block in store.blocks.values():
+        if block.parent_root == root and block.slot >= epoch_start_slot:
+            return True
+    return root == get_head(store).root
+```
 
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:

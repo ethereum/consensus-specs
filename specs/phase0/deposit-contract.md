@@ -31,10 +31,7 @@ specification.
 ## Configuration
 
 *Note*: The default mainnet configuration values are included here for
-specification-design purposes. The different configurations for mainnet,
-testnets, and YAML-based testing can be found in the
-[`configs/constant_presets`](../../configs) directory. These configurations are
-updated for releases and may be out of sync during `dev` changes.
+specification-design purposes.
 
 | Name                       | Value                                        |
 | -------------------------- | -------------------------------------------- |

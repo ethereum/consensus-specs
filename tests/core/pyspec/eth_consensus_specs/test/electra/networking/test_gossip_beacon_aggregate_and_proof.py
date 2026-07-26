@@ -84,7 +84,7 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         index=0,
         signed=True,
         beacon_block_root=anchor_root,
-        filter_participant_set=lambda participants: {sorted(participants)[0]},
+        filter_participant_set=lambda participants: {min(participants)},
     )
     attestation_2 = get_valid_attestation(
         spec,
@@ -92,7 +92,7 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         index=1,
         signed=True,
         beacon_block_root=anchor_root,
-        filter_participant_set=lambda participants: {sorted(participants)[0]},
+        filter_participant_set=lambda participants: {min(participants)},
     )
 
     assert attestation_1.data.hash_tree_root() == attestation_2.data.hash_tree_root()
