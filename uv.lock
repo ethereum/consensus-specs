@@ -637,7 +637,7 @@ requires-dist = [
     { name = "mdformat", marker = "extra == 'lint'", specifier = "==1.0.0" },
     { name = "mdformat-frontmatter", marker = "extra == 'lint'", specifier = "==2.1.2" },
     { name = "mdformat-gfm", marker = "extra == 'lint'", specifier = "==1.0.0" },
-    { name = "mdformat-gfm-alerts", marker = "extra == 'lint'", specifier = "==2.0.0" },
+    { name = "mdformat-gfm-alerts", marker = "extra == 'lint'", specifier = "==2.1.0" },
     { name = "mdformat-toc", marker = "extra == 'lint'", specifier = "==0.5.0" },
     { name = "mdx-truly-sane-lists", marker = "extra == 'docs'", specifier = "==1.3" },
     { name = "minizinc", marker = "extra == 'test'", specifier = "==0.10.0" },
@@ -1055,15 +1055,15 @@ wheels = [
 
 [[package]]
 name = "mdformat-gfm-alerts"
-version = "2.0.0"
+version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mdformat" },
     { name = "mdit-py-plugins" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/33/70619cf9e2b9e35857ebcf7e947e8f5370df2ff2a4ab666895783f8fab6c/mdformat_gfm_alerts-2.0.0.tar.gz", hash = "sha256:eb2b3189ad44ae28a6b6b714609dd3a30d6e3b898f02b1e6473d7b08df8bb3c0", size = 9687, upload-time = "2025-06-05T20:49:46.414Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/17/98382efef9d4a95fef60f1b5bf9e79a5f62f6698c747d2c99baacdf4cff8/mdformat_gfm_alerts-2.1.0.tar.gz", hash = "sha256:27673500976f08eb9e53cfa359f2a528c1be12052d3f8358996b9c5b1cc0c5c2", size = 9624, upload-time = "2026-07-26T06:46:31.343Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/ea/22e093bb2ef3e25dc3ccc9d8392c14b069a007ae394a12e058d9e1f51c00/mdformat_gfm_alerts-2.0.0-py3-none-any.whl", hash = "sha256:e003422cc003bc6e936d0797553f23201095a1d1e8602c5062296d223f2ae516", size = 6752, upload-time = "2025-06-05T20:49:45.539Z" },
+    { url = "https://files.pythonhosted.org/packages/17/b7/df953bacca701b498a616bd12be66876c9dac17fe0a44f9fed65a5b53f04/mdformat_gfm_alerts-2.1.0-py3-none-any.whl", hash = "sha256:81f63efa9b2e6e343e63cdc2cede9f29c3f4c242ebc6a4d9cffeaa1b58d2a170", size = 10479, upload-time = "2026-07-26T06:46:30.172Z" },
 ]
 
 [[package]]
