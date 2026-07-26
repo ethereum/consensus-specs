@@ -30,9 +30,7 @@
 
 ## Introduction
 
-This upgrade adds anti-correlation attestation penalties to the beacon chain as
-part of the EIP-7716 upgrade.
-
+This feature introduces anti-correlation attestation penalties for validators.
 The timely target penalty of a validator that produced no timely attestation at
 all — missing both the timely source and timely target flags, the signature of
 an infrastructure failure rather than a view disagreement — is scaled by a
@@ -50,11 +48,11 @@ takes over as the protocol's correlation pricing mechanism.
 
 ### Penalty factor
 
-| Name                               | Value                       | Description                                                                                                                |
-| ---------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `MAX_PENALTY_FACTOR`               | `Uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                            |
-| `PENALTY_SLOPE`                    | `Uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`            |
-| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots (~12.6 days) |
+| Name                               | Value                       | Description                                                                                                     |
+| ---------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `MAX_PENALTY_FACTOR`               | `Uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                 |
+| `PENALTY_SLOPE`                    | `Uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)` |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots   |
 
 ## Containers
 
@@ -193,19 +191,19 @@ def get_updated_smoothed_offline_balance(smoothed_balance: Gwei, offline_balance
 def get_slot_penalty_factors(state: BeaconState) -> Sequence[Uint64]:
     """
     Return the penalty factor for each slot of the previous epoch.
-    Does not mutate ``state``; the moving average is persisted by ``process_smoothed_offline_balance``.
+    Does not mutate ``state``; the moving average is persisted by
+    ``process_smoothed_offline_balance``.
     """
     factors = []
     smoothed_balance = state.smoothed_offline_balance
+    reference_balance = get_slot_reference_balance(state)
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
         slot = Slot(start_slot + slot_offset)
         offline_balance = get_slot_offline_balance(state, slot)
         excess = offline_balance - min(offline_balance, smoothed_balance)
-        penalty_factor = min(
-            Uint64(1) + PENALTY_SLOPE * excess // get_slot_reference_balance(state),
-            MAX_PENALTY_FACTOR,
-        )
+        excess_factor = PENALTY_SLOPE * excess // reference_balance
+        penalty_factor = min(Uint64(1) + excess_factor, MAX_PENALTY_FACTOR)
         factors.append(penalty_factor)
         smoothed_balance = get_updated_smoothed_offline_balance(smoothed_balance, offline_balance)
     return factors
@@ -294,27 +292,26 @@ def get_flag_index_deltas(
         unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
     )
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+
     # [New in EIP7716]
     if flag_index == TIMELY_TARGET_FLAG_INDEX:
         penalty_factors = get_slot_penalty_factors(state)
         slot_offsets = get_validator_slot_offsets(state)
+
     for index in get_eligible_validator_indices(state):
         base_reward = get_base_reward(state, index)
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
                 rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
-        elif flag_index != TIMELY_HEAD_FLAG_INDEX:
-            # [Modified in EIP7716]
-            if flag_index == TIMELY_TARGET_FLAG_INDEX and is_offline_in_previous_epoch(
-                state, index
-            ):
+        # [New in EIP7716]
+        elif flag_index == TIMELY_TARGET_FLAG_INDEX:
+            penalty_factor = Uint64(1)
+            if is_offline_in_previous_epoch(state, index):
                 penalty_factor = penalty_factors[slot_offsets[index]]
-                penalties[index] += Gwei(
-                    penalty_factor * base_reward * weight // WEIGHT_DENOMINATOR
-                )
-            else:
-                penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
+            penalties[index] += Gwei(penalty_factor * base_reward * weight // WEIGHT_DENOMINATOR)
+        elif flag_index != TIMELY_HEAD_FLAG_INDEX:
+            penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
     return rewards, penalties
 ```
 
