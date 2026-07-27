@@ -14,7 +14,7 @@
 
 This document describes the process of the EIP-8198 upgrade.
 
-EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 8 seconds and
+EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds and
 rescales the affected issuance, penalty, data-availability and churn parameters
 to preserve their wall-clock behavior. It builds on top of Heze: the slot
 structure is unchanged and all intra-slot deadlines, expressed in basis points

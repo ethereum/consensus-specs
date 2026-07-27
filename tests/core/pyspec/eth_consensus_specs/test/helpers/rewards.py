@@ -8,11 +8,7 @@ from ssz.uint import Uint64
 from eth_consensus_specs.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_altair,
-    is_post_bellatrix,
-    is_post_eip8198,
-)
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_bellatrix
 from eth_consensus_specs.test.helpers.random import (
     exit_random_validators,
     randomize_state,
@@ -47,8 +43,6 @@ def make_deltas(rewards, penalties):
 
 
 def get_inactivity_penalty_quotient(spec):
-    if is_post_eip8198(spec):
-        return spec.INACTIVITY_PENALTY_QUOTIENT_EIP8198
     if is_post_bellatrix(spec):
         return spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
     elif is_post_altair(spec):
