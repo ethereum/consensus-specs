@@ -69,6 +69,10 @@ EIP8321_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # 12000 milliseconds
 SLOT_DURATION_MS: 12000
+# EIP8198: 8000 milliseconds, 8 seconds (SLOT_DURATION_MS scaled by 2 / 3)
+# Intra-slot deadlines are inherited from Heze as basis points of the slot
+# duration and rescale automatically; no per-component overrides are needed.
+SLOT_DURATION_MS_EIP8198: 8000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs
@@ -140,6 +144,16 @@ CHURN_LIMIT_QUOTIENT_GLOAS: 32768
 CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 65536
 # 2**8 * 10**9 (= 256,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 256000000000
+
+# EIP8198 (churn rescaled for 8-second slots: quotients * 3 / 2, Gwei limits * 2 / 3)
+# 2**15 * 3 // 2 (= 49,152)
+CHURN_LIMIT_QUOTIENT_EIP8198: 49152
+# 2**16 * 3 // 2 (= 98,304)
+CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198: 98304
+# 128,000,000,000 * 2 // 3 (= 85,333,333,333) Gwei
+MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198: 85333333333
+# 256,000,000,000 * 2 // 3 (= 170,666,666,666) Gwei
+MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198: 170666666666
 
 # Fork choice
 # ---------------------------------------------------------------
