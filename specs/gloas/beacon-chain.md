@@ -244,9 +244,9 @@ same `Withdrawal` container can be used for validators and builders.
 
 ### Time parameters
 
-| Name                                | Value                | Unit   |
-| ----------------------------------- | -------------------- | ------ |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Epoch(2**6)` (= 64) | epochs |
+| Name                                | Value                |
+| ----------------------------------- | -------------------- |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Epoch(2**6)` (= 64) |
 
 ## Containers
 

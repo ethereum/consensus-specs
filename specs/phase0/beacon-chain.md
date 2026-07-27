@@ -257,24 +257,24 @@ operation, e.g. testing, but not generally between different networks.
 
 ### Time parameters
 
-| Name                               | Value                   | Unit   |
-| ---------------------------------- | ----------------------- | ------ |
-| `MIN_ATTESTATION_INCLUSION_DELAY`  | `Slot(2**0)` (= 1)      | slots  |
-| `SLOTS_PER_EPOCH`                  | `Slot(2**5)` (= 32)     | slots  |
-| `MIN_SEED_LOOKAHEAD`               | `Epoch(2**0)` (= 1)     | epochs |
-| `MAX_SEED_LOOKAHEAD`               | `Epoch(2**2)` (= 4)     | epochs |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Epoch(2**2)` (= 4)     | epochs |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `Epoch(2**6)` (= 64)    | epochs |
-| `SLOTS_PER_HISTORICAL_ROOT`        | `Slot(2**13)` (= 8,192) | slots  |
+| Name                               | Value                   |
+| ---------------------------------- | ----------------------- |
+| `MIN_ATTESTATION_INCLUSION_DELAY`  | `Slot(2**0)` (= 1)      |
+| `SLOTS_PER_EPOCH`                  | `Slot(2**5)` (= 32)     |
+| `MIN_SEED_LOOKAHEAD`               | `Epoch(2**0)` (= 1)     |
+| `MAX_SEED_LOOKAHEAD`               | `Epoch(2**2)` (= 4)     |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Epoch(2**2)` (= 4)     |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `Epoch(2**6)` (= 64)    |
+| `SLOTS_PER_HISTORICAL_ROOT`        | `Slot(2**13)` (= 8,192) |
 
 ### State list lengths
 
-| Name                           | Value                                 | Unit             |
-| ------------------------------ | ------------------------------------- | ---------------- |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `Epoch(2**16)` (= 65,536)             | epochs           |
-| `EPOCHS_PER_SLASHINGS_VECTOR`  | `Epoch(2**13)` (= 8,192)              | epochs           |
-| `HISTORICAL_ROOTS_LIMIT`       | `Uint64(2**24)` (= 16,777,216)        | historical roots |
-| `VALIDATOR_REGISTRY_LIMIT`     | `Uint64(2**40)` (= 1,099,511,627,776) | validators       |
+| Name                           | Value                                 |
+| ------------------------------ | ------------------------------------- |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `Epoch(2**16)` (= 65,536)             |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `Epoch(2**13)` (= 8,192)              |
+| `HISTORICAL_ROOTS_LIMIT`       | `Uint64(2**24)` (= 16,777,216)        |
+| `VALIDATOR_REGISTRY_LIMIT`     | `Uint64(2**40)` (= 1,099,511,627,776) |
 
 ### Rewards and penalties
 
@@ -330,13 +330,13 @@ different configuration.
 
 ### Time parameters
 
-| Name                                  | Value                     | Unit         |
-| ------------------------------------- | ------------------------- | ------------ |
-| `SLOT_DURATION_MS`                    | `Uint64(12000)`           | milliseconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `Uint64(14)`              | seconds      |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**8)` (= 256)     | epochs       |
-| `SHARD_COMMITTEE_PERIOD`              | `Epoch(2**8)` (= 256)     | epochs       |
-| `ETH1_FOLLOW_DISTANCE`                | `Uint64(2**11)` (= 2,048) | Eth1 blocks  |
+| Name                                  | Value                     |
+| ------------------------------------- | ------------------------- |
+| `SLOT_DURATION_MS`                    | `Uint64(12000)`           |
+| `SECONDS_PER_ETH1_BLOCK`              | `Uint64(14)`              |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**8)` (= 256)     |
+| `SHARD_COMMITTEE_PERIOD`              | `Epoch(2**8)` (= 256)     |
+| `ETH1_FOLLOW_DISTANCE`                | `Uint64(2**11)` (= 2,048) |
 
 ### Validator cycle
 

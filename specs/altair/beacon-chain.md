@@ -119,10 +119,10 @@ to their final, maximum security values.
 
 ### Sync committee
 
-| Name                               | Value                  | Unit       |
-| ---------------------------------- | ---------------------- | ---------- |
-| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) | validators |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  | epochs     |
+| Name                               | Value                  |
+| ---------------------------------- | ---------------------- |
+| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  |
 
 ## Configuration
 
