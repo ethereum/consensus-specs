@@ -147,7 +147,7 @@ specification.
 | Name                                 | Value               | Description                                            |
 | ------------------------------------ | ------------------- | ------------------------------------------------------ |
 | `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `Uint64(2**64 - 1)` | Value which indicates no start index has been assigned |
-| `FULL_EXIT_REQUEST_AMOUNT`           | `Uint64(0)`         | Withdrawal amount used to signal a full validator exit |
+| `FULL_EXIT_REQUEST_AMOUNT`           | `Gwei(0)`           | Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 

@@ -234,8 +234,8 @@ This section outlines configurations that are used in this specification.
 | ------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------- |
 | `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
 | `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                      |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                         |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | Maximum number of slots during which an attestation can be propagated             |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `Epoch(2**8)` (= 256)               | Number of epochs on a subnet subscription                                         |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `Slot(32)`                          | Maximum number of slots during which an attestation can be propagated             |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
 | `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
 | `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |

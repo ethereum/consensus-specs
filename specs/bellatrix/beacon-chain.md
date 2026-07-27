@@ -91,11 +91,11 @@ final, maximum security values.
 
 ### Transition settings
 
-| Name                                   | Value                                                |
-| -------------------------------------- | ---------------------------------------------------- |
-| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
-| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
+| Name                                   | Value                              |
+| -------------------------------------- | ---------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `Uint256(58750000000000000000000)` |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                         |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `Epoch(FAR_FUTURE_EPOCH)`          |
 
 ## Containers
 
