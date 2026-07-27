@@ -24,9 +24,9 @@ contract, part of Phase 0.
 The following values are (non-configurable) constants used throughout the
 specification.
 
-| Name                          | Value         |
-| ----------------------------- | ------------- |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| Name                          | Value                 |
+| ----------------------------- | --------------------- |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
 
 ## Configuration
 
@@ -35,8 +35,8 @@ specification-design purposes.
 
 | Name                       | Value                                        |
 | -------------------------- | -------------------------------------------- |
-| `DEPOSIT_CHAIN_ID`         | `1`                                          |
-| `DEPOSIT_NETWORK_ID`       | `1`                                          |
+| `DEPOSIT_CHAIN_ID`         | `Uint64(1)`                                  |
+| `DEPOSIT_NETWORK_ID`       | `Uint64(1)`                                  |
 | `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
 
 ## Staking deposit contract

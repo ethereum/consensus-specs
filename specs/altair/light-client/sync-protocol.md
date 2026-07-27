@@ -79,7 +79,7 @@ Additional documents describe how the light client sync protocol can be used:
 
 | Name                              | Value                                                      | Unit       |
 | --------------------------------- | ---------------------------------------------------------- | ---------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                        | validators |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `Uint64(1)`                                                | validators |
 | `UPDATE_TIMEOUT`                  | `Slot(SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)` | slots      |
 
 ## Containers

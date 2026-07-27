@@ -100,9 +100,9 @@ specifications before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name                               | Value         | Unit       |
-| ---------------------------------- | ------------- | ---------- |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+| Name                               | Value                 | Unit       |
+| ---------------------------------- | --------------------- | ---------- |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) | validators |
 
 ## Configuration
 
