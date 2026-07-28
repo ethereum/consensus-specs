@@ -1,25 +1,18 @@
-% Realization aspect: builder lifecycle (is_active_builder).
+% Realization aspect: builder lifecycle (parameterized).
 %
-% Spec: is_active_builder(state, builder_index) =
-%   builder.deposit_epoch < state.finalized_checkpoint.epoch
-%   and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
-% (specs/gloas/beacon-chain.md, is_active_builder)
-%
-% Shared with builder_exit_request, which gates on the same predicate.
+% is_active_builder: deposit_epoch < finalized_checkpoint.epoch and
+% withdrawable_epoch == FAR_FUTURE_EPOCH (specs/gloas/beacon-chain.md).
+% Predicate + derived function over a builder's (deposit_to_finalized_epoch,
+% withdrawable_epoch_set) dimensions, instantiable per role. Shared by
+% execution_payload_bid and builder_exit_request.
 
 include "base.mzn";
 
-% Applicability: bound by the handler (a resolved, existing builder).
-var bool: builder_lifecycle_applicable;
+predicate builder_lifecycle_ok(var Dim: deposit_to_finalized_epoch,
+                               var Dim: withdrawable_epoch_set, var bool: applicable) =
+    (deposit_to_finalized_epoch == NA <-> not applicable)
+    /\ (withdrawable_epoch_set == NA <-> not applicable);
 
-% Coverage dimensions.
-var CMP_NA:   builder_deposit_to_finalized_epoch;  % compare(deposit_epoch, finalized_epoch)
-var BOOLV_NA: builder_withdrawable_epoch_set;       % withdrawable_epoch != FAR_FUTURE_EPOCH
-
-constraint (builder_deposit_to_finalized_epoch == NA) <-> not builder_lifecycle_applicable;
-constraint (builder_withdrawable_epoch_set == NA)     <-> not builder_lifecycle_applicable;
-
-% Derived: active iff placement finalized and no exit initiated.
-var bool: builder_active;
-constraint builder_active <->
-    (builder_deposit_to_finalized_epoch == LT /\ builder_withdrawable_epoch_set == F);
+function var bool: builder_is_active(var Dim: deposit_to_finalized_epoch,
+                                     var Dim: withdrawable_epoch_set) =
+    deposit_to_finalized_epoch == LT /\ withdrawable_epoch_set == F;
