@@ -183,17 +183,16 @@ specification.
 
 ### Misc
 
-| Name                          | Value                 |
-| ----------------------------- | --------------------- |
-| `UINT64_MAX`                  | `Uint64(2**64 - 1)`   |
-| `UINT64_MAX_SQRT`             | `Uint64(4294967295)`  |
-| `GENESIS_SLOT`                | `Slot(0)`             |
-| `GENESIS_EPOCH`               | `Epoch(0)`            |
-| `FAR_FUTURE_EPOCH`            | `Epoch(2**64 - 1)`    |
-| `BASE_REWARDS_PER_EPOCH`      | `Uint64(4)`           |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH`   | `Uint64(4)`           |
-| `ENDIANNESS`                  | `'little'`            |
+| Name                        | Value                |
+| --------------------------- | -------------------- |
+| `UINT64_MAX`                | `Uint64(2**64 - 1)`  |
+| `UINT64_MAX_SQRT`           | `Uint64(4294967295)` |
+| `GENESIS_SLOT`              | `Slot(0)`            |
+| `GENESIS_EPOCH`             | `Epoch(0)`           |
+| `FAR_FUTURE_EPOCH`          | `Epoch(2**64 - 1)`   |
+| `BASE_REWARDS_PER_EPOCH`    | `Uint64(4)`          |
+| `JUSTIFICATION_BITS_LENGTH` | `Uint64(4)`          |
+| `ENDIANNESS`                | `'little'`           |
 
 ### Withdrawal prefixes
 

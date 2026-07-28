@@ -3,6 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Staking deposit contract](#staking-deposit-contract)
@@ -19,6 +20,12 @@
 This document represents the specification for the beacon-chain deposit
 contract, part of Phase 0.
 
+## Types
+
+| Name               | SSZ equivalent | Description                               |
+| ------------------ | -------------- | ----------------------------------------- |
+| `ExecutionAddress` | `Bytes20`      | Address of account on the execution layer |
+
 ## Constants
 
 The following values are (non-configurable) constants used throughout the
@@ -33,11 +40,11 @@ specification.
 *Note*: The default mainnet configuration values are included here for
 specification-design purposes.
 
-| Name                       | Value                                        |
-| -------------------------- | -------------------------------------------- |
-| `DEPOSIT_CHAIN_ID`         | `Uint64(1)`                                  |
-| `DEPOSIT_NETWORK_ID`       | `Uint64(1)`                                  |
-| `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
+| Name                       | Value                                                            |
+| -------------------------- | ---------------------------------------------------------------- |
+| `DEPOSIT_CHAIN_ID`         | `Uint64(1)`                                                      |
+| `DEPOSIT_NETWORK_ID`       | `Uint64(1)`                                                      |
+| `DEPOSIT_CONTRACT_ADDRESS` | `ExecutionAddress('0x00000000219ab540356cBB839Cbe05303d7705Fa')` |
 
 ## Staking deposit contract
 
