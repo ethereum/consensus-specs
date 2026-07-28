@@ -472,7 +472,7 @@ def prepare_process_withdrawals(
 
     # Helper to get parameter value from single value, dict, or None
     def get_param_value(
-        param: None | int | dict[int, int],
+        param: int | dict[int, int] | None,
         index: int,
         default: int,
     ) -> int:

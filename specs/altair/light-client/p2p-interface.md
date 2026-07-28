@@ -43,9 +43,9 @@ class LightClientUpdates(List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATE
 
 ### Configuration
 
-| Name                               | Value          | Description                                                         |
-| ---------------------------------- | -------------- | ------------------------------------------------------------------- |
-| `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `2**7` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
+| Name                               | Value                  | Description                                                         |
+| ---------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `Uint64(2**7)` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
 
 ### The gossip domain: gossipsub
 
@@ -347,7 +347,7 @@ supports processing `LightClientFinalityUpdate` and
 Light clients MAY also collect historic light client data and make it available
 to other peers. If they do, they SHOULD advertise supported message endpoints in
 [the Req/Resp domain](#the-reqresp-domain), and MAY also update the contents of
-their [`Status`](../../phase0/p2p-interface.md#status) message to reflect the
+their [`Status`](../../phase0/p2p-interface.md#status-v1) message to reflect the
 locally available light client data.
 
 If only limited light client data is locally available, the light client SHOULD

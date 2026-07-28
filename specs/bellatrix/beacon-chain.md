@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [New `ExecutionAddress`](#new-executionaddress)
   - [New `ExtraData`](#new-extradata)
   - [New `LogsBloom`](#new-logsbloom)
   - [New `Transaction`](#new-transaction)
@@ -56,15 +55,6 @@ Including:
 - Penalty parameter updates to their planned maximally punitive values
 
 ## Types
-
-### New `ExecutionAddress`
-
-```python
-class ExecutionAddress(Bytes20):
-    """
-    The address of an account on the execution layer.
-    """
-```
 
 ### New `ExtraData`
 
@@ -141,11 +131,11 @@ final, maximum security values.
 
 ### Transition settings
 
-| Name                                   | Value                                                |
-| -------------------------------------- | ---------------------------------------------------- |
-| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
-| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
+| Name                                   | Value                              |
+| -------------------------------------- | ---------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `Uint256(58750000000000000000000)` |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                         |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `Epoch(FAR_FUTURE_EPOCH)`          |
 
 ## Containers
 

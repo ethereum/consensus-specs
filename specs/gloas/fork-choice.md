@@ -82,16 +82,16 @@ class PayloadStatus(Uint8):
 
 ## Constants
 
-| Name                                 | Value                   |
-| ------------------------------------ | ----------------------- |
-| `PAYLOAD_TIMELY_THRESHOLD`           | `PTC_SIZE // 2` (= 256) |
-| `DATA_AVAILABILITY_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`      |
-| `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`      |
-| `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`      |
-| `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
-| `PTC_TIMELINESS_INDEX`               | `1`                     |
-| `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+| Name                                 | Value                           |
+| ------------------------------------ | ------------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`           | `Uint64(PTC_SIZE // 2)` (= 256) |
+| `DATA_AVAILABILITY_TIMELY_THRESHOLD` | `Uint64(PTC_SIZE // 2)` (= 256) |
+| `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`              |
+| `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`              |
+| `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`              |
+| `ATTESTATION_TIMELINESS_INDEX`       | `Uint64(0)`                     |
+| `PTC_TIMELINESS_INDEX`               | `Uint64(1)`                     |
+| `NUM_BLOCK_TIMELINESS_DEADLINES`     | `Uint64(2)`                     |
 
 ## Protocols
 
@@ -112,7 +112,7 @@ Where:
 - `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 *Note*: `get_safe_execution_block_hash` is modified in Gloas, see
-[Fast Confirmation](./fast-confirmation.md#get_safe_execution_block_hash).
+[Fast Confirmation](./fast-confirmation.md#modified-get_safe_execution_block_hash).
 
 ## Helpers
 
@@ -736,12 +736,6 @@ def is_head_late(store: Store, head_root: Root) -> bool:
 
 #### Modified `is_head_weak`
 
-*Note*: The function `is_head_weak` now also counts weight from equivocating
-validators from the committees of the head slot. This ensures that the counted
-weight and the output of `is_head_weak` are monotonic: more attestations can
-only increase the weight and change the output from `True` to `False`, not
-vice-versa.
-
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
     # Calculate weight threshold for weak head
@@ -752,6 +746,7 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     head_state = store.block_states[head_root]
     head_block = store.blocks[head_root]
     epoch = compute_epoch_at_slot(head_block.slot)
+    # [Modified in Gloas:EIP7732]
     head_node = ForkChoiceNode(root=head_root, payload_status=PAYLOAD_STATUS_PENDING)
     head_weight = get_attestation_score(store, head_node, justified_state)
     for index in range(get_committee_count_per_slot(head_state, epoch)):

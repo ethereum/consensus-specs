@@ -257,7 +257,7 @@ specification.
 | Name                                 | Value               | Description                                            |
 | ------------------------------------ | ------------------- | ------------------------------------------------------ |
 | `UNSET_DEPOSIT_REQUESTS_START_INDEX` | `Uint64(2**64 - 1)` | Value which indicates no start index has been assigned |
-| `FULL_EXIT_REQUEST_AMOUNT`           | `Uint64(0)`         | Withdrawal amount used to signal a full validator exit |
+| `FULL_EXIT_REQUEST_AMOUNT`           | `Gwei(0)`           | Withdrawal amount used to signal a full validator exit |
 
 ### Withdrawal prefixes
 
@@ -291,11 +291,11 @@ specification.
 
 ### State list lengths
 
-| Name                                | Value                           | Unit                        |
-| ----------------------------------- | ------------------------------- | --------------------------- |
-| `PENDING_DEPOSITS_LIMIT`            | `Uint64(2**27)` (= 134,217,728) | pending deposits            |
-| `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `Uint64(2**27)` (= 134,217,728) | pending partial withdrawals |
-| `PENDING_CONSOLIDATIONS_LIMIT`      | `Uint64(2**18)` (= 262,144)     | pending consolidations      |
+| Name                                | Value                           |
+| ----------------------------------- | ------------------------------- |
+| `PENDING_DEPOSITS_LIMIT`            | `Uint64(2**27)` (= 134,217,728) |
+| `PENDING_PARTIAL_WITHDRAWALS_LIMIT` | `Uint64(2**27)` (= 134,217,728) |
+| `PENDING_CONSOLIDATIONS_LIMIT`      | `Uint64(2**18)` (= 262,144)     |
 
 ### Max operations per block
 

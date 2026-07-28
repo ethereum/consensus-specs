@@ -68,9 +68,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                    | Value                    | Description                                                    |
 | --------------------------------------- | ------------------------ | -------------------------------------------------------------- |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                   |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | Minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | Number of blob sidecar subnets used in the gossipsub protocol  |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `Uint64(2**7)` (= 128)   | Maximum number of blocks in a single request                   |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `Uint64(6)`              | Number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Types
 
@@ -352,15 +352,15 @@ def validate_beacon_block_gossip(
 
     if block.parent_root not in store.block_states:
         if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-            # [REJECT] The block's parent passes validation
-            raise GossipReject("block's parent is invalid and EL result is unknown")
+            # [REJECT] The block's parent failed validation and its execution payload is optimistic
+            raise GossipReject("block's parent is invalid and its payload is optimistic")
 
-        # [IGNORE] The block's parent passes validation
-        raise GossipIgnore("block's parent is invalid and EL result is known")
+        # [IGNORE] The block's parent failed validation and its execution payload is processed
+        raise GossipIgnore("block's parent is invalid and its payload is processed")
 
-    # [IGNORE] The block's parent's execution payload passes validation
+    # [IGNORE] The block's parent passed validation but its execution payload is invalid
     if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
-        raise GossipIgnore("block's parent is valid and EL result is invalid")
+        raise GossipIgnore("block's parent is valid and its payload is invalid")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:

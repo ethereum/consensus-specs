@@ -14,34 +14,34 @@ specifications can be made through pull requests.
 ## Specifications
 
 Core specifications for Ethereum proof-of-stake clients can be found in
-[specs](specs). These are divided into features. Features are researched and
-developed in parallel, and then consolidated into sequential upgrades when
-ready.
+[specs](specs). These are divided into [features](specs/_features). Features are
+researched and developed in parallel, and then consolidated into sequential
+upgrades when ready.
 
 ### Stable specifications
 
-| Seq. | Code Name     | Fork Epoch | Links                                                                                   |
-| ---- | ------------- | ---------- | --------------------------------------------------------------------------------------- |
-| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth_consensus_specs/test/phase0)       |
-| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth_consensus_specs/test/altair)       |
-| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth_consensus_specs/test/bellatrix) |
-| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth_consensus_specs/test/capella)     |
-| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth_consensus_specs/test/deneb)         |
-| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth_consensus_specs/test/electra)     |
-| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth_consensus_specs/test/fulu)           |
+| Seq. | Code Name     | Fork Epoch | Link                    |
+| ---- | ------------- | ---------- | ----------------------- |
+| 0    | **Phase0**    | `0`        | [Spec](specs/phase0)    |
+| 1    | **Altair**    | `74240`    | [Spec](specs/altair)    |
+| 2    | **Bellatrix** | `144896`   | [Spec](specs/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Spec](specs/capella)   |
+| 4    | **Deneb**     | `269568`   | [Spec](specs/deneb)     |
+| 5    | **Electra**   | `364032`   | [Spec](specs/electra)   |
+| 6    | **Fulu**      | `411392`   | [Spec](specs/fulu)      |
 
 ### Unstable specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                                           |
-| ---- | --------- | ---------- | ------------------------------------------------------------------------------- |
-| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth_consensus_specs/test/gloas) |
-| 8    | **Heze**  | TBD        | [Specs](specs/heze), [Tests](tests/core/pyspec/eth_consensus_specs/test/heze)   |
+| Seq. | Code Name | Fork Epoch | Link                |
+| ---- | --------- | ---------- | ------------------- |
+| 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
+| 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
 ### Accompanying documents
 
-- [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
-- [Merkle proof formats](ssz/merkle-proofs.md)
-- [General test format](tests/formats/README.md)
+- [Merkle Proofs](ssz/merkle-proofs.md)
+- [SimpleSerialize (SSZ)](ssz/simple-serialize.md)
+- [Optimistic Sync](sync/optimistic.md)
 
 ### External specifications
 
@@ -107,7 +107,6 @@ consensus specifications:
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 - [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
 - [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-- [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
+- [Specifications viewer (zensical)](https://ethereum.github.io/consensus-specs/)
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
-- [PySpec Tests](tests/core/pyspec/README.md)

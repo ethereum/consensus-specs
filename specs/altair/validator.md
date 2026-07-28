@@ -88,19 +88,19 @@ class SyncSubcommitteeBits(Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNE
 
 ### Misc
 
-| Name                                       | Value                 | Unit       |
-| ------------------------------------------ | --------------------- | ---------- |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `Uint64(2**4)` (= 16) | validators |
-| `SYNC_COMMITTEE_SUBNET_COUNT`              | `Uint64(2**2)` (= 4)  | subnets    |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `Uint64(2**4)` (= 16) |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `Uint64(2**2)` (= 4)  |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                   | Value          | Unit         | Duration                   |
-| ---------------------- | -------------- | ------------ | -------------------------- |
-| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                   | Value          | Duration                   |
+| ---------------------- | -------------- | -------------------------- |
+| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 

@@ -122,11 +122,11 @@ class SyncCommitteePubkeys(Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]):
 
 ### Participation flag indices
 
-| Name                       | Value |
-| -------------------------- | ----- |
-| `TIMELY_SOURCE_FLAG_INDEX` | `0`   |
-| `TIMELY_TARGET_FLAG_INDEX` | `1`   |
-| `TIMELY_HEAD_FLAG_INDEX`   | `2`   |
+| Name                       | Value       |
+| -------------------------- | ----------- |
+| `TIMELY_SOURCE_FLAG_INDEX` | `Uint64(0)` |
+| `TIMELY_TARGET_FLAG_INDEX` | `Uint64(1)` |
+| `TIMELY_HEAD_FLAG_INDEX`   | `Uint64(2)` |
 
 ### Incentivization weights
 
@@ -170,10 +170,10 @@ to their final, maximum security values.
 
 ### Sync committee
 
-| Name                               | Value                  | Unit       |
-| ---------------------------------- | ---------------------- | ---------- |
-| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) | validators |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Uint64(2**8)` (= 256) | epochs     |
+| Name                               | Value                  |
+| ---------------------------------- | ---------------------- |
+| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  |
 
 ## Configuration
 
