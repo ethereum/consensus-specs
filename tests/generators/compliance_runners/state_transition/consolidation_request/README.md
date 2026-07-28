@@ -17,20 +17,23 @@ Selected by `same_source_target` (`source_pubkey == target_pubkey`):
 
 ## Aspects
 
-Reuses the **validator family** for the SOURCE validator (`validator_membership`,
-`validator_credential`, `validator_lifecycle`, `validator_pending_withdrawal`) and
-`source_authorization` (shared with `builder_exit_request` / `withdrawal_request`).
-The consolidation-specific aspects are `consolidation_pair`,
-`pending_consolidations_capacity`, `consolidation_churn`, and a compact
-`target_validator`.
+The **parameterized** validator aspects `validator_lifecycle` and
+`validator_credential` are instantiated for **both** the source and target roles
+(same predicates applied to `validator_*` and `target_*` vars).
+`validator_seasoning`, `source_authorization`, and `validator_pending_withdrawal`
+are source-only; `source_authorization` is shared with `builder_exit_request` /
+`withdrawal_request`. Consolidation-specific aspects: `consolidation_pair`,
+`pending_consolidations_capacity`, `consolidation_churn`.
 
-### Two-role limitation (worth noting)
-Consolidation has *two* validators (source + target), but the flat-var aspects
-bind each dimension to one global name — so the full family binds to the SOURCE
-only, and the target uses a compact single-instance `target_validator` aspect.
-Letting both roles reuse the same family would require **parameterized aspects**
-(MiniZinc predicates over a validator record), instantiable as `source` and
-`target`. That is the natural next refactor for the aspect layer.
+### Two-role reuse via parameterized aspects
+Consolidation is the first two-validator handler, and it's why the validator
+lifecycle/credential aspects are **parameterized** as predicates over their
+dimension vars rather than flat global declarations:
+`validator_lifecycle_ok(active, exiting, applicable)` and
+`validator_credential_ok(kind, applicable)` (plus `cred_has_execution` /
+`cred_has_compounding` functions) are applied once per role — source and target —
+so both reuse the identical relation. Flat single-instance aspects (membership,
+authorization, pending) stay flat.
 
 ## Materialization notes
 
