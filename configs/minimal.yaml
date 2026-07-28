@@ -60,6 +60,10 @@ HEZE_FORK_EPOCH: 18446744073709551615
 # [customized] EIP8321
 EIP8321_FORK_VERSION: 0xe8321001
 EIP8321_FORK_EPOCH: 18446744073709551615
+# EIP8198 (experimental). The fork epoch is a config variable (not a compiled
+# constant) because state-transition and fork-choice time functions branch on
+# it, and tests need to override it to exercise the slot-duration change.
+EIP8198_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
