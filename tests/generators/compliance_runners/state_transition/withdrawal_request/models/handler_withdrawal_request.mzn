@@ -1,7 +1,8 @@
 % Handler model: process_withdrawal_request.
 %
-% Establishes the validator aspect family (membership / credential / lifecycle /
-% balance / pending) and REUSES source_authorization (shared with
+% Uses the parameterized validator aspects (lifecycle / seasoning / credential
+% applied to a single validator) plus flat aspects (membership, authorization,
+% pending, balance) and REUSES source_authorization (shared with
 % builder_exit_request). No BLS, no churn gate. No solve item.
 %
 % Spec: specs/electra/beacon-chain.md process_withdrawal_request (inherited by gloas).
@@ -9,16 +10,32 @@
 include "../../aspects/withdrawal_amount.mzn";
 include "../../aspects/partial_queue_capacity.mzn";
 include "../../aspects/validator_membership.mzn";
-include "../../aspects/validator_credential.mzn";
+include "../../aspects/validator_credential.mzn";     % parameterized
+include "../../aspects/validator_lifecycle.mzn";      % parameterized
+include "../../aspects/validator_seasoning.mzn";      % parameterized
 include "../../aspects/source_authorization.mzn";     % shared with builder_exit_request
-include "../../aspects/validator_lifecycle.mzn";
 include "../../aspects/validator_pending_withdrawal.mzn";
 include "../../aspects/validator_balance.mzn";
 
-% ---- Applicability bindings (validator resolved) ----------------------------
-constraint validator_credential_applicable <-> validator_pubkey_found;
+% ---- Validator instance (single role) ---------------------------------------
+var ValidatorCredentialKind: validator_credential;
+var BOOLV_NA: validator_active;
+var BOOLV_NA: validator_exiting;
+var BOOLV_NA: validator_old_enough;
+constraint validator_credential_ok(validator_credential, validator_pubkey_found);
+constraint validator_lifecycle_ok(validator_active, validator_exiting, validator_pubkey_found);
+constraint validator_seasoning_ok(validator_old_enough, validator_pubkey_found);
+% lifecycle/seasoning coherence: an activated (old-enough), non-exiting validator is active
+constraint (validator_old_enough == T /\ validator_exiting == F) -> (validator_active == T);
+
+% Derived credential booleans (exposed for coverage/validation).
+var bool: validator_has_execution_credential;
+var bool: validator_has_compounding_credential;
+constraint validator_has_execution_credential <-> cred_has_execution(validator_credential);
+constraint validator_has_compounding_credential <-> cred_has_compounding(validator_credential);
+
+% ---- Applicability bindings for the flat aspects ----------------------------
 constraint source_authorization_applicable <-> validator_pubkey_found;
-constraint validator_lifecycle_applicable  <-> validator_pubkey_found;
 constraint validator_pending_applicable    <-> validator_pubkey_found;
 constraint validator_balance_applicable    <-> validator_pubkey_found;
 
@@ -61,7 +78,7 @@ constraint outcome =
      else    PARTIAL_QUEUED endif)
   endif;
 
-% ---- Faults (applicable gate in its failing state) --------------------------
+% ---- Faults -----------------------------------------------------------------
 var bool: fault_queue    = partial_queue_full /\ not is_full_exit_request;
 var bool: fault_found    = not validator_pubkey_found;
 var bool: fault_cred     = validator_pubkey_found /\ not g_cred;
@@ -72,6 +89,6 @@ var int: n_faults =
     bool2int(fault_queue) + bool2int(fault_found) + bool2int(fault_cred)
   + bool2int(fault_active) + bool2int(fault_exiting) + bool2int(fault_young);
 
-% ---- Effect (label; declared-and-constrained so it is exposed) --------------
+% ---- Effect -----------------------------------------------------------------
 var bool: withdrawal_effected;
 constraint withdrawal_effected <-> (outcome in {FULL_EXIT_INITIATED, PARTIAL_QUEUED});

@@ -1,21 +1,15 @@
-% Realization aspect: validator lifecycle.
+% Realization aspect: validator lifecycle (parameterized).
 %
-%   active     <-> is_active_validator (activation_epoch <= epoch < exit_epoch)
-%   exiting    <-> exit_epoch != FAR_FUTURE_EPOCH
-%   old_enough <-> current_epoch >= activation_epoch + SHARD_COMMITTEE_PERIOD
-% (specs/phase0 + electra). Applicable when a validator is resolved.
-% Shared by withdrawal_request and consolidation_request.
+%   active  <-> is_active_validator (activation_epoch <= epoch < exit_epoch)
+%   exiting <-> exit_epoch != FAR_FUTURE_EPOCH
+%
+% Parameterized as a predicate over a validator's (active, exiting) coverage
+% dimensions, instantiable per role (source, target, or a single validator) —
+% the handler declares role-prefixed vars and applies the predicate to each.
+% `applicable` is true when the validator resolves.
 
 include "base.mzn";
 
-var bool: validator_lifecycle_applicable;
-var BOOLV_NA: validator_active;
-var BOOLV_NA: validator_exiting;
-var BOOLV_NA: validator_old_enough;
-constraint (validator_active == NA)     <-> not validator_lifecycle_applicable;
-constraint (validator_exiting == NA)    <-> not validator_lifecycle_applicable;
-constraint (validator_old_enough == NA) <-> not validator_lifecycle_applicable;
-
-% Coherence: an activated, non-exiting validator is active — so old_enough
-% (which implies activated) together with not-exiting forces active.
-constraint (validator_old_enough == T /\ validator_exiting == F) -> (validator_active == T);
+predicate validator_lifecycle_ok(var Dim: active, var Dim: exiting, var bool: applicable) =
+    (active == NA <-> not applicable)
+    /\ (exiting == NA <-> not applicable);

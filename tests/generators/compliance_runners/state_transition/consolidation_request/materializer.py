@@ -34,8 +34,9 @@ _DIMS = [
     "same_source_target", "pending_consolidations_full", "sufficient_consolidation_churn",
     "validator_pubkey_found", "validator_credential", "source_address_matches",
     "validator_active", "validator_exiting", "validator_old_enough", "has_pending_partial_withdrawal",
-    "target_found", "target_compounding", "target_active", "target_exiting",
+    "target_found", "target_credential", "target_active", "target_exiting",
     "validator_has_execution_credential", "validator_has_compounding_credential",
+    "target_has_compounding_credential",
     "outcome", "state_effected",
 ]
 
@@ -105,8 +106,7 @@ class ConsolidationRequestMaterializer:
             target_pubkey = source_pubkey
         elif _s(sol, "target_found") == "T":
             self._set_validator(
-                pre.validators[TARGET_INDEX],
-                b"\x02" if _s(sol, "target_compounding") == "T" else b"\x01",
+                pre.validators[TARGET_INDEX], _SRC_PREFIX[_s(sol, "target_credential")],
                 _s(sol, "target_active") == "T", _s(sol, "target_exiting") == "T", True,
             )
             target_pubkey = pre.validators[TARGET_INDEX].pubkey
