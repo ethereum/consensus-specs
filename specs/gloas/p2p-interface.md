@@ -1013,9 +1013,11 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent root is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
-    lookahead_index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
-    lookahead_index += preferences.proposal_slot % SLOTS_PER_EPOCH
-    if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
+    dependent_state = store.block_states[preferences.dependent_root]
+    lookahead_state = dependent_state.copy()
+    process_slots(lookahead_state, lookahead_epoch_start_slot)
+    lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
+    if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid with respect to the validator's public key
