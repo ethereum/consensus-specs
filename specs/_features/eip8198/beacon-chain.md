@@ -5,10 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
-  - [Validator cycle](#validator-cycle)
 - [Helpers](#helpers)
   - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
   - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
@@ -27,54 +25,45 @@
 
 ## Introduction
 
-EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 8 seconds. The
+EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds. The
 slot structure is inherited unchanged from Heze, and all intra-slot deadlines
 are expressed in basis points of the slot duration, so they rescale
 automatically (see the modified `get_slot_component_duration_ms` in the
 fork-choice document).
 
-The parameters below match the EIP-8198 parameter table. Per-epoch issuance and
-churn quantities are scaled by `8 / 12 = 2 / 3`; churn quotients are scaled by
-the inverse `3 / 2`; and the inactivity penalty quotient is scaled by
-`(3 / 2)**2 = 9 / 4`.
+The remaining parameters -- issuance, the inactivity penalty, and the validator
+churn limits -- must be rescaled by the slot-duration ratio
+`r = SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` (`= 10000 / 12000 = 5 / 6`) to
+keep their wall-clock behavior constant.
 
-## Preset
+Rather than pre-computing rounded `*_EIP8198` constants (e.g. a base reward
+factor of `64 * 5 / 6 = 53.33...` rounded to `53`, a ~0.6% issuance error), this
+document applies the exact ratio **inside** each formula, deferring integer
+division until after multiplication wherever possible.
+`SLOT_DURATION_MS_EIP8198` is therefore the single source of truth for the
+target slot duration.
 
-| Name                                  | Value                              |
-| ------------------------------------- | ---------------------------------- |
-| `BASE_REWARD_FACTOR_EIP8198`          | `Uint64(42)`                       |
-| `INACTIVITY_PENALTY_QUOTIENT_EIP8198` | `Uint64(37748736)` (= `9 * 2**22`) |
+The rescaling directions are:
 
-*Note*: These values intentionally use the integer-truncated parameters from
-EIP-8198. In particular, the effective base reward factor is `42`, not the
-unrounded rational value `64 * 2 / 3`.
+- **Issuance** (base reward) scales linearly with epoch duration: multiply by
+  `r`.
+- **Inactivity penalty** scales with the square of epoch duration, so that the
+  cumulative leak over a fixed wall-clock duration is unchanged: multiply by
+  `r**2`.
+- **Churn** (a per-epoch rate) scales by `r`, so activation, exit, and
+  consolidation rates stay proportional to wall-clock time.
 
 ## Configuration
 
 ### Time parameters
 
-| Name                       | Value          | Unit         | Duration  |
-| -------------------------- | -------------- | ------------ | --------- |
-| `SLOT_DURATION_MS_EIP8198` | `Uint64(8000)` | milliseconds | 8 seconds |
+| Name                       | Value           | Unit         | Duration   |
+| -------------------------- | --------------- | ------------ | ---------- |
+| `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` | milliseconds | 10 seconds |
 
 Both `SLOT_DURATION_MS` and `SLOT_DURATION_MS_EIP8198` MUST be positive
 multiples of `1000`. Beacon block timestamps are integer Unix seconds, so this
 constraint ensures that every slot boundary has an exact timestamp.
-
-### Validator cycle
-
-| Name                                                 | Value                |
-| ---------------------------------------------------- | -------------------- |
-| `CHURN_LIMIT_QUOTIENT_EIP8198`                       | `Uint64(49152)`      |
-| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198`         | `Uint64(98304)`      |
-| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198`          | `Gwei(85333333333)`  |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198` | `Gwei(170666666666)` |
-
-*Note*: The published EIP-8198 table scales the pre-Gloas `CHURN_LIMIT_QUOTIENT`
-from `65536` to `98304`. This feature is based on Heze, where Gloas has already
-split churn: activation and exit use `CHURN_LIMIT_QUOTIENT_GLOAS = 32768`, while
-consolidation retains the `65536` quotient. Applying the same `3 / 2` scaling
-therefore yields `49152` for activation and exit and `98304` for consolidation.
 
 ## Helpers
 
@@ -193,24 +182,31 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 
 ### Modified `get_base_reward_per_increment`
 
-*Note*: The function `get_base_reward_per_increment` is modified to use the
-EIP-8198 base reward factor.
+*Note*: The base reward per increment is scaled by
+`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`. The base reward factor is left
+unchanged and the integer division is deferred until after multiplication by
+`EFFECTIVE_BALANCE_INCREMENT`. This preserves the fractional effective factor
+instead of rounding it to a new integer constant.
 
 ```python
 def get_base_reward_per_increment(state: BeaconState) -> Gwei:
     return Gwei(
         EFFECTIVE_BALANCE_INCREMENT
         # [Modified in EIP8198]
-        * BASE_REWARD_FACTOR_EIP8198
+        * BASE_REWARD_FACTOR
+        * SLOT_DURATION_MS_EIP8198
+        // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
 
 ### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The function `get_inactivity_penalty_deltas` is modified to use the
-EIP-8198 inactivity penalty quotient. This pre-scaled divisor avoids introducing
-larger arithmetic intermediates in client implementations.
+*Note*: The inactivity leak penalty is scaled by
+`(SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS)**2` so that the cumulative
+penalty over a fixed wall-clock leak duration is unchanged. The quotient and
+remainder decomposition below computes the exact rational floor while keeping
+every intermediate within the inherited `Uint64` arithmetic range.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -229,34 +225,53 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             # [Modified in EIP8198]
-            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_EIP8198
-            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+            slot_duration = SLOT_DURATION_MS_EIP8198 // 1000
+            pre_fork_slot_duration = SLOT_DURATION_MS // 1000
+            scaled_denominator = (
+                INACTIVITY_SCORE_BIAS
+                * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+                * pre_fork_slot_duration
+                * pre_fork_slot_duration
+            )
+            penalty = (
+                penalty_numerator // scaled_denominator * slot_duration * slot_duration
+                + penalty_numerator
+                % scaled_denominator
+                * slot_duration
+                * slot_duration
+                // scaled_denominator
+            )
+            penalties[index] += Gwei(penalty)
     return rewards, penalties
 ```
 
 ### Modified `get_activation_churn_limit`
 
-*Note*: The function is modified to use the EIP-8198 churn parameters.
+*Note*: The per-epoch activation churn is scaled by
+`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` to keep the activation rate
+proportional to wall-clock time, then rounded down to
+`EFFECTIVE_BALANCE_INCREMENT`.
 
 ```python
 def get_activation_churn_limit(state: BeaconState) -> Gwei:
     """
-    Per-epoch churn limit for activations. The uncapped dynamic churn is
-    rounded to ``EFFECTIVE_BALANCE_INCREMENT`` before applying the exact
-    configured cap.
+    Per-epoch churn limit for activations, rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
     """
     churn = max(
-        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198,
-        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_EIP8198,
+        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     # [Modified in EIP8198]
-    churn = churn - churn % EFFECTIVE_BALANCE_INCREMENT
-    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198, churn)
+    churn = min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
+    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
+    return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
 ### Modified `get_exit_churn_limit`
 
-*Note*: The function is modified to use the EIP-8198 churn parameters.
+*Note*: The per-epoch exit churn is scaled by
+`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`.
 
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:
@@ -265,16 +280,18 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
     ``EFFECTIVE_BALANCE_INCREMENT``.
     """
     churn = max(
-        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198,
-        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_EIP8198,
+        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
+    # [Modified in EIP8198]
+    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
 ### Modified `get_consolidation_churn_limit`
 
-*Note*: The function is modified to use the EIP-8198 consolidation churn
-quotient.
+*Note*: The per-epoch consolidation churn is scaled by
+`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`.
 
 ```python
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
@@ -283,29 +300,30 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     Derived from total active balance and rounded to
     ``EFFECTIVE_BALANCE_INCREMENT``.
     """
+    churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     # [Modified in EIP8198]
-    churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198
+    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
 ## Data availability
 
 *Note*: The modified `get_blob_parameters` helper materializes the EIP-8198
-schedule entry at `EIP8198_FORK_EPOCH`, scaling the preceding maximum by `2 / 3`
-(`21 * 2 // 3 = 14` on mainnet). This is equivalent to appending the
+schedule entry at `EIP8198_FORK_EPOCH`, scaling the preceding maximum by `5 / 6`
+(`21 * 10 // 12 = 17` on mainnet). This is equivalent to appending the
 EIP-8198-required entry while allowing tests and unscheduled configurations to
 override only the fork epoch. Later explicit schedule entries take precedence.
 
 *Note*: Likewise, the steady-state blob and data-column sidecar retention
-windows are increased from `4096` to `6144` epochs, preserving the pre-fork
-wall-clock retention period once the entire window is post-fork. The post-fork
-values are configured as `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198` and
-`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198`; the networking document
-defines the pre-fork retention ramp, backfill requirement, and fork-aware
-selectors used by inherited request validation and retention guidance.
+windows are increased from `4096` to `4915` epochs (`4096 * 12 // 10`),
+approximately preserving the pre-fork wall-clock retention period once the
+entire window is post-fork. The networking document derives both targets from
+`SLOT_DURATION_MS_EIP8198` and defines the pre-fork retention ramp, backfill
+requirement, and fork-aware selectors used by inherited request validation and
+retention guidance.
 
 *Note*: The first post-fork execution payload sets its gas limit to
-`parent_gas_limit * 8000 // 12000`, preserving the per-second gas throughput
+`parent_gas_limit * 10000 // 12000`, preserving the per-second gas throughput
 target immediately rather than through gradual gas-limit voting. The execution
 layer enforces the payload rule; the EIP-8198 builder and networking documents
 override inherited bid construction and gossip compatibility so the consensus

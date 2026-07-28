@@ -58,10 +58,10 @@ The inherited blob and data-column retention guidance is modified to use
 `get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
 `get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively.
 Nodes MUST retain and serve the applicable sidecars for the fork-aware window
-returned by these helpers. The `6144`-epoch target preserves the pre-fork
-wall-clock retention period in steady state. During the fork transition, nodes
-MUST follow the pre-fork retention ramp and any backfill requirements in the
-EIP-8198 networking document.
+returned by these helpers. The `4915`-epoch target approximately preserves the
+pre-fork wall-clock retention period in steady state. During the fork
+transition, nodes MUST follow the pre-fork retention ramp and any backfill
+requirements in the EIP-8198 networking document.
 
 ### Inherited behavior
 

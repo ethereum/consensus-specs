@@ -74,10 +74,12 @@ EIP8198_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # 12000 milliseconds
 SLOT_DURATION_MS: 12000
-# EIP8198: 8000 milliseconds, 8 seconds (SLOT_DURATION_MS scaled by 2 / 3)
+# EIP8198: 10000 milliseconds, 10 seconds (SLOT_DURATION_MS scaled by 5 / 6)
 # Intra-slot deadlines are inherited from Heze as basis points of the slot
-# duration and rescale automatically.
-SLOT_DURATION_MS_EIP8198: 8000
+# duration and rescale automatically. Issuance/penalty/churn are rescaled by the
+# exact SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS ratio in-formula, so no other
+# per-parameter overrides are needed.
+SLOT_DURATION_MS_EIP8198: 10000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs
@@ -150,16 +152,6 @@ CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 65536
 # 2**8 * 10**9 (= 256,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 256000000000
 
-# EIP8198 (churn rescaled for 8-second slots: quotients * 3 / 2, Gwei limits * 2 / 3)
-# 2**15 * 3 // 2 (= 49,152)
-CHURN_LIMIT_QUOTIENT_EIP8198: 49152
-# 2**16 * 3 // 2 (= 98,304)
-CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198: 98304
-# 128,000,000,000 * 2 // 3 (= 85,333,333,333) Gwei
-MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198: 85333333333
-# 256,000,000,000 * 2 // 3 (= 170,666,666,666) Gwei
-MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198: 170666666666
-
 # Fork choice
 # ---------------------------------------------------------------
 # 40%
@@ -204,8 +196,6 @@ ATTESTATION_SUBNET_EXTRA_BITS: 0
 MAX_REQUEST_BLOCKS_DENEB: 128
 # 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
-# EIP8198: preserve the pre-fork wall-clock retention period
-MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198: 6144
 # 6 subnets
 BLOB_SIDECAR_SUBNET_COUNT: 6
 # 6 blobs
@@ -232,8 +222,6 @@ VALIDATOR_CUSTODY_REQUIREMENT: 8
 BALANCE_PER_ADDITIONAL_CUSTODY_GROUP: 32000000000
 # 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS: 4096
-# EIP8198: preserve the pre-fork wall-clock retention period
-MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198: 6144
 
 # Gloas
 # 2**7 (= 128) payloads

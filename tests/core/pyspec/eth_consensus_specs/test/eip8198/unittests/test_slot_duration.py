@@ -5,7 +5,7 @@ branches are actually exercised (with the default FAR_FUTURE_EPOCH they are
 unreachable).
 
 All assertions are written in terms of the config values so they hold on both
-presets (minimal: 6000ms -> 4000ms, mainnet: 12000ms -> 8000ms).
+presets (minimal: 6000ms -> 5000ms, mainnet: 12000ms -> 10000ms).
 """
 
 from eth_consensus_specs.test.context import (
@@ -14,8 +14,9 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_phases,
+    with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import EIP8198
+from eth_consensus_specs.test.helpers.constants import EIP8198, MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth_consensus_specs.test.helpers.state import next_epoch
 
@@ -288,30 +289,82 @@ def test_forkchoice_timeliness_uses_post_fork_slot_start(spec, state):
 
 @with_phases([EIP8198])
 @spec_state_test
-def test_base_reward_uses_eip8198_factor(spec, state):
+def test_base_reward_uses_eip8198_slot_ratio(spec, state):
     expected = (
         spec.EFFECTIVE_BALANCE_INCREMENT
-        * spec.BASE_REWARD_FACTOR_EIP8198
+        * spec.BASE_REWARD_FACTOR
+        * spec.config.SLOT_DURATION_MS_EIP8198
+        // spec.config.SLOT_DURATION_MS
         // spec.integer_squareroot(spec.get_total_active_balance(state))
     )
     assert spec.get_base_reward_per_increment(state) == expected
-    assert spec.BASE_REWARD_FACTOR_EIP8198 == 42
 
 
 @with_phases([EIP8198])
 @spec_state_test
-def test_inactivity_penalty_uses_eip8198_quotient(spec, state):
+def test_inactivity_penalty_uses_eip8198_slot_ratio(spec, state):
     index = 0
     state.inactivity_scores[index] = 1
     _, penalties = spec.get_inactivity_penalty_deltas(state)
 
     penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-    penalty_denominator = (
-        spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_EIP8198
+    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * (
+        spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
     )
-    expected = penalty_numerator // penalty_denominator
+    post_fork_duration_ms = int(spec.config.SLOT_DURATION_MS_EIP8198)
+    pre_fork_duration_ms = int(spec.config.SLOT_DURATION_MS)
+    expected = (
+        int(penalty_numerator)
+        * post_fork_duration_ms
+        * post_fork_duration_ms
+        // (int(penalty_denominator) * pre_fork_duration_ms * pre_fork_duration_ms)
+    )
     assert penalties[index] == expected
-    assert spec.INACTIVITY_PENALTY_QUOTIENT_EIP8198 == 37_748_736
+    rounded_first = penalty_numerator // penalty_denominator
+    rounded_first = (
+        int(rounded_first)
+        * post_fork_duration_ms
+        // pre_fork_duration_ms
+        * post_fork_duration_ms
+        // pre_fork_duration_ms
+    )
+    assert expected != rounded_first
+
+
+@with_phases([EIP8198])
+@with_presets([MINIMAL], reason="uses minimal churn quotients for a compact boundary state")
+@spec_state_test
+def test_churn_scales_before_increment_rounding(spec, state):
+    for validator in state.validators:
+        validator.effective_balance = 0
+    target_total = spec.Gwei(1_959_000_000_000)
+    state.validators[0].effective_balance = target_total
+    assert spec.get_total_active_balance(state) == target_total
+
+    raw_activation_exit = max(
+        spec.config.MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
+        target_total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS,
+    )
+    expected_activation_exit = (
+        raw_activation_exit * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+    )
+    expected_activation_exit -= expected_activation_exit % spec.EFFECTIVE_BALANCE_INCREMENT
+    assert spec.get_activation_churn_limit(state) == expected_activation_exit
+    assert spec.get_exit_churn_limit(state) == expected_activation_exit
+
+    raw_consolidation = target_total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    expected_consolidation = (
+        raw_consolidation * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+    )
+    expected_consolidation -= expected_consolidation % spec.EFFECTIVE_BALANCE_INCREMENT
+    assert spec.get_consolidation_churn_limit(state) == expected_consolidation
+
+    rounded_first = raw_activation_exit - raw_activation_exit % spec.EFFECTIVE_BALANCE_INCREMENT
+    rounded_first = (
+        rounded_first * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+    )
+    rounded_first -= rounded_first % spec.EFFECTIVE_BALANCE_INCREMENT
+    assert expected_activation_exit != rounded_first
 
 
 @with_phases([EIP8198])
@@ -322,7 +375,7 @@ def test_eip8198_config_invariants(spec):
     assert spec.config.SLOT_DURATION_MS_EIP8198 > 0
     assert spec.config.SLOT_DURATION_MS % 1000 == 0
     assert spec.config.SLOT_DURATION_MS_EIP8198 % 1000 == 0
-    assert 3 * spec.config.SLOT_DURATION_MS_EIP8198 == 2 * spec.config.SLOT_DURATION_MS
+    assert 6 * spec.config.SLOT_DURATION_MS_EIP8198 == 5 * spec.config.SLOT_DURATION_MS
     assert spec.config.EIP8198_FORK_EPOCH == spec.FAR_FUTURE_EPOCH or (
         spec.config.EIP8198_FORK_EPOCH > spec.config.HEZE_FORK_EPOCH
     )
@@ -349,7 +402,7 @@ def test_blob_schedule_and_retention_parameters(spec, state):
     )
 
     pre_blob = spec.config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
-    post_blob = spec.config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198
+    post_blob = pre_blob * spec.config.SLOT_DURATION_MS // spec.config.SLOT_DURATION_MS_EIP8198
     blob_ramp_start = spec.Epoch(fork_epoch - (post_blob - pre_blob))
     assert spec.get_min_epochs_for_blob_sidecars_requests(blob_ramp_start - 1) == pre_blob
     assert spec.get_min_epochs_for_blob_sidecars_requests(blob_ramp_start) == pre_blob
@@ -360,7 +413,7 @@ def test_blob_schedule_and_retention_parameters(spec, state):
     assert spec.get_min_epochs_for_blob_sidecars_requests(spec.Epoch(fork_epoch)) == post_blob
 
     pre_column = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    post_column = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198
+    post_column = pre_column * spec.config.SLOT_DURATION_MS // spec.config.SLOT_DURATION_MS_EIP8198
     column_ramp_start = spec.Epoch(fork_epoch - (post_column - pre_column))
     assert spec.get_min_epochs_for_data_column_sidecars_requests(column_ramp_start - 1) == (
         pre_column
@@ -378,7 +431,16 @@ def test_blob_schedule_and_retention_parameters(spec, state):
 
     pre_retention_ms = pre_blob * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
     post_retention_ms = post_blob * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS_EIP8198
-    assert post_retention_ms == pre_retention_ms
+    assert post_blob == (
+        pre_blob * spec.config.SLOT_DURATION_MS // spec.config.SLOT_DURATION_MS_EIP8198
+    )
+    assert post_column == (
+        pre_column * spec.config.SLOT_DURATION_MS // spec.config.SLOT_DURATION_MS_EIP8198
+    )
+    assert post_retention_ms <= pre_retention_ms
+    assert pre_retention_ms - post_retention_ms < (
+        spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS_EIP8198
+    )
 
 
 @with_phases([EIP8198])

@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Modifications in EIP-8198](#modifications-in-eip-8198)
-  - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [New `compute_seen_ttl`](#new-compute_seen_ttl)
@@ -30,13 +29,6 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in EIP-8198
-
-### Configuration
-
-| Name                                                   | Value          | Description                                                       |
-| ------------------------------------------------------ | -------------- | ----------------------------------------------------------------- |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198`        | `Uint64(6144)` | Steady-state minimum epoch range for serving blob sidecars        |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198` | `Uint64(6144)` | Steady-state minimum epoch range for serving data-column sidecars |
 
 ### Helpers
 
@@ -86,9 +78,10 @@ def compute_seen_ttl(current_slot: Slot) -> Uint64:
 def get_min_epochs_for_blob_sidecars_requests(epoch: Epoch) -> Uint64:
     if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
         return MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
-    additional_epochs = (
-        MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198 - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
+    post_fork_min_epochs = (
+        MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198
     )
+    additional_epochs = post_fork_min_epochs - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
     transition_start = (
         EIP8198_FORK_EPOCH - additional_epochs
         if additional_epochs <= EIP8198_FORK_EPOCH
@@ -98,7 +91,7 @@ def get_min_epochs_for_blob_sidecars_requests(epoch: Epoch) -> Uint64:
         return MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
     if epoch < EIP8198_FORK_EPOCH:
         return Uint64(MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS + epoch - transition_start)
-    return MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198
+    return Uint64(post_fork_min_epochs)
 ```
 
 #### New `get_min_epochs_for_data_column_sidecars_requests`
@@ -107,10 +100,10 @@ def get_min_epochs_for_blob_sidecars_requests(epoch: Epoch) -> Uint64:
 def get_min_epochs_for_data_column_sidecars_requests(epoch: Epoch) -> Uint64:
     if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
         return MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    additional_epochs = (
-        MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198
-        - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
+    post_fork_min_epochs = (
+        MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198
     )
+    additional_epochs = post_fork_min_epochs - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
     transition_start = (
         EIP8198_FORK_EPOCH - additional_epochs
         if additional_epochs <= EIP8198_FORK_EPOCH
@@ -120,7 +113,7 @@ def get_min_epochs_for_data_column_sidecars_requests(epoch: Epoch) -> Uint64:
         return MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
     if epoch < EIP8198_FORK_EPOCH:
         return Uint64(MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS + epoch - transition_start)
-    return MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198
+    return Uint64(post_fork_min_epochs)
 ```
 
 #### New `is_gas_limit_target_compatible_eip8198`
@@ -151,7 +144,7 @@ interpreted under the shorter slot:
 
 - `ATTESTATION_PROPAGATION_SLOT_RANGE` remains `32` slots. It is kept
   slot-denominated because it is aligned with the consensus structure (one epoch
-  plus margin); its wall-clock duration therefore shrinks from 384 to 256
+  plus margin); its wall-clock duration therefore shrinks from 384 to 320
   seconds on mainnet. This is a deliberate choice, not an omission.
 - `MAXIMUM_GOSSIP_CLOCK_DISPARITY` and the Req/Resp timeouts (`TTFB_TIMEOUT`,
   `RESP_TIMEOUT`) are absolute wall-clock allowances and MUST NOT be rescaled.
@@ -262,13 +255,13 @@ and pruning guidance MUST use
 `get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
 `get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively.
 
-The `6144`-epoch values preserve the old wall-clock retention duration only
-after the entire window is post-fork. A window crossing the fork is longer
-because it contains 12-second epochs. To avoid an availability gap at
-activation, a node configured for EIP-8198 MUST begin increasing its retained
-history one epoch at a time at `EIP8198_FORK_EPOCH - (6144 - 4096)` (or at
-genesis if that expression would be negative), as encoded by the selectors
-above. A deployment announced with less than `2048` epochs of lead time MUST
+The `4915`-epoch values (`4096 * 12 // 10`) approximate the old wall-clock
+retention duration once the entire window is post-fork. A window crossing the
+fork is longer because it contains 12-second epochs. To avoid an availability
+gap at activation, a node configured for EIP-8198 MUST begin increasing its
+retained history one epoch at a time at `EIP8198_FORK_EPOCH - (4915 - 4096)` (or
+at genesis if that expression would be negative), as encoded by the selectors
+above. A deployment announced with less than `819` epochs of lead time MUST
 backfill the missing pre-fork sidecars before activation. This temporary
-over-retention converges to the steady-state wall-clock window after `6144`
+over-retention converges to the steady-state wall-clock window after `4915`
 post-fork epochs.

@@ -61,14 +61,14 @@ automatically from the clock infrastructure.
 
 | Component                   | Basis points | Post-fork deadline |
 | --------------------------- | -----------: | -----------------: |
-| Proposer reorg cutoff       |         1667 |           1,333 ms |
-| Attestation                 |         2500 |           2,000 ms |
-| Sync committee message      |         2500 |           2,000 ms |
-| Aggregate                   |         5000 |           4,000 ms |
-| Sync committee contribution |         5000 |           4,000 ms |
-| Execution payload           |         5000 |           4,000 ms |
-| Inclusion list              |         6667 |           5,333 ms |
-| Payload attestation         |         7500 |           6,000 ms |
+| Proposer reorg cutoff       |         1667 |           1,667 ms |
+| Attestation                 |         2500 |           2,500 ms |
+| Sync committee message      |         2500 |           2,500 ms |
+| Aggregate                   |         5000 |           5,000 ms |
+| Sync committee contribution |         5000 |           5,000 ms |
+| Execution payload           |         5000 |           5,000 ms |
+| Inclusion list              |         6667 |           6,667 ms |
+| Payload attestation         |         7500 |           7,500 ms |
 
 ## Helpers
 

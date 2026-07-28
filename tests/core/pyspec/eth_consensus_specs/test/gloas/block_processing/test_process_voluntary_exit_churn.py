@@ -104,11 +104,9 @@ def test_exit_churn__greater_than_activation_cap(spec, state):
     assert exit_churn > activation_churn
     assert activation_churn == get_activation_churn_cap(spec)
     total = spec.get_total_active_balance(state)
+    expected = total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
     if is_post_eip8198(spec):
-        quotient = spec.config.CHURN_LIMIT_QUOTIENT_EIP8198
-    else:
-        quotient = spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
-    expected = total // quotient
+        expected = expected * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert exit_churn == expected
     yield from run_exit_at_churn_boundary(spec, state)
