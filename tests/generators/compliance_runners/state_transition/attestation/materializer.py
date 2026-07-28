@@ -101,6 +101,8 @@ class AttestationMaterializer:
             data.target.epoch = spec.Epoch(current - 1 if target_current else current)
         if not _b(sol, "inclusion_delay_ok"):
             data.slot = pre.slot
+            if _b(sol, "target_epoch_matches_slot"):
+                data.target.epoch = spec.compute_epoch_at_slot(pre.slot)
         if not _b(sol, "index_valid"):
             data.index = spec.CommitteeIndex(2)
         if not _b(sol, "committee_indices_valid"):
