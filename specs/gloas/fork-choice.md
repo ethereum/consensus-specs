@@ -75,16 +75,16 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Constants
 
-| Name                                 | Value                   |
-| ------------------------------------ | ----------------------- |
-| `PAYLOAD_TIMELY_THRESHOLD`           | `PTC_SIZE // 2` (= 256) |
-| `DATA_AVAILABILITY_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`      |
-| `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`      |
-| `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`      |
-| `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
-| `PTC_TIMELINESS_INDEX`               | `1`                     |
-| `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+| Name                                 | Value                           |
+| ------------------------------------ | ------------------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`           | `Uint64(PTC_SIZE // 2)` (= 256) |
+| `DATA_AVAILABILITY_TIMELY_THRESHOLD` | `Uint64(PTC_SIZE // 2)` (= 256) |
+| `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`              |
+| `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`              |
+| `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`              |
+| `ATTESTATION_TIMELINESS_INDEX`       | `Uint64(0)`                     |
+| `PTC_TIMELINESS_INDEX`               | `Uint64(1)`                     |
+| `NUM_BLOCK_TIMELINESS_DEADLINES`     | `Uint64(2)`                     |
 
 ## Protocols
 
