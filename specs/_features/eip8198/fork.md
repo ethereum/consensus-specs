@@ -20,11 +20,13 @@ to preserve their wall-clock behavior. It builds on top of Heze: the slot
 structure is unchanged and all intra-slot deadlines, expressed in basis points
 of `SLOT_DURATION_MS`, scale automatically with the shorter slot.
 
-*Note*: Honest validator and p2p interface documents are not yet provided. Both
-inherit genesis-anchored slot/time arithmetic (e.g. subnet subscription timing,
-attestation propagation windows, the millisecond variant of
-`compute_time_at_slot` in the p2p document) that needs the same piecewise
-remapping applied to the fork choice and beacon chain documents here.
+The complete specification comprises, alongside this document, the beacon chain,
+fork choice, honest validator, and p2p interface documents in this directory.
+All wall-clock arithmetic is remapped by the same piecewise rule: slots before
+`EIP8198_FORK_EPOCH` run at `SLOT_DURATION_MS` from genesis, slots after it at
+`SLOT_DURATION_MS_EIP8198` from the fork time (see `compute_time_at_slot` in the
+beacon chain document, `get_slot_from_time` / `get_time_into_slot_ms` in the
+fork choice document, and `compute_time_at_slot_ms` in the p2p document).
 
 ## Configuration
 
