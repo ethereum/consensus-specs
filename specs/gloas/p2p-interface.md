@@ -501,7 +501,7 @@ def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return bid_on_parent
     if bid.parent_block_root != head_node.root:
         return False
-    if should_build_on_full(store, head_node):
+    if should_build_on_full(store, head_node, bid.slot):
         return bid.parent_block_hash == head_bid.block_hash
     else:
         return bid.parent_block_hash == head_bid.parent_block_hash
