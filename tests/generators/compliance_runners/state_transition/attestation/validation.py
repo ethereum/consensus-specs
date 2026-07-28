@@ -1,8 +1,14 @@
-"""Independent validation for Gloas attestation compliance vectors."""
+"""Independent validation for Gloas attestation compliance vectors.
+
+Every serialized coverage dimension is recovered from the vector before the
+handler outcome and post-state are checked.  This deliberately does not import
+the model or materializer.
+"""
 
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -14,85 +20,183 @@ from eth_consensus_specs.gloas import minimal as spec
 _YAML = YAML(typ="safe")
 
 
+@dataclass
+class Check:
+    dimension: str
+    claimed: Any
+    actual: Any
+    status: str
+
+
 def _decode(path: Path, sedes: Any) -> Any:
     return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 
 
-def outcome(pre: Any, attestation: Any) -> str:
-    data, current = attestation.data, spec.get_current_epoch(pre)
-    if data.target.epoch not in (spec.get_previous_epoch(pre), current):
-        return "REJECT_TARGET_EPOCH_OUT_OF_WINDOW"
-    if data.target.epoch != spec.compute_epoch_at_slot(data.slot):
-        return "REJECT_TARGET_EPOCH_SLOT_MISMATCH"
-    if data.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY > pre.slot:
-        return "REJECT_INCLUSION_DELAY"
-    if data.index >= 2:
-        return "REJECT_INDEX"
+def _committee_dimensions(pre: Any, attestation: Any) -> tuple[bool, bool, bool]:
+    """Recover independent committee-index, nonempty, and length predicates."""
     try:
-        indices, count = (
-            spec.get_committee_indices(attestation.committee_bits),
-            spec.get_committee_count_per_slot(pre, data.target.epoch),
-        )
-        if any(index >= count for index in indices):
-            return "REJECT_COMMITTEE_INDEX"
-        offset = 0
-        for index in indices:
-            committee = spec.get_beacon_committee(pre, data.slot, index)
-            if not any(attestation.aggregation_bits[offset + i] for i in range(len(committee))):
-                return "REJECT_COMMITTEE_EMPTY"
-            offset += len(committee)
-        if len(attestation.aggregation_bits) != offset:
-            return "REJECT_AGGREGATION_LENGTH"
-        if not spec.is_valid_indexed_attestation(
-            pre, spec.get_indexed_attestation(pre, attestation)
-        ):
-            return "REJECT_SIGNATURE"
+        indices = spec.get_committee_indices(attestation.committee_bits)
+        count = spec.get_committee_count_per_slot(pre, attestation.data.target.epoch)
     except (AssertionError, IndexError):
-        return "REJECT_SIGNATURE"
-    return "ACCEPT_CURRENT" if data.target.epoch == current else "ACCEPT_PREVIOUS"
+        return False, False, False
+    indices_valid = all(index < count for index in indices)
+    if not indices_valid:
+        return False, False, False
+    offset = 0
+    nonempty = True
+    try:
+        for index in indices:
+            committee = spec.get_beacon_committee(pre, attestation.data.slot, index)
+            end = min(offset + len(committee), len(attestation.aggregation_bits))
+            bits = attestation.aggregation_bits[offset:end]
+            if len(bits) != len(committee) or not any(bits):
+                nonempty = False
+            offset += len(committee)
+        return indices_valid, nonempty, len(attestation.aggregation_bits) == offset
+    except (AssertionError, IndexError):
+        return False, False, False
+
+
+def _signature_valid(pre: Any, attestation: Any) -> bool:
+    try:
+        return bool(
+            spec.is_valid_indexed_attestation(pre, spec.get_indexed_attestation(pre, attestation))
+        )
+    except (AssertionError, IndexError):
+        return False
+
+
+def _is_attestation_same_slot(pre: Any, data: Any) -> bool:
+    try:
+        return bool(spec.is_attestation_same_slot(pre, data))
+    except AssertionError:
+        return False
+
+
+def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) -> bool:
+    if not same_slot:
+        return False
+    try:
+        flag_indices = spec.get_attestation_participation_flag_indices(
+            pre, attestation.data, pre.slot - attestation.data.slot
+        )
+        participation = (
+            pre.current_epoch_participation
+            if attestation.data.target.epoch == spec.get_current_epoch(pre)
+            else pre.previous_epoch_participation
+        )
+        return any(
+            any(not spec.has_flag(participation[index], flag) for flag in flag_indices)
+            for index in spec.get_attesting_indices(pre, attestation)
+        )
+    except (AssertionError, IndexError):
+        return False
+
+
+def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
+    data = attestation.data
+    current = spec.get_current_epoch(pre)
+    target_in_window = data.target.epoch in (spec.get_previous_epoch(pre), current)
+    target_matches_slot = data.target.epoch == spec.compute_epoch_at_slot(data.slot)
+    inclusion_delay_ok = data.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY <= pre.slot
+    committee_indices_valid, committee_nonempty, aggregation_length_valid = _committee_dimensions(
+        pre, attestation
+    )
+    signature_valid = _signature_valid(pre, attestation)
+    target_is_current = data.target.epoch == current
+    same_slot = _is_attestation_same_slot(pre, data)
+    payment_index = (
+        int(spec.SLOTS_PER_EPOCH) + int(data.slot) % int(spec.SLOTS_PER_EPOCH)
+        if target_is_current
+        else int(data.slot) % int(spec.SLOTS_PER_EPOCH)
+    )
+    pending_payment_amount_positive = (
+        pre.builder_pending_payments[payment_index].withdrawal.amount > 0
+    )
+    sets_new_participation_flag = _sets_new_participation_flag(pre, attestation, same_slot)
+
+    if not target_in_window:
+        handler_outcome = "REJECT_TARGET_EPOCH_OUT_OF_WINDOW"
+    elif not target_matches_slot:
+        handler_outcome = "REJECT_TARGET_EPOCH_SLOT_MISMATCH"
+    elif not inclusion_delay_ok:
+        handler_outcome = "REJECT_INCLUSION_DELAY"
+    elif data.index >= 2:
+        handler_outcome = "REJECT_INDEX"
+    elif not committee_indices_valid:
+        handler_outcome = "REJECT_COMMITTEE_INDEX"
+    elif not committee_nonempty:
+        handler_outcome = "REJECT_COMMITTEE_EMPTY"
+    elif not aggregation_length_valid:
+        handler_outcome = "REJECT_AGGREGATION_LENGTH"
+    elif not signature_valid:
+        handler_outcome = "REJECT_SIGNATURE"
+    else:
+        handler_outcome = "ACCEPT_CURRENT" if target_is_current else "ACCEPT_PREVIOUS"
+
+    payment_weight_increased = False
+    if post is not None:
+        payment_weight_increased = (
+            pre.builder_pending_payments[payment_index].weight
+            < post.builder_pending_payments[payment_index].weight
+        )
+    return {
+        "target_epoch_in_window": target_in_window,
+        "target_epoch_matches_slot": target_matches_slot,
+        "inclusion_delay_ok": inclusion_delay_ok,
+        "index_valid": data.index < 2,
+        "committee_indices_valid": committee_indices_valid,
+        "committee_nonempty": committee_nonempty,
+        "aggregation_length_valid": aggregation_length_valid,
+        "signature_valid": signature_valid,
+        "target_is_current": target_is_current,
+        "attestation_is_same_slot": same_slot,
+        "pending_payment_amount_positive": pending_payment_amount_positive,
+        "sets_new_participation_flag": sets_new_participation_flag,
+        "payment_weight_increased": payment_weight_increased,
+        "outcome": handler_outcome,
+    }
+
+
+def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    attestation = _decode(case_dir / "attestation.ssz_snappy", spec.Attestation)
+    claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
+    post_path = case_dir / "post.ssz_snappy"
+    post = _decode(post_path, spec.BeaconState) if post_path.exists() else None
+    actual = recover(pre, attestation, post)
+    checks = [
+        Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
+        for name, value in claimed.items()
+    ]
+    errors: list[str] = []
+    if actual["outcome"].startswith("REJECT_"):
+        if post is not None:
+            errors.append("rejected operation has a post state")
+    elif post is None:
+        errors.append("accepted operation is missing post state")
+    else:
+        oracle = pre.copy()
+        spec.process_attestation(oracle, attestation)
+        if oracle.hash_tree_root() != post.hash_tree_root():
+            errors.append("post does not match spec re-execution")
+    return checks, errors
 
 
 def main() -> int:
     root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    cases, failures = sorted(root.glob("**/operations/attestation/**/case_*")), 0
+    cases = sorted(root.glob("**/operations/attestation/**/case_*"))
     if not cases:
         print(f"No cases found under {root}")
         return 1
+    failures = 0
     for case in cases:
-        pre = _decode(case / "pre.ssz_snappy", spec.BeaconState)
-        attestation = _decode(case / "attestation.ssz_snappy", spec.Attestation)
-        claimed = _YAML.load((case / "dimensions.yaml").read_text())["claimed"]
-        actual = outcome(pre, attestation)
-        errors = []
-        post_path = case / "post.ssz_snappy"
-        if actual.startswith("REJECT_"):
-            if post_path.exists():
-                errors.append("rejected operation has a post state")
-        elif not post_path.exists():
-            errors.append("accepted operation is missing post state")
-        else:
-            oracle, post = pre.copy(), _decode(post_path, spec.BeaconState)
-            spec.process_attestation(oracle, attestation)
-            if oracle.hash_tree_root() != post.hash_tree_root():
-                errors.append("post does not match spec re-execution")
-            data = attestation.data
-            payment_index = (
-                int(spec.SLOTS_PER_EPOCH) + int(data.slot) % int(spec.SLOTS_PER_EPOCH)
-                if data.target.epoch == spec.get_current_epoch(pre)
-                else int(data.slot) % int(spec.SLOTS_PER_EPOCH)
-            )
-            increased = (
-                pre.builder_pending_payments[payment_index].weight
-                < post.builder_pending_payments[payment_index].weight
-            )
-            if increased != claimed["payment_weight_increased"]:
-                errors.append(
-                    f"payment_weight_increased: claimed={claimed['payment_weight_increased']} actual={increased}"
-                )
-        if actual != claimed["outcome"]:
-            errors.append(f"outcome: claimed={claimed['outcome']} actual={actual}")
-        failures += len(errors)
-        print(f"{case.name}: {'OK' if not errors else 'FAIL'}")
+        checks, errors = validate_case(case)
+        mismatches = [check for check in checks if check.status == "mismatch"]
+        failures += len(mismatches) + len(errors)
+        print(f"{case.name}: {'OK' if not mismatches and not errors else 'FAIL'}")
+        for check in mismatches:
+            print(f"    {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
         for error in errors:
             print(f"    {error}")
     print(f"{'PASSED' if not failures else 'FAILED'}: {len(cases)} cases")
