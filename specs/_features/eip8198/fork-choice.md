@@ -30,11 +30,10 @@ fork choice:
   before the fork running at the old duration and slots after it at the new one
   (`get_slot_from_time`, `get_time_at_slot_end`), and
 - the time elapsed *within* the current slot can no longer be computed as time
-  since genesis modulo `SLOT_DURATION_MS`, because post-fork slot boundaries
-  are not aligned to genesis at the old duration. Every timeliness check
+  since genesis modulo `SLOT_DURATION_MS`, because post-fork slot boundaries are
+  not aligned to genesis at the old duration. Every timeliness check
   (attestation deadline, proposer reorg cutoff, payload timeliness, inclusion
-  list deadline) is therefore rebased on the new `get_time_into_slot_ms`
-  helper.
+  list deadline) is therefore rebased on the new `get_time_into_slot_ms` helper.
 
 ## Helpers
 
@@ -133,8 +132,8 @@ def get_time_at_slot_end(store: Store, slot: Slot) -> Uint64:
 *Note*: Before the fork, slot starts are aligned to
 `genesis_time + n * SLOT_DURATION_MS`, so the time into the current slot is
 simply the time since genesis modulo `SLOT_DURATION_MS`. After the fork, slot
-starts are aligned to `fork_time + n * SLOT_DURATION_MS_EIP8198` instead, so
-the modulo must be taken relative to the fork time and the new duration.
+starts are aligned to `fork_time + n * SLOT_DURATION_MS_EIP8198` instead, so the
+modulo must be taken relative to the fork time and the new duration.
 
 ```python
 def get_time_into_slot_ms(store: Store) -> Uint64:

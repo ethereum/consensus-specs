@@ -32,7 +32,7 @@ def _fork_params(spec, genesis_time):
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_get_slot_from_time_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    fork_slot, pre_ms, post_ms, fork_time = _fork_params(spec, store.genesis_time)
+    fork_slot, _, post_ms, fork_time = _fork_params(spec, store.genesis_time)
 
     # Pre-fork times map at the old duration
     assert spec.get_slot_from_time(store, store.genesis_time) == 0
@@ -49,7 +49,7 @@ def test_get_slot_from_time_across_fork(spec, state):
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_get_time_at_slot_end_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    fork_slot, pre_ms, post_ms, fork_time = _fork_params(spec, store.genesis_time)
+    fork_slot, _, post_ms, fork_time = _fork_params(spec, store.genesis_time)
 
     # The last pre-fork slot ends exactly at the fork time
     assert spec.get_time_at_slot_end(store, spec.Slot(fork_slot - 1)) == fork_time
@@ -65,7 +65,7 @@ def test_get_time_at_slot_end_across_fork(spec, state):
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_get_time_into_slot_ms_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    fork_slot, pre_ms, post_ms, fork_time = _fork_params(spec, store.genesis_time)
+    _, pre_ms, post_ms, fork_time = _fork_params(spec, store.genesis_time)
 
     # Zero at every slot start, before and after the fork
     for s in range(3 * spec.SLOTS_PER_EPOCH):
@@ -112,7 +112,7 @@ def test_compute_time_at_slot_across_fork(spec, state):
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_get_forkchoice_store_post_fork_anchor(spec, state):
-    fork_slot, pre_ms, post_ms, fork_time = _fork_params(spec, state.genesis_time)
+    fork_slot, _, post_ms, fork_time = _fork_params(spec, state.genesis_time)
 
     # Advance the anchor state past the fork epoch
     for _ in range(FORK_EPOCH + 1):
@@ -132,7 +132,7 @@ def test_get_forkchoice_store_post_fork_anchor(spec, state):
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_on_tick_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    fork_slot, pre_ms, post_ms, fork_time = _fork_params(spec, store.genesis_time)
+    fork_slot, _, post_ms, fork_time = _fork_params(spec, store.genesis_time)
 
     # Tick from genesis to a few slots past the fork in one call; the catch-up
     # loop must process every slot boundary at its correct wall-clock time

@@ -20,6 +20,12 @@ to preserve their wall-clock behavior. It builds on top of Heze: the slot
 structure is unchanged and all intra-slot deadlines, expressed in basis points
 of `SLOT_DURATION_MS`, scale automatically with the shorter slot.
 
+*Note*: Honest validator and p2p interface documents are not yet provided. Both
+inherit genesis-anchored slot/time arithmetic (e.g. subnet subscription timing,
+attestation propagation windows, the millisecond variant of
+`compute_time_at_slot` in the p2p document) that needs the same piecewise
+remapping applied to the fork choice and beacon chain documents here.
+
 ## Configuration
 
 Warning: this configuration is not definitive.

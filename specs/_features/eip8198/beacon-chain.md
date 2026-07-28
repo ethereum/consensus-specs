@@ -58,14 +58,14 @@ The rescaling directions are:
 
 ### Modified `compute_time_at_slot`
 
-*Note*: Slots after `EIP8198_FORK_EPOCH` start at
-`SLOT_DURATION_MS_EIP8198` intervals from the fork time, not at
-`SLOT_DURATION_MS` intervals from genesis. Without this override, the
-execution payload timestamp — validated in `process_execution_payload`
-against `compute_time_at_slot` — would drift ahead of wall-clock time by
-`(SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198)` per slot, without bound. The
-inherited `process_execution_payload` and validator block preparation are
-correct as-is once this function accounts for the duration change.
+*Note*: Slots after `EIP8198_FORK_EPOCH` start at `SLOT_DURATION_MS_EIP8198`
+intervals from the fork time, not at `SLOT_DURATION_MS` intervals from genesis.
+Without this override, the execution payload timestamp — validated in
+`process_execution_payload` against `compute_time_at_slot` — would drift ahead
+of wall-clock time by `(SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198)` per slot,
+without bound. The inherited `process_execution_payload` and validator block
+preparation are correct as-is once this function accounts for the duration
+change.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
@@ -84,10 +84,10 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
 
 *Note*: The base reward per increment is scaled by
 `SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`. The base reward factor is left
-unchanged and the ratio is applied before the final division, so the effective
-factor is exactly
-`BASE_REWARD_FACTOR * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS` with no
-intermediate rounding.
+unchanged and the integer division is deferred until after the multiplication by
+`EFFECTIVE_BALANCE_INCREMENT`, which preserves the fractional effective factor
+(`64 * 10000 / 12000 = 53.33...` on mainnet) instead of rounding it to a
+pre-computed integer constant (`53`, a ~0.6% issuance error).
 
 ```python
 def get_base_reward_per_increment(state: BeaconState) -> Gwei:
@@ -204,17 +204,21 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 
 ## Data availability
 
-*Note*: EIP-8198 uses the blob schedule mechanism (EIP-7892) to keep blob
-throughput per unit time constant: a `BLOB_SCHEDULE` entry for
-`EIP8198_FORK_EPOCH` sets `MAX_BLOBS_PER_BLOCK` to the current maximum scaled by
-`5 / 6` (`21 * 10 // 12 = 17` on mainnet). Because the blob count must be an
-integer, this scaling is inherently approximate.
+*Note*: EIP-8198 will use the blob schedule mechanism (EIP-7892) to keep blob
+throughput per unit time constant: when `EIP8198_FORK_EPOCH` is scheduled, a
+`BLOB_SCHEDULE` entry for that epoch must set `MAX_BLOBS_PER_BLOCK` to the
+then-current maximum scaled by `5 / 6` (e.g. `21 * 10 // 12 = 17` at today's
+mainnet maximum). Because the blob count must be an integer, this scaling is
+inherently approximate. No `BLOB_SCHEDULE` entry exists yet; it is added
+together with the fork epoch.
 
-*Note*: The blob and data-column sidecar retention windows
+*Note*: Likewise, the blob and data-column sidecar retention windows
 (`MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` and
-`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`) are scaled by `6 / 5` to `4915`
-epochs each (`4096 * 12 // 10`), preserving the ~18-day wall-clock retention
-period.
+`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`) must be scaled by `6 / 5` —
+`4096 * 12 // 10 = 4915` epochs each at today's values — to preserve the ~18-day
+wall-clock retention period. The configuration files in this repository still
+carry the pre-fork values; the override is scheduled together with the fork
+epoch.
 
 *Note*: At fork activation the execution layer sets the first block's gas limit
 to `parent_gas_limit * 10000 // 12000`, preserving the per-second gas throughput
