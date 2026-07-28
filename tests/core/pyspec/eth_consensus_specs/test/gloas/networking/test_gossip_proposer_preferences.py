@@ -703,9 +703,9 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_start(spec, state):
     """
     Preferences whose dependent_root points to a block at the proposal slot's
-    proposer lookahead epoch are rejected, not crashed. Such a
-    dependent_root cannot be the proposer-lookahead dependent block, and
-    advancing its post-state would otherwise trip process_slots.
+    proposer lookahead epoch are rejected. Such a dependent_root cannot be the
+    proposer-lookahead dependent block, since the lookahead for the proposal
+    epoch is computed at the start of the lookahead epoch.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
