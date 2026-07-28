@@ -12,10 +12,24 @@ include "../../aspects/builder_lifecycle.mzn";        % shared with execution_pa
 include "../../aspects/builder_pending_balance.mzn";  % shared with execution_payload_bid
 include "../../aspects/source_authorization.mzn";
 
-% ---- Bind shared-aspect applicability to membership -------------------------
-constraint builder_lifecycle_applicable    <-> builder_pubkey_found;
-constraint builder_pending_applicable       <-> builder_pubkey_found;
-constraint source_authorization_applicable  <-> builder_pubkey_found;
+% ---- Builder instance (parameterized aspects applied to one builder) --------
+var CMP_NA:   builder_deposit_to_finalized_epoch;
+var BOOLV_NA: builder_withdrawable_epoch_set;
+constraint builder_lifecycle_ok(builder_deposit_to_finalized_epoch,
+                                builder_withdrawable_epoch_set, builder_pubkey_found);
+var bool: builder_active;
+constraint builder_active <->
+    builder_is_active(builder_deposit_to_finalized_epoch, builder_withdrawable_epoch_set);
+
+var BOOLV_NA: builder_has_pending_withdrawal;
+var BOOLV_NA: builder_has_pending_payment;
+constraint builder_pending_ok(builder_has_pending_withdrawal, builder_has_pending_payment,
+                              builder_pubkey_found);
+var bool: builder_has_pending_balance;
+constraint builder_has_pending_balance <->
+    builder_has_pending(builder_has_pending_withdrawal, builder_has_pending_payment);
+
+constraint source_authorization_applicable <-> builder_pubkey_found;
 
 % Well-formedness: a builder holds pending balance only while active.
 constraint builder_has_pending_balance -> builder_active;

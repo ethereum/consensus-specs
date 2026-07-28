@@ -1,31 +1,21 @@
-% Realization aspect: builder funds / coverage (can_builder_cover_bid).
+% Realization aspect: builder funds / coverage (parameterized).
 %
-% Spec (specs/gloas/beacon-chain.md can_builder_cover_bid :737):
+% can_builder_cover_bid (specs/gloas/beacon-chain.md can_builder_cover_bid):
 %   min_balance = MIN_DEPOSIT_AMOUNT + get_pending_balance_to_withdraw_for_builder(...)
-%   if builder.balance < min_balance: return False            # the guard boundary
-%   return builder.balance - min_balance >= bid.value          # the coverage boundary
-%
-% Two comparison dimensions preserve BOTH boundaries (guard and coverage), and
-% min_balance includes the pending offset (builder_pending_balance aspect) — the
-% materializer must realize min_balance including that term.
+%   if builder.balance < min_balance: return False        # guard boundary
+%   return builder.balance - min_balance >= bid.value      # coverage boundary
+% Two comparison dimensions preserve both boundaries; the predicate carries the
+% nested applicability and the balance==min coherence, and a function derives
+% can_cover. min_balance must be realized including the pending offset.
 
 include "base.mzn";
 
-var bool: builder_funds_applicable;
+predicate builder_funds_ok(var Dim: balance_to_min, var Dim: available_to_bid, var bool: applicable) =
+    (balance_to_min == NA <-> not applicable)
+    /\ (available_to_bid == NA <-> not (applicable /\ balance_to_min in {EQ, GT}))
+    % balance == min_balance means zero available, which cannot exceed a
+    % non-negative bid value, so the available/bid comparison is never GT there.
+    /\ (balance_to_min == EQ -> available_to_bid in {LT, EQ});
 
-% compare(builder.balance, min_balance): LT fails the guard.
-var CMP_NA: builder_balance_to_min_balance;
-% compare(builder.balance - min_balance, bid.value): only meaningful past the guard.
-var CMP_NA: builder_available_to_bid;
-
-constraint (builder_balance_to_min_balance == NA) <-> not builder_funds_applicable;
-constraint (builder_available_to_bid == NA) <->
-    not (builder_funds_applicable /\ builder_balance_to_min_balance in {EQ, GT});
-
-var bool: builder_can_cover_bid;
-constraint builder_can_cover_bid <->
-    (builder_balance_to_min_balance in {EQ, GT} /\ builder_available_to_bid in {EQ, GT});
-
-% Coherence: balance == min_balance means zero available, which cannot exceed a
-% non-negative bid value, so the available/bid comparison is never GT there.
-constraint (builder_balance_to_min_balance == EQ) -> (builder_available_to_bid in {LT, EQ});
+function var bool: builder_can_cover(var Dim: balance_to_min, var Dim: available_to_bid) =
+    balance_to_min in {EQ, GT} /\ available_to_bid in {EQ, GT};

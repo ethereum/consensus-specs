@@ -12,10 +12,12 @@ include "../../aspects/signed_message.mzn";        % shared with execution_paylo
 include "../../aspects/deposit_amount.mzn";
 include "../../aspects/builder_reset.mzn";
 
-% ---- Applicability bindings --------------------------------------------------
+% ---- Signature instance (parameterized signed_message aspect) ---------------
 % The deposit signature is a pure function of the request, so it is recoverable
 % (applicable) regardless of path — reached only on the new-builder path.
-constraint builder_signature_applicable <-> true;
+var BOOLV_NA: builder_signature_valid;
+constraint signed_message_ok(builder_signature_valid, true);
+
 % The reset-condition dimensions are recoverable when a builder is resolved.
 constraint builder_reset_applicable <-> builder_pubkey_found;
 
