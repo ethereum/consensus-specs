@@ -963,7 +963,7 @@ fork.
 def validate_proposer_preferences_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
+    state: BeaconState,  # noqa: ARG001
     signed_proposer_preferences: SignedProposerPreferences,
     current_time_ms: Uint64,
 ) -> None:
@@ -974,7 +974,10 @@ def validate_proposer_preferences_gossip(
     preferences = signed_proposer_preferences.message
 
     # [IGNORE] The proposal slot's epoch is at or after the current epoch
-    current_epoch = get_current_epoch(state)
+    adjusted_current_time_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    time_since_genesis_ms = adjusted_current_time_ms - store.genesis_time * 1000
+    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    current_epoch = compute_epoch_at_slot(current_slot)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
     if proposal_epoch < current_epoch:
         raise GossipIgnore("proposal slot is before the current epoch")
@@ -984,7 +987,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot is past the proposer lookahead")
 
     # [IGNORE] The proposal slot has not already passed
-    if is_not_from_future_slot(state, preferences.proposal_slot, current_time_ms):
+    if preferences.proposal_slot <= current_slot:
         raise GossipIgnore("proposal slot has already passed")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1021,8 +1024,8 @@ def validate_proposer_preferences_gossip(
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid with respect to the validator's public key
-    validator = state.validators[preferences.validator_index]
-    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    validator = lookahead_state.validators[preferences.validator_index]
+    domain = get_domain(lookahead_state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
     signing_root = compute_signing_root(preferences, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")
