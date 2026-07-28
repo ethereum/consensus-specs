@@ -334,7 +334,7 @@ supports processing `LightClientFinalityUpdate` and
 Light clients MAY also collect historic light client data and make it available
 to other peers. If they do, they SHOULD advertise supported message endpoints in
 [the Req/Resp domain](#the-reqresp-domain), and MAY also update the contents of
-their [`Status`](../../phase0/p2p-interface.md#status) message to reflect the
+their [`Status`](../../phase0/p2p-interface.md#status-v1) message to reflect the
 locally available light client data.
 
 If only limited light client data is locally available, the light client SHOULD

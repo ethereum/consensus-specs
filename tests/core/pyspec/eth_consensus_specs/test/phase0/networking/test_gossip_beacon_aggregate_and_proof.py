@@ -481,7 +481,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
         state,
         signed=True,
         beacon_block_root=anchor_root,
-        filter_participant_set=lambda participants: {sorted(participants)[0]},
+        filter_participant_set=lambda participants: {min(participants)},
     )
     signed_agg_1 = create_signed_aggregate_and_proof(spec, state, attestation)
 
@@ -587,7 +587,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
         state,
         signed=True,
         beacon_block_root=anchor_root,
-        filter_participant_set=lambda participants: {sorted(participants)[0]},
+        filter_participant_set=lambda participants: {min(participants)},
     )
     att_2 = get_valid_attestation(
         spec,

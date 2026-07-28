@@ -476,7 +476,7 @@ data being sent on the topic and how the data field of the message is encoded.
   - `epoch` is the context epoch of the message to be sent on the topic
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of
-  bytes that will be transmitted over the wire. See the [Encodings](#Encodings)
+  bytes that will be transmitted over the wire. See the [Encodings](#encodings)
   section for further details.
 
 Clients MUST reject messages with an unknown topic.
@@ -1097,7 +1097,7 @@ With:
   versioned to facilitate backward and forward-compatibility when possible.
 - `Encoding` - while the schema defines the data types in more abstract terms,
   the encoding strategy describes a specific representation of bytes that will
-  be transmitted over the wire. See the [Encodings](#Encoding-strategies)
+  be transmitted over the wire. See the [Encodings](#encoding-strategies)
   section for further details.
 
 This protocol segregation allows libp2p `multistream-select 1.0` /
