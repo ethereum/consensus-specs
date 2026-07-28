@@ -183,17 +183,16 @@ specification.
 
 ### Misc
 
-| Name                          | Value                 |
-| ----------------------------- | --------------------- |
-| `UINT64_MAX`                  | `Uint64(2**64 - 1)`   |
-| `UINT64_MAX_SQRT`             | `Uint64(4294967295)`  |
-| `GENESIS_SLOT`                | `Slot(0)`             |
-| `GENESIS_EPOCH`               | `Epoch(0)`            |
-| `FAR_FUTURE_EPOCH`            | `Epoch(2**64 - 1)`    |
-| `BASE_REWARDS_PER_EPOCH`      | `Uint64(4)`           |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
-| `JUSTIFICATION_BITS_LENGTH`   | `Uint64(4)`           |
-| `ENDIANNESS`                  | `'little'`            |
+| Name                        | Value                |
+| --------------------------- | -------------------- |
+| `UINT64_MAX`                | `Uint64(2**64 - 1)`  |
+| `UINT64_MAX_SQRT`           | `Uint64(4294967295)` |
+| `GENESIS_SLOT`              | `Slot(0)`            |
+| `GENESIS_EPOCH`             | `Epoch(0)`           |
+| `FAR_FUTURE_EPOCH`          | `Epoch(2**64 - 1)`   |
+| `BASE_REWARDS_PER_EPOCH`    | `Uint64(4)`          |
+| `JUSTIFICATION_BITS_LENGTH` | `Uint64(4)`          |
+| `ENDIANNESS`                | `'little'`           |
 
 ### Withdrawal prefixes
 
@@ -226,8 +225,6 @@ consensus-layer specifications **MUST** be zero.
 *Note*: The below configuration is bundled as a preset: a bundle of
 configuration variables which are expected to differ between different modes of
 operation, e.g. testing, but not generally between different networks.
-Additional preset configurations can be found in the [`configs`](../../configs)
-directory.
 
 ### Misc
 
@@ -259,24 +256,24 @@ directory.
 
 ### Time parameters
 
-| Name                               | Value                     | Unit   |
-| ---------------------------------- | ------------------------- | ------ |
-| `MIN_ATTESTATION_INCLUSION_DELAY`  | `Uint64(2**0)` (= 1)      | slots  |
-| `SLOTS_PER_EPOCH`                  | `Uint64(2**5)` (= 32)     | slots  |
-| `MIN_SEED_LOOKAHEAD`               | `Uint64(2**0)` (= 1)      | epochs |
-| `MAX_SEED_LOOKAHEAD`               | `Uint64(2**2)` (= 4)      | epochs |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Uint64(2**2)` (= 4)      | epochs |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `Uint64(2**6)` (= 64)     | epochs |
-| `SLOTS_PER_HISTORICAL_ROOT`        | `Uint64(2**13)` (= 8,192) | slots  |
+| Name                               | Value                   |
+| ---------------------------------- | ----------------------- |
+| `MIN_ATTESTATION_INCLUSION_DELAY`  | `Slot(2**0)` (= 1)      |
+| `SLOTS_PER_EPOCH`                  | `Slot(2**5)` (= 32)     |
+| `MIN_SEED_LOOKAHEAD`               | `Epoch(2**0)` (= 1)     |
+| `MAX_SEED_LOOKAHEAD`               | `Epoch(2**2)` (= 4)     |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Epoch(2**2)` (= 4)     |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `Epoch(2**6)` (= 64)    |
+| `SLOTS_PER_HISTORICAL_ROOT`        | `Slot(2**13)` (= 8,192) |
 
 ### State list lengths
 
-| Name                           | Value                                 | Unit             |
-| ------------------------------ | ------------------------------------- | ---------------- |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `Uint64(2**16)` (= 65,536)            | epochs           |
-| `EPOCHS_PER_SLASHINGS_VECTOR`  | `Uint64(2**13)` (= 8,192)             | epochs           |
-| `HISTORICAL_ROOTS_LIMIT`       | `Uint64(2**24)` (= 16,777,216)        | historical roots |
-| `VALIDATOR_REGISTRY_LIMIT`     | `Uint64(2**40)` (= 1,099,511,627,776) | validators       |
+| Name                           | Value                                 |
+| ------------------------------ | ------------------------------------- |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `Epoch(2**16)` (= 65,536)             |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `Epoch(2**13)` (= 8,192)              |
+| `HISTORICAL_ROOTS_LIMIT`       | `Uint64(2**24)` (= 16,777,216)        |
+| `VALIDATOR_REGISTRY_LIMIT`     | `Uint64(2**40)` (= 1,099,511,627,776) |
 
 ### Rewards and penalties
 
@@ -318,8 +315,8 @@ directory.
 
 *Note*: The default mainnet configuration values are included here for
 illustrative purposes. Defaults for this more dynamic type of configuration are
-available with the presets in the [`configs`](../../configs) directory. Testnets
-and other types of chain instances may use a different configuration.
+available with presets. Testnets and other types of chain instances may use a
+different configuration.
 
 ### Genesis settings
 
@@ -332,13 +329,13 @@ and other types of chain instances may use a different configuration.
 
 ### Time parameters
 
-| Name                                  | Value                     | Unit         |
-| ------------------------------------- | ------------------------- | ------------ |
-| `SLOT_DURATION_MS`                    | `Uint64(12000)`           | milliseconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `Uint64(14)`              | seconds      |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Uint64(2**8)` (= 256)    | epochs       |
-| `SHARD_COMMITTEE_PERIOD`              | `Uint64(2**8)` (= 256)    | epochs       |
-| `ETH1_FOLLOW_DISTANCE`                | `Uint64(2**11)` (= 2,048) | Eth1 blocks  |
+| Name                                  | Value                     |
+| ------------------------------------- | ------------------------- |
+| `SLOT_DURATION_MS`                    | `Uint64(12000)`           |
+| `SECONDS_PER_ETH1_BLOCK`              | `Uint64(14)`              |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**8)` (= 256)     |
+| `SHARD_COMMITTEE_PERIOD`              | `Epoch(2**8)` (= 256)     |
+| `ETH1_FOLLOW_DISTANCE`                | `Uint64(2**11)` (= 2,048) |
 
 ### Validator cycle
 

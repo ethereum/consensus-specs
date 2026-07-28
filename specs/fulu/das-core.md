@@ -55,9 +55,9 @@ specification.
 
 ### Size parameters
 
-| Name                | Value                        | Description                                   |
-| ------------------- | ---------------------------- | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `CELLS_PER_EXT_BLOB` (= 128) | Number of columns in the extended data matrix |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `Uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ## Configuration
 
