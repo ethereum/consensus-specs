@@ -6,9 +6,10 @@ and validating that each vector realizes its model solution. It is general — t
 same structure applies to state-transition, fork-choice, and execution-spec
 tests. The running example is the `process_execution_payload_bid` handler on the
 `gloas` `BeaconState` (the exploratory model in [`old/models/`](old/models)
-illustrates its solution space). The [`builder_exit_request/`](builder_exit_request)
-and [`builder_deposit_request/`](builder_deposit_request) runners are worked
-*smoke-profile* instances of the pipeline.
+illustrates its solution space). It and [`builder_exit_request/`](builder_exit_request)
+are worked aspect-based instances that **share** realization aspects from a
+common [`aspects/`](aspects) directory; earlier single-model *smoke-profile*
+versions are archived under [`old2/`](old2).
 
 Central design principle:
 
@@ -110,6 +111,13 @@ dimension it defines must carry:
 - materialization dimensions or rules sufficient to realize it;
 - an independent procedure for recovering it from a serialized vector.
 
+A dimension that must appear in solutions has to be a genuine solver output, not
+an artifact the flattener can eliminate. In MiniZinc, *declare and constrain* it
+(`var T: d; constraint d <-> …;`) rather than *define* it (`var T: d = …;`):
+defined variables may be inlined away and then be absent from the solution — and
+so from the materialized coverage fingerprint. Derived coverage dimensions
+(outcome, effects, "check reached") in particular must be declared-and-constrained.
+
 ### Handler aspects
 
 A **handler aspect** assembles shared realization aspects, binds their abstract
@@ -121,9 +129,15 @@ signed-message aspect to the bid — plus local dimensions for self-build, KZG
 count, slot, and parent fields. It also states inter-aspect applicability
 (lifecycle and funds apply only to an external bid whose reference resolves).
 
-The same shared aspect bound by several handlers makes overlap explicit:
-improving one domain model or recovery procedure benefits every handler that
-uses it.
+The same shared aspect bound by several handlers makes overlap explicit.
+Realization aspects live in a common directory and are `include`d by each
+handler model; a handler only binds their applicability to its own fields. For
+example, `execution_payload_bid` and `builder_exit_request` include the *same*
+`builder_lifecycle` (`is_active_builder`) and `builder_pending_balance`
+(`get_pending_balance_to_withdraw_for_builder`) aspect files, binding
+applicability to `builder_ref == EXISTING` and to `builder_pubkey_found`
+respectively. Improving one domain model or recovery procedure then benefits
+every handler that uses it.
 
 ### Coverage aspects
 
