@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 
 
 @with_gloas_and_later
@@ -19,6 +20,11 @@ def test_get_consolidation_churn_limit_independent(spec, state):
     total = spec.get_total_active_balance(state)
     expected = total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
+    if is_post_eip8198(spec):
+        # Per-epoch churn is rescaled by the slot-duration ratio, then
+        # re-rounded to EFFECTIVE_BALANCE_INCREMENT.
+        expected = expected * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+        expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert churn == expected
 
 
