@@ -428,7 +428,8 @@ where `store` is the fork choice store, and the alias
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
-  given builder for this slot.
+  given builder for the tuple 
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
   `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
@@ -438,8 +439,8 @@ where `store` is the fork choice store, and the alias
   `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit)`
   is `True` where `parent_gas_limit` is the `gas_limit` of that execution
   payload.
-- _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
-  block in fork choice.
+- _[IGNORE]_The bid mimicks what this node would propose for, i.e.
+   `is_bid_on_current_head(store, bid)` returns `True`. 
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
@@ -467,6 +468,45 @@ def is_gas_limit_target_compatible(
     return gas_limit == min_gas_limit
 ```
 
+```python
+def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
+    """ 
+    Check if ``bid`` has the same parent information as this node would propose.
+    """
+    head_node = get_head(store)
+    head_block = store.blocks[head_node.root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+    parent_payload_status = get_parent_payload_status(store, head_block)
+    parent_node = ForkChoiceNode(root=parent_root, payload_status=parent_payload_status)
+
+    head_late = is_head_late(store, head_node.root)
+    ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
+    finalization_ok = is_finalization_ok(store, slot)
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    single_slot_reorg = head_block.slot + 1 == bid.slot
+    head_weak = is_head_weak(store, head_node.root)
+    parent_strong = is_parent_strong(store, head_node.root)
+    bid_on_parent = bid.parent_block_root == parent_root and 
+        bid.parent_block_hash == head_block.body.signed_execution_payload_bid.message.parent_block_hash
+    if all([
+        head_late,
+        ffg_competitive,
+        finalization_ok,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ]):
+        return bid_on_parent
+    if bid.parent_block_root != head_node.root: 
+        return false
+    if should_build_on_full(store, head_node):
+        return bid.parent_block_hash == head_bock.body.signed_execution_payload_bid.message.block_hash 
+    else:
+        return bid.parent_block_hash == head_bock.body.signed_execution_payload_bid.message.parent_block_hash 
+```
+
+ 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
 from malicious builders submitting numerous bids with minimal value increments.
 Possible strategies include: (1) only forwarding bids that exceed the current
