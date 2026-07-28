@@ -54,27 +54,30 @@ def enumerate_signatures(model_path: Path, dims: list[str], aspects: Aspects,
     return list(reps.values())
 
 
-def _slice(recs: list[dict], outcome_dim: str, outcome_filter: str | None, accept: str) -> list[dict]:
+def _slice(recs: list[dict], outcome_dim: str, outcome_filter: str | None, accept: set) -> list[dict]:
     if outcome_filter == "normal":
-        return [r for r in recs if r[outcome_dim] == accept]
+        return [r for r in recs if r[outcome_dim] in accept]
     if outcome_filter == "exceptional":
-        return [r for r in recs if r[outcome_dim] != accept]
+        return [r for r in recs if r[outcome_dim] not in accept]
     return recs
 
 
 def cover(recs: list[dict], aspects: Aspects, t: int,
           outcome_filter: str | None = None, outcome_dim: str = "outcome",
-          accept: str = "ACCEPT") -> tuple[int, list[dict]]:
+          accept: str | set = "ACCEPT") -> tuple[int, list[dict]]:
     """Greedy t-wise covering set over `aspects` (within an optional outcome slice).
 
-    Returns (number of feasible t-wise obligations, chosen representatives).
+    `accept` is the outcome value (or set of values) that count as "normal";
+    everything else is "exceptional". Returns (number of feasible t-wise
+    obligations, chosen representatives).
     """
+    accept_set = {accept} if isinstance(accept, str) else set(accept)
     names = list(aspects)
     dims_of = [aspects[n] for n in names]
 
     # Candidates deduplicated by their projection onto the chosen aspects.
     reps: dict[tuple, dict] = {}
-    for rec in _slice(recs, outcome_dim, outcome_filter, accept):
+    for rec in _slice(recs, outcome_dim, outcome_filter, accept_set):
         proj = tuple(_state(rec, d) for d in dims_of)
         if proj not in reps or rec["_rank"] < reps[proj]["_rank"]:
             reps[proj] = rec
