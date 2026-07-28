@@ -18,9 +18,11 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_block_file_name,
     get_execution_payload_envelope_file_name,
     get_payload_attestation_message_file_name,
+    get_slot_start_time,
     on_tick_and_append_step,
     output_store_checks,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 from tests.generators.compliance_runners.gen_base.gen_typing import (
     TestCase,
     TestCasePart,
@@ -249,7 +251,12 @@ def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
 
     test_vector = events_to_test_vector(events)
-    mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
+    mutation_time_quantum_ms = spec.config.SLOT_DURATION_MS
+    if is_post_eip8198(spec):
+        mutation_time_quantum_ms = min(
+            mutation_time_quantum_ms, spec.config.SLOT_DURATION_MS_EIP8198
+        )
+    mops = MutationOps(store.time, mutation_time_quantum_ms // 1000)
     mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
     test_data.meta["mut_seed"] = mut_seed
@@ -338,7 +345,10 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                 if record_recovery_messages:
                     for event_kind, event_data, recovery in applied_events:
                         if event_kind == "tick":
-                            test_steps.append({"tick": int(event_data)})
+                            if is_post_eip8198(spec):
+                                test_steps.append({"tick_ms": int(event_data * 1000)})
+                            else:
+                                test_steps.append({"tick": int(event_data)})
                         elif event_kind == "block":
                             assert recovery
                             _block_id = get_block_file_name(event_data)
@@ -446,10 +456,7 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")
-    next_slot_time = (
-        store.genesis_time
-        + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
-    )
+    next_slot_time = get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 1)
     on_tick_and_append_step(spec, store, next_slot_time, test_steps)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 

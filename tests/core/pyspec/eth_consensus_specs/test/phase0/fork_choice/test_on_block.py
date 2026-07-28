@@ -76,6 +76,8 @@ def test_basic(spec, state):
 
     # On receiving a block of next epoch
     store.time = current_time + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000
+    if hasattr(store, "time_ms"):
+        store.time_ms = store.time * 1000
     block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)

@@ -14,19 +14,19 @@
 
 This document describes the process of the EIP-8198 upgrade.
 
-EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds and
+EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 8 seconds and
 rescales the affected issuance, penalty, data-availability and churn parameters
 to preserve their wall-clock behavior. It builds on top of Heze: the slot
 structure is unchanged and all intra-slot deadlines, expressed in basis points
 of `SLOT_DURATION_MS`, scale automatically with the shorter slot.
 
 The complete specification comprises, alongside this document, the beacon chain,
-fork choice, honest validator, and p2p interface documents in this directory.
-All wall-clock arithmetic is remapped by the same piecewise rule: slots before
-`EIP8198_FORK_EPOCH` run at `SLOT_DURATION_MS` from genesis, slots after it at
-`SLOT_DURATION_MS_EIP8198` from the fork time (see `compute_time_at_slot` in the
-beacon chain document, `get_slot_from_time` / `get_time_into_slot_ms` in the
-fork choice document, and `compute_time_at_slot_ms` in the p2p document).
+fork choice, honest validator, honest builder, p2p interface, and optimistic
+sync documents in this directory. All wall-clock arithmetic is remapped by the
+same piecewise rule: slots before `EIP8198_FORK_EPOCH` run at `SLOT_DURATION_MS`
+from genesis, slots after it at `SLOT_DURATION_MS_EIP8198` from the fork time
+(see `compute_slot_start_time_ms` / `compute_slot_at_time_ms` in the beacon
+chain document and `get_time_into_slot_ms` in the fork choice document).
 
 ## Configuration
 
@@ -36,6 +36,9 @@ Warning: this configuration is not definitive.
 | ---------------------- | ------------------------------------- |
 | `EIP8198_FORK_VERSION` | `Version('0xe8198000')`               |
 | `EIP8198_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+
+If EIP-8198 is enabled, `EIP8198_FORK_EPOCH` MUST be greater than
+`HEZE_FORK_EPOCH`. A value of `GENESIS_EPOCH` is invalid.
 
 ## Fork to EIP-8198
 

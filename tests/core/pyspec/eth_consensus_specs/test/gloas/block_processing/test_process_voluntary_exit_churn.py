@@ -9,7 +9,9 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_activation_churn_cap
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
@@ -79,7 +81,7 @@ def test_exit_churn__equal_to_activation_cap(spec, state):
     """Scaled state: exit churn equals the activation cap (activation is capped, exit is not)."""
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+    assert activation_churn == get_activation_churn_cap(spec)
     assert exit_churn >= activation_churn
     yield from run_exit_at_churn_boundary(spec, state)
 
@@ -100,9 +102,13 @@ def test_exit_churn__greater_than_activation_cap(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn > activation_churn
-    assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+    assert activation_churn == get_activation_churn_cap(spec)
     total = spec.get_total_active_balance(state)
-    expected = total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+    if is_post_eip8198(spec):
+        quotient = spec.config.CHURN_LIMIT_QUOTIENT_EIP8198
+    else:
+        quotient = spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+    expected = total // quotient
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert exit_churn == expected
     yield from run_exit_at_churn_boundary(spec, state)

@@ -63,18 +63,17 @@ EIP8321_FORK_EPOCH: 18446744073709551615
 # EIP8198 (experimental). The fork epoch is a config variable (not a compiled
 # constant) because state-transition and fork-choice time functions branch on
 # it, and tests need to override it to exercise the slot-duration change.
+EIP8198_FORK_VERSION: 0xe8198001
 EIP8198_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
 # [customized] 6000 milliseconds
 SLOT_DURATION_MS: 6000
-# [customized] EIP8198: 5000 milliseconds (SLOT_DURATION_MS scaled by 5 / 6)
+# [customized] EIP8198: 4000 milliseconds (SLOT_DURATION_MS scaled by 2 / 3)
 # Intra-slot deadlines are inherited from Heze as basis points of the slot
-# duration and rescale automatically. Issuance/penalty/churn are rescaled by the
-# exact SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS ratio in-formula, so no other
-# per-parameter overrides are needed.
-SLOT_DURATION_MS_EIP8198: 5000
+# duration and rescale automatically.
+SLOT_DURATION_MS_EIP8198: 4000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs
@@ -147,6 +146,16 @@ CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 32
 # [customized] 2**7 * 10**9 (= 128,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 128000000000
 
+# EIP8198 (churn rescaled for shorter slots: quotients * 3 / 2, Gwei limits * 2 / 3)
+# [customized] 2**4 * 3 // 2 (= 24)
+CHURN_LIMIT_QUOTIENT_EIP8198: 24
+# [customized] 2**5 * 3 // 2 (= 48)
+CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198: 48
+# [customized] 64,000,000,000 * 2 // 3 (= 42,666,666,666) Gwei
+MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP8198: 42666666666
+# [customized] 128,000,000,000 * 2 // 3 (= 85,333,333,333) Gwei
+MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198: 85333333333
+
 # Fork choice
 # ---------------------------------------------------------------
 # 40%
@@ -192,6 +201,8 @@ ATTESTATION_SUBNET_EXTRA_BITS: 0
 MAX_REQUEST_BLOCKS_DENEB: 128
 # 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
+# EIP8198: preserve the pre-fork wall-clock retention period
+MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS_EIP8198: 6144
 # 6 subnets
 BLOB_SIDECAR_SUBNET_COUNT: 6
 # 6 blobs
@@ -218,6 +229,8 @@ VALIDATOR_CUSTODY_REQUIREMENT: 8
 BALANCE_PER_ADDITIONAL_CUSTODY_GROUP: 32000000000
 # 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS: 4096
+# EIP8198: preserve the pre-fork wall-clock retention period
+MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS_EIP8198: 6144
 
 # Gloas
 # 2**7 (= 128) payloads

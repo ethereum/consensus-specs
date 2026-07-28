@@ -47,6 +47,8 @@ def make_deltas(rewards, penalties):
 
 
 def get_inactivity_penalty_quotient(spec):
+    if is_post_eip8198(spec):
+        return spec.INACTIVITY_PENALTY_QUOTIENT_EIP8198
     if is_post_bellatrix(spec):
         return spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
     elif is_post_altair(spec):
@@ -58,16 +60,11 @@ def get_inactivity_penalty_quotient(spec):
 def get_expected_inactivity_penalty(spec, state, index):
     """
     Mirror the spec's post-Altair inactivity penalty for ``index``, including
-    the EIP-8198 slot-duration rescaling (applied twice, matching the spec's
-    interleaved multiply-then-divide steps).
+    the EIP-8198 slot-duration rescaling.
     """
     penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
     penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
-    penalty = penalty_numerator // penalty_denominator
-    if is_post_eip8198(spec):
-        penalty = penalty * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
-        penalty = penalty * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
-    return penalty
+    return penalty_numerator // penalty_denominator
 
 
 def has_enough_for_reward(spec, state, index):
@@ -77,8 +74,11 @@ def has_enough_for_reward(spec, state, index):
     At very low balances, it is possible for a validator have a positive effective_balance
     but a zero base reward.
     """
+    base_reward_factor = (
+        spec.BASE_REWARD_FACTOR_EIP8198 if is_post_eip8198(spec) else spec.BASE_REWARD_FACTOR
+    )
     return (
-        state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
+        state.validators[index].effective_balance * base_reward_factor
         > spec.integer_squareroot(spec.get_total_active_balance(state))
         // spec.BASE_REWARDS_PER_EPOCH
     )
@@ -92,9 +92,6 @@ def has_enough_for_leak_penalty(spec, state, index):
     and be in a leak, but have zero leak penalty.
     """
 
-    if is_post_eip8198(spec):
-        # The slot-ratio rescaling can round a small penalty down to zero.
-        return get_expected_inactivity_penalty(spec, state, index) > 0
     if is_post_altair(spec):
         return state.validators[index].effective_balance * state.inactivity_scores[
             index

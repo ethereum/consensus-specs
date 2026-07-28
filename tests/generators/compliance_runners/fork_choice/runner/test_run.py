@@ -8,7 +8,11 @@ from eth_utils import decode_hex
 from ruamel.yaml import YAML
 from snappy import uncompress
 
-from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.context import (
+    expect_assertion_error,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
@@ -26,6 +30,15 @@ def read_yaml(fp):
 
 def read_meta(fp):
     return (read_yaml(fp) or {}) if Path(fp).is_file() else {}
+
+
+def read_config(spec, fp):
+    config = read_yaml(fp)
+    for name, value in config.items():
+        config_type = spec.Configuration.__annotations__[name]
+        if isinstance(value, int) and issubclass(config_type, bytes):
+            config[name] = value.to_bytes(config_type.type_byte_length(), "big")
+    return config
 
 
 def read_ssz_snappy(fp):
@@ -75,16 +88,30 @@ class ComplianceTestInfo(NamedTuple):
 
 def run_test(test_info):
     preset, fork, test_dir = test_info
-    spec = spec_targets[preset][fork]
+    spec = get_copy_of_spec(spec_targets[preset][fork])
+    config_path = test_dir / "config.yaml"
+    if config_path.is_file():
+        spec, _ = spec_with_config_overrides(spec, read_config(spec, config_path))
     meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)
     )
     bls.bls_active = meta.get("bls_setting", 0) == 1
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
-        if "tick" in step:
+        if "tick_ms" in step:
+            time_ms = step["tick_ms"]
+            valid = step.get("valid", True)
+            if valid:
+                spec.on_tick_ms(store, time_ms)
+            else:
+                expect_assertion_error(lambda t=time_ms: spec.on_tick_ms(store, t))
+        elif "tick" in step:
             time = step["tick"]
-            spec.on_tick(store, time)
+            valid = step.get("valid", True)
+            if valid:
+                spec.on_tick(store, time)
+            else:
+                expect_assertion_error(lambda t=time: spec.on_tick(store, t))
         elif "block" in step:
             block_id = step["block"]
             valid = step.get("valid", True)
@@ -153,6 +180,15 @@ def run_test(test_info):
                 if check == "time":
                     expected_time = value
                     assert store.time == expected_time
+                elif check == "time_ms":
+                    expected_time_ms = value
+                    assert store.time_ms == expected_time_ms
+                elif check == "current_slot":
+                    expected_current_slot = value
+                    assert spec.get_current_slot(store) == expected_current_slot
+                elif check == "time_into_slot_ms":
+                    expected_time_into_slot_ms = value
+                    assert spec.get_time_into_slot_ms(store) == expected_time_into_slot_ms
                 elif check == "head":
                     head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]

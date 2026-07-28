@@ -22,6 +22,7 @@ from .helpers.constants import (
     DENEB,
     EIP8025,
     EIP8148,
+    EIP8198,
     EIP8205,
     EIP8321,
     ELECTRA,
@@ -33,7 +34,7 @@ from .helpers.constants import (
     PHASE0,
     POST_FORK_OF,
 )
-from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
+from .helpers.forks import is_post_eip8198, is_post_electra, is_post_fork, is_post_gloas
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
@@ -734,6 +735,7 @@ with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNE
 with_heze_and_later = with_all_phases_from(HEZE, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8198_and_later = with_all_phases_from(EIP8198, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 

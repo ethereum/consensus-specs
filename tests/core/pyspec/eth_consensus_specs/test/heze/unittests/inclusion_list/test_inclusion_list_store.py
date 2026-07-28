@@ -393,13 +393,19 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
 
-        # Advance time to after the inclusion list due
-        inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
-        assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
-
-        time = forkchoice_store.time + inclusion_list_due_ceiling
-        spec.on_tick(forkchoice_store, time)
-        assert forkchoice_store.time == time
+        # Advance time to the inclusion list deadline. EIP-8198 retains
+        # millisecond precision; its strict timeliness check is false exactly
+        # at the deadline.
+        if hasattr(forkchoice_store, "time_ms"):
+            time_ms = forkchoice_store.time_ms + spec.get_inclusion_list_due_ms()
+            spec.on_tick_ms(forkchoice_store, time_ms)
+            assert forkchoice_store.time_ms == time_ms
+        else:
+            inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
+            assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
+            time = forkchoice_store.time + inclusion_list_due_ceiling
+            spec.on_tick(forkchoice_store, time)
+            assert forkchoice_store.time == time
 
         # An IL received after the inclusion list due should be ignored.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)

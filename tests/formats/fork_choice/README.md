@@ -7,10 +7,12 @@ components of the fork choice.
 
 - [Test case format](#test-case-format)
   - [`meta.yaml`](#metayaml)
+  - [`config.yaml`](#configyaml)
   - [`anchor_state.ssz_snappy`](#anchor_statessz_snappy)
   - [`anchor_block.ssz_snappy`](#anchor_blockssz_snappy)
   - [`steps.yaml`](#stepsyaml)
     - [`on_tick` execution step](#on_tick-execution-step)
+    - [`on_tick_ms` execution step](#on_tick_ms-execution-step)
     - [`on_attestation` execution step](#on_attestation-execution-step)
     - [`on_block` execution step](#on_block-execution-step)
     - [`on_merge_block` execution step](#on_merge_block-execution-step)
@@ -35,6 +37,12 @@ components of the fork choice.
 description: string    -- Optional. Description of test case, purely for debugging purposes.
 bls_setting: int       -- see general test-format spec.
 ```
+
+### `config.yaml`
+
+An optional mapping of fork-specific configuration overrides. The runner applies
+these overrides before decoding the anchor state and block and before executing
+any steps.
 
 ### `anchor_state.ssz_snappy`
 
@@ -66,6 +74,23 @@ The parameter that is required for executing `on_tick(store, time)`.
 ```
 
 After this step, the `store` object may have been updated.
+
+#### `on_tick_ms` execution step
+
+The parameter that is required for executing `on_tick_ms(store, time_ms)`. This
+execution step is available for EIP-8198 and later forks.
+
+```yaml
+{
+    tick_ms: int    -- to execute `on_tick_ms(store, time_ms)`.
+    valid: bool     -- optional, default to `true`.
+                       If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+After this step, the `store` object may have been updated. `tick_ms` is the
+authoritative EIP-8198 clock input and can represent sub-second deadline
+boundaries that `tick` cannot.
 
 #### `on_attestation` execution step
 
@@ -241,6 +266,9 @@ head: {
     payload_status: int,      -- Gloas and later, the head's payload_status
 }
 time: int                     -- store.time
+time_ms: int                  -- EIP-8198 and later, authoritative store.time_ms
+current_slot: int             -- EIP-8198 and later, get_current_slot(store)
+time_into_slot_ms: int        -- EIP-8198 and later, get_time_into_slot_ms(store)
 genesis_time: int             -- store.genesis_time
 justified_checkpoint: {
     epoch: int,               -- Integer value from store.justified_checkpoint.epoch

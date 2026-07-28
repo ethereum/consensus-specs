@@ -100,6 +100,7 @@ jobs:
           - heze
           - eip8025
           - eip8148
+          - eip8198
           - eip8205
           - eip8321
     steps:

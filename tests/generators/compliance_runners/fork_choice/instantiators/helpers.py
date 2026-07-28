@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_block_file_name,
     get_execution_payload_envelope_file_name,
     get_payload_attestation_message_file_name,
+    get_slot_start_time,
     on_tick_and_append_step,
     output_store_checks,
     run_on_attestation,
@@ -511,7 +512,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     test_events = []
 
     def slot_to_time(slot):
-        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
+        return get_slot_start_time(spec, genesis_time, slot)
 
     def add_tick_step(time):
         test_events.append(("tick", time, None))

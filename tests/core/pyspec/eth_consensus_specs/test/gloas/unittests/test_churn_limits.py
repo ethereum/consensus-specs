@@ -18,13 +18,12 @@ def test_get_consolidation_churn_limit_independent(spec, state):
     """Consolidation churn uses its own quotient, independent of exit/activation."""
     churn = spec.get_consolidation_churn_limit(state)
     total = spec.get_total_active_balance(state)
-    expected = total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
-    expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     if is_post_eip8198(spec):
-        # Per-epoch churn is rescaled by the slot-duration ratio, then
-        # re-rounded to EFFECTIVE_BALANCE_INCREMENT.
-        expected = expected * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
-        expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
+        quotient = spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT_EIP8198
+    else:
+        quotient = spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    expected = total // quotient
+    expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert churn == expected
 
 
@@ -103,6 +102,9 @@ def test_compute_weak_subjectivity_period_scaled(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn > activation_churn
+    if is_post_eip8198(spec):
+        assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198
+        assert activation_churn % spec.EFFECTIVE_BALANCE_INCREMENT != 0
 
     t = spec.get_total_active_balance(state)
     consolidation_churn = spec.get_consolidation_churn_limit(state)

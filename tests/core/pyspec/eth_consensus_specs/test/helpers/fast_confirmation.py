@@ -23,6 +23,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
     get_basic_store_checks,
     get_genesis_forkchoice_store_and_block,
+    get_slot_start_time,
 )
 from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
@@ -172,7 +173,7 @@ class FCRTest:
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
-        new_time = slot * self.spec.config.SLOT_DURATION_MS // 1000 + self.store.genesis_time
+        new_time = get_slot_start_time(self.spec, self.store.genesis_time, slot)
         self.spec.on_tick(self.store, new_time)
         self.test_steps.append({"tick": int(new_time)})
 

@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Slot timing](#slot-timing)
+  - [Data availability retention](#data-availability-retention)
   - [Inherited behavior](#inherited-behavior)
 
 <!-- mdformat-toc end -->
@@ -30,7 +31,7 @@ inclusion lists, etc. at their respective deadlines). Two rules define how these
 translate to wall-clock time after the fork:
 
 - **Slot start times follow the remapped timeline.** The wall-clock start of
-  `slot` is `compute_time_at_slot(state, slot)` as modified in the EIP-8198
+  `slot` is `compute_time_at_slot_ms(state, slot)` as modified in the EIP-8198
   beacon chain document: slots up to `EIP8198_FORK_EPOCH * SLOTS_PER_EPOCH`
   start at `SLOT_DURATION_MS` intervals from genesis, and later slots at
   `SLOT_DURATION_MS_EIP8198` intervals from the fork time. Validators MUST
@@ -47,6 +48,20 @@ translate to wall-clock time after the fork:
 
 The first post-fork slot begins exactly at the end of the last pre-fork slot
 (the fork time); duties in that slot are already scheduled on the new timeline.
+Implementations MUST keep their scheduler clock at millisecond precision; the
+fork choice's whole-second `on_tick` adapter cannot represent every duty
+boundary.
+
+### Data availability retention
+
+The inherited blob and data-column retention guidance is modified to use
+`get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
+`get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively.
+Nodes MUST retain and serve the applicable sidecars for the fork-aware window
+returned by these helpers. The `6144`-epoch target preserves the pre-fork
+wall-clock retention period in steady state. During the fork transition, nodes
+MUST follow the pre-fork retention ramp and any backfill requirements in the
+EIP-8198 networking document.
 
 ### Inherited behavior
 
@@ -63,3 +78,8 @@ listed because they depend on the slot duration indirectly:
 - **Epoch-denominated durations** (sync committee periods, proposer lookahead,
   subnet subscription periods) are unchanged in epoch terms; their wall-clock
   durations shrink by the slot-duration ratio. No constant is rescaled.
+
+Every slot-derived scheduler and expiry path, including periodic client work
+that is not otherwise consensus-visible, SHOULD use `compute_slot_start_time_ms`
+or `compute_slot_range_duration_ms`. This avoids both a discontinuity at the
+fork and a cumulative genesis-anchoring error after it.

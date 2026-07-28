@@ -8,7 +8,7 @@ per-epoch activation, exit, or validator-count churn should call these helpers
 so they pick the right spec function for the active fork.
 """
 
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198, is_post_gloas
 
 
 def get_activation_churn_limit(spec, state):
@@ -23,6 +23,13 @@ def get_exit_churn_limit(spec, state):
     if is_post_gloas(spec):
         return spec.get_exit_churn_limit(state)
     return spec.get_activation_exit_churn_limit(state)
+
+
+def get_activation_churn_cap(spec):
+    """Maximum per-epoch activation churn, including fork-specific rescaling."""
+    if is_post_eip8198(spec):
+        return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS_EIP8198
+    return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
 
 
 def get_validator_exit_count_per_epoch(spec, state):

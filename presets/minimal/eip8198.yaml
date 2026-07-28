@@ -1,0 +1,8 @@
+# Minimal preset - EIP-8198
+
+# Rewards and penalties
+# ---------------------------------------------------------------
+# 64 * 2 // 3 (= 42)
+BASE_REWARD_FACTOR_EIP8198: 42
+# 9 * 2**22 (= 37,748,736)
+INACTIVITY_PENALTY_QUOTIENT_EIP8198: 37748736

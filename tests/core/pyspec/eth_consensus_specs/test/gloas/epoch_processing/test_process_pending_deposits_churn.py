@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_activation_churn_cap
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
@@ -45,7 +46,7 @@ def run_test_pending_deposits_activation_churn(spec, state):
 def test_activation_churn__less_than_cap(spec, state):
     """Default state: activation churn is below the cap (at the floor)."""
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn <= spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+    assert activation_churn <= get_activation_churn_cap(spec)
     yield from run_test_pending_deposits_activation_churn(spec, state)
 
 
@@ -63,7 +64,7 @@ def test_activation_churn__less_than_cap(spec, state):
 def test_activation_churn__equal_to_cap(spec, state):
     """Scaled state: activation churn exactly equals the cap."""
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+    assert activation_churn == get_activation_churn_cap(spec)
     yield from run_test_pending_deposits_activation_churn(spec, state)
 
 
@@ -82,7 +83,7 @@ def test_activation_churn__greater_than_cap(spec, state):
     """Scaled state: uncapped churn exceeds cap, but activation churn is capped."""
     activation_churn = spec.get_activation_churn_limit(state)
     exit_churn = spec.get_exit_churn_limit(state)
-    assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+    assert activation_churn == get_activation_churn_cap(spec)
     assert exit_churn > activation_churn
     yield from run_test_pending_deposits_activation_churn(spec, state)
 
