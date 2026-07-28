@@ -130,6 +130,57 @@ def test_get_forkchoice_store_post_fork_anchor(spec, state):
 
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
+def test_compute_time_at_slot_ms_across_fork(spec, state):
+    fork_slot, pre_ms, post_ms, _ = _fork_params(spec, state.genesis_time)
+    fork_time_ms = state.genesis_time * 1000 + fork_slot * pre_ms
+
+    for s in range(fork_slot + 1):
+        assert spec.compute_time_at_slot_ms(state, spec.Slot(s)) == (
+            state.genesis_time * 1000 + s * pre_ms
+        )
+    for k in range(1, 3 * spec.SLOTS_PER_EPOCH):
+        assert spec.compute_time_at_slot_ms(state, spec.Slot(fork_slot + k)) == (
+            fork_time_ms + k * post_ms
+        )
+
+    # Consistency with the second-granularity mapping
+    for s in range(3 * spec.SLOTS_PER_EPOCH):
+        assert spec.compute_time_at_slot_ms(state, spec.Slot(s)) == (
+            spec.compute_time_at_slot(state, spec.Slot(s)) * 1000
+        )
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE)
+def test_gossip_slot_gates_across_fork(spec, state):
+    fork_slot, pre_ms, post_ms, _ = _fork_params(spec, state.genesis_time)
+    disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+
+    # Wall-clock "now": one second into the third post-fork slot (strictly
+    # inside the slot, beyond the disparity allowance, so no boundary case is
+    # ambiguous)
+    assert disparity < 1000
+    now_ms = state.genesis_time * 1000 + fork_slot * pre_ms + 3 * post_ms + 1000
+    current_slot = spec.Slot(fork_slot + 3)
+
+    # A message for the current slot is not from the future. With the
+    # genesis-anchored formula the computed slot start would be
+    # 3 * (pre_ms - post_ms) later than the actual one, exceeding the clock
+    # disparity allowance and wrongly rejecting the message.
+    assert 3 * (pre_ms - post_ms) > disparity
+    assert spec.is_not_from_future_slot(state, current_slot, now_ms)
+    # A message one slot ahead is from the future
+    assert not spec.is_not_from_future_slot(state, spec.Slot(current_slot + 1), now_ms)
+
+    # A slot range straddling the fork boundary: [fork_slot - 2, fork_slot + 2]
+    for slot in range(fork_slot - 2, fork_slot + 3):
+        assert spec.is_within_slot_range(state, spec.Slot(slot), spec.Uint64(4), now_ms) == (
+            slot + 4 >= current_slot
+        )
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_on_tick_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
     fork_slot, _, post_ms, fork_time = _fork_params(spec, store.genesis_time)
