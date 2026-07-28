@@ -83,17 +83,23 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
 
     # target role only on the consolidation path
     if same:
-        for n in ("target_found", "target_compounding", "target_active", "target_exiting"):
-            r[n] = "NA"
+        r["target_found"] = "NA"
+        r["target_credential"] = "CRED_NA"
+        r["target_has_compounding_credential"] = False
+        r["target_active"] = "NA"
+        r["target_exiting"] = "NA"
     elif request.target_pubkey in val_pubkeys:
         tv = pre.validators[val_pubkeys.index(request.target_pubkey)]
         r["target_found"] = "T"
-        r["target_compounding"] = _tri(bool(spec.has_compounding_withdrawal_credential(tv)))
+        r["target_credential"] = _credential(tv)
+        r["target_has_compounding_credential"] = bool(spec.has_compounding_withdrawal_credential(tv))
         r["target_active"] = _tri(bool(spec.is_active_validator(tv, cur)))
         r["target_exiting"] = _tri(tv.exit_epoch != spec.FAR_FUTURE_EPOCH)
     else:
         r["target_found"] = "F"
-        for n in ("target_compounding", "target_active", "target_exiting"):
+        r["target_credential"] = "CRED_NA"
+        r["target_has_compounding_credential"] = False
+        for n in ("target_active", "target_exiting"):
             r[n] = "NA"
 
     r["outcome"] = _derive(r)
@@ -134,7 +140,7 @@ def _derive(r: dict) -> str:
         return "REJECTED_TARGET_NOT_FOUND"
     if not (src_exec and src_auth):
         return "REJECTED_SOURCE_CREDENTIALS"
-    if r["target_compounding"] != "T":
+    if not r["target_has_compounding_credential"]:
         return "REJECTED_TARGET_NOT_COMPOUNDING"
     if not src_active:
         return "REJECTED_SOURCE_INACTIVE"

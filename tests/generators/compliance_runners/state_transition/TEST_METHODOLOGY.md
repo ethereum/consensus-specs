@@ -139,6 +139,15 @@ applicability to `builder_ref == EXISTING` and to `builder_pubkey_found`
 respectively. Improving one domain model or recovery procedure then benefits
 every handler that uses it.
 
+When a handler binds an aspect to **more than one role** (e.g. the source and
+target validators of a consolidation), the aspect is written as a
+*parameterized* predicate over its dimension vars — `validator_lifecycle_ok(active,
+exiting, applicable)`, `validator_credential_ok(kind, applicable)` — plus
+derived-value functions (`cred_has_execution`, …). The handler declares
+role-prefixed vars (`validator_active` / `target_active`, …) and applies the
+predicate once per role, so both roles reuse the exact same relation. Single-role
+aspects may remain plain flat declarations.
+
 ### Coverage aspects
 
 A **coverage aspect** expresses a coverage criterion over the exposed

@@ -26,7 +26,7 @@ INPUT_ASPECTS = {
     "source_authorization": ["source_address_matches"],
     "validator_lifecycle": ["validator_active", "validator_exiting", "validator_old_enough"],
     "validator_pending_withdrawal": ["has_pending_partial_withdrawal"],
-    "target_validator": ["target_found", "target_compounding", "target_active", "target_exiting"],
+    "target_validator": ["target_found", "target_credential", "target_active", "target_exiting"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
