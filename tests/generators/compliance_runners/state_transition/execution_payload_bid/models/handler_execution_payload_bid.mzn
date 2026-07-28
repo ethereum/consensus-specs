@@ -21,16 +21,42 @@ include "../../aspects/block_context.mzn";
 % ---- Handler-local dimensions ------------------------------------------------
 var bool: amount_positive;  % bid.value > 0 (self-build requires amount == 0)
 
-% ---- Bind aspect applicability to the entity reference -----------------------
-% Builder lifecycle / version / pending / funds / external signature are
-% applicable only for a resolved existing builder. The self-build signature is
-% applicable only for a self-build.
-constraint builder_lifecycle_applicable    <-> (builder_ref == EXISTING);
-constraint builder_version_applicable      <-> (builder_ref == EXISTING);
-constraint builder_pending_applicable      <-> (builder_ref == EXISTING);
-constraint builder_funds_applicable        <-> (builder_ref == EXISTING);
-constraint builder_signature_applicable    <-> (builder_ref == EXISTING);
-constraint self_build_signature_applicable <-> (builder_ref == SELF_BUILD);
+% ---- Builder instance: parameterized aspects bound to the referenced builder -
+% Applicable only for a resolved existing builder; the self-build signature only
+% for a self-build. (entity_reference, slot_epoch, block_context stay flat.)
+var CMP_NA:   builder_deposit_to_finalized_epoch;
+var BOOLV_NA: builder_withdrawable_epoch_set;
+constraint builder_lifecycle_ok(builder_deposit_to_finalized_epoch,
+                                builder_withdrawable_epoch_set, builder_ref == EXISTING);
+var bool: builder_active;
+constraint builder_active <->
+    builder_is_active(builder_deposit_to_finalized_epoch, builder_withdrawable_epoch_set);
+
+var BOOLV_NA: builder_version_valid;
+constraint builder_version_ok(builder_version_valid, builder_ref == EXISTING);
+
+var BOOLV_NA: builder_has_pending_withdrawal;
+var BOOLV_NA: builder_has_pending_payment;
+constraint builder_pending_ok(builder_has_pending_withdrawal, builder_has_pending_payment,
+                              builder_ref == EXISTING);
+var bool: builder_has_pending_balance;
+constraint builder_has_pending_balance <->
+    builder_has_pending(builder_has_pending_withdrawal, builder_has_pending_payment);
+
+var CMP_NA: builder_balance_to_min_balance;
+var CMP_NA: builder_available_to_bid;
+constraint builder_funds_ok(builder_balance_to_min_balance, builder_available_to_bid,
+                            builder_ref == EXISTING);
+var bool: builder_can_cover_bid;
+constraint builder_can_cover_bid <->
+    builder_can_cover(builder_balance_to_min_balance, builder_available_to_bid);
+
+var BOOLV_NA: builder_signature_valid;
+constraint signed_message_ok(builder_signature_valid, builder_ref == EXISTING);
+
+var BOOLV_NA: self_build_signature_is_infinity;
+constraint self_build_signature_ok(self_build_signature_is_infinity, builder_ref == SELF_BUILD);
+
 constraint bid_parent_block_root_applicable <-> state_slot_past_genesis;
 
 % bid.value is the shared operand of the funds comparison and amount_positive:
