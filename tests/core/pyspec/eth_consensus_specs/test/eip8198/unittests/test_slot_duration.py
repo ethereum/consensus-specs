@@ -181,6 +181,13 @@ def test_gossip_slot_gates_across_fork(spec, state):
 
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE)
+def test_compute_fork_version_at_fork(spec, state):
+    assert spec.compute_fork_version(spec.Epoch(FORK_EPOCH)) == spec.EIP8198_FORK_VERSION
+    assert spec.compute_fork_version(spec.Epoch(FORK_EPOCH - 1)) != spec.EIP8198_FORK_VERSION
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE)
 def test_on_tick_across_fork(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
     fork_slot, _, post_ms, fork_time = _fork_params(spec, store.genesis_time)
