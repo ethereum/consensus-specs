@@ -6,6 +6,7 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
+  - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
   - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
   - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
   - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
@@ -54,6 +55,30 @@ The rescaling directions are:
 | `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` | milliseconds | 10 seconds |
 
 ## Helpers
+
+### Modified `compute_time_at_slot`
+
+*Note*: Slots after `EIP8198_FORK_EPOCH` start at
+`SLOT_DURATION_MS_EIP8198` intervals from the fork time, not at
+`SLOT_DURATION_MS` intervals from genesis. Without this override, the
+execution payload timestamp — validated in `process_execution_payload`
+against `compute_time_at_slot` — would drift ahead of wall-clock time by
+`(SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198)` per slot, without bound. The
+inherited `process_execution_payload` and validator block preparation are
+correct as-is once this function accounts for the duration change.
+
+```python
+def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
+    slots_since_genesis = slot - GENESIS_SLOT
+    if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
+        return Uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+    fork_slot = EIP8198_FORK_EPOCH * SLOTS_PER_EPOCH
+    if slot < fork_slot:
+        return Uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+    time_before_fork = fork_slot * SLOT_DURATION_MS // 1000
+    time_after_fork = (slots_since_genesis - fork_slot) * SLOT_DURATION_MS_EIP8198 // 1000
+    return Uint64(state.genesis_time + time_before_fork + time_after_fork)
+```
 
 ### Modified `get_base_reward_per_increment`
 

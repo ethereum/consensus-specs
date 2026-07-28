@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
+  - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
   - [New `get_slot_from_time`](#new-get_slot_from_time)
   - [New `get_time_at_slot_end`](#new-get_time_at_slot_end)
@@ -36,6 +37,43 @@ fork choice:
   helper.
 
 ## Helpers
+
+### Modified `get_forkchoice_store`
+
+*Note*: Identical to the Heze definition except that the initial store time is
+derived with the EIP-8198-aware `compute_time_at_slot` (see the beacon chain
+document) instead of assuming `SLOT_DURATION_MS` slots since genesis. This
+matters when the anchor state is past the fork, e.g. on checkpoint sync.
+
+```python
+def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
+    assert anchor_block.state_root == hash_tree_root(anchor_state)
+    anchor_root = hash_tree_root(anchor_block)
+    anchor_epoch = get_current_epoch(anchor_state)
+    justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    proposer_boost_root = Root()
+    return Store(
+        # [Modified in EIP8198]
+        time=compute_time_at_slot(anchor_state, anchor_state.slot),
+        genesis_time=anchor_state.genesis_time,
+        justified_checkpoint=justified_checkpoint,
+        finalized_checkpoint=finalized_checkpoint,
+        unrealized_justified_checkpoint=justified_checkpoint,
+        unrealized_finalized_checkpoint=finalized_checkpoint,
+        proposer_boost_root=proposer_boost_root,
+        equivocating_indices=set(),
+        blocks={anchor_root: copy(anchor_block)},
+        block_states={anchor_root: copy(anchor_state)},
+        block_timeliness={anchor_root: [True, True]},
+        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        unrealized_justifications={anchor_root: justified_checkpoint},
+        payloads={},
+        payload_timeliness_vote={},
+        payload_data_availability_vote={},
+        payload_inclusion_list_satisfaction={},
+    )
+```
 
 ### Modified `get_slot_component_duration_ms`
 
