@@ -70,11 +70,10 @@ EIP8198_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # [customized] 6000 milliseconds
 SLOT_DURATION_MS: 6000
-# [customized] EIP8198: 5000 milliseconds (SLOT_DURATION_MS scaled by 5 / 6)
+# [customized] EIP8198 target slot duration in milliseconds
 # Intra-slot deadlines are inherited from Heze as basis points of the slot
-# duration and rescale automatically. Issuance/penalty/churn are rescaled by the
-# exact SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS ratio in-formula, so no other
-# per-parameter overrides are needed.
+# duration. All other affected protocol values derive from the exact
+# SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS ratio.
 SLOT_DURATION_MS_EIP8198: 5000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14

@@ -144,8 +144,8 @@ interpreted under the shorter slot:
 
 - `ATTESTATION_PROPAGATION_SLOT_RANGE` remains `32` slots. It is kept
   slot-denominated because it is aligned with the consensus structure (one epoch
-  plus margin); its wall-clock duration therefore shrinks from 384 to 320
-  seconds on mainnet. This is a deliberate choice, not an omission.
+  plus margin); its wall-clock duration therefore scales with
+  `SLOT_DURATION_MS_EIP8198`. This is a deliberate choice, not an omission.
 - `MAXIMUM_GOSSIP_CLOCK_DISPARITY` and the Req/Resp timeouts (`TTFB_TIMEOUT`,
   `RESP_TIMEOUT`) are absolute wall-clock allowances and MUST NOT be rescaled.
 - The gossipsub `seen_ttl` parameter is `compute_seen_ttl(current_slot)`. This
@@ -255,13 +255,14 @@ and pruning guidance MUST use
 `get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
 `get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively.
 
-The `4915`-epoch values (`4096 * 12 // 10`) approximate the old wall-clock
-retention duration once the entire window is post-fork. A window crossing the
-fork is longer because it contains 12-second epochs. To avoid an availability
-gap at activation, a node configured for EIP-8198 MUST begin increasing its
-retained history one epoch at a time at `EIP8198_FORK_EPOCH - (4915 - 4096)` (or
-at genesis if that expression would be negative), as encoded by the selectors
-above. A deployment announced with less than `819` epochs of lead time MUST
-backfill the missing pre-fork sidecars before activation. This temporary
-over-retention converges to the steady-state wall-clock window after `4915`
-post-fork epochs.
+For each sidecar type, the post-fork epoch window is computed as
+`inherited_window * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198`. This
+approximates the old wall-clock retention duration once the entire window is
+post-fork. A window crossing the fork is longer because it contains pre-fork
+epochs. To avoid an availability gap at activation, a node configured for
+EIP-8198 MUST begin increasing its retained history one epoch at a time at
+`EIP8198_FORK_EPOCH - additional_epochs` (or at genesis if that expression would
+be negative), as encoded by the selectors above. A deployment announced with
+less than `additional_epochs` of lead time MUST backfill the missing pre-fork
+sidecars before activation. This temporary over-retention converges to the
+steady-state wall-clock window after `post_fork_min_epochs` post-fork epochs.

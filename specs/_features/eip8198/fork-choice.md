@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
-  - [Resulting mainnet deadlines](#resulting-mainnet-deadlines)
 - [Helpers](#helpers)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
@@ -50,25 +48,11 @@ the store with `on_tick_ms`; the whole-second `on_tick` entry point is retained
 only as a backwards-compatible adapter for inherited test vectors and callers
 that do not need to represent sub-second instants.
 
-## Configuration
-
-### Resulting mainnet deadlines
-
-EIP-8198 deliberately retains every inherited basis-point value. The resulting
-deadlines below make that protocol choice explicit; changing an individual
-deadline requires a separate parameter change rather than following
-automatically from the clock infrastructure.
-
-| Component                   | Basis points | Post-fork deadline |
-| --------------------------- | -----------: | -----------------: |
-| Proposer reorg cutoff       |         1667 |           1,667 ms |
-| Attestation                 |         2500 |           2,500 ms |
-| Sync committee message      |         2500 |           2,500 ms |
-| Aggregate                   |         5000 |           5,000 ms |
-| Sync committee contribution |         5000 |           5,000 ms |
-| Execution payload           |         5000 |           5,000 ms |
-| Inclusion list              |         6667 |           6,667 ms |
-| Payload attestation         |         7500 |           7,500 ms |
+EIP-8198 deliberately retains every inherited basis-point value. Every post-fork
+deadline is computed as
+`basis_points * SLOT_DURATION_MS_EIP8198 // BASIS_POINTS`; there are no
+duration-specific deadline overrides to update when the target slot duration
+changes.
 
 ## Helpers
 

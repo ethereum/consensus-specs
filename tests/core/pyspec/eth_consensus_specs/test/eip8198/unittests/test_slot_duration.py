@@ -4,8 +4,8 @@ Unit tests for the EIP-8198 piecewise time functions, run with
 branches are actually exercised (with the default FAR_FUTURE_EPOCH they are
 unreachable).
 
-All assertions are written in terms of the config values so they hold on both
-presets (minimal: 6000ms -> 5000ms, mainnet: 12000ms -> 10000ms).
+All assertions are written in terms of the config values so the target slot
+duration can be changed without rewriting derived expectations.
 """
 
 from eth_consensus_specs.test.context import (
@@ -375,7 +375,7 @@ def test_eip8198_config_invariants(spec):
     assert spec.config.SLOT_DURATION_MS_EIP8198 > 0
     assert spec.config.SLOT_DURATION_MS % 1000 == 0
     assert spec.config.SLOT_DURATION_MS_EIP8198 % 1000 == 0
-    assert 6 * spec.config.SLOT_DURATION_MS_EIP8198 == 5 * spec.config.SLOT_DURATION_MS
+    assert spec.config.SLOT_DURATION_MS_EIP8198 < spec.config.SLOT_DURATION_MS
     assert spec.config.EIP8198_FORK_EPOCH == spec.FAR_FUTURE_EPOCH or (
         spec.config.EIP8198_FORK_EPOCH > spec.config.HEZE_FORK_EPOCH
     )

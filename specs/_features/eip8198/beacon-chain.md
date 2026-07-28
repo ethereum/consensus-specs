@@ -33,15 +33,15 @@ fork-choice document).
 
 The remaining parameters -- issuance, the inactivity penalty, and the validator
 churn limits -- must be rescaled by the slot-duration ratio
-`r = SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` (`= 10000 / 12000 = 5 / 6`) to
-keep their wall-clock behavior constant.
+`r = SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` to keep their wall-clock
+behavior constant.
 
-Rather than pre-computing rounded `*_EIP8198` constants (e.g. a base reward
-factor of `64 * 5 / 6 = 53.33...` rounded to `53`, a ~0.6% issuance error), this
-document applies the exact ratio **inside** each formula, deferring integer
-division until after multiplication wherever possible.
-`SLOT_DURATION_MS_EIP8198` is therefore the single source of truth for the
-target slot duration.
+Rather than pre-computing rounded `*_EIP8198` constants, this document applies
+the exact ratio **inside** each formula, deferring integer division until after
+multiplication wherever possible. `SLOT_DURATION_MS_EIP8198` is therefore the
+single source of truth for the target slot duration. Changing it in a network
+configuration automatically updates every executable duration-dependent rule
+defined by this feature; no derived protocol parameter needs a separate edit.
 
 The rescaling directions are:
 
@@ -64,6 +64,7 @@ The rescaling directions are:
 Both `SLOT_DURATION_MS` and `SLOT_DURATION_MS_EIP8198` MUST be positive
 multiples of `1000`. Beacon block timestamps are integer Unix seconds, so this
 constraint ensures that every slot boundary has an exact timestamp.
+`SLOT_DURATION_MS_EIP8198` MUST be less than `SLOT_DURATION_MS`.
 
 ## Helpers
 
@@ -309,22 +310,24 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
 ## Data availability
 
 *Note*: The modified `get_blob_parameters` helper materializes the EIP-8198
-schedule entry at `EIP8198_FORK_EPOCH`, scaling the preceding maximum by `5 / 6`
-(`21 * 10 // 12 = 17` on mainnet). This is equivalent to appending the
-EIP-8198-required entry while allowing tests and unscheduled configurations to
-override only the fork epoch. Later explicit schedule entries take precedence.
+schedule entry at `EIP8198_FORK_EPOCH`, scaling the preceding maximum by
+`pre_fork_parameters.max_blobs_per_block * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`.
+This is equivalent to appending the EIP-8198-required entry while allowing tests
+and unscheduled configurations to override only the fork epoch. Later explicit
+schedule entries take precedence.
 
 *Note*: Likewise, the steady-state blob and data-column sidecar retention
-windows are increased from `4096` to `4915` epochs (`4096 * 12 // 10`),
-approximately preserving the pre-fork wall-clock retention period once the
-entire window is post-fork. The networking document derives both targets from
-`SLOT_DURATION_MS_EIP8198` and defines the pre-fork retention ramp, backfill
-requirement, and fork-aware selectors used by inherited request validation and
-retention guidance.
+targets are computed as
+`inherited_window * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198`, approximately
+preserving the pre-fork wall-clock retention period once the entire window is
+post-fork. The networking document derives both targets and defines the pre-fork
+retention ramp, backfill requirement, and fork-aware selectors used by inherited
+request validation and retention guidance.
 
 *Note*: The first post-fork execution payload sets its gas limit to
-`parent_gas_limit * 10000 // 12000`, preserving the per-second gas throughput
-target immediately rather than through gradual gas-limit voting. The execution
-layer enforces the payload rule; the EIP-8198 builder and networking documents
-override inherited bid construction and gossip compatibility so the consensus
-layer accepts and propagates the required one-time change.
+`parent_gas_limit * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`, preserving
+the per-second gas throughput target immediately rather than through gradual
+gas-limit voting. The execution layer enforces the payload rule; the EIP-8198
+builder and networking documents override inherited bid construction and gossip
+compatibility so the consensus layer accepts and propagates the required
+one-time change.
