@@ -114,10 +114,9 @@ Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadBid` as follows.
 
 *Note*: A builder can broadcast up to `MAX_BIDS_PER_BUILDER` bids per slot, with
-at most one bid for each
-`(bid.slot, bid.parent_block_hash, bid.parent_block_root)` tuple. This allows
-the builder to bid for both the *empty* and *full* views of a parent and for a
-viable proposer boost re-org parent.
+at most one bid per `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`
+tuple. This allows bids for both the parent's *full* payload and its *empty*
+variant, as well as for a parent selected by a proposer re-org.
 
 01. Set `bid.parent_block_hash` to be the parent hash of the constructed
     payload, that is `payload.parent_hash`.
