@@ -469,6 +469,34 @@ def is_gas_limit_target_compatible(
 ```
 
 ```python
+def should_reorg_head(store: Store, head_root: Root, slot: Slot) -> bool:
+    """
+    Check if this node would re-org the head block when proposing at ``slot``.
+    """
+    head_block = store.blocks[head_root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+
+    head_late = is_head_late(store, head_root)
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
+    finalization_ok = is_finalization_ok(store, slot)
+    parent_slot_ok = parent_block.slot + Slot(1) == head_block.slot
+    current_time_ok = head_block.slot + Slot(1) == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+    head_weak = is_head_weak(store, head_root)
+    parent_strong = is_parent_strong(store, head_root)
+
+    return all([
+        head_late,
+        ffg_competitive,
+        finalization_ok,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ])
+```
+
+```python
 def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     """
     Check if ``bid`` has the same parent information as this node would propose.
@@ -476,35 +504,20 @@ def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     head_node = get_head(store)
     head_block = store.blocks[head_node.root]
     head_bid = head_block.body.signed_execution_payload_bid.message
-    parent_root = head_block.parent_root
-    parent_block = store.blocks[parent_root]
 
-    head_late = is_head_late(store, head_node.root)
-    ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
-    finalization_ok = is_finalization_ok(store, bid.slot)
-    parent_slot_ok = parent_block.slot + 1 == head_block.slot
-    current_time_ok = head_block.slot + 1 == bid.slot
-    single_slot_reorg = parent_slot_ok and current_time_ok
-    head_weak = is_head_weak(store, head_node.root)
-    parent_strong = is_parent_strong(store, head_node.root)
-    bid_on_parent = (
-        bid.parent_block_root == parent_root and bid.parent_block_hash == head_bid.parent_block_hash
-    )
-    if all([
-        head_late,
-        ffg_competitive,
-        finalization_ok,
-        single_slot_reorg,
-        head_weak,
-        parent_strong,
-    ]):
-        return bid_on_parent
-    if bid.parent_block_root != head_node.root:
+    builds_on_parent_block = bid.parent_block_root == head_block.parent_root
+    builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
+    builds_on_head_block = bid.parent_block_root == head_node.root
+    builds_on_head_payload = bid.parent_block_hash == head_bid.block_hash
+
+    if should_reorg_head(store, head_node.root, bid.slot):
+        return builds_on_parent_block and builds_on_parent_payload
+    if not builds_on_head_block:
         return False
     if should_build_on_full(store, head_node, bid.slot):
-        return bid.parent_block_hash == head_bid.block_hash
-    else:
-        return bid.parent_block_hash == head_bid.parent_block_hash
+        return builds_on_head_payload
+
+    return builds_on_parent_payload
 ```
 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
