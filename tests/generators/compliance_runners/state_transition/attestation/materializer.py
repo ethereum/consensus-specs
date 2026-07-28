@@ -76,12 +76,17 @@ class AttestationMaterializer:
             transition_to(spec, pre, spec.Slot(spec.MIN_ATTESTATION_INCLUSION_DELAY))
         current = int(spec.get_current_epoch(pre))
         target_current = _b(sol, "target_is_current")
+        target_matches_slot = _b(sol, "target_epoch_matches_slot")
+        # For a mismatch, choose a slot from the opposite epoch first. This
+        # preserves target_is_current while making the target/slot comparison
+        # false; changing only the target epoch would invert that dimension.
+        slot_target_current = target_current if target_matches_slot else not target_current
         slot = (
             0
             if same_slot
             else (
                 int(pre.slot) - 1
-                if target_current
+                if slot_target_current
                 else int(spec.compute_start_slot_at_epoch(current)) - 1
             )
         )
@@ -97,8 +102,8 @@ class AttestationMaterializer:
         data = attestation.data
         if not _b(sol, "target_epoch_in_window"):
             data.target.epoch = spec.Epoch(current + 1)
-        elif not _b(sol, "target_epoch_matches_slot"):
-            data.target.epoch = spec.Epoch(current - 1 if target_current else current)
+        elif not target_matches_slot:
+            data.target.epoch = spec.Epoch(current if target_current else current - 1)
         if not _b(sol, "inclusion_delay_ok"):
             data.slot = pre.slot
             if _b(sol, "target_epoch_matches_slot"):
@@ -113,8 +118,27 @@ class AttestationMaterializer:
             for i in range(len(attestation.aggregation_bits)):
                 attestation.aggregation_bits[i] = False
         if not _b(sol, "aggregation_length_valid"):
-            attestation.aggregation_bits = spec.AggregationBits(
-                list(attestation.aggregation_bits)[:-1]
+            # Add an unused bit rather than removing one. A short bitfield can
+            # make the preceding committee-attester access fail, changing this
+            # intended length-only failure into an earlier failure.
+            aggregation_bits = list(attestation.aggregation_bits) + [False]
+            attestation.aggregation_bits = spec.AggregationBits(aggregation_bits)
+        # These are pre-state properties. Materialize them independently of
+        # whether a later gate permits the handler to consume the attestation.
+        if same_slot and not _b(sol, "sets_new_participation_flag"):
+            flags = pre.current_epoch_participation[committee[0]]
+            for flag in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
+                flags = spec.add_flag(flags, flag)
+            pre.current_epoch_participation[committee[0]] = flags
+        if same_slot and _b(sol, "pending_payment_amount_positive"):
+            payment_index = int(spec.SLOTS_PER_EPOCH) + slot % int(spec.SLOTS_PER_EPOCH)
+            pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
+                weight=spec.Gwei(0),
+                withdrawal=spec.BuilderPendingWithdrawal(
+                    fee_recipient=spec.ExecutionAddress(),
+                    amount=spec.Gwei(1),
+                    builder_index=spec.BuilderIndex(0),
+                ),
             )
         if (
             _b(sol, "signature_valid")
@@ -122,21 +146,6 @@ class AttestationMaterializer:
             and _b(sol, "committee_nonempty")
             and _b(sol, "aggregation_length_valid")
         ):
-            if same_slot and not _b(sol, "sets_new_participation_flag"):
-                flags = pre.current_epoch_participation[committee[0]]
-                for flag in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
-                    flags = spec.add_flag(flags, flag)
-                pre.current_epoch_participation[committee[0]] = flags
-            if same_slot and _b(sol, "pending_payment_amount_positive"):
-                payment_index = int(spec.SLOTS_PER_EPOCH) + slot % int(spec.SLOTS_PER_EPOCH)
-                pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
-                    weight=spec.Gwei(0),
-                    withdrawal=spec.BuilderPendingWithdrawal(
-                        fee_recipient=spec.ExecutionAddress(),
-                        amount=spec.Gwei(1),
-                        builder_index=spec.BuilderIndex(0),
-                    ),
-                )
             sign_attestation(spec, pre, attestation)
         post = pre.copy()
         try:
