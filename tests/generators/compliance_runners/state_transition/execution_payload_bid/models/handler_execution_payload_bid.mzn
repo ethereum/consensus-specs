@@ -13,6 +13,7 @@ include "../../aspects/builder_version.mzn";
 include "../../aspects/builder_pending_balance.mzn";
 include "../../aspects/builder_funds.mzn";
 include "../../aspects/signed_message.mzn";
+include "../../aspects/self_build_signature.mzn";
 include "../../aspects/blob_kzg_capacity.mzn";
 include "../../aspects/slot_epoch.mzn";
 include "../../aspects/block_context.mzn";
