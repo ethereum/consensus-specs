@@ -933,9 +933,11 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     lookahead_epoch_start_slot = spec.compute_start_slot_at_epoch(current_epoch)
     store, blocks = setup_store_with_advanced_state(spec, state, lookahead_epoch_start_slot)
 
-    # Fork three epochs before the lookahead boundary, then leave the fork empty
-    # until a child crosses the boundary. The old fork block is therefore the
-    # dependent root for multiple consecutive proposal epochs.
+    # Create a non-canonical branch three epochs before the lookahead boundary,
+    # then leave it empty until a child crosses the boundary. This makes the
+    # dependent-root state differ from the canonical head state passed to gossip
+    # validation, while the old branch block remains the dependent root for
+    # multiple consecutive proposal epochs.
     fork_block_slot = spec.Slot(spec.compute_start_slot_at_epoch(spec.Epoch(current_epoch - 3)) + 1)
     fork_parent_root = spec.get_block_root_at_slot(state, spec.Slot(fork_block_slot - 1))
     fork_state = store.block_states[fork_parent_root].copy()
@@ -962,6 +964,8 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
 
     lookahead_state = dependent_state.copy()
     spec.process_slots(lookahead_state, lookahead_epoch_start_slot)
+    # Pick a slot that distinguishes the branch-derived lookahead from both the
+    # unprocessed dependent state and the canonical head state's lookahead.
     for slot_offset in range(spec.SLOTS_PER_EPOCH):
         lookahead_index = spec.MIN_SEED_LOOKAHEAD * spec.SLOTS_PER_EPOCH + slot_offset
         validator_index = lookahead_state.proposer_lookahead[lookahead_index]
