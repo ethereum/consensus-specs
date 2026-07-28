@@ -254,7 +254,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
         ),
     )
     assert result == "reject"
-    assert reason == "block's parent is invalid and EL result is unknown"
+    assert reason == "block's parent is invalid and its payload is optimistic"
 
     yield (
         "messages",
@@ -342,7 +342,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
-    assert reason == "block's parent is invalid and EL result is known"
+    assert reason == "block's parent is invalid and its payload is processed"
 
     yield (
         "messages",
@@ -432,7 +432,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
-    assert reason == "block's parent is valid and EL result is invalid"
+    assert reason == "block's parent is valid and its payload is invalid"
 
     yield (
         "messages",

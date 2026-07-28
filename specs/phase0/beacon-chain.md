@@ -226,8 +226,6 @@ consensus-layer specifications **MUST** be zero.
 *Note*: The below configuration is bundled as a preset: a bundle of
 configuration variables which are expected to differ between different modes of
 operation, e.g. testing, but not generally between different networks.
-Additional preset configurations can be found in the [`configs`](../../configs)
-directory.
 
 ### Misc
 
@@ -318,8 +316,8 @@ directory.
 
 *Note*: The default mainnet configuration values are included here for
 illustrative purposes. Defaults for this more dynamic type of configuration are
-available with the presets in the [`configs`](../../configs) directory. Testnets
-and other types of chain instances may use a different configuration.
+available with presets. Testnets and other types of chain instances may use a
+different configuration.
 
 ### Genesis settings
 
