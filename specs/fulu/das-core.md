@@ -200,7 +200,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
     current_id = Uint256(node_id)
-    custody_groups: List[CustodyIndex] = []
+    custody_groups: list[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
             bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS

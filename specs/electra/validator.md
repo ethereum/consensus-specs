@@ -290,6 +290,6 @@ updated field assignments:
 - Set `aggregate_attestation.aggregation_bits` to an `AggregationBits` of length
   `len(committee)` with the bits corresponding to the `attester_index` of each
   `SingleAttestation` input set to `0b1`.
-- Set `aggregate_attestation.committee_bits` to a
-  `Bitvector[MAX_COMMITTEES_PER_SLOT]` with the single bit corresponding to the
-  shared `committee_index` across all `SingleAttestation` inputs set to `0b1`.
+- Set `aggregate_attestation.committee_bits` to a `CommitteeBits` with the
+  single bit corresponding to the shared `committee_index` across all
+  `SingleAttestation` inputs set to `0b1`.

@@ -324,7 +324,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     active_validator_count = Uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     i = 0
-    sync_committee_indices: List[ValidatorIndex] = []
+    sync_committee_indices: list[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(
             Uint64(i % active_validator_count), active_validator_count, seed

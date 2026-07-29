@@ -213,7 +213,7 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
     Get the inclusion list committee for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    indices: List[ValidatorIndex] = []
+    indices: list[ValidatorIndex] = []
     # Concatenate all committees for this slot in order
     committees_per_slot = get_committee_count_per_slot(state, epoch)
     for i in range(committees_per_slot):

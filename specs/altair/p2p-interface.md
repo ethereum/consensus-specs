@@ -557,9 +557,9 @@ facilitate sync committee subnet discovery. The length of this bitfield is
 bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
-| Key        | Value                                        |
-| ---------- | -------------------------------------------- |
-| `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
+| Key        | Value      |
+| ---------- | ---------- |
+| `syncnets` | `Syncnets` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for
 further details on how the new bits are used.

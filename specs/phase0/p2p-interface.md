@@ -1373,11 +1373,10 @@ In case of an invalid input (header or payload), a reader MUST:
 All messages that contain only a single field MUST be encoded directly as the
 type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send
-their constituents individually as `response_chunk`s. For example, the
-`List[SignedBeaconBlock, ...]` response type sends zero or more
-`response_chunk`s. Each _successful_ `response_chunk` contains a single
-`SignedBeaconBlock` payload.
+Responses that are SSZ-lists (for example `SignedBeaconBlocks`) send their
+constituents individually as `response_chunk`s. For example, the
+`SignedBeaconBlocks` response type sends zero or more `response_chunk`s. Each
+_successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 #### Messages
 
@@ -1716,9 +1715,9 @@ The ENR `attnets` entry signifies the attestation subnet bitfield with the
 following form to more easily discover peers participating in particular
 attestation gossip subnets.
 
-| Key       | Value                                     |
-| --------- | ----------------------------------------- |
-| `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
+| Key       | Value     |
+| --------- | --------- |
+| `attnets` | `Attnets` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
 `attnets` entry with the same value as `MetaData.attnets`.
@@ -1732,9 +1731,9 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
-| Key    | Value           |
-| ------ | --------------- |
-| `eth2` | SSZ `ENRForkID` |
+| Key    | Value       |
+| ------ | ----------- |
+| `eth2` | `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
 object (`ENRForkID`)

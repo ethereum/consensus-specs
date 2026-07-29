@@ -875,9 +875,9 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
-| Key    | Value           |
-| ------ | --------------- |
-| `eth2` | SSZ `ENRForkID` |
+| Key    | Value       |
+| ------ | ----------- |
+| `eth2` | `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
 object (`ENRForkID`):
@@ -930,9 +930,9 @@ cause disconnects.
 If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
 
-| Key   | Value                   |
-| ----- | ----------------------- |
-| `nfd` | SSZ Bytes4 `ForkDigest` |
+| Key   | Value        |
+| ----- | ------------ |
+| `nfd` | `ForkDigest` |
 
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
 their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
