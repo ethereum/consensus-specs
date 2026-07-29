@@ -81,7 +81,7 @@ def test_exit_churn__equal_to_activation_cap(spec, state):
     """Scaled state: exit churn equals the activation cap (activation is capped, exit is not)."""
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn == get_activation_churn_cap(spec)
+    assert activation_churn == get_activation_churn_cap(spec, state)
     assert exit_churn >= activation_churn
     yield from run_exit_at_churn_boundary(spec, state)
 
@@ -102,11 +102,15 @@ def test_exit_churn__greater_than_activation_cap(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn > activation_churn
-    assert activation_churn == get_activation_churn_cap(spec)
+    assert activation_churn == get_activation_churn_cap(spec, state)
     total = spec.get_total_active_balance(state)
     expected = total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
     if is_post_eip8198(spec):
-        expected = expected * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+        expected = (
+            expected
+            * spec.get_slot_duration_ms(spec.get_current_epoch(state))
+            // spec.config.SLOT_DURATION_MS
+        )
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert exit_churn == expected
     yield from run_exit_at_churn_boundary(spec, state)

@@ -398,7 +398,10 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         # millisecond precision; its strict timeliness check is false exactly
         # at the deadline.
         if is_post_eip8198(spec):
-            time_ms = forkchoice_store.time_ms + spec.get_inclusion_list_due_ms()
+            inclusion_list_due_ms = spec.get_inclusion_list_due_ms(
+                spec.get_current_slot(forkchoice_store)
+            )
+            time_ms = forkchoice_store.time_ms + inclusion_list_due_ms
             spec.on_tick_ms(forkchoice_store, time_ms)
             assert forkchoice_store.time_ms == time_ms
         else:

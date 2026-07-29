@@ -9,8 +9,8 @@
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
-    - [New `get_min_epochs_for_blob_sidecars_requests`](#new-get_min_epochs_for_blob_sidecars_requests)
-    - [New `get_min_epochs_for_data_column_sidecars_requests`](#new-get_min_epochs_for_data_column_sidecars_requests)
+    - [New `get_blob_sidecars_retention_start`](#new-get_blob_sidecars_retention_start)
+    - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -76,34 +76,42 @@ def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
     return compute_slot_start_time_ms(state.genesis_time, slot)
 ```
 
-#### New `get_min_epochs_for_blob_sidecars_requests`
+#### New `get_blob_sidecars_retention_start`
 
 ```python
-def get_min_epochs_for_blob_sidecars_requests(epoch: Epoch) -> Uint64:
-    if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH or epoch < EIP8198_FORK_EPOCH:
-        return MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
-    post_fork_min_epochs = (
-        MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198
+def get_blob_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
+    """
+    Return the earliest epoch of the blob sidecar retention window at
+    ``current_epoch``, preserving the window's pre-schedule wall-clock
+    length across slot duration changes.
+    """
+    window_ms = MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS * SLOTS_PER_EPOCH * SLOT_DURATION_MS
+    current_start_ms = compute_slot_start_time_ms(
+        Uint64(0), compute_start_slot_at_epoch(current_epoch)
     )
-    return min(
-        Uint64(post_fork_min_epochs),
-        MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS + (epoch - EIP8198_FORK_EPOCH),
-    )
+    if current_start_ms < window_ms:
+        return GENESIS_EPOCH
+    window_start_ms = Uint64(current_start_ms - window_ms)
+    return compute_epoch_at_slot(compute_slot_at_time_ms(Uint64(0), window_start_ms))
 ```
 
-#### New `get_min_epochs_for_data_column_sidecars_requests`
+#### New `get_data_column_sidecars_retention_start`
 
 ```python
-def get_min_epochs_for_data_column_sidecars_requests(epoch: Epoch) -> Uint64:
-    if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH or epoch < EIP8198_FORK_EPOCH:
-        return MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    post_fork_min_epochs = (
-        MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198
+def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
+    """
+    Return the earliest epoch of the data column sidecar retention window at
+    ``current_epoch``, preserving the window's pre-schedule wall-clock
+    length across slot duration changes.
+    """
+    window_ms = MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS * SLOTS_PER_EPOCH * SLOT_DURATION_MS
+    current_start_ms = compute_slot_start_time_ms(
+        Uint64(0), compute_start_slot_at_epoch(current_epoch)
     )
-    return min(
-        Uint64(post_fork_min_epochs),
-        MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS + (epoch - EIP8198_FORK_EPOCH),
-    )
+    if current_start_ms < window_ms:
+        return GENESIS_EPOCH
+    window_start_ms = Uint64(current_start_ms - window_ms)
+    return compute_epoch_at_slot(compute_slot_at_time_ms(Uint64(0), window_start_ms))
 ```
 
 ### The gossip domain: gossipsub
@@ -115,8 +123,8 @@ EIP-8198 fork digest (derived from `EIP8198_FORK_VERSION` via the modified
 the new-digest topics ahead of the fork epoch and unsubscribe from the
 old-digest topics after it.
 
-The interpretation of time-sensitive networking parameters under the shorter
-slot is as follows:
+The interpretation of time-sensitive networking parameters under a slot duration
+change is as follows:
 
 - `ATTESTATION_PROPAGATION_SLOT_RANGE` remains `32` slots (one epoch plus
   margin); its wall-clock duration scales with the slot duration.
@@ -124,7 +132,7 @@ slot is as follows:
   not rescaled.
 - The gossipsub `seen_ttl` parameter (seconds) becomes
   `compute_slot_range_duration_ms(current_slot, Slot(current_slot + 2 * SLOTS_PER_EPOCH)) // 1000`,
-  covering two epochs also when the window crosses the fork.
+  covering two epochs also when the window crosses a duration change.
 
 All other slot-derived durations — schedulers, expiry windows, gossip-scoring
 windows, and the light-client local-clock `current_slot` — MUST be derived from
@@ -150,7 +158,9 @@ the known execution payload identified by `bid.parent_block_hash`:
 
 *Note*: The transition condition is keyed to the slot of the parent execution
 payload, not the parent beacon block, so the one-time scaling cannot be bypassed
-by missed slots or withheld payloads around the fork.
+by missed slots or withheld payloads around a duration change. This mirrors the
+execution-layer gas-limit rule of EIP-8198; if the execution layer adopts a
+different policy at the transition, this check changes accordingly.
 
 ```python
 def is_gas_limit_transition_compatible(
@@ -161,30 +171,26 @@ def is_gas_limit_transition_compatible(
     bid_slot: Slot,
 ) -> bool:
     """
-    Check the bid gas limit, including the one-time EIP-8198 gas limit
-    transition.
+    Check the bid gas limit, including the one-time scaling at a slot
+    duration change.
     """
-    if EIP8198_FORK_EPOCH != FAR_FUTURE_EPOCH:
-        fork_slot = compute_start_slot_at_epoch(EIP8198_FORK_EPOCH)
-        if parent_execution_payload_slot < fork_slot <= bid_slot:
-            expected_gas_limit = parent_gas_limit * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
-            return gas_limit == expected_gas_limit
+    parent_duration_ms = get_slot_duration_ms(compute_epoch_at_slot(parent_execution_payload_slot))
+    bid_duration_ms = get_slot_duration_ms(compute_epoch_at_slot(bid_slot))
+    if parent_duration_ms != bid_duration_ms:
+        return gas_limit == parent_gas_limit * bid_duration_ms // parent_duration_ms
     return is_gas_limit_target_compatible(parent_gas_limit, gas_limit, target_gas_limit)
 ```
 
 ### The Req/Resp domain
 
-Request and response message types are unchanged from Heze. The blob and
-data-column sidecar retention windows used by the inherited sidecar request
-validations and pruning guidance are
-`get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
-`get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively.
-From the fork epoch, each window grows by one epoch per epoch, from the
-inherited epoch count up to
-`inherited_window * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198`, which
-approximately restores the pre-fork wall-clock retention period. A node
-retaining the inherited window at the fork therefore never serves a shorter
-wall-clock history than before it, without pre-fork over-retention or backfill.
+Request and response message types are unchanged from Heze. The lower bounds of
+the blob and data-column sidecar retention windows used by the inherited sidecar
+request validations and pruning guidance are
+`get_blob_sidecars_retention_start(current_epoch)` and
+`get_data_column_sidecars_retention_start(current_epoch)`, respectively. These
+preserve the windows' wall-clock length across slot duration changes, so a node
+retaining the inherited window when a change activates never serves a shorter
+wall-clock history, without pre-change over-retention or backfill.
 
 Epoch-denominated retention windows without a wall-clock target — in particular
 the block retention window `compute_min_epochs_for_block_requests()` — keep

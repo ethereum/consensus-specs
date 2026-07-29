@@ -254,9 +254,8 @@ def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     test_vector = events_to_test_vector(events)
     mutation_time_quantum_ms = spec.config.SLOT_DURATION_MS
     if is_post_eip8198(spec):
-        mutation_time_quantum_ms = min(
-            mutation_time_quantum_ms, spec.config.SLOT_DURATION_MS_EIP8198
-        )
+        for entry in spec.config.SLOT_DURATION_SCHEDULE:
+            mutation_time_quantum_ms = min(mutation_time_quantum_ms, entry["SLOT_DURATION_MS"])
     mops = MutationOps(get_store_time(spec, store), mutation_time_quantum_ms // 1000)
     mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 

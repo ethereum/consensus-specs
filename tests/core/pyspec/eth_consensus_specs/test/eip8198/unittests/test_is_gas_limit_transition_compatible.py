@@ -1,3 +1,5 @@
+from frozendict import frozendict
+
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_test,
@@ -7,17 +9,24 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import EIP8198
 
 FORK_EPOCH = 2
+POST_DURATION_MS = 5000
+SCHEDULE_OVERRIDE = {
+    "EIP8198_FORK_EPOCH": FORK_EPOCH,
+    "SLOT_DURATION_SCHEDULE": (
+        frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": POST_DURATION_MS}),
+    ),
+}
 
 
 @with_phases([EIP8198])
 @spec_test
-@with_config_overrides({"EIP8198_FORK_EPOCH": FORK_EPOCH})
+@with_config_overrides(SCHEDULE_OVERRIDE)
 @single_phase
 def test_is_gas_limit_transition_compatible_at_fork(spec):
     fork_slot = spec.compute_start_slot_at_epoch(spec.Epoch(FORK_EPOCH))
     parent_gas_limit = spec.Uint64(60_000_000)
     expected_gas_limit = spec.Uint64(
-        parent_gas_limit * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+        parent_gas_limit * POST_DURATION_MS // spec.config.SLOT_DURATION_MS
     )
 
     assert spec.is_gas_limit_transition_compatible(
@@ -38,13 +47,13 @@ def test_is_gas_limit_transition_compatible_at_fork(spec):
 
 @with_phases([EIP8198])
 @spec_test
-@with_config_overrides({"EIP8198_FORK_EPOCH": FORK_EPOCH})
+@with_config_overrides(SCHEDULE_OVERRIDE)
 @single_phase
 def test_is_gas_limit_transition_compatible_after_missed_slots(spec):
     fork_slot = spec.compute_start_slot_at_epoch(spec.Epoch(FORK_EPOCH))
     parent_gas_limit = spec.Uint64(60_000_000)
     expected_gas_limit = spec.Uint64(
-        parent_gas_limit * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+        parent_gas_limit * POST_DURATION_MS // spec.config.SLOT_DURATION_MS
     )
 
     assert spec.is_gas_limit_transition_compatible(
@@ -58,7 +67,7 @@ def test_is_gas_limit_transition_compatible_after_missed_slots(spec):
 
 @with_phases([EIP8198])
 @spec_test
-@with_config_overrides({"EIP8198_FORK_EPOCH": FORK_EPOCH})
+@with_config_overrides(SCHEDULE_OVERRIDE)
 @single_phase
 def test_is_gas_limit_transition_compatible_after_transition(spec):
     fork_slot = spec.compute_start_slot_at_epoch(spec.Epoch(FORK_EPOCH))

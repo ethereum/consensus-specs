@@ -25,17 +25,16 @@ All validator responsibilities remain unchanged other than those noted below.
 ### Slot timing
 
 Validators MUST schedule duties against the piecewise timeline given by
-`compute_time_at_slot_ms`: slots before `EIP8198_FORK_EPOCH` start at
-`SLOT_DURATION_MS` intervals from genesis, and later slots at
-`SLOT_DURATION_MS_EIP8198` intervals from the fork time. Intra-slot deadlines
+`compute_time_at_slot_ms`: each era of `SLOT_DURATION_SCHEDULE` runs at its own
+slot duration, starting from the end of the previous era. Intra-slot deadlines
 rescale automatically through the modified `get_slot_component_duration_ms`, so
 each duty keeps its relative position in the slot. Duty schedulers MUST keep
-millisecond precision, since deadlines are not generally whole seconds under the
-new duration.
+millisecond precision, since deadlines are not generally whole seconds.
 
 ### Data availability retention
 
-The blob and data-column sidecar retention windows in the inherited retention
-guidance are `get_min_epochs_for_blob_sidecars_requests(current_epoch)` and
-`get_min_epochs_for_data_column_sidecars_requests(current_epoch)`, respectively
-(see the EIP-8198 networking document).
+The lower bounds of the blob and data-column sidecar retention windows in the
+inherited retention guidance are
+`get_blob_sidecars_retention_start(current_epoch)` and
+`get_data_column_sidecars_retention_start(current_epoch)`, respectively (see the
+EIP-8198 networking document).

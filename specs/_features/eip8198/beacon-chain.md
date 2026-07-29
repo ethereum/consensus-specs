@@ -6,14 +6,14 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-  - [Time parameters](#time-parameters)
+  - [Slot duration schedule](#slot-duration-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
+    - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
     - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
     - [New `compute_slot_at_time_ms`](#new-compute_slot_at_time_ms)
     - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
     - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
-    - [Modified `get_blob_parameters`](#modified-get_blob_parameters)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
@@ -25,52 +25,86 @@
 
 ## Introduction
 
-EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds. The
-slot structure is unchanged, and all intra-slot deadlines are expressed in basis
-points of the slot duration, so they rescale automatically. The remaining
-duration-dependent parameters are rescaled by the slot-duration ratio
-`r = SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` to keep their wall-clock
+EIP-8198 ("Quick Slots") makes the slot duration schedulable, with a first
+reduction from 12 to 10 seconds intended at the fork epoch. The slot structure
+is unchanged, and all intra-slot deadlines are expressed in basis points of the
+slot duration, so they rescale automatically. The remaining duration-dependent
+parameters are rescaled by the ratio
+`r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their wall-clock
 behavior constant: issuance and churn are per-epoch rates and scale by `r`,
 while the inactivity penalty scales by `r**2` so that the cumulative leak over a
 fixed wall-clock duration is unchanged. Rather than pre-computing rounded
-constants, each formula applies the ratio inline, keeping
-`SLOT_DURATION_MS_EIP8198` the single source of truth for the target slot
-duration.
+constants, each formula applies the ratio inline, keeping the slot duration
+schedule the single source of truth for the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
 ## Configuration
 
-### Time parameters
+### Slot duration schedule
 
-| Name                       | Value           | Unit         | Duration   |
-| -------------------------- | --------------- | ------------ | ---------- |
-| `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` | milliseconds | 10 seconds |
+*[New in EIP8198]* This schedule defines the slot duration for a given epoch.
+Epochs before the first entry use `SLOT_DURATION_MS`.
 
-*Note*: `SLOT_DURATION_MS_EIP8198` MUST be less than `SLOT_DURATION_MS`, and
-both MUST be positive multiples of `1000`, so that every slot boundary has an
-exact integer-second timestamp.
+There MUST NOT exist multiple slot duration schedule entries with the same epoch
+value. The epoch value in each entry MUST be greater than or equal to
+`EIP8198_FORK_EPOCH` and MUST NOT be `FAR_FUTURE_EPOCH`. The slot duration in
+each entry MUST be a positive multiple of `1000`, so that every slot boundary
+has an exact integer-second timestamp. The slot duration schedule entries SHOULD
+be sorted by epoch in ascending order. The slot duration schedule MAY be empty.
+An entry that changes the slot duration MUST be accompanied by a `BLOB_SCHEDULE`
+entry at the same epoch that scales the maximum blobs per block by the
+slot-duration ratio (rounding down), keeping blob throughput per unit time
+constant.
+
+When `EIP8198_FORK_EPOCH` is scheduled, the intended mainnet schedule is a
+single entry at the fork epoch with a slot duration of `10000` ms (10 seconds).
+
+<!-- list-of-records:slot_duration_schedule -->
+
+| Epoch | Slot Duration Ms |
+| ----: | ---------------: |
 
 ## Helpers
 
 ### Misc
+
+#### New `get_slot_duration_ms`
+
+```python
+def get_slot_duration_ms(epoch: Epoch) -> Uint64:
+    """
+    Return the slot duration in effect at ``epoch``, per
+    ``SLOT_DURATION_SCHEDULE``. Epochs before the first schedule entry use
+    ``SLOT_DURATION_MS``.
+    """
+    duration_ms = SLOT_DURATION_MS
+    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+        if epoch < entry["EPOCH"]:
+            break
+        duration_ms = entry["SLOT_DURATION_MS"]
+    return duration_ms
+```
 
 #### New `compute_slot_start_time_ms`
 
 ```python
 def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
-    Return the absolute Unix time in milliseconds at the start of ``slot``.
+    Return the absolute Unix time in milliseconds at the start of ``slot``,
+    accumulating the eras of ``SLOT_DURATION_SCHEDULE``.
     """
-    slots_since_genesis = slot - GENESIS_SLOT
-    if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
-        return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
-    fork_slot = compute_start_slot_at_epoch(EIP8198_FORK_EPOCH)
-    if slot < fork_slot:
-        return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
-    time_before_fork_ms = (fork_slot - GENESIS_SLOT) * SLOT_DURATION_MS
-    time_after_fork_ms = (slot - fork_slot) * SLOT_DURATION_MS_EIP8198
-    return Uint64(genesis_time * 1000 + time_before_fork_ms + time_after_fork_ms)
+    time_ms = genesis_time * 1000
+    era_start_slot = GENESIS_SLOT
+    era_duration_ms = SLOT_DURATION_MS
+    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        if slot < entry_slot:
+            break
+        time_ms += (entry_slot - era_start_slot) * era_duration_ms
+        era_start_slot = entry_slot
+        era_duration_ms = entry["SLOT_DURATION_MS"]
+    return Uint64(time_ms + (slot - era_start_slot) * era_duration_ms)
 ```
 
 #### New `compute_slot_at_time_ms`
@@ -78,19 +112,22 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
 ```python
 def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     """
-    Return the slot corresponding to absolute Unix time ``time_ms``.
+    Return the slot corresponding to absolute Unix time ``time_ms``. Inverse
+    of ``compute_slot_start_time_ms``.
     """
     assert time_ms >= genesis_time * 1000
-    time_since_genesis_ms = time_ms - genesis_time * 1000
-    if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
-        return Slot(GENESIS_SLOT + time_since_genesis_ms // SLOT_DURATION_MS)
-    fork_slot = compute_start_slot_at_epoch(EIP8198_FORK_EPOCH)
-    time_before_fork_ms = (fork_slot - GENESIS_SLOT) * SLOT_DURATION_MS
-    if time_since_genesis_ms < time_before_fork_ms:
-        return Slot(GENESIS_SLOT + time_since_genesis_ms // SLOT_DURATION_MS)
-    return Slot(
-        fork_slot + (time_since_genesis_ms - time_before_fork_ms) // SLOT_DURATION_MS_EIP8198
-    )
+    remaining_ms = time_ms - genesis_time * 1000
+    era_start_slot = GENESIS_SLOT
+    era_duration_ms = SLOT_DURATION_MS
+    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        era_length_ms = (entry_slot - era_start_slot) * era_duration_ms
+        if remaining_ms < era_length_ms:
+            break
+        remaining_ms -= era_length_ms
+        era_start_slot = entry_slot
+        era_duration_ms = entry["SLOT_DURATION_MS"]
+    return Slot(era_start_slot + remaining_ms // era_duration_ms)
 ```
 
 #### New `compute_slot_range_duration_ms`
@@ -109,9 +146,8 @@ def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
 #### Modified `compute_time_at_slot`
 
 *Note*: Without this override the execution payload timestamp, validated against
-`compute_time_at_slot` in `process_execution_payload`, would drift ahead of
-wall-clock time by `SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198` per post-fork
-slot.
+`compute_time_at_slot` in `process_execution_payload`, would drift away from
+wall-clock time without bound after a slot duration change.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
@@ -119,41 +155,12 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
     return compute_time_at_slot_ms(state, slot) // 1000
 ```
 
-#### Modified `get_blob_parameters`
-
-*Note*: The synthetic entry at `EIP8198_FORK_EPOCH` scales the preceding maximum
-by the slot-duration ratio and is equivalent to appending it to `BLOB_SCHEDULE`;
-a later explicit schedule entry takes precedence.
-
-```python
-def get_blob_parameters(epoch: Epoch) -> BlobParameters:
-    """
-    Return the blob parameters at a given epoch.
-    """
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"] and entry["EPOCH"] >= EIP8198_FORK_EPOCH:
-            return BlobParameters(entry["EPOCH"], entry["MAX_BLOBS_PER_BLOCK"])
-
-    if epoch >= EIP8198_FORK_EPOCH:
-        pre_fork_epoch = Epoch(EIP8198_FORK_EPOCH - 1)
-        pre_fork_parameters = get_blob_parameters(pre_fork_epoch)
-        return BlobParameters(
-            EIP8198_FORK_EPOCH,
-            pre_fork_parameters.max_blobs_per_block * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS,
-        )
-
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return BlobParameters(entry["EPOCH"], entry["MAX_BLOBS_PER_BLOCK"])
-    return BlobParameters(ELECTRA_FORK_EPOCH, MAX_BLOBS_PER_BLOCK_ELECTRA)
-```
-
 ### Beacon state accessors
 
 #### Modified `get_base_reward_per_increment`
 
 *Note*: The division is deferred so that the exact
-`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` ratio applies, rather than
+`get_slot_duration_ms(epoch) / SLOT_DURATION_MS` ratio applies, rather than
 rounding `BASE_REWARD_FACTOR` to a new integer constant.
 
 ```python
@@ -162,7 +169,7 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
         # [Modified in EIP8198]
-        * SLOT_DURATION_MS_EIP8198
+        * get_slot_duration_ms(get_current_epoch(state))
         // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
@@ -191,12 +198,13 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             # [Modified in EIP8198]
+            slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
             penalty_denominator = (
                 INACTIVITY_SCORE_BIAS
                 * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
                 * SLOT_DURATION_MS
                 * SLOT_DURATION_MS
-                // (SLOT_DURATION_MS_EIP8198 * SLOT_DURATION_MS_EIP8198)
+                // (slot_duration_ms * slot_duration_ms)
             )
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
@@ -219,7 +227,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
     )
     # [Modified in EIP8198]
     churn = min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
-    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
@@ -236,7 +244,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     # [Modified in EIP8198]
-    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
@@ -251,6 +259,6 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
     churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     # [Modified in EIP8198]
-    churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```

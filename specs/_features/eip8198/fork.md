@@ -23,9 +23,6 @@ Warning: this configuration is not definitive.
 | `EIP8198_FORK_VERSION` | `Version('0xe8198000')`               |
 | `EIP8198_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-If EIP-8198 is enabled, `EIP8198_FORK_EPOCH` MUST be greater than
-`HEZE_FORK_EPOCH`.
-
 ## Fork to EIP-8198
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and

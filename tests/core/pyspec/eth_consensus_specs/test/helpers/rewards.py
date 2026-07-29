@@ -65,13 +65,10 @@ def get_expected_inactivity_penalty(spec, state, index):
         get_inactivity_penalty_quotient(spec)
     )
     if is_post_eip8198(spec):
-        post_fork_duration_ms = int(spec.config.SLOT_DURATION_MS_EIP8198)
-        pre_fork_duration_ms = int(spec.config.SLOT_DURATION_MS)
+        duration_ms = int(spec.get_slot_duration_ms(spec.get_current_epoch(state)))
+        base_duration_ms = int(spec.config.SLOT_DURATION_MS)
         penalty_denominator = (
-            penalty_denominator
-            * pre_fork_duration_ms
-            * pre_fork_duration_ms
-            // (post_fork_duration_ms * post_fork_duration_ms)
+            penalty_denominator * base_duration_ms * base_duration_ms // (duration_ms * duration_ms)
         )
     return int(penalty_numerator) // penalty_denominator
 

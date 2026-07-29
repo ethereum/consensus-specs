@@ -24,7 +24,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_fulu
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198, is_post_fulu
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -150,7 +150,10 @@ def _run_is_parent_root(spec, state, at_epoch_boundary):
 
     # Make the head block late
     # Round up to nearest second
-    attestation_due_ms = spec.get_attestation_due_ms()
+    if is_post_eip8198(spec):
+        attestation_due_ms = spec.get_attestation_due_ms(state.slot)
+    else:
+        attestation_due_ms = spec.get_attestation_due_ms()
     attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = (
         state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time + attesting_cutoff

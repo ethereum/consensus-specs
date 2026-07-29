@@ -21,7 +21,11 @@ def test_get_consolidation_churn_limit_independent(spec, state):
     total = spec.get_total_active_balance(state)
     expected = total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     if is_post_eip8198(spec):
-        expected = expected * spec.config.SLOT_DURATION_MS_EIP8198 // spec.config.SLOT_DURATION_MS
+        expected = (
+            expected
+            * spec.get_slot_duration_ms(spec.get_current_epoch(state))
+            // spec.config.SLOT_DURATION_MS
+        )
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert churn == expected
 
@@ -102,7 +106,7 @@ def test_compute_weak_subjectivity_period_scaled(spec, state):
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn > activation_churn
     if is_post_eip8198(spec):
-        assert activation_churn == get_activation_churn_cap(spec)
+        assert activation_churn == get_activation_churn_cap(spec, state)
         assert activation_churn % spec.EFFECTIVE_BALANCE_INCREMENT == 0
 
     t = spec.get_total_active_balance(state)

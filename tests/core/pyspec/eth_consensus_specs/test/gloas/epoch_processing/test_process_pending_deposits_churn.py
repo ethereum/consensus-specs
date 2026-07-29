@@ -46,7 +46,7 @@ def run_test_pending_deposits_activation_churn(spec, state):
 def test_activation_churn__less_than_cap(spec, state):
     """Default state: activation churn is below the cap (at the floor)."""
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn <= get_activation_churn_cap(spec)
+    assert activation_churn <= get_activation_churn_cap(spec, state)
     yield from run_test_pending_deposits_activation_churn(spec, state)
 
 
@@ -64,7 +64,7 @@ def test_activation_churn__less_than_cap(spec, state):
 def test_activation_churn__equal_to_cap(spec, state):
     """Scaled state: activation churn exactly equals the cap."""
     activation_churn = spec.get_activation_churn_limit(state)
-    assert activation_churn == get_activation_churn_cap(spec)
+    assert activation_churn == get_activation_churn_cap(spec, state)
     yield from run_test_pending_deposits_activation_churn(spec, state)
 
 
@@ -83,7 +83,7 @@ def test_activation_churn__greater_than_cap(spec, state):
     """Scaled state: uncapped churn exceeds cap, but activation churn is capped."""
     activation_churn = spec.get_activation_churn_limit(state)
     exit_churn = spec.get_exit_churn_limit(state)
-    assert activation_churn == get_activation_churn_cap(spec)
+    assert activation_churn == get_activation_churn_cap(spec, state)
     assert exit_churn > activation_churn
     yield from run_test_pending_deposits_activation_churn(spec, state)
 

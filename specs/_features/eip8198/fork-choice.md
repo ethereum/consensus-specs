@@ -13,6 +13,14 @@
   - [New `get_time_into_slot_ms`](#new-get_time_into_slot_ms)
   - [Modified `get_slots_since_genesis`](#modified-get_slots_since_genesis)
   - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
+  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+  - [Modified `get_proposer_reorg_cutoff_ms`](#modified-get_proposer_reorg_cutoff_ms)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+  - [Modified `get_payload_due_ms`](#modified-get_payload_due_ms)
+  - [Modified `get_payload_attestation_due_ms`](#modified-get_payload_attestation_due_ms)
+  - [Modified `get_inclusion_list_due_ms`](#modified-get_inclusion_list_due_ms)
   - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
     - [Modified `is_proposing_on_time`](#modified-is_proposing_on_time)
   - [`on_tick` helpers](#on_tick-helpers)
@@ -28,16 +36,17 @@
 
 ## Introduction
 
-EIP-8198 changes the slot duration from `SLOT_DURATION_MS` to
-`SLOT_DURATION_MS_EIP8198` at `EIP8198_FORK_EPOCH`. Intra-slot deadlines are
-measured against the new slot duration through the modified
-`get_slot_component_duration_ms`, the mapping between wall-clock time and slot
-number becomes piecewise (slots before the fork run at the old duration, slots
-after it at the new one), and every timeliness check is rebased on the new
-`get_time_into_slot_ms` helper, because post-fork slot boundaries are not
-aligned to genesis at the old duration. The store clock gains millisecond
-precision: implementations MUST drive the store with `on_tick_ms`; the
-whole-second `on_tick` remains only as a compatibility adapter.
+EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
+deadlines are measured against the duration in effect at the current slot, so
+the deadline helpers gain a `slot` parameter; the basis-point values themselves
+are unchanged (a schedule entry MAY be accompanied by new basis-point values if
+a duty's relative position in the slot should change). The mapping between
+wall-clock time and slot number becomes piecewise over the schedule's eras, and
+every timeliness check is rebased on the new `get_time_into_slot_ms` helper,
+because slot boundaries after a duration change are not aligned to genesis at a
+fixed duration. The store clock gains millisecond precision: implementations
+MUST drive the store with `on_tick_ms`; the whole-second `on_tick` remains only
+as a compatibility adapter.
 
 *Note*: This specification is built upon [Heze](../../heze/fork-choice.md).
 
@@ -77,7 +86,7 @@ class Store:
 
 ### Modified `get_forkchoice_store`
 
-*Note*: The anchor state may already be past `EIP8198_FORK_EPOCH`, e.g. on
+*Note*: The anchor state may already be past a slot duration change, e.g. on
 checkpoint sync, so the initial store time is derived from the piecewise
 timeline.
 
@@ -139,8 +148,7 @@ def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
 def get_time_into_slot_ms(store: Store) -> Uint64:
     """
     Return the time elapsed since the start of the current slot in
-    milliseconds, accounting for the slot duration change at
-    ``EIP8198_FORK_EPOCH``.
+    milliseconds, accounting for slot duration changes.
     """
     current_slot = Slot(GENESIS_SLOT + get_slot_from_time_ms(store, store.time_ms))
     slot_start_time_ms = compute_slot_start_time_ms(store.genesis_time, current_slot)
@@ -157,16 +165,89 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ### Modified `get_slot_component_duration_ms`
 
-*Note*: Every inherited deadline helper is defined in terms of this function, so
-overriding it rescales all intra-slot deadlines.
+*Note*: This helper and the deadline helpers below gain a `slot` parameter,
+since the deadline of a duty depends on the slot duration in effect at its slot.
 
 ```python
-def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
+def get_slot_component_duration_ms(basis_points: Uint64, slot: Slot) -> Uint64:
     """
     Calculate the duration of a slot component in milliseconds.
     """
     # [Modified in EIP8198]
-    return basis_points * SLOT_DURATION_MS_EIP8198 // BASIS_POINTS
+    # Added `slot`
+    return basis_points * get_slot_duration_ms(compute_epoch_at_slot(slot)) // BASIS_POINTS
+```
+
+### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS, slot)
+```
+
+### Modified `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS, slot)
+```
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS, slot)
+```
+
+### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS, slot)
+```
+
+### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS, slot)
+```
+
+### Modified `get_payload_due_ms`
+
+```python
+def get_payload_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(PAYLOAD_DUE_BPS, slot)
+```
+
+### Modified `get_payload_attestation_due_ms`
+
+```python
+def get_payload_attestation_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS, slot)
+```
+
+### Modified `get_inclusion_list_due_ms`
+
+```python
+def get_inclusion_list_due_ms(slot: Slot) -> Uint64:
+    # [Modified in EIP8198]
+    # Added `slot`
+    return get_slot_component_duration_ms(INCLUSION_LIST_DUE_BPS, slot)
 ```
 
 ### Proposer head and reorg helpers
@@ -177,7 +258,7 @@ def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
 def is_proposing_on_time(store: Store) -> bool:
     # [Modified in EIP8198]
     time_into_slot_ms = get_time_into_slot_ms(store)
-    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms()
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(get_current_slot(store))
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
@@ -214,9 +295,9 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
     # [Modified in EIP8198]
     time_into_slot_ms = get_time_into_slot_ms(store)
-    attestation_threshold_ms = get_attestation_due_ms()
+    attestation_threshold_ms = get_attestation_due_ms(get_current_slot(store))
     is_current_slot = get_current_slot(store) == block.slot
-    ptc_threshold_ms = get_payload_attestation_due_ms()
+    ptc_threshold_ms = get_payload_attestation_due_ms(get_current_slot(store))
     store.block_timeliness[root] = [
         is_current_slot and time_into_slot_ms < threshold
         for threshold in [attestation_threshold_ms, ptc_threshold_ms]
@@ -257,7 +338,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     # [Modified in EIP8198]
     time_into_slot_ms = get_time_into_slot_ms(store)
-    inclusion_list_due_ms = get_inclusion_list_due_ms()
+    inclusion_list_due_ms = get_inclusion_list_due_ms(get_current_slot(store))
     is_timely = time_into_slot_ms < inclusion_list_due_ms
 
     process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_timely)

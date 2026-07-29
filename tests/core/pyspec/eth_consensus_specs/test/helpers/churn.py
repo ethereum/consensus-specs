@@ -25,12 +25,12 @@ def get_exit_churn_limit(spec, state):
     return spec.get_activation_exit_churn_limit(state)
 
 
-def get_activation_churn_cap(spec):
+def get_activation_churn_cap(spec, state):
     """Maximum per-epoch activation churn, including fork-specific rescaling."""
     if is_post_eip8198(spec):
         cap = (
             spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
-            * spec.config.SLOT_DURATION_MS_EIP8198
+            * spec.get_slot_duration_ms(spec.get_current_epoch(state))
             // spec.config.SLOT_DURATION_MS
         )
         return cap - cap % spec.EFFECTIVE_BALANCE_INCREMENT
