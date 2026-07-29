@@ -203,8 +203,21 @@ cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
+    cell_proofs = zip(kzg.compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
+```
+
+*Note*: The function `kzg.compute_cells` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells(blob: Blob) -> Cells:
+    """
+    Extend ``blob`` and return all the cells of the extended blob.
+    """
 ```
 
 Moreover, the full sequence of sidecars can also be computed from

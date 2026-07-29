@@ -212,12 +212,31 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
     # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
+    return kzg.verify_cell_kzg_proof_batch(
         commitments_bytes=sidecar.kzg_commitments,
         cell_indices=cell_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
     )
+```
+
+*Note*: The function `kzg.verify_cell_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_cell_kzg_proof_batch(
+    commitments_bytes: Sequence[Bytes48],
+    cell_indices: Sequence[CellIndex],
+    cells: Sequence[Cell],
+    proofs_bytes: Sequence[Bytes48],
+) -> bool:
+    """
+    Return ``True`` if and only if all cells and their proofs match the
+    commitments.
+    """
 ```
 
 #### New `verify_data_column_sidecar_inclusion_proof`

@@ -39,7 +39,7 @@ class PayloadAttributes:
 The implementation of `is_data_available` will become more sophisticated during
 later scaling upgrades. Initially, verification requires every verifying actor
 to retrieve all matching `Blob`s and `KZGProof`s, and validate them with
-`verify_blob_kzg_proof_batch`.
+`kzg.verify_blob_kzg_proof_batch`.
 
 The block MUST NOT be considered valid until all valid `Blob`s have been
 downloaded. Blocks that have been previously validated as available SHOULD be
@@ -60,7 +60,23 @@ def is_data_available(
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+    return kzg.verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+```
+
+*Note*: The function `kzg.verify_blob_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof_batch(
+    blobs: Sequence[Blob], commitments_bytes: Sequence[Bytes48], proofs_bytes: Sequence[Bytes48]
+) -> bool:
+    """
+    Return ``True`` if and only if all blobs and their proofs match the
+    commitments.
+    """
 ```
 
 ## Handlers
