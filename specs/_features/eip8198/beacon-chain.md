@@ -35,7 +35,10 @@ behavior constant: issuance and churn are per-epoch rates and scale by `r`,
 while the inactivity penalty scales by `r**2` so that the cumulative leak over a
 fixed wall-clock duration is unchanged. Rather than pre-computing rounded
 constants, each formula applies the ratio inline, keeping the slot duration
-schedule the single source of truth for the slot duration.
+schedule the single source of truth for the slot duration. Epoch- and
+slot-denominated quantities — withdrawability and slashing windows, sync
+committee periods, per-payload and per-epoch processing limits — keep their
+counts, so their wall-clock spans scale with the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -82,7 +85,7 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     """
     duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
-        if epoch < entry["EPOCH"]:
+        if entry["EPOCH"] == FAR_FUTURE_EPOCH or epoch < entry["EPOCH"]:
             break
         duration_ms = entry["SLOT_DURATION_MS"]
     return duration_ms
@@ -238,6 +241,11 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
 ```
 
 #### Modified `get_exit_churn_limit`
+
+*Note*: Exit and consolidation epochs assigned before a duration change keep
+their assigned epochs and consumed quota, so around a change the inherited queue
+allocation transiently deviates from the new per-epoch rate by at most the
+backlog queued at the change.
 
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:

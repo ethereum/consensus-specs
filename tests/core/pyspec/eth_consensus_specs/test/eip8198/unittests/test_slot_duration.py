@@ -461,6 +461,7 @@ def test_unscheduled_entry_has_no_effect(spec):
     # FAR_FUTURE_EPOCH, which must behave as if the schedule were empty.
     for entry in spec.config.SLOT_DURATION_SCHEDULE:
         assert entry["EPOCH"] == spec.FAR_FUTURE_EPOCH
+    assert spec.get_slot_duration_ms(spec.FAR_FUTURE_EPOCH) == spec.config.SLOT_DURATION_MS
     for epoch in (spec.GENESIS_EPOCH, spec.Epoch(8192), spec.Epoch(100_000)):
         assert spec.get_slot_duration_ms(epoch) == spec.config.SLOT_DURATION_MS
         slot = spec.compute_start_slot_at_epoch(epoch)

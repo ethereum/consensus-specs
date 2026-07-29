@@ -165,11 +165,12 @@ def is_gas_limit_transition_compatible(
 
 ### The Req/Resp domain
 
-Request and response message types are unchanged from Heze. The lower bound of
-the data-column sidecar retention window used by the inherited sidecar request
-validations and pruning guidance is
-`get_data_column_sidecars_retention_start(current_epoch)`. It preserves the
-window's wall-clock length across slot duration changes, so a node retaining the
+Request and response message types are unchanged from Heze. In the inherited
+data-column sidecar request validations and pruning guidance,
+`get_data_column_sidecars_retention_start(current_epoch)` replaces the rolling
+`current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` term; the
+inherited `FULU_FORK_EPOCH` floor is unchanged. This preserves the window's
+wall-clock length across slot duration changes, so a node retaining the
 inherited window when a change activates never serves a shorter wall-clock
 history, without pre-change over-retention or backfill. The blob sidecar
 Req/Resp messages are already deprecated as of
