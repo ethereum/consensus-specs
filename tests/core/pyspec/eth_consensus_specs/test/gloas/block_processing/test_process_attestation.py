@@ -189,6 +189,65 @@ def test_invalid_same_slot_attestation_index_one(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_invalid_same_slot_attestation_index_one_target_not_matching(spec, state):
+    """
+    Test that the same-slot index check is not skipped when the target does not
+    match. The zero-index requirement applies to every same-slot attestation,
+    even ones which cannot receive the timely head flag.
+    """
+    attestation_slot = 2
+    slot_2_block_root = _setup_same_slot_scenario(spec, state, target_slot=attestation_slot)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=slot_2_block_root
+    )
+    attestation.data.index = 1
+    # Make the target root disagree with the state's block root for that epoch
+    attestation.data.target.root = spec.Root(b"\x02" * 32)
+    sign_attestation(spec, state, attestation)
+
+    # The source still matches, so the source assertion is not what fails here
+    assert attestation.data.source == state.current_justified_checkpoint
+    assert attestation.data.target.root != spec.get_block_root(
+        state, attestation.data.target.epoch
+    )
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_same_slot_attestation_index_one_head_not_matching(spec, state):
+    """
+    Test that the same-slot index check is not skipped when the head root does
+    not match. An attestation for slot 0 is always considered same-slot, so the
+    zero-index requirement applies even with an unknown beacon block root.
+    """
+    attestation_slot = 0
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    # A block root which does not match any block root in the state
+    custom_block_root = spec.Root(b"\x03" * 32)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=custom_block_root
+    )
+    attestation.data.index = 1
+    # Restore the target root, which the helper derived from the block root
+    attestation.data.target.root = spec.get_block_root(state, attestation.data.target.epoch)
+    sign_attestation(spec, state, attestation)
+
+    # The target matches, only the head root does not
+    assert attestation.data.source == state.current_justified_checkpoint
+    assert attestation.data.target.root == spec.get_block_root(state, attestation.data.target.epoch)
+    assert attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, attestation_slot
+    )
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_builder_payment_weight_tracking(spec, state):
     """
     Test that builder payment weights are tracked correctly for Gloas.
