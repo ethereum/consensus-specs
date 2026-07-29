@@ -302,6 +302,81 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state):
+    """
+    The lower epoch bound uses past clock tolerance. Preferences from the
+    previous epoch reach the passed-slot check within the disparity window.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
+    current_epoch_start_slot = spec.compute_start_slot_at_epoch(current_epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, current_epoch_start_slot)
+
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=spec.Slot(current_epoch_start_slot - 1),
+        validator_index=spec.ValidatorIndex(0),
+        dependent_root=spec.Root(),
+    )
+
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
+    yield get_filename(signed_prefs), signed_prefs
+
+    disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    time_ms = spec.compute_time_at_slot_ms(state, current_epoch_start_slot) + disparity - 1
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "proposal slot has already passed"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    time_ms += 2
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "proposal slot is before the current epoch"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
     """Preferences whose proposal slot is already current/past are ignored."""
     anchor_state = state.copy()

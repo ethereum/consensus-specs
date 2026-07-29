@@ -974,20 +974,25 @@ def validate_proposer_preferences_gossip(
     preferences = signed_proposer_preferences.message
 
     # [IGNORE] The proposal slot's epoch is at or after the current epoch
-    adjusted_current_time_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    time_since_genesis_ms = adjusted_current_time_ms - store.genesis_time * 1000
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
-    current_epoch = compute_epoch_at_slot(current_slot)
+    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
+    earliest_current_slot = Slot(
+        max(time_since_genesis_ms - MAXIMUM_GOSSIP_CLOCK_DISPARITY, 0) // SLOT_DURATION_MS
+    )
+    earliest_current_epoch = compute_epoch_at_slot(earliest_current_slot)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
-    if proposal_epoch < current_epoch:
+    if proposal_epoch < earliest_current_epoch:
         raise GossipIgnore("proposal slot is before the current epoch")
 
     # [IGNORE] The proposal slot's epoch is within the proposer lookahead
-    if proposal_epoch > current_epoch + Epoch(MIN_SEED_LOOKAHEAD):
+    latest_current_slot = Slot(
+        (time_since_genesis_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY) // SLOT_DURATION_MS
+    )
+    latest_current_epoch = compute_epoch_at_slot(latest_current_slot)
+    if proposal_epoch > latest_current_epoch + Epoch(MIN_SEED_LOOKAHEAD):
         raise GossipIgnore("proposal slot is past the proposer lookahead")
 
     # [IGNORE] The proposal slot has not already passed
-    if preferences.proposal_slot <= current_slot:
+    if preferences.proposal_slot <= latest_current_slot:
         raise GossipIgnore("proposal slot has already passed")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
