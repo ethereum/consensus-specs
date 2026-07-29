@@ -14,7 +14,7 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
-from eth_consensus_specs.utils.ssz.ssz_typing import Bitvector
+from eth_consensus_specs.utils.ssz.ssz_typing import BitVector
 
 
 def run_payload_attestation_processing(spec, state, payload_attestation, valid=True):
@@ -72,7 +72,7 @@ def prepare_signed_payload_attestation(
     # to deal with duplicates indices in the PTC.
     unset_indices = list(attesting_indices)
 
-    aggregation_bits = Bitvector[spec.PTC_SIZE]()
+    aggregation_bits = BitVector[spec.PTC_SIZE]()
     for i, validator_index in enumerate(ptc):
         if validator_index in unset_indices:
             aggregation_bits[i] = True

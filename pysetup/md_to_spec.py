@@ -205,13 +205,13 @@ class MarkdownToSpec:
                 if value.startswith(
                     (
                         "Uint",
-                        "Bitlist",
-                        "Bitvector",
+                        "BitList",
+                        "BitVector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",
                         "List",
-                        "ProgressiveBitlist",
+                        "ProgressiveBitList",
                         "ProgressiveByteList",
                         "ProgressiveList",
                         "Union",

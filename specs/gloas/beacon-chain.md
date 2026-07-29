@@ -146,7 +146,7 @@ from the latest published version of the EIPs.
 
 | Name                     | SSZ equivalent                           |
 | ------------------------ | ---------------------------------------- |
-| `AggregationBits`        | `ProgressiveBitlist`                     |
+| `AggregationBits`        | `ProgressiveBitList`                     |
 | `AttestingIndices`       | `ProgressiveList[ValidatorIndex]`        |
 | `Transaction`            | `ProgressiveByteList`                    |
 | `DepositRequests`        | `ProgressiveList[DepositRequest]`        |
@@ -314,7 +314,7 @@ class PayloadAttestationData(Container):
 
 ```python
 class PayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    aggregation_bits: Bitvector[PTC_SIZE]
+    aggregation_bits: BitVector[PTC_SIZE]
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -392,7 +392,7 @@ class Attestation(ProgressiveContainer(active_fields=[1] * 4)):
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
-    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]
+    committee_bits: BitVector[MAX_COMMITTEES_PER_SLOT]
 ```
 
 #### `IndexedAttestation`
@@ -469,7 +469,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     previous_epoch_participation: ProgressiveList[ParticipationFlags]
     # [Modified in Gloas:EIP7688]
     current_epoch_participation: ProgressiveList[ParticipationFlags]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -502,7 +502,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     # [New in Gloas:EIP7732]
     next_withdrawal_builder_index: BuilderIndex
     # [New in Gloas:EIP7732]
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
+    execution_payload_availability: BitVector[SLOTS_PER_HISTORICAL_ROOT]
     # [New in Gloas:EIP7732]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     # [New in Gloas:EIP7732]

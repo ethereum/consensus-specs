@@ -234,8 +234,8 @@ communicate the custody group count.
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
+  syncnets: BitVector[SYNC_COMMITTEE_SUBNET_COUNT]
   custody_group_count: Uint64 # cgc
 )
 ```

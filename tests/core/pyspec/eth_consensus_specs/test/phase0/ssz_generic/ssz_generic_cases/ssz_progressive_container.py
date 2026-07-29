@@ -7,7 +7,7 @@ from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     Byte,
     List,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveContainer,
     ProgressiveList,
     Uint16,
@@ -30,13 +30,13 @@ class ProgressiveSingleFieldContainerTestStruct(ProgressiveContainer(active_fiel
 
 
 class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_fields=[0, 0, 0, 0, 1])):
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
 
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
     A: Byte
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
 
 
 class ProgressiveComplexTestStruct(
@@ -46,7 +46,7 @@ class ProgressiveComplexTestStruct(
 ):
     A: Byte
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
     D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
@@ -72,19 +72,19 @@ class ModifiedTestStruct3(ProgressiveContainer(active_fields=[1, 1, 1])):
 
 class ModifiedTestStruct4(ProgressiveContainer(active_fields=[0, 0, 1, 0, 1])):
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
 
 
 class ModifiedTestStruct5(ProgressiveContainer(active_fields=[1, 0, 0, 0, 1])):
     A: Byte
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
 
 
 class ModifiedTestStruct6(ProgressiveContainer(active_fields=[1, 1, 1, 0, 1, 0, 0, 0, 1])):
     A: Byte
     X: Byte
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
     D: ProgressiveList[Uint64]
 
 
@@ -102,7 +102,7 @@ class ModifiedTestStruct8(
     A: Byte
     X: Byte
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
     D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
@@ -117,7 +117,7 @@ class ModifiedTestStruct9(
 ):
     A: Byte
     B: List[Uint16, 123]
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
     D: ProgressiveList[Uint64]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]

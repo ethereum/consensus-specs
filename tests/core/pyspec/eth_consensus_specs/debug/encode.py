@@ -1,13 +1,13 @@
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
-    Bitlist,
-    Bitvector,
+    BitList,
+    BitVector,
     Boolean,
     Byte,
     CompatibleUnion,
     Container,
     List,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveContainer,
     ProgressiveList,
     Uint,
@@ -24,7 +24,7 @@ def encode(value, include_hash_tree_roots=False):
         return int(value)
     elif isinstance(value, Boolean):
         return value == 1
-    elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector) or (
+    elif isinstance(value, BitList | ProgressiveBitList | BitVector) or (
         isinstance(value, ProgressiveList) and issubclass(value.element_cls(), Byte)
     ):
         return "0x" + serialize(value).hex()
