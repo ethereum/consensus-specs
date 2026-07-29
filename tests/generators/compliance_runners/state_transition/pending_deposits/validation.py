@@ -1,0 +1,333 @@
+"""Independent semantic validation for pending-deposit compliance vectors."""
+
+from __future__ import annotations
+
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import snappy
+from ruamel.yaml import YAML
+
+from eth_consensus_specs.gloas import minimal as spec
+
+_YAML = YAML(typ="safe")
+
+
+@dataclass
+class Check:
+    dimension: str
+    claimed: Any
+    actual: Any
+    status: str
+
+
+def _decode(path: Path, sedes: Any) -> Any:
+    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
+
+
+def _role(state: Any, deposit: Any, next_epoch: Any) -> str:
+    pubkeys = [validator.pubkey for validator in state.validators]
+    if deposit.pubkey not in pubkeys:
+        return (
+            "NEW_VALID"
+            if spec.is_valid_deposit_signature(
+                deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
+            )
+            else "NEW_INVALID"
+        )
+    validator = state.validators[pubkeys.index(deposit.pubkey)]
+    if validator.withdrawable_epoch < next_epoch:
+        return "WITHDRAWN"
+    if validator.exit_epoch < spec.FAR_FUTURE_EPOCH:
+        return "EXITING"
+    return "ACTIVE"
+
+
+def replay(pre: Any) -> dict[str, Any]:
+    """Recover the handler's loop trace without invoking the handler itself."""
+    next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
+    available = pre.deposit_balance_to_consume + spec.get_activation_churn_limit(pre)
+    finalized_slot = spec.compute_start_slot_at_epoch(pre.finalized_checkpoint.epoch)
+    processed_amount = 0
+    consumed = 0
+    postponed: list[Any] = []
+    applied: list[Any] = []
+    gate = "EMPTY"
+
+    for deposit in pre.pending_deposits:
+        if deposit.slot > finalized_slot:
+            gate = "UNFINALIZED"
+            break
+        if consumed >= spec.MAX_PENDING_DEPOSITS_PER_EPOCH:
+            gate = "PER_EPOCH_LIMIT"
+            break
+        role = _role(pre, deposit, next_epoch)
+        if role == "WITHDRAWN":
+            applied.append(deposit)
+        elif role == "EXITING":
+            postponed.append(deposit)
+        else:
+            if processed_amount + deposit.amount > available:
+                gate = "CHURN_LIMIT"
+                break
+            processed_amount += deposit.amount
+            if role != "NEW_INVALID":
+                applied.append(deposit)
+        consumed += 1
+    else:
+        gate = "EXHAUSTED"
+
+    return {
+        "gate": gate,
+        "consumed": consumed,
+        "processed_amount": processed_amount,
+        "postponed": postponed,
+        "applied": applied,
+        "expected_queue": list(pre.pending_deposits[consumed:]) + postponed,
+        "expected_churn": available - processed_amount if gate == "CHURN_LIMIT" else 0,
+    }
+
+
+def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
+    deposits = pre.pending_deposits
+    if not deposits:
+        return {
+            "queue_layout": "EMPTY",
+            "secondary_role": "SECOND_NONE",
+            "primary_reached": False,
+            "primary_role": "ROLE_NA",
+            "deposit_signature_valid": "NA",
+            "validator_pubkey_found": False,
+            "validator_active": "NA",
+            "validator_exiting": "NA",
+            "withdrawable_epoch_to_next_epoch": "NA",
+            "initial_churn": "CARRY_NONZERO" if pre.deposit_balance_to_consume else "CARRY_ZERO",
+            "primary_amount_to_available": "NA",
+            "second_amount_to_remaining": "NA",
+            "churn_effect": "CHURN_CLEARED",
+            "outcome": "EMPTY_QUEUE",
+        }
+    candidate = (
+        deposits[int(spec.MAX_PENDING_DEPOSITS_PER_EPOCH)]
+        if trace["gate"] == "PER_EPOCH_LIMIT"
+        else deposits[0]
+    )
+    next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
+    role = _role(pre, candidate, next_epoch)
+    finalized_slot = spec.compute_start_slot_at_epoch(pre.finalized_checkpoint.epoch)
+    if trace["gate"] == "PER_EPOCH_LIMIT":
+        prefix = deposits[: int(spec.MAX_PENDING_DEPOSITS_PER_EPOCH)]
+        layout = (
+            "LIMIT_AFTER_WITHDRAWN"
+            if len(prefix) == int(spec.MAX_PENDING_DEPOSITS_PER_EPOCH)
+            and all(_role(pre, deposit, next_epoch) == "WITHDRAWN" for deposit in prefix)
+            and role == "WITHDRAWN"
+            else "INVALID_LAYOUT"
+        )
+    elif deposits[0].slot > finalized_slot:
+        layout = "FIRST_UNFINALIZED"
+    elif role == "EXITING" and len(deposits) > 1:
+        second = deposits[1]
+        layout = (
+            "POSTPONE_THEN_ACTIVE"
+            if second.slot <= finalized_slot and _role(pre, second, next_epoch) == "ACTIVE"
+            else "INVALID_LAYOUT"
+        )
+    elif len(deposits) > 1 and deposits[1].slot > finalized_slot:
+        layout = (
+            "ACTIVE_THEN_UNFINALIZED"
+            if role in {"ACTIVE", "NEW_VALID", "NEW_INVALID"}
+            else "INVALID_LAYOUT"
+        )
+    elif len(deposits) == 2 and role in {"ACTIVE", "NEW_VALID", "NEW_INVALID"}:
+        second = deposits[1]
+        second_role = _role(pre, second, next_epoch)
+        if second.slot <= finalized_slot and second_role == "ACTIVE":
+            layout = "INVALID_THEN_PROCESSABLE" if role == "NEW_INVALID" else "TWO_PROCESSABLE"
+        else:
+            layout = "INVALID_LAYOUT"
+    else:
+        layout = "SINGLE"
+    found = role in {"ACTIVE", "EXITING", "WITHDRAWN"}
+    validator = (
+        pre.validators[[v.pubkey for v in pre.validators].index(candidate.pubkey)]
+        if found
+        else None
+    )
+    withdrawable = "NA"
+    if validator is not None:
+        withdrawable = (
+            "LT"
+            if validator.withdrawable_epoch < next_epoch
+            else ("EQ" if validator.withdrawable_epoch == next_epoch else "GT")
+        )
+    available = pre.deposit_balance_to_consume + spec.get_activation_churn_limit(pre)
+    comparison = (
+        "NA"
+        if role in {"EXITING", "WITHDRAWN"}
+        else (
+            "LT"
+            if candidate.amount < available
+            else "EQ"
+            if candidate.amount == available
+            else "GT"
+        )
+    )
+    second_comparison = "NA"
+    if layout in {"TWO_PROCESSABLE", "INVALID_THEN_PROCESSABLE"}:
+        remaining = available - candidate.amount
+        second_amount = deposits[1].amount
+        second_comparison = (
+            "LT" if second_amount < remaining else "EQ" if second_amount == remaining else "GT"
+        )
+    outcome = {
+        "UNFINALIZED": "STOP_UNFINALIZED",
+        "PER_EPOCH_LIMIT": "STOP_PER_EPOCH_LIMIT",
+        "CHURN_LIMIT": "STOP_CHURN_LIMIT",
+        "EMPTY": "EMPTY_QUEUE",
+    }.get(trace["gate"], "PROCESSED")
+    return {
+        "queue_layout": layout,
+        "secondary_role": "SECOND_ACTIVE"
+        if layout == "POSTPONE_THEN_ACTIVE"
+        else (
+            "SECOND_UNFINALIZED"
+            if layout == "ACTIVE_THEN_UNFINALIZED"
+            else "SECOND_PROCESSABLE"
+            if layout in {"TWO_PROCESSABLE", "INVALID_THEN_PROCESSABLE"}
+            else "SECOND_NONE"
+        ),
+        "primary_reached": layout not in {"EMPTY", "FIRST_UNFINALIZED", "LIMIT_AFTER_WITHDRAWN"},
+        "primary_role": role,
+        "deposit_signature_valid": "T"
+        if role == "NEW_VALID"
+        else "F"
+        if role == "NEW_INVALID"
+        else "NA",
+        "validator_pubkey_found": found,
+        "validator_active": "T" if role == "ACTIVE" else "F" if found else "NA",
+        "validator_exiting": "T" if role in {"EXITING", "WITHDRAWN"} else "F" if found else "NA",
+        "withdrawable_epoch_to_next_epoch": withdrawable
+        if role in {"EXITING", "WITHDRAWN"}
+        else "NA",
+        "initial_churn": "CARRY_NONZERO" if pre.deposit_balance_to_consume else "CARRY_ZERO",
+        "primary_amount_to_available": comparison,
+        "second_amount_to_remaining": second_comparison,
+        "churn_effect": "CHURN_RETAINED" if trace["gate"] == "CHURN_LIMIT" else "CHURN_CLEARED",
+        "outcome": outcome,
+    }
+
+
+def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = _decode(case_dir / "post.ssz_snappy", spec.BeaconState)
+    claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
+    trace = replay(pre)
+    actual = recover_dimensions(pre, trace)
+    checks = [
+        Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
+        for name, value in claimed.items()
+    ]
+    errors: list[str] = []
+    if list(post.pending_deposits) != trace["expected_queue"]:
+        errors.append("pending_deposits does not equal unconsumed suffix plus postponed entries")
+    if post.deposit_balance_to_consume != trace["expected_churn"]:
+        errors.append("deposit_balance_to_consume does not match independently recovered churn")
+    if actual["primary_amount_to_available"] == "GT":
+        candidate = pre.pending_deposits[0]
+        exit_available = pre.deposit_balance_to_consume + spec.get_exit_churn_limit(pre)
+        if candidate.amount > exit_available:
+            errors.append("GT churn case does not distinguish activation churn from exit churn")
+    if actual["second_amount_to_remaining"] == "GT":
+        exit_available = pre.deposit_balance_to_consume + spec.get_exit_churn_limit(pre)
+        if pre.pending_deposits[0].amount + pre.pending_deposits[1].amount > exit_available:
+            errors.append(
+                "second-entry GT case does not distinguish activation churn from exit churn"
+            )
+    pre_indices = {validator.pubkey: index for index, validator in enumerate(pre.validators)}
+    expected_increases = [0] * len(pre.validators)
+    expected_new = []
+    for deposit in trace["applied"]:
+        index = pre_indices.get(deposit.pubkey)
+        if index is None:
+            expected_new.append(deposit)
+        else:
+            expected_increases[index] += deposit.amount
+    if len(post.validators) != len(pre.validators) + len(expected_new):
+        errors.append("validator registry length does not match valid applied deposits")
+    if len(post.balances) != len(pre.balances) + len(expected_new):
+        errors.append("balance list length does not match valid applied deposits")
+    if list(post.validators[: len(pre.validators)]) != list(pre.validators):
+        errors.append("an existing validator record changed during pending-deposit processing")
+    for name in (
+        "previous_epoch_participation",
+        "current_epoch_participation",
+        "inactivity_scores",
+    ):
+        before = getattr(pre, name)
+        after = getattr(post, name)
+        if len(after) != len(before) + len(expected_new):
+            errors.append(f"{name} length does not match valid applied deposits")
+            continue
+        if list(after[: len(before)]) != list(before):
+            errors.append(f"{name} changed an existing validator entry")
+            continue
+        if any(value != 0 for value in after[len(before) :]):
+            errors.append(f"{name} did not initialize new validator entries to zero")
+    for index, increase in enumerate(expected_increases):
+        if post.balances[index] != pre.balances[index] + increase:
+            errors.append(
+                f"validator {index} balance does not equal its aggregate applied deposits"
+            )
+            break
+    for offset, deposit in enumerate(expected_new):
+        index = len(pre.validators) + offset
+        if index >= len(post.validators) or post.validators[index].pubkey != deposit.pubkey:
+            errors.append("new validator registry entry does not match the valid applied deposit")
+            break
+        validator = post.validators[index]
+        expected_effective_balance = min(
+            deposit.amount - deposit.amount % spec.EFFECTIVE_BALANCE_INCREMENT,
+            spec.MAX_EFFECTIVE_BALANCE,
+        )
+        if (
+            validator.withdrawal_credentials != deposit.withdrawal_credentials
+            or validator.effective_balance != expected_effective_balance
+            or validator.slashed
+            or validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
+            or validator.activation_epoch != spec.FAR_FUTURE_EPOCH
+            or validator.exit_epoch != spec.FAR_FUTURE_EPOCH
+            or validator.withdrawable_epoch != spec.FAR_FUTURE_EPOCH
+        ):
+            errors.append("new validator fields do not match the deposit defaults")
+            break
+        if post.balances[index] != deposit.amount:
+            errors.append("new validator balance does not equal its applied deposit amount")
+            break
+    return checks, errors
+
+
+def main() -> int:
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
+    case_dirs = sorted(root.glob("**/epoch_processing/pending_deposits/**/case_*"))
+    if not case_dirs:
+        print(f"No cases found under {root}")
+        return 1
+    failures = 0
+    for case_dir in case_dirs:
+        checks, errors = validate_case(case_dir)
+        mismatches = [check for check in checks if check.status == "mismatch"]
+        failures += len(mismatches) + len(errors)
+        print(f"{case_dir.name}: {'OK' if not mismatches and not errors else 'FAIL'}")
+        for check in mismatches:
+            print(f"    {check.dimension}: claimed={check.claimed!r}, actual={check.actual!r}")
+        for error in errors:
+            print(f"    {error}")
+    print(f"{'PASSED' if not failures else 'FAILED'}: {len(case_dirs)} cases")
+    return int(bool(failures))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
