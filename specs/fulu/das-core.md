@@ -170,6 +170,21 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     return matrix
 ```
 
+*Note*: The function `kzg.compute_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells_and_kzg_proofs(
+    blob: Blob,
+) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+    """
+    Extend ``blob`` and return all the cells and proofs of the extended blob.
+    """
+```
+
 ### `recover_matrix`
 
 ```python
@@ -199,6 +214,22 @@ def recover_matrix(
                 )
             )
     return matrix
+```
+
+*Note*: The function `kzg.recover_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def recover_cells_and_kzg_proofs(
+    cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
+) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+    """
+    Recover all the cells and proofs of an extended blob given at least half of
+    its cells.
+    """
 ```
 
 ## Custody

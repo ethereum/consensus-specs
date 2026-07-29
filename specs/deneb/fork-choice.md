@@ -63,6 +63,22 @@ def is_data_available(
     return kzg.verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
+*Note*: The function `kzg.verify_blob_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof_batch(
+    blobs: Sequence[Blob], commitments_bytes: Sequence[Bytes48], proofs_bytes: Sequence[Bytes48]
+) -> bool:
+    """
+    Return ``True`` if and only if all blobs and their proofs match the
+    commitments.
+    """
+```
+
 ## Handlers
 
 ### Modified `on_block`

@@ -716,6 +716,19 @@ def validate_blob_sidecar_gossip(
     seen.blob_sidecar_tuples.add(sidecar_tuple)
 ```
 
+*Note*: The function `kzg.verify_blob_kzg_proof` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes48, proof_bytes: Bytes48) -> bool:
+    """
+    Return ``True`` if and only if ``blob`` and its proof match the commitment.
+    """
+```
+
 The `ForkDigest` context epoch is determined by
 `compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 

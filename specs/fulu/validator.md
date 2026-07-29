@@ -194,6 +194,19 @@ for i, blob in enumerate(blobs_bundle.blobs):
     cells_and_kzg_proofs.extend(cell_proofs)
 ```
 
+*Note*: The function `kzg.compute_cells` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
+    """
+    Extend ``blob`` and return all the cells of the extended blob.
+    """
+```
+
 Moreover, the full sequence of sidecars can also be computed from
 `cells_and_kzg_proofs` and any single `sidecar` by calling
 `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
