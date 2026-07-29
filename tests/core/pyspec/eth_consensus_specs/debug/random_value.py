@@ -4,7 +4,7 @@ from random import Random
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
     BitList,
-    Bitvector,
+    BitVector,
     Boolean,
     ByteList,
     ByteVector,
@@ -101,7 +101,7 @@ def get_random_ssz_object(
             return get_max_basic_value(typ)
         else:
             return get_random_basic_value(rng, typ)
-    elif issubclass(typ, Vector | Bitvector):
+    elif issubclass(typ, Vector | BitVector):
         elem_type = typ.element_cls() if issubclass(typ, Vector) else Boolean
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)

@@ -13,7 +13,7 @@ from remerkleable.basic import (
 )
 from remerkleable.bitfields import (
     Bitlist as BitList,
-    Bitvector,
+    Bitvector as BitVector,
 )
 from remerkleable.byte_arrays import (
     ByteList,

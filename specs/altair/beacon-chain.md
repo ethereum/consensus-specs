@@ -176,7 +176,7 @@ class BeaconState(Container):
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     # [Modified in Altair]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -194,7 +194,7 @@ class BeaconState(Container):
 
 ```python
 class SyncAggregate(Container):
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    sync_committee_bits: BitVector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
 

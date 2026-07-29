@@ -6,7 +6,7 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BitList,
-    Bitvector,
+    BitVector,
     Byte,
     ByteList,
     Container,
@@ -64,23 +64,23 @@ class ProgressiveTestStruct(Container):
 
 class BitsStruct(Container):
     A: BitList[5]
-    B: Bitvector[2]
-    C: Bitvector[1]
+    B: BitVector[2]
+    C: BitVector[1]
     D: BitList[6]
-    E: Bitvector[8]
+    E: BitVector[8]
 
 
 class ProgressiveBitsStruct(Container):
-    A: Bitvector[256]
+    A: BitVector[256]
     B: BitList[256]
     C: ProgressiveBitList
-    D: Bitvector[257]
+    D: BitVector[257]
     E: BitList[257]
     F: ProgressiveBitList
-    G: Bitvector[1280]
+    G: BitVector[1280]
     H: BitList[1280]
     I: ProgressiveBitList
-    J: Bitvector[1281]
+    J: BitVector[1281]
     K: BitList[1281]
     L: ProgressiveBitList
 

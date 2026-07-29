@@ -206,7 +206,7 @@ class MarkdownToSpec:
                     (
                         "Uint",
                         "BitList",
-                        "Bitvector",
+                        "BitVector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",
