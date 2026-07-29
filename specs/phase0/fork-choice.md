@@ -136,9 +136,9 @@ handlers must not modify `store`.
 
 #### Time parameters
 
-| Name                        | Value          | Unit         | Duration                   |
-| --------------------------- | -------------- | ------------ | -------------------------- |
-| `PROPOSER_REORG_CUTOFF_BPS` | `Uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
+| Name                        | Value          | Duration                   |
+| --------------------------- | -------------- | -------------------------- |
+| `PROPOSER_REORG_CUTOFF_BPS` | `Uint64(1667)` | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
 

@@ -38,14 +38,14 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                          | Value          | Unit         | Duration                  |
-| ----------------------------- | -------------- | ------------ | ------------------------- |
-| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                          | Value          | Duration                  |
+| ----------------------------- | -------------- | ------------------------- |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 

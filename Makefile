@@ -66,9 +66,6 @@ help-verbose:
 	@echo "    fork=<fork>        Run only tests for this fork (phase0, altair, bellatrix, capella, etc.)"
 	@echo "    preset=<preset>    Preset to use: mainnet, minimal (default: minimal)"
 	@echo ""
-	@echo "  Libraries:"
-	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
-	@echo ""
 	@echo "  Output:"
 	@echo "    verbose=true       Enable verbose pytest output"
 	@echo "    reftests=true      Generate reference test vectors"
@@ -76,10 +73,10 @@ help-verbose:
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
-	@echo "    make test k=test_verify_kzg_proof"
+	@echo "    make test k=test_compute_fork_digest"
 	@echo "    make test fork=deneb"
 	@echo "    make test preset=mainnet"
-	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
+	@echo "    make test preset=mainnet fork=deneb k=test_compute_fork_digest"
 	@echo "    make test reftests=true"
 	@echo "    make test reftests=true fork=fulu"
 	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
@@ -200,10 +197,6 @@ test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(preset),--preset=$(preset),)
 # Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
-#
-# Libraries
-test: KZG := --kzg-type=$(if $(kzg),$(kzg),ckzg)
-#
 # Output
 test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
@@ -221,7 +214,6 @@ test: _pyspec
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
-		$(KZG) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		--html=$(TEST_REPORT_DIR)/test_results.html \
 		--self-contained-html \
