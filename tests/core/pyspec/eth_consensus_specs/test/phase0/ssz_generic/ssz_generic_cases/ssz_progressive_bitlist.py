@@ -1,7 +1,7 @@
 from random import Random
 
 from eth_consensus_specs.debug.random_value import get_random_ssz_object, RandomizationMode
-from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitList
 
 from .ssz_bitlist import INVALID_BITLIST_CASES
 from .ssz_test_case import invalid_test_case, valid_test_case
@@ -12,7 +12,7 @@ def progressive_bitlist_case_fn(
 ):
     bits = get_random_ssz_object(
         rng,
-        ProgressiveBitlist,
+        ProgressiveBitList,
         max_bytes_length=(length // 8) + 1,
         max_list_length=length,
         mode=mode,
@@ -84,5 +84,5 @@ def invalid_cases():
     for description, data in INVALID_BITLIST_CASES:
         yield (
             f"progbitlist_{description}",
-            invalid_test_case(ProgressiveBitlist, lambda data=data: data),
+            invalid_test_case(ProgressiveBitList, lambda data=data: data),
         )

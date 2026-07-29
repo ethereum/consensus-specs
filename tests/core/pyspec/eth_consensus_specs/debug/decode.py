@@ -2,7 +2,7 @@ from typing import Any
 
 from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, hash_tree_root
 from eth_consensus_specs.utils.ssz.ssz_typing import (
-    Bitlist,
+    BitList,
     Bitvector,
     Boolean,
     Byte,
@@ -10,7 +10,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     ByteVector,
     Container,
     List,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveList,
     Uint,
     Union,
@@ -22,7 +22,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
 def decode(data: Any, typ):
     if issubclass(typ, Uint | Boolean):
         return typ(data)
-    elif issubclass(typ, Bitlist | ProgressiveBitlist | Bitvector) or (
+    elif issubclass(typ, BitList | ProgressiveBitList | Bitvector) or (
         issubclass(typ, ProgressiveList) and issubclass(typ.element_cls(), Byte)
     ):
         return deserialize(typ, bytes.fromhex(data[2:]))

@@ -146,7 +146,7 @@ from the latest published version of the EIPs.
 
 | Name                     | SSZ equivalent                           |
 | ------------------------ | ---------------------------------------- |
-| `AggregationBits`        | `ProgressiveBitlist`                     |
+| `AggregationBits`        | `ProgressiveBitList`                     |
 | `AttestingIndices`       | `ProgressiveList[ValidatorIndex]`        |
 | `Transaction`            | `ProgressiveByteList`                    |
 | `DepositRequests`        | `ProgressiveList[DepositRequest]`        |

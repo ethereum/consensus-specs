@@ -51,7 +51,7 @@ except that only the cells and proofs identified by the bitmap are present.
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
     partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # Optional header, only sent on eager pushes
@@ -71,8 +71,8 @@ This is encoded as the following SSZ container:
 
 ```python
 class PartialDataColumnPartsMetadata(Container):
-    available: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    available: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    requests: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
 This means that for each cell there are two bits of state. Where the first bit

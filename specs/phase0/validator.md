@@ -666,7 +666,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the
 ##### Aggregation bits
 
 - Let `attestation.aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the
+  `BitList[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the
   bit of the index of the validator in the `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation)` should return a list
@@ -757,7 +757,7 @@ being aggregated.
 ##### Aggregation bits
 
 Let `aggregate_attestation.aggregation_bits` be a
-`Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each
+`BitList[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each
 bit set from each individual attestation is set to `0b1`.
 
 ##### Aggregate signature
