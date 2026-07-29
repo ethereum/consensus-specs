@@ -207,9 +207,7 @@ def test_invalid_same_slot_attestation_index_one_target_not_matching(spec, state
 
     # The source still matches, so the source assertion is not what fails here
     assert attestation.data.source == state.current_justified_checkpoint
-    assert attestation.data.target.root != spec.get_block_root(
-        state, attestation.data.target.epoch
-    )
+    assert attestation.data.target.root != spec.get_block_root(state, attestation.data.target.epoch)
     assert spec.is_attestation_same_slot(state, attestation.data) is True
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
