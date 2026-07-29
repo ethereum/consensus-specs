@@ -165,7 +165,10 @@ class PendingDepositsMaterializer:
         dump_test_case_result(
             TestCaseResult(
                 test_case=test_case,
-                meta={"description": f"process_pending_deposits: {claimed['outcome']}"},
+                meta={
+                    "description": f"process_pending_deposits: {claimed['outcome']}",
+                    "bls_setting": 1,
+                },
                 case_parts=[
                     ("pre", "ssz", pre.encode_bytes()),  # type: ignore[arg-type]
                     ("post", "ssz", post.encode_bytes()),  # type: ignore[arg-type]
