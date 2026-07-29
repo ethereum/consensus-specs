@@ -49,10 +49,12 @@ OPERATION_PROCESSORS = {
 }
 
 EPOCH_PROCESSORS = {
+    "builder_pending_payments": "process_builder_pending_payments",
     "justification_and_finalization": "process_justification_and_finalization",
     "registry_updates": "process_registry_updates",
     "slashings": "process_slashings",
     "pending_deposits": "process_pending_deposits",
+    "ptc_window": "process_ptc_window",
     "pending_consolidations": "process_pending_consolidations",
     "effective_balance_updates": "process_effective_balance_updates",
     "inactivity_updates": "process_inactivity_updates",
