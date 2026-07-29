@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ssz.ssz_typing import Bitlist
+from eth_consensus_specs.utils.ssz.ssz_typing import BitList
 
 
 def process_attestation(spec, state, attestation):
@@ -237,7 +237,7 @@ def fill_aggregate_attestation(
         )
     else:
         committee_size = len(beacon_committee)
-        attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        attestation.aggregation_bits = BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](
             *([0] * committee_size)
         )
 

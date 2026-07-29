@@ -16,12 +16,12 @@ from marko.inline import CodeSpan
 from .typing import ProtocolDefinition, SpecObject, VariableDefinition
 
 COLLECTION_BASE_CLASSES = (
-    "Bitlist",
+    "BitList",
     "Bitvector",
     "ByteList",
     "ByteVector",
     "List",
-    "ProgressiveBitlist",
+    "ProgressiveBitList",
     "ProgressiveByteList",
     "ProgressiveList",
     "Vector",
@@ -276,13 +276,13 @@ class MarkdownToSpec:
                 if value.startswith(
                     (
                         "Uint",
-                        "Bitlist",
+                        "BitList",
                         "Bitvector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",
                         "List",
-                        "ProgressiveBitlist",
+                        "ProgressiveBitList",
                         "ProgressiveByteList",
                         "ProgressiveList",
                         "Union",

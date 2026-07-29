@@ -11,7 +11,7 @@ from remerkleable.basic import (
     uint128 as Uint128,
     uint256 as Uint256,
 )
-from remerkleable.bitfields import Bitlist, Bitvector
+from remerkleable.bitfields import BitList, Bitvector
 from remerkleable.byte_arrays import (
     ByteList,
     Bytes1,
@@ -26,7 +26,7 @@ from remerkleable.complex import Container, List, Vector
 from remerkleable.core import BasicView, Path, View
 from remerkleable.progressive import (
     CompatibleUnion,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveByteList,
     ProgressiveContainer,
     ProgressiveList,

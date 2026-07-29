@@ -195,7 +195,7 @@ We define the following Python custom types for type hinting and readability:
 ### `AggregationBits`
 
 ```python
-class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE]):
+class AggregationBits(BitList[MAX_VALIDATORS_PER_COMMITTEE]):
     """
     The participation bits of a single committee, one bit per member in
     committee order.

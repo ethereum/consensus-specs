@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [New `CellsBitlist`](#new-cellsbitlist)
+  - [New `CellsBitList`](#new-cellsbitlist)
   - [New `OptionalPartialDataColumnHeader`](#new-optionalpartialdatacolumnheader)
 - [Containers](#containers)
   - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
@@ -45,10 +45,10 @@ particular, this document builds on the
 
 ## Types
 
-### New `CellsBitlist`
+### New `CellsBitList`
 
 ```python
-class CellsBitlist(Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class CellsBitList(BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     """
     A bitfield over the cells of a column, one bit per blob.
     """
@@ -75,7 +75,7 @@ except that only the cells and proofs identified by the bitmap are present.
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: CellsBitlist
+    cells_present_bitmap: CellsBitList
     partial_column: DataColumn
     kzg_proofs: KZGProofs
     # Optional header, only sent on eager pushes
@@ -95,8 +95,8 @@ This is encoded as the following SSZ container:
 
 ```python
 class PartialDataColumnPartsMetadata(Container):
-    available: CellsBitlist
-    requests: CellsBitlist
+    available: CellsBitList
+    requests: CellsBitList
 ```
 
 This means that for each cell there are two bits of state. Where the first bit

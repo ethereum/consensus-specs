@@ -144,7 +144,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 
 ```python
 # [Modified in Electra:EIP7549]
-class AggregationBits(Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]):
+class AggregationBits(BitList[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]):
     """
     The participation bits of all committees participating in an attestation,
     concatenated in committee order.

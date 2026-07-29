@@ -183,7 +183,7 @@ from the latest published version of the EIPs.
 
 ```python
 # [Modified in Gloas:EIP7688]
-class AggregationBits(ProgressiveBitlist):
+class AggregationBits(ProgressiveBitList):
     """
     The participation bits of all committees participating in an attestation,
     concatenated in committee order.
