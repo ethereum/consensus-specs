@@ -28,6 +28,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_anchor_root,
     get_formatted_head_output,
     get_genesis_forkchoice_store_and_block,
+    get_store_time,
     on_tick_and_append_step,
     output_head_check,
     tick_and_add_block,
@@ -462,7 +463,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     # Now generate the store checks
     current_time = anchor_state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # Create two competing blocks at eqv_slot
     next_slots(spec, state, eqv_slot - state.slot - 1)
@@ -536,7 +537,7 @@ def test_voting_source_within_two_epoch(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(
@@ -622,7 +623,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(
@@ -723,7 +724,7 @@ def test_incorrect_finalized(spec, state):
     yield 'anchor_block', anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000, test_steps)

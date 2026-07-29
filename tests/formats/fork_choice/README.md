@@ -40,9 +40,9 @@ bls_setting: int       -- see general test-format spec.
 
 ### `config.yaml`
 
-An optional mapping of fork-specific configuration overrides. The runner applies
-these overrides before decoding the anchor state and block and before executing
-any steps.
+See the [general test format documentation](../README.md#configyaml). The runner
+applies the config before decoding the anchor state and block and before
+executing any steps.
 
 ### `anchor_state.ssz_snappy`
 
@@ -265,8 +265,8 @@ head: {
     root: string,             -- Encoded 32-byte value from get_head(store).root
     payload_status: int,      -- Gloas and later, the head's payload_status
 }
-time: int                     -- store.time
-time_ms: int                  -- EIP-8198 and later, authoritative store.time_ms
+time: int                     -- store.time (before EIP-8198)
+time_ms: int                  -- EIP-8198 and later, store.time_ms
 current_slot: int             -- EIP-8198 and later, get_current_slot(store)
 time_into_slot_ms: int        -- EIP-8198 and later, get_time_into_slot_ms(store)
 genesis_time: int             -- store.genesis_time

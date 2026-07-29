@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     BlobData,
     get_genesis_forkchoice_store_and_block,
+    get_store_time,
     on_tick_and_append_step,
     tick_and_add_block_with_data,
 )
@@ -32,7 +33,7 @@ def test_simple_blob_data(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, blobs, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
@@ -67,7 +68,7 @@ def test_invalid_incorrect_proof(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, blobs, _, _ = get_block_with_blob(spec, state, rng=rng)
@@ -97,7 +98,7 @@ def test_invalid_data_unavailable(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, _, _, _ = get_block_with_blob(spec, state, rng=rng)
@@ -127,7 +128,7 @@ def test_invalid_wrong_proofs_length(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, blobs, _, _ = get_block_with_blob(spec, state, rng=rng)
@@ -157,7 +158,7 @@ def test_invalid_wrong_blobs_length(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block, _, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)

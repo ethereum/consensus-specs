@@ -18,6 +18,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
     apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
+    get_store_time,
     on_tick_and_append_step,
     output_store_checks,
     tick_and_add_block,
@@ -41,7 +42,7 @@ def test_basic_is_head_root(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
@@ -79,7 +80,7 @@ def _run_is_parent_root(spec, state, at_epoch_boundary):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(
@@ -155,7 +156,7 @@ def _run_is_parent_root(spec, state, at_epoch_boundary):
         state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time + attesting_cutoff
     )
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 

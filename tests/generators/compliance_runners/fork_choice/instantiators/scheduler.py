@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from eth_consensus_specs.test.helpers.fork_choice import get_slot_start_time
+from eth_consensus_specs.test.helpers.fork_choice import get_slot_start_time, get_store_time
 
 from .helpers import payload_attestation_to_messages
 
@@ -107,7 +107,7 @@ class MessageScheduler:
 
     def process_tick(self, time) -> list:
         applied_events = []
-        assert time >= self.store.time
+        assert time >= get_store_time(self.spec, self.store)
         while True:
             next_slot_time = get_slot_start_time(
                 self.spec,

@@ -28,6 +28,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_execution_payload_envelope_file_name,
     get_payload_attestation_message_file_name,
     get_slot_start_time,
+    get_store_time,
     on_tick_and_append_step,
     output_store_checks,
     run_on_attestation,
@@ -658,15 +659,15 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             return False
 
     # record initial tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, get_store_time(spec, store), test_steps)
 
     for event in test_events:
         event_kind = event[0]
         if event_kind == "tick":
             _, time, _ = event
-            if time > store.time:
+            if time > get_store_time(spec, store):
                 on_tick_and_append_step(spec, store, time, test_steps)
-                assert store.time == time
+                assert get_store_time(spec, store) == time
         elif event_kind == "block":
             _, signed_block, valid = event
             if valid is None:

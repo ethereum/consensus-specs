@@ -58,20 +58,22 @@ def get_inactivity_penalty_quotient(spec):
 def get_expected_inactivity_penalty(spec, state, index):
     """
     Mirror the spec's post-Altair inactivity penalty for ``index``, including
-    the exact EIP-8198 slot-duration rescaling.
+    the EIP-8198 slot-duration rescaling of the penalty denominator.
     """
     penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
-    penalty_denominator = spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
+    penalty_denominator = int(spec.config.INACTIVITY_SCORE_BIAS) * int(
+        get_inactivity_penalty_quotient(spec)
+    )
     if is_post_eip8198(spec):
         post_fork_duration_ms = int(spec.config.SLOT_DURATION_MS_EIP8198)
         pre_fork_duration_ms = int(spec.config.SLOT_DURATION_MS)
-        return (
-            int(penalty_numerator)
-            * post_fork_duration_ms
-            * post_fork_duration_ms
-            // (int(penalty_denominator) * pre_fork_duration_ms * pre_fork_duration_ms)
+        penalty_denominator = (
+            penalty_denominator
+            * pre_fork_duration_ms
+            * pre_fork_duration_ms
+            // (post_fork_duration_ms * post_fork_duration_ms)
         )
-    return penalty_numerator // penalty_denominator
+    return int(penalty_numerator) // penalty_denominator
 
 
 def has_enough_for_reward(spec, state, index):

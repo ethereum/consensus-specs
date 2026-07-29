@@ -12,30 +12,26 @@
 
 ## Introduction
 
-This document represents the changes to be made in the code of an honest builder
-to implement EIP-8198.
+This document represents the changes to be made in the code of an "honest
+builder" to implement EIP-8198.
+
+*Note*: This specification is built upon [Heze](../../heze/builder.md).
 
 ## Builder activities
 
 ### Constructing the `SignedExecutionPayloadBid`
 
-Step 8 of the inherited construction procedure is modified. Let
+*Note*: The only change is to step 8 of the construction procedure: the first
+post-fork execution payload scales its gas limit one time by the slot-duration
+ratio, preserving the per-second gas throughput target. The proposer's
+`target_gas_limit` does not alter this transition. Let
 `parent_execution_payload_slot` be the slot of the beacon block associated with
-the known execution payload identified by `bid.parent_block_hash`. The builder
-obtains this association from its fork-choice view.
+the known execution payload identified by `bid.parent_block_hash`.
 
-- If `parent_execution_payload_slot` is before the first EIP-8198 slot and
-  `bid.slot` is at or after it, the constructed payload's gas limit, and
-  therefore `bid.gas_limit`, MUST equal
-  `parent_gas_limit * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`. The
-  proposer's `target_gas_limit` does not alter this one-time transition.
-- Otherwise, set `bid.gas_limit` to the constructed payload's gas limit, which
-  MUST satisfy the inherited
-  `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`
-  rule.
-
-This rule is keyed to the parent *execution payload*, not merely the parent
-beacon block. Therefore, if slots or execution payloads are missed around the
-fork, the first eventual post-fork execution payload still performs the scaling
-exactly once. The EIP-8198 networking document defines the executable helper
-used for gossip validation of the same condition.
+8. Set `bid.gas_limit` to be the gas limit of the constructed payload. If
+   `parent_execution_payload_slot < compute_start_slot_at_epoch(EIP8198_FORK_EPOCH) <= bid.slot`,
+   the gas limit MUST equal
+   `parent_gas_limit * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`; otherwise,
+   it MUST satisfy the inherited
+   `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`
+   rule.

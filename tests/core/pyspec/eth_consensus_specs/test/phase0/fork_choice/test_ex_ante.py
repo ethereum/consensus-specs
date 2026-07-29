@@ -22,6 +22,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     check_head_against_root,
     get_fork_choice_node,
     get_genesis_forkchoice_store_and_block,
+    get_store_time,
     on_tick_and_append_step,
     tick_and_add_block,
 )
@@ -62,7 +63,7 @@ def test_ex_ante_vanilla(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -159,7 +160,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -237,7 +238,7 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -303,7 +304,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -389,7 +390,7 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)

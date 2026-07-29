@@ -180,6 +180,16 @@ def get_slot_start_time(spec, genesis_time, slot):
     return time_ms // 1000
 
 
+def get_store_time(spec, store):
+    """
+    Return the store clock in seconds; post-EIP-8198 the store only keeps
+    ``time_ms``.
+    """
+    if is_post_eip8198(spec):
+        return int(store.time_ms) // 1000
+    return int(store.time)
+
+
 def tick_and_add_block(
     spec,
     store,
@@ -196,7 +206,7 @@ def tick_and_add_block(
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
     block_time = get_slot_start_time(spec, pre_state.genesis_time, signed_block.message.slot)
-    while store.time < block_time:
+    while get_store_time(spec, store) < block_time:
         time = get_slot_start_time(spec, pre_state.genesis_time, spec.get_current_slot(store) + 1)
         on_tick_and_append_step(spec, store, time, test_steps)
 
@@ -242,7 +252,7 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
     min_time_to_include = get_slot_start_time(spec, store.genesis_time, attestation.data.slot + 1)
-    if store.time < min_time_to_include:
+    if get_store_time(spec, store) < min_time_to_include:
         if is_post_eip8198(spec):
             min_time_to_include_ms = min_time_to_include * 1000
             spec.on_tick_ms(store, min_time_to_include_ms)
@@ -321,12 +331,13 @@ def get_payload_attestation_message_file_name(ptc_message):
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
-    assert time >= store.time
     if is_post_eip8198(spec):
         time_ms = time * 1000
+        assert time_ms >= store.time_ms
         spec.on_tick_ms(store, time_ms)
         test_steps.append({"tick_ms": int(time_ms)})
     else:
+        assert time >= store.time
         spec.on_tick(store, time)
         test_steps.append({"tick": int(time)})
     output_store_checks(spec, store, test_steps)
@@ -583,8 +594,16 @@ def output_head_check(spec, store, test_steps):
 
 
 def get_basic_store_checks(spec, store):
-    checks = {
-        "time": int(store.time),
+    if is_post_eip8198(spec):
+        time_checks = {
+            "time_ms": int(store.time_ms),
+            "current_slot": int(spec.get_current_slot(store)),
+            "time_into_slot_ms": int(spec.get_time_into_slot_ms(store)),
+        }
+    else:
+        time_checks = {"time": int(store.time)}
+    return {
+        **time_checks,
         "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
@@ -596,11 +615,6 @@ def get_basic_store_checks(spec, store):
         },
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
-    if is_post_eip8198(spec):
-        checks["time_ms"] = int(store.time_ms)
-        checks["current_slot"] = int(spec.get_current_slot(store))
-        checks["time_into_slot_ms"] = int(spec.get_time_into_slot_ms(store))
-    return checks
 
 
 def get_weighed_node_checks(spec, store, node):
@@ -740,7 +754,7 @@ def tick_store_to_slot(spec, store, slot, test_steps):
     Tick the store forward to the start of ``slot``.
     """
     slot_time = get_slot_start_time(spec, store.genesis_time, slot)
-    if store.time < slot_time:
+    if get_store_time(spec, store) < slot_time:
         on_tick_and_append_step(spec, store, slot_time, test_steps)
 
 

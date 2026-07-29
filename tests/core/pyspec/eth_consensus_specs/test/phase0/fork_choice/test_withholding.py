@@ -17,6 +17,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     check_head_against_root,
     find_next_justifying_slot,
     get_genesis_forkchoice_store_and_block,
+    get_store_time,
     on_tick_and_append_step,
     tick_and_add_block,
 )
@@ -40,7 +41,7 @@ def test_withholding_attack(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(
@@ -139,7 +140,7 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    assert get_store_time(spec, store) == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(

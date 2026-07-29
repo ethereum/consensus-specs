@@ -88,9 +88,10 @@ class ComplianceTestInfo(NamedTuple):
 
 def run_test(test_info):
     preset, fork, test_dir = test_info
-    spec = get_copy_of_spec(spec_targets[preset][fork])
+    spec = spec_targets[preset][fork]
     config_path = test_dir / "config.yaml"
     if config_path.is_file():
+        spec = get_copy_of_spec(spec)
         spec, _ = spec_with_config_overrides(spec, read_config(spec, config_path))
     meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)

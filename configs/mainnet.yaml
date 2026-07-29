@@ -64,9 +64,7 @@ HEZE_FORK_EPOCH: 18446744073709551615
 # EIP8321
 EIP8321_FORK_VERSION: 0xe8321000
 EIP8321_FORK_EPOCH: 18446744073709551615
-# EIP8198 (experimental). The fork epoch is a config variable (not a compiled
-# constant) because state-transition and fork-choice time functions branch on
-# it, and tests need to override it to exercise the slot-duration change.
+# EIP8198 (experimental)
 EIP8198_FORK_VERSION: 0xe8198000
 EIP8198_FORK_EPOCH: 18446744073709551615
 
@@ -74,11 +72,6 @@ EIP8198_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # 12000 milliseconds
 SLOT_DURATION_MS: 12000
-# EIP8198 target slot duration in milliseconds
-# Intra-slot deadlines are inherited from Heze as basis points of the slot
-# duration. All other affected protocol values derive from the exact
-# SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS ratio.
-SLOT_DURATION_MS_EIP8198: 10000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs
@@ -119,6 +112,10 @@ PAYLOAD_ATTESTATION_DUE_BPS: 7500
 # Heze
 # 6667 basis points, ~67% of SLOT_DURATION_MS
 INCLUSION_LIST_DUE_BPS: 6667
+
+# EIP8198
+# 10000 milliseconds
+SLOT_DURATION_MS_EIP8198: 10000
 
 # Validator cycle
 # ---------------------------------------------------------------

@@ -14,20 +14,6 @@
 
 This document describes the process of the EIP-8198 upgrade.
 
-EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds and
-rescales the affected issuance, penalty, data-availability and churn parameters
-to preserve their wall-clock behavior. It builds on top of Heze: the slot
-structure is unchanged and all intra-slot deadlines, expressed in basis points
-of `SLOT_DURATION_MS`, scale automatically with the shorter slot.
-
-The complete specification comprises, alongside this document, the beacon chain,
-fork choice, honest validator, honest builder, p2p interface, and optimistic
-sync documents in this directory. All wall-clock arithmetic is remapped by the
-same piecewise rule: slots before `EIP8198_FORK_EPOCH` run at `SLOT_DURATION_MS`
-from genesis, slots after it at `SLOT_DURATION_MS_EIP8198` from the fork time
-(see `compute_slot_start_time_ms` / `compute_slot_at_time_ms` in the beacon
-chain document and `get_time_into_slot_ms` in the fork choice document).
-
 ## Configuration
 
 Warning: this configuration is not definitive.
@@ -38,7 +24,7 @@ Warning: this configuration is not definitive.
 | `EIP8198_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 If EIP-8198 is enabled, `EIP8198_FORK_EPOCH` MUST be greater than
-`HEZE_FORK_EPOCH`. A value of `GENESIS_EPOCH` is invalid.
+`HEZE_FORK_EPOCH`.
 
 ## Fork to EIP-8198
 
@@ -48,9 +34,6 @@ change is made to upgrade to EIP-8198.
 
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8198_FORK_EPOCH * SLOTS_PER_EPOCH`.
-
-EIP-8198 does not change the `BeaconState` container; the upgrade copies every
-field unchanged and only advances the fork version.
 
 ```python
 def upgrade_to_eip8198(pre: heze.BeaconState) -> BeaconState:

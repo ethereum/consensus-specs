@@ -8,50 +8,36 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
-  - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
-  - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
-  - [New `compute_slot_at_time_ms`](#new-compute_slot_at_time_ms)
-  - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
-  - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
-  - [Modified `get_blob_parameters`](#modified-get_blob_parameters)
-  - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
-  - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
-  - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
-  - [Modified `get_exit_churn_limit`](#modified-get_exit_churn_limit)
-  - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
-- [Data availability](#data-availability)
+  - [Misc](#misc)
+    - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
+    - [New `compute_slot_at_time_ms`](#new-compute_slot_at_time_ms)
+    - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
+    - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
+    - [Modified `get_blob_parameters`](#modified-get_blob_parameters)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
+    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
+    - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
+    - [Modified `get_exit_churn_limit`](#modified-get_exit_churn_limit)
+    - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
 EIP-8198 ("Quick Slots") reduces the slot duration from 12 to 10 seconds. The
-slot structure is inherited unchanged from Heze, and all intra-slot deadlines
-are expressed in basis points of the slot duration, so they rescale
-automatically (see the modified `get_slot_component_duration_ms` in the
-fork-choice document).
-
-The remaining parameters -- issuance, the inactivity penalty, and the validator
-churn limits -- must be rescaled by the slot-duration ratio
+slot structure is unchanged, and all intra-slot deadlines are expressed in basis
+points of the slot duration, so they rescale automatically. The remaining
+duration-dependent parameters are rescaled by the slot-duration ratio
 `r = SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` to keep their wall-clock
-behavior constant.
+behavior constant: issuance and churn are per-epoch rates and scale by `r`,
+while the inactivity penalty scales by `r**2` so that the cumulative leak over a
+fixed wall-clock duration is unchanged. Rather than pre-computing rounded
+constants, each formula applies the ratio inline, keeping
+`SLOT_DURATION_MS_EIP8198` the single source of truth for the target slot
+duration.
 
-Rather than pre-computing rounded `*_EIP8198` constants, this document applies
-the exact ratio **inside** each formula, deferring integer division until after
-multiplication wherever possible. `SLOT_DURATION_MS_EIP8198` is therefore the
-single source of truth for the target slot duration. Changing it in a network
-configuration automatically updates every executable duration-dependent rule
-defined by this feature; no derived protocol parameter needs a separate edit.
-
-The rescaling directions are:
-
-- **Issuance** (base reward) scales linearly with epoch duration: multiply by
-  `r`.
-- **Inactivity penalty** scales with the square of epoch duration, so that the
-  cumulative leak over a fixed wall-clock duration is unchanged: multiply by
-  `r**2`.
-- **Churn** (a per-epoch rate) scales by `r`, so activation, exit, and
-  consolidation rates stay proportional to wall-clock time.
+*Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
 ## Configuration
 
@@ -61,14 +47,15 @@ The rescaling directions are:
 | -------------------------- | --------------- | ------------ | ---------- |
 | `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` | milliseconds | 10 seconds |
 
-Both `SLOT_DURATION_MS` and `SLOT_DURATION_MS_EIP8198` MUST be positive
-multiples of `1000`. Beacon block timestamps are integer Unix seconds, so this
-constraint ensures that every slot boundary has an exact timestamp.
-`SLOT_DURATION_MS_EIP8198` MUST be less than `SLOT_DURATION_MS`.
+*Note*: `SLOT_DURATION_MS_EIP8198` MUST be less than `SLOT_DURATION_MS`, and
+both MUST be positive multiples of `1000`, so that every slot boundary has an
+exact integer-second timestamp.
 
 ## Helpers
 
-### New `compute_slot_start_time_ms`
+### Misc
+
+#### New `compute_slot_start_time_ms`
 
 ```python
 def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
@@ -78,31 +65,15 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     slots_since_genesis = slot - GENESIS_SLOT
     if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
         return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
-    fork_slot = EIP8198_FORK_EPOCH * SLOTS_PER_EPOCH
+    fork_slot = compute_start_slot_at_epoch(EIP8198_FORK_EPOCH)
     if slot < fork_slot:
         return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
-    time_before_fork_ms = fork_slot * SLOT_DURATION_MS
-    time_after_fork_ms = (slots_since_genesis - fork_slot) * SLOT_DURATION_MS_EIP8198
+    time_before_fork_ms = (fork_slot - GENESIS_SLOT) * SLOT_DURATION_MS
+    time_after_fork_ms = (slot - fork_slot) * SLOT_DURATION_MS_EIP8198
     return Uint64(genesis_time * 1000 + time_before_fork_ms + time_after_fork_ms)
 ```
 
-### Modified `compute_time_at_slot_ms`
-
-*Note*: This is the canonical EIP-8198 mapping from slots to wall-clock time.
-Fork choice, networking, honest-validator scheduling, and execution timestamp
-derivation all use this helper rather than independently reproducing the
-piecewise timeline.
-
-```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
-    """
-    Return the time in milliseconds at the start of the given slot.
-    """
-    # [Modified in EIP8198]
-    return compute_slot_start_time_ms(state.genesis_time, slot)
-```
-
-### New `compute_slot_at_time_ms`
+#### New `compute_slot_at_time_ms`
 
 ```python
 def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
@@ -113,8 +84,8 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     time_since_genesis_ms = time_ms - genesis_time * 1000
     if EIP8198_FORK_EPOCH == FAR_FUTURE_EPOCH:
         return Slot(GENESIS_SLOT + time_since_genesis_ms // SLOT_DURATION_MS)
-    fork_slot = EIP8198_FORK_EPOCH * SLOTS_PER_EPOCH
-    time_before_fork_ms = fork_slot * SLOT_DURATION_MS
+    fork_slot = compute_start_slot_at_epoch(EIP8198_FORK_EPOCH)
+    time_before_fork_ms = (fork_slot - GENESIS_SLOT) * SLOT_DURATION_MS
     if time_since_genesis_ms < time_before_fork_ms:
         return Slot(GENESIS_SLOT + time_since_genesis_ms // SLOT_DURATION_MS)
     return Slot(
@@ -122,7 +93,7 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     )
 ```
 
-### New `compute_slot_range_duration_ms`
+#### New `compute_slot_range_duration_ms`
 
 ```python
 def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
@@ -135,16 +106,12 @@ def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
     )
 ```
 
-### Modified `compute_time_at_slot`
+#### Modified `compute_time_at_slot`
 
-*Note*: Slots after `EIP8198_FORK_EPOCH` start at `SLOT_DURATION_MS_EIP8198`
-intervals from the fork time, not at `SLOT_DURATION_MS` intervals from genesis.
-Without this override, the execution payload timestamp — validated in
-`process_execution_payload` against `compute_time_at_slot` — would drift ahead
-of wall-clock time by `(SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198)` per slot,
-without bound. The inherited `process_execution_payload` and validator block
-preparation are correct as-is once this function accounts for the duration
-change.
+*Note*: Without this override the execution payload timestamp, validated against
+`compute_time_at_slot` in `process_execution_payload`, would drift ahead of
+wall-clock time by `SLOT_DURATION_MS - SLOT_DURATION_MS_EIP8198` per post-fork
+slot.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
@@ -152,11 +119,11 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
     return compute_time_at_slot_ms(state, slot) // 1000
 ```
 
-### Modified `get_blob_parameters`
+#### Modified `get_blob_parameters`
 
-*Note*: The synthetic EIP-8198 entry below is executable-equivalent to appending
-the entry required by EIP-8198 to `BLOB_SCHEDULE`. A later explicit blob
-schedule entry takes precedence.
+*Note*: The synthetic entry at `EIP8198_FORK_EPOCH` scales the preceding maximum
+by the slot-duration ratio and is equivalent to appending it to `BLOB_SCHEDULE`;
+a later explicit schedule entry takes precedence.
 
 ```python
 def get_blob_parameters(epoch: Epoch) -> BlobParameters:
@@ -181,33 +148,31 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
     return BlobParameters(ELECTRA_FORK_EPOCH, MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
-### Modified `get_base_reward_per_increment`
+### Beacon state accessors
 
-*Note*: The base reward per increment is scaled by
-`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`. The base reward factor is left
-unchanged and the integer division is deferred until after multiplication by
-`EFFECTIVE_BALANCE_INCREMENT`. This preserves the fractional effective factor
-instead of rounding it to a new integer constant.
+#### Modified `get_base_reward_per_increment`
+
+*Note*: The division is deferred so that the exact
+`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` ratio applies, rather than
+rounding `BASE_REWARD_FACTOR` to a new integer constant.
 
 ```python
 def get_base_reward_per_increment(state: BeaconState) -> Gwei:
     return Gwei(
         EFFECTIVE_BALANCE_INCREMENT
-        # [Modified in EIP8198]
         * BASE_REWARD_FACTOR
+        # [Modified in EIP8198]
         * SLOT_DURATION_MS_EIP8198
         // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
 
-### Modified `get_inactivity_penalty_deltas`
+#### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The inactivity leak penalty is scaled by
-`(SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS)**2` so that the cumulative
-penalty over a fixed wall-clock leak duration is unchanged. The quotient and
-remainder decomposition below computes the exact rational floor while keeping
-every intermediate within the inherited `Uint64` arithmetic range.
+*Note*: The inactivity penalty scales with the square of the epoch duration, so
+that the cumulative penalty over a fixed wall-clock leak duration is unchanged;
+the squared ratio is folded into the penalty denominator.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -226,32 +191,21 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             # [Modified in EIP8198]
-            slot_duration = SLOT_DURATION_MS_EIP8198 // 1000
-            pre_fork_slot_duration = SLOT_DURATION_MS // 1000
-            scaled_denominator = (
+            penalty_denominator = (
                 INACTIVITY_SCORE_BIAS
                 * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
-                * pre_fork_slot_duration
-                * pre_fork_slot_duration
+                * SLOT_DURATION_MS
+                * SLOT_DURATION_MS
+                // (SLOT_DURATION_MS_EIP8198 * SLOT_DURATION_MS_EIP8198)
             )
-            penalty = (
-                penalty_numerator // scaled_denominator * slot_duration * slot_duration
-                + penalty_numerator
-                % scaled_denominator
-                * slot_duration
-                * slot_duration
-                // scaled_denominator
-            )
-            penalties[index] += Gwei(penalty)
+            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```
 
-### Modified `get_activation_churn_limit`
+#### Modified `get_activation_churn_limit`
 
-*Note*: The per-epoch activation churn is scaled by
-`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS` to keep the activation rate
-proportional to wall-clock time, then rounded down to
-`EFFECTIVE_BALANCE_INCREMENT`.
+*Note*: The cap is applied before scaling, so the maximum activation rate is
+scaled too, and the increment rounding is applied once, after scaling.
 
 ```python
 def get_activation_churn_limit(state: BeaconState) -> Gwei:
@@ -269,10 +223,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
-### Modified `get_exit_churn_limit`
-
-*Note*: The per-epoch exit churn is scaled by
-`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`.
+#### Modified `get_exit_churn_limit`
 
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:
@@ -289,10 +240,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
-### Modified `get_consolidation_churn_limit`
-
-*Note*: The per-epoch consolidation churn is scaled by
-`SLOT_DURATION_MS_EIP8198 / SLOT_DURATION_MS`.
+#### Modified `get_consolidation_churn_limit`
 
 ```python
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
@@ -306,28 +254,3 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     churn = churn * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
-
-## Data availability
-
-*Note*: The modified `get_blob_parameters` helper materializes the EIP-8198
-schedule entry at `EIP8198_FORK_EPOCH`, scaling the preceding maximum by
-`pre_fork_parameters.max_blobs_per_block * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`.
-This is equivalent to appending the EIP-8198-required entry while allowing tests
-and unscheduled configurations to override only the fork epoch. Later explicit
-schedule entries take precedence.
-
-*Note*: Likewise, the steady-state blob and data-column sidecar retention
-targets are computed as
-`inherited_window * SLOT_DURATION_MS // SLOT_DURATION_MS_EIP8198`, approximately
-preserving the pre-fork wall-clock retention period once the entire window is
-post-fork. The networking document derives both targets and defines the pre-fork
-retention ramp, backfill requirement, and fork-aware selectors used by inherited
-request validation and retention guidance.
-
-*Note*: The first post-fork execution payload sets its gas limit to
-`parent_gas_limit * SLOT_DURATION_MS_EIP8198 // SLOT_DURATION_MS`, preserving
-the per-second gas throughput target immediately rather than through gradual
-gas-limit voting. The execution layer enforces the payload rule; the EIP-8198
-builder and networking documents override inherited bid construction and gossip
-compatibility so the consensus layer accepts and propagates the required
-one-time change.

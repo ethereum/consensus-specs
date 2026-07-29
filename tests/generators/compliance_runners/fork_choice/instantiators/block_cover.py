@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     get_slot_start_time,
+    get_store_time,
     run_on_attestation,
     run_on_attester_slashing,
     run_on_block,
@@ -296,13 +297,13 @@ def _debug_run_sanity_checks(
 
     for signed_block in signed_blocks:
         block_time = get_slot_start_time(spec, anchor_state.genesis_time, signed_block.message.slot)
-        if block_time > store.time:
+        if block_time > get_store_time(spec, store):
             spec.on_tick(store, block_time)
         debug_add_block(signed_block)
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
     current_epoch_time = get_slot_start_time(spec, anchor_state.genesis_time, current_epoch_slot)
-    if current_epoch_time > store.time:
+    if current_epoch_time > get_store_time(spec, store):
         spec.on_tick(store, current_epoch_time)
 
     run_sanity_checks(spec, store, model_params, target_block_root)

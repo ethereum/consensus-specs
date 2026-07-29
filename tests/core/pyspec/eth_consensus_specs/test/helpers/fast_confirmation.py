@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 )
 from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
+    is_post_eip8198,
     is_post_electra,
     is_post_gloas,
 )
@@ -174,8 +175,13 @@ class FCRTest:
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
         new_time = get_slot_start_time(self.spec, self.store.genesis_time, slot)
-        self.spec.on_tick(self.store, new_time)
-        self.test_steps.append({"tick": int(new_time)})
+        if is_post_eip8198(self.spec):
+            new_time_ms = new_time * 1000
+            self.spec.on_tick_ms(self.store, new_time_ms)
+            self.test_steps.append({"tick_ms": int(new_time_ms)})
+        else:
+            self.spec.on_tick(self.store, new_time)
+            self.test_steps.append({"tick": int(new_time)})
 
     def next_slot(self):
         self.tick(self.current_slot() + 1)

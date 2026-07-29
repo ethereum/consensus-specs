@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_execution_payload_envelope_file_name,
     get_payload_attestation_message_file_name,
     get_slot_start_time,
+    get_store_time,
     on_tick_and_append_step,
     output_store_checks,
 )
@@ -256,7 +257,7 @@ def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
         mutation_time_quantum_ms = min(
             mutation_time_quantum_ms, spec.config.SLOT_DURATION_MS_EIP8198
         )
-    mops = MutationOps(store.time, mutation_time_quantum_ms // 1000)
+    mops = MutationOps(get_store_time(spec, store), mutation_time_quantum_ms // 1000)
     mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
     test_data.meta["mut_seed"] = mut_seed
@@ -335,12 +336,12 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
     scheduler = MessageScheduler(spec, store)
 
     # record first tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, get_store_time(spec, store), test_steps)
 
     for kind, data, _ in events:
         if kind == "tick":
             time = data
-            if time > store.time:
+            if time > get_store_time(spec, store):
                 applied_events = scheduler.process_tick(time)
                 if record_recovery_messages:
                     for event_kind, event_data, recovery in applied_events:
@@ -378,11 +379,11 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             raise AssertionError
                 else:
                     raise AssertionError
-                if time > store.time:
+                if time > get_store_time(spec, store):
                     # inside a slot
                     on_tick_and_append_step(spec, store, time, test_steps)
                 else:
-                    assert time == store.time
+                    assert time == get_store_time(spec, store)
                     output_store_checks(spec, store, test_steps)
         elif kind == "block":
             block = data
