@@ -357,6 +357,42 @@ def test_forkchoice_timeliness_uses_post_fork_slot_start(spec, state):
 
 
 @with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
+def test_boundary_slot_timeliness_uses_new_duration(spec, state):
+    # At the first new-duration slot, timeliness must be judged against the
+    # new duration. The probe times below fall between the new and the old
+    # deadlines, so using the wrong slot's duration flips every assertion.
+    store = get_genesis_forkchoice_store(spec, state)
+    fork_slot, pre_ms, post_ms, _, fork_time_ms = _fork_params(spec, store.genesis_time)
+
+    new_attestation_due_ms = spec.get_attestation_due_ms(spec.Slot(fork_slot))
+    old_attestation_due_ms = spec.get_attestation_due_ms(spec.Slot(fork_slot - 1))
+    assert new_attestation_due_ms < old_attestation_due_ms
+    probe_ms = (new_attestation_due_ms + old_attestation_due_ms) // 2
+
+    block_root = spec.Root(b"\x34" * 32)
+    store.blocks[block_root] = spec.BeaconBlock(slot=spec.Slot(fork_slot))
+    store.time_ms = fork_time_ms + probe_ms
+    spec.record_block_timeliness(store, block_root)
+    assert store.block_timeliness[block_root][0] == (probe_ms < new_attestation_due_ms)
+
+    # The last old-duration slot keeps the old deadline
+    old_block_root = spec.Root(b"\x56" * 32)
+    store.blocks[old_block_root] = spec.BeaconBlock(slot=spec.Slot(fork_slot - 1))
+    store.time_ms = fork_time_ms - pre_ms + probe_ms
+    spec.record_block_timeliness(store, old_block_root)
+    assert store.block_timeliness[old_block_root][0] == (probe_ms < old_attestation_due_ms)
+
+    # Proposer reorg cutoff at the boundary slot follows the new duration
+    new_cutoff_ms = spec.get_proposer_reorg_cutoff_ms(spec.Slot(fork_slot))
+    old_cutoff_ms = spec.get_proposer_reorg_cutoff_ms(spec.Slot(fork_slot - 1))
+    assert new_cutoff_ms < old_cutoff_ms
+    cutoff_probe_ms = (new_cutoff_ms + old_cutoff_ms) // 2
+    store.time_ms = fork_time_ms + cutoff_probe_ms
+    assert spec.is_proposing_on_time(store) == (cutoff_probe_ms <= new_cutoff_ms)
+
+
+@with_phases([EIP8198])
 @spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_base_reward_uses_scheduled_slot_ratio(spec, state):
     duration_ms = spec.get_slot_duration_ms(spec.get_current_epoch(state))
