@@ -14,7 +14,6 @@ def test_invariants(spec):
     previous_epoch = None
     for entry in spec.config.SLOT_DURATION_SCHEDULE:
         assert entry["EPOCH"] >= spec.config.EIP8198_FORK_EPOCH
-        assert entry["EPOCH"] != spec.FAR_FUTURE_EPOCH
         assert entry["SLOT_DURATION_MS"] > 0
         assert entry["SLOT_DURATION_MS"] % 1000 == 0
         if previous_epoch is not None:

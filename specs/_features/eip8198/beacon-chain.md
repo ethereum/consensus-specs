@@ -48,22 +48,24 @@ Epochs before the first entry use `SLOT_DURATION_MS`.
 
 There MUST NOT exist multiple slot duration schedule entries with the same epoch
 value. The epoch value in each entry MUST be greater than or equal to
-`EIP8198_FORK_EPOCH` and MUST NOT be `FAR_FUTURE_EPOCH`. The slot duration in
-each entry MUST be a positive multiple of `1000`, so that every slot boundary
-has an exact integer-second timestamp. The slot duration schedule entries SHOULD
-be sorted by epoch in ascending order. The slot duration schedule MAY be empty.
-An entry that changes the slot duration MUST be accompanied by a `BLOB_SCHEDULE`
+`EIP8198_FORK_EPOCH`; an entry with an epoch of `FAR_FUTURE_EPOCH` is not
+scheduled and has no effect. The slot duration in each entry MUST be a positive
+multiple of `1000`, so that every slot boundary has an exact integer-second
+timestamp. The slot duration schedule entries SHOULD be sorted by epoch in
+ascending order. The slot duration schedule MAY be empty. Once scheduled, an
+entry that changes the slot duration MUST be accompanied by a `BLOB_SCHEDULE`
 entry at the same epoch that scales the maximum blobs per block by the
 slot-duration ratio (rounding down), keeping blob throughput per unit time
 constant.
 
-When `EIP8198_FORK_EPOCH` is scheduled, the intended mainnet schedule is a
-single entry at the fork epoch with a slot duration of `10000` ms (10 seconds).
+The epoch of the mainnet entry below is **TBD** and is intended to be the fork
+epoch.
 
 <!-- list-of-records:slot_duration_schedule -->
 
-| Epoch | Slot Duration Ms |
-| ----: | ---------------: |
+|                Epoch | Slot Duration Ms | Description |
+| -------------------: | ---------------: | ----------- |
+| 18446744073709551615 |            10000 | 10 seconds  |
 
 ## Helpers
 
@@ -98,6 +100,8 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     era_start_slot = GENESIS_SLOT
     era_duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+        if entry["EPOCH"] == FAR_FUTURE_EPOCH:
+            break
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         if slot < entry_slot:
             break
@@ -120,6 +124,8 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     era_start_slot = GENESIS_SLOT
     era_duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+        if entry["EPOCH"] == FAR_FUTURE_EPOCH:
+            break
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         era_length_ms = (entry_slot - era_start_slot) * era_duration_ms
         if remaining_ms < era_length_ms:

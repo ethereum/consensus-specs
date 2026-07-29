@@ -456,8 +456,17 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
 @with_phases([EIP8198])
 @spec_test
 @single_phase
-def test_retention_window_when_schedule_empty(spec):
-    assert len(spec.config.SLOT_DURATION_SCHEDULE) == 0
+def test_unscheduled_entry_has_no_effect(spec):
+    # The default schedule only contains the placeholder entry at
+    # FAR_FUTURE_EPOCH, which must behave as if the schedule were empty.
+    for entry in spec.config.SLOT_DURATION_SCHEDULE:
+        assert entry["EPOCH"] == spec.FAR_FUTURE_EPOCH
+    for epoch in (spec.GENESIS_EPOCH, spec.Epoch(8192), spec.Epoch(100_000)):
+        assert spec.get_slot_duration_ms(epoch) == spec.config.SLOT_DURATION_MS
+        slot = spec.compute_start_slot_at_epoch(epoch)
+        start_ms = spec.compute_slot_start_time_ms(spec.Uint64(0), slot)
+        assert start_ms == slot * spec.config.SLOT_DURATION_MS
+        assert spec.compute_slot_at_time_ms(spec.Uint64(0), start_ms) == slot
     for epoch in (spec.Epoch(8192), spec.Epoch(100_000)):
         assert spec.get_data_column_sidecars_retention_start(epoch) == (
             epoch - spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
