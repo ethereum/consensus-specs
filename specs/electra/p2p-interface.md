@@ -546,7 +546,7 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("invalid blob sidecar inclusion proof")
 
     # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
-    if not verify_blob_kzg_proof(
+    if not kzg.verify_blob_kzg_proof(
         blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
     ):
         raise GossipReject("invalid blob kzg proof")
