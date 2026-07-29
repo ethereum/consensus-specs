@@ -70,9 +70,9 @@ libp2p messages.
 
 ### Configuration
 
-| Name                   | Value          |
-| ---------------------- | -------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
+| Name                   | Value                  |
+| ---------------------- | ---------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
 
 ### Containers
 
