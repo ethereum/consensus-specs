@@ -71,10 +71,10 @@ def run_alternate_duration_checks(spec, state):
     assert spec.get_exit_churn_limit(state) == expected_exit
 
     # Retention window preserves its wall-clock length after the change
-    window_epochs = spec.config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
+    window_epochs = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
     window_ms = window_epochs * spec.SLOTS_PER_EPOCH * pre_ms
     current_epoch = spec.Epoch(FORK_EPOCH + window_epochs)
-    start_epoch = spec.get_blob_sidecars_retention_start(current_epoch)
+    start_epoch = spec.get_data_column_sidecars_retention_start(current_epoch)
     coverage_ms = spec.compute_slot_range_duration_ms(
         spec.compute_start_slot_at_epoch(start_epoch),
         spec.compute_start_slot_at_epoch(current_epoch),

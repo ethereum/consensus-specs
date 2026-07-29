@@ -152,7 +152,7 @@ wall-clock time without bound after a slot duration change.
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
     # [Modified in EIP8198]
-    return compute_time_at_slot_ms(state, slot) // 1000
+    return compute_slot_start_time_ms(state.genesis_time, slot) // 1000
 ```
 
 ### Beacon state accessors

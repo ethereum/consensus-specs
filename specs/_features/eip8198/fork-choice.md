@@ -39,14 +39,13 @@
 EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
 deadlines are measured against the duration in effect at the current slot, so
 the deadline helpers gain a `slot` parameter; the basis-point values themselves
-are unchanged (a schedule entry MAY be accompanied by new basis-point values if
-a duty's relative position in the slot should change). The mapping between
-wall-clock time and slot number becomes piecewise over the schedule's eras, and
-every timeliness check is rebased on the new `get_time_into_slot_ms` helper,
-because slot boundaries after a duration change are not aligned to genesis at a
-fixed duration. The store clock gains millisecond precision: implementations
-MUST drive the store with `on_tick_ms`; the whole-second `on_tick` remains only
-as a compatibility adapter.
+are unchanged (a future upgrade MAY introduce new basis-point values, as Gloas
+did). The mapping between wall-clock time and slot number becomes piecewise over
+the schedule's eras, and every timeliness check is rebased on the new
+`get_time_into_slot_ms` helper, because slot boundaries after a duration change
+are not aligned to genesis at a fixed duration. The store clock gains
+millisecond precision: implementations MUST drive the store with `on_tick_ms`;
+the whole-second `on_tick` remains only as a compatibility adapter.
 
 *Note*: This specification is built upon [Heze](../../heze/fork-choice.md).
 

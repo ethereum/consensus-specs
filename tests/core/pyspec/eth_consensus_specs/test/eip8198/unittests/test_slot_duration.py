@@ -425,48 +425,40 @@ def test_churn_scales_before_increment_rounding(spec, state):
     },
     activate_at_genesis=True,
 )
-def test_retention_windows_preserve_wall_clock_length(spec, state):
+def test_retention_window_preserves_wall_clock_length(spec, state):
     fork_epoch = int(spec.config.EIP8198_FORK_EPOCH)
-    for start_of, window_epochs in [
-        (spec.get_blob_sidecars_retention_start, spec.config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS),
-        (
-            spec.get_data_column_sidecars_retention_start,
-            spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS,
-        ),
-    ]:
-        window_ms = window_epochs * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
+    start_of = spec.get_data_column_sidecars_retention_start
+    window_epochs = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
+    window_ms = window_epochs * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
 
-        # Early epochs clamp at genesis
-        assert start_of(spec.GENESIS_EPOCH) == spec.GENESIS_EPOCH
-        assert start_of(spec.Epoch(window_epochs - 1)) == spec.GENESIS_EPOCH
+    # Early epochs clamp at genesis
+    assert start_of(spec.GENESIS_EPOCH) == spec.GENESIS_EPOCH
+    assert start_of(spec.Epoch(window_epochs - 1)) == spec.GENESIS_EPOCH
 
-        # Up to the fork, the window is exactly the inherited epoch count
-        assert start_of(spec.Epoch(fork_epoch - 1)) == fork_epoch - 1 - window_epochs
-        assert start_of(spec.Epoch(fork_epoch)) == fork_epoch - window_epochs
+    # Up to the fork, the window is exactly the inherited epoch count
+    assert start_of(spec.Epoch(fork_epoch - 1)) == fork_epoch - 1 - window_epochs
+    assert start_of(spec.Epoch(fork_epoch)) == fork_epoch - window_epochs
 
-        # After the fork, the wall-clock length of the window is preserved:
-        # coverage never drops below window_ms and exceeds it by less than one
-        # pre-fork epoch
-        pre_epoch_ms = spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
-        for k in (1, 7, int(window_epochs // 2), int(window_epochs), int(window_epochs) + 100):
-            current_epoch = spec.Epoch(fork_epoch + k)
-            start_epoch = start_of(current_epoch)
-            coverage_ms = spec.compute_slot_range_duration_ms(
-                spec.compute_start_slot_at_epoch(start_epoch),
-                spec.compute_start_slot_at_epoch(current_epoch),
-            )
-            assert window_ms <= coverage_ms < window_ms + pre_epoch_ms
+    # After the fork, the wall-clock length of the window is preserved:
+    # coverage never drops below window_ms and exceeds it by less than one
+    # pre-fork epoch
+    pre_epoch_ms = spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
+    for k in (1, 7, int(window_epochs // 2), int(window_epochs), int(window_epochs) + 100):
+        current_epoch = spec.Epoch(fork_epoch + k)
+        start_epoch = start_of(current_epoch)
+        coverage_ms = spec.compute_slot_range_duration_ms(
+            spec.compute_start_slot_at_epoch(start_epoch),
+            spec.compute_start_slot_at_epoch(current_epoch),
+        )
+        assert window_ms <= coverage_ms < window_ms + pre_epoch_ms
 
 
 @with_phases([EIP8198])
 @spec_test
 @single_phase
-def test_retention_windows_when_schedule_empty(spec):
+def test_retention_window_when_schedule_empty(spec):
     assert len(spec.config.SLOT_DURATION_SCHEDULE) == 0
     for epoch in (spec.Epoch(8192), spec.Epoch(100_000)):
-        assert spec.get_blob_sidecars_retention_start(epoch) == (
-            epoch - spec.config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS
-        )
         assert spec.get_data_column_sidecars_retention_start(epoch) == (
             epoch - spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
         )

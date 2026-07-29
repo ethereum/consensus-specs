@@ -28,7 +28,8 @@ proposer's `target_gas_limit` does not alter this transition. Let
 `parent_execution_payload_slot` be the slot of the beacon block associated with
 the known execution payload identified by `bid.parent_block_hash`.
 
-8. Set `bid.gas_limit` to be the gas limit of the constructed payload. If
+8. Set `bid.gas_limit` to be the gas limit of the constructed payload, where
+   `parent_gas_limit` is the `gas_limit` of the parent execution payload. If
    `get_slot_duration_ms(compute_epoch_at_slot(bid.slot))` differs from
    `get_slot_duration_ms(compute_epoch_at_slot(parent_execution_payload_slot))`,
    the gas limit MUST equal `parent_gas_limit` scaled by the ratio of the two

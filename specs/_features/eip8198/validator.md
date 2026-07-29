@@ -33,8 +33,6 @@ millisecond precision, since deadlines are not generally whole seconds.
 
 ### Data availability retention
 
-The lower bounds of the blob and data-column sidecar retention windows in the
-inherited retention guidance are
-`get_blob_sidecars_retention_start(current_epoch)` and
-`get_data_column_sidecars_retention_start(current_epoch)`, respectively (see the
-EIP-8198 networking document).
+The lower bound of the data-column sidecar retention window in the inherited
+retention guidance is `get_data_column_sidecars_retention_start(current_epoch)`
+(see the EIP-8198 networking document).

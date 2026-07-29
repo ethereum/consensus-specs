@@ -9,7 +9,6 @@
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
-    - [New `get_blob_sidecars_retention_start`](#new-get_blob_sidecars_retention_start)
     - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -76,25 +75,6 @@ def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
     return compute_slot_start_time_ms(state.genesis_time, slot)
 ```
 
-#### New `get_blob_sidecars_retention_start`
-
-```python
-def get_blob_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
-    """
-    Return the earliest epoch of the blob sidecar retention window at
-    ``current_epoch``, preserving the window's pre-schedule wall-clock
-    length across slot duration changes.
-    """
-    window_ms = MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS * SLOTS_PER_EPOCH * SLOT_DURATION_MS
-    current_start_ms = compute_slot_start_time_ms(
-        Uint64(0), compute_start_slot_at_epoch(current_epoch)
-    )
-    if current_start_ms < window_ms:
-        return GENESIS_EPOCH
-    window_start_ms = Uint64(current_start_ms - window_ms)
-    return compute_epoch_at_slot(compute_slot_at_time_ms(Uint64(0), window_start_ms))
-```
-
 #### New `get_data_column_sidecars_retention_start`
 
 ```python
@@ -138,7 +118,9 @@ All other slot-derived durations — schedulers, expiry windows, gossip-scoring
 windows, and the light-client local-clock `current_slot` — MUST be derived from
 the piecewise timeline (`compute_slot_start_time_ms` /
 `compute_slot_at_time_ms`) rather than from a fixed slot duration anchored at
-genesis.
+genesis. The inherited `bls_to_execution_change` epoch gate keeps its
+pre-schedule slot computation; it is provably unaffected, since schedule entries
+lie far beyond `CAPELLA_FORK_EPOCH`.
 
 #### Topics and messages
 
@@ -183,14 +165,16 @@ def is_gas_limit_transition_compatible(
 
 ### The Req/Resp domain
 
-Request and response message types are unchanged from Heze. The lower bounds of
-the blob and data-column sidecar retention windows used by the inherited sidecar
-request validations and pruning guidance are
-`get_blob_sidecars_retention_start(current_epoch)` and
-`get_data_column_sidecars_retention_start(current_epoch)`, respectively. These
-preserve the windows' wall-clock length across slot duration changes, so a node
-retaining the inherited window when a change activates never serves a shorter
-wall-clock history, without pre-change over-retention or backfill.
+Request and response message types are unchanged from Heze. The lower bound of
+the data-column sidecar retention window used by the inherited sidecar request
+validations and pruning guidance is
+`get_data_column_sidecars_retention_start(current_epoch)`. It preserves the
+window's wall-clock length across slot duration changes, so a node retaining the
+inherited window when a change activates never serves a shorter wall-clock
+history, without pre-change over-retention or backfill. The blob sidecar
+Req/Resp messages are already deprecated as of
+`FULU_FORK_EPOCH + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`, so their retention
+window needs no treatment.
 
 Epoch-denominated retention windows without a wall-clock target — in particular
 the block retention window `compute_min_epochs_for_block_requests()` — keep
