@@ -127,7 +127,7 @@ def get_inclusion_list_bits(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> InclusionListBits:
     """
-    Return a ``Bitvector`` over inclusion list committee indices with bits set
+    Return a ``BitVector`` over inclusion list committee indices with bits set
     for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
     """
     committee = get_inclusion_list_committee(state, slot)

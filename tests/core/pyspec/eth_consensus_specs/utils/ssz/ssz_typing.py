@@ -11,7 +11,7 @@ from remerkleable.basic import (
     uint128 as Uint128,
     uint256 as Uint256,
 )
-from remerkleable.bitfields import BitList, Bitvector
+from remerkleable.bitfields import BitList, BitVector
 from remerkleable.byte_arrays import (
     ByteList,
     Bytes1,

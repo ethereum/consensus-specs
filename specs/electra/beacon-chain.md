@@ -187,7 +187,7 @@ class AttestingIndices(
 ### New `CommitteeBits`
 
 ```python
-class CommitteeBits(Bitvector[MAX_COMMITTEES_PER_SLOT]):
+class CommitteeBits(BitVector[MAX_COMMITTEES_PER_SLOT]):
     """
     Bits marking which committees of a slot participate in an attestation.
     """
@@ -704,7 +704,7 @@ def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> 
 #### New `get_committee_indices`
 
 ```python
-def get_committee_indices(committee_bits: Bitvector) -> Sequence[CommitteeIndex]:
+def get_committee_indices(committee_bits: BitVector) -> Sequence[CommitteeIndex]:
     return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 

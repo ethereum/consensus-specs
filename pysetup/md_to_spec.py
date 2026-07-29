@@ -17,7 +17,7 @@ from .typing import ProtocolDefinition, SpecObject, VariableDefinition
 
 COLLECTION_BASE_CLASSES = (
     "BitList",
-    "Bitvector",
+    "BitVector",
     "ByteList",
     "ByteVector",
     "List",
@@ -277,7 +277,7 @@ class MarkdownToSpec:
                     (
                         "Uint",
                         "BitList",
-                        "Bitvector",
+                        "BitVector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",

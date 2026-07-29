@@ -224,7 +224,7 @@ We define the following Python custom types for type hinting and readability:
 #### `Attnets`
 
 ```python
-class Attnets(Bitvector[ATTESTATION_SUBNET_COUNT]):
+class Attnets(BitVector[ATTESTATION_SUBNET_COUNT]):
     """
     The attestation subnets a node is subscribed to, one bit per subnet.
     """
@@ -456,7 +456,7 @@ Where
 - `seq_number` is a `Uint64` starting at `0` used to version the node's
   metadata. If any other field in the local `MetaData` changes, the node MUST
   increment `seq_number` by 1.
-- `attnets` is a `Bitvector` representing the node's persistent attestation
+- `attnets` is a `BitVector` representing the node's persistent attestation
   subnet subscriptions.
 
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata, is

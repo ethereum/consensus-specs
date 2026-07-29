@@ -16,7 +16,7 @@ from eth_consensus_specs.test.helpers.keys import privkeys, pubkey_to_privkey, p
 from eth_consensus_specs.test.helpers.state import transition_to
 from eth_consensus_specs.test.helpers.sync_committee import compute_sync_committee_signature
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ssz.ssz_typing import Bitvector
+from eth_consensus_specs.utils.ssz.ssz_typing import BitVector
 
 rng = random.Random(1337)
 
@@ -97,7 +97,7 @@ def test_process_sync_committee_contributions(spec, state):
     block = build_empty_block(spec, state)
     previous_slot = state.slot - 1
     target_block_root = spec.get_block_root_at_slot(state, previous_slot)
-    aggregation_bits = Bitvector[spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT]()
+    aggregation_bits = BitVector[spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT]()
     aggregation_index = 0
     aggregation_bits[aggregation_index] = True
 
@@ -276,7 +276,7 @@ def test_get_contribution_and_proof(spec, state):
         slot=10,
         beacon_block_root=b"\x12" * 32,
         subcommittee_index=1,
-        aggregation_bits=spec.Bitvector[
+        aggregation_bits=spec.BitVector[
             spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
         ](),
         signature=b"\x32" * 96,
@@ -313,7 +313,7 @@ def test_get_contribution_and_proof_signature(spec, state):
             slot=10,
             beacon_block_root=b"\x12" * 32,
             subcommittee_index=1,
-            aggregation_bits=spec.Bitvector[
+            aggregation_bits=spec.BitVector[
                 spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
             ](),
             signature=b"\x34" * 96,

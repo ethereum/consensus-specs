@@ -476,7 +476,7 @@ class Builders(ProgressiveList[Builder]):
 ### New `ExecutionPayloadAvailability`
 
 ```python
-class ExecutionPayloadAvailability(Bitvector[SLOTS_PER_HISTORICAL_ROOT]):
+class ExecutionPayloadAvailability(BitVector[SLOTS_PER_HISTORICAL_ROOT]):
     """
     Bits tracking payload availability for recent slots, indexed by slot
     modulo ``SLOTS_PER_HISTORICAL_ROOT``.
@@ -514,7 +514,7 @@ class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
 ### New `PTCBits`
 
 ```python
-class PTCBits(Bitvector[PTC_SIZE]):
+class PTCBits(BitVector[PTC_SIZE]):
     """
     The participation bits of the payload timeliness committee, one bit per
     member in committee order.

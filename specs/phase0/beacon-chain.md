@@ -388,7 +388,7 @@ class HistoricalRoots(List[Root, HISTORICAL_ROOTS_LIMIT]):
 ### `JustificationBits`
 
 ```python
-class JustificationBits(Bitvector[JUSTIFICATION_BITS_LENGTH]):
+class JustificationBits(BitVector[JUSTIFICATION_BITS_LENGTH]):
     """
     Justification status of the last ``JUSTIFICATION_BITS_LENGTH`` epochs,
     used to decide finality under Casper FFG.
