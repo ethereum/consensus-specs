@@ -15,7 +15,16 @@ from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ssz.ssz_typing import Bitlist
+from eth_consensus_specs.utils.ssz.ssz_typing import BitList
+
+
+def process_attestation(spec, state, attestation):
+    if is_post_gloas(spec):
+        # Outside of block processing, the bid in the state is still the
+        # parent block's bid, so its slot is the parent block's slot.
+        spec.process_attestation(state, attestation, state.latest_execution_payload_bid.slot)
+    else:
+        spec.process_attestation(state, attestation)
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -33,7 +42,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
 
     # If the attestation is invalid, processing is aborted, and there is no post-state.
     if not valid:
-        expect_assertion_error(lambda: spec.process_attestation(state, attestation))
+        expect_assertion_error(lambda: process_attestation(spec, state, attestation))
         yield "post", None
         return
 
@@ -42,7 +51,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
         previous_epoch_count = len(state.previous_epoch_attestations)
 
     # process attestation
-    spec.process_attestation(state, attestation)
+    process_attestation(spec, state, attestation)
 
     # Make sure the attestation has been processed
     if not is_post_altair(spec):
@@ -228,7 +237,7 @@ def fill_aggregate_attestation(
         )
     else:
         committee_size = len(beacon_committee)
-        attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        attestation.aggregation_bits = BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](
             *([0] * committee_size)
         )
 
@@ -253,7 +262,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
     if state.slot < slot:
         spec.process_slots(state, slot)
     for attestation in attestations:
-        spec.process_attestation(state, attestation)
+        process_attestation(spec, state, attestation)
 
 
 def get_valid_attestations_at_slot(

@@ -103,7 +103,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: ProgressiveList[ParticipationFlags]
     current_epoch_participation: ProgressiveList[ParticipationFlags]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -126,7 +126,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
     builders: ProgressiveList[Builder]
     next_withdrawal_builder_index: BuilderIndex
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
+    execution_payload_availability: BitVector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
     latest_execution_payload_bid: ExecutionPayloadBid

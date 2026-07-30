@@ -63,10 +63,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                     | Description                                                           |
-| ---------------------------------------------- | ------------------------- | --------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                    | Description                                                           |
+| ---------------------------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)   | Number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -178,12 +178,31 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
     # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
+    return kzg.verify_cell_kzg_proof_batch(
         commitments_bytes=sidecar.kzg_commitments,
         cell_indices=cell_indices,
         cells=sidecar.column,
         proofs_bytes=sidecar.kzg_proofs,
     )
+```
+
+*Note*: The function `kzg.verify_cell_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_cell_kzg_proof_batch(
+    commitments_bytes: Sequence[Bytes48],
+    cell_indices: Sequence[CellIndex],
+    cells: Sequence[Cell],
+    proofs_bytes: Sequence[Bytes48],
+) -> bool:
+    """
+    Return ``True`` if and only if all cells and their proofs match the
+    commitments.
+    """
 ```
 
 #### New `verify_data_column_sidecar_inclusion_proof`
@@ -217,8 +236,8 @@ communicate the custody group count.
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
+  syncnets: BitVector[SYNC_COMMITTEE_SUBNET_COUNT]
   custody_group_count: Uint64 # cgc
 )
 ```

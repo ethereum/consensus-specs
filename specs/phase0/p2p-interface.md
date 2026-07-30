@@ -222,27 +222,27 @@ We define the following Python custom types for type hinting and readability:
 
 ### Constants
 
-| Name           | Value | Unit                             |
-| -------------- | ----- | -------------------------------- |
-| `NODE_ID_BITS` | `256` | The bit length of Uint256 is 256 |
+| Name           | Value         |
+| -------------- | ------------- |
+| `NODE_ID_BITS` | `Uint64(256)` |
 
 ### Configuration
 
 This section outlines configurations that are used in this specification.
 
-| Name                                 | Value                               | Description                                                                       |
-| ------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                      |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                         |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | Maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
-| `SUBNETS_PER_NODE`                   | `2`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue     |
+| Name                                 | Value                                       | Description                                                                       |
+| ------------------------------------ | ------------------------------------------- | --------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `Uint64(10 * 2**20)` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `Uint64(2**10)` (= 1,024)                   | Maximum number of blocks in a single request                                      |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `Epoch(2**8)` (= 256)                       | Number of epochs on a subnet subscription                                         |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `Slot(32)`                                  | Maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `Uint64(500)`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                  | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                  | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
+| `SUBNETS_PER_NODE`                   | `Uint64(2)`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `Uint64(2**6)` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `Uint64(0)`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `MAX_CONCURRENT_REQUESTS`            | `Uint64(2)`                                 | Maximum number of concurrent requests per protocol ID that a client may issue     |
 
 ### Helpers
 
@@ -390,7 +390,7 @@ Clients MUST locally store the following `MetaData`:
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
 )
 ```
 
@@ -399,7 +399,7 @@ Where
 - `seq_number` is a `Uint64` starting at `0` used to version the node's
   metadata. If any other field in the local `MetaData` changes, the node MUST
   increment `seq_number` by 1.
-- `attnets` is a `Bitvector` representing the node's persistent attestation
+- `attnets` is a `BitVector` representing the node's persistent attestation
   subnet subscriptions.
 
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata, is
@@ -1660,7 +1660,7 @@ attestation gossip subnets.
 
 | Key       | Value                                     |
 | --------- | ----------------------------------------- |
-| `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
+| `attnets` | SSZ `BitVector[ATTESTATION_SUBNET_COUNT]` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
 `attnets` entry with the same value as `MetaData.attnets`.
@@ -1739,8 +1739,8 @@ should:
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
     prefix_bits = int(compute_attestation_subnet_prefix_bits())
-    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
-    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
+    node_id_prefix = node_id >> int(NODE_ID_BITS - prefix_bits)
+    node_offset = Uint64(node_id % Uint256(EPOCHS_PER_SUBNET_SUBSCRIPTION))
     permutation_seed = hash(
         uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )

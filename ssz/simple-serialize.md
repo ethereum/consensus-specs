@@ -16,8 +16,8 @@
 - [Serialization](#serialization)
   - [`UintN`](#uintn)
   - [`Boolean`](#boolean)
-  - [`Bitvector[N]`](#bitvectorn)
-  - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
+  - [`BitVector[N]`](#bitvectorn)
+  - [`BitList[N]`, `ProgressiveBitList`](#bitlistn-progressivebitlist)
   - [Vectors, containers, progressive containers, lists, progressive lists](#vectors-containers-progressive-containers-lists-progressive-lists)
   - [Union](#union)
   - [Compatible unions](#compatible-unions)
@@ -78,13 +78,13 @@
   - notation `ProgressiveList[type]`, e.g. `ProgressiveList[Uint64]`
 - **bitvector**: ordered fixed-length collection of `Boolean` values, with `N`
   bits
-  - notation `Bitvector[N]`
+  - notation `BitVector[N]`
 - **bitlist**: ordered variable-length collection of `Boolean` values, limited
   to `N` bits
-  - notation `Bitlist[N]`
+  - notation `BitList[N]`
 - **progressive bitlist** _[EIP-7916]_: ordered variable-length collection of
   `Boolean` values, without limit
-  - notation `ProgressiveBitlist`
+  - notation `ProgressiveBitList`
 - **union**: union type containing one of the given subtypes
   - notation `Union[type_0, type_1, ...]`, e.g. `union[None, Uint64, Uint32]`
 - **compatible union** _[EIP-8016, currently unused]_: union type containing one
@@ -92,10 +92,10 @@
   - notation `CompatibleUnion({selector: type})`, e.g.
     `CompatibleUnion({1: Square, 2: Circle})`
 
-*Note*: Both `Vector[Boolean, N]` and `Bitvector[N]` are valid, yet distinct due
+*Note*: Both `Vector[Boolean, N]` and `BitVector[N]` are valid, yet distinct due
 to their different serialization requirements. Similarly, both
-`List[Boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally
-`Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization
+`List[Boolean, N]` and `BitList[N]` are valid, yet distinct. Generally
+`BitVector[N]`/`BitList[N]` are preferred because of their serialization
 efficiencies.
 
 ### Variable-size and fixed-size
@@ -133,11 +133,11 @@ Assuming a helper function `default(type)` which returns the default value for
 | `Container`                           | `[default(type) for type in container]`             |
 | `ProgressiveContainer(active_fields)` | `[default(type) for type in progressive_container]` |
 | `Vector[type, N]`                     | `[default(type)] * N`                               |
-| `Bitvector[N]`                        | `[False] * N`                                       |
+| `BitVector[N]`                        | `[False] * N`                                       |
 | `List[type, N]`                       | `[]`                                                |
 | `ProgressiveList[type]`               | `[]`                                                |
-| `Bitlist[N]`                          | `[]`                                                |
-| `ProgressiveBitlist`                  | `[]`                                                |
+| `BitList[N]`                          | `[]`                                                |
+| `ProgressiveBitList`                  | `[]`                                                |
 | `Union[type_0, type_1, ...]`          | `default(type_0)`                                   |
 | `CompatibleUnion({selector: type})`   | n/a (error)                                         |
 
@@ -148,7 +148,7 @@ is equal to the default value for that type.
 
 ### Illegal types
 
-- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Empty vector types (`Vector[type, 0]`, `BitVector[0]`) are illegal.
 - Containers with no fields are illegal.
 - `ProgressiveContainer` with no fields are illegal.
 - `ProgressiveContainer` with an `active_fields` configuration of more than 256
@@ -169,8 +169,8 @@ is equal to the default value for that type.
 
 - Types are compatible with themselves.
 - `Byte` is compatible with `Uint8` and vice versa.
-- `Bitlist[N]` are compatible if they share the same capacity `N`.
-- `Bitvector[N]` are compatible if they share the same capacity `N`.
+- `BitList[N]` are compatible if they share the same capacity `N`.
+- `BitVector[N]` are compatible if they share the same capacity `N`.
 - `List[type, N]` are compatible if `type` is compatible and they share the same
   capacity `N`.
 - `Vector[type, N]` are compatible if `type` is compatible and they share the
@@ -207,7 +207,7 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### `Bitvector[N]`
+### `BitVector[N]`
 
 ```python
 array = [0] * ((N + 7) // 8)
@@ -216,7 +216,7 @@ for i in range(N):
 return bytes(array)
 ```
 
-### `Bitlist[N]`, `ProgressiveBitlist`
+### `BitList[N]`, `ProgressiveBitList`
 
 Note that from the offset coding, the length (in bytes) of the bitlist is known.
 An additional `1` bit is added to the end, at index `e` where `e` is the length
@@ -348,7 +348,7 @@ We first define helper functions:
 - `chunk_count(type)`: calculate the amount of leaves for merkleization of the
   type.
   - all basic types: `1`
-  - `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size,
+  - `BitList[N]` and `BitVector[N]`: `(N + 255) // 256` (dividing by chunk size,
     rounding up)
   - `List[B, N]` and `Vector[B, N]`, where `B` is a basic type:
     `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
@@ -466,13 +466,13 @@ value. Parsers may ignore additional JSON fields.
 | `ProgressiveContainer(active_fields)` | object          | `{ "field": ... }`                       |
 | `Vector[type, N]`                     | array           | `[element, ...]`                         |
 | `Vector[Byte, N]`                     | hex-byte-string | `"0x1122"`                               |
-| `Bitvector[N]`                        | hex-byte-string | `"0x1122"`                               |
+| `BitVector[N]`                        | hex-byte-string | `"0x1122"`                               |
 | `List[type, N]`                       | array           | `[element, ...]`                         |
 | `List[Byte, N]`                       | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveList[type]`               | array           | `[element, ...]`                         |
 | `ProgressiveList[Byte]`               | hex-byte-string | `"0x1122"`                               |
-| `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
-| `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
+| `BitList[N]`                          | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveBitList`                  | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": string, "data": type_N }` |
 | `CompatibleUnion({selector: type})`   | selector-object | `{ "selector": string, "data": type }`   |
 
@@ -484,7 +484,7 @@ Aliases are encoded as their underlying type.
 appear in an SSZ stream.
 
 `List`, `ProgressiveList`, and `Vector` of `Byte` (and aliases thereof) are
-encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
+encoded as `hex-byte-string`. `BitList`, `ProgressiveBitList`, and `BitVector`
 similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
 `Union` and `CompatibleUnion` are encoded as an object with a `selector` and

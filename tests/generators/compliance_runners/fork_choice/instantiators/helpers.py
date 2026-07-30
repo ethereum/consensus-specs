@@ -208,7 +208,7 @@ def messages_to_payload_attestations(spec, state, messages):
     for data, attesting_indices in groups.values():
         ptc = spec.get_ptc(state, data.slot)
         index_set = set(attesting_indices)
-        aggregation_bits = spec.Bitvector[spec.PTC_SIZE]()
+        aggregation_bits = spec.BitVector[spec.PTC_SIZE]()
         for i, validator_index in enumerate(ptc):
             if validator_index in index_set:
                 aggregation_bits[i] = True

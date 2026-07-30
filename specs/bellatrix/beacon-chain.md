@@ -54,10 +54,9 @@ Including:
 
 *Note*: The `Transaction` type is a stub which is not final.
 
-| Name               | SSZ equivalent                        | Description                                                                                                                                       |
-| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
-| `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
+| Name          | SSZ equivalent                        | Description                                                                                                                                       |
+| ------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
 
 ## Constants
 
@@ -91,11 +90,11 @@ final, maximum security values.
 
 ### Transition settings
 
-| Name                                   | Value                                                |
-| -------------------------------------- | ---------------------------------------------------- |
-| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
-| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
+| Name                                   | Value                              |
+| -------------------------------------- | ---------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `Uint256(58750000000000000000000)` |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                         |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `Epoch(FAR_FUTURE_EPOCH)`          |
 
 ## Containers
 
@@ -139,7 +138,7 @@ class BeaconState(Container):
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint

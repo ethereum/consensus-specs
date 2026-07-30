@@ -43,7 +43,7 @@ and the [Gloas networking specification](../p2p-interface.md).
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: ProgressiveBitlist
+    cells_present_bitmap: ProgressiveBitList
     partial_column: ProgressiveList[Cell]
     kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
