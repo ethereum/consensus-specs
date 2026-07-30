@@ -356,8 +356,8 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     """
     Return ``True`` if the range between ``start_slot`` and ``end_slot`` (inclusive of both) includes an entire epoch.
     """
-    start_full_epoch = compute_epoch_at_slot(start_slot + (SLOTS_PER_EPOCH - 1))
-    end_full_epoch = compute_epoch_at_slot(Slot(end_slot + 1))
+    start_full_epoch = compute_epoch_at_slot(start_slot + SLOTS_PER_EPOCH - Slot(1))
+    end_full_epoch = compute_epoch_at_slot(end_slot + Slot(1))
     return start_full_epoch < end_full_epoch
 ```
 

@@ -71,11 +71,11 @@ Altair is the first beacon-chain upgrade. Its main features are:
 
 ### Participation flag indices
 
-| Name                       | Value |
-| -------------------------- | ----- |
-| `TIMELY_SOURCE_FLAG_INDEX` | `0`   |
-| `TIMELY_TARGET_FLAG_INDEX` | `1`   |
-| `TIMELY_HEAD_FLAG_INDEX`   | `2`   |
+| Name                       | Value       |
+| -------------------------- | ----------- |
+| `TIMELY_SOURCE_FLAG_INDEX` | `Uint64(0)` |
+| `TIMELY_TARGET_FLAG_INDEX` | `Uint64(1)` |
+| `TIMELY_HEAD_FLAG_INDEX`   | `Uint64(2)` |
 
 ### Incentivization weights
 
@@ -119,10 +119,10 @@ to their final, maximum security values.
 
 ### Sync committee
 
-| Name                               | Value                  | Unit       |
-| ---------------------------------- | ---------------------- | ---------- |
-| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) | validators |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Uint64(2**8)` (= 256) | epochs     |
+| Name                               | Value                  |
+| ---------------------------------- | ---------------------- |
+| `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  |
 
 ## Configuration
 
@@ -176,7 +176,7 @@ class BeaconState(Container):
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     # [Modified in Altair]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -194,7 +194,7 @@ class BeaconState(Container):
 
 ```python
 class SyncAggregate(Container):
-    sync_committee_bits: Bitvector[SYNC_COMMITTEE_SIZE]
+    sync_committee_bits: BitVector[SYNC_COMMITTEE_SIZE]
     sync_committee_signature: BLSSignature
 ```
 

@@ -24,7 +24,7 @@ def collect_prev_forks(fork: str) -> list[str]:
 
 def requires_mypy_type_ignore(value: str) -> bool:
     return (
-        value.startswith(("Bitlist", "ByteVector"))
+        value.startswith(("BitList", "ByteVector"))
         or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
         or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
     )
@@ -270,8 +270,8 @@ def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T
 
 
 ignored_dependencies = [
-    "Bitlist",
-    "Bitvector",
+    "BitList",
+    "BitVector",
     "Boolean",
     "Byte",
     "ByteList",
@@ -296,7 +296,7 @@ ignored_dependencies = [
     "list",
     "List",
     "Optional",
-    "ProgressiveBitlist",
+    "ProgressiveBitList",
     "ProgressiveByteList",
     "ProgressiveList",
     "Sequence",

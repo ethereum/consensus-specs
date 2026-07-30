@@ -198,7 +198,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     # Clear all committee bits.
-    signed_agg.message.aggregate.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
+    signed_agg.message.aggregate.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT]()
 
     yield get_filename(signed_agg), signed_agg
 
@@ -250,7 +250,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     bits = [False] * spec.MAX_COMMITTEES_PER_SLOT
     bits[0] = True
     bits[1] = True
-    signed_agg.message.aggregate.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT](
+    signed_agg.message.aggregate.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT](
         *bits
     )
 

@@ -64,7 +64,7 @@ def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
 ```
 
 We define a custom type `GeneralizedIndex` as a Python integer type in this
-document. It can be represented as a Bitvector/Bitlist object as well.
+document. It can be represented as a BitVector/BitList object as well.
 
 We will define Merkle proofs in terms of generalized indices.
 
