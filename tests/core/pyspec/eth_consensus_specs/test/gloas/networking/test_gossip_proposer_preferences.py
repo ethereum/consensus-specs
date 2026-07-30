@@ -455,6 +455,57 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_proposer_preferences__valid_with_clock_disparity_after_slot_start(spec, state):
+    """
+    Preferences remain valid when the receiver is slightly ahead of the proposal slot.
+
+    At one ms before the end of the disparity window, a peer whose clock is
+    behind by ``DISPARITY`` still considers the proposal slot to be in the future.
+    """
+    yield "topic", "meta", "proposer_preferences"
+
+    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(spec, state)
+    yield get_filename(signed_prefs), signed_prefs
+
+    proposal_slot = signed_prefs.message.proposal_slot
+    time_ms = (
+        spec.compute_time_at_slot_ms(store, proposal_slot)
+        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        - 1
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state):
     """Preferences validated exactly at the clock-disparity edge are ignored as already passed."""
     yield "topic", "meta", "proposer_preferences"
