@@ -97,41 +97,54 @@ def test_gossip_proposer_preferences__valid(spec, state):
     yield "messages", "meta", messages
 
 
+def setup_lookahead_window(spec, state):
+    """
+    Advance to the start of an epoch, where the proposal slots that pass
+    validation are exactly the span of ``state.proposer_lookahead``. Returns the
+    store, the blocks, that epoch's start slot, and the first slot past the
+    lookahead window.
+    """
+    epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
+    epoch_start_slot = spec.compute_start_slot_at_epoch(epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, epoch_start_slot)
+    past_window_slot = spec.compute_start_slot_at_epoch(
+        spec.Epoch(epoch + spec.MIN_SEED_LOOKAHEAD + 1)
+    )
+    return store, blocks, epoch_start_slot, past_window_slot
+
+
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
-    """Preferences whose proposal slot is past the proposer lookahead are ignored."""
+def test_gossip_proposer_preferences__ignore_slot_before_lookahead(spec, state):
+    """Preferences for the slot just below the lookahead window are ignored.
+
+    That slot is the last one of the previous epoch, so at the epoch start it
+    has already started.
+    """
     yield "topic", "meta", "proposer_preferences"
 
-    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    store, blocks, epoch_start_slot, _ = setup_lookahead_window(spec, state)
+
+    proposal_block = blocks[-2].message
+    assert proposal_block.slot == epoch_start_slot - 1
 
     seen = get_seen(spec)
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
-    # Pick a slot far past the lookahead window.
-    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
-    far_future_slot = spec.Slot(
-        proposal_slot + spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 2)
-    )
-    # dependent_root for a far-future slot would underflow get_block_root_at_slot,
-    # so pass a placeholder; this check fires before any dependent_root lookup.
     signed_prefs = build_signed_proposer_preferences(
         spec,
         state,
-        proposal_slot=far_future_slot,
-        validator_index=validator_index,
-        dependent_root=spec.Root(),
+        proposal_slot=proposal_block.slot,
+        validator_index=proposal_block.proposer_index,
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -140,7 +153,7 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "proposal slot is past the proposer lookahead"
+    assert reason == "proposal slot has already started"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -155,37 +168,36 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state):
-    """Preferences for a proposal at the lookahead upper edge are valid.
+def test_gossip_proposer_preferences__valid_at_first_lookahead_slot(spec, state):
+    """Preferences for the first slot of the lookahead window are valid.
 
-    The proposal lands in ``current_epoch + MIN_SEED_LOOKAHEAD`` -- the highest
-    epoch the ``proposal_epoch > current_epoch + MIN_SEED_LOOKAHEAD`` ignore
-    check still accepts, pinning that boundary against an off-by-one.
+    That slot starts exactly now, so it counts as neither started nor beyond the
+    lookahead.
     """
     yield "topic", "meta", "proposer_preferences"
 
-    # Advance to the last slot of the epoch so the next upcoming proposal falls
-    # in the following epoch, i.e. current_epoch + MIN_SEED_LOOKAHEAD.
-    target_slot = spec.Slot(
-        spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)) - 1
-    )
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    store, blocks, epoch_start_slot, _ = setup_lookahead_window(spec, state)
+
+    proposal_block = blocks[-1].message
+    assert proposal_block.slot == epoch_start_slot
 
     seen = get_seen(spec)
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
-    signed_prefs = build_signed_proposer_preferences(spec, state)
-    proposal_epoch = spec.compute_epoch_at_slot(signed_prefs.message.proposal_slot)
-    assert proposal_epoch == spec.get_current_epoch(state) + spec.Epoch(spec.MIN_SEED_LOOKAHEAD)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_block.slot,
+        validator_index=proposal_block.proposer_index,
+    )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -208,43 +220,165 @@ def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state)
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, state):
-    """
-    The next epoch is treated as current exactly at the clock-disparity edge,
-    allowing preferences at its proposer-lookahead upper bound.
+def test_gossip_proposer_preferences__valid_at_last_lookahead_slot(spec, state):
+    """Preferences for the last slot of the lookahead window are valid.
+
+    This is the only proposal slot that reaches the final entry of
+    ``proposer_lookahead``, pinning the index arithmetic against an overrun.
     """
     yield "topic", "meta", "proposer_preferences"
 
-    current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
-    next_epoch = spec.Epoch(current_epoch + 1)
-    next_epoch_start_slot = spec.compute_start_slot_at_epoch(next_epoch)
-    store, blocks = setup_store_with_advanced_state(spec, state, next_epoch_start_slot)
+    store, blocks, epoch_start_slot, past_window_slot = setup_lookahead_window(spec, state)
 
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    proposal_slot = spec.Slot(past_window_slot - 1)
+    lookahead_index = proposal_slot - epoch_start_slot
+    assert lookahead_index == len(state.proposer_lookahead) - 1
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=state.proposer_lookahead[lookahead_index],
+    )
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__ignore_slot_after_lookahead(spec, state):
+    """Preferences for the slot just past the lookahead window are ignored.
+
+    Its lookahead epoch has not started, so no proposer is assigned to it yet.
+    """
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks, epoch_start_slot, past_window_slot = setup_lookahead_window(spec, state)
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    # The dependent block for this slot is not in the store yet, so pass a
+    # placeholder, this check fires before any dependent_root lookup.
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=past_window_slot,
+        validator_index=spec.ValidatorIndex(0),
+        dependent_root=spec.Root(),
+    )
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "proposer for the proposal slot is not yet known"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+def setup_lookahead_boundary_preferences(spec, state):
+    """
+    Advance to the start of an epoch and build preferences for a proposal at the
+    far end of that epoch's proposer lookahead, signed by the proposer taken from
+    the lookahead computed at the epoch transition. Returns the store, the
+    blocks, the preferences, and the epoch's start slot, whose start time is the
+    lookahead lower bound for the proposal slot.
+    """
+    lookahead_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 3)
+    lookahead_epoch_start_slot = spec.compute_start_slot_at_epoch(lookahead_epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, lookahead_epoch_start_slot)
+
+    # The dependent block is the last one before the epoch transition.
     dependent_root = blocks[-2].message.hash_tree_root()
-    validation_state = store.block_states[dependent_root].copy()
-    assert spec.get_current_epoch(validation_state) == current_epoch
+    dependent_state = store.block_states[dependent_root]
+    assert spec.get_current_epoch(dependent_state) == spec.Epoch(lookahead_epoch - 1)
 
-    lookahead_state = validation_state.copy()
-    spec.process_slots(lookahead_state, next_epoch_start_slot)
-    proposal_epoch = spec.Epoch(next_epoch + spec.MIN_SEED_LOOKAHEAD)
-    proposal_slot = spec.compute_start_slot_at_epoch(proposal_epoch)
-    lookahead_index = proposal_slot - next_epoch_start_slot
-    validator_index = lookahead_state.proposer_lookahead[lookahead_index]
+    lookahead_state = dependent_state.copy()
+    spec.process_slots(lookahead_state, lookahead_epoch_start_slot)
+    proposal_slot = spec.compute_start_slot_at_epoch(
+        spec.Epoch(lookahead_epoch + spec.MIN_SEED_LOOKAHEAD)
+    )
+    lookahead_index = proposal_slot - lookahead_epoch_start_slot
     signed_prefs = build_signed_proposer_preferences(
         spec,
         lookahead_state,
         proposal_slot=proposal_slot,
-        validator_index=validator_index,
+        validator_index=lookahead_state.proposer_lookahead[lookahead_index],
         dependent_root=dependent_root,
+    )
+    return store, blocks, signed_prefs, lookahead_epoch_start_slot
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, state):
+    """Preferences validated 1ms before the lookahead lower bound are ignored.
+
+    One ms earlier, the lookahead epoch is still in the future even for a peer
+    whose clock is ahead by ``DISPARITY``, so the proposer is not yet known.
+    """
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks, signed_prefs, lookahead_epoch_start_slot = setup_lookahead_boundary_preferences(
+        spec, state
     )
 
     for signed in blocks:
         yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
     yield get_filename(signed_prefs), signed_prefs
 
-    disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    time_ms = spec.compute_time_at_slot_ms(store, next_epoch_start_slot) - disparity - 1
+    time_ms = (
+        spec.compute_time_at_slot_ms(store, lookahead_epoch_start_slot)
+        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        - 1
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -256,7 +390,7 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "proposal slot is past the proposer lookahead"
+    assert reason == "proposer for the proposal slot is not yet known"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -266,7 +400,36 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
         }
     )
 
-    time_ms += 1
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, state):
+    """Preferences validated exactly at the lookahead lower bound are valid.
+
+    The proposal slot's proposer is only known once its lookahead epoch starts,
+    so that start minus ``DISPARITY`` is the earliest time preferences for it are
+    accepted.
+    """
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks, signed_prefs, lookahead_epoch_start_slot = setup_lookahead_boundary_preferences(
+        spec, state
+    )
+
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = (
+        spec.compute_time_at_slot_ms(store, lookahead_epoch_start_slot)
+        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    )
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
     result, reason = run_validate_gossip(
         spec,
         seen=get_seen(spec),
@@ -289,126 +452,10 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state):
-    """
-    The lower epoch bound uses past clock tolerance. Preferences from the
-    previous epoch reach the passed-slot check within the disparity window.
-    """
-    yield "topic", "meta", "proposer_preferences"
-
-    current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
-    current_epoch_start_slot = spec.compute_start_slot_at_epoch(current_epoch)
-    store, blocks = setup_store_with_advanced_state(spec, state, current_epoch_start_slot)
-
-    signed_prefs = build_signed_proposer_preferences(
-        spec,
-        state,
-        proposal_slot=spec.Slot(current_epoch_start_slot - 1),
-        validator_index=spec.ValidatorIndex(0),
-        dependent_root=spec.Root(),
-    )
-
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
-    yield get_filename(signed_prefs), signed_prefs
-
-    disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    time_ms = spec.compute_time_at_slot_ms(store, current_epoch_start_slot) + disparity - 1
-    yield "current_time_ms", "meta", int(time_ms)
-    messages = []
-
-    result, reason = run_validate_gossip(
-        spec,
-        seen=get_seen(spec),
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "ignore"
-    assert reason == "proposal slot has already passed"
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    time_ms += 2
-    result, reason = run_validate_gossip(
-        spec,
-        seen=get_seen(spec),
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "ignore"
-    assert reason == "proposal slot is before the current epoch"
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
-    """Preferences whose proposal slot is already current/past are ignored."""
-    yield "topic", "meta", "proposer_preferences"
-
-    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-
-    seen = get_seen(spec)
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-
-    signed_prefs = build_signed_proposer_preferences(spec, state)
-    yield get_filename(signed_prefs), signed_prefs
-
-    # Validate at a time well after the proposal slot has started.
-    proposal_slot = signed_prefs.message.proposal_slot
-    time_ms = spec.compute_time_at_slot_ms(store, proposal_slot)
-    yield "current_time_ms", "meta", int(time_ms)
-    messages = []
-
-    time_ms += 1000
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "ignore"
-    assert reason == "proposal slot has already passed"
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
+def test_gossip_proposer_preferences__valid_at_slot_start_disparity_edge(spec, state):
     """Preferences validated exactly at the clock-disparity edge are still valid.
 
-    The proposal slot counts as passed only once ``current_time_ms`` is more
+    The proposal slot counts as started only once ``current_time_ms`` is more
     than ``DISPARITY`` past its start, so that edge itself is still valid.
     """
     yield "topic", "meta", "proposer_preferences"
@@ -454,59 +501,8 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__valid_with_clock_disparity_after_slot_start(spec, state):
-    """
-    Preferences remain valid when the receiver is slightly ahead of the proposal slot.
-
-    At one ms before the end of the disparity window, a peer whose clock is
-    behind by ``DISPARITY`` still considers the proposal slot to be in the future.
-    """
-    yield "topic", "meta", "proposer_preferences"
-
-    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-
-    seen = get_seen(spec)
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-
-    signed_prefs = build_signed_proposer_preferences(spec, state)
-    yield get_filename(signed_prefs), signed_prefs
-
-    proposal_slot = signed_prefs.message.proposal_slot
-    time_ms = (
-        spec.compute_time_at_slot_ms(store, proposal_slot)
-        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-        - 1
-    )
-    yield "current_time_ms", "meta", int(time_ms)
-    messages = []
-
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state):
-    """Preferences validated 1ms past the clock-disparity window are ignored as already passed."""
+def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, state):
+    """Preferences validated 1ms past the clock-disparity window are ignored as started."""
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
@@ -539,7 +535,7 @@ def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state)
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "proposal slot has already passed"
+    assert reason == "proposal slot has already started"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -756,8 +752,13 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
-    """Preferences whose proposal slot is in a past epoch are ignored."""
+def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
+    """Preferences whose proposal slot is in a past epoch are ignored as started.
+
+    The proposal slot is in an epoch below ``MIN_SEED_LOOKAHEAD``, so the
+    started-slot check must fire before the proposer lookahead epoch is
+    computed for it.
+    """
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
@@ -771,7 +772,7 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
     # Pick a proposal slot whose epoch is strictly less than the current epoch.
     past_slot = spec.Slot(0)
     _, validator_index = find_upcoming_proposal_slot(spec, state)
-    # The dependent_root for genesis epoch is unreachable; use a placeholder
+    # The dependent_root for the genesis epoch is unreachable, use a placeholder
     # since this check fires before the dependent_root lookup.
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -795,7 +796,7 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "proposal slot is before the current epoch"
+    assert reason == "proposal slot has already started"
     messages.append(
         {
             "current_time_ms": int(time_ms),

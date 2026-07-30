@@ -20,7 +20,6 @@
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_from_past_slot`](#new-is_from_past_slot)
-    - [New `is_from_past_epoch`](#new-is_from_past_epoch)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
     - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
@@ -282,22 +281,6 @@ def is_from_past_slot(
     """
     slot_time_ms = compute_time_at_slot_ms(store, slot)
     return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
-```
-
-#### New `is_from_past_epoch`
-
-```python
-def is_from_past_epoch(
-    store: Store,
-    epoch: Epoch,
-    current_time_ms: Uint64,
-) -> bool:
-    """
-    Check if the given epoch is from the past
-    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
-    """
-    next_epoch_start_slot = compute_start_slot_at_epoch(epoch + Epoch(1))
-    return is_from_past_slot(store, next_epoch_start_slot, current_time_ms)
 ```
 
 #### New `is_gas_limit_target_compatible`
@@ -1007,20 +990,15 @@ def validate_proposer_preferences_gossip(
     preferences = signed_proposer_preferences.message
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
 
-    # [IGNORE] The proposal slot's epoch is at or after the current epoch
-    if is_from_past_epoch(store, proposal_epoch, current_time_ms):
-        raise GossipIgnore("proposal slot is before the current epoch")
+    # [IGNORE] The proposal slot has not started yet
+    if is_from_past_slot(store, preferences.proposal_slot, current_time_ms):
+        raise GossipIgnore("proposal slot has already started")
 
-    # [IGNORE] The proposal slot's epoch is within the proposer lookahead
-    assert proposal_epoch >= MIN_SEED_LOOKAHEAD
+    # [IGNORE] The proposer for the proposal slot is known
     lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     if is_from_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
-        raise GossipIgnore("proposal slot is past the proposer lookahead")
-
-    # [IGNORE] The proposal slot has not already passed
-    if is_from_past_slot(store, preferences.proposal_slot, current_time_ms):
-        raise GossipIgnore("proposal slot has already passed")
+        raise GossipIgnore("proposer for the proposal slot is not yet known")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
