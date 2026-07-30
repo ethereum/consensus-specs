@@ -963,7 +963,6 @@ fork.
 def validate_proposer_preferences_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,  # noqa: ARG001
     signed_proposer_preferences: SignedProposerPreferences,
     current_time_ms: Uint64,
 ) -> None:

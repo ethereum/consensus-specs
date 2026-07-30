@@ -59,12 +59,10 @@ def setup_store_with_advanced_state(spec, state, target_slot):
 @spec_state_test
 def test_gossip_proposer_preferences__valid(spec, state):
     """A well-formed SignedProposerPreferences for an upcoming proposal passes gossip."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -83,7 +81,6 @@ def test_gossip_proposer_preferences__valid(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -104,12 +101,10 @@ def test_gossip_proposer_preferences__valid(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
     """Preferences whose proposal slot is past the proposer lookahead are ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -141,7 +136,6 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -168,7 +162,6 @@ def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state)
     epoch the ``proposal_epoch > current_epoch + MIN_SEED_LOOKAHEAD`` ignore
     check still accepts, pinning that boundary against an off-by-one.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     # Advance to the last slot of the epoch so the next upcoming proposal falls
@@ -177,7 +170,6 @@ def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state)
         spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)) - 1
     )
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -198,7 +190,6 @@ def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -222,7 +213,6 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
     The next epoch is treated as current exactly at the clock-disparity edge,
     allowing preferences at its proposer-lookahead upper bound.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
@@ -248,7 +238,6 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
         dependent_root=dependent_root,
     )
 
-    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
@@ -263,7 +252,6 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
         spec,
         seen=get_seen(spec),
         store=store,
-        state=validation_state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -283,7 +271,6 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
         spec,
         seen=get_seen(spec),
         store=store,
-        state=validation_state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -307,7 +294,6 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
     The lower epoch bound uses past clock tolerance. Preferences from the
     previous epoch reach the passed-slot check within the disparity window.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
@@ -322,7 +308,6 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
         dependent_root=spec.Root(),
     )
 
-    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
@@ -337,7 +322,6 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
         spec,
         seen=get_seen(spec),
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -357,7 +341,6 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
         spec,
         seen=get_seen(spec),
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -379,12 +362,10 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
     """Preferences whose proposal slot is already current/past are ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -405,7 +386,6 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -431,12 +411,10 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
     The "already passed" ignore fires once ``current_time_ms + DISPARITY``
     reaches the proposal slot's start, so one ms before that edge is valid.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -459,7 +437,6 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -480,12 +457,10 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state):
     """Preferences validated exactly at the clock-disparity edge are ignored as already passed."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -509,7 +484,6 @@ def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -531,12 +505,10 @@ def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state)
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
     """Preferences whose dependent_root has no corresponding block in the store are ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -558,7 +530,6 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -580,12 +551,10 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     """The second valid preferences for the same dependent_root and proposal slot is ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -605,7 +574,6 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -625,7 +593,6 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -647,12 +614,10 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
     """Preferences signed by a validator that is not the slot's proposer are rejected."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -678,7 +643,6 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -700,12 +664,10 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     """Preferences with an invalid signature are rejected."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -724,7 +686,6 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -746,12 +707,10 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
     """Preferences whose proposal slot is in a past epoch are ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -781,7 +740,6 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -803,7 +761,6 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(spec, state):
     """Preferences whose dependent_root has no corresponding state are ignored."""
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
@@ -819,7 +776,6 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
     add_pending_block_to_store(store, signed_fork_block)
     dependent_root = signed_fork_block.message.hash_tree_root()
 
-    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield get_filename(signed_fork_block), signed_fork_block
@@ -843,7 +799,6 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -870,12 +825,10 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
     proposer-lookahead dependent block, since the lookahead for the proposal
     epoch is computed at the start of the lookahead epoch.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -916,7 +869,6 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -943,12 +895,10 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
     lookahead epoch start and it is not the current head, so on no branch can
     it be, or become, the latest block prior to the epoch start.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
     store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
-    yield "state", anchor_state
 
     seen = get_seen(spec)
     for signed in blocks:
@@ -981,7 +931,6 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -1008,7 +957,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
     epoch start, so on that branch it is the latest block prior to the epoch
     start even though it is not the head.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
@@ -1037,7 +985,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
     assert store.blocks[dependent_root].slot == lookahead_epoch_start_slot - 1
     assert fork_blocks[1].message.slot == lookahead_epoch_start_slot
 
-    yield "state", anchor_state
     seen = get_seen(spec)
     for signed in blocks + fork_blocks:
         yield get_filename(signed), signed
@@ -1061,7 +1008,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -1085,7 +1031,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     Preferences remain valid when two empty epochs reuse the same dependent
     root. Validation must advance that root's post-state to the lookahead epoch.
     """
-    anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
     current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
@@ -1133,7 +1078,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
         dependent_root=dependent_root,
     )
 
-    yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
@@ -1146,7 +1090,6 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
         spec,
         seen=get_seen(spec),
         store=store,
-        state=validation_state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
