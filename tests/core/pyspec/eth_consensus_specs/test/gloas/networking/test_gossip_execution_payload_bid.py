@@ -65,7 +65,6 @@ def _seed_bid_context(
             spec,
             seen=seen,
             store=store,
-            state=state,
             signed_proposer_preferences=signed_prefs,
             current_time_ms=time_ms,
         )
@@ -395,7 +394,6 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -504,7 +502,6 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -1588,7 +1585,6 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2004,7 +2000,6 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2111,7 +2106,6 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2220,7 +2214,6 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2333,7 +2326,6 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2454,7 +2446,6 @@ def _run_bid_gas_limit_scenario(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
@@ -2713,7 +2704,6 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_proposer_preferences=signed_prefs,
         current_time_ms=time_ms,
     )
