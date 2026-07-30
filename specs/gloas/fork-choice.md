@@ -978,6 +978,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
 
@@ -1005,7 +1011,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state = copy(store.block_states[block.parent_root])
 
     # Check the block is valid and compute the post-state
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
