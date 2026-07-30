@@ -1575,8 +1575,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     cells_msg = make_partial_sidecar(spec, sidecar, blob_indices=[0], include_header=False)
     # Stretch the bitmap so its length exceeds the corresponding header's commitments.
-    Bitlist = type(cells_msg.cells_present_bitmap)
-    cells_msg.cells_present_bitmap = Bitlist(list(cells_msg.cells_present_bitmap) + [False, False])
+    BitList = type(cells_msg.cells_present_bitmap)
+    cells_msg.cells_present_bitmap = BitList(list(cells_msg.cells_present_bitmap) + [False, False])
 
     yield get_filename(header_msg), header_msg
     yield get_filename(cells_msg), cells_msg

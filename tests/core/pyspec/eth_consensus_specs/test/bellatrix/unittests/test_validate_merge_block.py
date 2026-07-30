@@ -110,7 +110,7 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
 @spec_configured_state_test(
     {
         "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
-        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "0",
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": 0,
     }
 )
 def test_validate_merge_block_tbh_override_success(spec, state):
@@ -132,7 +132,7 @@ def test_validate_merge_block_tbh_override_success(spec, state):
 @spec_configured_state_test(
     {
         "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
-        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "0",
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": 0,
     }
 )
 def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
@@ -153,7 +153,7 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
 @spec_configured_state_test(
     {
         "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
-        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "1",
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": 1,
     }
 )
 def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(spec, state):
@@ -175,7 +175,7 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
 @spec_configured_state_test(
     {
         "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
-        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "1",
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": 1,
     }
 )
 def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh(spec, state):

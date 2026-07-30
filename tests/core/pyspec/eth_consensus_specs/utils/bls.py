@@ -185,7 +185,10 @@ def Sign(SK, message):
     return signature_point.to_compressed_bytes()
 
 
-@only_with_bls(alt_return=STUB_PUBKEY)
+# Pubkey aggregation must be computed even when BLS is inactive: unlike
+# signature verification, its result is data written into the beacon state
+# (e.g. `next_sync_committee.aggregate_pubkey`), which clients must be able
+# to reproduce regardless of the `bls_setting` in use.
 def AggregatePKs(pubkeys):
     aggregate = _aggregate_pubkey_points(pubkeys)
     assert aggregate is not None, f"empty or invalid pubkeys: {pubkeys!r}"
@@ -206,17 +209,6 @@ def KeyValidate(pubkey):
 ################################################################################
 # Operations
 ################################################################################
-
-
-def pairing_check(values):
-    """
-    Checks that the product of the pairings in `values` is the identity in GT.
-    `values` is a pair of `(G1, G2)` points, i.e. `[(P1, Q1), (P2, Q2)]`.
-    """
-    p_q_1, p_q_2 = values
-    g1s = [p_q_1[0], p_q_2[0]]
-    g2s = [p_q_1[1], p_q_2[1]]
-    return GT.pairing_check(g1s, g2s)
 
 
 def add(lhs, rhs):

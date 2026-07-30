@@ -339,7 +339,7 @@ def test_on_attestation_invalid_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
     # make invalid by using an invalid committee index
     if is_post_electra(spec):
-        attestation.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT]()
+        attestation.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT]()
     else:
         attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT * spec.SLOTS_PER_EPOCH
 

@@ -5,13 +5,13 @@ from eth_consensus_specs.debug.random_value import get_random_ssz_object, Random
 from eth_consensus_specs.test.exceptions import SkippedTest
 from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import (
-    Bitlist,
-    Bitvector,
+    BitList,
+    BitVector,
     Byte,
     ByteList,
     Container,
     List,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveList,
     Uint8,
     Uint16,
@@ -63,26 +63,26 @@ class ProgressiveTestStruct(Container):
 
 
 class BitsStruct(Container):
-    A: Bitlist[5]
-    B: Bitvector[2]
-    C: Bitvector[1]
-    D: Bitlist[6]
-    E: Bitvector[8]
+    A: BitList[5]
+    B: BitVector[2]
+    C: BitVector[1]
+    D: BitList[6]
+    E: BitVector[8]
 
 
 class ProgressiveBitsStruct(Container):
-    A: Bitvector[256]
-    B: Bitlist[256]
-    C: ProgressiveBitlist
-    D: Bitvector[257]
-    E: Bitlist[257]
-    F: ProgressiveBitlist
-    G: Bitvector[1280]
-    H: Bitlist[1280]
-    I: ProgressiveBitlist
-    J: Bitvector[1281]
-    K: Bitlist[1281]
-    L: ProgressiveBitlist
+    A: BitVector[256]
+    B: BitList[256]
+    C: ProgressiveBitList
+    D: BitVector[257]
+    E: BitList[257]
+    F: ProgressiveBitList
+    G: BitVector[1280]
+    H: BitList[1280]
+    I: ProgressiveBitList
+    J: BitVector[1281]
+    K: BitList[1281]
+    L: ProgressiveBitList
 
 
 def container_case_fn(rng: Random, mode: RandomizationMode, typ: type[View], chaos: bool = False):

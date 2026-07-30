@@ -29,9 +29,9 @@ validator records. Refers to
 
 ### Time parameters
 
-| Name                         | Value                      | Unit   |
-| ---------------------------- | -------------------------- | ------ |
-| `SAFE_EPOCHS_TO_REUSE_INDEX` | `Uint64(2**16)` (= 65,536) | epochs |
+| Name                         | Value                     |
+| ---------------------------- | ------------------------- |
+| `SAFE_EPOCHS_TO_REUSE_INDEX` | `Epoch(2**16)` (= 65,536) |
 
 ## Helpers
 
