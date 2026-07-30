@@ -264,14 +264,12 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     """
     Run ``on_inclusion_list`` upon receiving a new inclusion list.
     """
-    inclusion_list = signed_inclusion_list.message
-
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
     inclusion_list_due_ms = get_inclusion_list_due_ms()
     is_timely = time_into_slot_ms < inclusion_list_due_ms
 
-    process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_timely)
+    process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)
 ```
 
 ### Modified `on_execution_payload_envelope`
