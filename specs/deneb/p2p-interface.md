@@ -253,7 +253,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if is_from_future_slot(store, block.slot, current_time_ms):
+    if is_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -362,7 +362,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [New in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if is_from_future_slot(store, aggregate.data.slot, current_time_ms):
+    if is_future_slot(store, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
@@ -555,7 +555,7 @@ def validate_beacon_attestation_gossip(
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if is_from_future_slot(store, data.slot, current_time_ms):
+    if is_future_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
@@ -648,7 +648,7 @@ def validate_blob_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if is_from_future_slot(store, block_header.slot, current_time_ms):
+    if is_future_slot(store, block_header.slot, current_time_ms):
         raise GossipIgnore("blob sidecar is from a future slot")
 
     # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
