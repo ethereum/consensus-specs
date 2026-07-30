@@ -469,37 +469,9 @@ def is_gas_limit_target_compatible(
 ```
 
 ```python
-def should_reorg_head(store: Store, head_root: Root, slot: Slot) -> bool:
-    """
-    Check if this node would re-org the head block when proposing at ``slot``.
-    """
-    head_block = store.blocks[head_root]
-    parent_root = head_block.parent_root
-    parent_block = store.blocks[parent_root]
-
-    head_late = is_head_late(store, head_root)
-    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
-    finalization_ok = is_finalization_ok(store, slot)
-    parent_slot_ok = parent_block.slot + Slot(1) == head_block.slot
-    current_time_ok = head_block.slot + Slot(1) == slot
-    single_slot_reorg = parent_slot_ok and current_time_ok
-    head_weak = is_head_weak(store, head_root)
-    parent_strong = is_parent_strong(store, head_root)
-
-    return all([
-        head_late,
-        ffg_competitive,
-        finalization_ok,
-        single_slot_reorg,
-        head_weak,
-        parent_strong,
-    ])
-```
-
-```python
 def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     """
-    Check if ``bid`` has the same parent information as this node would propose.
+    Check if ``bid`` is compatible with the head branch.
     """
     head_node = get_head(store)
     head_block = store.blocks[head_node.root]
@@ -507,13 +479,15 @@ def is_bid_on_current_head(store: Store, bid: ExecutionPayloadBid) -> bool:
 
     builds_on_parent_block = bid.parent_block_root == head_block.parent_root
     builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
-    builds_on_head_block = bid.parent_block_root == head_node.root
+
+    if builds_on_parent_block and builds_on_parent_payload:
+        return True
+
+    if bid.parent_block_root != head_node.root:
+        return False
+
     builds_on_head_payload = bid.parent_block_hash == head_bid.block_hash
 
-    if should_reorg_head(store, head_node.root, bid.slot):
-        return builds_on_parent_block and builds_on_parent_payload
-    if not builds_on_head_block:
-        return False
     if should_build_on_full(store, head_node, bid.slot):
         return builds_on_head_payload
 
