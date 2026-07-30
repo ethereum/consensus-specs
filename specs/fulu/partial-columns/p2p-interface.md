@@ -244,7 +244,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [IGNORE] The header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
-        if not is_not_from_future_slot(store, block_header.slot, current_time_ms):
+        if is_from_future_slot(store, block_header.slot, current_time_ms):
             raise GossipIgnore("header is from a future slot")
 
         # [IGNORE] The header is from a slot greater than the latest finalized slot
@@ -308,7 +308,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [IGNORE] The corresponding header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
-        if not is_not_from_future_slot(store, block_header.slot, current_time_ms):
+        if is_from_future_slot(store, block_header.slot, current_time_ms):
             raise GossipIgnore("corresponding header is from a future slot")
 
         # [IGNORE] The corresponding header is from a slot greater than the latest finalized slot

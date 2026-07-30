@@ -281,7 +281,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, block.slot, current_time_ms):
+    if is_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -403,7 +403,7 @@ def validate_data_column_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, block_header.slot, current_time_ms):
+    if is_from_future_slot(store, block_header.slot, current_time_ms):
         raise GossipIgnore("sidecar is from a future slot")
 
     # [IGNORE] The sidecar is from a slot greater than the latest finalized slot

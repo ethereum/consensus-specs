@@ -406,10 +406,10 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
-    """Preferences validated 1ms inside the clock-disparity window are still valid.
+    """Preferences validated exactly at the clock-disparity edge are still valid.
 
-    The "already passed" ignore fires once ``current_time_ms + DISPARITY``
-    reaches the proposal slot's start, so one ms before that edge is valid.
+    The proposal slot counts as passed only once ``current_time_ms`` is more
+    than ``DISPARITY`` past its start, so that edge itself is still valid.
     """
     yield "topic", "meta", "proposer_preferences"
 
@@ -427,8 +427,7 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
         spec.compute_time_at_slot_ms(store, proposal_slot)
-        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-        - 1
+        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -507,7 +506,7 @@ def test_gossip_proposer_preferences__valid_with_clock_disparity_after_slot_star
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state):
-    """Preferences validated exactly at the clock-disparity edge are ignored as already passed."""
+    """Preferences validated 1ms past the clock-disparity window are ignored as already passed."""
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
@@ -521,12 +520,13 @@ def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state)
     signed_prefs = build_signed_proposer_preferences(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
-    # At exactly start(proposal_slot) - DISPARITY the slot is treated as no
-    # longer in the future, so the preferences are ignored.
+    # Past start(proposal_slot) + DISPARITY the slot has started even for a peer
+    # whose clock is behind, so the preferences are ignored.
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
         spec.compute_time_at_slot_ms(store, proposal_slot)
-        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        + 1
     )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []

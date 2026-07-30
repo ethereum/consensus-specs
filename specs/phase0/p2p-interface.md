@@ -17,7 +17,7 @@
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
-    - [`is_not_from_future_slot`](#is_not_from_future_slot)
+    - [`is_from_future_slot`](#is_from_future_slot)
     - [`is_within_slot_range`](#is_within_slot_range)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
@@ -303,20 +303,20 @@ def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
-#### `is_not_from_future_slot`
+#### `is_from_future_slot`
 
 ```python
-def is_not_from_future_slot(
+def is_from_future_slot(
     store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
     """
-    Check if the given slot is not from the future
+    Check if the given slot is from the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
     slot_time_ms = compute_time_at_slot_ms(store, slot)
-    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
+    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
 ```
 
 #### `is_within_slot_range`
@@ -570,7 +570,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, block.slot, current_time_ms):
+    if is_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot

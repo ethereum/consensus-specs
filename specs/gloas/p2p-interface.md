@@ -19,7 +19,8 @@
     - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
-    - [New `is_not_from_past_epoch`](#new-is_not_from_past_epoch)
+    - [New `is_from_past_slot`](#new-is_from_past_slot)
+    - [New `is_from_past_epoch`](#new-is_from_past_epoch)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
     - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
@@ -267,21 +268,36 @@ def is_current_or_next_slot(
     return is_current or is_next
 ```
 
-#### New `is_not_from_past_epoch`
+#### New `is_from_past_slot`
 
 ```python
-def is_not_from_past_epoch(
+def is_from_past_slot(
+    store: Store,
+    slot: Slot,
+    current_time_ms: Uint64,
+) -> bool:
+    """
+    Check if the given slot is from the past
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+```
+
+#### New `is_from_past_epoch`
+
+```python
+def is_from_past_epoch(
     store: Store,
     epoch: Epoch,
     current_time_ms: Uint64,
 ) -> bool:
     """
-    Check if the given epoch is not from the past
+    Check if the given epoch is from the past
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    next_epoch_start_slot = compute_start_slot_at_epoch(Epoch(epoch + 1))
-    end_time_ms = compute_time_at_slot_ms(store, next_epoch_start_slot)
-    return current_time_ms <= end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    next_epoch_start_slot = compute_start_slot_at_epoch(epoch + Epoch(1))
+    return is_from_past_slot(store, next_epoch_start_slot, current_time_ms)
 ```
 
 #### New `is_gas_limit_target_compatible`
@@ -477,7 +493,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, block.slot, current_time_ms):
+    if is_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -609,7 +625,7 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, aggregate.data.slot, current_time_ms):
+    if is_from_future_slot(store, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
@@ -992,18 +1008,18 @@ def validate_proposer_preferences_gossip(
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
 
     # [IGNORE] The proposal slot's epoch is at or after the current epoch
-    if not is_not_from_past_epoch(store, proposal_epoch, current_time_ms):
+    if is_from_past_epoch(store, proposal_epoch, current_time_ms):
         raise GossipIgnore("proposal slot is before the current epoch")
 
     # [IGNORE] The proposal slot's epoch is within the proposer lookahead
     assert proposal_epoch >= MIN_SEED_LOOKAHEAD
     lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
-    if not is_not_from_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
+    if is_from_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
         raise GossipIgnore("proposal slot is past the proposer lookahead")
 
     # [IGNORE] The proposal slot has not already passed
-    if is_not_from_future_slot(store, preferences.proposal_slot, current_time_ms):
+    if is_from_past_slot(store, preferences.proposal_slot, current_time_ms):
         raise GossipIgnore("proposal slot has already passed")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1096,7 +1112,7 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, data.slot, current_time_ms):
+    if is_from_future_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [IGNORE] The attestation's epoch is either the current or previous epoch
@@ -1191,7 +1207,7 @@ def validate_data_column_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(store, sidecar.slot, current_time_ms):
+    if is_from_future_slot(store, sidecar.slot, current_time_ms):
         raise GossipIgnore("sidecar is from a future slot")
 
     # [IGNORE] A block for the sidecar has been seen (via gossip or non-gossip sources)
