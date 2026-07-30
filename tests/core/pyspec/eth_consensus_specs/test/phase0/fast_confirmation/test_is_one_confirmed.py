@@ -1468,6 +1468,7 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
     curr_committee.discard(_consecutive_slots_val_idx)
     fcr.attest(attester_indices=curr_committee)
     fcr.next_slot()
+    fcr.run_fast_confirmation()
 
     # Check that _consecutive_slots_val_idx does not support parent block
     assert store.latest_messages.get(_consecutive_slots_val_idx).root != p_root
