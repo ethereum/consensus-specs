@@ -96,7 +96,7 @@ def test_gossip_partial_data_column_sidecar__valid(spec, state):
     yield get_filename(group_id), group_id
     yield get_filename(partial), partial
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     result, reason = run_validate_gossip(
@@ -153,7 +153,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     yield get_filename(group_id), group_id
     yield get_filename(partial), partial
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     result, reason = run_validate_gossip(
@@ -210,7 +210,7 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     yield get_filename(group_id), group_id
     yield get_filename(partial), partial
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     result, reason = run_validate_gossip(
@@ -270,7 +270,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_failed_validation(spec
     yield get_filename(group_id), group_id
     yield get_filename(partial), partial
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_failed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_failed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     result, reason = run_validate_gossip(

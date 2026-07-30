@@ -295,19 +295,19 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `is_not_from_future_slot`
 
 ```python
 def is_not_from_future_slot(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
@@ -315,7 +315,7 @@ def is_not_from_future_slot(
     Check if the given slot is not from the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(state, slot)
+    slot_time_ms = compute_time_at_slot_ms(store, slot)
     return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
 ```
 
@@ -323,7 +323,7 @@ def is_not_from_future_slot(
 
 ```python
 def is_within_slot_range(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     slot_range: Uint64,
     current_time_ms: Uint64,
@@ -332,10 +332,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(state, slot)
+    start_time_ms = compute_time_at_slot_ms(store, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(state, Slot(slot + slot_range + 1))
+    end_time_ms = compute_time_at_slot_ms(store, Slot(slot + slot_range + 1))
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -570,7 +570,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if not is_not_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -659,7 +659,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] The aggregate attestation's slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 
@@ -965,7 +965,7 @@ def validate_beacon_attestation_gossip(
     # [IGNORE] The attestation slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 

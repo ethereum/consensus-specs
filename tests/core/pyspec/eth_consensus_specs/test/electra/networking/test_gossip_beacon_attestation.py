@@ -59,7 +59,7 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
@@ -121,7 +121,7 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)

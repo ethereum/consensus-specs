@@ -57,7 +57,7 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -108,7 +108,7 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -159,7 +159,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -247,7 +247,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -339,7 +339,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -430,7 +430,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -520,7 +520,7 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -603,7 +603,7 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 

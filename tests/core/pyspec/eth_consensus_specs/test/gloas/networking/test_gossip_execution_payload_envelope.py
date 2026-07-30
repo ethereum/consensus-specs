@@ -50,7 +50,7 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -94,7 +94,7 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -133,7 +133,7 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -187,7 +187,7 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     signed_envelope.message.payload.slot_number = spec.Uint64(state.slot + 1)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -227,7 +227,7 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
     signed_envelope.message.payload.block_hash = spec.Hash32(b"\xcd" * 32)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -267,7 +267,7 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
     signed_envelope.signature = spec.BLSSignature()
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -320,7 +320,7 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -367,7 +367,7 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -411,7 +411,7 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     signed_envelope.message.builder_index = spec.BuilderIndex(int(bid_builder_index) - 1)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -457,7 +457,7 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -512,7 +512,7 @@ def _assert_envelope_requests(spec, state, execution_requests, expected, reason=
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -560,7 +560,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

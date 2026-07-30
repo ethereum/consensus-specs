@@ -84,7 +84,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def is_current_slot(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
@@ -92,7 +92,7 @@ def is_current_slot(
     Check if the given slot is the current slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(state, slot, 0, current_time_ms)
+    return is_within_slot_range(store, slot, 0, current_time_ms)
 ```
 
 #### New `get_sync_subcommittee_pubkeys`
@@ -217,6 +217,7 @@ be included in future blocks. The `state` parameter is the head state.
 ```python
 def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
     current_time_ms: Uint64,
@@ -229,7 +230,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution = contribution_and_proof.contribution
 
     # [IGNORE] The contribution's slot is for the current slot
-    if not is_current_slot(state, contribution.slot, current_time_ms):
+    if not is_current_slot(store, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
 
     # [REJECT] The subcommittee index is in the allowed range
@@ -334,6 +335,7 @@ gossiped to the global `sync_committee_contribution_and_proof` topic. The
 ```python
 def validate_sync_committee_message_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
     current_time_ms: Uint64,
@@ -344,7 +346,7 @@ def validate_sync_committee_message_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] The message's slot is for the current slot
-    if not is_current_slot(state, sync_committee_message.slot, current_time_ms):
+    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
 
     # [REJECT] The validator index is valid

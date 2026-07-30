@@ -19,6 +19,7 @@
     - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
+    - [New `is_not_from_past_epoch`](#new-is_not_from_past_epoch)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
     - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
@@ -253,7 +254,7 @@ def verify_data_column_sidecar(
 
 ```python
 def is_current_or_next_slot(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
@@ -261,9 +262,26 @@ def is_current_or_next_slot(
     Check if the given slot is the current slot or the next slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    is_current = is_current_slot(state, slot, current_time_ms)
-    is_next = is_current_slot(state, Slot(slot - 1), current_time_ms)
+    is_current = is_current_slot(store, slot, current_time_ms)
+    is_next = is_current_slot(store, Slot(slot - 1), current_time_ms)
     return is_current or is_next
+```
+
+#### New `is_not_from_past_epoch`
+
+```python
+def is_not_from_past_epoch(
+    store: Store,
+    epoch: Epoch,
+    current_time_ms: Uint64,
+) -> bool:
+    """
+    Check if the given epoch is not from the past
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    next_epoch_start_slot = compute_start_slot_at_epoch(Epoch(epoch + 1))
+    end_time_ms = compute_time_at_slot_ms(store, next_epoch_start_slot)
+    return current_time_ms <= end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
 ```
 
 #### New `is_gas_limit_target_compatible`
@@ -459,7 +477,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if not is_not_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -591,12 +609,12 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, aggregate.data.slot, current_time_ms):
+    if not is_not_from_future_slot(store, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
@@ -779,7 +797,7 @@ def validate_payload_attestation_message_gossip(
     validator_index = payload_attestation_message.validator_index
 
     # [IGNORE] The payload attestation's slot is the current slot
-    if not is_current_slot(state, data.slot, current_time_ms):
+    if not is_current_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("payload attestation's slot is not the current slot")
 
     # [IGNORE] This is the first valid payload attestation from this validator index
@@ -843,7 +861,7 @@ def validate_execution_payload_bid_gossip(
     bid = signed_execution_payload_bid.message
 
     # [IGNORE] The bid's slot is the current slot or the next slot
-    if not is_current_or_next_slot(state, bid.slot, current_time_ms):
+    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [IGNORE] This is the first bid for this slot and builder
@@ -971,27 +989,21 @@ def validate_proposer_preferences_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     preferences = signed_proposer_preferences.message
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
 
     # [IGNORE] The proposal slot's epoch is at or after the current epoch
-    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
-    earliest_current_slot = Slot(
-        max(time_since_genesis_ms - MAXIMUM_GOSSIP_CLOCK_DISPARITY, 0) // SLOT_DURATION_MS
-    )
-    earliest_current_epoch = compute_epoch_at_slot(earliest_current_slot)
-    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
-    if proposal_epoch < earliest_current_epoch:
+    if not is_not_from_past_epoch(store, proposal_epoch, current_time_ms):
         raise GossipIgnore("proposal slot is before the current epoch")
 
     # [IGNORE] The proposal slot's epoch is within the proposer lookahead
-    latest_current_slot = Slot(
-        (time_since_genesis_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY) // SLOT_DURATION_MS
-    )
-    latest_current_epoch = compute_epoch_at_slot(latest_current_slot)
-    if proposal_epoch > latest_current_epoch + Epoch(MIN_SEED_LOOKAHEAD):
+    assert proposal_epoch >= MIN_SEED_LOOKAHEAD
+    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
+    lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
+    if not is_not_from_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
         raise GossipIgnore("proposal slot is past the proposer lookahead")
 
     # [IGNORE] The proposal slot has not already passed
-    if preferences.proposal_slot <= latest_current_slot:
+    if is_not_from_future_slot(store, preferences.proposal_slot, current_time_ms):
         raise GossipIgnore("proposal slot has already passed")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1009,9 +1021,6 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent block failed validation")
 
     # [REJECT] The dependent root is a valid dependent block for the proposal slot
-    assert proposal_epoch >= MIN_SEED_LOOKAHEAD
-    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
-    lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     if store.blocks[preferences.dependent_root].slot >= lookahead_epoch_start_slot:
         raise GossipReject("dependent root is not before the proposer lookahead epoch")
 
@@ -1087,12 +1096,12 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, data.slot, current_time_ms):
+    if not is_not_from_future_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
@@ -1161,7 +1170,8 @@ the sidecar.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
+    # [Modified in Gloas:EIP7732]
+    # Removed `state`
     sidecar: DataColumnSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -1181,7 +1191,7 @@ def validate_data_column_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, sidecar.slot, current_time_ms):
+    if not is_not_from_future_slot(store, sidecar.slot, current_time_ms):
         raise GossipIgnore("sidecar is from a future slot")
 
     # [IGNORE] A block for the sidecar has been seen (via gossip or non-gossip sources)

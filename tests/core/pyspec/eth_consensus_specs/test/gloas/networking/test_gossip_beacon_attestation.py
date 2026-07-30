@@ -60,7 +60,7 @@ def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
 
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -141,7 +141,7 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -195,7 +195,7 @@ def test_gossip_beacon_attestation__valid_same_slot_index_zero(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -287,7 +287,7 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -346,7 +346,7 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -407,7 +407,7 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -468,7 +468,7 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -533,7 +533,7 @@ def test_gossip_beacon_attestation__ignore_payload_status_without_envelope(spec,
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

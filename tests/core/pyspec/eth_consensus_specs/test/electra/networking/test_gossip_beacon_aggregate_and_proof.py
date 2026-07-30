@@ -107,7 +107,7 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     yield get_filename(signed_agg_1), signed_agg_1
     yield get_filename(signed_agg_2), signed_agg_2
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation_1.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation_1.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -166,7 +166,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -219,7 +219,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -278,7 +278,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}

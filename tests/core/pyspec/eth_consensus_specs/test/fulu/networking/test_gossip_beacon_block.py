@@ -63,7 +63,7 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}

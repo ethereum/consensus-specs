@@ -49,7 +49,7 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -101,7 +101,7 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}

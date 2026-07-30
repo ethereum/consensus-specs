@@ -45,7 +45,7 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -112,7 +112,7 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -161,7 +161,7 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -220,7 +220,7 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -270,7 +270,7 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -317,7 +317,7 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -374,7 +374,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     yield get_filename(signed_child), signed_child
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(state, child.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, child.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -426,7 +426,7 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

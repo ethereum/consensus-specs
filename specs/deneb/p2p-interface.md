@@ -138,7 +138,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def is_within_epoch(
-    state: BeaconState,
+    store: Store,
     epoch: Epoch,
     current_time_ms: Uint64,
 ) -> bool:
@@ -147,7 +147,7 @@ def is_within_epoch(
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
     return is_within_slot_range(
-        state,
+        store,
         compute_start_slot_at_epoch(epoch),
         SLOTS_PER_EPOCH - 1,
         current_time_ms,
@@ -158,7 +158,7 @@ def is_within_epoch(
 
 ```python
 def is_current_or_previous_epoch(
-    state: BeaconState,
+    store: Store,
     epoch: Epoch,
     current_time_ms: Uint64,
 ) -> bool:
@@ -166,8 +166,8 @@ def is_current_or_previous_epoch(
     Check if the given epoch is the current or previous epoch
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    is_current = is_within_epoch(state, epoch, current_time_ms)
-    is_previous = is_within_epoch(state, Epoch(epoch + 1), current_time_ms)
+    is_current = is_within_epoch(store, epoch, current_time_ms)
+    is_previous = is_within_epoch(store, Epoch(epoch + 1), current_time_ms)
     return is_current or is_previous
 ```
 
@@ -253,7 +253,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if not is_not_from_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -362,13 +362,13 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [New in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, aggregate.data.slot, current_time_ms):
+    if not is_not_from_future_slot(store, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
@@ -555,13 +555,13 @@ def validate_beacon_attestation_gossip(
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, data.slot, current_time_ms):
+    if not is_not_from_future_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
@@ -648,7 +648,7 @@ def validate_blob_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+    if not is_not_from_future_slot(store, block_header.slot, current_time_ms):
         raise GossipIgnore("blob sidecar is from a future slot")
 
     # [IGNORE] The sidecar is from a slot greater than the latest finalized slot

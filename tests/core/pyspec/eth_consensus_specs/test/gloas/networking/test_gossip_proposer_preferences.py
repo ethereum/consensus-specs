@@ -72,7 +72,7 @@ def test_gossip_proposer_preferences__valid(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -127,7 +127,7 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -181,7 +181,7 @@ def test_gossip_proposer_preferences__valid_at_lookahead_upper_edge(spec, state)
     assert proposal_epoch == spec.get_current_epoch(state) + spec.Epoch(spec.MIN_SEED_LOOKAHEAD)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -244,7 +244,7 @@ def test_gossip_proposer_preferences__lookahead_epoch_disparity_boundary(spec, s
     yield get_filename(signed_prefs), signed_prefs
 
     disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    time_ms = spec.compute_time_at_slot_ms(validation_state, next_epoch_start_slot) - disparity - 1
+    time_ms = spec.compute_time_at_slot_ms(store, next_epoch_start_slot) - disparity - 1
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -314,7 +314,7 @@ def test_gossip_proposer_preferences__past_epoch_disparity_boundary(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
     disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    time_ms = spec.compute_time_at_slot_ms(state, current_epoch_start_slot) + disparity - 1
+    time_ms = spec.compute_time_at_slot_ms(store, current_epoch_start_slot) + disparity - 1
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -377,7 +377,7 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
 
     # Validate at a time well after the proposal slot has started.
     proposal_slot = signed_prefs.message.proposal_slot
-    time_ms = spec.compute_time_at_slot_ms(state, proposal_slot)
+    time_ms = spec.compute_time_at_slot_ms(store, proposal_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -426,7 +426,7 @@ def test_gossip_proposer_preferences__valid_slot_at_disparity_edge(spec, state):
 
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
-        spec.compute_time_at_slot_ms(state, proposal_slot)
+        spec.compute_time_at_slot_ms(store, proposal_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
@@ -474,7 +474,7 @@ def test_gossip_proposer_preferences__ignore_slot_outside_disparity(spec, state)
     # longer in the future, so the preferences are ignored.
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
-        spec.compute_time_at_slot_ms(state, proposal_slot)
+        spec.compute_time_at_slot_ms(store, proposal_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -521,7 +521,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -564,7 +564,7 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -634,7 +634,7 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -677,7 +677,7 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state, valid_signature=False)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -731,7 +731,7 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -790,7 +790,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
     signed_prefs = build_signed_proposer_preferences(spec, state, dependent_root=dependent_root)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -860,7 +860,7 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -922,7 +922,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -999,7 +999,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1083,7 +1083,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(validation_state, validation_state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store, validation_state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     time_ms += 100
     result, reason = run_validate_gossip(
