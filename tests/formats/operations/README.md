@@ -11,6 +11,8 @@ test handlers.
 description: string    -- Optional description of test case, purely for debugging purposes.
                           Tests should use the directory name of the test case as identifier, not the description.
 bls_setting: int       -- see general test-format spec.
+parent_slot: int       -- Only for the `attestation` handler in Gloas and later.
+                          The slot of the parent block, an extra input to `process_attestation`.
 ```
 
 ### `pre.ssz_snappy`
@@ -36,7 +38,7 @@ Operations:
 
 | *`operation-name`*         | *`operation-object`*         | *`input name`*            | *`processing call`*                                                              |
 | -------------------------- | ---------------------------- | ------------------------- | -------------------------------------------------------------------------------- |
-| `attestation`              | `Attestation`                | `attestation`             | `process_attestation(state, attestation)`                                        |
+| `attestation`              | `Attestation`                | `attestation`             | `process_attestation(state, attestation)` (`parent_slot` added in Gloas)         |
 | `attester_slashing`        | `AttesterSlashing`           | `attester_slashing`       | `process_attester_slashing(state, attester_slashing)`                            |
 | `block_header`             | `BeaconBlock`                | **`block`**               | `process_block_header(state, block)`                                             |
 | `deposit`                  | `Deposit`                    | `deposit`                 | `process_deposit(state, deposit)` (removed in Fulu)                              |
