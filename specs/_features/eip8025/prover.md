@@ -65,6 +65,9 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
 3. Upon receiving a proof completion event for a tracked
    `new_payload_request_root`:
    - Fetch the completed `ExecutionProof` from the proof engine.
+   - Verify the proof using `proof_engine.verify_execution_proof(proof)`. Abort
+     processing if verification fails. An honest prover MUST NOT sign or gossip
+     an execution proof that it has not verified.
    - Let `validator_index` be the prover's validator index.
    - Let
      `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
