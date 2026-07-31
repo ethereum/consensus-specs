@@ -440,7 +440,7 @@ where `store` is the fork choice store, and the alias
   is `True` where `parent_gas_limit` is the `gas_limit` of that execution
   payload.
 - _[IGNORE]_ The bid is compatible with the current head branch, i.e.
-  `is_bid_compatible(store, bid)` returns `True`.
+  `is_bid_compatible_with_head(store, bid)` returns `True`.
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
@@ -469,7 +469,7 @@ def is_gas_limit_target_compatible(
 ```
 
 ```python
-def is_bid_compatible(store: Store, bid: ExecutionPayloadBid) -> bool:
+def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     """
     Check if ``bid`` is compatible with the head branch.
     """
