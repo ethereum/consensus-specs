@@ -92,6 +92,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
@@ -111,12 +117,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
+    assert is_data_available(block_root, block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[block.parent_root])
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
