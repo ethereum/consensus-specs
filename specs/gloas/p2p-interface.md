@@ -428,7 +428,8 @@ where `store` is the fork choice store, and the alias
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
-  given builder for this slot.
+  given builder for the tuple
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
   `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
@@ -438,8 +439,8 @@ where `store` is the fork choice store, and the alias
   `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit)`
   is `True` where `parent_gas_limit` is the `gas_limit` of that execution
   payload.
-- _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
-  block in fork choice.
+- _[IGNORE]_ The bid is compatible with the current head branch, i.e.
+  `is_bid_compatible_with_head(store, bid)` returns `True`.
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
@@ -465,6 +466,32 @@ def is_gas_limit_target_compatible(
     if target_gas_limit > max_gas_limit:
         return gas_limit == max_gas_limit
     return gas_limit == min_gas_limit
+```
+
+```python
+def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
+    """
+    Check if ``bid`` is compatible with the head branch.
+    """
+    head_node = get_head(store)
+    head_block = store.blocks[head_node.root]
+    head_bid = head_block.body.signed_execution_payload_bid.message
+
+    builds_on_parent_block = bid.parent_block_root == head_block.parent_root
+    builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
+
+    if builds_on_parent_block and builds_on_parent_payload:
+        return True
+
+    if bid.parent_block_root != head_node.root:
+        return False
+
+    builds_on_head_payload = bid.parent_block_hash == head_bid.block_hash
+
+    if should_build_on_full(store, head_node, bid.slot):
+        return builds_on_head_payload
+
+    return builds_on_parent_payload
 ```
 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
