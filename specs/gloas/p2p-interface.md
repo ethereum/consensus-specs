@@ -1023,8 +1023,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent root is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
-    dependent_state = store.block_states[preferences.dependent_root]
-    lookahead_state = dependent_state.copy()
+    lookahead_state = store.block_states[preferences.dependent_root].copy()
     process_slots(lookahead_state, lookahead_epoch_start_slot)
     lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
     if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
