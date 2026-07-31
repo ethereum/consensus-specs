@@ -1,16 +1,7 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    BELLATRIX,
-    CAPELLA,
-    DENEB,
-    ELECTRA,
-    FULU,
-    PHASE0,
+    with_all_phases,
 )
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
 from eth_consensus_specs.test.helpers.keys import privkeys
@@ -36,7 +27,7 @@ def create_signed_voluntary_exit(spec, state, validator_index, epoch=None):
     return sign_voluntary_exit(spec, state, voluntary_exit, privkeys[validator_index])
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__valid(spec, state):
     """
@@ -67,7 +58,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
     yield "messages", "meta", [{"message": get_filename(signed_exit), "expected": "valid"}]
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     """
@@ -109,7 +100,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state):
     """
@@ -147,7 +138,7 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     """
@@ -183,7 +174,7 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__reject_already_initiated_exit(spec, state):
     """
@@ -219,7 +210,7 @@ def test_gossip_voluntary_exit__reject_already_initiated_exit(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
     """
@@ -255,7 +246,7 @@ def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     """
@@ -292,7 +283,7 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
