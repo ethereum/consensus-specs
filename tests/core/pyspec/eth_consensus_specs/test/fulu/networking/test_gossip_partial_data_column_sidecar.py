@@ -274,7 +274,8 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-        yield "state", state.copy()
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -340,7 +341,8 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-        yield "state", state.copy()
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -409,7 +411,8 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-        yield "state", state.copy()
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -1559,7 +1562,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-        yield "state", state.copy()
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -1633,7 +1637,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
 
     if not is_post_gloas(spec):
         state = build_state_with_complete_transition(spec, state)
-        yield "state", state.copy()
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
