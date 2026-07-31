@@ -421,9 +421,9 @@ follows the node's payload status. For a *full* node from the previous slot, it
 considers the PTC view on both payload timeliness and data availability.
 
 ```python
-def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
+def should_build_on_full(store: Store, head: ForkChoiceNode, slot: Slot) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
-    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+    if store.blocks[head.root].slot + 1 != slot:
         return head.payload_status == PAYLOAD_STATUS_FULL
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
