@@ -2,6 +2,9 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
 )
@@ -32,6 +35,49 @@ def activate_builders(spec, state, store, blocks):
     store.finalized_checkpoint = checkpoint
     signed_block = next(b for b in blocks if b.message.hash_tree_root() == checkpoint_root)
     return {"epoch": 1, "block": get_filename(signed_block)}
+
+
+def record_block_in_store(spec, store, signed_block, post_state):
+    """
+    Record ``signed_block`` and its post-state in ``store``, including the PTC
+    vote slots that ``on_block`` initializes. Returns the block root.
+    """
+    block_root = signed_block.message.hash_tree_root()
+    store.blocks[block_root] = signed_block.message
+    store.block_states[block_root] = post_state
+    store.payload_timeliness_vote[block_root] = [None] * spec.PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [None] * spec.PTC_SIZE
+    return block_root
+
+
+def record_head_payload(spec, state, store, blocks):
+    """
+    Build the head block's payload envelope and record it in ``store`` as
+    ``on_execution_payload_envelope`` does, so that fork choice sees the head as
+    *full*. A bid for the next slot then builds on the head's payload, which is
+    what ``is_bid_compatible_with_head`` requires.
+
+    Returns the signed envelope. The head block's blocks meta entry must
+    reference it via ``payload``, see ``get_blocks_meta``.
+    """
+    head_signed_block = blocks[-1]
+    head_root = head_signed_block.message.hash_tree_root()
+    signed_envelope = build_signed_execution_payload_envelope(
+        spec, state, head_root, head_signed_block
+    )
+    store.payloads[head_root] = signed_envelope.message
+    return signed_envelope
+
+
+def get_blocks_meta(blocks, head_payload=None):
+    """
+    Blocks meta entries for ``blocks``, referencing ``head_payload`` as the head
+    block's verified payload envelope when one was recorded.
+    """
+    entries = [{"block": get_filename(signed_block)} for signed_block in blocks]
+    if head_payload is not None:
+        entries[-1]["payload"] = get_filename(head_payload)
+    return entries
 
 
 def setup_store_advanced_for_bid(spec, state):
@@ -70,9 +116,7 @@ def _build_store_advanced_to(spec, state, target_slot):
     while state.slot < target_slot:
         block = build_empty_block_for_next_slot(spec, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
-        block_root = signed_block.message.hash_tree_root()
-        store.blocks[block_root] = signed_block.message
-        store.block_states[block_root] = state.copy()
+        record_block_in_store(spec, store, signed_block, state.copy())
         blocks.append(signed_block)
     return store, blocks, blocks[-1].message.hash_tree_root()
 
@@ -97,9 +141,7 @@ def setup_store_finalized_with_pending_payment(spec, state):
     blocks = [signed_anchor]
 
     def record(signed_block):
-        block_root = signed_block.message.hash_tree_root()
-        store.blocks[block_root] = signed_block.message
-        store.block_states[block_root] = state.copy()
+        record_block_in_store(spec, store, signed_block, state.copy())
         blocks.append(signed_block)
 
     # Finalize organically: builders activate once their deposit epoch (0)

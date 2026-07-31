@@ -917,9 +917,10 @@ def validate_execution_payload_bid_gossip(
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
-    # [IGNORE] The bid is compatible with the current head branch
-    if not is_bid_compatible_with_head(store, bid):
-        raise GossipIgnore("bid is not compatible with the current head branch")
+    # [IGNORE] The bid's parent block root is a known beacon block
+    # (MAY be queued until parent is retrieved)
+    if bid.parent_block_root not in store.blocks:
+        raise GossipIgnore("bid's parent block root is not a known beacon block")
 
     # [IGNORE] The state is the bid's parent block post-state
     parent_block = store.blocks[bid.parent_block_root]
@@ -954,6 +955,10 @@ def validate_execution_payload_bid_gossip(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
+
+    # [IGNORE] The bid is compatible with the current head branch
+    if not is_bid_compatible_with_head(store, bid):
+        raise GossipIgnore("bid is not compatible with the current head branch")
 
     # [REJECT] The bid's previous randao is correct
     if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
