@@ -21,6 +21,7 @@
     - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
     - [New `is_past_slot`](#new-is_past_slot)
     - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
+    - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
     - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
     - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
     - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
@@ -163,7 +164,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: Set[Tuple[Slot, BuilderIndex]]
+    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -302,6 +303,34 @@ def is_gas_limit_target_compatible(
     if target_gas_limit > max_gas_limit:
         return gas_limit == max_gas_limit
     return gas_limit == target_gas_limit
+```
+
+#### New `is_bid_compatible_with_head`
+
+```python
+def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
+    """
+    Check if ``bid`` is compatible with the head branch.
+    """
+    head_node = get_head(store)
+    head_block = store.blocks[head_node.root]
+    head_bid = head_block.body.signed_execution_payload_bid.message
+
+    builds_on_parent_block = bid.parent_block_root == head_block.parent_root
+    builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
+
+    if builds_on_parent_block and builds_on_parent_payload:
+        return True
+
+    if bid.parent_block_root != head_node.root:
+        return False
+
+    builds_on_head_payload = bid.parent_block_hash == head_bid.block_hash
+
+    if should_build_on_full(store, head_node, bid.slot):
+        return builds_on_head_payload
+
+    return builds_on_parent_payload
 ```
 
 #### New `is_valid_dependent_root`
@@ -863,10 +892,10 @@ def validate_execution_payload_bid_gossip(
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
 
-    # [IGNORE] This is the first bid for this slot and builder
-    bid_key = (bid.slot, bid.builder_index)
+    # [IGNORE] This is the first bid for this slot, parent, and builder
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
     if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot and builder")
+        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
@@ -888,10 +917,9 @@ def validate_execution_payload_bid_gossip(
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
-    # [IGNORE] The bid's parent block root is a known beacon block
-    # (MAY be queued until parent is retrieved)
-    if bid.parent_block_root not in store.blocks:
-        raise GossipIgnore("bid's parent block root is not a known beacon block")
+    # [IGNORE] The bid is compatible with the current head branch
+    if not is_bid_compatible_with_head(store, bid):
+        raise GossipIgnore("bid is not compatible with the current head branch")
 
     # [IGNORE] The state is the bid's parent block post-state
     parent_block = store.blocks[bid.parent_block_root]

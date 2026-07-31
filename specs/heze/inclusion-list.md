@@ -30,7 +30,7 @@ These are the inclusion list specifications to implement Heze.
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Root, Dict[Root, InclusionList]] = field(
+    inclusion_lists: DefaultDict[Root, Dict[Root, SignedInclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
     inclusion_list_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
@@ -58,9 +58,10 @@ def get_inclusion_list_store() -> InclusionListStore:
 ```python
 def process_inclusion_list(
     store: InclusionListStore,
-    inclusion_list: InclusionList,
+    signed_inclusion_list: SignedInclusionList,
     is_timely: bool,
 ) -> None:
+    inclusion_list = signed_inclusion_list.message
     key = inclusion_list.inclusion_list_committee_root
 
     # Ignore `inclusion_list` from equivocators.
@@ -68,7 +69,7 @@ def process_inclusion_list(
         return
 
     for stored_root in store.inclusion_lists[key]:
-        stored_inclusion_list = store.inclusion_lists[key][stored_root]
+        stored_inclusion_list = store.inclusion_lists[key][stored_root].message
         if stored_inclusion_list.validator_index != inclusion_list.validator_index:
             continue
 
@@ -78,9 +79,9 @@ def process_inclusion_list(
         # Whether it was an equivocation or not, we have processed this `inclusion_list`.
         return
 
-    # Store `inclusion_list` and its timeliness.
+    # Store `signed_inclusion_list` and its timeliness.
     inclusion_list_root = hash_tree_root(inclusion_list)
-    store.inclusion_lists[key][inclusion_list_root] = inclusion_list
+    store.inclusion_lists[key][inclusion_list_root] = signed_inclusion_list
     store.inclusion_list_timeliness[inclusion_list_root] = is_timely
 ```
 
@@ -111,9 +112,9 @@ def get_inclusion_list_transactions(
     transactions = [
         transaction
         for inclusion_list_root in inclusion_lists
-        if inclusion_lists[inclusion_list_root].validator_index not in equivocators
+        if inclusion_lists[inclusion_list_root].message.validator_index not in equivocators
         if not only_timely or timeliness[inclusion_list_root]
-        for transaction in inclusion_lists[inclusion_list_root].transactions
+        for transaction in inclusion_lists[inclusion_list_root].message.transactions
     ]
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
@@ -138,9 +139,9 @@ def get_inclusion_list_bits(
     timeliness = store.inclusion_list_timeliness
 
     validator_indices = [
-        inclusion_lists[inclusion_list_root].validator_index
+        inclusion_lists[inclusion_list_root].message.validator_index
         for inclusion_list_root in inclusion_lists
-        if inclusion_lists[inclusion_list_root].validator_index not in equivocators
+        if inclusion_lists[inclusion_list_root].message.validator_index not in equivocators
         if not only_timely or timeliness[inclusion_list_root]
     ]
 
