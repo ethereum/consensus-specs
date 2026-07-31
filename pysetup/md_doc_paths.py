@@ -33,10 +33,7 @@ ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
 
 EXTRA_SPEC_FILES = {BELLATRIX: "sync/optimistic.md"}
 
-DEFAULT_ORDER = (
-    "beacon-chain",
-    "polynomial-commitments",
-)
+DEFAULT_ORDER = ("beacon-chain",)
 
 
 def is_post_fork(a, b) -> bool:

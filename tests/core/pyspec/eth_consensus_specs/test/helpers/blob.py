@@ -14,6 +14,10 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+from eth_consensus_specs.utils import kzg
+
+# Scalar field modulus of BLS12-381; a canonical field element is in [0, BLS_MODULUS).
+BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513
 
 
 class Eip4844RlpTransaction(Serializable):
@@ -49,44 +53,15 @@ def get_sample_blob(spec, rng=None, is_valid_blob=True):
     if rng is None:
         rng = random.Random(5566)
     values = [
-        rng.randint(0, spec.BLS_MODULUS - 1) if is_valid_blob else spec.BLS_MODULUS
+        rng.randint(0, BLS_MODULUS - 1) if is_valid_blob else BLS_MODULUS
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
 
     b = b""
     for v in values:
-        b += v.to_bytes(32, spec.KZG_ENDIANNESS)
+        b += v.to_bytes(32, "big")
 
     return spec.Blob(b)
-
-
-def eval_poly_in_coeff_form(spec, coeffs, x):
-    """
-    Evaluate a polynomial in coefficient form at 'x' using Horner's rule
-    """
-    total = spec.BLSFieldElement(0)
-    for a in reversed(coeffs):
-        total = total * x + a
-    return total
-
-
-def get_poly_in_both_forms(spec, rng=None):
-    """
-    Generate and return a random polynomial in both coefficient form and evaluation form
-    """
-    if rng is None:
-        rng = random.Random(5566)
-
-    roots_of_unity_brp = spec.bit_reversal_permutation(
-        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
-    )
-    coeffs = [
-        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
-        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
-    ]
-    evals = [eval_poly_in_coeff_form(spec, coeffs, z) for z in roots_of_unity_brp]
-
-    return coeffs, evals
 
 
 def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
@@ -99,8 +74,8 @@ def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
     for _ in range(blob_count):
         blob = get_sample_blob(spec, rng, is_valid_blob=is_valid_blob)
         if is_valid_blob:
-            blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
-            blob_kzg_proof = spec.compute_blob_kzg_proof(blob, blob_commitment)
+            blob_commitment = spec.KZGCommitment(kzg.blob_to_kzg_commitment(blob))
+            blob_kzg_proof = spec.KZGProof(kzg.compute_blob_kzg_proof(blob, blob_commitment))
         else:
             blob_commitment = spec.KZGCommitment()
             blob_kzg_proof = spec.KZGProof()
@@ -190,4 +165,5 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
 
 @cache
 def _cached_compute_cells_and_kzg_proofs(spec, blob):
-    return spec.compute_cells_and_kzg_proofs(blob)
+    cells, proofs = kzg.compute_cells_and_kzg_proofs(blob)
+    return [spec.Cell(cell) for cell in cells], [spec.KZGProof(proof) for proof in proofs]

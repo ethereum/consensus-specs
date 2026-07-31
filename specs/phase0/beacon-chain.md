@@ -420,7 +420,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: BitList[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -505,7 +505,7 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    aggregation_bits: BitList[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
 ```
@@ -578,7 +578,7 @@ class BeaconState(Container):
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint

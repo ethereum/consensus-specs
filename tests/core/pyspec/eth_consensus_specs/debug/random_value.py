@@ -3,15 +3,15 @@ from random import Random
 
 from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
-    Bitlist,
-    Bitvector,
+    BitList,
+    BitVector,
     Boolean,
     ByteList,
     ByteVector,
     CompatibleUnion,
     Container,
     List,
-    ProgressiveBitlist,
+    ProgressiveBitList,
     ProgressiveContainer,
     ProgressiveList,
     Uint,
@@ -101,16 +101,16 @@ def get_random_ssz_object(
             return get_max_basic_value(typ)
         else:
             return get_random_basic_value(rng, typ)
-    elif issubclass(typ, Vector | Bitvector):
+    elif issubclass(typ, Vector | BitVector):
         elem_type = typ.element_cls() if issubclass(typ, Vector) else Boolean
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.vector_length())
         )
-    elif issubclass(typ, List | ProgressiveList | Bitlist | ProgressiveBitlist):
+    elif issubclass(typ, List | ProgressiveList | BitList | ProgressiveBitList):
         limit = max_list_length
         # SSZ imposes a hard limit on lists, we can't put in more than that
-        if not issubclass(typ, ProgressiveList | ProgressiveBitlist) and typ.limit() < limit:
+        if not issubclass(typ, ProgressiveList | ProgressiveBitList) and typ.limit() < limit:
             limit = typ.limit()
 
         length = rng.randint(0, limit)
@@ -121,7 +121,7 @@ def get_random_ssz_object(
         elif mode == RandomizationMode.mode_nil_count:
             length = 0
 
-        elem_type = Boolean if issubclass(typ, Bitlist | ProgressiveBitlist) else typ.element_cls()
+        elem_type = Boolean if issubclass(typ, BitList | ProgressiveBitList) else typ.element_cls()
         max_list_length = 1 << (max_list_length.bit_length() >> 1)
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
