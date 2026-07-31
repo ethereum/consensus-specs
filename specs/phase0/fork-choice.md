@@ -928,9 +928,6 @@ def on_tick(store: Store, time: Uint64) -> None:
 
 #### `on_block`
 
-*Note*: The handler returns early when the block is already known, so that
-calling it more than once with the same block leaves `store` unchanged.
-
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
