@@ -195,19 +195,11 @@ head, or against the local head returned by `get_head()` otherwise.
 
 #### Constructing the `SignedInclusionList`
 
-The validator creates the `signed_inclusion_list` as follows:
-
-- First, the validator creates the `inclusion_list`.
-- Set `inclusion_list.slot` to the assigned slot returned by
-  `get_inclusion_list_committee_assignment`.
-- Set `inclusion_list.validator_index` to the validator's index.
-- Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of
-  the committee that the validator is a member of.
-- Set `inclusion_list.transactions` using the response from `ExecutionEngine`
-  via `get_inclusion_list`.
-
-After building the `inclusion_list`, the validator obtains a `signature` of the
-inclusion list by using:
+A validator constructs the `signed_inclusion_list` with
+`get_signed_inclusion_list` for the assigned `slot` returned by
+`get_inclusion_list_committee_assignment`. Let `head_root` be the validator's
+current head root and `inclusion_list_transactions` be the inclusion list
+transactions obtained from `ExecutionEngine` via `get_inclusion_list`.
 
 ```python
 def get_inclusion_list_signature(
@@ -220,6 +212,23 @@ def get_inclusion_list_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-Then the validator assembles
-`signed_inclusion_list = SignedInclusionList(message=inclusion_list, signature=signature)`
-and broadcasts it on the `inclusion_list` global gossip topic.
+```python
+def get_signed_inclusion_list(
+    store: Store,
+    state: BeaconState,
+    head_root: Root,
+    slot: Slot,
+    validator_index: ValidatorIndex,
+    inclusion_list_transactions: Sequence[Transaction],
+    privkey: int,
+) -> SignedInclusionList:
+    dependent_root = get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot))
+    inclusion_list = InclusionList(
+        slot=slot,
+        validator_index=validator_index,
+        dependent_root=dependent_root,
+        transactions=inclusion_list_transactions,
+    )
+    signature = get_inclusion_list_signature(state, inclusion_list, privkey)
+    return SignedInclusionList(message=inclusion_list, signature=signature)
+```

@@ -2,11 +2,9 @@ from functools import lru_cache
 from random import randbytes
 
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
-from eth_consensus_specs.utils.ssz.ssz_typing import Vector
 
 
-def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
+def get_empty_inclusion_list(spec, store, state, slot=None, validator_index=None):
     """
     Build an empty inclusion list for ``slot``. Slot must be greater than or equal to the current slot in ``state``.
     """
@@ -16,8 +14,9 @@ def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
         raise Exception("get_empty_inclusion_list cannot build inclusion lists for past slots")
 
     committee = spec.get_inclusion_list_committee(state, slot)
-    committee_root = hash_tree_root(
-        Vector[spec.ValidatorIndex, spec.INCLUSION_LIST_COMMITTEE_SIZE](*committee)
+    head_root = spec.get_head(store).root
+    dependent_root = spec.get_shuffling_dependent_root(
+        store, head_root, spec.compute_epoch_at_slot(slot)
     )
 
     if validator_index is None:
@@ -28,7 +27,7 @@ def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
     empty_inclusion_list = spec.InclusionList()
     empty_inclusion_list.slot = slot
     empty_inclusion_list.validator_index = validator_index
-    empty_inclusion_list.inclusion_list_committee_root = committee_root
+    empty_inclusion_list.dependent_root = dependent_root
     empty_inclusion_list.transactions = []
 
     return empty_inclusion_list
@@ -36,6 +35,7 @@ def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
 
 def get_empty_signed_inclusion_list(
     spec,
+    store,
     state,
     slot=None,
     validator_index=None,
@@ -43,7 +43,7 @@ def get_empty_signed_inclusion_list(
     """
     Build an empty signed inclusion list for ``slot``. Slot must be greater than or equal to the current slot in ``state``.
     """
-    empty_inclusion_list = get_empty_inclusion_list(spec, state, slot, validator_index)
+    empty_inclusion_list = get_empty_inclusion_list(spec, store, state, slot, validator_index)
     signed_inclusion_list = sign_inclusion_list(spec, state, empty_inclusion_list)
 
     return signed_inclusion_list
@@ -51,6 +51,7 @@ def get_empty_signed_inclusion_list(
 
 def get_sample_inclusion_list(
     spec,
+    store,
     state,
     slot=None,
     validator_index=None,
@@ -62,7 +63,7 @@ def get_sample_inclusion_list(
     Build a sample inclusion list for ``slot``. Slot must be greater than or equal to the current slot in ``state``.
     When ``transactions`` is provided, ``max_transaction_size`` and ``max_transaction_count`` are ignored.
     """
-    inclusion_list = get_empty_inclusion_list(spec, state, slot, validator_index)
+    inclusion_list = get_empty_inclusion_list(spec, store, state, slot, validator_index)
     inclusion_list.transactions = (
         get_sample_transactions(spec, max_transaction_size, max_transaction_count)
         if transactions is None
@@ -74,6 +75,7 @@ def get_sample_inclusion_list(
 
 def get_sample_signed_inclusion_list(
     spec,
+    store,
     state,
     slot=None,
     validator_index=None,
@@ -87,6 +89,7 @@ def get_sample_signed_inclusion_list(
     """
     sample_inclusion_list = get_sample_inclusion_list(
         spec,
+        store,
         state,
         slot,
         validator_index,

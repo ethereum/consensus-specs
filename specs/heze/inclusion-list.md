@@ -59,10 +59,11 @@ def get_inclusion_list_store() -> InclusionListStore:
 def process_inclusion_list(
     store: InclusionListStore,
     signed_inclusion_list: SignedInclusionList,
+    inclusion_list_committee_root: Root,
     is_timely: bool,
 ) -> None:
     inclusion_list = signed_inclusion_list.message
-    key = inclusion_list.inclusion_list_committee_root
+    key = inclusion_list_committee_root
 
     # Ignore an inclusion list that has already been stored
     inclusion_list_root = hash_tree_root(inclusion_list)
@@ -88,10 +89,10 @@ def process_inclusion_list(
 
 *Note*: `get_inclusion_list_transactions` returns a list of unique transactions
 from all valid and non-equivocating `InclusionList`s for the given slot and for
-which the `inclusion_list_committee_root` in the `InclusionList` matches the one
-calculated based on the current state. When `only_timely` is `True`, only
-`InclusionList`s received in a timely manner on the p2p network are considered;
-otherwise, timeliness is not considered.
+which the `inclusion_list_committee_root` compatible with the `dependent_root`
+in the `InclusionList` matches the one calculated from the given `state`. When
+`only_timely` is `True`, only `InclusionList`s received in a timely manner on
+the p2p network are considered; otherwise, timeliness is not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
 `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
