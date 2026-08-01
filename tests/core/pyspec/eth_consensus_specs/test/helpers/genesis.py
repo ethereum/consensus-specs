@@ -1,5 +1,6 @@
 from hashlib import sha256
 
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import (
     PHASE0,
 )
@@ -55,7 +56,7 @@ def build_mock_validator(spec, i: int, balance: int):
     else:
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
-        max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
+        max_effective_balance = get_min_activation_balance(spec)
 
     validator = spec.Validator(
         pubkey=active_pubkey,

@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_state,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU, PHASE0
 from eth_consensus_specs.test.helpers.deposits import (
@@ -155,7 +156,7 @@ def _template_test_after_fork_new_validator_active_pre_electra(
     def test_after_fork_new_validator_active(spec, phases, state):
         new_validator_index = len(state.validators)
 
-        amount = spec.MAX_EFFECTIVE_BALANCE
+        amount = get_min_activation_balance(spec)
 
         deposit = prepare_state_and_deposit(spec, state, new_validator_index, amount, signed=True)
 

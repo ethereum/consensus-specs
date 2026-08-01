@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     with_deneb_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.forks import is_post_electra
@@ -29,7 +30,9 @@ def run_test_activation_churn_limit(spec, state):
 
     validator_count_0 = len(state.validators)
 
-    balance = spec.MIN_ACTIVATION_BALANCE if is_post_electra(spec) else spec.MAX_EFFECTIVE_BALANCE
+    balance = (
+        spec.MIN_ACTIVATION_BALANCE if is_post_electra(spec) else get_min_activation_balance(spec)
+    )
 
     for i in range(mock_activations):
         index = validator_count_0 + i

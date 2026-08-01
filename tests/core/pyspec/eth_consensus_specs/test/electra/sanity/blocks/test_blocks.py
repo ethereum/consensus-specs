@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     transition_unsigned_block,
@@ -287,13 +288,13 @@ def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
     # Give a validator an excess balance
     validator_index = 0
     excess_balance = 200000
-    balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    balance = get_min_activation_balance(spec) + excess_balance
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(
         spec,
         state,
         validator_index,
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+        effective_balance=get_min_activation_balance(spec),
         balance=balance,
         address=address,
     )
@@ -331,13 +332,13 @@ def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state
     # Give a validator an excess balance
     validator_index = 0
     excess_balance = 200000
-    balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    balance = get_min_activation_balance(spec) + excess_balance
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(
         spec,
         state,
         validator_index,
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+        effective_balance=get_min_activation_balance(spec),
         balance=balance,
         address=address,
     )

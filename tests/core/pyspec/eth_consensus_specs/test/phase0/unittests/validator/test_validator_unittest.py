@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     build_attestation_data,
     get_valid_attestation,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
@@ -78,7 +79,7 @@ def test_check_if_validator_active(spec, state):
     active_validator_index = len(state.validators) - 1
     assert spec.check_if_validator_active(state, active_validator_index)
     new_validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     spec.add_validator_to_registry(state, pubkeys[new_validator_index], b"\x00" * 32, amount)
     assert not spec.check_if_validator_active(state, new_validator_index)
 

@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.builders import add_builder_to_registry
 from eth_consensus_specs.test.helpers.withdrawals import (
     assert_process_withdrawals,
@@ -297,7 +298,7 @@ def test_pending_withdrawals_processing(spec, state):
     pending_indices = list(range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP))
 
     excess_balance = spec.Gwei(1_000_000_000)
-    initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    initial_balance = get_min_activation_balance(spec) + excess_balance
 
     prepare_process_withdrawals(
         spec,
@@ -311,7 +312,7 @@ def test_pending_withdrawals_processing(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    expected_balances = dict.fromkeys(pending_indices, spec.MAX_EFFECTIVE_BALANCE)
+    expected_balances = dict.fromkeys(pending_indices, get_min_activation_balance(spec))
 
     assert_process_withdrawals(
         spec,
@@ -348,7 +349,7 @@ def test_pending_withdrawals_processing_exceeds_limit(spec, state):
     pending_indices = list(range(num_pending))
 
     excess_balance = spec.Gwei(1_000_000_000)
-    initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+    initial_balance = get_min_activation_balance(spec) + excess_balance
 
     prepare_process_withdrawals(
         spec,
@@ -364,7 +365,7 @@ def test_pending_withdrawals_processing_exceeds_limit(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    expected_balances = dict.fromkeys(processed_indices, spec.MAX_EFFECTIVE_BALANCE)
+    expected_balances = dict.fromkeys(processed_indices, get_min_activation_balance(spec))
     expected_balances.update(dict.fromkeys(unprocessed_indices, initial_balance))
 
     assert_process_withdrawals(
@@ -495,7 +496,7 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
 
     # Cap validator balances to prevent sweep withdrawals
     capped_validator_balances = {
-        i: min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
+        i: min(state.balances[i], get_min_activation_balance(spec))
         for i in range(len(state.validators))
         if state.validators[i].withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     }
@@ -1066,7 +1067,7 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
     # Setup: Cap validator balances to prevent any sweep withdrawals
     for i, validator in enumerate(state.validators):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
-            state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
+            state.balances[i] = min(state.balances[i], get_min_activation_balance(spec))
 
     # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
     # processing otherwise returns early when parent was EMPTY).

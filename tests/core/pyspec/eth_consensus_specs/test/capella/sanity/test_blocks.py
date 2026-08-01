@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     next_epoch_with_attestations,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
@@ -101,7 +102,7 @@ def test_deposit_and_bls_change(spec, state):
     initial_balances_len = len(state.balances)
 
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     signed_address_change = get_signed_address_change(
@@ -260,7 +261,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
 
     assert state.balances[index] < pre_balance
     # Potentially less than due to sync committee penalty
-    assert state.balances[index] <= spec.MAX_EFFECTIVE_BALANCE
+    assert state.balances[index] <= get_min_activation_balance(spec)
     assert len(get_expected_withdrawals(spec, state)) == 0
 
 
@@ -444,12 +445,12 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     validator_index = next_withdrawal_validator_index + 1
 
     set_eth1_withdrawal_credential_with_balance(
-        spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE
+        spec, state, validator_index, balance=get_min_activation_balance(spec)
     )
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     # Make a top-up balance to validator
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield "pre", state
@@ -499,7 +500,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
     assert state.validators[validator_index].effective_balance == 0
 
     # Make a top-up deposit to validator
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    amount = get_min_activation_balance(spec) // 4
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield "pre", state
@@ -536,8 +537,8 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 def _insert_validator(spec, state, balance):
     effective_balance = (
         balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT
-        if balance < spec.MAX_EFFECTIVE_BALANCE
-        else spec.MAX_EFFECTIVE_BALANCE
+        if balance < get_min_activation_balance(spec)
+        else get_min_activation_balance(spec)
     )
 
     validator_index = len(state.validators)
@@ -582,7 +583,7 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
         state.validators[validator_index], spec.get_current_epoch(state)
     )
 
-    if initial_balance > spec.MAX_EFFECTIVE_BALANCE:
+    if initial_balance > get_min_activation_balance(spec):
         assert check_is_partially_withdrawable_validator(spec, state, validator_index)
     else:
         assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
@@ -601,7 +602,7 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
 @spec_state_test
 def test_activate_and_partial_withdrawal_max_effective_balance(spec, state):
     yield from _run_activate_and_partial_withdrawal(
-        spec, state, initial_balance=spec.MAX_EFFECTIVE_BALANCE
+        spec, state, initial_balance=get_min_activation_balance(spec)
     )
 
 
@@ -610,5 +611,5 @@ def test_activate_and_partial_withdrawal_max_effective_balance(spec, state):
 @spec_state_test
 def test_activate_and_partial_withdrawal_overdeposit(spec, state):
     yield from _run_activate_and_partial_withdrawal(
-        spec, state, initial_balance=spec.MAX_EFFECTIVE_BALANCE + 10000000
+        spec, state, initial_balance=get_min_activation_balance(spec) + 10000000
     )

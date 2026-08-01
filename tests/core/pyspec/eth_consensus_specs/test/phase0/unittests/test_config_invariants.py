@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import UINT64_MAX
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
@@ -38,10 +39,10 @@ def test_validators(spec, state):
 @with_all_phases
 @spec_state_test
 def test_balances(spec, state):
-    assert spec.MAX_EFFECTIVE_BALANCE % spec.EFFECTIVE_BALANCE_INCREMENT == 0
+    assert get_min_activation_balance(spec) % spec.EFFECTIVE_BALANCE_INCREMENT == 0
     check_bound(spec.MIN_DEPOSIT_AMOUNT, 1, UINT64_MAX)
-    check_bound(spec.MAX_EFFECTIVE_BALANCE, spec.MIN_DEPOSIT_AMOUNT, UINT64_MAX)
-    check_bound(spec.MAX_EFFECTIVE_BALANCE, spec.EFFECTIVE_BALANCE_INCREMENT, UINT64_MAX)
+    check_bound(get_min_activation_balance(spec), spec.MIN_DEPOSIT_AMOUNT, UINT64_MAX)
+    check_bound(get_min_activation_balance(spec), spec.EFFECTIVE_BALANCE_INCREMENT, UINT64_MAX)
 
 
 @with_all_phases
