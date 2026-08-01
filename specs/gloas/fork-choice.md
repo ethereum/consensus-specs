@@ -36,7 +36,6 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
-  - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
@@ -600,25 +599,6 @@ def get_head(store: Store) -> ForkChoiceNode:
 ```python
 def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
     return compute_epoch_at_slot(latest_message.slot)
-```
-
-### New `verify_execution_payload_envelope_signature`
-
-```python
-def verify_execution_payload_envelope_signature(
-    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
-) -> bool:
-    builder_index = signed_envelope.message.builder_index
-    if builder_index == BUILDER_INDEX_SELF_BUILD:
-        validator_index = state.latest_block_header.proposer_index
-        pubkey = state.validators[validator_index].pubkey
-    else:
-        pubkey = state.builders[builder_index].pubkey
-
-    signing_root = compute_signing_root(
-        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
-    )
-    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
 ### New `verify_execution_payload_envelope`
