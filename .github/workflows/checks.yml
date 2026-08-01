@@ -137,17 +137,16 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-      # deneb exercises the blob path and fulu the data column path, the two
-      # ways is_data_available is implemented.
+      # Group slicing is round robin, so a 1/40 slice of the tiny config still
+      # samples every fork and every test type for about a dozen groups.
       - name: Generate a sample of compliance tests
         run: |
           make comptests \
             fc_gen_config=tiny \
             preset=minimal \
-            fork=deneb,fulu \
-            k=block_weight_test \
+            fork=altair,bellatrix,capella,deneb,electra,fulu,gloas \
             group_slice_index=0 \
-            group_slice_count=8 \
+            group_slice_count=40 \
             comptests_dir=./comptests-sample
 
   website:
