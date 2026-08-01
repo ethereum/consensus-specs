@@ -263,6 +263,20 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     """
     Run ``on_inclusion_list`` upon receiving a new inclusion list.
     """
+    inclusion_list = signed_inclusion_list.message
+    current_slot = get_current_slot(store)
+
+    # The transactions must not exceed the maximum size
+    transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+    assert transactions_size <= MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+
+    # The slot must be within the retention window
+    assert inclusion_list.slot <= current_slot
+    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
+
+    # The dependent block must be known
+    assert inclusion_list.dependent_root in store.block_states
+
     # Verify the validator is in the inclusion list committee
     dependent_state = copy(store.block_states[inclusion_list.dependent_root])
     if dependent_state.slot < inclusion_list.slot:
@@ -271,11 +285,16 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 
+    # Verify the signature
+    assert is_valid_inclusion_list_signature(dependent_state, signed_inclusion_list)
+
+    # The inclusion list is timely if it arrives in its slot before the deadline
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    inclusion_list_due_ms = get_inclusion_list_due_ms()
-    is_timely = time_into_slot_ms < inclusion_list_due_ms
+    is_current_slot = inclusion_list.slot == current_slot
+    is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
 
+    # Process the inclusion list
     process_inclusion_list(
         get_inclusion_list_store(), signed_inclusion_list, hash_tree_root(committee), is_timely
     )
