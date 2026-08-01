@@ -80,7 +80,7 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
                 spec,
                 state,
                 validator_index=inclusion_list_committee[5],
-                max_transaction_size=spec.config.MAX_BYTES_PER_INCLUSION_LIST,
+                max_transaction_size=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
                 max_transaction_count=1,
             )
         )
@@ -91,7 +91,7 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
                 spec,
                 state,
                 validator_index=inclusion_list_committee[6],
-                max_transaction_size=spec.config.MAX_BYTES_PER_INCLUSION_LIST // 16,
+                max_transaction_size=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST // 16,
                 max_transaction_count=16,
             )
         )
@@ -103,7 +103,7 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
                 state,
                 validator_index=inclusion_list_committee[7],
                 max_transaction_size=1,
-                max_transaction_count=spec.config.MAX_BYTES_PER_INCLUSION_LIST,
+                max_transaction_count=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
             )
         )
 

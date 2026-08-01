@@ -103,12 +103,14 @@ def get_sample_transactions(spec, max_transaction_size=200, max_transaction_coun
     """
     Build a list of sample transactions.
     """
-    transaction_size = min(max_transaction_size, spec.config.MAX_BYTES_PER_INCLUSION_LIST)
+    transaction_size = min(
+        max_transaction_size, spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+    )
     transaction_count = min(
         max_transaction_count,
-        spec.config.MAX_BYTES_PER_INCLUSION_LIST // transaction_size
+        spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST // transaction_size
         if transaction_size
-        else spec.config.MAX_BYTES_PER_INCLUSION_LIST,
+        else spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
     )
 
     assert transaction_size >= 0
