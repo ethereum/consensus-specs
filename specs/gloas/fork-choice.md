@@ -1052,8 +1052,8 @@ def on_payload_attestation_message(
     store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
 ) -> None:
     """
-    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
-    either within a block or directly on the wire.
+    Run ``on_payload_attestation_message`` upon receiving a new payload attestation message
+    from either within a block or directly on the wire.
     """
     data = ptc_message.data
 
