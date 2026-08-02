@@ -33,6 +33,8 @@
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_weight`](#modified-get_weight)
+  - [Modified `filter_block_tree`](#modified-filter_block_tree)
+  - [Modified `get_filtered_block_tree`](#modified-get_filtered_block_tree)
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
@@ -537,27 +539,130 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     return attestation_score + proposer_score
 ```
 
-### Modified `get_node_children`
+### Modified `filter_block_tree`
 
-*Note*: This function is modified to introduce new type of children nodes
-representing *full* and *empty* blocks.
+*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
+by the recursive logic in this function) MUST set `node` to a pending
+`ForkChoiceNode` with root `store.justified_checkpoint.root`.
+
+*Note*: This function is modified to operate on payload-status variants instead
+of blocks, so that each variant is FFG-tested independently. A variant is
+identified by the tuple `(root, payload_status)`. The FFG test itself is
+computed per block root and is unchanged.
 
 ```python
-def get_node_children(
-    store: Store, blocks: Dict[Root, BeaconBlock], node: ForkChoiceNode
-) -> Sequence[ForkChoiceNode]:
+def filter_block_tree(
+    store: Store, node: ForkChoiceNode, blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock]
+) -> bool:
+    block = store.blocks[node.root]
+    # Expand a pending node into its empty and full variants, and an empty or
+    # full node into the pending nodes of its children blocks
+    # [Modified in Gloas:EIP7732]
     if node.payload_status == PAYLOAD_STATUS_PENDING:
+        # [New in Gloas:EIP7732]
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
         if is_payload_verified(store, node.root):
             children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
-        return children
     else:
+        # [New in Gloas:EIP7732]
+        children = [
+            ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
+            for root in store.blocks
+            if (
+                store.blocks[root].parent_root == node.root
+                and node.payload_status == get_parent_payload_status(store, store.blocks[root])
+            )
+        ]
+
+    # If any children branches contain expected finalized/justified checkpoints,
+    # add to filtered block-tree and signal viability to parent.
+    if any(children):
+        filter_block_tree_result = [filter_block_tree(store, child, blocks) for child in children]
+        if any(filter_block_tree_result):
+            # [Modified in Gloas:EIP7732]
+            blocks[(node.root, node.payload_status)] = block
+            return True
+        return False
+
+    current_epoch = get_current_store_epoch(store)
+    voting_source = get_voting_source(store, node.root)
+
+    # The voting source should be either at the same height as the store's justified checkpoint or
+    # not more than two epochs ago
+    correct_justified = (
+        store.justified_checkpoint.epoch == GENESIS_EPOCH
+        or voting_source.epoch == store.justified_checkpoint.epoch
+        or voting_source.epoch + 2 >= current_epoch
+    )
+
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        node.root,
+        store.finalized_checkpoint.epoch,
+    )
+
+    correct_finalized = (
+        store.finalized_checkpoint.epoch == GENESIS_EPOCH
+        or store.finalized_checkpoint.root == finalized_checkpoint_block
+    )
+
+    # If expected finalized/justified, add to viable block-tree and signal viability to parent.
+    if correct_justified and correct_finalized:
+        # [Modified in Gloas:EIP7732]
+        blocks[(node.root, node.payload_status)] = block
+        return True
+
+    # Otherwise, branch not viable
+    return False
+```
+
+### Modified `get_filtered_block_tree`
+
+```python
+def get_filtered_block_tree(store: Store) -> Dict[Tuple[Root, PayloadStatus], BeaconBlock]:
+    """
+    Retrieve a filtered block tree from ``store``, only returning branches
+    whose leaf state's justified/finalized info agrees with that in ``store``.
+    """
+    # [Modified in Gloas:EIP7732]
+    base = ForkChoiceNode(
+        root=store.justified_checkpoint.root,
+        payload_status=PAYLOAD_STATUS_PENDING,
+    )
+    # [Modified in Gloas:EIP7732]
+    blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock] = {}
+    filter_block_tree(store, base, blocks)
+    return blocks
+```
+
+### Modified `get_node_children`
+
+*Note*: This function is modified to only return children that are present in
+the filtered block tree, so that payload-status variants that are not FFG-viable
+are not considered for the head.
+
+```python
+def get_node_children(
+    store: Store, blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock], node: ForkChoiceNode
+) -> Sequence[ForkChoiceNode]:
+    if node.payload_status == PAYLOAD_STATUS_PENDING:
+        # [New in Gloas:EIP7732]
+        return [
+            ForkChoiceNode(root=root, payload_status=payload_status)
+            for root, payload_status in [
+                (node.root, PAYLOAD_STATUS_EMPTY),
+                (node.root, PAYLOAD_STATUS_FULL),
+            ]
+            if (root, payload_status) in blocks
+        ]
+    else:
+        # [Modified in Gloas:EIP7732]
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for root in blocks
+            for (root, payload_status), block in blocks.items()
             if (
-                blocks[root].parent_root == node.root
-                and node.payload_status == get_parent_payload_status(store, blocks[root])
+                block.parent_root == node.root
+                and node.payload_status == get_parent_payload_status(store, block)
             )
         ]
 ```
