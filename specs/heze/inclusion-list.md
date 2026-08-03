@@ -64,23 +64,22 @@ def process_inclusion_list(
     inclusion_list = signed_inclusion_list.message
     key = inclusion_list.inclusion_list_committee_root
 
-    # Ignore `inclusion_list` from equivocators.
+    # Ignore an inclusion list that has already been stored
+    inclusion_list_root = hash_tree_root(inclusion_list)
+    if inclusion_list_root in store.inclusion_lists[key]:
+        return
+
+    # Ignore inclusion lists from equivocators
     if inclusion_list.validator_index in store.equivocators[key]:
         return
 
-    for stored_root in store.inclusion_lists[key]:
-        stored_inclusion_list = store.inclusion_lists[key][stored_root].message
-        if stored_inclusion_list.validator_index != inclusion_list.validator_index:
-            continue
-
-        if stored_inclusion_list != inclusion_list:
+    # Mark the validator as an equivocator if it published a different inclusion list
+    for stored_signed_inclusion_list in store.inclusion_lists[key].values():
+        if stored_signed_inclusion_list.message.validator_index == inclusion_list.validator_index:
             store.equivocators[key].add(inclusion_list.validator_index)
+            return
 
-        # Whether it was an equivocation or not, we have processed this `inclusion_list`.
-        return
-
-    # Store `signed_inclusion_list` and its timeliness.
-    inclusion_list_root = hash_tree_root(inclusion_list)
+    # Store the signed inclusion list and its timeliness
     store.inclusion_lists[key][inclusion_list_root] = signed_inclusion_list
     store.inclusion_list_timeliness[inclusion_list_root] = is_timely
 ```
@@ -109,13 +108,19 @@ def get_inclusion_list_transactions(
     equivocators = store.equivocators[key]
     timeliness = store.inclusion_list_timeliness
 
-    transactions = [
-        transaction
-        for inclusion_list_root in inclusion_lists
-        if inclusion_lists[inclusion_list_root].message.validator_index not in equivocators
-        if not only_timely or timeliness[inclusion_list_root]
-        for transaction in inclusion_lists[inclusion_list_root].message.transactions
-    ]
+    transactions = []
+    for inclusion_list_root in inclusion_lists:
+        inclusion_list = inclusion_lists[inclusion_list_root].message
+
+        # Ignore inclusion lists from equivocators
+        if inclusion_list.validator_index in equivocators:
+            continue
+
+        # Ignore untimely inclusion lists if only timely ones are requested
+        if only_timely and not timeliness[inclusion_list_root]:
+            continue
+
+        transactions.extend(inclusion_list.transactions)
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
     return list(set(transactions))
@@ -138,12 +143,19 @@ def get_inclusion_list_bits(
     equivocators = store.equivocators[key]
     timeliness = store.inclusion_list_timeliness
 
-    validator_indices = [
-        inclusion_lists[inclusion_list_root].message.validator_index
-        for inclusion_list_root in inclusion_lists
-        if inclusion_lists[inclusion_list_root].message.validator_index not in equivocators
-        if not only_timely or timeliness[inclusion_list_root]
-    ]
+    validator_indices = []
+    for inclusion_list_root in inclusion_lists:
+        inclusion_list = inclusion_lists[inclusion_list_root].message
+
+        # Ignore inclusion lists from equivocators
+        if inclusion_list.validator_index in equivocators:
+            continue
+
+        # Ignore untimely inclusion lists if only timely ones are requested
+        if only_timely and not timeliness[inclusion_list_root]:
+            continue
+
+        validator_indices.append(inclusion_list.validator_index)
 
     return BitVector[INCLUSION_LIST_COMMITTEE_SIZE](
         validator_index in validator_indices for validator_index in committee
@@ -166,10 +178,8 @@ def is_inclusion_list_bits_inclusive(
     """
     local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
 
-    return not any(
-        local_inclusion_bit and not inclusion_bit
-        for inclusion_bit, local_inclusion_bit in zip(
-            inclusion_list_bits, local_inclusion_list_bits, strict=True
-        )
-    )
+    for i in range(INCLUSION_LIST_COMMITTEE_SIZE):
+        if local_inclusion_list_bits[i] and not inclusion_list_bits[i]:
+            return False
+    return True
 ```

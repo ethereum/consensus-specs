@@ -930,6 +930,9 @@ def on_tick(store: Store, time: Uint64) -> None:
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+    """
     block = signed_block.message
     block_root = hash_tree_root(block)
 
@@ -981,7 +984,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 ```python
 def on_attestation(store: Store, attestation: Attestation, is_from_block: bool = False) -> None:
     """
-    Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
+    Run ``on_attestation`` upon receiving a new attestation from either within a block or directly on the wire.
 
     An ``attestation`` that is asserted as invalid may be valid at a later time,
     consider scheduling it for later processing in such case.
@@ -1008,7 +1011,7 @@ finalized checkpoint.
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:
     """
-    Run ``on_attester_slashing`` immediately upon receiving a new ``AttesterSlashing``
+    Run ``on_attester_slashing`` immediately upon receiving a new attester slashing
     from either within a block or directly on the wire.
     """
     attestation_1 = attester_slashing.attestation_1
