@@ -44,11 +44,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                                     | Value                     | Description                                                     |
-| ---------------------------------------- | ------------------------- | --------------------------------------------------------------- |
-| `MAX_REQUEST_INCLUSION_LIST`             | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
-| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
-| `MAX_BYTES_PER_INCLUSION_LIST`           | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
+| Name                                        | Value                     | Description                                                     |
+| ------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`                | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`    | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
+| `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST` | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
 
 ### Helpers
 
@@ -111,7 +111,7 @@ The following validations MUST pass before forwarding the `inclusion_list` on
 the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The size of `message.transactions` is within upperbound
-  `MAX_BYTES_PER_INCLUSION_LIST`.
+  `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
   `message.slot == current_slot`.
