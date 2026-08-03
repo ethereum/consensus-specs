@@ -64,22 +64,22 @@ def process_inclusion_list(
     inclusion_list = signed_inclusion_list.message
     key = inclusion_list.inclusion_list_committee_root
 
-    # Ignore an inclusion list that has already been stored.
+    # Ignore an inclusion list that has already been stored
     inclusion_list_root = hash_tree_root(inclusion_list)
     if inclusion_list_root in store.inclusion_lists[key]:
         return
 
-    # Ignore inclusion lists from equivocators.
+    # Ignore inclusion lists from equivocators
     if inclusion_list.validator_index in store.equivocators[key]:
         return
 
-    # Mark the validator as an equivocator if it published a different inclusion list.
+    # Mark the validator as an equivocator if it published a different inclusion list
     for stored_signed_inclusion_list in store.inclusion_lists[key].values():
         if stored_signed_inclusion_list.message.validator_index == inclusion_list.validator_index:
             store.equivocators[key].add(inclusion_list.validator_index)
             return
 
-    # Store the signed inclusion list and its timeliness.
+    # Store the signed inclusion list and its timeliness
     store.inclusion_lists[key][inclusion_list_root] = signed_inclusion_list
     store.inclusion_list_timeliness[inclusion_list_root] = is_timely
 ```
@@ -112,11 +112,11 @@ def get_inclusion_list_transactions(
     for inclusion_list_root in inclusion_lists:
         inclusion_list = inclusion_lists[inclusion_list_root].message
 
-        # Ignore inclusion lists from equivocators.
+        # Ignore inclusion lists from equivocators
         if inclusion_list.validator_index in equivocators:
             continue
 
-        # Ignore untimely inclusion lists if only timely ones are requested.
+        # Ignore untimely inclusion lists if only timely ones are requested
         if only_timely and not timeliness[inclusion_list_root]:
             continue
 
@@ -147,11 +147,11 @@ def get_inclusion_list_bits(
     for inclusion_list_root in inclusion_lists:
         inclusion_list = inclusion_lists[inclusion_list_root].message
 
-        # Ignore inclusion lists from equivocators.
+        # Ignore inclusion lists from equivocators
         if inclusion_list.validator_index in equivocators:
             continue
 
-        # Ignore untimely inclusion lists if only timely ones are requested.
+        # Ignore untimely inclusion lists if only timely ones are requested
         if only_timely and not timeliness[inclusion_list_root]:
             continue
 
