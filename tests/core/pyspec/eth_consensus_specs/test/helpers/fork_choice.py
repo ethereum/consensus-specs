@@ -586,7 +586,7 @@ def get_weighed_node_checks(spec, store, node):
 
 
 def get_viable_for_head_checks(spec, store):
-    filtered_blocks = spec.get_filtered_block_tree(store)
+    filtered_blocks = spec.get_filtered_node_tree(store)
     root_node = get_fork_choice_node(spec, store.justified_checkpoint.root)
     pending_nodes = [root_node]
     leaves_viable_for_head = []

@@ -38,7 +38,7 @@ def _should_justify_epoch(parents, current_justifications, previous_justificatio
     return any(previous_justifications[c] for c in (b for b, p in enumerate(parents) if p == block))
 
 
-def _generate_filter_block_tree(
+def _generate_filter_node_tree(
     spec,
     genesis_state,
     block_epochs,
@@ -357,7 +357,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
 
     rnd = random.Random(seed)
     signed_blocks, post_block_tips, target_signed_block, target_post_state = (
-        _generate_filter_block_tree(
+        _generate_filter_node_tree(
             spec,
             state,
             block_epochs,
@@ -481,7 +481,7 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
         or predicates["block_vse_eq_store_je"]
         or predicates["block_vse_plus_two_ge_curr_e"]
     ):
-        filtered_tree = spec.get_filtered_block_tree(store)
+        filtered_tree = spec.get_filtered_node_tree(store)
         if is_post_gloas(spec):
             filtered_roots = [root for root, _ in filtered_tree]
         else:

@@ -175,8 +175,8 @@ def get_opt_head_block_root(spec, mega_store):
     """
     store = mega_store.fc_store
 
-    # Get filtered block tree that only includes viable branches
-    blocks = spec.get_filtered_block_tree(store)
+    # Get filtered node tree that only includes viable branches
+    blocks = spec.get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     while True:

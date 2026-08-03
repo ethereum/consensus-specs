@@ -127,7 +127,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     assert head.root == k_root
     assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
 
-    filtered_tree = spec.get_filtered_block_tree(store)
+    filtered_tree = spec.get_filtered_node_tree(store)
     assert full_b_variant not in filtered_tree
     assert empty_b_variant in filtered_tree
 
