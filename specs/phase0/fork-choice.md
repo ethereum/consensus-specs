@@ -151,6 +151,9 @@ This abstraction is introduced to support upgradability.
 @dataclass(eq=True, frozen=True)
 class ForkChoiceNode:
     root: Root
+
+    def __hash__(self) -> int:
+        return int.from_bytes(self.root, "little")
 ```
 
 #### `LatestMessage`
@@ -398,20 +401,17 @@ by the recursive logic in this function) MUST set `node` to
 `ForkChoiceNode(root=store.justified_checkpoint.root)`.
 
 ```python
-def filter_node_tree(store: Store, node: ForkChoiceNode, blocks: Dict[Root, BeaconBlock]) -> bool:
-    block = store.blocks[node.root]
-    children = [
-        ForkChoiceNode(root=root)
-        for root in store.blocks
-        if store.blocks[root].parent_root == node.root
-    ]
+def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:
+    children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered node tree and signal viability to parent.
     if any(children):
-        filter_node_tree_result = [filter_node_tree(store, child, blocks) for child in children]
+        filter_node_tree_result = [
+            filter_node_tree(store, child, viable_nodes) for child in children
+        ]
         if any(filter_node_tree_result):
-            blocks[node.root] = block
+            viable_nodes.add(node)
             return True
         return False
 
@@ -439,7 +439,7 @@ def filter_node_tree(store: Store, node: ForkChoiceNode, blocks: Dict[Root, Beac
 
     # If expected finalized/justified, add to viable node tree and signal viability to parent.
     if correct_justified and correct_finalized:
-        blocks[node.root] = block
+        viable_nodes.add(node)
         return True
 
     # Otherwise, branch not viable
@@ -449,26 +449,29 @@ def filter_node_tree(store: Store, node: ForkChoiceNode, blocks: Dict[Root, Beac
 #### `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Dict[Root, BeaconBlock]:
+def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
     """
     base = ForkChoiceNode(root=store.justified_checkpoint.root)
-    blocks: Dict[Root, BeaconBlock] = {}
-    filter_node_tree(store, base, blocks)
-    return blocks
+    viable_nodes: Set[ForkChoiceNode] = set()
+    filter_node_tree(store, base, viable_nodes)
+    return viable_nodes
 ```
 
 #### `get_node_children`
 
 ```python
 def get_node_children(
-    store: Store,  # noqa: ARG001
-    blocks: Dict[Root, BeaconBlock],
+    store: Store,
     node: ForkChoiceNode,
 ) -> Sequence[ForkChoiceNode]:
-    return [ForkChoiceNode(root=root) for root in blocks if blocks[root].parent_root == node.root]
+    return [
+        ForkChoiceNode(root=root)
+        for root in store.blocks
+        if store.blocks[root].parent_root == node.root
+    ]
 ```
 
 #### `get_head`
@@ -476,11 +479,13 @@ def get_node_children(
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
     # Get filtered node tree that only includes viable branches
-    blocks = get_filtered_node_tree(store)
+    filtered_node_tree = get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = ForkChoiceNode(root=store.justified_checkpoint.root)
     while True:
-        children = get_node_children(store, blocks, head)
+        children = [
+            child for child in get_node_children(store, head) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically

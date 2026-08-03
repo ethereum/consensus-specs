@@ -118,6 +118,9 @@ class ForkChoiceNode:
     root: Root
     # [New in Gloas:EIP7732]
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
+
+    def __hash__(self) -> int:
+        return int.from_bytes(self.root, "little") * 31 + int(self.payload_status)
 ```
 
 ### Modified `PayloadAttributes`
@@ -546,41 +549,23 @@ by the recursive logic in this function) MUST set `node` to a pending
 `ForkChoiceNode` with root `store.justified_checkpoint.root`.
 
 *Note*: This function is modified to operate on payload-status variants instead
-of blocks, so that each variant is FFG-tested independently. A variant is
-identified by the tuple `(root, payload_status)`. The FFG test itself is
-computed per block root and is unchanged.
+of blocks, so that each variant is FFG-tested independently. The FFG test itself
+is computed per block root and is unchanged.
 
 ```python
-def filter_node_tree(
-    store: Store, node: ForkChoiceNode, blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock]
-) -> bool:
-    block = store.blocks[node.root]
-    # Expand a pending node into its empty and full variants, and an empty or
-    # full node into the pending nodes of its children blocks
+def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:
     # [Modified in Gloas:EIP7732]
-    if node.payload_status == PAYLOAD_STATUS_PENDING:
-        # [New in Gloas:EIP7732]
-        children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
-        if is_payload_verified(store, node.root):
-            children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
-    else:
-        # [New in Gloas:EIP7732]
-        children = [
-            ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for root in store.blocks
-            if (
-                store.blocks[root].parent_root == node.root
-                and node.payload_status == get_parent_payload_status(store, store.blocks[root])
-            )
-        ]
+    children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered node tree and signal viability to parent.
     if any(children):
-        filter_node_tree_result = [filter_node_tree(store, child, blocks) for child in children]
+        filter_node_tree_result = [
+            filter_node_tree(store, child, viable_nodes) for child in children
+        ]
         if any(filter_node_tree_result):
             # [Modified in Gloas:EIP7732]
-            blocks[(node.root, node.payload_status)] = block
+            viable_nodes.add(node)
             return True
         return False
 
@@ -609,7 +594,7 @@ def filter_node_tree(
     # If expected finalized/justified, add to viable node tree and signal viability to parent.
     if correct_justified and correct_finalized:
         # [Modified in Gloas:EIP7732]
-        blocks[(node.root, node.payload_status)] = block
+        viable_nodes.add(node)
         return True
 
     # Otherwise, branch not viable
@@ -619,7 +604,7 @@ def filter_node_tree(
 ### Modified `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Dict[Tuple[Root, PayloadStatus], BeaconBlock]:
+def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
@@ -630,39 +615,34 @@ def get_filtered_node_tree(store: Store) -> Dict[Tuple[Root, PayloadStatus], Bea
         payload_status=PAYLOAD_STATUS_PENDING,
     )
     # [Modified in Gloas:EIP7732]
-    blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock] = {}
-    filter_node_tree(store, base, blocks)
-    return blocks
+    viable_nodes: Set[ForkChoiceNode] = set()
+    filter_node_tree(store, base, viable_nodes)
+    return viable_nodes
 ```
 
 ### Modified `get_node_children`
 
-*Note*: This function is modified to only return children that are present in
-the filtered node tree, so that payload-status variants that are not FFG-viable
-are not considered for the head.
+*Note*: This function is modified to return all possible children of a given
+node, regardless of the FFG test result. It expands a *pending* node into its
+*empty* and *full* variants, and an *empty* or *full* node into the *pending*
+nodes of its children blocks.
 
 ```python
-def get_node_children(
-    store: Store, blocks: Dict[Tuple[Root, PayloadStatus], BeaconBlock], node: ForkChoiceNode
-) -> Sequence[ForkChoiceNode]:
+def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
         # [New in Gloas:EIP7732]
-        return [
-            ForkChoiceNode(root=root, payload_status=payload_status)
-            for root, payload_status in [
-                (node.root, PAYLOAD_STATUS_EMPTY),
-                (node.root, PAYLOAD_STATUS_FULL),
-            ]
-            if (root, payload_status) in blocks
-        ]
+        children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
+        if is_payload_verified(store, node.root):
+            children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
+        return children
     else:
         # [Modified in Gloas:EIP7732]
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for (root, payload_status), block in blocks.items()
+            for root in store.blocks
             if (
-                block.parent_root == node.root
-                and node.payload_status == get_parent_payload_status(store, block)
+                store.blocks[root].parent_root == node.root
+                and node.payload_status == get_parent_payload_status(store, store.blocks[root])
             )
         ]
 ```
@@ -675,7 +655,7 @@ between *full* and *empty* nodes.
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
     # Get filtered node tree that only includes viable branches
-    blocks = get_filtered_node_tree(store)
+    filtered_node_tree = get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork-choice
     head = ForkChoiceNode(
         root=store.justified_checkpoint.root,
@@ -684,7 +664,9 @@ def get_head(store: Store) -> ForkChoiceNode:
     )
 
     while True:
-        children = get_node_children(store, blocks, head)
+        children = [
+            child for child in get_node_children(store, head) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically

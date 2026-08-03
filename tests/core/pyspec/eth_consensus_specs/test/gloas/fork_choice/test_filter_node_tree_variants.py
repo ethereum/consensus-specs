@@ -113,8 +113,8 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
         test_steps,
     )
 
-    full_b_variant = (b_root, spec.PAYLOAD_STATUS_FULL)
-    empty_b_variant = (b_root, spec.PAYLOAD_STATUS_EMPTY)
+    full_b_node = spec.ForkChoiceNode(root=b_root, payload_status=spec.PAYLOAD_STATUS_FULL)
+    empty_b_node = spec.ForkChoiceNode(root=b_root, payload_status=spec.PAYLOAD_STATUS_EMPTY)
 
     # B fails the FFG test while K passes it
     assert spec.get_voting_source(store, b_root).epoch + 2 < spec.get_current_store_epoch(store)
@@ -123,13 +123,13 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
 
     # The childless FULL(B) variant is not viable and must not be the head
     head = spec.get_head(store)
-    assert (head.root, head.payload_status) != full_b_variant
+    assert head != full_b_node
     assert head.root == k_root
     assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
 
     filtered_tree = spec.get_filtered_node_tree(store)
-    assert full_b_variant not in filtered_tree
-    assert empty_b_variant in filtered_tree
+    assert full_b_node not in filtered_tree
+    assert empty_b_node in filtered_tree
 
     output_head_check(spec, store, test_steps)
     yield "steps", test_steps

@@ -586,14 +586,16 @@ def get_weighed_node_checks(spec, store, node):
 
 
 def get_viable_for_head_checks(spec, store):
-    filtered_blocks = spec.get_filtered_node_tree(store)
+    filtered_node_tree = spec.get_filtered_node_tree(store)
     root_node = get_fork_choice_node(spec, store.justified_checkpoint.root)
     pending_nodes = [root_node]
     leaves_viable_for_head = []
 
     while len(pending_nodes) > 0:
         node = pending_nodes.pop()
-        children = spec.get_node_children(store, filtered_blocks, node)
+        children = [
+            child for child in spec.get_node_children(store, node) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             leaves_viable_for_head.append(node)
         else:

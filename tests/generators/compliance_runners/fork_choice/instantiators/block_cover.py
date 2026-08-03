@@ -475,15 +475,12 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
     else:
         assert voting_source.epoch + 2 < current_epoch, "block_vse_plus_two_ge_curr_e not satisfied"
 
-    # Ensure the target block is in filtered blocks if it is a leaf and eligible
+    # Ensure the target block is in the filtered node tree if it is a leaf and eligible
     if predicates["block_is_leaf"] and (
         predicates["store_je_eq_zero"]
         or predicates["block_vse_eq_store_je"]
         or predicates["block_vse_plus_two_ge_curr_e"]
     ):
         filtered_tree = spec.get_filtered_node_tree(store)
-        if is_post_gloas(spec):
-            filtered_roots = [root for root, _ in filtered_tree]
-        else:
-            filtered_roots = list(filtered_tree)
+        filtered_roots = [node.root for node in filtered_tree]
         assert target_block_root in filtered_roots

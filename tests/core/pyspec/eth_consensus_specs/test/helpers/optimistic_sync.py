@@ -176,16 +176,16 @@ def get_opt_head_block_root(spec, mega_store):
     store = mega_store.fc_store
 
     # Get filtered node tree that only includes viable branches
-    blocks = spec.get_filtered_node_tree(store)
+    filtered_node_tree = spec.get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     while True:
         children = [
-            root
-            for root in blocks
+            child.root
+            for child in spec.get_node_children(store, spec.ForkChoiceNode(root=head))
             if (
-                blocks[root].parent_root == head
-                and not is_invalidated(mega_store, root)  # For optimistic sync
+                child in filtered_node_tree
+                and not is_invalidated(mega_store, child.root)  # For optimistic sync
             )
         ]
         if len(children) == 0:
