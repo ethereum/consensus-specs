@@ -17,7 +17,7 @@
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
-    - [`is_not_from_future_slot`](#is_not_from_future_slot)
+    - [`is_future_slot`](#is_future_slot)
     - [`is_within_slot_range`](#is_within_slot_range)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
@@ -255,13 +255,13 @@ propagation.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
 ```
 
 #### `compute_fork_version`
@@ -295,35 +295,35 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
-#### `is_not_from_future_slot`
+#### `is_future_slot`
 
 ```python
-def is_not_from_future_slot(
-    state: BeaconState,
+def is_future_slot(
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
     """
-    Check if the given slot is not from the future
+    Check if the given slot is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(state, slot)
-    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
+    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
 ```
 
 #### `is_within_slot_range`
 
 ```python
 def is_within_slot_range(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     slot_range: Uint64,
     current_time_ms: Uint64,
@@ -332,10 +332,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(state, slot)
+    start_time_ms = compute_time_at_slot_ms(store, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(state, Slot(slot + slot_range + 1))
+    end_time_ms = compute_time_at_slot_ms(store, Slot(slot + slot_range + 1))
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -570,7 +570,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if is_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -580,9 +580,10 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -609,10 +610,9 @@ def validate_beacon_block_gossip(
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
@@ -624,7 +624,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### `beacon_aggregate_and_proof`
@@ -659,7 +659,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] The aggregate attestation's slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 
@@ -684,11 +684,12 @@ def validate_beacon_aggregate_and_proof_gossip(
     if is_non_strict_superset(seen_bits, aggregate_bits):
         raise GossipIgnore("already seen aggregate for this data")
 
-    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
@@ -717,29 +718,27 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    if aggregate.data.beacon_block_root not in store.blocks:
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if aggregate.data.beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
-    checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
-    )
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
     if checkpoint_block != aggregate.data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The finalized checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    seen.aggregator_epochs.add(aggregator_epoch_key)
     if aggregate_data_root not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_data_root] = set()
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
@@ -966,7 +965,7 @@ def validate_beacon_attestation_gossip(
     # [IGNORE] The attestation slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 
@@ -984,10 +983,11 @@ def validate_beacon_attestation_gossip(
     if len(aggregation_bits) != len(committee):
         raise GossipReject("aggregation bits length does not match committee size")
 
-    # [IGNORE] No other valid attestation seen for this validator and target epoch
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
     participant_index = committee[aggregation_bits.index(True)]
-    if (participant_index, target_epoch) in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation from this validator for this epoch")
+    attestation_epoch_key = (target_epoch, participant_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
     indexed_attestation = get_indexed_attestation(state, attestation)
@@ -996,28 +996,27 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    beacon_block_root = data.beacon_block_root
-    if beacon_block_root not in store.blocks:
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
-    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The current finalized_checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((participant_index, target_epoch))
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
 ##### Attestations and Aggregation

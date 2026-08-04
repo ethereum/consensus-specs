@@ -3,11 +3,11 @@ import random
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
+from eth_consensus_specs.test.helpers.constants import DENEB, FULU
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -64,14 +64,15 @@ def resign_blob_sidecar_header(spec, state, blob_sidecar):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__valid(spec, state):
     """Test that a valid blob sidecar passes gossip validation."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -85,7 +86,7 @@ def test_gossip_blob_sidecar__valid(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -116,14 +117,15 @@ def test_gossip_blob_sidecar__valid(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     """Test that a blob sidecar with index >= MAX_BLOBS_PER_BLOCK is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -138,7 +140,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -170,14 +172,15 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     """Test that a blob sidecar on the wrong subnet is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -191,7 +194,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -224,7 +227,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 @always_bls
 def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
@@ -232,7 +235,8 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -248,7 +252,7 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -280,14 +284,15 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     """Test that a blob sidecar with a broken inclusion proof is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -305,7 +310,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -337,14 +342,15 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     """Test that a blob sidecar with an invalid KZG proof is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -360,7 +366,7 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -392,14 +398,15 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     """Test that a blob sidecar from a future slot is ignored."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -413,7 +420,7 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -446,14 +453,15 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     """Test that a blob sidecar at the future-slot boundary is valid."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -467,7 +475,7 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -499,13 +507,14 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     """Test that a blob sidecar at the latest finalized slot is ignored."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -513,7 +522,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
-    yield "state", state
+    yield "state", anchor_state
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     blob_sidecar = sidecars[0]
@@ -535,7 +544,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
 
     yield get_filename(blob_sidecar), blob_sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, block_header.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, block_header.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
@@ -566,14 +575,15 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     """Test that a blob sidecar with proposer_index out of range is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -590,7 +600,7 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -622,14 +632,15 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     """Test that a blob sidecar whose parent is unknown to the store is ignored."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -647,7 +658,7 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -679,14 +690,15 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     """Test that a blob sidecar whose parent failed validation is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -721,7 +733,7 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -753,9 +765,9 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
-def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
+def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
     """
     Test that a duplicate blob sidecar for the same
     (slot, proposer_index, index) tuple is ignored.
@@ -763,7 +775,8 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -778,7 +791,7 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -829,7 +842,7 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -839,7 +852,8 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -873,7 +887,7 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -905,14 +919,15 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, state):
     """Test that a blob sidecar is rejected if the finalized checkpoint is not an ancestor."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -933,7 +948,7 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -965,14 +980,15 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     """Test that a blob sidecar with the wrong proposer_index is rejected."""
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
@@ -991,7 +1007,7 @@ def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        state, blob_sidecar.signed_block_header.message.slot
+        store, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 

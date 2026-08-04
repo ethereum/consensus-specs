@@ -36,7 +36,6 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
-  - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
@@ -421,9 +420,9 @@ follows the node's payload status. For a *full* node from the previous slot, it
 considers the PTC view on both payload timeliness and data availability.
 
 ```python
-def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
+def should_build_on_full(store: Store, head: ForkChoiceNode, slot: Slot) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
-    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+    if store.blocks[head.root].slot + 1 != slot:
         return head.payload_status == PAYLOAD_STATUS_FULL
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
@@ -600,25 +599,6 @@ def get_head(store: Store) -> ForkChoiceNode:
 ```python
 def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
     return compute_epoch_at_slot(latest_message.slot)
-```
-
-### New `verify_execution_payload_envelope_signature`
-
-```python
-def verify_execution_payload_envelope_signature(
-    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
-) -> bool:
-    builder_index = signed_envelope.message.builder_index
-    if builder_index == BUILDER_INDEX_SELF_BUILD:
-        validator_index = state.latest_block_header.proposer_index
-        pubkey = state.validators[validator_index].pubkey
-    else:
-        pubkey = state.builders[builder_index].pubkey
-
-    signing_root = compute_signing_root(
-        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
-    )
-    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
 ### New `verify_execution_payload_envelope`
@@ -978,6 +958,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
 
@@ -1005,7 +991,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     state = copy(store.block_states[block.parent_root])
 
     # Check the block is valid and compute the post-state
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
@@ -1067,8 +1052,8 @@ def on_payload_attestation_message(
     store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
 ) -> None:
     """
-    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
-    either within a block or directly on the wire.
+    Run ``on_payload_attestation_message`` upon receiving a new payload attestation message
+    from either within a block or directly on the wire.
     """
     data = ptc_message.data
 
