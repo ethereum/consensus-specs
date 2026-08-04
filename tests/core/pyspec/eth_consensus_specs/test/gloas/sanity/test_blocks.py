@@ -854,9 +854,9 @@ def test_builder_payment_after_missed_epochs(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_attestation_after_missed_slot_with_full_parent_gets_head_flag(spec, state):
+def test_attestations_after_missed_slot_use_applied_parent_payload_availability(spec, state):
     """
-    Test that an attestation from a missed slot uses the availability of its
+    Test that attestations from a missed slot use the availability of their
     parent block's payload after that payload is applied by the including block.
     """
     set_parent_block_full(spec, state)
@@ -880,16 +880,33 @@ def test_attestation_after_missed_slot_with_full_parent_gets_head_flag(spec, sta
     next_slots(spec, attestation_state, 1)
     assert attestation_state.slot == attestation_slot
 
-    attestation = get_valid_attestation(
+    committee = spec.get_beacon_committee(attestation_state, attestation_slot, 0)
+    matching_attesters = set(committee[::2])
+    mismatching_attesters = set(committee[1::2])
+    assert matching_attesters
+    assert mismatching_attesters
+
+    matching_attestation = get_valid_attestation(
         spec,
         attestation_state,
         slot=attestation_slot,
         payload_index=1,
+        filter_participant_set=lambda participants: participants & matching_attesters,
+        signed=True,
+    )
+    mismatching_attestation = get_valid_attestation(
+        spec,
+        attestation_state,
+        slot=attestation_slot,
+        payload_index=0,
+        filter_participant_set=lambda participants: participants & mismatching_attesters,
         signed=True,
     )
 
-    attesting_indices = spec.get_attesting_indices(attestation_state, attestation)
-    for validator_index in attesting_indices:
+    matching_indices = spec.get_attesting_indices(attestation_state, matching_attestation)
+    mismatching_indices = spec.get_attesting_indices(attestation_state, mismatching_attestation)
+    assert matching_indices.isdisjoint(mismatching_indices)
+    for validator_index in matching_indices | mismatching_indices:
         assert not spec.has_flag(
             state.current_epoch_participation[validator_index],
             spec.TIMELY_HEAD_FLAG_INDEX,
@@ -899,19 +916,25 @@ def test_attestation_after_missed_slot_with_full_parent_gets_head_flag(spec, sta
     child_slot = attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
     block_2 = build_empty_block(spec, state, slot=child_slot)
     block_2.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
-    block_2.body.attestations = [attestation]
+    block_2.body.attestations = [matching_attestation, mismatching_attestation]
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield "blocks", [signed_block_1, signed_block_2]
     yield "post", state
 
     attestation_slot_index = attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT
-    assert not spec.is_attestation_same_slot(state, attestation.data)
+    assert not spec.is_attestation_same_slot(state, matching_attestation.data)
+    assert not spec.is_attestation_same_slot(state, mismatching_attestation.data)
     assert state.execution_payload_availability[parent_slot_index]
     assert not state.execution_payload_availability[attestation_slot_index]
 
-    for validator_index in attesting_indices:
+    for validator_index in matching_indices:
         assert spec.has_flag(
+            state.current_epoch_participation[validator_index],
+            spec.TIMELY_HEAD_FLAG_INDEX,
+        )
+    for validator_index in mismatching_indices:
+        assert not spec.has_flag(
             state.current_epoch_participation[validator_index],
             spec.TIMELY_HEAD_FLAG_INDEX,
         )
