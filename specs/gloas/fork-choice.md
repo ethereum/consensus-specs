@@ -33,7 +33,6 @@
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_weight`](#modified-get_weight)
-  - [Modified `filter_node_tree`](#modified-filter_node_tree)
   - [Modified `get_filtered_node_tree`](#modified-get_filtered_node_tree)
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
@@ -542,66 +541,11 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     return attestation_score + proposer_score
 ```
 
-### Modified `filter_node_tree`
+### Modified `get_filtered_node_tree`
 
 *Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
 by the recursive logic in this function) MUST set `node` to a pending
 `ForkChoiceNode` with root `store.justified_checkpoint.root`.
-
-*Note*: This function is modified to operate on payload-status variants instead
-of blocks, so that each variant is FFG-tested independently. The FFG test itself
-is computed per block root and is unchanged.
-
-```python
-def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:
-    # [Modified in Gloas:EIP7732]
-    children = get_node_children(store, node)
-
-    # If any children branches contain expected finalized/justified checkpoints,
-    # add to filtered node tree and signal viability to parent.
-    if any(children):
-        filter_node_tree_result = [
-            filter_node_tree(store, child, viable_nodes) for child in children
-        ]
-        if any(filter_node_tree_result):
-            # [Modified in Gloas:EIP7732]
-            viable_nodes.add(node)
-            return True
-        return False
-
-    current_epoch = get_current_store_epoch(store)
-    voting_source = get_voting_source(store, node.root)
-
-    # The voting source should be either at the same height as the store's justified checkpoint or
-    # not more than two epochs ago
-    correct_justified = (
-        store.justified_checkpoint.epoch == GENESIS_EPOCH
-        or voting_source.epoch == store.justified_checkpoint.epoch
-        or voting_source.epoch + 2 >= current_epoch
-    )
-
-    finalized_checkpoint_block = get_checkpoint_block(
-        store,
-        node.root,
-        store.finalized_checkpoint.epoch,
-    )
-
-    correct_finalized = (
-        store.finalized_checkpoint.epoch == GENESIS_EPOCH
-        or store.finalized_checkpoint.root == finalized_checkpoint_block
-    )
-
-    # If expected finalized/justified, add to viable node tree and signal viability to parent.
-    if correct_justified and correct_finalized:
-        # [Modified in Gloas:EIP7732]
-        viable_nodes.add(node)
-        return True
-
-    # Otherwise, branch not viable
-    return False
-```
-
-### Modified `get_filtered_node_tree`
 
 ```python
 def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
@@ -622,10 +566,13 @@ def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
 
 ### Modified `get_node_children`
 
-*Note*: This function is modified to return all possible children of a given
-node, regardless of the FFG test result. It expands a *pending* node into its
-*empty* and *full* variants, and an *empty* or *full* node into the *pending*
-nodes of its children blocks.
+*Note*: This function is modified to operate on payload-status variants instead
+of blocks, so that each variant is FFG-tested independently by
+`filter_node_tree`. The FFG test itself is computed per block root and is
+unchanged. This function returns all possible children of a given node,
+regardless of the FFG test result. It expands a *pending* node into its *empty*
+and *full* variants, and an *empty* or *full* node into the *pending* nodes of
+its children blocks.
 
 ```python
 def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:

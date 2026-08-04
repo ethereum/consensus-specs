@@ -26,9 +26,9 @@
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
+    - [`get_node_children`](#get_node_children)
     - [`filter_node_tree`](#filter_node_tree)
     - [`get_filtered_node_tree`](#get_filtered_node_tree)
-    - [`get_node_children`](#get_node_children)
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
@@ -394,6 +394,20 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         return head_state.current_justified_checkpoint
 ```
 
+#### `get_node_children`
+
+```python
+def get_node_children(
+    store: Store,
+    node: ForkChoiceNode,
+) -> Sequence[ForkChoiceNode]:
+    return [
+        ForkChoiceNode(root=root)
+        for root in store.blocks
+        if store.blocks[root].parent_root == node.root
+    ]
+```
+
 #### `filter_node_tree`
 
 *Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
@@ -458,20 +472,6 @@ def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
     viable_nodes: Set[ForkChoiceNode] = set()
     filter_node_tree(store, base, viable_nodes)
     return viable_nodes
-```
-
-#### `get_node_children`
-
-```python
-def get_node_children(
-    store: Store,
-    node: ForkChoiceNode,
-) -> Sequence[ForkChoiceNode]:
-    return [
-        ForkChoiceNode(root=root)
-        for root in store.blocks
-        if store.blocks[root].parent_root == node.root
-    ]
 ```
 
 #### `get_head`
