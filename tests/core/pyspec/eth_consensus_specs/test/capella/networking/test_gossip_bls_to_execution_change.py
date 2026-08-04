@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.bls_to_execution_changes import (
     get_signed_address_change as get_signed_bls_to_execution_change,
 )
 from eth_consensus_specs.test.helpers.constants import CAPELLA
+from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
@@ -16,8 +17,9 @@ def get_capella_fork_time_ms(spec, state):
     """
     Return the current time in milliseconds at the Capella fork epoch.
     """
+    store = get_genesis_forkchoice_store(spec, state)
     capella_slot = spec.compute_start_slot_at_epoch(spec.config.CAPELLA_FORK_EPOCH)
-    return spec.compute_time_at_slot_ms(state, capella_slot)
+    return spec.compute_time_at_slot_ms(store, capella_slot)
 
 
 @with_capella_and_later
@@ -70,7 +72,8 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
 
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    current_time_ms = spec.compute_time_at_slot_ms(state, spec.Slot(0))
+    store = get_genesis_forkchoice_store(spec, state)
+    current_time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)

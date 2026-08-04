@@ -1,21 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "dependencyDashboard": false,
-  "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "extends": ["config:recommended", ":semanticCommitsDisabled", "group:all"],
   "labels": ["dependencies"],
   "schedule": ["before 12pm on monday"],
   "packageRules": [
     {
       "matchDepNames": ["python"],
       "enabled": false
-    },
-    {
-      "matchManagers": ["uv"],
-      "groupName": null
-    },
-    {
-      "matchManagers": ["github-actions"],
-      "groupName": null
     }
   ]
 }

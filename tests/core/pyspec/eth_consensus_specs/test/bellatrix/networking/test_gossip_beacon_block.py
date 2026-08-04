@@ -1,12 +1,14 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
+    with_bellatrix_and_later,
+    with_bellatrix_only,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_complete_transition,
@@ -15,6 +17,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -30,7 +33,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_bellatrix_and_later
 @spec_state_test
 def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     """
@@ -39,7 +42,8 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -53,10 +57,13 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -64,7 +71,7 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
         state=state,
         signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        block_payload_statuses={},
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -76,7 +83,7 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     )
 
 
-@with_phases([BELLATRIX])
+@with_bellatrix_only
 @spec_state_test
 def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     """
@@ -85,7 +92,8 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_incomplete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -100,7 +108,7 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -123,7 +131,7 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec, state):
     """
@@ -132,7 +140,8 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -150,7 +159,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -180,7 +189,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verified(spec, state):
     """
@@ -190,7 +199,8 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -237,7 +247,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -270,7 +280,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spec, state):
     """
@@ -280,7 +290,8 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -328,7 +339,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -358,7 +369,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, state):
     """
@@ -368,7 +379,8 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -418,7 +430,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -448,7 +460,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state):
     """
@@ -458,7 +470,8 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -507,7 +520,7 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -530,7 +543,7 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     """
@@ -540,7 +553,8 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     yield "topic", "meta", "beacon_block"
 
     state = build_state_with_complete_transition(spec, state)
-    yield "state", state
+    anchor_state = state.copy()
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -589,7 +603,7 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
