@@ -11,6 +11,7 @@
   - [Modified `CellsBitList`](#modified-cellsbitlist)
 - [Containers](#containers)
   - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
+  - [Modified `PartialDataColumnPartsMetadata`](#modified-partialdatacolumnpartsmetadata)
   - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Blob subnets](#blob-subnets)
@@ -62,6 +63,16 @@ class PartialDataColumnSidecar(Container):
     kzg_proofs: KZGProofs
     # [Modified in Gloas:EIP7732]
     # Removed `header`
+```
+
+### Modified `PartialDataColumnPartsMetadata`
+
+```python
+class PartialDataColumnPartsMetadata(Container):
+    # [Modified in Gloas:EIP7688]
+    available: CellsBitList
+    # [Modified in Gloas:EIP7688]
+    requests: CellsBitList
 ```
 
 ### Modified `PartialDataColumnGroupID`

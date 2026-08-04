@@ -78,9 +78,9 @@ class LogsBloom(ByteVector[BYTES_PER_LOGS_BLOOM]):
 
 *Note*: The `Transaction` type is a stub which is not final.
 
-*Note*: The `Transaction` is a \[typed transaction
-envelope\](https://eips.ethereum.org/EIPS/eip-2
-718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction.
+*Note*: A `Transaction` is either a
+[typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array)
+or a legacy transaction.
 
 ```python
 class Transaction(ByteList[MAX_BYTES_PER_TRANSACTION]):

@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [New `ExecutionAddress`](#new-executionaddress)
+  - [`ExecutionAddress`](#executionaddress)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Staking deposit contract](#staking-deposit-contract)
@@ -23,7 +23,7 @@ contract, part of Phase 0.
 
 ## Types
 
-### New `ExecutionAddress`
+### `ExecutionAddress`
 
 ```python
 class ExecutionAddress(Bytes20):

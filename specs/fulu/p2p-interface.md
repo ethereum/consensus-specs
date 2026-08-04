@@ -8,9 +8,9 @@
   - [Configuration](#configuration)
   - [Types](#types)
     - [New `DataColumnIndices`](#new-datacolumnindices)
-  - [Containers](#containers)
     - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
     - [New `DataColumnSidecars`](#new-datacolumnsidecars)
+  - [Containers](#containers)
     - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
@@ -84,8 +84,6 @@ class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
     """
 ```
 
-### Containers
-
 #### New `DataColumnsByRootIdentifiers`
 
 ```python
@@ -105,6 +103,8 @@ class DataColumnSidecars(List[DataColumnSidecar, compute_max_request_data_column
     ``DataColumnSidecarsByRoot`` response.
     """
 ```
+
+### Containers
 
 #### New `DataColumnsByRootIdentifier`
 

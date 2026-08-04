@@ -1265,21 +1265,18 @@ unsigned byte:
   expected message schema and encoding specified in the request.
 - 1: **InvalidRequest** -- the contents of the request are semantically invalid,
   or the payload is malformed, or could not be understood. The response payload
-  adheres to the `ErrorMessage` schema (described below).
+  adheres to the schema (described below).
 - 2: **ServerError** -- the responder encountered an error while processing the
-  request. The response payload adheres to the `ErrorMessage` schema (described
-  below).
+  request. The response payload adheres to the schema (described below).
 - 3: **ResourceUnavailable** -- the responder does not have requested resource.
-  The response payload adheres to the `ErrorMessage` schema (described below).
-  *Note*: This response code is only valid as a response where specified.
+  The response payload adheres to the schema (described below). *Note*: This
+  response code is only valid as a response where specified.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous
 request-specific responses.
 
 The range `[4, 127]` is RESERVED for future usages, and should be treated as
 error if not recognized expressly.
-
-The `ErrorMessage` schema is:
 
 ```
 (
