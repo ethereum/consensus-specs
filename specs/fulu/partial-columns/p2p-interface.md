@@ -268,7 +268,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [IGNORE] The header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
-        if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+        if is_future_slot(store, block_header.slot, current_time_ms):
             raise GossipIgnore("header is from a future slot")
 
         # [IGNORE] The header is from a slot greater than the latest finalized slot
@@ -289,22 +289,22 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [IGNORE] The header's block's parent has been seen
         # (MAY be queued for processing once the parent block is retrieved)
-        if block_header.parent_root not in store.blocks:
+        parent_root = block_header.parent_root
+        if parent_root not in store.blocks:
             raise GossipIgnore("header's parent has not been seen")
 
         # [REJECT] The header's block's parent passes validation
-        if block_header.parent_root not in store.block_states:
+        if parent_root not in store.block_states:
             raise GossipReject("header's parent failed validation")
 
         # [REJECT] The header is from a higher slot than the header's block's parent
-        if block_header.slot <= store.blocks[block_header.parent_root].slot:
+        if block_header.slot <= store.blocks[parent_root].slot:
             raise GossipReject("header is not from a higher slot than its parent")
 
         # [REJECT] The current finalized_checkpoint is an ancestor of the header's block
-        checkpoint_block = get_checkpoint_block(
-            store, block_header.parent_root, store.finalized_checkpoint.epoch
-        )
-        if checkpoint_block != store.finalized_checkpoint.root:
+        finalized_epoch = store.finalized_checkpoint.epoch
+        finalized_checkpoint_block = get_checkpoint_block(store, parent_root, finalized_epoch)
+        if finalized_checkpoint_block != store.finalized_checkpoint.root:
             raise GossipReject("finalized checkpoint is not an ancestor of header's block")
 
         # [REJECT] The header's kzg_commitments inclusion proof is valid
@@ -313,7 +313,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [REJECT] The header is proposed by the expected proposer_index
         # (if shuffling is not available, IGNORE instead and MAY be queued for later)
-        parent_state = store.block_states[block_header.parent_root].copy()
+        parent_state = store.block_states[parent_root].copy()
         process_slots(parent_state, block_header.slot)
         expected_proposer = get_beacon_proposer_index(parent_state)
         if block_header.proposer_index != expected_proposer:
@@ -332,7 +332,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [IGNORE] The corresponding header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
-        if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+        if is_future_slot(store, block_header.slot, current_time_ms):
             raise GossipIgnore("corresponding header is from a future slot")
 
         # [IGNORE] The corresponding header is from a slot greater than the latest finalized slot

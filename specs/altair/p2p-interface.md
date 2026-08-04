@@ -55,15 +55,15 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, Uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
     sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     # [New in Altair]
@@ -86,7 +86,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def is_current_slot(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
@@ -94,7 +94,7 @@ def is_current_slot(
     Check if the given slot is the current slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(state, slot, 0, current_time_ms)
+    return is_within_slot_range(store, slot, 0, current_time_ms)
 ```
 
 #### New `get_sync_subcommittee_pubkeys`
@@ -230,6 +230,7 @@ be included in future blocks. The `state` parameter is the head state.
 ```python
 def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
     current_time_ms: Uint64,
@@ -242,7 +243,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution = contribution_and_proof.contribution
 
     # [IGNORE] The contribution's slot is for the current slot
-    if not is_current_slot(state, contribution.slot, current_time_ms):
+    if not is_current_slot(store, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
 
     # [REJECT] The subcommittee index is in the allowed range
@@ -282,11 +283,11 @@ def validate_sync_committee_contribution_and_proof_gossip(
         raise GossipIgnore("already seen contribution for this data")
 
     # [IGNORE] The sync committee contribution is the first valid contribution received
-    # for the aggregator with index contribution_and_proof.aggregator_index
-    # for the slot contribution.slot and subcommittee index contribution.subcommittee_index
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
     aggregator_key = (
-        contribution_and_proof.aggregator_index,
         contribution.slot,
+        contribution_and_proof.aggregator_index,
         contribution.subcommittee_index,
     )
     if aggregator_key in seen.sync_contribution_aggregator_slots:
@@ -347,6 +348,7 @@ gossiped to the global `sync_committee_contribution_and_proof` topic. The
 ```python
 def validate_sync_committee_message_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
     current_time_ms: Uint64,
@@ -357,7 +359,7 @@ def validate_sync_committee_message_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] The message's slot is for the current slot
-    if not is_current_slot(state, sync_committee_message.slot, current_time_ms):
+    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
 
     # [REJECT] The validator index is valid

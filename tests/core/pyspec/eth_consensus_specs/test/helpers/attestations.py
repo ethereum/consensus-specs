@@ -18,11 +18,15 @@ from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.ssz.ssz_typing import BitList
 
 
+def get_parent_slot(state):
+    # Outside of block processing, the bid in the state is still the
+    # parent block's bid, so its slot is the parent block's slot.
+    return state.latest_execution_payload_bid.slot
+
+
 def process_attestation(spec, state, attestation):
     if is_post_gloas(spec):
-        # Outside of block processing, the bid in the state is still the
-        # parent block's bid, so its slot is the parent block's slot.
-        spec.process_attestation(state, attestation, state.latest_execution_payload_bid.slot)
+        spec.process_attestation(state, attestation, get_parent_slot(state))
     else:
         spec.process_attestation(state, attestation)
 
@@ -32,6 +36,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     Run ``process_attestation``, yielding:
       - pre-state ('pre')
       - attestation ('attestation')
+      - parent slot ('parent_slot' in meta, Gloas and later)
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
@@ -39,6 +44,10 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield "pre", state
 
     yield "attestation", attestation
+
+    # Gloas takes the parent block's slot as an extra input.
+    if is_post_gloas(spec):
+        yield "parent_slot", "meta", int(get_parent_slot(state))
 
     # If the attestation is invalid, processing is aborted, and there is no post-state.
     if not valid:

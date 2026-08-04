@@ -185,7 +185,10 @@ def Sign(SK, message):
     return signature_point.to_compressed_bytes()
 
 
-@only_with_bls(alt_return=STUB_PUBKEY)
+# Pubkey aggregation must be computed even when BLS is inactive: unlike
+# signature verification, its result is data written into the beacon state
+# (e.g. `next_sync_committee.aggregate_pubkey`), which clients must be able
+# to reproduce regardless of the `bls_setting` in use.
 def AggregatePKs(pubkeys):
     aggregate = _aggregate_pubkey_points(pubkeys)
     assert aggregate is not None, f"empty or invalid pubkeys: {pubkeys!r}"

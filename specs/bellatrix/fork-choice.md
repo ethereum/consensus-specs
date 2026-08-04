@@ -187,6 +187,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     consider scheduling it for later processing in such case.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
@@ -207,7 +213,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # [New in Bellatrix]

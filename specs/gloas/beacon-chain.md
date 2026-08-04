@@ -134,6 +134,7 @@
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
       - [Removed `process_execution_payload`](#removed-process_execution_payload)
+      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
@@ -1952,6 +1953,25 @@ def process_withdrawals(
 `verify_execution_payload_envelope`, a pure verification helper called from
 `on_execution_payload_envelope`. Payload processing is deferred to the next
 beacon block via `process_parent_execution_payload`.
+
+##### New `verify_execution_payload_envelope_signature`
+
+```python
+def verify_execution_payload_envelope_signature(
+    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
+) -> bool:
+    builder_index = signed_envelope.message.builder_index
+    if builder_index == BUILDER_INDEX_SELF_BUILD:
+        validator_index = state.latest_block_header.proposer_index
+        pubkey = state.validators[validator_index].pubkey
+    else:
+        pubkey = state.builders[builder_index].pubkey
+
+    signing_root = compute_signing_root(
+        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+    )
+    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
+```
 
 ##### Modified `get_execution_requests_list`
 
