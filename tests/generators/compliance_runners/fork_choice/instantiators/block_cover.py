@@ -38,7 +38,7 @@ def _should_justify_epoch(parents, current_justifications, previous_justificatio
     return any(previous_justifications[c] for c in (b for b, p in enumerate(parents) if p == block))
 
 
-def _generate_filter_node_tree(
+def _generate_filter_block_tree(
     spec,
     genesis_state,
     block_epochs,
@@ -357,7 +357,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
 
     rnd = random.Random(seed)
     signed_blocks, post_block_tips, target_signed_block, target_post_state = (
-        _generate_filter_node_tree(
+        _generate_filter_block_tree(
             spec,
             state,
             block_epochs,
