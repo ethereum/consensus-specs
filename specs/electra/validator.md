@@ -133,7 +133,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
     committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
     committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
-    committee_bits = BitVector[MAX_COMMITTEES_PER_SLOT](committee_flags)
+    committee_bits = CommitteeBits(committee_flags)
 
     return Attestation(
         aggregation_bits=aggregation_bits,
@@ -290,6 +290,6 @@ updated field assignments:
 - Set `aggregate_attestation.aggregation_bits` to an `AggregationBits` of length
   `len(committee)` with the bits corresponding to the `attester_index` of each
   `SingleAttestation` input set to `0b1`.
-- Set `aggregate_attestation.committee_bits` to a
-  `BitVector[MAX_COMMITTEES_PER_SLOT]` with the single bit corresponding to the
-  shared `committee_index` across all `SingleAttestation` inputs set to `0b1`.
+- Set `aggregate_attestation.committee_bits` to a `CommitteeBits` with the
+  single bit corresponding to the shared `committee_index` across all
+  `SingleAttestation` inputs set to `0b1`.

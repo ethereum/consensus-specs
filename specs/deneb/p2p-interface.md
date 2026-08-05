@@ -6,6 +6,12 @@
 - [Modifications in Deneb](#modifications-in-deneb)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
+    - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
+    - [New `BlobIdentifiers`](#new-blobidentifiers)
+    - [New `BlobSidecars`](#new-blobsidecars)
+    - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
   - [Containers](#containers)
     - [New `BlobSidecar`](#new-blobsidecar)
     - [New `BlobIdentifier`](#new-blobidentifier)
@@ -66,6 +72,59 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve blob sidecars |
 | `BLOB_SIDECAR_SUBNET_COUNT`             | `Uint64(6)`              | Number of blob sidecar subnets used in the gossipsub protocol  |
 
+### Types
+
+#### Modified `BeaconBlockRoots`
+
+```python
+# [Modified in Deneb:EIP4844]
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
+```
+
+#### Modified `SignedBeaconBlocks`
+
+```python
+# [Modified in Deneb:EIP4844]
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
+```
+
+#### New `BlobIdentifiers`
+
+```python
+class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
+    """
+    The identifiers of the blob sidecars requested in a
+    ``BlobSidecarsByRoot`` request.
+    """
+```
+
+#### New `BlobSidecars`
+
+```python
+class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
+    """
+    Blob sidecars returned in a ``BlobSidecarsByRange`` or
+    ``BlobSidecarsByRoot`` response.
+    """
+```
+
+#### New `KZGCommitmentInclusionProof`
+
+```python
+class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+    """
+    A Merkle branch proving a blob's KZG commitment within
+    ``BeaconBlockBody``.
+    """
+```
+
 ### Containers
 
 #### New `BlobSidecar`
@@ -81,7 +140,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: KZGCommitmentInclusionProof
 ```
 
 #### New `BlobIdentifier`
@@ -783,7 +842,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -810,7 +869,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+  BeaconBlockRoots
 )
 ```
 
@@ -818,7 +877,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -860,7 +919,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 
@@ -951,7 +1010,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, compute_max_request_blob_sidecars()]
+  BlobIdentifiers
 )
 ```
 
@@ -959,7 +1018,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 

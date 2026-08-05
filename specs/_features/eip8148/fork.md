@@ -88,7 +88,7 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8148]
-        validator_sweep_thresholds=ProgressiveList[Gwei](),
+        validator_sweep_thresholds=SweepThresholds(),
     )
 
     for validator in post.validators:

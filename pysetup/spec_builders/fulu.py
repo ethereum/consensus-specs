@@ -18,6 +18,7 @@ from eth_consensus_specs.electra import {preset_name} as electra
         return {
             "BlobIdentifier",
             "BlobSidecar",
+            "KZGCommitmentInclusionProof",
         }
 
     @classmethod

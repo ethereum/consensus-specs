@@ -9,6 +9,8 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `ProofData`](#new-proofdata)
+  - [New `ProofType`](#new-prooftype)
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
@@ -32,9 +34,23 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Types
 
-| Name        | SSZ equivalent | Description                       |
-| ----------- | -------------- | --------------------------------- |
-| `ProofType` | `Uint8`        | The type identifier for the proof |
+### New `ProofData`
+
+```python
+class ProofData(ProgressiveByteList):
+    """
+    The opaque proof bytes of an execution proof.
+    """
+```
+
+### New `ProofType`
+
+```python
+class ProofType(Uint8):
+    """
+    The identifier of the proof system that produced an execution proof.
+    """
+```
 
 ## Constants
 
@@ -65,7 +81,7 @@ class PublicInput(Container):
 
 ```python
 class ExecutionProof(Container):
-    proof_data: ProgressiveByteList
+    proof_data: ProofData
     proof_type: ProofType
     public_input: PublicInput
 ```

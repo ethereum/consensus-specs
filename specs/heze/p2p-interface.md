@@ -9,6 +9,8 @@
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [New `SignedInclusionLists`](#new-signedinclusionlists)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -49,6 +51,18 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_REQUEST_INCLUSION_LIST`                | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
 | `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`    | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
 | `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST` | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
+
+### Types
+
+#### New `SignedInclusionLists`
+
+```python
+class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+    """
+    Signed inclusion lists returned in an ``InclusionListsByIndices``
+    response.
+    """
+```
 
 ### Helpers
 
@@ -184,7 +198,7 @@ Request Content:
 (
   slot: Slot
   inclusion_list_committee_root: Root
-  indices: BitVector[INCLUSION_LIST_COMMITTEE_SIZE]
+  indices: InclusionListBits
 )
 ```
 
@@ -192,7 +206,7 @@ Response Content:
 
 ```
 (
-  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+  SignedInclusionLists
 )
 ```
 

@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
+  - [Types](#types)
+    - [New `Syncnets`](#new-syncnets)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -45,6 +47,17 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery
 domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
+
+### Types
+
+#### New `Syncnets`
+
+```python
+class Syncnets(BitVector[SYNC_COMMITTEE_SUBNET_COUNT]):
+    """
+    The sync committee subnets a node is subscribed to, one bit per subnet.
+    """
+```
 
 ### Helpers
 
@@ -125,8 +138,8 @@ communicate the sync committee subnet subscriptions:
 ```
 (
   seq_number: Uint64
-  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
-  syncnets: BitVector[SYNC_COMMITTEE_SUBNET_COUNT]
+  attnets: Attnets
+  syncnets: Syncnets
 )
 ```
 
@@ -546,9 +559,9 @@ facilitate sync committee subnet discovery. The length of this bitfield is
 bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
-| Key        | Value                                        |
-| ---------- | -------------------------------------------- |
-| `syncnets` | SSZ `BitVector[SYNC_COMMITTEE_SUBNET_COUNT]` |
+| Key        | Value      |
+| ---------- | ---------- |
+| `syncnets` | `Syncnets` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for
 further details on how the new bits are used.

@@ -108,7 +108,7 @@ def get_inclusion_list_transactions(
     equivocators = store.equivocators[key]
     timeliness = store.inclusion_list_timeliness
 
-    transactions = []
+    transactions: list[Transaction] = []
     for inclusion_list_root in inclusion_lists:
         inclusion_list = inclusion_lists[inclusion_list_root].message
 
@@ -131,7 +131,7 @@ def get_inclusion_list_transactions(
 ```python
 def get_inclusion_list_bits(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
-) -> BitVector[INCLUSION_LIST_COMMITTEE_SIZE]:
+) -> InclusionListBits:
     """
     Return a ``BitVector`` over inclusion list committee indices with bits set
     for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
@@ -157,9 +157,7 @@ def get_inclusion_list_bits(
 
         validator_indices.append(inclusion_list.validator_index)
 
-    return BitVector[INCLUSION_LIST_COMMITTEE_SIZE](
-        validator_index in validator_indices for validator_index in committee
-    )
+    return InclusionListBits(validator_index in validator_indices for validator_index in committee)
 ```
 
 ### New `is_inclusion_list_bits_inclusive`
@@ -169,7 +167,7 @@ def is_inclusion_list_bits_inclusive(
     store: InclusionListStore,
     state: BeaconState,
     slot: Slot,
-    inclusion_list_bits: BitVector[INCLUSION_LIST_COMMITTEE_SIZE],
+    inclusion_list_bits: InclusionListBits,
     only_timely: bool = True,
 ) -> bool:
     """

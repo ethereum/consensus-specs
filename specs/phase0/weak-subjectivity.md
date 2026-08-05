@@ -5,6 +5,7 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Types](#types)
+  - [`Ether`](#ether)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
@@ -37,9 +38,14 @@ This document uses data structures, constants, functions, and terminology from
 
 ## Types
 
-| Name    | SSZ Equivalent | Description        |
-| ------- | -------------- | ------------------ |
-| `Ether` | `Uint64`       | An amount in Ether |
+### `Ether`
+
+```python
+class Ether(Uint64):
+    """
+    An amount in Ether, the standard unit of currency on Ethereum.
+    """
+```
 
 ## Constants
 

@@ -9,6 +9,11 @@
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [Modified `DataColumn`](#modified-datacolumn)
+    - [Modified `KZGProofs`](#modified-kzgproofs)
+    - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
+    - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
     - [New `ProposerPreferences`](#new-proposerpreferences)
@@ -82,6 +87,49 @@ libp2p messages.
 | ---------------------- | ---------------------- |
 | `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
 
+### Types
+
+#### Modified `DataColumn`
+
+```python
+# [Modified in Gloas:EIP7688]
+class DataColumn(ProgressiveList[Cell]):
+    """
+    A column of the extended blob data matrix, with at most one cell per blob.
+    """
+```
+
+#### Modified `KZGProofs`
+
+```python
+# [Modified in Gloas:EIP7688]
+class KZGProofs(ProgressiveList[KZGProof]):
+    """
+    The KZG cell proofs of the cells held by a data column.
+    """
+```
+
+#### New `ExecutionPayloadEnvelopeRoots`
+
+```python
+class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
+    """
+    The beacon block roots of the payload envelopes requested in an
+    ``ExecutionPayloadEnvelopesByRoot`` request.
+    """
+```
+
+#### New `SignedExecutionPayloadEnvelopes`
+
+```python
+class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]):
+    """
+    Signed execution payload envelopes returned in an
+    ``ExecutionPayloadEnvelopesByRange`` or
+    ``ExecutionPayloadEnvelopesByRoot`` response.
+    """
+```
+
 ### Containers
 
 #### Modified `DataColumnSidecar`
@@ -97,11 +145,11 @@ longer required in Gloas. The KZG commitments are now located at
 class DataColumnSidecar(Container):
     index: ColumnIndex
     # [Modified in Gloas:EIP7688]
-    column: ProgressiveList[Cell]
+    column: DataColumn
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7688]
-    kzg_proofs: ProgressiveList[KZGProof]
+    kzg_proofs: KZGProofs
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -201,7 +249,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def verify_data_column_sidecar_kzg_proofs(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: ProgressiveList[KZGCommitment],
+    kzg_commitments: BlobKZGCommitments,
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -225,7 +273,7 @@ def verify_data_column_sidecar_kzg_proofs(
 def verify_data_column_sidecar(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: ProgressiveList[KZGCommitment],
+    kzg_commitments: BlobKZGCommitments,
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -1312,7 +1360,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
+  SignedExecutionPayloadEnvelopes
 )
 ```
 
@@ -1341,7 +1389,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_PAYLOADS]
+  ExecutionPayloadEnvelopeRoots
 )
 ```
 
@@ -1349,7 +1397,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
+  SignedExecutionPayloadEnvelopes
 )
 ```
 
