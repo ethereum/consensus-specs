@@ -227,7 +227,7 @@ class AttestingIndices(ProgressiveList[ValidatorIndex]):
 # [Modified in Gloas:EIP7688]
 class Balances(ProgressiveList[Gwei]):
     """
-    The balances of all validators, in Gwei.
+    The balances of all validators.
     """
 ```
 

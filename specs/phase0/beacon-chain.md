@@ -234,7 +234,7 @@ class AttestingIndices(List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]):
 ```python
 class Balances(List[Gwei, VALIDATOR_REGISTRY_LIMIT]):
     """
-    The balances of all validators, in Gwei.
+    The balances of all validators.
     """
 ```
 
