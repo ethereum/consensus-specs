@@ -95,7 +95,7 @@ class Transaction(ByteList[MAX_BYTES_PER_TRANSACTION]):
 ```python
 class Transactions(List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]):
     """
-    The transactions included in an execution payload.
+    A list of execution-layer transactions.
     """
 ```
 

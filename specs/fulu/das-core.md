@@ -85,7 +85,7 @@ class ColumnIndex(Uint64):
 ```python
 class CustodyIndex(Uint64):
     """
-    The index of a custody group, a unit of column custody assigned to nodes.
+    The index of a custody group.
     """
 ```
 
@@ -94,7 +94,7 @@ class CustodyIndex(Uint64):
 ```python
 class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     """
-    A column of the extended blob data matrix, holding one cell per blob.
+    A column of the extended blob data matrix, with at most one cell per blob.
     """
 ```
 

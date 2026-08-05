@@ -73,8 +73,7 @@ Altair is the first beacon-chain upgrade. Its main features are:
 ```python
 class EpochParticipation(List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]):
     """
-    Participation flags tracked over an epoch. The list is aligned with
-    ``state.validators``, one entry per validator.
+    The participation flags of each validator for an epoch.
     """
 ```
 
@@ -83,9 +82,7 @@ class EpochParticipation(List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]):
 ```python
 class InactivityScores(List[Uint64, VALIDATOR_REGISTRY_LIMIT]):
     """
-    Inactivity scores, which grow during inactivity leaks and determine the
-    associated penalties. The list is aligned with ``state.validators``, one
-    entry per validator.
+    Each validator's inactivity score, tracking missed timely target votes.
     """
 ```
 
@@ -113,8 +110,7 @@ class SyncCommitteeBits(BitVector[SYNC_COMMITTEE_SIZE]):
 ```python
 class SyncCommitteePubkeys(Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]):
     """
-    The public keys of the sync committee members, in committee order. Keys
-    repeat when a validator is selected more than once.
+    The public keys of the sync committee members, in committee order.
     """
 ```
 

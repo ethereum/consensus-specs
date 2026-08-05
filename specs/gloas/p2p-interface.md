@@ -95,7 +95,7 @@ libp2p messages.
 # [Modified in Gloas:EIP7688]
 class DataColumn(ProgressiveList[Cell]):
     """
-    A column of the extended blob data matrix, holding one cell per blob.
+    A column of the extended blob data matrix, with at most one cell per blob.
     """
 ```
 
@@ -105,8 +105,7 @@ class DataColumn(ProgressiveList[Cell]):
 # [Modified in Gloas:EIP7688]
 class KZGProofs(ProgressiveList[KZGProof]):
     """
-    One KZG proof per blob, used to verify the blobs against their
-    commitments.
+    The KZG cell proofs of the cells held by a data column.
     """
 ```
 

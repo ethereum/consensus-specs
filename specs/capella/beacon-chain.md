@@ -87,9 +87,7 @@ class BLSToExecutionChanges(List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTIO
 ```python
 class HistoricalSummaries(List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]):
     """
-    ``HistoricalSummary`` objects appended every
-    ``SLOTS_PER_HISTORICAL_ROOT`` slots, continuing the frozen
-    ``historical_roots``.
+    Summaries of the chain's block and state root history.
     """
 ```
 
@@ -107,7 +105,7 @@ class WithdrawalIndex(Uint64):
 ```python
 class Withdrawals(List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]):
     """
-    The withdrawals included in an execution payload.
+    A list of withdrawals.
     """
 ```
 

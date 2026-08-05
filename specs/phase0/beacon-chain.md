@@ -225,8 +225,7 @@ class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]):
 ```python
 class AttestingIndices(List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]):
     """
-    The indices of the validators participating in an attestation, sorted and
-    without duplicates.
+    The indices of the validators participating in an attestation.
     """
 ```
 
@@ -235,8 +234,7 @@ class AttestingIndices(List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]):
 ```python
 class Balances(List[Gwei, VALIDATOR_REGISTRY_LIMIT]):
     """
-    The balances of all validators, in Gwei. The list is aligned with
-    ``state.validators``, one entry per validator.
+    The balances of all validators, in Gwei.
     """
 ```
 
@@ -282,8 +280,7 @@ class CommitteeIndex(Uint64):
 ```python
 class DepositDataList(List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH]):
     """
-    All deposits made to the deposit contract, whose hash tree root matches
-    the contract's deposit root.
+    The ``DepositData`` of deposits made to the deposit contract.
     """
 ```
 
@@ -311,8 +308,7 @@ class Deposits(List[Deposit, MAX_DEPOSITS]):
 ```python
 class Domain(Bytes32):
     """
-    A signature domain. Mixed into signed messages so that signatures are not
-    replayable across message types, forks, or chains.
+    A signature domain.
     """
 ```
 
@@ -330,8 +326,7 @@ class DomainType(Bytes4):
 ```python
 class Epoch(Uint64):
     """
-    An epoch number. An epoch is a span of ``SLOTS_PER_EPOCH`` slots, and most
-    validator accounting happens at epoch boundaries.
+    An epoch number. An epoch is a span of ``SLOTS_PER_EPOCH`` slots.
     """
 ```
 
@@ -340,8 +335,7 @@ class Epoch(Uint64):
 ```python
 class Eth1DataVotes(List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]):
     """
-    The ``Eth1Data`` votes cast by block proposers during the current voting
-    period.
+    The ``Eth1Data`` votes of the current voting period.
     """
 ```
 
@@ -350,8 +344,7 @@ class Eth1DataVotes(List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPO
 ```python
 class ForkDigest(Bytes4):
     """
-    A short digest of the fork version and the genesis validators root, used
-    on the networking layer to separate forks.
+    A short digest of the current fork data.
     """
 ```
 
@@ -380,8 +373,7 @@ class Hash32(Bytes32):
 ```python
 class HistoricalRoots(List[Root, HISTORICAL_ROOTS_LIMIT]):
     """
-    Roots of ``HistoricalBatch`` objects, appended every
-    ``SLOTS_PER_HISTORICAL_ROOT`` slots as an append-only history of the chain.
+    The roots of ``HistoricalBatch`` objects.
     """
 ```
 
@@ -390,8 +382,7 @@ class HistoricalRoots(List[Root, HISTORICAL_ROOTS_LIMIT]):
 ```python
 class JustificationBits(BitVector[JUSTIFICATION_BITS_LENGTH]):
     """
-    Justification status of the last ``JUSTIFICATION_BITS_LENGTH`` epochs,
-    used to decide finality under Casper FFG.
+    The justification status of the last ``JUSTIFICATION_BITS_LENGTH`` epochs.
     """
 ```
 
@@ -400,8 +391,7 @@ class JustificationBits(BitVector[JUSTIFICATION_BITS_LENGTH]):
 ```python
 class PendingAttestations(List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]):
     """
-    Attestations included in blocks during an epoch, held in the state until
-    they are processed at the epoch boundary.
+    The attestations included in blocks during an epoch.
     """
 ```
 
@@ -439,7 +429,7 @@ class Root(Bytes32):
 class Slashings(Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]):
     """
     Per-epoch sums of slashed effective balances, indexed by epoch modulo
-    ``EPOCHS_PER_SLASHINGS_VECTOR`` and used to scale slashing penalties.
+    ``EPOCHS_PER_SLASHINGS_VECTOR``.
     """
 ```
 
@@ -448,8 +438,7 @@ class Slashings(Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]):
 ```python
 class Slot(Uint64):
     """
-    A slot number. Time is divided into fixed-length slots, and at most one
-    beacon block may be proposed per slot.
+    A slot number. Time is divided into fixed-length slots.
     """
 ```
 
@@ -477,8 +466,7 @@ class ValidatorIndex(Uint64):
 ```python
 class Validators(List[Validator, VALIDATOR_REGISTRY_LIMIT]):
     """
-    The validator registry. Validators are appended on deposit and are never
-    removed.
+    The validator registry.
     """
 ```
 
@@ -487,8 +475,7 @@ class Validators(List[Validator, VALIDATOR_REGISTRY_LIMIT]):
 ```python
 class Version(Bytes4):
     """
-    A fork version number, unique per upgrade and per chain to keep signature
-    domains distinct.
+    A fork version number.
     """
 ```
 

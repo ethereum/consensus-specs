@@ -116,8 +116,7 @@ class KZGProof(Bytes48):
 ```python
 class VersionedHash(Bytes32):
     """
-    A hash prefixed with a version byte, used on the execution layer to
-    reference blob KZG commitments.
+    A versioned hash of a blob's KZG commitment.
     """
 ```
 

@@ -217,8 +217,7 @@ class AttesterSlashings(ProgressiveList[AttesterSlashing]):
 # [Modified in Gloas:EIP7688]
 class AttestingIndices(ProgressiveList[ValidatorIndex]):
     """
-    The indices of the validators participating in an attestation, sorted and
-    without duplicates.
+    The indices of the validators participating in an attestation.
     """
 ```
 
@@ -228,8 +227,7 @@ class AttestingIndices(ProgressiveList[ValidatorIndex]):
 # [Modified in Gloas:EIP7688]
 class Balances(ProgressiveList[Gwei]):
     """
-    The balances of all validators, in Gwei. The list is aligned with
-    ``state.validators``, one entry per validator.
+    The balances of all validators, in Gwei.
     """
 ```
 
@@ -290,8 +288,7 @@ class Deposits(ProgressiveList[Deposit]):
 # [Modified in Gloas:EIP7688]
 class EpochParticipation(ProgressiveList[ParticipationFlags]):
     """
-    Participation flags tracked over an epoch. The list is aligned with
-    ``state.validators``, one entry per validator.
+    The participation flags of each validator for an epoch.
     """
 ```
 
@@ -301,9 +298,7 @@ class EpochParticipation(ProgressiveList[ParticipationFlags]):
 # [Modified in Gloas:EIP7688]
 class InactivityScores(ProgressiveList[Uint64]):
     """
-    Inactivity scores, which grow during inactivity leaks and determine the
-    associated penalties. The list is aligned with ``state.validators``, one
-    entry per validator.
+    Each validator's inactivity score, tracking missed timely target votes.
     """
 ```
 
@@ -313,7 +308,7 @@ class InactivityScores(ProgressiveList[Uint64]):
 # [Modified in Gloas:EIP7688]
 class PendingConsolidations(ProgressiveList[PendingConsolidation]):
     """
-    The queue of consolidations awaiting processing at epoch boundaries.
+    The queue of consolidations awaiting processing.
     """
 ```
 
@@ -323,7 +318,7 @@ class PendingConsolidations(ProgressiveList[PendingConsolidation]):
 # [Modified in Gloas:EIP7688]
 class PendingDeposits(ProgressiveList[PendingDeposit]):
     """
-    The queue of deposits awaiting processing at epoch boundaries.
+    The queue of deposits awaiting processing.
     """
 ```
 
@@ -333,7 +328,7 @@ class PendingDeposits(ProgressiveList[PendingDeposit]):
 # [Modified in Gloas:EIP7688]
 class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
     """
-    The queue of partial withdrawals awaiting processing at epoch boundaries.
+    The queue of partial withdrawals awaiting processing.
     """
 ```
 
@@ -364,7 +359,7 @@ class Transaction(ProgressiveByteList):
 # [Modified in Gloas:EIP7688]
 class Transactions(ProgressiveList[Transaction]):
     """
-    The transactions included in an execution payload.
+    A list of execution-layer transactions.
     """
 ```
 
@@ -374,8 +369,7 @@ class Transactions(ProgressiveList[Transaction]):
 # [Modified in Gloas:EIP7688]
 class Validators(ProgressiveList[Validator]):
     """
-    The validator registry. Validators are appended on deposit and are never
-    removed.
+    The validator registry.
     """
 ```
 
@@ -405,7 +399,7 @@ class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
 # [Modified in Gloas:EIP7688]
 class Withdrawals(ProgressiveList[Withdrawal]):
     """
-    The withdrawals included in an execution payload.
+    A list of withdrawals.
     """
 ```
 
@@ -450,8 +444,7 @@ class BuilderIndex(Uint64):
 ```python
 class BuilderPendingPayments(Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]):
     """
-    A rolling window of pending builder payments, indexed by slot modulo two
-    epochs of slots.
+    The pending builder payments of the previous and current epoch.
     """
 ```
 
@@ -469,8 +462,7 @@ class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
 ```python
 class Builders(ProgressiveList[Builder]):
     """
-    The builder registry. Builders are appended on deposit and are never
-    removed.
+    The builder registry.
     """
 ```
 
@@ -498,7 +490,7 @@ class PayloadAttestations(ProgressiveList[PayloadAttestation]):
 ```python
 class PTC(Vector[ValidatorIndex, PTC_SIZE]):
     """
-    The payload timeliness committee of a slot, with possible duplicates.
+    The payload timeliness committee of a slot.
     """
 ```
 
@@ -507,8 +499,7 @@ class PTC(Vector[ValidatorIndex, PTC_SIZE]):
 ```python
 class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
     """
-    The indices of the PTC members participating in a payload attestation,
-    sorted and without duplicates.
+    The indices of the PTC members participating in a payload attestation.
     """
 ```
 

@@ -79,8 +79,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
     """
-    The indices of the columns requested in a ``DataColumnSidecarsByRange``
-    request.
+    The indices of the data columns being requested.
     """
 ```
 

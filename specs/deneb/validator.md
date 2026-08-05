@@ -56,8 +56,7 @@ class Blobs(List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
 ```python
 class KZGProofs(List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
     """
-    One KZG proof per blob, used to verify the blobs against their
-    commitments.
+    A list of KZG proofs, one for each blob or cell being proven.
     """
 ```
 

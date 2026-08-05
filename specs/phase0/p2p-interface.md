@@ -253,8 +253,7 @@ class ErrorMessage(List[Byte, 256]):
 ```python
 class NodeID(Uint256):
     """
-    A node identifier on the discovery network, derived from the node's
-    identity key.
+    A node identifier on the discovery network.
     """
 ```
 

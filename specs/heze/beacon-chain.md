@@ -56,7 +56,7 @@ class InclusionListBits(BitVector[INCLUSION_LIST_COMMITTEE_SIZE]):
 ```python
 class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]):
     """
-    The inclusion list committee of a slot, with possible duplicates.
+    The inclusion list committee of a slot.
     """
 ```
 

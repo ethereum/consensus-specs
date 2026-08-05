@@ -69,7 +69,7 @@ class ProofByRootIdentifiers(List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENE
 ```python
 class ProofTypes(List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]):
     """
-    The proof types requested for a single beacon block.
+    A selection of execution proof types.
     """
 ```
 

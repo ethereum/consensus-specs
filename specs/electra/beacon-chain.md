@@ -179,8 +179,7 @@ class AttestingIndices(
     List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
 ):
     """
-    The indices of the validators participating in an attestation, sorted and
-    without duplicates.
+    The indices of the validators participating in an attestation.
     """
 ```
 
@@ -216,7 +215,7 @@ class DepositRequests(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]):
 ```python
 class PendingConsolidations(List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]):
     """
-    The queue of consolidations awaiting processing at epoch boundaries.
+    The queue of consolidations awaiting processing.
     """
 ```
 
@@ -225,7 +224,7 @@ class PendingConsolidations(List[PendingConsolidation, PENDING_CONSOLIDATIONS_LI
 ```python
 class PendingDeposits(List[PendingDeposit, PENDING_DEPOSITS_LIMIT]):
     """
-    The queue of deposits awaiting processing at epoch boundaries.
+    The queue of deposits awaiting processing.
     """
 ```
 
@@ -234,7 +233,7 @@ class PendingDeposits(List[PendingDeposit, PENDING_DEPOSITS_LIMIT]):
 ```python
 class PendingPartialWithdrawals(List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]):
     """
-    The queue of partial withdrawals awaiting processing at epoch boundaries.
+    The queue of partial withdrawals awaiting processing.
     """
 ```
 

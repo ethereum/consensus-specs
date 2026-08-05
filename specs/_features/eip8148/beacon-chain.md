@@ -69,8 +69,7 @@ class SweepThresholdRequests(ProgressiveList[SetSweepThresholdRequest]):
 ```python
 class SweepThresholds(ProgressiveList[Gwei]):
     """
-    Per-validator withdrawal sweep thresholds. The list is aligned with
-    ``state.validators``, one entry per validator.
+    Per-validator withdrawal sweep thresholds.
     """
 ```
 
