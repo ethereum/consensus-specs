@@ -29,10 +29,13 @@ runs:
 
     - name: Archive tests
       shell: bash
+      env:
+        SOURCE_PATH: ${{ inputs.source-path }}
+        ARCHIVE_NAME: ${{ inputs.name }}
       run: |
         # Ensure source-path exists so tar succeeds even when zero artifacts
         # were downloaded (e.g. presets with no per-fork reftests).
-        mkdir -p ${{ inputs.source-path }}
+        mkdir -p "$SOURCE_PATH"
         tar --sort=name \
             --owner=0 \
             --group=0 \
@@ -41,18 +44,21 @@ runs:
             --format=gnu \
             --use-compress-program='gzip --no-name' \
             --create \
-            --file=${{ inputs.name }}.tar.gz \
-            ${{ inputs.source-path }}
+            --file="${ARCHIVE_NAME}.tar.gz" \
+            "$SOURCE_PATH"
 
     - name: Delete intermediate artifacts
       shell: bash
-      run: |
-        gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
-          --paginate --jq '.artifacts[]
-            | select(.name | startswith("${{ inputs.artifact-prefix }}-${{ inputs.name }}-"))
-            | .id' | while read id; do
-          gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
-        done
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         GH_REPO: ${{ github.repository }}
+        ARTIFACT_PREFIX: ${{ inputs.artifact-prefix }}
+        ARTIFACT_NAME: ${{ inputs.name }}
+      run: |
+        PREFIX="${ARTIFACT_PREFIX}-${ARTIFACT_NAME}-"
+        gh api "repos/${GH_REPO}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+          --paginate \
+          --jq --arg p "$PREFIX" '.artifacts[] | select(.name | startswith($p)) | .id' \
+          | while read -r id; do
+              gh api -X DELETE "repos/${GH_REPO}/actions/artifacts/$id"
+            done

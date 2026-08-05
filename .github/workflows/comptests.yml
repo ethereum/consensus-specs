@@ -85,22 +85,39 @@ jobs:
     steps:
       - name: Resolve configuration
         id: config
+        env:
+          INPUT_REPO: ${{ inputs.repo }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_RELEASE: ${{ inputs.release }}
+          INPUT_SEED: ${{ inputs.seed }}
+          INPUT_ALTAIR: ${{ inputs.altair }}
+          INPUT_BELLATRIX: ${{ inputs.bellatrix }}
+          INPUT_CAPELLA: ${{ inputs.capella }}
+          INPUT_DENEB: ${{ inputs.deneb }}
+          INPUT_ELECTRA: ${{ inputs.electra }}
+          INPUT_FULU: ${{ inputs.fulu }}
+          INPUT_GLOAS: ${{ inputs.gloas }}
+          INPUT_TINY: ${{ inputs.tiny }}
+          INPUT_SMALL: ${{ inputs.small }}
+          INPUT_STANDARD: ${{ inputs.standard }}
+          THIS_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # Repo
-          repo="${{ inputs.repo || github.repository }}"
+          repo="${INPUT_REPO:-$THIS_REPO}"
           echo "repo=$repo" >> "$GITHUB_OUTPUT"
 
           # Ref
-          ref="${{ inputs.ref }}"
+          ref="$INPUT_REF"
           if [[ -n "$ref" ]]; then
             echo "ref=$ref" >> "$GITHUB_OUTPUT"
           fi
 
           # Release tag
-          release="${{ inputs.release }}"
+          release="$INPUT_RELEASE"
           if [[ -n "$release" ]]; then
-            if [[ "$repo" != "${{ github.repository }}" ]]; then
-              echo "Release-tagged compliance runs must use ${{ github.repository }} as the repository." >&2
+            if [[ "$repo" != "$THIS_REPO" ]]; then
+              echo "Release-tagged compliance runs must use ${THIS_REPO} as the repository." >&2
               exit 1
             fi
             if [[ "$ref" != "$release" ]]; then
@@ -115,17 +132,17 @@ jobs:
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
 
           # Forks
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
             forks='["fulu","gloas"]'
           else
             selected=()
-            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
-            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
-            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
-            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
-            [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
-            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
-            [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
+            [[ "$INPUT_ALTAIR" == "true" ]] && selected+=("altair")
+            [[ "$INPUT_BELLATRIX" == "true" ]] && selected+=("bellatrix")
+            [[ "$INPUT_CAPELLA" == "true" ]] && selected+=("capella")
+            [[ "$INPUT_DENEB" == "true" ]] && selected+=("deneb")
+            [[ "$INPUT_ELECTRA" == "true" ]] && selected+=("electra")
+            [[ "$INPUT_FULU" == "true" ]] && selected+=("fulu")
+            [[ "$INPUT_GLOAS" == "true" ]] && selected+=("gloas")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
               echo "No forks selected." >&2
@@ -138,13 +155,13 @@ jobs:
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
 
           # Configs
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
             configs='["small"]'
           else
             selected=()
-            [[ "${{ inputs.tiny }}" == "true" ]] && selected+=("tiny")
-            [[ "${{ inputs.small }}" == "true" ]] && selected+=("small")
-            [[ "${{ inputs.standard }}" == "true" ]] && selected+=("standard")
+            [[ "$INPUT_TINY" == "true" ]] && selected+=("tiny")
+            [[ "$INPUT_SMALL" == "true" ]] && selected+=("small")
+            [[ "$INPUT_STANDARD" == "true" ]] && selected+=("standard")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
               echo "No generator configs selected." >&2
@@ -157,7 +174,7 @@ jobs:
           echo "configs=$configs" >> "$GITHUB_OUTPUT"
 
           # Seed
-          seed_input="${{ inputs.seed }}"
+          seed_input="$INPUT_SEED"
           if [[ -z "$seed_input" ]]; then
             seed=$(shuf -i 1-2147483647 -n 1)
           elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
