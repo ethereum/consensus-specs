@@ -800,14 +800,11 @@ def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
     # Pick a proposal slot whose epoch is strictly less than the current epoch.
     past_slot = spec.Slot(0)
     _, validator_index = find_upcoming_proposal_slot(spec, state)
-    # The dependent_root for the genesis epoch is unreachable, use a placeholder
-    # since this check fires before the dependent_root lookup.
     signed_prefs = build_signed_proposer_preferences(
         spec,
         state,
         proposal_slot=past_slot,
         validator_index=validator_index,
-        dependent_root=spec.Root(),
     )
     yield get_filename(signed_prefs), signed_prefs
 

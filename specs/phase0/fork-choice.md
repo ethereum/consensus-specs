@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`compute_shuffling_dependent_slot`](#compute_shuffling_dependent_slot)
       - [`get_shuffling_dependent_root`](#get_shuffling_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
@@ -879,16 +880,21 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `compute_shuffling_dependent_slot`
+
+```python
+def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_SLOT
+    return Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+```
+
 ##### `get_shuffling_dependent_root`
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     node = ForkChoiceNode(root=root)
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 

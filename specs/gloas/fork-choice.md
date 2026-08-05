@@ -912,16 +912,12 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     # [Modified in Gloas:EIP7732]
     node = ForkChoiceNode(
         root=root,
         payload_status=PAYLOAD_STATUS_PENDING,
     )
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 
