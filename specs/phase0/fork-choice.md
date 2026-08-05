@@ -886,7 +886,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
     if epoch <= MIN_SEED_LOOKAHEAD:
         return GENESIS_SLOT
-    return Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - Slot(1)
 ```
 
 ##### `get_shuffling_dependent_root`
