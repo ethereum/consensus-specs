@@ -15,7 +15,7 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
-    - [Constructing the sidecars](#constructing-the-sidecars)
+    - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
       - [`get_data_column_sidecars_from_block`](#get_data_column_sidecars_from_block)
       - [`get_data_column_sidecars_from_column_sidecar`](#get_data_column_sidecars_from_column_sidecar)
@@ -47,7 +47,7 @@ document and used throughout.
 
 | Name                                   | Value              | Description                                                                                                |
 | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `VALIDATOR_CUSTODY_REQUIREMENT`        | `8`                | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
+| `VALIDATOR_CUSTODY_REQUIREMENT`        | `Uint64(8)`        | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
 | `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody                               |
 
 ## Helpers
@@ -61,7 +61,7 @@ KZG proofs.
 
 ```python
 @dataclass
-class BlobsBundle(object):
+class BlobsBundle:
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Fulu:EIP7594]
     proofs: List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -77,9 +77,9 @@ object.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     # [Modified in Fulu:EIP7594]
     blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
@@ -91,16 +91,14 @@ class GetPayloadResponse(object):
 
 #### Modified `get_payload`
 
-The `get_payload` method is modified to return the updated `GetPayloadResponse`
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
 object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
 ## Beacon chain responsibilities
@@ -123,7 +121,7 @@ of `NUMBER_OF_CUSTODY_GROUPS`.
 ```python
 def get_validators_custody_requirement(
     state: BeaconState, validator_indices: Sequence[ValidatorIndex]
-) -> uint64:
+) -> Uint64:
     total_node_balance = sum(
         state.validators[index].effective_balance for index in validator_indices
     )
@@ -167,7 +165,7 @@ progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
-#### Constructing the sidecars
+#### Constructing the `DataColumnSidecar`s
 
 *[New in Fulu:EIP7594]*
 
@@ -185,15 +183,28 @@ then constructing the list of cells and proofs for each blob (as defined in the
 example below) using the blobs bundle in the response, and finally by calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 ```python
 cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end])
+    cell_proofs = zip(kzg.compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
+```
+
+*Note*: The function `kzg.compute_cells` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells(blob: Blob) -> Vector[Cell, CELLS_PER_EXT_BLOB]:
+    """
+    Extend ``blob`` and return all the cells of the extended blob.
+    """
 ```
 
 Moreover, the full sequence of sidecars can also be computed from
@@ -201,7 +212,7 @@ Moreover, the full sequence of sidecars can also be computed from
 `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
 This can be used in distributed blob publishing, to reconstruct all sidecars
 from any sidecar received on the wire, assuming all cells and kzg proofs could
-be retrieved from the local execution layer client.
+be retrieved from the local execution-layer client.
 
 ```python
 def get_data_column_sidecars(
@@ -274,7 +285,7 @@ def get_data_column_sidecars_from_column_sidecar(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)

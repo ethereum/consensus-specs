@@ -2,17 +2,18 @@
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Custom types](#custom-types)
+- [Preset](#preset)
+  - [Blob](#blob)
+  - [Size parameters](#size-parameters)
 - [Configuration](#configuration)
   - [Custody setting](#custody-setting)
-- [Preset](#preset)
-  - [Size parameters](#size-parameters)
-  - [Containers](#containers)
-    - [`DataColumnSidecar`](#datacolumnsidecar)
-    - [`MatrixEntry`](#matrixentry)
-- [Helper functions](#helper-functions)
+- [Containers](#containers)
+  - [`DataColumnSidecar`](#datacolumnsidecar)
+  - [`MatrixEntry`](#matrixentry)
+- [Helpers](#helpers)
   - [`get_custody_groups`](#get_custody_groups)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
@@ -32,6 +33,16 @@
 
 <!-- mdformat-toc end -->
 
+## Types
+
+| Name           | SSZ equivalent                                                  | Description                                                |
+| -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| `Cell`         | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
+| `CellIndex`    | `Uint64`                                                        | Cell identifier in an extended blob                        |
+| `RowIndex`     | `Uint64`                                                        | Row identifier in the matrix of cells                      |
+| `ColumnIndex`  | `Uint64`                                                        | Column identifier in the matrix of cells                   |
+| `CustodyIndex` | `Uint64`                                                        | Custody group identifier in the set of custody groups      |
+
 ## Constants
 
 The following values are (non-configurable) constants used throughout the
@@ -41,37 +52,37 @@ specification.
 
 | Name          | Value                 |
 | ------------- | --------------------- |
-| `UINT256_MAX` | `uint256(2**256 - 1)` |
-
-## Custom types
-
-| Name           | SSZ equivalent | Description                                           |
-| -------------- | -------------- | ----------------------------------------------------- |
-| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
-| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
-| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
-
-## Configuration
-
-### Custody setting
-
-| Name                       | Value | Description                                                                       |
-| -------------------------- | ----- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
-| `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
-| `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+| `UINT256_MAX` | `Uint256(2**256 - 1)` |
 
 ## Preset
+
+### Blob
+
+| Name                          | Value                                                    | Description                                              |
+| ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB`                            | Number of field elements in a Reed-Solomon extended blob |
+| `FIELD_ELEMENTS_PER_CELL`     | `Uint64(64)`                                             | Number of field elements in a cell                       |
+| `CELLS_PER_EXT_BLOB`          | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 
 ### Size parameters
 
 | Name                | Value                                | Description                                   |
 | ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
+| `NUMBER_OF_COLUMNS` | `Uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
-### Containers
+## Configuration
 
-#### `DataColumnSidecar`
+### Custody setting
+
+| Name                       | Value         | Description                                                                       |
+| -------------------------- | ------------- | --------------------------------------------------------------------------------- |
+| `SAMPLES_PER_SLOT`         | `Uint64(8)`   | Minimum number of samples for an honest node                                      |
+| `NUMBER_OF_CUSTODY_GROUPS` | `Uint64(128)` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `Uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
+
+## Containers
+
+### `DataColumnSidecar`
 
 ```python
 class DataColumnSidecar(Container):
@@ -83,7 +94,7 @@ class DataColumnSidecar(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-#### `MatrixEntry`
+### `MatrixEntry`
 
 ```python
 class MatrixEntry(Container):
@@ -93,19 +104,19 @@ class MatrixEntry(Container):
     row_index: RowIndex
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     # Skip computation if all groups are custodied
     if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
-    current_id = uint256(node_id)
+    current_id = Uint256(node_id)
     custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
@@ -115,7 +126,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = uint256(0)
+            current_id = Uint256(0)
         else:
             current_id += 1
 
@@ -146,8 +157,8 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     """
     matrix = []
     for blob_index, blob in enumerate(blobs):
-        cells, proofs = compute_cells_and_kzg_proofs(blob)
-        for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
+        cells, proofs = kzg.compute_cells_and_kzg_proofs(blob)
+        for cell_index, (cell, proof) in enumerate(zip(cells, proofs, strict=True)):
             matrix.append(
                 MatrixEntry(
                     cell=cell,
@@ -159,24 +170,41 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     return matrix
 ```
 
+*Note*: The function `kzg.compute_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells_and_kzg_proofs(
+    blob: Blob,
+) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+    """
+    Extend ``blob`` and return all the cells and proofs of the extended blob.
+    """
+```
+
 ### `recover_matrix`
 
 ```python
 def recover_matrix(
-    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+    partial_matrix: Sequence[MatrixEntry], blob_count: Uint64
 ) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.
 
-    This helper demonstrates how to apply ``recover_cells_and_kzg_proofs``.
+    This helper demonstrates how to apply ``kzg.recover_cells_and_kzg_proofs``.
     The data structure for storing cells/proofs is implementation-dependent.
     """
     matrix = []
     for blob_index in range(blob_count):
         cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
-        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
-        for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
+        recovered_cells, recovered_proofs = kzg.recover_cells_and_kzg_proofs(cell_indices, cells)
+        for cell_index, (cell, proof) in enumerate(
+            zip(recovered_cells, recovered_proofs, strict=True)
+        ):
             matrix.append(
                 MatrixEntry(
                     cell=cell,
@@ -186,6 +214,22 @@ def recover_matrix(
                 )
             )
     return matrix
+```
+
+*Note*: The function `kzg.recover_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def recover_cells_and_kzg_proofs(
+    cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
+) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+    """
+    Recover all the cells and proofs of an extended blob given at least half of
+    its cells.
+    """
 ```
 
 ## Custody
@@ -212,7 +256,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 as a function (`get_custody_groups`) of the node-id and custody size --
 importantly this function can be run by any party as the inputs are all public.
 
-*Note*: increasing the `custody_size` parameter for a given `node_id` extends
+*Note*: Increasing the `custody_size` parameter for a given `node_id` extends
 the returned list (rather than being an entirely new shuffle) such that if
 `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for
 a subset of the node's custody.

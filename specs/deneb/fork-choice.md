@@ -5,9 +5,9 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
-  - [`is_data_available`](#is_data_available)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
-  - [`on_block`](#on_block)
+  - [New `is_data_available`](#new-is_data_available)
+- [Handlers](#handlers)
+  - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
 
@@ -23,8 +23,8 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ```python
 @dataclass
-class PayloadAttributes(object):
-    timestamp: uint64
+class PayloadAttributes:
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
@@ -32,14 +32,14 @@ class PayloadAttributes(object):
     parent_beacon_block_root: Root
 ```
 
-### `is_data_available`
+### New `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
 The implementation of `is_data_available` will become more sophisticated during
 later scaling upgrades. Initially, verification requires every verifying actor
 to retrieve all matching `Blob`s and `KZGProof`s, and validate them with
-`verify_blob_kzg_proof_batch`.
+`kzg.verify_blob_kzg_proof_batch`.
 
 The block MUST NOT be considered valid until all valid `Blob`s have been
 downloaded. Blocks that have been previously validated as available SHOULD be
@@ -60,12 +60,28 @@ def is_data_available(
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+    return kzg.verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
-## Updated fork-choice handlers
+*Note*: The function `kzg.verify_blob_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
 
-### `on_block`
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof_batch(
+    blobs: Sequence[Blob], commitments_bytes: Sequence[Bytes48], proofs_bytes: Sequence[Bytes48]
+) -> bool:
+    """
+    Return ``True`` if and only if all blobs and their proofs match the
+    commitments.
+    """
+```
+
+## Handlers
+
+### Modified `on_block`
 
 *Note*: The only modification is the addition of the blob data availability
 check.
@@ -76,6 +92,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
@@ -95,32 +117,22 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
+    assert is_data_available(block_root, block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[block.parent_root])
-    block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
+    state_transition(state, signed_block, validate_result=True)
 
+    # Compute head before applying the block
+    head = get_head(store)
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, head.root, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

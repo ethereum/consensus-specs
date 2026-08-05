@@ -7,24 +7,23 @@ DENEB = "deneb"
 ELECTRA = "electra"
 FULU = "fulu"
 GLOAS = "gloas"
-EIP6800 = "eip6800"
-EIP7441 = "eip7441"
-EIP7805 = "eip7805"
-EIP7928 = "eip7928"
+HEZE = "heze"
+EIP8025 = "eip8025"
+EIP8148 = "eip8148"
 
 
 # The helper functions that are used when defining constants
 CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = """
-def ceillog2(x: int) -> uint64:
+def ceillog2(x: int) -> Uint64:
     if x < 1:
         raise ValueError(f"ceillog2 accepts only positive values, x={x}")
-    return uint64((x - 1).bit_length())
+    return Uint64((x - 1).bit_length())
 
 
-def floorlog2(x: int) -> uint64:
+def floorlog2(x: int) -> Uint64:
     if x < 1:
         raise ValueError(f"floorlog2 accepts only positive values, x={x}")
-    return uint64(x.bit_length() - 1)
+    return Uint64(x.bit_length() - 1)
 """
 
 

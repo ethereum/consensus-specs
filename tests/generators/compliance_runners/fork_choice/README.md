@@ -26,14 +26,22 @@ make comptests fc_gen_config=<config>
 where `config` can be either: [`tiny`](tiny/), [`small`](small/) or
 [`standard`](standard/).
 
+The target uses pytest collection and can be filtered with `k=<pattern>` in the
+same style as `make test`.
+
+`make comptests` is the supported generation path.
+
 # Running tests
 
 From the root directory:
 
 ```
 make _pyspec  # Initialize virtual environment
-python -m tests.generators.compliance_runners.fork_choice.test_run -i ${test_dir}
+uv run pytest tests/generators/compliance_runners/fork_choice/runner/test_run.py --test-dir ${test_dir}
 ```
+
+Optional pytest filtering and distribution flags such as `-k ...` and
+`-n logical` can be added as needed.
 
 # Generating configurations
 
@@ -42,7 +50,7 @@ generated with [`generate_test_instances.py`](generate_test_instances.py), e.g.
 
 ```
 make _pyspec  # Initialize virtual environment
-python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
+uv run python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
 ```
 
 But one normally doesn't need to generate them.

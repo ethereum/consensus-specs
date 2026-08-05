@@ -3,10 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Blob](#blob)
 - [Preset](#preset)
+  - [Blob](#blob-1)
   - [Execution](#execution)
 - [Configuration](#configuration)
   - [Execution](#execution-1)
@@ -17,7 +18,7 @@
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Misc](#misc)
     - [`kzg_commitment_to_versioned_hash`](#kzg_commitment_to_versioned_hash)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -56,36 +57,46 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
   Inclusion Slot
 - [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
-## Custom types
+## Types
 
-| Name            | SSZ equivalent | Description              |
-| --------------- | -------------- | ------------------------ |
-| `VersionedHash` | `Bytes32`      | *[New in Deneb:EIP4844]* |
-| `BlobIndex`     | `uint64`       | *[New in Deneb:EIP4844]* |
+| Name            | SSZ equivalent                                                  | Description                |
+| --------------- | --------------------------------------------------------------- | -------------------------- |
+| `VersionedHash` | `Bytes32`                                                       | A versioned hash           |
+| `BlobIndex`     | `Uint64`                                                        | An index of a blob         |
+| `KZGCommitment` | `Bytes48`                                                       | A KZG commitment to a blob |
+| `KZGProof`      | `Bytes48`                                                       | A KZG proof                |
+| `Blob`          | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]` | A basic data blob          |
 
 ## Constants
 
 ### Blob
 
-| Name                         | Value            |
-| ---------------------------- | ---------------- |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
+| Name                         | Value            | Description                                     |
+| ---------------------------- | ---------------- | ----------------------------------------------- |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | Version byte of a blob's versioned hash         |
+| `BYTES_PER_FIELD_ELEMENT`    | `Uint64(32)`     | Bytes used to encode a BLS scalar field element |
 
 ## Preset
 
+### Blob
+
+| Name                      | Value          | Description                        |
+| ------------------------- | -------------- | ---------------------------------- |
+| `FIELD_ELEMENTS_PER_BLOB` | `Uint64(4096)` | Number of field elements in a blob |
+
 ### Execution
 
-| Name                             | Value                    | Description                                                                                                              |
-| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
+| Name                             | Value                     | Description                                                                     |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `Uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
 ### Execution
 
-| Name                  | Value       | Description                                                                                                    |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| Name                  | Value       | Description                                                                           |
+| --------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| `MAX_BLOBS_PER_BLOCK` | `Uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the
 EL/builder with their corresponding blobs being independently transmitted and
@@ -96,7 +107,7 @@ independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 | Name                                   | Value                |
 | -------------------------------------- | -------------------- |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `Uint64(2**3)` (= 8) |
 
 ## Containers
 
@@ -134,19 +145,19 @@ class ExecutionPayload(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
     withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `ExecutionPayloadHeader`
@@ -159,26 +170,26 @@ class ExecutionPayloadHeader(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `BeaconState`
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -188,18 +199,18 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Deneb:EIP4844]
@@ -209,7 +220,7 @@ class BeaconState(Container):
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
 ```
 
-## Helper functions
+## Helpers
 
 ### Misc
 
@@ -232,7 +243,7 @@ EIP-7045.
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -271,7 +282,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_validator_activation_churn_limit`
 
 ```python
-def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
+def get_validator_activation_churn_limit(state: BeaconState) -> Uint64:
     """
     Return the validator activation churn limit for the current epoch.
     """
@@ -288,7 +299,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
@@ -308,7 +319,6 @@ def is_valid_block_hash(
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 ##### `is_valid_versioned_hashes`
@@ -321,7 +331,6 @@ def is_valid_versioned_hashes(
     Return ``True`` if and only if the version hashes computed by the blob transactions of
     ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
-    ...
 ```
 
 ##### Modified `notify_new_payload`
@@ -336,7 +345,6 @@ def notify_new_payload(
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 ##### Modified `verify_and_notify_new_payload`

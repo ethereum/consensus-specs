@@ -1,0 +1,234 @@
+name: Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Repository
+        type: string
+      ref:
+        description: Commit, branch, or tag
+        type: string
+      general:
+        description: Generate general preset
+        default: true
+        type: boolean
+      minimal:
+        description: Generate minimal preset
+        default: true
+        type: boolean
+      mainnet:
+        description: Generate mainnet preset
+        default: false
+        type: boolean
+      phase0:
+        description: Generate phase0 tests
+        default: true
+        type: boolean
+      altair:
+        description: Generate altair tests
+        default: true
+        type: boolean
+      bellatrix:
+        description: Generate bellatrix tests
+        default: true
+        type: boolean
+      capella:
+        description: Generate capella tests
+        default: true
+        type: boolean
+      deneb:
+        description: Generate deneb tests
+        default: true
+        type: boolean
+      electra:
+        description: Generate electra tests
+        default: true
+        type: boolean
+      fulu:
+        description: Generate fulu tests
+        default: true
+        type: boolean
+      gloas:
+        description: Generate gloas tests
+        default: true
+        type: boolean
+      heze:
+        description: Generate heze tests
+        default: true
+        type: boolean
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    outputs:
+      repo: ${{ steps.config.outputs.repo }}
+      ref: ${{ steps.config.outputs.ref }}
+      presets: ${{ steps.config.outputs.presets }}
+      forks: ${{ steps.config.outputs.forks }}
+    steps:
+      - name: Resolve configuration
+        id: config
+        run: |
+          # Repo
+          repo="${{ inputs.repo || github.repository }}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+
+          # Ref
+          ref="${{ inputs.ref }}"
+          if [[ -n "$ref" ]]; then
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Presets
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            presets='["general","minimal","mainnet"]'
+          else
+            selected=()
+            [[ "${{ inputs.general }}" == "true" ]] && selected+=("general")
+            [[ "${{ inputs.minimal }}" == "true" ]] && selected+=("minimal")
+            [[ "${{ inputs.mainnet }}" == "true" ]] && selected+=("mainnet")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No presets selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            presets="[${json%,}]"
+          fi
+          echo "presets=$presets" >> "$GITHUB_OUTPUT"
+
+          # Forks
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            forks='["phase0","altair","bellatrix","capella","deneb","electra","fulu","gloas","heze"]'
+          else
+            selected=()
+            [[ "${{ inputs.phase0 }}" == "true" ]] && selected+=("phase0")
+            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
+            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
+            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
+            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
+            [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
+            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
+            [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
+            [[ "${{ inputs.heze }}" == "true" ]] && selected+=("heze")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No forks selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            forks="[${json%,}]"
+          fi
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+
+          # Summary
+          echo "Configuration:"
+          echo "  repo:    $repo"
+          echo "  ref:     ${ref:-<default>}"
+          echo "  presets: $presets"
+          echo "  forks:   $forks"
+
+  generate:
+    needs: config
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: ${{ fromJson(needs.config.outputs.presets) }}
+        fork: ${{ fromJson(needs.config.outputs.forks) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ needs.config.outputs.repo }}
+          ref: ${{ needs.config.outputs.ref }}
+
+      - name: Setup python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Generate tests
+        run: make test preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true coverage=${{ matrix.preset != 'general' && 'true' || 'false' }}
+
+      - name: Upload reference tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: reftests/${{ matrix.preset }}
+          if-no-files-found: ignore
+
+      # Renamed because upload-artifact excludes hidden files.
+      - name: Stage coverage data
+        if: matrix.preset != 'general'
+        run: mv .coverage coverage-data
+
+      - name: Upload coverage data
+        if: matrix.preset != 'general'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-data-${{ matrix.preset }}-${{ matrix.fork }}
+          path: coverage-data
+
+  coverage:
+    needs: [config, generate]
+    if: >-
+      contains(fromJson(needs.config.outputs.presets), 'minimal') ||
+      contains(fromJson(needs.config.outputs.presets), 'mainnet')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ needs.config.outputs.repo }}
+          ref: ${{ needs.config.outputs.ref }}
+
+      - name: Combine coverages
+        uses: ./.github/actions/combine-coverages
+        with:
+          artifact-prefix: coverage-data
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage
+
+  package:
+    needs: [config, generate]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    strategy:
+      matrix:
+        preset: ${{ fromJson(needs.config.outputs.presets) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Package reference tests
+        uses: ./.github/actions/package
+        with:
+          name: ${{ matrix.preset }}
+          artifact-prefix: reftests
+          source-path: tests/${{ matrix.preset }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ${{ matrix.preset }}.tar.gz
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ matrix.preset }}.tar.gz
+          archive: false

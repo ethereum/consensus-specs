@@ -13,13 +13,12 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
-- [Block proposal](#block-proposal)
+- [Block and sidecar proposal](#block-and-sidecar-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
-    - [Execution payload](#execution-payload)
-    - [Execution Requests](#execution-requests)
+    - [Execution requests](#execution-requests)
   - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)
@@ -42,9 +41,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [Electra](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -52,9 +51,9 @@ continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     blobs_bundle: BlobsBundle
     # [New in Electra]
     execution_requests: Sequence[bytes]
@@ -89,20 +88,17 @@ class SignedAggregateAndProof(Container):
 
 #### Modified `get_payload`
 
-Given the `payload_id`, `get_payload` returns the most recent version of the
-execution payload that has been built since the corresponding call to
-`notify_forkchoice_updated` method.
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
-## Block proposal
+## Block and sidecar proposal
 
 ### Constructing the `BeaconBlockBody`
 
@@ -128,7 +124,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     )
 
     data = aggregates[0].data
-    aggregation_bits = Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]()
+    aggregation_bits = AggregationBits()
     for a in aggregates:
         for b in a.aggregation_bits:
             aggregation_bits.append(b)
@@ -136,8 +132,8 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     signature = bls.Aggregate([a.signature for a in aggregates])
 
     committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
-    committee_flags = [(index in committee_indices) for index in range(0, MAX_COMMITTEES_PER_SLOT)]
-    committee_bits = Bitvector[MAX_COMMITTEES_PER_SLOT](committee_flags)
+    committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
+    committee_bits = BitVector[MAX_COMMITTEES_PER_SLOT](committee_flags)
 
     return Attestation(
         aggregation_bits=aggregation_bits,
@@ -154,14 +150,14 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 result of the following function:
 
 ```python
-def get_eth1_pending_deposit_count(state: BeaconState) -> uint64:
+def get_eth1_pending_deposit_count(state: BeaconState) -> Uint64:
     eth1_deposit_index_limit = min(
         state.eth1_data.deposit_count, state.deposit_requests_start_index
     )
     if state.eth1_deposit_index < eth1_deposit_index_limit:
         return min(MAX_DEPOSITS, eth1_deposit_index_limit - state.eth1_deposit_index)
     else:
-        return uint64(0)
+        return Uint64(0)
 ```
 
 *Note*: Clients will be able to remove the `Eth1Data` polling mechanism in an
@@ -208,49 +204,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     )
 ```
 
-#### Execution payload
-
-`prepare_execution_payload` is updated from the Deneb specs.
-
-*Note*: In this section, `state` is the state of the slot for the block proposal
-_without_ the block yet applied. That is, `state` is the `previous_state`
-processed through any empty slots up to the assigned slot using
-`process_slots(previous_state, slot)`.
-
-*Note*: The only change to `prepare_execution_payload` is the new definition of
-`get_expected_withdrawals`.
-
-```python
-def prepare_execution_payload(
-    state: BeaconState,
-    safe_block_hash: Hash32,
-    finalized_block_hash: Hash32,
-    suggested_fee_recipient: ExecutionAddress,
-    execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    parent_hash = state.latest_execution_payload_header.block_hash
-
-    # [Modified in EIP7251]
-    # Set the forkchoice head and initiate the payload build process
-    withdrawals, _ = get_expected_withdrawals(state)
-
-    payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
-        prev_randao=get_randao_mix(state, get_current_epoch(state)),
-        suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=withdrawals,
-        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-    )
-    return execution_engine.notify_forkchoice_updated(
-        head_block_hash=parent_hash,
-        safe_block_hash=safe_block_hash,
-        finalized_block_hash=finalized_block_hash,
-        payload_attributes=payload_attributes,
-    )
-```
-
-#### Execution Requests
+#### Execution requests
 
 *[New in Electra]*
 
@@ -292,17 +246,11 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         prev_request_type = request_type
 
         if request_type == DEPOSIT_REQUEST_TYPE:
-            deposits = ssz_deserialize(
-                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], request_data
-            )
+            deposits = ssz_deserialize(DepositRequests, request_data)
         elif request_type == WITHDRAWAL_REQUEST_TYPE:
-            withdrawals = ssz_deserialize(
-                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], request_data
-            )
+            withdrawals = ssz_deserialize(WithdrawalRequests, request_data)
         elif request_type == CONSOLIDATION_REQUEST_TYPE:
-            consolidations = ssz_deserialize(
-                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD], request_data
-            )
+            consolidations = ssz_deserialize(ConsolidationRequests, request_data)
 
     return ExecutionRequests(
         deposits=deposits,
@@ -339,9 +287,9 @@ updated field assignments:
 ### Construct aggregate
 
 - Set `attestation_data.index = 0`.
-- Let `aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length
-  `len(committee)`, where each bit set from each individual attestation is set
-  to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has
-  the bit set corresponding to `committee_index` in each individual attestation.
+- Set `aggregate_attestation.aggregation_bits` to an `AggregationBits` of length
+  `len(committee)` with the bits corresponding to the `attester_index` of each
+  `SingleAttestation` input set to `0b1`.
+- Set `aggregate_attestation.committee_bits` to a
+  `BitVector[MAX_COMMITTEES_PER_SLOT]` with the single bit corresponding to the
+  shared `committee_index` across all `SingleAttestation` inputs set to `0b1`.

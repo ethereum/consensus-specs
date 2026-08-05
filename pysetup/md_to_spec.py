@@ -1,5 +1,5 @@
 import ast
-import json
+import contextlib
 import re
 import string
 from collections.abc import Iterator, Mapping
@@ -55,7 +55,6 @@ class MarkdownToSpec:
         """
         while (child := self._get_next_element()) is not None:
             self._process_child(child)
-        self._finalize_types()
         return self._build_spec_object()
 
     def _get_next_element(self) -> Element | None:
@@ -79,7 +78,7 @@ class MarkdownToSpec:
         """
         Parses the markdown file into document elements.
         """
-        with open(file_name) as source_file:
+        with file_name.open() as source_file:
             document = parse_markdown(source_file.read())
             return iter(document.children)
 
@@ -190,7 +189,7 @@ class MarkdownToSpec:
         """
         Processes a table and updates the spec with its data.
         """
-        for row in cast(list[TableRow], table.children):
+        for row in cast("list[TableRow]", table.children):
             if len(row.children) < 2:
                 continue
 
@@ -205,14 +204,15 @@ class MarkdownToSpec:
                 # Check for short type declarations
                 if value.startswith(
                     (
-                        "uint",
-                        "Bitlist",
-                        "Bitvector",
+                        "Uint",
+                        "BitList",
+                        "BitVector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",
                         "List",
-                        "ProgressiveBitlist",
+                        "ProgressiveBitList",
+                        "ProgressiveByteList",
                         "ProgressiveList",
                         "Union",
                         "Vector",
@@ -256,7 +256,7 @@ class MarkdownToSpec:
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
-                if name in ("ENDIANNESS", "KZG_ENDIANNESS"):
+                if name == "ENDIANNESS":
                     # Deal with mypy Literal typing check
                     value_def = _parse_value(name, value, type_hint="Final")
                 if any(k in value for k in self.preset) or any(
@@ -271,7 +271,7 @@ class MarkdownToSpec:
         """
         Extracts the name, value, and description fields from a table row element.
         """
-        cells = cast(list[TableCell], row.children)
+        cells = cast("list[TableCell]", row.children)
         name_cell = cells[0]
         name = name_cell.children[0].children
 
@@ -301,9 +301,9 @@ class MarkdownToSpec:
         Example of input:
             | Name   | Calories      | Description   |
             | ------ | ------------- | ------------- |
-            | Apple  | `uint64(96)`  | 5.3oz serving |
-            | Orange | `uint64(75)`  | 5.6oz serving |
-            | Banana | `uint64(111)` | 4.4oz serving |
+            | Apple  | `Uint64(96)`  | 5.3oz serving |
+            | Orange | `Uint64(75)`  | 5.6oz serving |
+            | Banana | `Uint64(111)` | 4.4oz serving |
 
         The method _process_html_block calls this method when it encounters a comment
         of the form `<!-- list-of-records:name -->`.
@@ -356,7 +356,7 @@ class MarkdownToSpec:
         """
 
         # Save the table header, used for field names (skip last item: description)
-        header_row = cast(TableRow, table.children[0])
+        header_row = cast("TableRow", table.children[0])
         list_of_records_spec_header = [
             re.sub(r"\s+", "_", value.children[0].children.upper())
             for value in header_row.children[:-1]
@@ -379,7 +379,7 @@ class MarkdownToSpec:
         for record in records:
             lines.append("    frozendict({")
             for key, value in record.items():
-                lines.append(f'        "{str(key)}": {str(value)},')
+                lines.append(f'        "{key!s}": {value!s},')
             lines.append("    }),")
         lines.append(")")
         return "\n".join(lines)
@@ -415,7 +415,7 @@ class MarkdownToSpec:
         body = html.body.strip()
 
         # This comment marks that we should skip the next element
-        if body == "<!-- eth2spec: skip -->":
+        if body == "<!-- eth_consensus_specs: skip -->":
             self._skip_element()
 
         # Handle list-of-records tables
@@ -429,22 +429,6 @@ class MarkdownToSpec:
                     f"expected table after list-of-records comment, got {type(table_element)}"
                 )
             self._process_list_of_records_table(table_element, match.group(1).upper())
-
-    def _finalize_types(self) -> None:
-        """
-        Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
-        """
-        # Update KZG trusted setup if needed
-        if any("KZG_SETUP" in name for name in self.spec["constant_vars"]):
-            _update_constant_vars_with_kzg_setups(
-                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
-            )
-
-        # Update CURDLEPROOFS CRS if needed
-        if any("CURDLEPROOFS_CRS" in name for name in self.spec["constant_vars"]):
-            _update_constant_vars_with_curdleproofs_crs(
-                self.spec["constant_vars"], self.preset_name
-            )
 
     def _build_spec_object(self) -> SpecObject:
         """
@@ -514,54 +498,7 @@ def _is_constant_id(name: str) -> bool:
     """
     if name[0] not in string.ascii_uppercase + "_":
         return False
-    return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
-
-
-@cache
-def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], list[str]]:
-    trusted_setups_file_path = (
-        str(Path(__file__).parent.parent)
-        + "/presets/"
-        + preset_name
-        + "/trusted_setups/trusted_setup_4096.json"
-    )
-
-    with open(trusted_setups_file_path) as f:
-        json_data = json.load(f)
-        trusted_setup_G1_monomial = json_data["g1_monomial"]
-        trusted_setup_G1_lagrange = json_data["g1_lagrange"]
-        trusted_setup_G2_monomial = json_data["g2_monomial"]
-
-    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
-
-
-@cache
-def _load_curdleproofs_crs(preset_name: str) -> dict[str, list[str]]:
-    """
-    NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
-    """
-    file_path = (
-        str(Path(__file__).parent.parent)
-        + "/presets/"
-        + preset_name
-        + "/trusted_setups/curdleproofs_crs.json"
-    )
-
-    with open(file_path) as f:
-        json_data = json.load(f)
-
-    return json_data
-
-
-ALL_KZG_SETUPS = {
-    "minimal": _load_kzg_trusted_setups("minimal"),
-    "mainnet": _load_kzg_trusted_setups("mainnet"),
-}
-
-ALL_CURDLEPROOFS_CRS = {
-    "minimal": _load_curdleproofs_crs("minimal"),
-    "mainnet": _load_curdleproofs_crs("mainnet"),
-}
+    return all(c in string.ascii_uppercase + "_" + string.digits for c in name[1:])
 
 
 @cache
@@ -580,38 +517,6 @@ def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> V
 
     return VariableDefinition(
         type_name=type_name, value=typed_value[i + 1 : -1], comment=comment, type_hint=type_hint
-    )
-
-
-def _update_constant_vars_with_kzg_setups(
-    constant_vars: dict[str, VariableDefinition],
-    preset_dep_constant_vars: dict[str, VariableDefinition],
-    preset_name: str,
-) -> None:
-    comment = "noqa: E501"
-    kzg_setups = ALL_KZG_SETUPS[preset_name]
-    preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(kzg_setups[0]), comment, None
-    )
-    preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(kzg_setups[1]), comment, None
-    )
-    constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
-        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
-    )
-
-
-def _update_constant_vars_with_curdleproofs_crs(
-    constant_vars: dict[str, VariableDefinition], preset_name: str
-) -> None:
-    comment = "noqa: E501"
-    constant_vars["CURDLEPROOFS_CRS"] = VariableDefinition(
-        None,
-        "curdleproofs.CurdleproofsCrs.from_json(json.dumps("
-        + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace("0x", "")
-        + "))",
-        comment,
-        None,
     )
 
 
@@ -642,13 +547,11 @@ def check_yaml_matches_spec(
 
             else:
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
-    try:
+    # NameError is okay; anything more serious will surface elsewhere.
+    with contextlib.suppress(NameError):
         assert yaml[var_name] == repr(eval(updated_value)), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
-    except NameError:
-        # Okay it's probably something more serious, let's ignore
-        pass
 
 
 def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:

@@ -4,26 +4,27 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
+    - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
-    - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
-    - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
-    - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
-    - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+    - [Modified `Seen`](#modified-seen)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
+    - [New `verify_data_column_sidecar`](#new-verify_data_column_sidecar)
+    - [New `verify_data_column_sidecar_kzg_proofs`](#new-verify_data_column_sidecar_kzg_proofs)
+    - [New `verify_data_column_sidecar_inclusion_proof`](#new-verify_data_column_sidecar_inclusion_proof)
+    - [New `compute_subnet_for_data_column_sidecar`](#new-compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
+        - [Modified `beacon_block`](#modified-beacon_block)
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
-        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
-        - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+        - [New `data_column_sidecar_{subnet_id}`](#new-data_column_sidecar_subnet_id)
+        - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -32,26 +33,76 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [GetMetaData v3](#getmetadata-v3)
+      - [BeaconBlocksByHead v1](#beaconblocksbyhead-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [`eth2` field](#eth2-field)
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
-- [Peer Scoring](#peer-scoring)
+- [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Fulu.
+This document contains the consensus-layer networking specifications for Fulu.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
 
-### Helper functions
+### Preset
+
+| Name                                    | Value                                                                                     | Description                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+
+### Configuration
+
+*[New in Fulu:EIP7594]*
+
+| Name                                           | Value                    | Description                                                           |
+| ---------------------------------------------- | ------------------------ | --------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)   | Number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
+
+### Containers
+
+#### New `DataColumnsByRootIdentifier`
+
+```python
+class DataColumnsByRootIdentifier(Container):
+    block_root: Root
+    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+```
+
+### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    # [Modified in Fulu:EIP7594]
+    # Removed `blob_sidecar_tuples`
+    # [New in Fulu:EIP7594]
+    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    # [New in Fulu]
+    partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
+```
 
 #### Modified `compute_fork_version`
 
@@ -75,35 +126,17 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### Preset
-
-| Name                                    | Value                                                                                     | Description                                                       |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
-
-### Configuration
-
-*[New in Fulu:EIP7594]*
-
-| Name                                           | Value                                          | Description                                                               |
-| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                          | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
-
-### Containers
-
-#### `DataColumnsByRootIdentifier`
+#### New `compute_max_request_data_column_sidecars`
 
 ```python
-class DataColumnsByRootIdentifier(Container):
-    block_root: Root
-    columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+def compute_max_request_data_column_sidecars() -> Uint64:
+    """
+    Return the maximum number of data column sidecars in a single request.
+    """
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
-### Helpers
-
-##### `verify_data_column_sidecar`
+#### New `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -123,16 +156,18 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
         return False
 
-    # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
-        sidecar.kzg_proofs
-    ):
+    # The column length must be equal to the number of commitments
+    if len(sidecar.column) != len(sidecar.kzg_commitments):
+        return False
+
+    # The column length must be equal to the number of proofs
+    if len(sidecar.column) != len(sidecar.kzg_proofs):
         return False
 
     return True
 ```
 
-##### `verify_data_column_sidecar_kzg_proofs`
+#### New `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -143,7 +178,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
     # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
+    return kzg.verify_cell_kzg_proof_batch(
         commitments_bytes=sidecar.kzg_commitments,
         cell_indices=cell_indices,
         cells=sidecar.column,
@@ -151,7 +186,26 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     )
 ```
 
-##### `verify_data_column_sidecar_inclusion_proof`
+*Note*: The function `kzg.verify_cell_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_cell_kzg_proof_batch(
+    commitments_bytes: Sequence[Bytes48],
+    cell_indices: Sequence[CellIndex],
+    cells: Sequence[Cell],
+    proofs_bytes: Sequence[Bytes48],
+) -> bool:
+    """
+    Return ``True`` if and only if all cells and their proofs match the
+    commitments.
+    """
+```
+
+#### New `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -167,7 +221,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-##### `compute_subnet_for_data_column_sidecar`
+#### New `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
@@ -181,10 +235,10 @@ communicate the custody group count.
 
 ```
 (
-  seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_group_count: uint64 # cgc
+  seq_number: Uint64
+  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
+  syncnets: BitVector[SYNC_COMMITTEE_SUBNET_COUNT]
+  custody_group_count: Uint64 # cgc
 )
 ```
 
@@ -197,19 +251,114 @@ Where
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
+Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 #### Topics and messages
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
-*Updated validation*
+*Note*: This function is modified per EIP-7892. The block's KZG commitment count
+is bounded by
+`get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: Uint64,
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
+    execution_payload = block.body.execution_payload
+
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
+
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if block.parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[block.parent_root]
+
+    if block.parent_root not in store.block_states:
+        if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+            # [REJECT] The block's parent failed validation and its execution payload is optimistic
+            raise GossipReject("block's parent is invalid and its payload is optimistic")
+
+        # [IGNORE] The block's parent failed validation and its execution payload is processed
+        raise GossipIgnore("block's parent is invalid and its payload is processed")
+
+    # [IGNORE] The block's parent passed validation but its execution payload is invalid
+    if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
+        raise GossipIgnore("block's parent is valid and its payload is invalid")
+
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
+
+    # [Modified in Fulu:EIP7892]
+    # [REJECT] The length of KZG commitments is less than or equal to the limit
+    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    if len(block.body.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
+
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer_index does not match expected proposer")
+
+    # Mark this block as seen
+    seen.proposer_slots.add(proposer_slot_key)
+```
 
 ##### Blob subnets
 
@@ -217,54 +366,101 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 
 `blob_sidecar_{subnet_id}` is deprecated.
 
-###### `data_column_sidecar_{subnet_id}`
+###### New `data_column_sidecar_{subnet_id}`
 
-This topic is used to propagate column sidecars, where each column maps to some
-`subnet_id`.
+The `data_column_sidecar_{subnet_id}` topics, where each column index maps to
+some `subnet_id`, are used to propagate new data column sidecars to nodes on the
+network. Sidecars are sent in their entirety.
 
-The *type* of the payload of this topic is `DataColumnSidecar`.
+```python
+def validate_data_column_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sidecar: DataColumnSidecar,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a DataColumnSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block_header = sidecar.signed_block_header.message
 
-The following validations MUST pass before forwarding the
-`sidecar: DataColumnSidecar` on the network, assuming the alias
-`block_header = sidecar.signed_block_header.message`:
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, sidecar.index)
+    sidecar_key = (block_header.slot, block_header.proposer_index, sidecar.index)
+    if sidecar_key in seen.data_column_sidecar_tuples:
+        raise GossipIgnore("already seen sidecar from this proposer for this slot and index")
 
-- _[REJECT]_ The sidecar is valid as verified by
-  `verify_data_column_sidecar(sidecar)`.
-- _[REJECT]_ The sidecar is for the correct subnet -- i.e.
-  `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
-- _[IGNORE]_ The sidecar is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
-  processing at the appropriate slot).
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
-  -- i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
-  with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
-  (a client MAY queue sidecars for processing once the parent block is
-  retrieved).
-- _[REJECT]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) passes validation.
-- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
-- _[REJECT]_ The sidecar's column data is valid as verified by
-  `verify_data_column_sidecar_kzg_proofs(sidecar)`.
-- _[IGNORE]_ The sidecar is the first sidecar for the tuple
-  `(block_header.slot, block_header.proposer_index, sidecar.index)` with valid
-  header signature, sidecar inclusion proof, and kzg proof.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the sidecar MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar
+    if not verify_data_column_sidecar(sidecar):
+        raise GossipReject("invalid sidecar")
+
+    # [REJECT] The sidecar is for the correct subnet
+    if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
+        raise GossipReject("sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, block_header.slot, current_time_ms):
+        raise GossipIgnore("sidecar is from a future slot")
+
+    # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block_header.slot <= finalized_slot:
+        raise GossipIgnore("sidecar is not from a slot greater than the latest finalized slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block_header.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature of sidecar.signed_block_header is valid
+    proposer = state.validators[block_header.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    signing_root = compute_signing_root(block_header, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature):
+        raise GossipReject("invalid proposer signature on sidecar block header")
+
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    parent_root = block_header.parent_root
+    if parent_root not in store.blocks:
+        raise GossipIgnore("sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if parent_root not in store.block_states:
+        raise GossipReject("sidecar's parent failed validation")
+
+    # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
+    if block_header.slot <= store.blocks[parent_root].slot:
+        raise GossipReject("sidecar is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of sidecar's block")
+
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_inclusion_proof
+    if not verify_data_column_sidecar_inclusion_proof(sidecar):
+        raise GossipReject("invalid sidecar inclusion proof")
+
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_kzg_proofs
+    if not verify_data_column_sidecar_kzg_proofs(sidecar):
+        raise GossipReject("invalid sidecar kzg proofs")
+
+    # [REJECT] The sidecar is proposed by the expected proposer_index
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[parent_root].copy()
+    process_slots(parent_state, block_header.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block_header.proposer_index != expected_proposer:
+        raise GossipReject("sidecar proposer_index does not match expected proposer")
+
+    # Mark this data column sidecar as seen
+    seen.data_column_sidecar_tuples.add(sidecar_key)
+```
 
 *Note*: In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for
 all the sidecars of the same block, it verifies against the same set of
@@ -272,7 +468,7 @@ all the sidecars of the same block, it verifies against the same set of
 result of the arguments tuple
 `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed Blob Publishing using blobs retrieved from local execution layer client
+###### Distributed blob publishing using blobs retrieved from local execution-layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid
 `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching
@@ -322,7 +518,7 @@ As seen by the client at the time of sending the message:
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
 
-*Note*: According the the definition of `earliest_available_slot`:
+*Note*: According to the definition of `earliest_available_slot`:
 
 - If the node is able to serve all blocks throughout the entire sidecars
   retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
@@ -376,7 +572,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
   columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 )
 ```
@@ -385,7 +581,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
 )
 ```
 
@@ -431,7 +627,7 @@ and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the data column sidecars of the first
 blob-carrying block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_DATA_COLUMN_SIDECARS` sidecars.
+`compute_max_request_data_column_sidecars()` sidecars.
 
 Clients MUST include all data column sidecars of each block from which they
 include data column sidecars.
@@ -467,7 +663,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `epoch`                     | Chunk SSZ type           |
 | --------------------------- | ------------------------ |
@@ -491,7 +687,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
 )
 ```
 
@@ -507,7 +703,8 @@ valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
 is correct w.r.t. the expected KZG commitments through
 `verify_data_column_sidecar_kzg_proofs`.
 
-No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
+No more than `compute_max_request_data_column_sidecars()` may be requested at a
+time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `DataColumnSidecar` payload.
@@ -524,7 +721,7 @@ limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
-related to blocks that fail the beacon chain state transition
+related to blocks that fail the beacon-chain state transition
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
@@ -532,7 +729,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `epoch`                     | Chunk SSZ type           |
 | --------------------------- | ------------------------ |
@@ -556,6 +753,75 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from Altair. Other conditions for the `GetMetaData` protocol
 are unchanged from the Altair p2p networking document.
 
+##### BeaconBlocksByHead v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_head/1/`
+
+*[New in Fulu]*
+
+Request Content:
+
+```
+(
+  beacon_root: Root
+  count: Uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Requests beacon blocks along the ancestry of `beacon_root`, inclusive of the
+block at `beacon_root`, in descending slot order. The walk stops as soon as the
+response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks or the next
+ancestor falls outside the epoch range that clients are required to serve (see
+below).
+
+`BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
+relative to a known head.
+
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`. Each successful
+`response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+
+Clients MUST support requesting blocks on the epoch range
+`[current_epoch - compute_min_epochs_for_block_requests(), current_epoch]`. If
+`beacon_root` references a block earlier than this range, peers MAY respond with
+error code `3: ResourceUnavailable` or with no blocks in the response.
+
+Clients MUST respond with at least one block, if they have the block at
+`beacon_root`. Clients MAY limit the number of blocks in the response.
+
+Clients SHOULD include a block in the response as soon as it passes the gossip
+validation rules. Clients SHOULD NOT respond with blocks that fail the
+beacon-chain state transition.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
+
 ### The discovery domain: discv5
 
 #### ENR structure
@@ -574,7 +840,7 @@ fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
 | Key    | Value           |
-| :----- | :-------------- |
+| ------ | --------------- |
 | `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
@@ -613,7 +879,7 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
-| `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+| `cgc` | Custody group count, `Uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
 
 ##### Next fork digest
 
@@ -621,7 +887,7 @@ A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,
 regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
 entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
-`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu upgrade will not impact
 peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
 cause disconnects.
 
@@ -629,7 +895,7 @@ If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
 
 | Key   | Value                   |
-| :---- | :---------------------- |
+| ----- | ----------------------- |
 | `nfd` | SSZ Bytes4 `ForkDigest` |
 
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
@@ -639,11 +905,11 @@ purposes of sustained peering. If there is a mismatch, the node MUST NOT
 disconnect before the fork boundary, but it MAY disconnect at/after the fork
 boundary.
 
-Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+Nodes unprepared to follow the Fulu upgrade will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
 
-## Peer Scoring
+## Peer scoring
 
 Due to the deterministic custody functions, a node knows exactly what a peer
 should be able to respond to. In the event that a peer does not respond to

@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -14,7 +14,7 @@
   - [`LightClientFinalityUpdate`](#lightclientfinalityupdate)
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`finalized_root_gindex_at_slot`](#finalized_root_gindex_at_slot)
   - [`current_sync_committee_gindex_at_slot`](#current_sync_committee_gindex_at_slot)
   - [`next_sync_committee_gindex_at_slot`](#next_sync_committee_gindex_at_slot)
@@ -49,7 +49,7 @@ bridges).
 
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in
-[this beacon chain extension](../beacon-chain.md).
+[this beacon-chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
 
@@ -57,7 +57,7 @@ Additional documents describe how the light client sync protocol can be used:
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name                         | SSZ equivalent                                              | Description                                                       |
 | ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -77,10 +77,10 @@ Additional documents describe how the light client sync protocol can be used:
 
 ### Misc
 
-| Name                              | Value                                                | Unit       | Duration    |
-| --------------------------------- | ---------------------------------------------------- | ---------- | ----------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |             |
-| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      | ~27.3 hours |
+| Name                              | Value                                                      |
+| --------------------------------- | ---------------------------------------------------------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `Uint64(1)`                                                |
+| `UPDATE_TIMEOUT`                  | `Slot(SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)` |
 
 ## Containers
 
@@ -155,7 +155,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # Header that is finalized
     finalized_header: LightClientHeader
     # Sync committees corresponding to the finalized header
@@ -166,11 +166,11 @@ class LightClientStore(object):
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `finalized_root_gindex_at_slot`
 
@@ -280,7 +280,7 @@ def is_next_sync_committee_known(store: LightClientStore) -> bool:
 ### `get_safety_threshold`
 
 ```python
-def get_safety_threshold(store: LightClientStore) -> uint64:
+def get_safety_threshold(store: LightClientStore) -> Uint64:
     return (
         max(
             store.previous_max_active_participants,
@@ -293,8 +293,8 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 ### `get_subtree_index`
 
 ```python
-def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
+def get_subtree_index(generalized_index: GeneralizedIndex) -> Uint64:
+    return Uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
 ```
 
 ### `is_valid_normalized_merkle_branch`
@@ -315,7 +315,7 @@ def is_valid_normalized_merkle_branch(
 ### `compute_sync_committee_period_at_slot`
 
 ```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+def compute_sync_committee_period_at_slot(slot: Slot) -> Uint64:
     return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 
@@ -443,7 +443,9 @@ def validate_light_client_update(
         sync_committee = store.next_sync_committee
     participant_pubkeys = [
         pubkey
-        for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
+        for (bit, pubkey) in zip(
+            sync_aggregate.sync_committee_bits, sync_committee.pubkeys, strict=True
+        )
         if bit
     ]
     fork_version_slot = max(update.signature_slot, Slot(1)) - Slot(1)

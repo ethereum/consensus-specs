@@ -5,7 +5,7 @@ class BaseSpecBuilder(ABC):
     @property
     @abstractmethod
     def fork(self) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
@@ -60,4 +60,12 @@ class BaseSpecBuilder(ABC):
 
     @classmethod
     def deprecate_presets(cls) -> set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
         return set()

@@ -3,7 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
+- [Constants](#constants)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -16,7 +17,7 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [`is_merge_transition_complete`](#is_merge_transition_complete)
     - [`is_merge_transition_block`](#is_merge_transition_block)
@@ -43,21 +44,25 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix
-upgrade.
+Bellatrix is a consensus-layer upgrade containing a number of features.
+Including:
 
-Additionally, this upgrade introduces the following minor changes:
-
+- Transaction execution
 - Penalty parameter updates to their planned maximally punitive values
 
-## Custom types
+## Types
 
 *Note*: The `Transaction` type is a stub which is not final.
 
-| Name               | SSZ equivalent                        | Description                                                                                                                                       |
-| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
-| `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
+| Name          | SSZ equivalent                        | Description                                                                                                                                       |
+| ------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Transaction` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
+
+## Constants
+
+| Name               | Value      |
+| ------------------ | ---------- |
+| `EMPTY_BLOCK_HASH` | `Hash32()` |
 
 ## Preset
 
@@ -66,33 +71,30 @@ Additionally, this upgrade introduces the following minor changes:
 Bellatrix updates a few configuration values to move penalty parameters to their
 final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
-
 | Name                                         | Value                          |
 | -------------------------------------------- | ------------------------------ |
-| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `uint64(2**24)` (= 16,777,216) |
-| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`    | `uint64(2**5)` (= 32)          |
-| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `uint64(3)`                    |
+| `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `Uint64(2**24)` (= 16,777,216) |
+| `MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX`    | `Uint64(2**5)` (= 32)          |
+| `PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX` | `Uint64(3)`                    |
 
 ### Execution
 
 | Name                           | Value                             |
 | ------------------------------ | --------------------------------- |
-| `MAX_BYTES_PER_TRANSACTION`    | `uint64(2**30)` (= 1,073,741,824) |
-| `MAX_TRANSACTIONS_PER_PAYLOAD` | `uint64(2**20)` (= 1,048,576)     |
-| `BYTES_PER_LOGS_BLOOM`         | `uint64(2**8)` (= 256)            |
-| `MAX_EXTRA_DATA_BYTES`         | `2**5` (= 32)                     |
+| `MAX_BYTES_PER_TRANSACTION`    | `Uint64(2**30)` (= 1,073,741,824) |
+| `MAX_TRANSACTIONS_PER_PAYLOAD` | `Uint64(2**20)` (= 1,048,576)     |
+| `BYTES_PER_LOGS_BLOOM`         | `Uint64(2**8)` (= 256)            |
+| `MAX_EXTRA_DATA_BYTES`         | `Uint64(2**5)` (= 32)             |
 
 ## Configuration
 
 ### Transition settings
 
-| Name                                   | Value                                                |
-| -------------------------------------- | ---------------------------------------------------- |
-| `TERMINAL_TOTAL_DIFFICULTY`            | `58750000000000000000000` (Estimated: Sept 15, 2022) |
-| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                                           |
-| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `FAR_FUTURE_EPOCH`                                   |
+| Name                                   | Value                              |
+| -------------------------------------- | ---------------------------------- |
+| `TERMINAL_TOTAL_DIFFICULTY`            | `Uint256(58750000000000000000000)` |
+| `TERMINAL_BLOCK_HASH`                  | `Hash32()`                         |
+| `TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH` | `Epoch(FAR_FUTURE_EPOCH)`          |
 
 ## Containers
 
@@ -119,7 +121,7 @@ class BeaconBlockBody(Container):
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
@@ -129,18 +131,18 @@ class BeaconState(Container):
     historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
+    eth1_deposit_index: Uint64
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [New in Bellatrix]
@@ -164,12 +166,12 @@ class ExecutionPayload(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
 ```
@@ -186,17 +188,17 @@ class ExecutionPayloadHeader(Container):
     receipts_root: Bytes32
     logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
     extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root
 ```
 
-## Helper functions
+## Helpers
 
 ### Predicates
 
@@ -259,7 +261,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -296,7 +300,7 @@ def slash_validator(
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
 ```
 
@@ -323,7 +327,6 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 #### `is_valid_block_hash`
@@ -333,7 +336,6 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 #### `verify_and_notify_new_payload`
@@ -439,7 +441,7 @@ def process_slashings(state: BeaconState) -> None:
             validator.slashed
             and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
         ):
-            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid Uint64 overflow
             penalty_numerator = (
                 validator.effective_balance // increment * adjusted_total_slashing_balance
             )

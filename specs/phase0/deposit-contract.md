@@ -3,6 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Staking deposit contract](#staking-deposit-contract)
@@ -16,31 +17,34 @@
 
 ## Introduction
 
-This document represents the specification for the beacon chain deposit
+This document represents the specification for the beacon-chain deposit
 contract, part of Phase 0.
+
+## Types
+
+| Name               | SSZ equivalent | Description                               |
+| ------------------ | -------------- | ----------------------------------------- |
+| `ExecutionAddress` | `Bytes20`      | Address of account on the execution layer |
 
 ## Constants
 
 The following values are (non-configurable) constants used throughout the
 specification.
 
-| Name                          | Value         |
-| ----------------------------- | ------------- |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| Name                          | Value                 |
+| ----------------------------- | --------------------- |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
 
 ## Configuration
 
 *Note*: The default mainnet configuration values are included here for
-spec-design purposes. The different configurations for mainnet, testnets, and
-YAML-based testing can be found in the
-[`configs/constant_presets`](../../configs) directory. These configurations are
-updated for releases and may be out of sync during `dev` changes.
+specification-design purposes.
 
-| Name                       | Value                                        |
-| -------------------------- | -------------------------------------------- |
-| `DEPOSIT_CHAIN_ID`         | `1`                                          |
-| `DEPOSIT_NETWORK_ID`       | `1`                                          |
-| `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
+| Name                       | Value                                                            |
+| -------------------------- | ---------------------------------------------------------------- |
+| `DEPOSIT_CHAIN_ID`         | `Uint64(1)`                                                      |
+| `DEPOSIT_NETWORK_ID`       | `Uint64(1)`                                                      |
+| `DEPOSIT_CONTRACT_ADDRESS` | `ExecutionAddress('0x00000000219ab540356cBB839Cbe05303d7705Fa')` |
 
 ## Staking deposit contract
 
@@ -50,10 +54,10 @@ contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum
 proof-of-work chain defined by the
 [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and
 the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon
-chain. Validator balances will be withdrawable to the execution-layer in a
-followup fork after Bellatrix upgrade.
+chain. Validator balances will be withdrawable to the execution layer in a
+follow-up upgrade after Bellatrix.
 
-_Note_: See [here](https://chainid.network/) for a comprehensive list of public
+*Note*: See [here](https://chainid.network/) for a comprehensive list of public
 Ethereum chain chain-id's and network-id's.
 
 ### `deposit` function
@@ -70,7 +74,7 @@ is the expected `DepositData` root as a protection against malformed calldata.
 The amount of ETH (rounded down to the closest Gwei) sent to the deposit
 contract is the deposit amount, which must be of size at least
 `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no
-longer usable on the execution-layer until sometime after Bellatrix upgrade.
+longer usable on the execution layer until sometime after Bellatrix upgrade.
 
 #### Withdrawal credentials
 
@@ -95,7 +99,7 @@ BLS12-381 signature) is not verified by the deposit contract.
 ## Solidity code
 
 The deposit contract source code, written in Solidity, is available
-[here](../../solidity_deposit_contract/deposit_contract.sol).
+[here](https://github.com/ethereum/solidity-deposit-contract/blob/master/deposit_contract.sol).
 
 *Note*: To save on gas, the deposit contract uses a progressive Merkle root
 calculation algorithm that requires only O(log(n)) storage. See

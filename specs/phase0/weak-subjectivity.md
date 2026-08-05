@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Custom Types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
@@ -35,23 +35,23 @@ This document uses data structures, constants, functions, and terminology from
 [Phase 0 -- The Beacon Chain](./beacon-chain.md) and
 [Phase 0 -- Beacon Chain Fork Choice](./fork-choice.md).
 
-## Custom Types
+## Types
 
 | Name    | SSZ Equivalent | Description        |
 | ------- | -------------- | ------------------ |
-| `Ether` | `uint64`       | an amount in Ether |
+| `Ether` | `Uint64`       | An amount in Ether |
 
 ## Constants
 
 | Name          | Value           |
 | ------------- | --------------- |
-| `ETH_TO_GWEI` | `uint64(10**9)` |
+| `ETH_TO_GWEI` | `Uint64(10**9)` |
 
 ## Configuration
 
 | Name           | Value        |
 | -------------- | ------------ |
-| `SAFETY_DECAY` | `uint64(10)` |
+| `SAFETY_DECAY` | `Uint64(10)` |
 
 ## Weak Subjectivity Checkpoint
 
@@ -78,20 +78,20 @@ in
 [this report](https://github.com/runtimeverification/beacon-chain-verification/blob/master/weak-subjectivity/weak-subjectivity-analysis.pdf).
 
 *Note*: The expressions in the report use fractions, whereas the consensus-specs
-only use `uint64` arithmetic. The expressions have been simplified to avoid
+only use `Uint64` arithmetic. The expressions have been simplified to avoid
 computing fractions, and more details can be found
 [here](https://www.overleaf.com/read/wgjzjdjpvpsd).
 
 *Note*: The calculations here use `Ether` instead of `Gwei`, because the large
 magnitude of balances in `Gwei` can cause an overflow while computing using
-`uint64` arithmetic operations. Using `Ether` reduces the magnitude of the
+`Uint64` arithmetic operations. Using `Ether` reduces the magnitude of the
 multiplicative factors by an order of `ETH_TO_GWEI` (`= 10**9`) and avoid the
-scope for overflows in `uint64`.
+scope for overflows in `Uint64`.
 
 #### `compute_weak_subjectivity_period`
 
 ```python
-def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
+def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
     """
     Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:
@@ -108,7 +108,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
     Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
     D = SAFETY_DECAY
 
-    if T * (200 + 3 * D) < t * (200 + 12 * D):
+    if t * (200 + 12 * D) > T * (200 + 3 * D):
         epochs_for_validator_set_churn = (
             N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
         )

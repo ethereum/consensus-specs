@@ -66,27 +66,27 @@ sync committee signatures into each block they produce.
 ## Prerequisites
 
 All terminology, constants, functions, and protocol mechanics defined in the
-[Altair -- The Beacon Chain](./beacon-chain.md) doc are requisite for this
-document and used throughout. Please see this document before continuing and use
-as a reference throughout.
+[Altair -- The Beacon Chain](./beacon-chain.md) specifications are requisite for
+this document and used throughout. Please see this document before continuing
+and use as a reference throughout.
 
 ## Constants
 
 ### Misc
 
-| Name                                       | Value         |                                       Unit                                       |
-| ------------------------------------------ | ------------- | :------------------------------------------------------------------------------: |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                    validators                                    |
-| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `Uint64(2**4)` (= 16) |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `Uint64(2**2)` (= 4)  |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                   | Value          |     Unit     |          Duration          |
-| ---------------------- | -------------- | :----------: | :------------------------: |
-| `SYNC_MESSAGE_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                   | Value          | Duration                   |
+| ---------------------- | -------------- | -------------------------- |
+| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -106,8 +106,8 @@ class SyncCommitteeMessage(Container):
 class SyncCommitteeContribution(Container):
     slot: Slot
     beacon_block_root: Root
-    subcommittee_index: uint64
-    aggregation_bits: Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
+    subcommittee_index: Uint64
+    aggregation_bits: BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
     signature: BLSSignature
 ```
 
@@ -133,7 +133,7 @@ class SignedContributionAndProof(Container):
 ```python
 class SyncAggregatorSelectionData(Container):
     slot: Slot
-    subcommittee_index: uint64
+    subcommittee_index: Uint64
 ```
 
 ## Validator assignments
@@ -156,11 +156,11 @@ must be produced and broadcast for slots on range
 `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
 rather than for the range
 `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
-To reduce complexity during the Altair fork, sync committees are not expected to
-produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
+To reduce complexity during the Altair upgrade, sync committees are not expected
+to produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
-def compute_sync_committee_period(epoch: Epoch) -> uint64:
+def compute_sync_committee_period(epoch: Epoch) -> Uint64:
     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
 ```
 
@@ -257,7 +257,7 @@ select the best contribution seen across all aggregators for each
 subnet/subcommittee. A contribution with more valid signatures is better than a
 contribution with fewer signatures.
 
-Recall `block.body.sync_aggregate.sync_committee_bits` is a `Bitvector` where
+Recall `block.body.sync_aggregate.sync_committee_bits` is a `BitVector` where
 the `i`th bit is `True` if the corresponding validator in the sync committee has
 produced a valid signature, and that
 `block.body.sync_aggregate.sync_committee_signature` is the aggregate BLS
@@ -332,8 +332,8 @@ This logic is triggered upon the same conditions as when producing an
 attestation. Meaning, a sync committee member should produce and broadcast a
 `SyncCommitteeMessage` either when (a) the validator has received a valid block
 from the expected block proposer for the current `slot` or (b)
-`get_sync_message_due_ms(epoch)` milliseconds has transpired since the start of
-the slot -- whichever comes first.
+`get_sync_message_due_ms()` milliseconds has transpired since the start of the
+slot -- whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)`
 assumes the parameter `state` is the head state corresponding to processing the
@@ -390,12 +390,10 @@ def compute_subnets_for_sync_committee(
     sync_committee_indices = [
         index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey
     ]
-    return set(
-        [
-            SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
-            for index in sync_committee_indices
-        ]
-    )
+    return {
+        SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
+        for index in sync_committee_indices
+    }
 ```
 
 *Note*: Subnet assignment does not change during the duration of a validator's
@@ -423,7 +421,7 @@ the BLS private key associated with the validator.
 
 ```python
 def get_sync_committee_selection_proof(
-    state: BeaconState, slot: Slot, subcommittee_index: uint64, privkey: int
+    state: BeaconState, slot: Slot, subcommittee_index: Uint64, privkey: int
 ) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_data = SyncAggregatorSelectionData(
@@ -479,8 +477,8 @@ the `subnet_id` used to derive the topic name.
 ###### Aggregation bits
 
 Let `contribution.aggregation_bits` be a
-`Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the
-`index`th bit is set in the `Bitvector` for each corresponding validator
+`BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]`, where the
+`index`th bit is set in the `BitVector` for each corresponding validator
 included in this aggregate from the corresponding subcommittee. An aggregator
 finds the index in the sync committee (as determined by a reverse pubkey lookup
 on `state.current_sync_committee.pubkeys`) for a given validator referenced by
@@ -490,7 +488,7 @@ index within the subcommittee is set in `contribution.aggregation_bits`.
 
 For example, if a validator with index `2044` is pseudo-randomly sampled to sync
 committee index `135`. This sync committee index maps to `subcommittee_index`
-`1` with position `7` in the `Bitvector` for the contribution.
+`1` with position `7` in the `BitVector` for the contribution.
 
 *Note*: A validator **could be included multiple times** in a given subcommittee
 such that multiple bits are set for a single `SyncCommitteeMessage`.
@@ -577,12 +575,12 @@ particular time. To provide this stability, a validator must do the following:
   unset in the ENR once the node no longer has any validators in the
   subcommittee.
 
-  *Note*: The first sync committee from phase 0 to the Altair fork will not be
-  known until the fork happens, which implies subnet assignments are not known
-  until then. Early sync committee members should listen for topic subscriptions
-  from peers and employ discovery via the ENR advertisements near the fork
-  boundary to form initial subnets. Some early sync committee rewards may be
-  missed while the initial subnets form.
+  *Note*: The first sync committee from phase 0 to the Altair upgrade will not
+  be known until the upgrade happens, which implies subnet assignments are not
+  known until then. Early sync committee members should listen for topic
+  subscriptions from peers and employ discovery via the ENR advertisements near
+  the fork boundary to form initial subnets. Some early sync committee rewards
+  may be missed while the initial subnets form.
 
 - To join a sync committee subnet, select a random number of epochs before the
   end of the current sync committee period between 1 and

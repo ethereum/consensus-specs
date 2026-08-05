@@ -1,9 +1,5 @@
 name: Checks
 
-defaults:
-  run:
-    shell: zsh -e {0}
-
 on:
   push:
     branches:
@@ -15,77 +11,26 @@ on:
 
 jobs:
   lint:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@ed21f2f24f8dd64503750218de024bcf64c7250a # v7.1.5
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          version: ${{ vars.UV_VERSION }}
       - name: Run linter for pyspec
         run: |
           make lint
           git diff --exit-code
 
-  whitespace:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Check for trailing whitespace
-        run: |
-          if git grep -n '[[:blank:]]$'; then
-            echo "Trailing whitespace found. Please fix it."
-            exit 1
-          fi
-
-  comments:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Check fork comments
-        run: python3 scripts/check_fork_comments.py
-
-  framework:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@ed21f2f24f8dd64503750218de024bcf64c7250a # v7.1.5
-        with:
-          enable-cache: true
-          version: ${{ vars.UV_VERSION }}
-      - name: Run framework tests
-        run: make test component=fw
-      - name: Prepare test results for upload
-        if: always()
-        run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
-      - name: Upload framework test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        if: always()
-        with:
-          name: test-results-framework-${{ github.run_number }}
-          path: ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
-
   title:
     if: github.event_name == 'pull_request'
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     steps:
       - name: Check PR title
         env:
@@ -139,8 +84,8 @@ jobs:
           echo "PR title is valid"
 
   tests:
-    needs: [lint, whitespace, comments, framework, title]
-    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    needs: [lint]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         fork:
@@ -152,28 +97,71 @@ jobs:
           - electra
           - fulu
           - gloas
-          - eip7805
-          - eip7928
+          - heze
+          - eip8025
+          - eip8148
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@ed21f2f24f8dd64503750218de024bcf64c7250a # v7.1.5
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
-          version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
-        run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
+        run: make test preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
       - name: Upload ${{ matrix.fork }} test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
           path: ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
+
+  comptests:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+      # Group slicing is round robin, so a 1/40 slice of the tiny config still
+      # samples every fork and every test type for about a dozen groups.
+      - name: Generate a sample of compliance tests
+        run: |
+          make comptests \
+            fc_gen_config=tiny \
+            preset=minimal \
+            fork=altair,bellatrix,capella,deneb,electra,fulu,gloas \
+            group_slice_index=0 \
+            group_slice_count=40 \
+            comptests_dir=./comptests-sample
+
+  website:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+      - name: Build website
+        run: make build_docs

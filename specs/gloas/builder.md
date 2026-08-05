@@ -6,11 +6,11 @@
 
 - [Introduction](#introduction)
 - [Becoming a builder](#becoming-a-builder)
-  - [Builder withdrawal credentials](#builder-withdrawal-credentials)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Builder index](#builder-index)
   - [Activation](#activation)
+  - [Exiting](#exiting)
 - [Builder activities](#builder-activities)
   - [Constructing the `SignedExecutionPayloadBid`](#constructing-the-signedexecutionpayloadbid)
   - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
@@ -26,55 +26,76 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol introduces a new type of validator called a
-*builder*. Builders have the option to produce execution payloads by submitting
-bids. This document is a collection of guidelines for builders.
+With the Gloas upgrade, the protocol introduces a new type of staked actor (not
+a validator) called a *builder*. Since builders are not validators, they do not
+perform validator duties (e.g., attesting and proposing) and therefore do not
+earn yield on their stake. Builders have the option to produce execution
+payloads by submitting bids. This document is a collection of guidelines for
+builders.
 
 ## Becoming a builder
 
-### Builder withdrawal credentials
-
-The `withdrawal_credentials` field determines whether a validator is registered
-as a builder on the network. To be recognized as a builder, a validator’s
-`withdrawal_credentials` must use the `BUILDER_WITHDRAWAL_PREFIX`. This prefix
-distinguishes builders from other validator types.
-
-The `withdrawal_credentials` field must be:
-
-- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
-- `withdrawal_credentials[1:12] == b'\x00' * 11`
-- `withdrawal_credentials[12:] == builder_execution_address`
-
-Where `builder_execution_address` is an execution layer address that will
-receive withdrawals.
-
 ### Submit deposit
 
-Builders follow the same deposit process as regular validators, but with the
-builder-specific withdrawal credentials. The deposit must include:
+Builders are created by submitting a builder deposit request to the builder
+deposit contract on the execution layer, as defined in EIP-8282. The request
+must include:
 
 - `pubkey`: The builder's BLS public key.
-- `withdrawal_credentials`: With the `BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
-  prefix.
+- `withdrawal_credentials`: The withdrawal credentials, where the first byte is
+  `BUILDER_WITHDRAWAL_PREFIX` and the last 20 bytes are the execution-layer
+  address that will receive withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
-- `signature`: BLS signature over the deposit data.
+- `signature`: BLS proof of possession over the corresponding `DepositMessage`
+  under `DOMAIN_BUILDER_DEPOSIT`.
+
+*Note*: A builder deposit request with withdrawal credentials that do not start
+with `BUILDER_WITHDRAWAL_PREFIX` will be ignored and the funds will be lost.
+
+*Note*: Builders may be onboarded at the fork by submitting a deposit to the
+validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
+credential. This must be done late enough that the deposit is still pending at
+the fork, but early enough that the slot in which the deposit is added to the
+pending deposit queue is finalized so that the builder is considered active.
+Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`, with
+withdrawal credentials of the form
+`BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
 
-The beacon chain processes builder deposits identically to validator deposits,
-with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
+A builder deposit request for a new pubkey registers a builder. A request for an
+existing builder's pubkey tops up its balance.
 
 ### Builder index
 
-Once the deposit is processed, the builder is assigned a unique
-`validator_index` within the validator registry. This index is used to identify
-the builder in execution payload bids and envelopes.
+When the deposit is processed on the beacon chain, the builder is assigned a
+unique `builder_index` within the builder registry. This index is used to
+identify the builder in execution payload bids and envelopes.
 
 ### Activation
 
-Builder activation follows the same process as other validators. Note that the
-validator must have a balance of at least `MIN_ACTIVATION_BALANCE` to become
-eligible for activation.
+Builders become active once the epoch in which they were registered (assigned an
+index) has been finalized. Since registrations occur as soon as deposits reach
+the beacon chain, builders typically become active two epochs after submitting
+their deposit.
+
+*Note*: At the fork, pending deposits with the `BUILDER_WITHDRAWAL_PREFIX` are
+applied to the builder registry. The builder's `deposit_epoch` is set to the
+epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
+finalized at the fork, the builder will be immediately active. See
+`onboard_builders_from_pending_deposits` for details.
+
+### Exiting
+
+A builder exits by submitting a builder exit request to the builder exit
+contract on the execution layer, as defined in EIP-8282. The request contains
+the builder's `pubkey` and is authorized by the builder's `execution_address`
+(the transaction sender), not the BLS key.
+
+The consensus layer initiates the exit only if the builder is active, the
+request's `source_address` matches the builder's `execution_address`, and the
+builder has no pending balance to withdraw. Otherwise the request is consumed
+without effect and must be resubmitted once those conditions hold.
 
 ## Builder activities
 
@@ -92,35 +113,49 @@ proposer what it promised whether it submits the payload or not.
 Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadBid` as follows.
 
-01. Set `bid.parent_block_hash` to the current head of the execution chain (this
-    can be obtained from the beacon state as `state.latest_block_hash`).
-02. Set `bid.parent_block_root` to be the head of the consensus chain; this can
+01. Set `bid.parent_block_hash` to be the parent hash of the constructed
+    payload, that is `payload.parent_hash`.
+02. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
     `parent_block_hash` must be compatible, in the sense that they both should
-    come from the same `state` by the method described in this and the previous
-    point.
+    come from the same `state` and `store` by the method described in this and
+    the previous point.
 03. Construct an execution payload. This can be performed with an external
-    execution engine via a call to `engine_getPayloadV5`.
+    execution engine via a call to `engine_getPayloadV6`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
 05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
-    that is `payload.prev_randao`.
-06. Set `bid.fee_recipient` to be an execution address to receive the payment.
-    This address can be obtained from the proposer directly via a request or can
-    be set from the withdrawal credentials of the proposer. The burn address can
-    be used as a fallback.
-07. Set `bid.gas_limit` to be the gas limit of the constructed payload, that is
-    `payload.gas_limit`.
-08. Set `bid.builder_index` to be the validator index of the builder performing
-    these actions.
-09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+    that is `payload.prev_randao`. This value **MUST** equal
+    `get_randao_mix(parent_state, get_current_epoch(parent_state))`, where
+    `parent_state` is the post-state of `bid.parent_block_root`.
+06. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
+07. Set `bid.fee_recipient` to be an execution address to receive the payment.
+    The proposer's preferred fee recipient is obtained from the
+    `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
+    and whose `message.dependent_root` matches
+    `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
+    where `store` is the fork choice store.
+08. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
+    **MUST** satisfy
+    `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
+    where `parent_gas_limit` is the `gas_limit` of the parent execution payload
+    and `target_gas_limit` is the `target_gas_limit` in the
+    `SignedProposerPreferences` referenced in step 7.
+09. Set `bid.builder_index` to be the index of the builder performing these
+    actions.
 10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-11. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
-    `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
+11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
+    execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
+    be broadcast to the `execution_payload_bid` gossip topic.
+12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
+    returned by `engine_getPayloadV6`.
+13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
+    where `execution_requests` is the `ExecutionRequests` field returned by
+    `engine_getPayloadV6`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -149,7 +184,8 @@ def get_data_column_sidecars(
     beacon_block_root: Root,
     # [New in Gloas:EIP7732]
     slot: Slot,
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     cells_and_kzg_proofs: Sequence[
@@ -157,11 +193,10 @@ def get_data_column_sidecars(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a beacon block root and the commitments, cells/proofs associated with
-    each blob in the block, assemble the sidecars which can be distributed to peers.
+    Given a beacon block root and the cells/proofs associated with each blob
+    in the corresponding payload, assemble the sidecars which can be
+    distributed to peers.
     """
-    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
-
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
         column_cells, column_proofs = [], []
@@ -169,10 +204,10 @@ def get_data_column_sidecars(
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
         sidecars.append(
+            # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
                 index=column_index,
                 column=column_cells,
-                kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
                 slot=slot,
                 beacon_block_root=beacon_block_root,
@@ -183,15 +218,12 @@ def get_data_column_sidecars(
 
 #### Modified `get_data_column_sidecars_from_block`
 
-*Note*: The function `get_data_column_sidecars_from_block` is modified to
-include the list of blob KZG commitments and to use `beacon_block_root` instead
-of header and inclusion proof computations.
+*Note*: The function `get_data_column_sidecars_from_block` is modified to use
+`beacon_block_root` instead of header and inclusion proof computations.
 
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    # [New in Gloas:EIP7732]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
     ],
@@ -204,7 +236,6 @@ def get_data_column_sidecars_from_block(
     return get_data_column_sidecars(
         beacon_block_root,
         signed_block.message.slot,
-        blob_kzg_commitments,
         cells_and_kzg_proofs,
     )
 ```
@@ -226,23 +257,12 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
    `bid.block_hash`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
-3. Set `envelope.builder_index` to be the validator index of the builder
-   performing these steps. This field **MUST** be `bid.builder_index`.
+3. Set `envelope.builder_index` to be the index of the builder performing these
+   steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
-5. Set `envelope.slot` to be `block.slot`.
-6. Set `envelope.blob_kzg_commitments` to be the `commitments` field of the
-   blobs bundle constructed when constructing the bid. This field **MUST** have
-   a `hash_tree_root` equal to `bid.blob_kzg_commitments_root`.
+5. Set `envelope.parent_beacon_block_root` to be `block.parent_root`.
 
-After setting these parameters, the builder assembles
-`signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
-then verify that the envelope is valid with
-`process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
-This function should not trigger an exception.
-
-7. Set `envelope.state_root` to `hash_tree_root(state)`.
-
-After preparing the `envelope` the builder should sign the envelope using:
+After preparing the `envelope` the builder signs it using:
 
 ```python
 def get_execution_payload_envelope_signature(
@@ -261,5 +281,5 @@ and broadcasts it on the `execution_payload` global gossip topic.
 
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
-chain, may choose to withhold their execution payload. For this the builder
+chain, may choose to withhold their execution payload. For this, the builder
 should act as if no block was produced and not broadcast the payload.

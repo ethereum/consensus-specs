@@ -1,16 +1,16 @@
-- block_parents: &id002 [0, 0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0]
+- block_parents: &id002 [0, 0, 1, 2, 3, 4, 5, 6, 6, 5, 4, 3, 2, 1, 0]
   sm_links: &id001
   - [0, 1]
   - [0, 2]
   - [0, 3]
   - [0, 4]
-- block_parents: &id003 [0, 0, 1, 2, 3, 4, 5, 6, 6, 7, 5, 4, 3, 2, 1, 0]
+- block_parents: &id003 [0, 0, 1, 2, 3, 4, 5, 6, 7, 5, 4, 3, 2, 1, 0]
   sm_links: *id001
-- block_parents: &id005 [0, 0, 1, 2, 3, 4, 5, 6, 7, 7, 5, 4, 3, 2, 1, 0]
+- block_parents: &id005 [0, 0, 1, 2, 3, 4, 5, 6, 5, 6, 4, 3, 2, 1, 0]
   sm_links: *id001
-- block_parents: &id006 [0, 0, 1, 2, 3, 4, 5, 6, 6, 8, 5, 4, 3, 2, 1, 0]
+- block_parents: &id006 [0, 0, 1, 2, 3, 4, 5, 5, 6, 6, 4, 3, 2, 1, 0]
   sm_links: *id001
-- block_parents: &id007 [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 5, 4, 3, 2, 1, 0]
+- block_parents: &id007 [0, 0, 1, 2, 3, 4, 5, 5, 7, 6, 4, 3, 2, 1, 0]
   sm_links: *id001
 - block_parents: *id002
   sm_links: &id004

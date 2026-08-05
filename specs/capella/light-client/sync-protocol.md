@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -12,7 +12,7 @@
   - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
   - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
   - [Modified `LightClientStore`](#modified-lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`get_lc_execution_root`](#get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -26,12 +26,12 @@ as part of the Capella upgrade. It extends the
 The [fork document](./fork.md) explains how to upgrade existing Altair based
 deployments to Capella.
 
-Additional documents describes the impact of the upgrade on certain roles:
+Additional documents describe the impact of the upgrade on certain roles:
 
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                         | Description                                                   |
 | ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
@@ -108,7 +108,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # [Modified in Capella]
     finalized_header: LightClientHeader
     current_sync_committee: SyncCommittee
@@ -117,11 +117,11 @@ class LightClientStore(object):
     best_valid_update: Optional[LightClientUpdate]
     # [Modified in Capella]
     optimistic_header: LightClientHeader
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_lc_execution_root`
 

@@ -33,9 +33,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated [Beacon Chain doc of Deneb](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated [beacon-chain specifications of Deneb](./beacon-chain.md) are requisite
+for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -45,7 +45,7 @@ continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class BlobsBundle(object):
+class BlobsBundle:
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -55,9 +55,9 @@ class BlobsBundle(object):
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     # [New in Deneb:EIP4844]
     blobs_bundle: BlobsBundle
 ```
@@ -81,17 +81,14 @@ def compute_signed_block_header(signed_block: SignedBeaconBlock) -> SignedBeacon
 
 #### Modified `get_payload`
 
-Given the `payload_id`, `get_payload` returns the most recent version of the
-execution payload that has been built since the corresponding call to
-`notify_forkchoice_updated` method.
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle objects.
+    Return ExecutionPayload, Uint256, and BlobsBundle objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
 ## Beacon chain responsibilities
@@ -104,8 +101,8 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### ExecutionPayload
 
-`prepare_execution_payload` is updated from the Capella specs to provide the
-parent beacon block root.
+`prepare_execution_payload` is updated from the Capella specification to provide
+the parent beacon block root.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
@@ -131,7 +128,7 @@ def prepare_execution_payload(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state),
+        withdrawals=get_expected_withdrawals(state).withdrawals,
         # [New in Deneb:EIP4788]
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )

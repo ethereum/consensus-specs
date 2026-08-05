@@ -4,15 +4,19 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
-  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Helpers](#helpers)
+    - [Modified `Seen`](#modified-seen)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `is_current_slot`](#new-is_current_slot)
+    - [New `get_sync_subcommittee_pubkeys`](#new-get_sync_subcommittee_pubkeys)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`sync_committee_contribution_and_proof`](#sync_committee_contribution_and_proof)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [New `sync_committee_contribution_and_proof`](#new-sync_committee_contribution_and_proof)
       - [Sync committee subnets](#sync-committee-subnets)
-        - [`sync_committee_{subnet_id}`](#sync_committee_subnet_id)
+        - [New `sync_committee_{subnet_id}`](#new-sync_committee_subnet_id)
       - [Sync committees and aggregation](#sync-committees-and-aggregation)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -31,8 +35,8 @@
 
 ## Introduction
 
-This document contains the networking specification for Altair. This document
-should be viewed as additive to the
+This document contains the consensus-layer networking specifications for Altair.
+This document should be viewed as additive to the
 [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as
 the "Phase 0 document" hereafter. Readers should understand the Phase 0 document
 and use it as a basis to understand the changes outlined in this document.
@@ -41,6 +45,28 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery
 domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
+
+### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    # [New in Altair]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    # [New in Altair]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    # [New in Altair]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+```
 
 #### Modified `compute_fork_version`
 
@@ -54,6 +80,43 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+#### New `is_current_slot`
+
+```python
+def is_current_slot(
+    store: Store,
+    slot: Slot,
+    current_time_ms: Uint64,
+) -> bool:
+    """
+    Check if the given slot is the current slot
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    return is_within_slot_range(store, slot, 0, current_time_ms)
+```
+
+#### New `get_sync_subcommittee_pubkeys`
+
+```python
+def get_sync_subcommittee_pubkeys(
+    state: BeaconState, subcommittee_index: Uint64
+) -> Sequence[BLSPubkey]:
+    # Committees assigned to `slot` sign for `slot - 1`
+    # This creates the exceptional logic below when transitioning between sync committee periods
+    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
+        next_slot_epoch
+    ):
+        sync_committee = state.current_sync_committee
+    else:
+        sync_committee = state.next_sync_committee
+
+    # Return pubkeys for the subcommittee index
+    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
+    i = subcommittee_index * sync_subcommittee_size
+    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
+```
+
 ### MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to
@@ -61,9 +124,9 @@ communicate the sync committee subnet subscriptions:
 
 ```
 (
-  seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  seq_number: Uint64
+  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
+  syncnets: BitVector[SYNC_COMMITTEE_SUBNET_COUNT]
 )
 ```
 
@@ -71,7 +134,7 @@ Where
 
 - `seq_number` and `attnets` have the same meaning defined in the Phase 0
   document.
-- `syncnets` is a `Bitvector` representing the node's sync committee subnet
+- `syncnets` is a `BitVector` representing the node's sync committee subnet
   subscriptions. This field should mirror the data in the node's ENR as outlined
   in the [validator guide](./validator.md#sync-committee-subnet-stability).
 
@@ -88,7 +151,7 @@ added in Altair to support the sync committees and the beacon block topic is
 updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages
-has not changed from the Phase 0 document.
+has not changed from the Phase 0 document unless explicitly noted here.
 
 The derivation of the `message-id` has changed starting with Altair to
 incorporate the message `topic` along with the message `data`. These are fields
@@ -98,14 +161,14 @@ of the `Message` Protobuf, and interpreted as empty byte strings if missing. The
 - If `message.data` has a valid snappy decompression, set `message-id` to the
   first 20 bytes of the `SHA256` hash of the concatenation of the following
   data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string
-  (encoded as little-endian `uint64`), the topic byte string, and the snappy
+  (encoded as little-endian `Uint64`), the topic byte string, and the snappy
   decompressed message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
+  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
 - Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of the
   concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the
-  length of the topic byte string (encoded as little-endian `uint64`), the topic
+  length of the topic byte string (encoded as little-endian `Uint64`), the topic
   byte string, and the raw message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + message.data)[:20]`.
 
 Implementations may need to carefully handle the function that computes the
 `message-id`. In particular, messages on topics with the Phase 0 fork digest
@@ -136,7 +199,7 @@ Altair changes the type of the global beacon block topic and adds one global
 topic to propagate partially aggregated sync committee messages to all potential
 proposers of beacon blocks.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 The existing specification for this topic does not change from the Phase 0
 document, but the type of the payload does change to the (modified)
@@ -146,100 +209,180 @@ document, but the type of the payload does change to the (modified)
 See the [state transition document](./beacon-chain.md#beaconblockbody) for
 Altair for further details.
 
-###### `sync_committee_contribution_and_proof`
+###### New `sync_committee_contribution_and_proof`
 
 This topic is used to propagate partially aggregated sync committee messages to
-be included in future blocks.
-
-The following validations MUST pass before forwarding the
-`signed_contribution_and_proof` on the network; define
-`contribution_and_proof = signed_contribution_and_proof.message`,
-`contribution = contribution_and_proof.contribution`, and the following function
-`get_sync_subcommittee_pubkeys` for convenience:
+be included in future blocks. The `state` parameter is the head state.
 
 ```python
-def get_sync_subcommittee_pubkeys(
-    state: BeaconState, subcommittee_index: uint64
-) -> Sequence[BLSPubkey]:
-    # Committees assigned to `slot` sign for `slot - 1`
-    # This creates the exceptional logic below when transitioning between sync committee periods
-    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
-    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
-        next_slot_epoch
-    ):
-        sync_committee = state.current_sync_committee
-    else:
-        sync_committee = state.next_sync_committee
+def validate_sync_committee_contribution_and_proof_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_contribution_and_proof: SignedContributionAndProof,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedContributionAndProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    contribution_and_proof = signed_contribution_and_proof.message
+    contribution = contribution_and_proof.contribution
 
-    # Return pubkeys for the subcommittee index
-    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
-    i = subcommittee_index * sync_subcommittee_size
-    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
+    # [IGNORE] The contribution's slot is for the current slot
+    if not is_current_slot(store, contribution.slot, current_time_ms):
+        raise GossipIgnore("contribution is not for the current slot")
+
+    # [REJECT] The subcommittee index is in the allowed range
+    if contribution.subcommittee_index >= SYNC_COMMITTEE_SUBNET_COUNT:
+        raise GossipReject("subcommittee index out of range")
+
+    # [REJECT] The contribution has participants
+    if not any(contribution.aggregation_bits):
+        raise GossipReject("contribution has no participants")
+
+    # [REJECT] The selection_proof selects the validator as an aggregator for the slot
+    if not is_sync_committee_aggregator(contribution_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
+
+    # [REJECT] The aggregator index is valid
+    if contribution_and_proof.aggregator_index >= len(state.validators):
+        raise GossipReject("aggregator index out of range")
+
+    # [REJECT] The aggregator's validator index is in the declared subcommittee
+    # of the current sync committee
+    aggregator_pubkey = state.validators[contribution_and_proof.aggregator_index].pubkey
+    subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
+    if aggregator_pubkey not in subcommittee_pubkeys:
+        raise GossipReject("aggregator not in subcommittee")
+
+    # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
+    # and subcommittee_index whose aggregation_bits is non-strict superset
+    # has not already been seen
+    contribution_key = (
+        contribution.slot,
+        contribution.beacon_block_root,
+        contribution.subcommittee_index,
+    )
+    contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
+    seen_bits = seen.sync_contribution_data.get(contribution_key, set())
+    if is_non_strict_superset(seen_bits, contribution_bits):
+        raise GossipIgnore("already seen contribution for this data")
+
+    # [IGNORE] The sync committee contribution is the first valid contribution received
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
+    aggregator_key = (
+        contribution.slot,
+        contribution_and_proof.aggregator_index,
+        contribution.subcommittee_index,
+    )
+    if aggregator_key in seen.sync_contribution_aggregator_slots:
+        raise GossipIgnore("already seen contribution from this aggregator")
+
+    # [REJECT] The contribution_and_proof.selection_proof is a valid signature
+    # of the SyncAggregatorSelectionData derived from the contribution
+    # by the validator with index contribution_and_proof.aggregator_index
+    selection_data = SyncAggregatorSelectionData(
+        slot=contribution.slot,
+        subcommittee_index=contribution.subcommittee_index,
+    )
+    domain = get_domain(
+        state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(contribution.slot)
+    )
+    signing_root = compute_signing_root(selection_data, domain)
+    if not bls.Verify(aggregator_pubkey, signing_root, contribution_and_proof.selection_proof):
+        raise GossipReject("invalid selection proof signature")
+
+    # [REJECT] The aggregator signature, signed_contribution_and_proof.signature, is valid
+    domain = get_domain(
+        state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot)
+    )
+    signing_root = compute_signing_root(contribution_and_proof, domain)
+    if not bls.Verify(aggregator_pubkey, signing_root, signed_contribution_and_proof.signature):
+        raise GossipReject("invalid aggregator signature")
+
+    # [REJECT] The aggregate signature is valid for the message beacon_block_root
+    # and aggregate pubkey derived from the participation info in aggregation_bits
+    # for the subcommittee specified by the contribution.subcommittee_index
+    participant_pubkeys = [
+        subcommittee_pubkeys[i] for i, bit in enumerate(contribution.aggregation_bits) if bit
+    ]
+    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
+    signing_root = compute_signing_root(contribution.beacon_block_root, domain)
+    if not eth_fast_aggregate_verify(participant_pubkeys, signing_root, contribution.signature):
+        raise GossipReject("invalid aggregate signature")
+
+    # Mark this contribution as seen
+    seen.sync_contribution_aggregator_slots.add(aggregator_key)
+    if contribution_key not in seen.sync_contribution_data:
+        seen.sync_contribution_data[contribution_key] = set()
+    seen.sync_contribution_data[contribution_key].add(contribution_bits)
 ```
-
-- _[IGNORE]_ The contribution's slot is for the current slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
-  `contribution.slot == current_slot`.
-- _[REJECT]_ The subcommittee index is in the allowed range, i.e.
-  `contribution.subcommittee_index < SYNC_COMMITTEE_SUBNET_COUNT`.
-- _[REJECT]_ The contribution has participants -- that is,
-  `any(contribution.aggregation_bits)`.
-- _[REJECT]_ `contribution_and_proof.selection_proof` selects the validator as
-  an aggregator for the slot -- i.e.
-  `is_sync_committee_aggregator(contribution_and_proof.selection_proof)` returns
-  `True`.
-- _[REJECT]_ The aggregator's validator index is in the declared subcommittee of
-  the current sync committee -- i.e.
-  `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
-- _[IGNORE]_ A valid sync committee contribution with equal `slot`,
-  `beacon_block_root` and `subcommittee_index` whose `aggregation_bits` is
-  non-strict superset has _not_ already been seen.
-- _[IGNORE]_ The sync committee contribution is the first valid contribution
-  received for the aggregator with index
-  `contribution_and_proof.aggregator_index` for the slot `contribution.slot` and
-  subcommittee index `contribution.subcommittee_index` (this requires
-  maintaining a cache of size `SYNC_COMMITTEE_SIZE` for this topic that can be
-  flushed after each slot).
-- _[REJECT]_ The `contribution_and_proof.selection_proof` is a valid signature
-  of the `SyncAggregatorSelectionData` derived from the `contribution` by the
-  validator with index `contribution_and_proof.aggregator_index`.
-- _[REJECT]_ The aggregator signature,
-  `signed_contribution_and_proof.signature`, is valid.
-- _[REJECT]_ The aggregate signature is valid for the message
-  `beacon_block_root` and aggregate pubkey derived from the participation info
-  in `aggregation_bits` for the subcommittee specified by the
-  `contribution.subcommittee_index`.
 
 ##### Sync committee subnets
 
 Sync committee subnets are used to propagate unaggregated sync committee
 messages to subsections of the network.
 
-###### `sync_committee_{subnet_id}`
+###### New `sync_committee_{subnet_id}`
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync
 committee messages to the subnet `subnet_id` to be aggregated before being
-gossiped to the global `sync_committee_contribution_and_proof` topic.
+gossiped to the global `sync_committee_contribution_and_proof` topic. The
+`state` parameter is the head state.
 
-The following validations MUST pass before forwarding the
-`sync_committee_message` on the network:
+```python
+def validate_sync_committee_message_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sync_committee_message: SyncCommitteeMessage,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a SyncCommitteeMessage for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    # [IGNORE] The message's slot is for the current slot
+    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
+        raise GossipIgnore("message is not for the current slot")
 
-- _[IGNORE]_ The message's slot is for the current slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
-  `sync_committee_message.slot == current_slot`.
-- _[REJECT]_ The `subnet_id` is valid for the given validator, i.e.
-  `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
-  Note this validation implies the validator is part of the broader current sync
-  committee along with the correct subcommittee.
-- _[IGNORE]_ There has been no other valid sync committee message for the
-  declared `slot` for the validator referenced by
-  `sync_committee_message.validator_index` (this requires maintaining a cache of
-  size `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that
-  can be flushed after each slot). Note this validation is _per topic_ so that
-  for a given `slot`, multiple messages could be forwarded with the same
-  `validator_index` as long as the `subnet_id`s are distinct.
-- _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for
-  the validator referenced by `validator_index`.
+    # [REJECT] The validator index is valid
+    if sync_committee_message.validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    # [REJECT] The subnet_id is valid for the given validator
+    # (this implies the validator is part of the broader current sync committee
+    # along with the correct subcommittee)
+    valid_subnets = compute_subnets_for_sync_committee(
+        state, sync_committee_message.validator_index
+    )
+    if subnet_id not in valid_subnets:
+        raise GossipReject("subnet_id is not valid for the validator")
+
+    # [IGNORE] There has been no other valid sync committee message for the declared slot
+    # for the validator referenced by sync_committee_message.validator_index
+    # (this validation is per topic so that for a given slot, multiple messages could be
+    # forwarded with the same validator_index as long as the subnet_ids are distinct)
+    message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
+    if message_key in seen.sync_message_validator_slots:
+        raise GossipIgnore("already seen message from this validator for this slot and subnet")
+
+    # [REJECT] The signature is valid for the message beacon_block_root
+    # for the validator referenced by validator_index
+    validator = state.validators[sync_committee_message.validator_index]
+    domain = get_domain(
+        state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(sync_committee_message.slot)
+    )
+    signing_root = compute_signing_root(sync_committee_message.beacon_block_root, domain)
+    if not bls.Verify(validator.pubkey, signing_root, sync_committee_message.signature):
+        raise GossipReject("invalid sync committee message signature")
+
+    # Mark this message as seen
+    seen.sync_message_validator_slots.add(message_key)
+```
 
 ##### Sync committees and aggregation
 
@@ -333,7 +476,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |
@@ -352,7 +495,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |
@@ -404,8 +547,8 @@ bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
 | Key        | Value                                        |
-| :--------- | :------------------------------------------- |
-| `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
+| ---------- | -------------------------------------------- |
+| `syncnets` | SSZ `BitVector[SYNC_COMMITTEE_SUBNET_COUNT]` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for
 further details on how the new bits are used.

@@ -1,28 +1,3 @@
-#!/usr/bin/env python3
-"""
-Standalone script to generate Ethereum consensus specs from markdown files.
-
-This script parses markdown specification files and generates Python modules
-for each fork (phase0, altair, bellatrix, capella, deneb, electra, etc.)
-with different presets (minimal, mainnet).
-
-The generated Python modules are written to the output directory and can be
-imported as part of the eth2spec package.
-
-Usage:
-    python pysetup/generate_specs.py [options]
-
-    # Generate all forks to default location
-    python pysetup/generate_specs.py --all-forks
-
-    # Generate specific fork
-    python pysetup/generate_specs.py --fork phase0 --out-dir ./output
-
-Dependencies:
-    - marko: Markdown parsing
-    - ruamel.yaml: YAML config/preset loading
-"""
-
 import argparse
 import copy
 import sys
@@ -32,12 +7,7 @@ from functools import cache
 from pathlib import Path
 from typing import cast
 
-try:
-    from ruamel.yaml import YAML
-except ImportError:
-    print("Error: Missing required dependencies.", file=sys.stderr)
-    print("Run: uv sync --all-extras", file=sys.stderr)
-    sys.exit(1)
+from ruamel.yaml import YAML
 
 from pysetup.constants import PHASE0
 from pysetup.helpers import (
@@ -79,7 +49,7 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return cast(dict[str, str], parse_config_vars(preset))
+    return cast("dict[str, str]", parse_config_vars(preset))
 
 
 @cache
@@ -256,7 +226,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate all forks to default location (tests/core/pyspec/eth2spec/)
+  # Generate all forks to default location (tests/core/pyspec/eth_consensus_specs/)
   python pysetup/generate_specs.py --all-forks
 
   # Generate specific fork
@@ -288,7 +258,7 @@ Examples:
         "--out-dir",
         type=Path,
         default=None,
-        help="Output directory (default: tests/core/pyspec/eth2spec/<fork>)",
+        help="Output directory (default: tests/core/pyspec/eth_consensus_specs/<fork>)",
     )
 
     parser.add_argument(
@@ -336,7 +306,7 @@ Examples:
             if args.out_dir:
                 out_dir = args.out_dir
             else:
-                out_dir = Path("tests/core/pyspec/eth2spec") / fork
+                out_dir = Path("tests/core/pyspec/eth_consensus_specs") / fork
 
             generate_fork_specs(
                 fork=fork,

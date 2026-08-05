@@ -13,7 +13,7 @@
 ## Introduction
 
 This document describes the process of the first upgrade of the beacon chain:
-the Altair hard fork, introducing light client support and other improvements.
+the Altair upgrade, introducing light client support and other improvements.
 
 ## Configuration
 
@@ -74,6 +74,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [New in Altair]
             current_version=ALTAIR_FORK_VERSION,
             epoch=epoch,
         ),
@@ -98,7 +99,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=[uint64(0) for _ in range(len(pre.validators))],
+        inactivity_scores=[Uint64(0) for _ in range(len(pre.validators))],
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)

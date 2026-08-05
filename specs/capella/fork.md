@@ -73,6 +73,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [Modified in Capella]
             current_version=CAPELLA_FORK_VERSION,
             epoch=epoch,
         ),

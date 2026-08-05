@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`normalize_merkle_branch`](#normalize_merkle_branch)
 - [Upgrading light client data](#upgrading-light-client-data)
 - [Upgrading the store](#upgrading-the-store)
@@ -18,7 +18,7 @@ This is necessary when processing pre-Electra data with a post-Electra
 `LightClientStore`. Note that the data being exchanged over the network
 protocols uses the original format.
 
-## Helper functions
+## Helpers
 
 ### `normalize_merkle_branch`
 

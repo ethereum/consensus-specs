@@ -1,0 +1,314 @@
+name: Compliance Tests
+
+run-name: >-
+  ${{
+    inputs.release
+    && format('Compliance Tests for {0}', inputs.release)
+    || 'Compliance Tests'
+  }}
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Repository
+        type: string
+      ref:
+        description: Commit, branch, or tag
+        type: string
+      release:
+        description: Release (leave empty)
+        default: ""
+        type: string
+      altair:
+        description: Generate altair fork
+        default: true
+        type: boolean
+      bellatrix:
+        description: Generate bellatrix fork
+        default: true
+        type: boolean
+      capella:
+        description: Generate capella fork
+        default: true
+        type: boolean
+      deneb:
+        description: Generate deneb fork
+        default: true
+        type: boolean
+      electra:
+        description: Generate electra fork
+        default: true
+        type: boolean
+      fulu:
+        description: Generate fulu fork
+        default: true
+        type: boolean
+      gloas:
+        description: Generate gloas fork
+        default: true
+        type: boolean
+      tiny:
+        description: Generate tiny config
+        default: false
+        type: boolean
+      small:
+        description: Generate small config
+        default: true
+        type: boolean
+      standard:
+        description: Generate standard config
+        default: false
+        type: boolean
+      seed:
+        description: Seed (random if empty)
+        default: ""
+        type: string
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    env:
+      COMPTEST_SLICING_CONFIG: '{"tiny":1,"small":4,"standard":4}'
+    outputs:
+      repo: ${{ steps.config.outputs.repo }}
+      ref: ${{ steps.config.outputs.ref }}
+      release: ${{ steps.config.outputs.release }}
+      configs: ${{ steps.config.outputs.configs }}
+      seed: ${{ steps.config.outputs.seed }}
+      matrix: ${{ steps.config.outputs.matrix }}
+    steps:
+      - name: Resolve configuration
+        id: config
+        run: |
+          # Repo
+          repo="${{ inputs.repo || github.repository }}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+
+          # Ref
+          ref="${{ inputs.ref }}"
+          if [[ -n "$ref" ]]; then
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Release tag
+          release="${{ inputs.release }}"
+          if [[ -n "$release" ]]; then
+            if [[ "$repo" != "${{ github.repository }}" ]]; then
+              echo "Release-tagged compliance runs must use ${{ github.repository }} as the repository." >&2
+              exit 1
+            fi
+            if [[ "$ref" != "$release" ]]; then
+              echo "Release-tagged compliance runs must use the release tag as the ref." >&2
+              exit 1
+            fi
+            echo "release=$release" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Presets
+          presets='["minimal"]'
+          echo "presets=$presets" >> "$GITHUB_OUTPUT"
+
+          # Forks
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            forks='["fulu","gloas"]'
+          else
+            selected=()
+            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
+            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
+            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
+            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
+            [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
+            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
+            [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No forks selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            forks="[${json%,}]"
+          fi
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+
+          # Configs
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            configs='["small"]'
+          else
+            selected=()
+            [[ "${{ inputs.tiny }}" == "true" ]] && selected+=("tiny")
+            [[ "${{ inputs.small }}" == "true" ]] && selected+=("small")
+            [[ "${{ inputs.standard }}" == "true" ]] && selected+=("standard")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No generator configs selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            configs="[${json%,}]"
+          fi
+          echo "configs=$configs" >> "$GITHUB_OUTPUT"
+
+          # Seed
+          seed_input="${{ inputs.seed }}"
+          if [[ -z "$seed_input" ]]; then
+            seed=$(shuf -i 1-2147483647 -n 1)
+          elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
+            seed="$seed_input"
+          else
+            echo "Invalid seed value: '$seed_input'. Must be empty or a number." >&2
+            exit 1
+          fi
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+
+          # Matrix
+          matrix=$(
+            jq -cn \
+              --argjson presets "$presets" \
+              --argjson forks "$forks" \
+              --argjson configs "$configs" \
+              --argjson slices '${{ env.COMPTEST_SLICING_CONFIG }}' \
+              '
+              [
+                $presets[] as $preset
+                | $forks[] as $fork
+                | $configs[] as $config
+                | (($slices[$config] // 1) | tonumber) as $slice_count
+                | if $slice_count < 1 then
+                    error("Invalid slice count for config \($config): \($slice_count)")
+                  else
+                    range(0; $slice_count) as $slice_index
+                    | {
+                        preset: $preset,
+                        fork: $fork,
+                        config: $config,
+                        slice_index: $slice_index,
+                        slice_count: $slice_count
+                      }
+                  end
+              ]
+              '
+          )
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+          # Summary
+          echo "Configuration:"
+          echo "  repo:    $repo"
+          echo "  ref:     ${ref:-<default>}"
+          echo "  release: ${release:-<none>}"
+          echo "  presets: $presets"
+          echo "  forks:   $forks"
+          echo "  configs: $configs"
+          echo "  seed:    $seed"
+          echo "  matrix:  $matrix"
+          echo "  slicing: ${{ env.COMPTEST_SLICING_CONFIG }}"
+
+  generate:
+    needs: config
+    name: generate (${{ matrix.fork }}, ${{ matrix.config }}, ${{ matrix.slice_index }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.config.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ needs.config.outputs.repo }}
+          ref: ${{ needs.config.outputs.ref }}
+          persist-credentials: false
+
+      - name: Setup python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Generate compliance tests
+        run: |
+          extra_args=()
+          if [[ "${{ matrix.slice_count }}" -gt 1 ]]; then
+            extra_args+=(
+              "group_slice_index=${{ matrix.slice_index }}"
+              "group_slice_count=${{ matrix.slice_count }}"
+            )
+          fi
+
+          make comptests \
+            fc_gen_config=${{ matrix.config }} \
+            preset=${{ matrix.preset }} \
+            fork=${{ matrix.fork }} \
+            comptests_dir=./compliance-spec-tests/${{ matrix.config }} \
+            seed=${{ needs.config.outputs.seed }} \
+            "${extra_args[@]}"
+
+      - name: Upload compliance tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}-${{ matrix.slice_index }}
+          path: compliance-spec-tests/${{ matrix.config }}
+          if-no-files-found: ignore
+
+  package:
+    needs: [config, generate]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    strategy:
+      matrix:
+        config: ${{ fromJson(needs.config.outputs.configs) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Package compliance tests
+        uses: ./.github/actions/package
+        with:
+          name: ${{ matrix.config }}
+          artifact-prefix: comptests
+          source-path: tests
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Name packaged archive
+        id: archive
+        run: |
+          archive="${{ matrix.config }}.tar.gz"
+
+          # Release archives are named comptests.tar.gz
+          release="${{ needs.config.outputs.release }}"
+          if [[ -n "$release" ]]; then
+            renamed="comptests.tar.gz"
+            mv "$archive" "$renamed"
+            archive="$renamed"
+          fi
+
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Upload ${{ steps.archive.outputs.archive }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.archive.outputs.archive }}
+          path: ${{ steps.archive.outputs.archive }}
+          archive: false
+
+      - name: Upload to release
+        if: ${{ needs.config.outputs.release != '' }}
+        run: gh release upload "${{ needs.config.outputs.release }}" "${{ steps.archive.outputs.archive }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

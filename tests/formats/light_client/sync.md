@@ -11,19 +11,20 @@ client implementing the sync protocol can sync to the latest block header.
 genesis_validators_root: Bytes32  -- string, hex encoded, with 0x prefix
 trusted_block_root: Bytes32       -- string, hex encoded, with 0x prefix
 bootstrap_fork_digest: string     -- encoded `ForkDigest`-context of `bootstrap`
-store_fork_digest: string         -- encoded `ForkDigest`-context of `store` object being tested
+store_fork_version: string        -- encoded `Version` identifying the `store` object's fork
 ```
 
 ### `bootstrap.ssz_snappy`
 
 An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to
-initialize a local `store` object of type `LightClientStore` with
-`store_fork_digest` using
+initialize a local `store` object of type `LightClientStore` for fork
+`store_fork_version` using
 `initialize_light_client_store(trusted_block_rooot, bootstrap)`. The SSZ type
 can be determined from `bootstrap_fork_digest`.
 
-If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap`
-object may need to be upgraded before initializing the store.
+If the fork identified by `store_fork_version` differs from the one identified
+by `bootstrap_fork_digest`, the `bootstrap` object may need to be upgraded
+before initializing the store.
 
 ### `steps.yaml`
 
@@ -76,18 +77,19 @@ should be executed with the specified parameters:
 }
 ```
 
-If `store_fork_digest` differs from `update_fork_digest`, the `update` object
-may need to be upgraded before processing the update.
+If the fork identified by `store_fork_version` differs from the one identified
+by `update_fork_digest`, the `update` object may need to be upgraded before
+processing the update.
 
 After this step, the `store` object may have been updated.
 
 #### `upgrade_store`
 
-The `store` should be upgraded to reflect the new `store_fork_digest`:
+The `store` should be upgraded to reflect the new `store_fork_version`:
 
 ```yaml
 {
-    store_fork_digest: string           -- encoded `ForkDigest`-context of `store`
+    store_fork_version: string          -- encoded `Version` identifying the `store` object's fork
     checks: {<store_attribute>: value}  -- the assertions.
 }
 ```

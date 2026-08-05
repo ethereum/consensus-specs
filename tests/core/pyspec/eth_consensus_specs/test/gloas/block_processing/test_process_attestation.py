@@ -1,0 +1,654 @@
+from eth_consensus_specs.test.context import (
+    spec_state_test,
+    with_gloas_and_later,
+    with_presets,
+)
+from eth_consensus_specs.test.helpers.attestations import (
+    get_valid_attestation,
+    run_attestation_processing,
+    sign_attestation,
+)
+from eth_consensus_specs.test.helpers.block import apply_empty_block
+from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.state import (
+    next_slots,
+    transition_to_slot_via_block,
+)
+
+
+def _setup_previous_epoch_same_slot_scenario(spec, state):
+    """
+    Build a signed same-slot attestation at slot ``SLOTS_PER_EPOCH - 1`` with a
+    single attester. Advance state one epoch so the attestation's target becomes
+    the previous epoch.
+    """
+    attestation_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    apply_empty_block(spec, state, attestation_slot)
+
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+
+    # Make sure we have only one attester (simple weight calculation)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
+    )
+
+    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+    return attestation, attestation_slot
+
+
+def _setup_missed_slot_scenario(spec, state):
+    """
+    Creates blocks for slots 1, 2, 3 but skips slot 4 (missed slot).
+    Returns slot 4's block root (which inherits from slot 3).
+    Used for testing is_matching_blockroot=True, is_current_blockroot=False.
+    """
+    apply_empty_block(spec, state, 1)
+    apply_empty_block(spec, state, 2)
+    apply_empty_block(spec, state, 3)
+    next_slots(spec, state, 2)  # Advance to slot 5 without creating block at slot 4
+    return spec.get_block_root_at_slot(state, 4)
+
+
+def _setup_same_slot_scenario(spec, state, target_slot):
+    """
+    Creates blocks for slots 1, 2, 3 and advances for inclusion delay.
+    Returns the block root for the target slot.
+    Used for testing same-slot attestations.
+    """
+    apply_empty_block(spec, state, 1)
+    apply_empty_block(spec, state, 2)
+    apply_empty_block(spec, state, 3)
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    return spec.get_block_root_at_slot(state, target_slot)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_attestation_data_index_too_high(spec, state):
+    """
+    Test that attestation with index >= 2 is invalid in Gloas.
+    """
+    attestation = get_valid_attestation(spec, state)
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    attestation.data.index = 2
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_valid_attestation_data_index_zero_previous_slot(spec, state):
+    """
+    Test that attestation with index = 0 is valid in Gloas for previous slot attestations.
+    """
+    # Using basic scenario (advance to slot 5, only creates one block at slot 5)
+    transition_to_slot_via_block(spec, state, 5)
+    slot_3_block_root = spec.get_block_root_at_slot(state, 3)  # Will be genesis block root
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_3_block_root)
+    attestation.data.index = 0
+    sign_attestation(spec, state, attestation)
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_valid_attestation_data_index_one_previous_slot_matching_blockroot(spec, state):
+    """
+    Test that attestation with index = 1 is valid when is_matching_blockroot=True, is_current_blockroot=False
+    (attestation for slot 4 where no block was proposed, so it inherits slot 3's block root).
+    """
+    slot_4_block_root = _setup_missed_slot_scenario(spec, state)
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
+    attestation.data.index = 1
+    sign_attestation(spec, state, attestation)
+
+    # Verify the intended blockroot conditions
+    is_matching_blockroot = attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot)
+    )
+    is_current_blockroot = attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot - 1)
+    )
+    assert is_matching_blockroot is True
+    assert is_current_blockroot is False
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_valid_attestation_data_index_one_previous_slot_current_blockroot(spec, state):
+    """
+    Test that attestation with index = 1 is valid when is_matching_blockroot=False, is_current_blockroot=True.
+    """
+    transition_to_slot_via_block(spec, state, 5)
+    # Custom block root different from any real block root
+    custom_block_root = spec.Root(b"\x01" * 32)
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=custom_block_root)
+    attestation.data.index = 1
+    sign_attestation(spec, state, attestation)
+
+    # Verify the intended blockroot conditions
+    is_matching_blockroot = attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot)
+    )
+    is_current_blockroot = attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot - 1)
+    )
+    assert is_matching_blockroot is False
+    assert is_current_blockroot is True
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_valid_same_slot_attestation_index_zero(spec, state):
+    """
+    Test that attestation with index = 0 is still valid in Gloas for same slot.
+    """
+    attestation_slot = 2
+    slot_2_block_root = _setup_same_slot_scenario(spec, state, target_slot=attestation_slot)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=slot_2_block_root
+    )
+    attestation.data.index = 0
+    sign_attestation(spec, state, attestation)
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_same_slot_attestation_index_one(spec, state):
+    """
+    Test that same-slot condition with index = 1 is invalid (same-slot must use index = 0).
+    """
+    attestation_slot = 2
+    slot_2_block_root = _setup_same_slot_scenario(spec, state, target_slot=attestation_slot)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=slot_2_block_root
+    )
+    attestation.data.index = 1
+    sign_attestation(spec, state, attestation)
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_same_slot_attestation_index_one_target_not_matching(spec, state):
+    """
+    Test that the same-slot index check is not skipped when the target does not
+    match. The zero-index requirement applies to every same-slot attestation,
+    even ones which cannot receive the timely head flag.
+    """
+    attestation_slot = 2
+    slot_2_block_root = _setup_same_slot_scenario(spec, state, target_slot=attestation_slot)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=slot_2_block_root
+    )
+    attestation.data.index = 1
+    # Make the target root disagree with the state's block root for that epoch
+    attestation.data.target.root = spec.Root(b"\x02" * 32)
+    sign_attestation(spec, state, attestation)
+
+    # The source still matches, so the source assertion is not what fails here
+    assert attestation.data.source == state.current_justified_checkpoint
+    assert attestation.data.target.root != spec.get_block_root(state, attestation.data.target.epoch)
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_same_slot_attestation_index_one_head_not_matching(spec, state):
+    """
+    Test that the same-slot index check is not skipped when the head root does
+    not match. An attestation for slot 0 is always considered same-slot, so the
+    zero-index requirement applies even with an unknown beacon block root.
+    """
+    attestation_slot = 0
+    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    # A block root which does not match any block root in the state
+    custom_block_root = spec.Root(b"\x03" * 32)
+    attestation = get_valid_attestation(
+        spec, state, slot=attestation_slot, beacon_block_root=custom_block_root
+    )
+    attestation.data.index = 1
+    # Restore the target root, which the helper derived from the block root
+    attestation.data.target.root = spec.get_block_root(state, attestation.data.target.epoch)
+    sign_attestation(spec, state, attestation)
+
+    # The target matches, only the head root does not
+    assert attestation.data.source == state.current_justified_checkpoint
+    assert attestation.data.target.root == spec.get_block_root(state, attestation.data.target.epoch)
+    assert attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, attestation_slot
+    )
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+
+    yield from run_attestation_processing(spec, state, attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_tracking(spec, state):
+    """
+    Test that builder payment weights are tracked correctly for Gloas.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+
+    # Create attestation for slot 0
+    attestation_slot = 0
+    attestation = get_valid_attestation(spec, state, slot=attestation_slot, index=0)
+    attestation.data.index = 0  # Same-slot (slot 0) must use index 0
+
+    # Get only the first validator to attest
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+
+    # Clear all bits except first validator
+    for i in range(len(attestation.aggregation_bits)):
+        attestation.aggregation_bits[i] = i == 0
+
+    attesting_validator_index = committee[0]
+    expected_weight_increase = state.validators[attesting_validator_index].effective_balance
+    assert expected_weight_increase > 0
+
+    sign_attestation(spec, state, attestation)
+
+    # Manually set up a non-zero builder pending payment for slot 0
+    payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=0,
+        ),
+    )
+
+    # Store initial weight for slot 0
+    initial_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Process attestation
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Check that weight was updated (this verifies the Gloas-specific logic)
+    final_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Calculate expected weight increase for same-slot attestations in Gloas
+    # Weight should increase by the effective balance of the attesting validator
+    expected_final_weight = initial_weight + expected_weight_increase
+
+    assert final_weight == expected_final_weight
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_no_double_counting(spec, state):
+    """
+    Test that builder payment weights don't double count when will_set_new_flag is False
+    (validator already has all eligible participation flags set).
+    """
+    transition_to_slot_via_block(spec, state, 2)
+
+    # Create first attestation for slot 0 with single validator
+    attestation_slot = 0
+    attestation1 = get_valid_attestation(spec, state, slot=attestation_slot)
+    attestation1.data.index = 0  # Same-slot (slot 0) must use index 0
+
+    # Get committee and set only first validator to attest
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    for i in range(len(attestation1.aggregation_bits)):
+        attestation1.aggregation_bits[i] = i == 0
+
+    attesting_validator_index = committee[0]
+    assert state.validators[attesting_validator_index].effective_balance > 0
+
+    sign_attestation(spec, state, attestation1)
+
+    # Manually set up a non-zero builder pending payment for slot 0
+    payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=0,
+        ),
+    )
+
+    # Store initial weight for slot 0
+    initial_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Process first attestation (this should set flags and increase weight)
+    yield from run_attestation_processing(spec, state, attestation1, valid=True)
+
+    # Check weight increased
+    after_first_weight = state.builder_pending_payments[payment_slot_index].weight
+    attesting_validator_index = committee[0]
+    expected_weight_after_first = (
+        initial_weight + state.validators[attesting_validator_index].effective_balance
+    )
+    assert after_first_weight == expected_weight_after_first
+    assert after_first_weight > initial_weight, "First attestation should have increased the weight"
+
+    # Create second attestation with SAME validator (should not increase weight again)
+    attestation2 = get_valid_attestation(spec, state, slot=attestation_slot)
+    attestation2.data.index = 0  # Same-slot (slot 0) must use index 0
+
+    # Set same validator to attest again
+    for i in range(len(attestation2.aggregation_bits)):
+        attestation2.aggregation_bits[i] = i == 0
+
+    sign_attestation(spec, state, attestation2)
+
+    # Process second attestation (will_set_new_flag should be False, no weight increase)
+    yield from run_attestation_processing(spec, state, attestation2, valid=True)
+
+    # Check weight did NOT increase (no double counting)
+    # Should be unchanged
+    assert state.builder_pending_payments[payment_slot_index].weight == after_first_weight
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_same_slot_attestation_ignores_payload_availability(spec, state):
+    """
+    Test that a same-slot attestation receives the timely head flag even when
+    execution_payload_availability for that slot disagrees with data.index.
+    """
+    transition_to_slot_via_block(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    attestation_slot = spec.Slot(0)
+
+    # Availability disagrees with data.index so a bad client comparison would fail payload_matches.
+    state.execution_payload_availability[attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 1
+
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
+    )
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+    assert state.slot - attestation.data.slot == spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attesting_indices = spec.get_attesting_indices(state, attestation)
+    validator_index = next(iter(attesting_indices))
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    final_participation = state.current_epoch_participation[validator_index]
+    assert spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_matching_payload_gets_head_flag(spec, state):
+    """
+    Test that ``get_attestation_participation_flag_indices`` compares
+    ``data.index`` against the availability bit of the attested block's slot
+    (the parent block's slot), not ``data.slot``, when the attestation is for
+    a skipped slot.
+    """
+    # Use missed slot scenario: blocks for slots 1, 2, 3 but skip slot 4
+    slot_4_block_root = _setup_missed_slot_scenario(spec, state)
+
+    # The attested block is at slot 3, so its availability bit is the one
+    # that matters. Set it to 1 to indicate the payload was revealed. Unset
+    # the bit at data.slot to show that it is ignored.
+    state.execution_payload_availability[3] = 1
+    state.execution_payload_availability[4] = 0
+
+    # Create attestation with index = 1 to match the availability bit
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
+    attestation.data.index = 1  # Should match availability bit = 1
+    sign_attestation(spec, state, attestation)
+
+    # Verify this is NOT same-slot
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+
+    # Get the attesting validator
+    attesting_indices = spec.get_attesting_indices(state, attestation)
+    validator_index = next(iter(attesting_indices))
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Verify that head flag is set when is_matching_payload = True
+    final_participation = state.current_epoch_participation[validator_index]
+    final_head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
+
+    assert final_head_flag, "Should have head flag when data.index matches payload availability bit"
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_mismatched_payload_no_head_flag(spec, state):
+    """
+    Test that mismatched payload prevents TIMELY_HEAD_FLAG even with matching blockroot.
+    """
+    # Use missed slot scenario: blocks for slots 1, 2, 3 but skip slot 4
+    slot_4_block_root = _setup_missed_slot_scenario(spec, state)
+
+    # The attested block is at slot 3, so its availability bit is the one
+    # that matters. Set it to 0 to indicate the payload was withheld. Set
+    # the bit at data.slot to show that it is ignored.
+    state.execution_payload_availability[3] = 0
+    state.execution_payload_availability[4] = 1
+
+    # Create attestation with index = 1 which does NOT match availability bit = 0
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
+    attestation.data.index = 1  # Does NOT match availability bit = 0
+    sign_attestation(spec, state, attestation)
+
+    # Get the attesting validator
+    attesting_indices = spec.get_attesting_indices(state, attestation)
+    validator_index = next(iter(attesting_indices))
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Check final participation flags
+    final_participation = state.current_epoch_participation[validator_index]
+    final_head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
+
+    assert not final_head_flag, "Should not get head flag when payload doesn't match"
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="too slow")
+@spec_state_test
+def test_old_attested_block_gets_head_flag(spec, state):
+    """
+    Test that an attestation still receives the timely head flag when the
+    attested block is ``SLOTS_PER_HISTORICAL_ROOT`` slots old. The availability
+    bit at the parent block's slot is up to date no matter how old the parent
+    block is, because the parent payload processing of the including block is
+    what last wrote it.
+    """
+    # Skip every slot since genesis, so the attested block (genesis) is
+    # SLOTS_PER_HISTORICAL_ROOT slots before the attestation slot
+    attestation_slot = spec.Slot(spec.SLOTS_PER_HISTORICAL_ROOT)
+    next_slots(spec, state, attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    attestation = get_valid_attestation(spec, state, slot=attestation_slot, signed=True)
+
+    assert attestation.data.index == 0
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    # The attested block (genesis) still matches the historical block roots
+    assert attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, attestation_slot
+    )
+    # The genesis payload was never revealed, which matches data.index == 0
+    parent_slot = state.latest_execution_payload_bid.slot
+    assert parent_slot == 0
+    assert not state.execution_payload_availability[parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+
+    attesting_indices = spec.get_attesting_indices(state, attestation)
+    validator_index = next(iter(attesting_indices))
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    final_participation = state.current_epoch_participation[validator_index]
+    assert spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_tracking_previous_epoch(spec, state):
+    """
+    Test ``process_attestation`` updates the previous epoch payment slot and
+    sets flags in ``previous_epoch_participation`` when the attestation's
+    target is the previous epoch.
+    """
+    attestation, attestation_slot = _setup_previous_epoch_same_slot_scenario(spec, state)
+    previous_epoch_idx = attestation_slot % spec.SLOTS_PER_EPOCH
+    current_epoch_idx = spec.SLOTS_PER_EPOCH + previous_epoch_idx
+
+    # Set the previous epoch pending payments
+    state.builder_pending_payments[previous_epoch_idx] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(b"\xab" * 20),
+            amount=spec.Gwei(1_000_000_000),
+            builder_index=0,
+        ),
+    )
+
+    assert spec.is_attestation_same_slot(state, attestation.data)
+    assert attestation.data.target.epoch == spec.get_previous_epoch(state)
+
+    attester = spec.get_beacon_committee(state, attestation_slot, 0)[0]
+    expected_flag_indices = spec.get_attestation_participation_flag_indices(
+        state,
+        attestation.data,
+        state.slot - attestation.data.slot,
+        state.latest_execution_payload_bid.slot,
+    )
+    pre_prev_flags = state.previous_epoch_participation[attester]
+    pre_curr_flags = state.current_epoch_participation[attester]
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Assert weight is set for the previous epoch, not current one
+    expected_weight = state.validators[attester].effective_balance
+    assert state.builder_pending_payments[previous_epoch_idx].weight == expected_weight
+    assert state.builder_pending_payments[current_epoch_idx].weight == 0
+
+    # Assert flags are set for the previous epoch, not current one
+    for flag_index in expected_flag_indices:
+        assert spec.has_flag(state.previous_epoch_participation[attester], flag_index)
+        assert not spec.has_flag(pre_prev_flags, flag_index)
+    assert state.current_epoch_participation[attester] == pre_curr_flags
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_no_increment_for_zero_amount(spec, state):
+    """
+    Test that the weight is not incremented when the pending payment's
+    withdrawal amount is zero.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+    attestation_slot = 0
+
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
+    )
+
+    payment_idx = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    state.builder_pending_payments[payment_idx] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(b"\xab" * 20),
+            amount=spec.Gwei(0),
+            builder_index=0,
+        ),
+    )
+
+    pre_weight = state.builder_pending_payments[payment_idx].weight
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    assert state.builder_pending_payments[payment_idx].weight == pre_weight
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_accumulates(spec, state):
+    """
+    Test that builder payment weight accumulates across distinct same-slot
+    attesters.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+
+    # Create a same-slot attestation for slot 0 with two distinct attesters
+    attestation_slot = 0
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    first_attester, second_attester = committee[:2]
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {first_attester, second_attester},
+        signed=True,
+    )
+
+    first_weight = state.validators[first_attester].effective_balance
+    second_weight = state.validators[second_attester].effective_balance
+    assert first_weight > 0
+    assert second_weight > 0
+
+    # Manually set up a non-zero builder pending payment for slot 0
+    payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=0,
+        ),
+    )
+
+    # Store initial weight for slot 0
+    initial_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Process attestation
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Weight should accumulate both attesters' effective balances
+    final_weight = state.builder_pending_payments[payment_slot_index].weight
+    expected_final_weight = initial_weight + first_weight + second_weight
+    assert final_weight == expected_final_weight

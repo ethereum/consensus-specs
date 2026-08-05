@@ -1,3 +1,0 @@
-[submodule "lib/ds-test"]
-	path = solidity_deposit_contract/lib/ds-test
-	url = https://github.com/dapphub/ds-test
