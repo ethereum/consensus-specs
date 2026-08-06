@@ -1351,12 +1351,12 @@ size constraints from the header.
 A reader MUST NOT read more than `max_compressed_len(n)` bytes after reading the
 SSZ length-prefix `n` from the header.
 
-A reader MUST consider the following cases as invalid input:
+A reader MUST consider the following case as invalid input:
 
-- Any remaining bytes, after having read the `n` SSZ bytes. An EOF is expected
-  if more bytes are read than required.
 - An early EOF, before fully reading the declared length-prefix worth of SSZ
   bytes.
+
+After reading the `n` SSZ bytes, a reader MAY ignore any remaining bytes.
 
 In case of an invalid input (header or payload), a reader MUST:
 
