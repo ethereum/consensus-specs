@@ -13,6 +13,10 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
 """
 
     @classmethod
+    def undeprecate_containers(cls) -> set[str]:
+        return {"ExecutionPayloadHeader"}
+
+    @classmethod
     def execution_engine_cls(cls) -> str:
         return """
 class NoopExecutionEngine(ExecutionEngine):
@@ -54,6 +58,10 @@ class NoopProofEngine(ProofEngine):
 
     def verify_execution_proof(self: ProofEngine,
                                execution_proof: ExecutionProof) -> bool:
+        return True
+
+    def verify_beacon_chain_proof(self: ProofEngine,
+                                  beacon_chain_proof: BeaconChainProof) -> bool:
         return True
 
     def notify_new_payload(self: ProofEngine,
