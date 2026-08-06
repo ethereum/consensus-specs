@@ -217,7 +217,7 @@ Response Content:
 )
 ```
 
-Requests inclusion lists by `slot`, `dependent_root` and inclusion list
+Requests inclusion lists by `slot`, `dependent_root`, and inclusion list
 committee `indices`. The `indices` field is interpreted with respect to
 `get_inclusion_list_committee(state, slot)`, where `state` is the state
 corresponding to processing the block with root `dependent_root` up to the slot

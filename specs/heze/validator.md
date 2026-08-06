@@ -222,11 +222,10 @@ def get_signed_inclusion_list(
     inclusion_list_transactions: Sequence[Transaction],
     privkey: int,
 ) -> SignedInclusionList:
-    dependent_root = get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot))
     inclusion_list = InclusionList(
         slot=slot,
         validator_index=validator_index,
-        dependent_root=dependent_root,
+        dependent_root=get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot)),
         transactions=inclusion_list_transactions,
     )
     signature = get_inclusion_list_signature(state, inclusion_list, privkey)

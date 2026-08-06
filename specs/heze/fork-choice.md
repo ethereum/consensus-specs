@@ -281,7 +281,6 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     dependent_state = copy(store.block_states[inclusion_list.dependent_root])
     if dependent_state.slot < inclusion_list.slot:
         process_slots(dependent_state, inclusion_list.slot)
-
     committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 
@@ -296,7 +295,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     # Process the inclusion list
     process_inclusion_list(
-        get_inclusion_list_store(), signed_inclusion_list, hash_tree_root(committee), is_timely
+        get_inclusion_list_store(),
+        signed_inclusion_list,
+        hash_tree_root(committee),
+        is_timely,
     )
 ```
 
