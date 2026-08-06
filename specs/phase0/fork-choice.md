@@ -152,6 +152,9 @@ This abstraction is introduced to support upgradability.
 class ForkChoiceNode:
     root: Root
 
+    # The dataclass-generated ``__hash__`` would call the SHA256 ``hash``
+    # function defined in this module instead of the builtin ``hash``, so
+    # it is defined explicitly.
     def __hash__(self) -> int:
         return int.from_bytes(self.root, "little")
 ```
@@ -411,8 +414,8 @@ def get_node_children(
 #### `filter_node_tree`
 
 *Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
-by the recursive logic in this function) MUST set `node` to
-`ForkChoiceNode(root=store.justified_checkpoint.root)`.
+by the recursive logic in this function) MUST set `node` to a `ForkChoiceNode`
+with root `store.justified_checkpoint.root`.
 
 ```python
 def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:

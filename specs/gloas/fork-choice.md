@@ -118,6 +118,9 @@ class ForkChoiceNode:
     # [New in Gloas:EIP7732]
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 
+    # The dataclass-generated ``__hash__`` would call the SHA256 ``hash``
+    # function defined in this module instead of the builtin ``hash``, so
+    # it is defined explicitly.
     def __hash__(self) -> int:
         return int.from_bytes(self.root, "little") * 31 + int(self.payload_status)
 ```
@@ -543,10 +546,6 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
 
 ### Modified `get_filtered_node_tree`
 
-*Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
-by the recursive logic in this function) MUST set `node` to a pending
-`ForkChoiceNode` with root `store.justified_checkpoint.root`.
-
 ```python
 def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
     """
@@ -566,24 +565,17 @@ def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
 
 ### Modified `get_node_children`
 
-*Note*: This function is modified to operate on payload-status variants instead
-of blocks, so that each variant is FFG-tested independently by
-`filter_node_tree`. The FFG test itself is computed per block root and is
-unchanged. This function returns all possible children of a given node,
-regardless of the FFG test result. It expands a *pending* node into its *empty*
-and *full* variants, and an *empty* or *full* node into the *pending* nodes of
-its children blocks.
+*Note*: This function is modified to introduce new type of children nodes
+representing *full* and *empty* blocks.
 
 ```python
 def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
-        # [New in Gloas:EIP7732]
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
         if is_payload_verified(store, node.root):
             children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
         return children
     else:
-        # [Modified in Gloas:EIP7732]
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
             for root in store.blocks

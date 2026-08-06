@@ -178,23 +178,23 @@ def get_opt_head_block_root(spec, mega_store):
     # Get filtered node tree that only includes viable branches
     filtered_node_tree = spec.get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
-    head = store.justified_checkpoint.root
+    head = spec.ForkChoiceNode(root=store.justified_checkpoint.root)
     while True:
         children = [
-            child.root
-            for child in spec.get_node_children(store, spec.ForkChoiceNode(root=head))
+            child
+            for child in spec.get_node_children(store, head)
             if (
                 child in filtered_node_tree
                 and not is_invalidated(mega_store, child.root)  # For optimistic sync
             )
         ]
         if len(children) == 0:
-            return head
+            return head.root
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
         head = max(
             children,
-            key=lambda root: (spec.get_weight(store, spec.ForkChoiceNode(root=root)), root),
+            key=lambda node: (spec.get_weight(store, node), node.root),
         )
 
 
