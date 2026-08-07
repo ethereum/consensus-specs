@@ -86,7 +86,7 @@ class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZ
 class InclusionList(Container):
     slot: Slot
     validator_index: ValidatorIndex
-    inclusion_list_committee_root: Root
+    dependent_root: Root
     transactions: Transactions
 ```
 

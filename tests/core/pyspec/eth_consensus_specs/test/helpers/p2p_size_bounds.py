@@ -97,7 +97,7 @@ def build_max_size_signed_inclusion_list(spec):
     inclusion_list = spec.InclusionList(
         slot=spec.Slot(0),
         validator_index=spec.ValidatorIndex(0),
-        inclusion_list_committee_root=spec.Root(),
+        dependent_root=spec.Root(),
         transactions=transactions,
     )
     return spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())
