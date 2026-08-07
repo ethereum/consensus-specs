@@ -9,6 +9,8 @@
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [New `SignedInclusionLists`](#new-signedinclusionlists)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -44,11 +46,23 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                                     | Value                     | Description                                                     |
-| ---------------------------------------- | ------------------------- | --------------------------------------------------------------- |
-| `MAX_REQUEST_INCLUSION_LIST`             | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
-| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
-| `MAX_BYTES_PER_INCLUSION_LIST`           | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
+| Name                                        | Value                     | Description                                                     |
+| ------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`                | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
+| `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`    | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
+| `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST` | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
+
+### Types
+
+#### New `SignedInclusionLists`
+
+```python
+class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+    """
+    Signed inclusion lists returned in an ``InclusionListsByIndices``
+    response.
+    """
+```
 
 ### Helpers
 
@@ -111,18 +125,25 @@ The following validations MUST pass before forwarding the `inclusion_list` on
 the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The size of `message.transactions` is within upperbound
-  `MAX_BYTES_PER_INCLUSION_LIST`.
+  `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
   `message.slot == current_slot`.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
+- _[IGNORE]_ The block with root `message.dependent_root` has been seen (via
+  gossip or non-gossip sources) (a client MAY queue the message for processing
+  once the block is retrieved).
+- _[REJECT]_ The slot of the block with root `message.dependent_root` is
+  strictly less than
+  `compute_start_slot_at_epoch(compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD)`.
+- _[IGNORE]_ `is_valid_dependent_root(store, message.dependent_root, epoch)`
+  returns `True`, where `store` is the fork choice store and `epoch` is
+  `compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD`.
 - _[REJECT]_ The message's validator index is in
-  `get_inclusion_list_committee(state, message.slot)`, where `state` is the head
-  state corresponding to processing the block up to the current slot as
-  determined by the fork choice.
-- _[REJECT]_ The `message.inclusion_list_committee_root` is equal to
-  `hash_tree_root(get_inclusion_list_committee(state, message.slot))`.
+  `get_inclusion_list_committee(state, message.slot)`, where `state` is the
+  state corresponding to processing the block with root `message.dependent_root`
+  up to the slot `message.slot`.
 - _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
   respect to the validator's public key.
 
@@ -183,8 +204,8 @@ Request Content:
 ```
 (
   slot: Slot
-  inclusion_list_committee_root: Root
-  indices: BitVector[INCLUSION_LIST_COMMITTEE_SIZE]
+  dependent_root: Root
+  indices: InclusionListBits
 )
 ```
 
@@ -192,15 +213,17 @@ Response Content:
 
 ```
 (
-  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+  SignedInclusionLists
 )
 ```
 
-Requests inclusion lists by `slot`, `inclusion_list_committee_root` and
-inclusion list committee `indices`. The response is a list of
-`SignedInclusionList` whose length is less than or equal to the number of
-requested inclusion lists. It may be less in the case that the responding peer
-is missing inclusion lists.
+Requests inclusion lists by `slot`, `dependent_root`, and inclusion list
+committee `indices`. The `indices` field is interpreted with respect to
+`get_inclusion_list_committee(state, slot)`, where `state` is the state
+corresponding to processing the block with root `dependent_root` up to the slot
+`slot`. The response is a list of `SignedInclusionList` whose length is less
+than or equal to the number of requested inclusion lists. It may be less in the
+case that the responding peer is missing inclusion lists.
 
 No more than `MAX_REQUEST_INCLUSION_LIST` may be requested at a time.
 
@@ -226,8 +249,7 @@ MAY limit the number of inclusion lists in the response.
 Clients SHOULD include an inclusion list in the response as soon as it passes
 the gossip validation rules. Clients SHOULD NOT respond with inclusion lists
 that fail the gossip validation rules. Clients SHOULD NOT respond with inclusion
-lists from equivocators for the requested `slot` and
-`inclusion_list_committee_root`.
+lists from equivocators for the requested `slot` and `dependent_root`.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.

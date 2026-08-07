@@ -29,7 +29,7 @@ jobs:
           echo "name=$version" >> "$GITHUB_OUTPUT"
 
       - name: Create draft release
-        uses: release-drafter/release-drafter@eada3c96a64734dd381cfbda23511034e328ddb0 # v7.6.0
+        uses: release-drafter/release-drafter@34d80673e067bdc0c24568d3af899c216adcfaa9 # v7.7.0
         with:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
@@ -146,7 +146,7 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
   trigger-comptests:
     needs: [setup, publish]

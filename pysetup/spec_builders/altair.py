@@ -55,6 +55,7 @@ def compute_merkle_proof(object: SSZObject,
     def deprecate_containers(cls) -> set[str]:
         return {
             "PendingAttestation",
+            "PendingAttestations",
         }
 
     @classmethod

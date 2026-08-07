@@ -90,14 +90,14 @@ def build_max_size_partial_data_column_sidecar(spec):
 
 
 def build_max_size_signed_inclusion_list(spec):
-    payload_size = spec.config.MAX_BYTES_PER_INCLUSION_LIST
+    transactions_size = spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
     transactions = spec.ProgressiveList[spec.Transaction](
-        [spec.Transaction(b"\x00" * payload_size)]
+        [spec.Transaction(b"\x00" * transactions_size)]
     )
     inclusion_list = spec.InclusionList(
         slot=spec.Slot(0),
         validator_index=spec.ValidatorIndex(0),
-        inclusion_list_committee_root=spec.Root(),
+        dependent_root=spec.Root(),
         transactions=transactions,
     )
     return spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())

@@ -3,6 +3,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
+  - [New `CellsBitList`](#new-cellsbitlist)
+  - [New `OptionalPartialDataColumnHeader`](#new-optionalpartialdatacolumnheader)
 - [Containers](#containers)
   - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
   - [New `PartialDataColumnPartsMetadata`](#new-partialdatacolumnpartsmetadata)
@@ -40,6 +43,27 @@ specifications of previous upgrades, and assumes them as pre-requisite. In
 particular, this document builds on the
 [Fulu networking specification](../p2p-interface.md).
 
+## Types
+
+### New `CellsBitList`
+
+```python
+class CellsBitList(BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    A bitfield over the cells of a column, one bit per blob.
+    """
+```
+
+### New `OptionalPartialDataColumnHeader`
+
+```python
+class OptionalPartialDataColumnHeader(List[PartialDataColumnHeader, 1]):
+    """
+    A header that may or may not be present, encoded as a list of length zero
+    or one.
+    """
+```
+
 ## Containers
 
 ### New `PartialDataColumnSidecar`
@@ -51,11 +75,11 @@ except that only the cells and proofs identified by the bitmap are present.
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: CellsBitList
+    partial_column: DataColumn
+    kzg_proofs: KZGProofs
     # Optional header, only sent on eager pushes
-    header: List[PartialDataColumnHeader, 1]
+    header: OptionalPartialDataColumnHeader
 ```
 
 ### New `PartialDataColumnPartsMetadata`
@@ -71,8 +95,8 @@ This is encoded as the following SSZ container:
 
 ```python
 class PartialDataColumnPartsMetadata(Container):
-    available: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    available: CellsBitList
+    requests: CellsBitList
 ```
 
 This means that for each cell there are two bits of state. Where the first bit
@@ -98,9 +122,9 @@ This header can be derived from a beacon block or a `DataColumnSidecar`.
 
 ```python
 class PartialDataColumnHeader(Container):
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_commitments: BlobKZGCommitments
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof
 ```
 
 ### New `PartialDataColumnGroupID`
@@ -133,7 +157,7 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
 ```python
 def verify_partial_data_column_sidecar_kzg_proofs(
     sidecar: PartialDataColumnSidecar,
-    all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    all_commitments: BlobKZGCommitments,
     column_index: ColumnIndex,
 ) -> bool:
     """
