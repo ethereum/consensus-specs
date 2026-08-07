@@ -37,7 +37,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ### New `ProofData`
 
 ```python
-class ProofData(ProgressiveByteList):
+class ProofData(ProgressiveList[Byte]):
     """
     The opaque proof bytes of an execution proof.
     """

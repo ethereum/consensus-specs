@@ -356,7 +356,9 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     # Append an extra cell so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     cells_type = type(partial.partial_column)
-    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
+    partial.partial_column = spec.DataColumn(
+        data=cells_type(data=list(partial.partial_column) + [spec.Cell()])
+    )
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -426,7 +428,9 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     # Append an extra proof so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
-    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
+    partial.kzg_proofs = spec.KZGProofs(
+        data=proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
+    )
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -499,9 +503,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     # Build a second partial message whose header has a different inclusion
     # proof, with the cache populated by `good` so the equality check fires.
     diverging = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    diverging.header[0].kzg_commitments_inclusion_proof = spec.compute_merkle_proof(
-        spec.BeaconBlockBody(), 0
-    )
+    diverging.header[0].kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
 
     yield get_filename(good), good
     yield get_filename(diverging), diverging
@@ -636,7 +638,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    partial.header[0].kzg_commitments = []
+    partial.header[0].kzg_commitments = spec.BlobKZGCommitments()
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
@@ -1217,9 +1219,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    partial.header[0].kzg_commitments_inclusion_proof = spec.compute_merkle_proof(
-        spec.BeaconBlockBody(), 0
-    )
+    partial.header[0].kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
@@ -1580,9 +1580,15 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     bitmap_type = type(partial.cells_present_bitmap)
     cells_type = type(partial.partial_column)
     proofs_type = type(partial.kzg_proofs)
-    partial.cells_present_bitmap = bitmap_type(list(partial.cells_present_bitmap) + [True])
-    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
-    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
+    partial.cells_present_bitmap = spec.CellsBitList(
+        data=bitmap_type(data=list(partial.cells_present_bitmap) + [True])
+    )
+    partial.partial_column = spec.DataColumn(
+        data=cells_type(data=list(partial.partial_column) + [spec.Cell()])
+    )
+    partial.kzg_proofs = spec.KZGProofs(
+        data=proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
+    )
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -1654,7 +1660,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
     first, second = partial.kzg_proofs[0], partial.kzg_proofs[1]
-    partial.kzg_proofs = proofs_type([second, first])
+    partial.kzg_proofs = spec.KZGProofs(data=proofs_type(data=[second, first]))
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor

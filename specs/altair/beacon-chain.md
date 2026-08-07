@@ -71,19 +71,23 @@ Altair is the first beacon-chain upgrade. Its main features are:
 ### New `EpochParticipation`
 
 ```python
-class EpochParticipation(List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]):
+class EpochParticipation(List[ParticipationFlags]):
     """
     The participation flags of each validator for an epoch.
     """
+
+    LIMIT = VALIDATOR_REGISTRY_LIMIT
 ```
 
 ### New `InactivityScores`
 
 ```python
-class InactivityScores(List[Uint64, VALIDATOR_REGISTRY_LIMIT]):
+class InactivityScores(List[Uint64]):
     """
     Each validator's inactivity score, tracking missed timely target votes.
     """
+
+    LIMIT = VALIDATOR_REGISTRY_LIMIT
 ```
 
 ### New `ParticipationFlags`
@@ -98,20 +102,24 @@ class ParticipationFlags(Uint8):
 ### New `SyncCommitteeBits`
 
 ```python
-class SyncCommitteeBits(BitVector[SYNC_COMMITTEE_SIZE]):
+class SyncCommitteeBits(BitVector):
     """
     The participation bits of the sync committee, one bit per member in
     committee order.
     """
+
+    LENGTH = SYNC_COMMITTEE_SIZE
 ```
 
 ### New `SyncCommitteePubkeys`
 
 ```python
-class SyncCommitteePubkeys(Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]):
+class SyncCommitteePubkeys(Vector[BLSPubkey]):
     """
     The public keys of the sync committee members, in committee order.
     """
+
+    LENGTH = SYNC_COMMITTEE_SIZE
 ```
 
 ## Constants
@@ -346,7 +354,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     Return the next sync committee, with possible pubkey duplicates.
     """
     indices = get_next_sync_committee_indices(state)
-    pubkeys = [state.validators[index].pubkey for index in indices]
+    pubkeys = SyncCommitteePubkeys(data=[state.validators[index].pubkey for index in indices])
     aggregate_pubkey = eth_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
@@ -478,8 +486,8 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = [Gwei(0)] * len(state.validators)
+    penalties = [Gwei(0)] * len(state.validators)
     previous_epoch = get_previous_epoch(state)
     matching_target_indices = get_unslashed_participating_indices(
         state, TIMELY_TARGET_FLAG_INDEX, previous_epoch
@@ -622,10 +630,10 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
     committee_bits = sync_aggregate.sync_committee_bits
-    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+    if get_set_bit_count(committee_bits) == SYNC_COMMITTEE_SIZE:
         # All members participated - use precomputed aggregate key
         participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
-    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+    elif get_set_bit_count(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
         # More than half participated - subtract non-participant keys.
         # First determine nonparticipating members
         non_participant_pubkeys = [
@@ -661,7 +669,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
     max_participant_rewards = Gwei(
-        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH
+        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
     )
     participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
     proposer_reward = Gwei(
@@ -814,7 +822,7 @@ def process_slashings(state: BeaconState) -> None:
 def process_participation_flag_updates(state: BeaconState) -> None:
     state.previous_epoch_participation = state.current_epoch_participation
     state.current_epoch_participation = EpochParticipation(
-        ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))
+        data=[ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
     )
 ```
 

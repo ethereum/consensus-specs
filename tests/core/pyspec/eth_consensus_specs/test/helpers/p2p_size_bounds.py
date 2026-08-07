@@ -3,23 +3,23 @@ from eth_consensus_specs.test.helpers.forks import is_post_heze
 
 def build_max_size_attestation(spec):
     aggregation_bits = spec.AggregationBits(
-        [True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
+        data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
     return spec.Attestation(
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.AggregationBits(data=aggregation_bits),
         data=spec.AttestationData(),
         signature=spec.BLSSignature(),
-        committee_bits=spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT](),
+        committee_bits=spec.CommitteeBits(),
     )
 
 
 def build_max_size_indexed_attestation(spec):
     attesting_indices = spec.AttestingIndices(
-        [spec.ValidatorIndex(0)]
+        data=[spec.ValidatorIndex(0)]
         * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
     return spec.IndexedAttestation(
-        attesting_indices=attesting_indices,
+        attesting_indices=spec.AttestingIndices(data=attesting_indices),
         data=spec.AttestationData(),
         signature=spec.BLSSignature(),
     )
@@ -27,7 +27,7 @@ def build_max_size_indexed_attestation(spec):
 
 def build_max_size_payload_attestation(spec):
     return spec.PayloadAttestation(
-        aggregation_bits=spec.BitVector[spec.PTC_SIZE]([True] * spec.PTC_SIZE),
+        aggregation_bits=spec.PTCBits(data=[True] * spec.PTC_SIZE),
         data=spec.PayloadAttestationData(),
         signature=spec.BLSSignature(),
     )
@@ -53,47 +53,41 @@ def build_max_size_signed_aggregate_and_proof(spec):
 
 
 def build_max_size_signed_execution_payload_bid(spec):
-    blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment](
-        [spec.KZGCommitment()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+    blob_kzg_commitments = spec.BlobKZGCommitments(
+        data=[spec.KZGCommitment()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
     )
-    bid = spec.ExecutionPayloadBid(blob_kzg_commitments=blob_kzg_commitments)
+    bid = spec.ExecutionPayloadBid(
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments)
+    )
     return spec.SignedExecutionPayloadBid(message=bid, signature=spec.BLSSignature())
 
 
 def build_max_size_data_column_sidecar(spec):
-    column = spec.ProgressiveList[spec.Cell]([spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    kzg_proofs = spec.ProgressiveList[spec.KZGProof](
-        [spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-    )
+    column = spec.DataColumn(data=[spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
+    kzg_proofs = spec.KZGProofs(data=[spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
     return spec.DataColumnSidecar(
         index=spec.ColumnIndex(0),
-        column=column,
-        kzg_proofs=kzg_proofs,
+        column=spec.DataColumn(data=column),
+        kzg_proofs=spec.KZGProofs(data=kzg_proofs),
         slot=spec.Slot(0),
         beacon_block_root=spec.Root(),
     )
 
 
 def build_max_size_partial_data_column_sidecar(spec):
-    cells_present_bitmap = spec.ProgressiveBitList([True] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    partial_column = spec.ProgressiveList[spec.Cell](
-        [spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-    )
-    kzg_proofs = spec.ProgressiveList[spec.KZGProof](
-        [spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-    )
+    cells_present_bitmap = spec.CellsBitList(data=[True] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
+    partial_column = spec.DataColumn(data=[spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
+    kzg_proofs = spec.KZGProofs(data=[spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
     return spec.PartialDataColumnSidecar(
-        cells_present_bitmap=cells_present_bitmap,
-        partial_column=partial_column,
-        kzg_proofs=kzg_proofs,
+        cells_present_bitmap=spec.CellsBitList(data=cells_present_bitmap),
+        partial_column=spec.DataColumn(data=partial_column),
+        kzg_proofs=spec.KZGProofs(data=kzg_proofs),
     )
 
 
 def build_max_size_signed_inclusion_list(spec):
     transactions_size = spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
-    transactions = spec.ProgressiveList[spec.Transaction](
-        [spec.Transaction(b"\x00" * transactions_size)]
-    )
+    transactions = spec.Transactions.of(spec.Transaction(data=list(b"\x00" * transactions_size)))
     inclusion_list = spec.InclusionList(
         slot=spec.Slot(0),
         validator_index=spec.ValidatorIndex(0),
@@ -106,7 +100,7 @@ def build_max_size_signed_inclusion_list(spec):
 def build_max_size_signed_execution_proof(spec):
     return spec.SignedExecutionProof(
         message=spec.ExecutionProof(
-            proof_data=spec.ProgressiveByteList(b"\x00" * spec.MAX_PROOF_SIZE),
+            proof_data=spec.ProofData(data=[0] * spec.MAX_PROOF_SIZE),
             proof_type=spec.ProofType(0),
             public_input=spec.PublicInput(),
         ),

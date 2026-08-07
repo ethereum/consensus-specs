@@ -224,28 +224,34 @@ We define the following Python custom types for type hinting and readability:
 #### `Attnets`
 
 ```python
-class Attnets(BitVector[ATTESTATION_SUBNET_COUNT]):
+class Attnets(BitVector):
     """
     The attestation subnets a node is subscribed to, one bit per subnet.
     """
+
+    LENGTH = ATTESTATION_SUBNET_COUNT
 ```
 
 #### `BeaconBlockRoots`
 
 ```python
-class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS]):
+class BeaconBlockRoots(List[Root]):
     """
     Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
     """
+
+    LIMIT = MAX_REQUEST_BLOCKS
 ```
 
 #### `ErrorMessage`
 
 ```python
-class ErrorMessage(List[Byte, 256]):
+class ErrorMessage(List[Byte]):
     """
     The error message of an unsuccessful response chunk.
     """
+
+    LIMIT = 256
 ```
 
 #### `NodeID`
@@ -260,11 +266,13 @@ class NodeID(Uint256):
 #### `SignedBeaconBlocks`
 
 ```python
-class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]):
+class SignedBeaconBlocks(List[SignedBeaconBlock]):
     """
     Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
     ``BeaconBlocksByRoot`` response.
     """
+
+    LIMIT = MAX_REQUEST_BLOCKS
 ```
 
 #### `SubnetID`
@@ -1030,7 +1038,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
@@ -1040,7 +1048,8 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("aggregation bits length does not match committee size")
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
-    participant_index = committee[aggregation_bits.index(True)]
+    set_bit_indices = [index for index, bit in enumerate(aggregation_bits) if bit]
+    participant_index = committee[set_bit_indices[0]]
     attestation_epoch_key = (target_epoch, participant_index)
     if attestation_epoch_key in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation for this epoch and validator")
@@ -1296,8 +1305,7 @@ IDs defined in this specification.
 The token of the negotiated protocol ID specifies the type of encoding to be
 used for the req/resp interaction. Only one value is possible at this time:
 
-- `ssz_snappy`: The contents are first
-  [SSZ-encoded](../../ssz/simple-serialize.md) and then compressed with
+- `ssz_snappy`: The contents are first SSZ-encoded and then compressed with
   [Snappy](https://github.com/google/snappy) frames compression. For objects
   containing a single field, only the field is SSZ-encoded not a container with
   a single field. For example, the `BeaconBlocksByRoot` request is an
@@ -1306,7 +1314,7 @@ used for the req/resp interaction. Only one value is possible at this time:
 
 ##### SSZ-snappy encoding strategy
 
-The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md)
+The [SimpleSerialize (SSZ) specification](https://github.com/ethereum/ssz-specs)
 outlines how objects are SSZ-encoded.
 
 To achieve snappy encoding on top of SSZ, we feed the serialized form of the

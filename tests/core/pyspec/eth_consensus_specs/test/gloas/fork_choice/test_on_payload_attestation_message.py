@@ -241,8 +241,8 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_1, test_steps)
 
     for i in voter_positions:
-        assert store.payload_timeliness_vote[block_root][i] == True  # noqa: E712
-        assert store.payload_data_availability_vote[block_root][i] == True  # noqa: E712
+        assert store.payload_timeliness_vote[block_root][i]
+        assert store.payload_data_availability_vote[block_root][i]
     for i in other_positions:
         assert store.payload_timeliness_vote[block_root][i] is None
         assert store.payload_data_availability_vote[block_root][i] is None
@@ -260,8 +260,8 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_2, test_steps)
 
     for i in voter_positions:
-        assert store.payload_timeliness_vote[block_root][i] == False  # noqa: E712
-        assert store.payload_data_availability_vote[block_root][i] == False  # noqa: E712
+        assert not store.payload_timeliness_vote[block_root][i]
+        assert not store.payload_data_availability_vote[block_root][i]
     for i in other_positions:
         assert store.payload_timeliness_vote[block_root][i] is None
         assert store.payload_data_availability_vote[block_root][i] is None
@@ -318,13 +318,13 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
 
     # Validator A's votes landed at every position A occupies
     for i in positions_a:
-        assert timeliness[i] == True  # noqa: E712
-        assert availability[i] == True  # noqa: E712
+        assert timeliness[i]
+        assert availability[i]
 
     # Validator B's votes landed at every position B occupies
     for i in positions_b:
-        assert timeliness[i] == True  # noqa: E712
-        assert availability[i] == False  # noqa: E712
+        assert timeliness[i]
+        assert not availability[i]
 
     # Other positions stayed at their default values
     for i in other_positions:
@@ -364,7 +364,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
         )
 
     # Build the PayloadAttestation aggregate
-    aggregation_bits = spec.BitVector[spec.PTC_SIZE]()
+    aggregation_bits = spec.PTCBits()
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
             aggregation_bits[i] = True
@@ -373,7 +373,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
     aggregate_sig = spec.bls.Aggregate([sig_by_index[v] for v in ptc_list if v in voter_set])
 
     aggregate = spec.PayloadAttestation(
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.PTCBits(data=aggregation_bits),
         data=ptc_messages[0].data,
         signature=aggregate_sig,
     )
@@ -389,8 +389,8 @@ def test_on_payload_attestation_message_from_block(spec, state):
     # Votes landed at every PTC position each voter occupies
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
-            assert store.payload_timeliness_vote[block_root][i] == True  # noqa: E712
-            assert store.payload_data_availability_vote[block_root][i] == True  # noqa: E712
+            assert store.payload_timeliness_vote[block_root][i]
+            assert store.payload_data_availability_vote[block_root][i]
         else:
             assert store.payload_timeliness_vote[block_root][i] is None
             assert store.payload_data_availability_vote[block_root][i] is None

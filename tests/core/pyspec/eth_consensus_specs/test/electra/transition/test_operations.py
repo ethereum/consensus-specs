@@ -43,7 +43,7 @@ def test_transition_with_deposit_request_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.DEPOSIT_REQUEST,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -76,7 +76,7 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.WITHDRAWAL_REQUEST,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -108,5 +108,5 @@ def test_transition_with_consolidation_request_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.CONSOLIDATION_REQUEST,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )

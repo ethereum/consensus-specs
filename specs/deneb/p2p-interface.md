@@ -78,51 +78,61 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ```python
 # [Modified in Deneb:EIP4844]
-class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
+class BeaconBlockRoots(List[Root]):
     """
     Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
     """
+
+    LIMIT = MAX_REQUEST_BLOCKS_DENEB
 ```
 
 #### Modified `SignedBeaconBlocks`
 
 ```python
 # [Modified in Deneb:EIP4844]
-class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
+class SignedBeaconBlocks(List[SignedBeaconBlock]):
     """
     Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
     ``BeaconBlocksByRoot`` response.
     """
+
+    LIMIT = MAX_REQUEST_BLOCKS_DENEB
 ```
 
 #### New `BlobIdentifiers`
 
 ```python
-class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
+class BlobIdentifiers(List[BlobIdentifier]):
     """
     The identifiers of the blob sidecars requested in a
     ``BlobSidecarsByRoot`` request.
     """
+
+    LIMIT = compute_max_request_blob_sidecars()
 ```
 
 #### New `BlobSidecars`
 
 ```python
-class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
+class BlobSidecars(List[BlobSidecar]):
     """
     Blob sidecars returned in a ``BlobSidecarsByRange`` or
     ``BlobSidecarsByRoot`` response.
     """
+
+    LIMIT = compute_max_request_blob_sidecars()
 ```
 
 #### New `KZGCommitmentInclusionProof`
 
 ```python
-class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+class KZGCommitmentInclusionProof(Vector[Bytes32]):
     """
     A Merkle branch proving a blob's KZG commitment within
     ``BeaconBlockBody``.
     """
+
+    LENGTH = KZG_COMMITMENT_INCLUSION_PROOF_DEPTH
 ```
 
 ### Containers
@@ -628,7 +638,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
@@ -638,7 +648,8 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("aggregation bits length does not match committee size")
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
-    participant_index = committee[aggregation_bits.index(True)]
+    set_bit_indices = [index for index, bit in enumerate(aggregation_bits) if bit]
+    participant_index = committee[set_bit_indices[0]]
     attestation_epoch_key = (target_epoch, participant_index)
     if attestation_epoch_key in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation for this epoch and validator")

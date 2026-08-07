@@ -214,9 +214,9 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
             fork_state,
             validator_index=fork_inclusion_list_committee[0],
             # Reverse transaction bytes to ensure IL0 and IL1 have different transactions.
-            transactions=[
-                spec.Transaction(transaction.encode_bytes()[::-1]) for transaction in transactions
-            ],
+            transactions=spec.Transactions(
+                data=[spec.Transaction(data=transaction[::-1]) for transaction in transactions]
+            ),
         )
         signed_inclusion_list_1 = sign_inclusion_list(spec, fork_state, inclusion_list_1)
 

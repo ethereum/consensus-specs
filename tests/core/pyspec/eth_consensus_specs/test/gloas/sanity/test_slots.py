@@ -16,7 +16,7 @@ def test_execution_payload_availability_reset_from_set(spec, state):
     state.execution_payload_availability[next_slot_index] = 0b1
 
     # Verify it's set to 1 before processing
-    assert state.execution_payload_availability[next_slot_index] == 0b1
+    assert state.execution_payload_availability[next_slot_index]
 
     yield "pre", state
     yield "slots", 1
@@ -26,7 +26,7 @@ def test_execution_payload_availability_reset_from_set(spec, state):
 
     yield "post", state
 
-    assert state.execution_payload_availability[next_slot_index] == 0b0
+    assert not state.execution_payload_availability[next_slot_index]
 
 
 @with_gloas_and_later
@@ -41,7 +41,7 @@ def test_execution_payload_availability_reset_from_unset(spec, state):
     state.execution_payload_availability[next_slot_index] = 0b0
 
     # Verify it's set to 0 before processing
-    assert state.execution_payload_availability[next_slot_index] == 0b0
+    assert not state.execution_payload_availability[next_slot_index]
 
     yield "pre", state
     yield "slots", 1
@@ -51,4 +51,4 @@ def test_execution_payload_availability_reset_from_unset(spec, state):
 
     yield "post", state
 
-    assert state.execution_payload_availability[next_slot_index] == 0b0
+    assert not state.execution_payload_availability[next_slot_index]

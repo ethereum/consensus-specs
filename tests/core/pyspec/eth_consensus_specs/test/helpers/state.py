@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
-from remerkleable.basic import uint64 as Uint64
-from remerkleable.byte_arrays import Bytes32
+from ssz.uint import Uint64
 
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.block import (
@@ -12,6 +11,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.forks import is_post_altair
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth_consensus_specs.utils.hash_function import hash
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 from eth_consensus_specs.utils.ssz.ssz_impl import uint_to_bytes
 
 
@@ -202,7 +202,7 @@ def simulate_lookahead(spec, state):
     """
     lookahead = []
     simulation_state = state.copy()
-    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
+    for _ in range(spec.SLOTS_PER_EPOCH * spec.Uint64(spec.MIN_SEED_LOOKAHEAD + 1)):
         proposer_index = spec.get_beacon_proposer_index(simulation_state)
         lookahead.append(proposer_index)
         next_slot(spec, simulation_state)
@@ -230,7 +230,7 @@ def simulate_lookahead_with_thresholds(spec, state) -> Sequence[tuple[Uint64, Ui
     """
     lookahead = []
     simulation_state = state.copy()
-    for _ in range(spec.SLOTS_PER_EPOCH * (spec.MIN_SEED_LOOKAHEAD + 1)):
+    for _ in range(spec.SLOTS_PER_EPOCH * spec.Uint64(spec.MIN_SEED_LOOKAHEAD + 1)):
         proposer_index = get_beacon_proposer_index_and_threshold(spec, simulation_state)
         lookahead.append(proposer_index)
         next_slot(spec, simulation_state)

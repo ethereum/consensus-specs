@@ -49,7 +49,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         raise ValueError("get_execution_payload_bid only available for gloas and later")
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     builder_index = spec.get_beacon_proposer_index(state)
 
     return spec.ExecutionPayloadBid(
@@ -61,7 +61,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments=kzg_list,
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
 
@@ -74,7 +74,7 @@ def compute_trie_root_from_indexed_data(data):
     t = HexaryTrie(db={})
     for i, obj in enumerate(data):
         k = encode(i, big_endian_int)
-        t.set(k, obj)  # Implicitly skipped if `obj == b''` (invalid RLP)
+        t.set(k, bytes(obj))  # Implicitly skipped if `obj == b''` (invalid RLP)
     return t.root_hash
 
 
@@ -130,7 +130,7 @@ def compute_el_header_block_hash(
         # timestamp
         (big_endian_int, payload.timestamp),
         # extradata
-        (Binary(0, 32), payload.extra_data),
+        (Binary(0, 32), bytes(payload.extra_data)),
         # prev_randao
         (Binary(32, 32), payload.prev_randao),
         # nonce
@@ -297,7 +297,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     assert is_post_gloas(spec)
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     # Set block_hash to a different value than spec.Hash32(),
@@ -315,7 +315,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments=kzg_list,
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
 
@@ -378,14 +378,12 @@ def build_empty_execution_payload(
         receipts_root=spec.Bytes32(
             bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
         ),
-        logs_bloom=spec.ByteVector[
-            spec.BYTES_PER_LOGS_BLOOM
-        ](),  # TODO: zeroed logs bloom for empty logs ok?
+        logs_bloom=spec.LogsBloom(),  # TODO: zeroed logs bloom for empty logs ok?
         prev_randao=randao_mix,
         gas_used=0,  # empty block, 0 gas
         gas_limit=gas_limit,
         timestamp=timestamp,
-        extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
+        extra_data=spec.ExtraData(),
     )
 
     if parent_payload is not None:
@@ -395,12 +393,12 @@ def build_empty_execution_payload(
         payload.base_fee_per_gas = parent_payload.base_fee_per_gas  # retain same base_fee
 
     if is_post_capella(spec):
-        payload.withdrawals = get_expected_withdrawals(spec, state)
+        payload.withdrawals = spec.Withdrawals(data=get_expected_withdrawals(spec, state))
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
     if is_post_gloas(spec):
-        payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
+        payload.block_access_list = spec.BlockAccessList()
         payload.slot_number = state.slot
 
     payload.block_hash = compute_el_block_hash(spec, payload, state, execution_requests)
@@ -413,20 +411,22 @@ def build_randomized_execution_payload(spec, state, rng):
     execution_payload.fee_recipient = spec.ExecutionAddress(get_random_bytes_list(rng, 20))
     execution_payload.state_root = spec.Bytes32(get_random_bytes_list(rng, 32))
     execution_payload.receipts_root = spec.Bytes32(get_random_bytes_list(rng, 32))
-    execution_payload.logs_bloom = spec.ByteVector[spec.BYTES_PER_LOGS_BLOOM](
+    execution_payload.logs_bloom = spec.LogsBloom(
         get_random_bytes_list(rng, spec.BYTES_PER_LOGS_BLOOM)
     )
     execution_payload.block_number = rng.randint(0, int(10e10))
     execution_payload.gas_limit = rng.randint(0, int(10e10))
     execution_payload.gas_used = rng.randint(0, int(10e10))
     extra_data_length = rng.randint(0, spec.MAX_EXTRA_DATA_BYTES)
-    execution_payload.extra_data = spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](
-        get_random_bytes_list(rng, extra_data_length)
+    execution_payload.extra_data = spec.ExtraData(
+        data=list(get_random_bytes_list(rng, extra_data_length))
     )
     execution_payload.base_fee_per_gas = rng.randint(0, 2**256 - 1)
 
     num_transactions = rng.randint(0, 100)
-    execution_payload.transactions = [get_random_tx(rng) for _ in range(num_transactions)]
+    execution_payload.transactions = spec.Transactions(
+        data=[get_random_tx(spec, rng) for _ in range(num_transactions)]
+    )
 
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
@@ -436,11 +436,11 @@ def build_randomized_execution_payload(spec, state, rng):
 def build_state_with_incomplete_transition(spec, state):
     if is_post_gloas(spec):
         # In Gloas, we need to set up the execution payload bid instead
-        kzgs = spec.ProgressiveList[spec.KZGCommitment]()
+        kzgs = spec.BlobKZGCommitments()
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),
-            blob_kzg_commitments=kzgs,
+            blob_kzg_commitments=spec.BlobKZGCommitments(data=kzgs),
         )
         state = build_state_with_execution_payload_bid(spec, state, bid)
     else:
@@ -534,7 +534,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         execution_requests = spec.ExecutionRequests()
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     return spec.ExecutionPayloadBid(
@@ -547,7 +547,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments=kzg_list,
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(execution_requests),
     )
 
@@ -579,5 +579,5 @@ def compute_and_sign_execution_payload_envelope(
     return sign_execution_payload_envelope(spec, state, signed_block, envelope)
 
 
-def get_random_tx(rng):
-    return get_random_bytes_list(rng, rng.randint(1, 1000))
+def get_random_tx(spec, rng):
+    return spec.Transaction(data=list(get_random_bytes_list(rng, rng.randint(1, 1000))))

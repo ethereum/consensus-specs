@@ -209,6 +209,6 @@ def get_seen(spec):
     return spec.Seen(**{name: get_origin(t)() for name, t in get_type_hints(spec.Seen).items()})
 
 
-def make_progressive_list(spec, element_type, count):
-    """A progressive list of ``count`` default ``element_type`` values."""
-    return spec.ProgressiveList[element_type](*([element_type()] * count))
+def make_progressive_list(spec, list_type, count):
+    """A ``list_type`` holding ``count`` default values."""
+    return list_type(data=[list_type.ELEMENT_TYPE()] * count)

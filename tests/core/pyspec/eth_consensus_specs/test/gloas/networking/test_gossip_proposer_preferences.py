@@ -1147,7 +1147,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     # Pick a slot that distinguishes the advanced lookahead from the stale
     # lookahead in the dependent block's post-state.
     for slot_offset in range(spec.SLOTS_PER_EPOCH):
-        lookahead_index = spec.MIN_SEED_LOOKAHEAD * spec.SLOTS_PER_EPOCH + slot_offset
+        lookahead_index = spec.Uint64(spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH + slot_offset
         validator_index = lookahead_state.proposer_lookahead[lookahead_index]
         stale_validator_index = dependent_state.proposer_lookahead[lookahead_index]
         if validator_index != stale_validator_index:

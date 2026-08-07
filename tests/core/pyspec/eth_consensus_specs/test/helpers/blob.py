@@ -120,9 +120,9 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.ProgressiveList[
-            spec.KZGCommitment
-        ](blob_kzg_commitments)
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = (
+            spec.BlobKZGCommitments(data=blob_kzg_commitments)
+        )
         # For self-builds, use point at infinity signature as per spec
         if (
             block.body.signed_execution_payload_bid.message.builder_index
@@ -138,11 +138,13 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
                 )
             )
     else:
-        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.transactions = spec.Transactions.of(
+            spec.Transaction(data=list(opaque_tx))
+        )
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
         )
-        block.body.blob_kzg_commitments = blob_kzg_commitments
+        block.body.blob_kzg_commitments = spec.BlobKZGCommitments(data=blob_kzg_commitments)
     return block, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
@@ -202,16 +204,16 @@ def make_partial_sidecar(spec, sidecar, blob_indices=None, include_header=True):
     proofs = [sidecar.kzg_proofs[i] for i in blob_indices]
     if is_post_gloas(spec):
         return spec.PartialDataColumnSidecar(
-            cells_present_bitmap=bitmap,
-            partial_column=cells,
-            kzg_proofs=proofs,
+            cells_present_bitmap=spec.CellsBitList(data=bitmap),
+            partial_column=spec.DataColumn(data=cells),
+            kzg_proofs=spec.KZGProofs(data=proofs),
         )
     header = [make_partial_header(spec, sidecar)] if include_header else []
     return spec.PartialDataColumnSidecar(
-        cells_present_bitmap=bitmap,
-        partial_column=cells,
-        kzg_proofs=proofs,
-        header=header,
+        cells_present_bitmap=spec.CellsBitList(data=bitmap),
+        partial_column=spec.DataColumn(data=cells),
+        kzg_proofs=spec.KZGProofs(data=proofs),
+        header=spec.OptionalPartialDataColumnHeader(data=header),
     )
 
 

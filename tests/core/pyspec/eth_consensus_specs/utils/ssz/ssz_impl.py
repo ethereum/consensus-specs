@@ -1,37 +1,33 @@
-from typing import TypeVar
+from ssz.ssz_base import SSZType
+from ssz.uint import BaseUint as Uint
 
-from remerkleable.basic import uint as Uint
-from remerkleable.byte_arrays import Bytes32
-from remerkleable.core import Type, View
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
-def ssz_serialize(obj: View) -> bytes:
+def ssz_serialize(obj: SSZType) -> bytes:
     return obj.encode_bytes()
 
 
-def serialize(obj: View) -> bytes:
+def serialize(obj: SSZType) -> bytes:
     return ssz_serialize(obj)
 
 
-def ssz_deserialize(typ: Type[View], data: bytes) -> View:
+def ssz_deserialize(typ: type[SSZType], data: bytes) -> SSZType:
     return typ.decode_bytes(data)
 
 
-def deserialize(typ: Type[View], data: bytes) -> View:
+def deserialize(typ: type[SSZType], data: bytes) -> SSZType:
     return ssz_deserialize(typ, data)
 
 
-def hash_tree_root(obj: View) -> Bytes32:
-    return Bytes32(obj.get_backing().merkle_root())
+def hash_tree_root(obj: SSZType) -> Bytes32:
+    return obj.hash_tree_root()
 
 
 def uint_to_bytes(n: Uint) -> bytes:
     return serialize(n)
 
 
-V = TypeVar("V", bound=View)
-
-
 # Helper method for typing copies, and avoiding a example_input.copy() method call, instead of copy(example_input)
-def copy(obj: V) -> V:
+def copy[V: SSZType](obj: V) -> V:
     return obj.copy()

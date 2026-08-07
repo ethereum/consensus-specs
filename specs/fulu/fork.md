@@ -41,7 +41,7 @@ def initialize_proposer_lookahead(
     lookahead: list[ValidatorIndex] = []
     for i in range(MIN_SEED_LOOKAHEAD + 1):
         lookahead.extend(get_beacon_proposer_indices(state, Epoch(current_epoch + i)))
-    return ProposerLookahead(lookahead)
+    return ProposerLookahead(data=lookahead)
 ```
 
 ## Fork to Fulu
@@ -106,7 +106,7 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in Fulu:EIP7917]
-        proposer_lookahead=initialize_proposer_lookahead(pre),
+        proposer_lookahead=ProposerLookahead(data=initialize_proposer_lookahead(pre)),
     )
 
     return post

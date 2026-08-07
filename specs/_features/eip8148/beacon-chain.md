@@ -102,7 +102,9 @@ class SweepThresholds(ProgressiveList[Gwei]):
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=47)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
@@ -156,7 +158,9 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
 #### `ExecutionRequests`
 
 ```python
-class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 6)):
+class ExecutionRequests(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=6)
+
     deposits: DepositRequests
     withdrawals: WithdrawalRequests
     consolidations: ConsolidationRequests

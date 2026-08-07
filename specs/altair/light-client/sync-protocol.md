@@ -65,29 +65,35 @@ Additional documents describe how the light client sync protocol can be used:
 ### `CurrentSyncCommitteeBranch`
 
 ```python
-class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]):
+class CurrentSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)
 ```
 
 ### `FinalityBranch`
 
 ```python
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]):
+class FinalityBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``finalized_checkpoint.root`` within
     ``BeaconState``.
     """
+
+    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX)
 ```
 
 ### `NextSyncCommitteeBranch`
 
 ```python
-class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]):
+class NextSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)
 ```
 
 ## Constants
@@ -245,8 +251,8 @@ def is_finality_update(update: LightClientUpdate) -> bool:
 def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdate) -> bool:
     # Compare supermajority (> 2/3) sync committee participation
     max_active_participants = len(new_update.sync_aggregate.sync_committee_bits)
-    new_num_active_participants = sum(new_update.sync_aggregate.sync_committee_bits)
-    old_num_active_participants = sum(old_update.sync_aggregate.sync_committee_bits)
+    new_num_active_participants = get_set_bit_count(new_update.sync_aggregate.sync_committee_bits)
+    old_num_active_participants = get_set_bit_count(old_update.sync_aggregate.sync_committee_bits)
     new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
     old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
     if new_has_supermajority != old_has_supermajority:
@@ -405,7 +411,7 @@ def validate_light_client_update(
 ) -> None:
     # Verify sync committee has sufficient participants
     sync_aggregate = update.sync_aggregate
-    assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert get_set_bit_count(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify update does not skip a sync committee period
     assert is_valid_light_client_header(update.attested_header)
@@ -545,12 +551,12 @@ def process_light_client_update(
     # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
         store.current_max_active_participants,
-        sum(sync_committee_bits),
+        get_set_bit_count(sync_committee_bits),
     )
 
     # Update the optimistic header
     if (
-        sum(sync_committee_bits) > get_safety_threshold(store)
+        get_set_bit_count(sync_committee_bits) > get_safety_threshold(store)
         and update.attested_header.beacon.slot > store.optimistic_header.beacon.slot
     ):
         store.optimistic_header = update.attested_header
@@ -565,7 +571,7 @@ def process_light_client_update(
             == compute_sync_committee_period_at_slot(update.attested_header.beacon.slot)
         )
     )
-    if sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2 and (
+    if get_set_bit_count(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2 and (
         update.finalized_header.beacon.slot > store.finalized_header.beacon.slot
         or update_has_finalized_next_sync_committee
     ):

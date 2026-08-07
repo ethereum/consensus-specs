@@ -308,7 +308,7 @@ def test_invalid_att1_high_index(spec, state):
 
     indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     indices.append(spec.ValidatorIndex(len(state.validators)))  # off by 1
-    attester_slashing.attestation_1.attesting_indices = indices
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=indices)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
@@ -321,7 +321,7 @@ def test_invalid_att2_high_index(spec, state):
 
     indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_2)
     indices.append(spec.ValidatorIndex(len(state.validators)))  # off by 1
-    attester_slashing.attestation_2.attesting_indices = indices
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=indices)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
@@ -332,7 +332,7 @@ def test_invalid_att2_high_index(spec, state):
 def test_invalid_att1_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    attester_slashing.attestation_1.attesting_indices = []
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=[])
     attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -344,7 +344,7 @@ def test_invalid_att1_empty_indices(spec, state):
 def test_invalid_att2_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
-    attester_slashing.attestation_2.attesting_indices = []
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=[])
     attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -356,10 +356,10 @@ def test_invalid_att2_empty_indices(spec, state):
 def test_invalid_all_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
 
-    attester_slashing.attestation_1.attesting_indices = []
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=[])
     attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
-    attester_slashing.attestation_2.attesting_indices = []
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=[])
     attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -374,7 +374,7 @@ def test_invalid_att1_bad_extra_index(spec, state):
     indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     options = list(set(range(len(state.validators))) - set(indices))
     indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
-    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad extra index is spotted, and slashing is aborted.
 
@@ -392,7 +392,7 @@ def test_invalid_att1_bad_replaced_index(spec, state):
     indices[3] = options[
         len(options) // 2
     ]  # replace with random index, not previously in attestation.
-    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad replaced index is spotted, and slashing is aborted.
 
@@ -408,7 +408,7 @@ def test_invalid_att2_bad_extra_index(spec, state):
     indices = attester_slashing.attestation_2.attesting_indices
     options = list(set(range(len(state.validators))) - set(indices))
     indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
-    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad extra index is spotted, and slashing is aborted.
 
@@ -426,7 +426,7 @@ def test_invalid_att2_bad_replaced_index(spec, state):
     indices[3] = options[
         len(options) // 2
     ]  # replace with random index, not previously in attestation.
-    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad replaced index is spotted, and slashing is aborted.
 
@@ -441,13 +441,13 @@ def test_invalid_att1_duplicate_index_normal_signed(spec, state):
 
     indices = list(attester_slashing.attestation_1.attesting_indices)
     indices.pop(1)  # remove an index, make room for the additional duplicate index.
-    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=sorted(indices))
 
     # The signature will be valid for a single occurrence. If the transition accidentally ignores the duplicate.
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     indices.append(indices[0])  # add one of the indices a second time
-    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=sorted(indices))
 
     # it will just appear normal, unless the double index is spotted
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -461,13 +461,13 @@ def test_invalid_att2_duplicate_index_normal_signed(spec, state):
 
     indices = list(attester_slashing.attestation_2.attesting_indices)
     indices.pop(2)  # remove an index, make room for the additional duplicate index.
-    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=sorted(indices))
 
     # The signature will be valid for a single occurrence. If the transition accidentally ignores the duplicate.
     sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
 
     indices.append(indices[1])  # add one of the indices a second time
-    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=sorted(indices))
 
     # it will just appear normal, unless the double index is spotted
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -482,7 +482,7 @@ def test_invalid_att1_duplicate_index_double_signed(spec, state):
     indices = list(attester_slashing.attestation_1.attesting_indices)
     indices.pop(1)  # remove an index, make room for the additional duplicate index.
     indices.append(indices[2])  # add one of the indices a second time
-    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     sign_indexed_attestation(
         spec, state, attester_slashing.attestation_1
     )  # will have one attester signing it double
@@ -499,7 +499,7 @@ def test_invalid_att2_duplicate_index_double_signed(spec, state):
     indices = list(attester_slashing.attestation_2.attesting_indices)
     indices.pop(1)  # remove an index, make room for the additional duplicate index.
     indices.append(indices[2])  # add one of the indices a second time
-    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=sorted(indices))
     sign_indexed_attestation(
         spec, state, attester_slashing.attestation_2
     )  # will have one attester signing it double

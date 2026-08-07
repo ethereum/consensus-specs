@@ -134,16 +134,18 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         latest_block_header=spec.BeaconBlockHeader(
             body_root=spec.hash_tree_root(spec.BeaconBlockBody())
         ),
-        randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
+        randao_mixes=spec.RandaoMixes(data=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR),
     )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = validator_balances
+    state.balances = spec.Balances(data=validator_balances)
 
-    state.validators = [
-        build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))
-    ]
+    state.validators = spec.Validators(
+        data=[
+            build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))
+        ]
+    )
 
     # Process genesis activations
     for validator in state.validators:
@@ -201,28 +203,36 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.earliest_exit_epoch = spec.GENESIS_EPOCH
         state.consolidation_balance_to_consume = 0
         state.earliest_consolidation_epoch = 0
-        state.pending_deposits = []
-        state.pending_partial_withdrawals = []
-        state.pending_consolidations = []
+        state.pending_deposits = spec.PendingDeposits()
+        state.pending_partial_withdrawals = spec.PendingPartialWithdrawals()
+        state.pending_consolidations = spec.PendingConsolidations()
 
     if is_post_gloas(spec):
         # TODO(jtraglia): make it so that the builder count is not hardcoded.
         builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
-        state.builders = [build_mock_builder(spec, i, builder_balance) for i in range(8)]
-        state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
-        state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
-        state.builder_pending_payments = [
-            spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
-        ]
-        state.builder_pending_withdrawals = []
-        state.ptc_window = initialize_ptc_window(spec, state)
+        state.builders = spec.Builders(
+            data=[build_mock_builder(spec, i, builder_balance) for i in range(8)]
+        )
+        state.execution_payload_availability = spec.ExecutionPayloadAvailability(
+            data=[0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
+        )
+        state.payload_expected_withdrawals = spec.Withdrawals()
+        state.builder_pending_payments = spec.BuilderPendingPayments(
+            data=[spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)]
+        )
+        state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
+        state.ptc_window = spec.PTCWindow(data=initialize_ptc_window(spec, state))
 
     if is_post_eip8148(spec):
-        state.validator_sweep_thresholds = [spec.Gwei(0)] * len(validator_balances)
+        state.validator_sweep_thresholds = spec.SweepThresholds(
+            data=[spec.Gwei(0)] * len(validator_balances)
+        )
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
-        state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
+        state.proposer_lookahead = spec.ProposerLookahead(
+            data=initialize_proposer_lookahead(spec, state)
+        )
 
     return state
 

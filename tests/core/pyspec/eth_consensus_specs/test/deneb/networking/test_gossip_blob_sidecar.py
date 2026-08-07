@@ -303,9 +303,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     blob_sidecar = sidecars[0]
     # Corrupt the inclusion proof
-    blob_sidecar.kzg_commitment_inclusion_proof = spec.compute_merkle_proof(
-        spec.BeaconBlockBody(), 0
-    )
+    blob_sidecar.kzg_commitment_inclusion_proof = spec.KZGCommitmentInclusionProof()
 
     yield get_filename(blob_sidecar), blob_sidecar
 
