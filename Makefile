@@ -12,6 +12,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	fulu      \
 	gloas     \
 	heze      \
+	eip7716   \
 	eip8025
 
 # A list of fake targets.
