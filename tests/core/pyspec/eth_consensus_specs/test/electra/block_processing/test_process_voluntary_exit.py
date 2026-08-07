@@ -162,7 +162,7 @@ def test_max_balance_exit(spec, state):
 
     # Check exit epoch and withdrawable epoch
     earliest_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
-    additional_epochs = (to_exit - 1) // churn_limit
+    additional_epochs = spec.Uint64((to_exit - 1) // churn_limit)
     expected_exit_epoch = earliest_exit_epoch + additional_epochs
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY

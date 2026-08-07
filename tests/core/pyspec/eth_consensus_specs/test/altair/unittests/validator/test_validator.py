@@ -263,11 +263,8 @@ def test_is_sync_committee_aggregator(spec, state):
             is_aggregator_count += 1
 
     # Accept ~10% deviation
-    assert (
-        spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE * 100 * 0.9
-        <= is_aggregator_count
-        <= spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE * 100 * 1.1
-    )
+    target_count = int(spec.TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE) * 100
+    assert target_count * 0.9 <= is_aggregator_count <= target_count * 1.1
 
 
 @with_altair_and_later
