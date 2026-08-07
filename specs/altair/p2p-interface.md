@@ -53,10 +53,12 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 #### New `Syncnets`
 
 ```python
-class Syncnets(BitVector[SYNC_COMMITTEE_SUBNET_COUNT]):
+class Syncnets(BitVector):
     """
     The sync committee subnets a node is subscribed to, one bit per subnet.
     """
+
+    LENGTH = SYNC_COMMITTEE_SUBNET_COUNT
 ```
 
 ### Helpers

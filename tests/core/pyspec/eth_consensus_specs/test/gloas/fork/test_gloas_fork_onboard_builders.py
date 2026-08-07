@@ -83,7 +83,7 @@ def test_fork_no_pending_deposits(spec, phases, state):
     Test fork with no pending deposits - no builders should be created.
     """
     # Ensure no pending deposits
-    state.pending_deposits = []
+    state.pending_deposits = spec.PendingDeposits()
 
     post_spec = phases[GLOAS]
     post_state = yield from run_fork_test(post_spec, state)
@@ -107,7 +107,7 @@ def test_fork_single_builder_deposit(spec, phases, state):
     # Create a pending deposit with builder credentials
     builder_pubkey = builder_pubkeys[0]
     pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -134,7 +134,7 @@ def test_fork_builder_deposit_version(spec, phases, state):
     # Create a pending deposit with builder credentials
     builder_pubkey = builder_pubkeys[0]
     pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -161,7 +161,7 @@ def test_fork_builder_deposit_uses_deposit_slot_epoch(spec, phases, state):
     builder_pubkey = builder_pubkeys[0]
     pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
     pending_deposit.slot = state.slot - 1
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -184,7 +184,7 @@ def test_fork_multiple_builder_deposits(spec, phases, state):
     amount = post_spec.MIN_DEPOSIT_AMOUNT
 
     # Create multiple pending deposits with builder credentials
-    pending_deposits = []
+    pending_deposits = spec.PendingDeposits()
     for i in range(3):
         builder_pubkey = builder_pubkeys[i]
         pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
@@ -226,7 +226,7 @@ def test_fork_pending_deposit_for_existing_validator(spec, phases, state):
         signature=spec.bls.G2_POINT_AT_INFINITY,
         slot=spec.GENESIS_SLOT,
     )
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -253,7 +253,7 @@ def test_fork_pending_deposit_validator_credentials(spec, phases, state):
     # Use a pubkey that's not already a validator
     new_validator_index = len(state.validators)
     pending_deposit = create_pending_deposit_for_validator(post_spec, new_validator_index, amount)
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -302,12 +302,9 @@ def test_fork_mixed_pending_deposits(spec, phases, state):
         post_spec, new_validator_index, amount
     )
 
-    state.pending_deposits = [
-        builder_deposit_1,
-        validator_topup,
-        builder_deposit_2,
-        new_validator_deposit,
-    ]
+    state.pending_deposits = spec.PendingDeposits.of(
+        builder_deposit_1, validator_topup, builder_deposit_2, new_validator_deposit
+    )
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -336,7 +333,7 @@ def test_fork_multiple_deposits_same_builder(spec, phases, state):
 
     # Create multiple pending deposits for the same builder
     builder_pubkey = builder_pubkeys[0]
-    pending_deposits = []
+    pending_deposits = spec.PendingDeposits()
     for _ in range(3):
         pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
         pending_deposits.append(pending_deposit)
@@ -379,7 +376,7 @@ def test_fork_builder_deposit_with_existing_validator_pubkey_builder_creds(spec,
         signature=spec.bls.G2_POINT_AT_INFINITY,
         slot=spec.GENESIS_SLOT,
     )
-    state.pending_deposits = [pending_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -431,7 +428,7 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
         slot=post_spec.GENESIS_SLOT,
     )
 
-    state.pending_deposits = [builder_deposit, non_builder_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, non_builder_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -486,7 +483,7 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
     # Second deposit: builder credentials for the same pubkey
     builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
-    state.pending_deposits = [validator_deposit, builder_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(validator_deposit, builder_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -537,7 +534,7 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
     # Second deposit: builder credentials with valid signature
     builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
-    state.pending_deposits = [invalid_validator_deposit, builder_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(invalid_validator_deposit, builder_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -583,7 +580,7 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
     # Second deposit: builder credentials with valid signature
     valid_builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
-    state.pending_deposits = [invalid_builder_deposit, valid_builder_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(invalid_builder_deposit, valid_builder_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -626,7 +623,7 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
         slot=post_spec.GENESIS_SLOT,
     )
 
-    state.pending_deposits = [valid_builder_deposit, invalid_builder_deposit]
+    state.pending_deposits = spec.PendingDeposits.of(valid_builder_deposit, invalid_builder_deposit)
 
     post_state = yield from run_fork_test(post_spec, state)
 

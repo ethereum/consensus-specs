@@ -19,7 +19,6 @@ from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ssz.ssz_typing import BitList
 
 
 def run_get_signature_test(
@@ -187,7 +186,7 @@ def test_get_eth1_vote_default_vote(spec, state):
     for _ in range(min_new_period_epochs):
         next_epoch(spec, state)
 
-    state.eth1_data_votes = ()
+    state.eth1_data_votes = spec.Eth1DataVotes()
     eth1_chain = []
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
     assert eth1_data == state.eth1_data
@@ -203,7 +202,7 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     period_start = spec.voting_period_start_time(state)
     votes_length = spec.get_current_epoch(state) % spec.EPOCHS_PER_ETH1_VOTING_PERIOD
     assert votes_length >= 3  # We need to have the majority vote
-    state.eth1_data_votes = ()
+    state.eth1_data_votes = spec.Eth1DataVotes()
 
     block_1 = spec.Eth1Block(
         timestamp=period_start
@@ -219,7 +218,7 @@ def test_get_eth1_vote_consensus_vote(spec, state):
         deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
-    eth1_data_votes = []
+    eth1_data_votes = spec.Eth1DataVotes()
 
     # Only the first vote is for block_1
     eth1_data_votes.append(spec.get_eth1_data(block_1))
@@ -244,7 +243,7 @@ def test_get_eth1_vote_tie(spec, state):
     assert votes_length > 0
     assert votes_length % 2 == 0
 
-    state.eth1_data_votes = ()
+    state.eth1_data_votes = spec.Eth1DataVotes()
     block_1 = spec.Eth1Block(
         timestamp=period_start
         - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
@@ -259,7 +258,7 @@ def test_get_eth1_vote_tie(spec, state):
         deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
-    eth1_data_votes = []
+    eth1_data_votes = spec.Eth1DataVotes()
     # Half votes are for block_1, another half votes are for block_2
     for i in range(votes_length):
         if i % 2 == 0:
@@ -287,7 +286,7 @@ def test_get_eth1_vote_chain_in_past(spec, state):
     assert votes_length > 0
     assert votes_length % 2 == 0
 
-    state.eth1_data_votes = ()
+    state.eth1_data_votes = spec.Eth1DataVotes()
     block_1 = spec.Eth1Block(
         timestamp=period_start
         - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
@@ -295,7 +294,7 @@ def test_get_eth1_vote_chain_in_past(spec, state):
         deposit_root=b"\x42" * 32,
     )
     eth1_chain = [block_1]
-    eth1_data_votes = []
+    eth1_data_votes = spec.Eth1DataVotes()
 
     state.eth1_data_votes = eth1_data_votes
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
@@ -397,9 +396,10 @@ def test_compute_subnet_for_attestation(spec, state):
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
-            expected_subnet_id = (
-                committees_since_epoch_start + committee_idx
-            ) % spec.config.ATTESTATION_SUBNET_COUNT
+            expected_subnet_id = spec.SubnetID(
+                (committees_since_epoch_start + committee_idx)
+                % spec.config.ATTESTATION_SUBNET_COUNT
+            )
 
             assert actual_subnet_id == expected_subnet_id
 
@@ -460,14 +460,14 @@ def test_get_aggregate_signature(spec, state):
         attestation_data.index,
     )
     committee_size = len(beacon_committee)
-    aggregation_bits = BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
+    aggregation_bits = spec.AggregationBits(data=[0] * committee_size)
     for i, validator_index in enumerate(beacon_committee):
         bits = aggregation_bits.copy()
         bits[i] = True
         attestations.append(
             spec.Attestation(
                 data=attestation_data,
-                aggregation_bits=bits,
+                aggregation_bits=spec.AggregationBits(data=bits),
                 signature=spec.get_attestation_signature(
                     state, attestation_data, privkeys[validator_index]
                 ),

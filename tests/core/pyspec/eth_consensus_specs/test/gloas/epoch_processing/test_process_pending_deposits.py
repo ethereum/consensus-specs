@@ -40,4 +40,4 @@ def test_process_pending_deposits__builder_deposit_domain(spec, state):
 
     # The deposit was dropped: no validator created and no balance applied
     assert len(state.validators) == pre_validator_count
-    assert state.pending_deposits == []
+    assert state.pending_deposits == spec.PendingDeposits()

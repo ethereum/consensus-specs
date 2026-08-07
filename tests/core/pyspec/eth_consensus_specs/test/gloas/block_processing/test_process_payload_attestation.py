@@ -14,7 +14,6 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
-from eth_consensus_specs.utils.ssz.ssz_typing import BitVector
 
 
 def run_payload_attestation_processing(spec, state, payload_attestation, valid=True):
@@ -72,7 +71,7 @@ def prepare_signed_payload_attestation(
     # to deal with duplicates indices in the PTC.
     unset_indices = list(attesting_indices)
 
-    aggregation_bits = BitVector[spec.PTC_SIZE]()
+    aggregation_bits = spec.PTCBits()
     for i, validator_index in enumerate(ptc):
         if validator_index in unset_indices:
             aggregation_bits[i] = True
@@ -88,7 +87,7 @@ def prepare_signed_payload_attestation(
 
     # Create payload attestation
     payload_attestation = spec.PayloadAttestation(
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.PTCBits(data=aggregation_bits),
         data=data,
         signature=spec.BLSSignature(),
     )
@@ -387,7 +386,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     for validator in state.validators:
         validator.effective_balance = low_balance
     # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
-    state.ptc_window = initialize_ptc_window(spec, state)
+    state.ptc_window = spec.PTCWindow(data=initialize_ptc_window(spec, state))
 
     chosen_slot = None
     chosen_index = None

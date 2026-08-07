@@ -35,10 +35,12 @@ messages, topics and data to the Req-Resp and Gossip domains.
 #### `LightClientUpdates`
 
 ```python
-class LightClientUpdates(List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]):
+class LightClientUpdates(List[LightClientUpdate]):
     """
     Light client updates returned in a ``LightClientUpdatesByRange`` response.
     """
+
+    LIMIT = MAX_REQUEST_LIGHT_CLIENT_UPDATES
 ```
 
 ### Configuration

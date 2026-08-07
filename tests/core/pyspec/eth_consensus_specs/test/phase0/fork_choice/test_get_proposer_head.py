@@ -113,10 +113,12 @@ def test_basic_is_parent_root(spec, state):
     # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
     parent_block_slot = block.slot - 1
-    block.body.attestations = get_valid_attestations_at_slot(
-        state,
-        spec,
-        parent_block_slot,
+    block.body.attestations = spec.Attestations(
+        data=get_valid_attestations_at_slot(
+            state,
+            spec,
+            parent_block_slot,
+        )
     )
     signed_block = state_transition_and_sign_block(spec, state, block)
 

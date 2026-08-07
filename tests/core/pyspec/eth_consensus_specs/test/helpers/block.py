@@ -123,9 +123,9 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     if is_post_electra(spec):
-        empty_block.body.execution_requests.deposits = []
-        empty_block.body.execution_requests.withdrawals = []
-        empty_block.body.execution_requests.consolidations = []
+        empty_block.body.execution_requests.deposits = spec.DepositRequests(data=[])
+        empty_block.body.execution_requests.withdrawals = spec.WithdrawalRequests(data=[])
+        empty_block.body.execution_requests.consolidations = spec.ConsolidationRequests()
 
     return empty_block
 

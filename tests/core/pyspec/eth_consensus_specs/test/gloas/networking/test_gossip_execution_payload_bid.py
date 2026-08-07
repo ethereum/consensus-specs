@@ -1382,9 +1382,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
-            *([spec.KZGCommitment()] * over_limit)
-        ),
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=([spec.KZGCommitment()] * over_limit)),
     )
     yield get_filename(signed_bid), signed_bid
 
@@ -1452,8 +1450,8 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
-            *([spec.KZGCommitment()] * int(max_blobs))
+        blob_kzg_commitments=spec.BlobKZGCommitments(
+            data=([spec.KZGCommitment()] * int(max_blobs))
         ),
     )
     yield get_filename(signed_bid), signed_bid
@@ -2401,7 +2399,12 @@ def _run_bid_gas_limit_scenario(
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
     # Override the parent's bid gas_limit so the envelope's payload.gas_limit
     # (which gets seeded into seen.execution_payloads) equals our target value.
-    state.latest_execution_payload_bid.gas_limit = spec.Uint64(parent_gas_limit)
+    # The state holds the head block's own bid, so a copy is edited and put
+    # back. Editing it in place would change the block's hash tree root, and
+    # the store would no longer know the block the envelope refers to.
+    parent_bid = state.latest_execution_payload_bid.copy()
+    parent_bid.gas_limit = spec.Uint64(parent_gas_limit)
+    state.latest_execution_payload_bid = parent_bid
     head_payload = record_head_payload(spec, state, store, blocks)
     yield "state", anchor_state
     for signed in blocks:

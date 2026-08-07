@@ -283,8 +283,10 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=None):
     if rng is None:
         rng = Random(3456)
     block = random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=rng)
-    block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
-        spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+    block.body.bls_to_execution_changes = spec.BLSToExecutionChanges(
+        data=get_random_bls_to_execution_changes(
+            spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+        )
     )
     return block
 
@@ -298,9 +300,9 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=None):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
     )
-    block.body.execution_payload.transactions.append(opaque_tx)
+    block.body.execution_payload.transactions.append(spec.Transaction(data=list(opaque_tx)))
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
-    block.body.blob_kzg_commitments = blob_kzg_commitments
+    block.body.blob_kzg_commitments = spec.BlobKZGCommitments(data=blob_kzg_commitments)
 
     return block
 
@@ -333,15 +335,19 @@ def random_block_gloas(spec, state, signed_blocks, scenario_state, rng=None):
     )
 
     # Add bls_to_execution_changes
-    block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
-        spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+    block.body.bls_to_execution_changes = spec.BLSToExecutionChanges(
+        data=get_random_bls_to_execution_changes(
+            spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+        )
     )
 
     # Add signed_execution_payload_bid
     block.body.signed_execution_payload_bid = _build_random_signed_bid(spec, state, block, rng)
 
     # Add payload_attestations
-    block.body.payload_attestations = get_random_payload_attestations(spec, state, rng)
+    block.body.payload_attestations = spec.PayloadAttestations(
+        data=get_random_payload_attestations(spec, state, rng)
+    )
 
     return block
 
@@ -470,7 +476,7 @@ def _build_random_signed_bid(spec, state, block, rng):
         slot=block.slot,
         value=value,
         execution_payment=spec.Gwei(0),
-        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments),
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
 

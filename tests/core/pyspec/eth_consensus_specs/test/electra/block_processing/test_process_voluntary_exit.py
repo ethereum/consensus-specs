@@ -19,7 +19,7 @@ from eth_consensus_specs.test.helpers.voluntary_exits import (
 @with_electra_and_later
 @spec_state_test
 def test_min_balance_exit(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 64 validators each with 32 ETH
     current_epoch = spec.get_current_epoch(state)
     expected_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
@@ -53,7 +53,7 @@ def test_min_balance_exit(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_min_balance_exits_up_to_churn(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 64 validators each with 32 ETH
     single_validator_balance = spec.MIN_ACTIVATION_BALANCE
     churn_limit = get_exit_churn_limit(spec, state)
@@ -95,7 +95,7 @@ def test_min_balance_exits_up_to_churn(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_min_balance_exits_above_churn(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 64 validators each with 32 ETH
     single_validator_balance = spec.MIN_ACTIVATION_BALANCE
     expected_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
@@ -142,7 +142,7 @@ def test_min_balance_exits_above_churn(spec, state):
     "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit",
 )
 def test_max_balance_exit(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -182,7 +182,7 @@ def test_max_balance_exit(spec, state):
     "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit",
 )
 def test_exit_with_balance_equal_to_churn_limit(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -218,7 +218,7 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
     "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit",
 )
 def test_exit_with_balance_multiple_of_churn_limit(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -257,7 +257,7 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit",
 )
 def test_exit_existing_churn_and_churn_limit_balance(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -301,7 +301,7 @@ def test_exit_existing_churn_and_churn_limit_balance(spec, state):
     "With CHURN_LIMIT_QUOTIENT=32, can't change validator balance without changing churn_limit",
 )
 def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -344,7 +344,7 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
 @spec_state_test
 def test_voluntary_exit_with_pending_deposit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -358,7 +358,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
     # A pending deposit will not prevent an exit
-    state.pending_deposits = [
+    state.pending_deposits = spec.PendingDeposits.of(
         spec.PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
@@ -366,7 +366,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
             signature=spec.bls.G2_POINT_AT_INFINITY,
             slot=spec.GENESIS_SLOT,
         )
-    ]
+    )
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
@@ -375,7 +375,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
 @spec_state_test
 def test_invalid_validator_has_pending_withdrawal(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]

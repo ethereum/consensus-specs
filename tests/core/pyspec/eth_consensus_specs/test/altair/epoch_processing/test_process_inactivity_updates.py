@@ -35,7 +35,9 @@ def test_genesis(spec, state):
 @spec_state_test
 def test_genesis_random_scores(spec, state):
     rng = Random(10102)
-    state.inactivity_scores = [rng.randint(0, 100) for _ in state.inactivity_scores]
+    state.inactivity_scores = spec.InactivityScores(
+        data=[rng.randint(0, 100) for _ in state.inactivity_scores]
+    )
     pre_scores = state.inactivity_scores.copy()
 
     yield from run_process_inactivity_updates(spec, state)

@@ -28,7 +28,7 @@ def get_empty_inclusion_list(spec, store, state, slot=None, validator_index=None
     empty_inclusion_list.slot = slot
     empty_inclusion_list.validator_index = validator_index
     empty_inclusion_list.dependent_root = dependent_root
-    empty_inclusion_list.transactions = []
+    empty_inclusion_list.transactions = spec.Transactions()
 
     return empty_inclusion_list
 
@@ -119,7 +119,12 @@ def get_sample_transactions(spec, max_transaction_size=200, max_transaction_coun
     assert transaction_size >= 0
     assert transaction_count >= 0
 
-    transactions = [spec.Transaction(randbytes(transaction_size)) for _ in range(transaction_count)]
+    transactions = spec.Transactions(
+        data=[
+            spec.Transaction(data=list(randbytes(transaction_size)))
+            for _ in range(transaction_count)
+        ]
+    )
 
     return transactions
 

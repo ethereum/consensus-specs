@@ -6,7 +6,7 @@ from eth_utils import encode_hex
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import Bytes32
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
 class PayloadStatusV1StatusAlias(Enum):

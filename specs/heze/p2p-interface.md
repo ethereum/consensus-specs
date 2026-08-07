@@ -57,11 +57,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 #### New `SignedInclusionLists`
 
 ```python
-class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+class SignedInclusionLists(List[SignedInclusionList]):
     """
     Signed inclusion lists returned in an ``InclusionListsByIndices``
     response.
     """
+
+    LIMIT = MAX_REQUEST_INCLUSION_LIST
 ```
 
 ### Helpers

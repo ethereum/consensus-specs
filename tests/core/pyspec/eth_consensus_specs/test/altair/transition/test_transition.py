@@ -69,7 +69,7 @@ def test_normal_transition(state, fork_epoch, spec, post_spec, pre_tag, post_tag
     assert spec.get_current_epoch(state) < fork_epoch
 
     # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    to_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     blocks = []
     blocks.extend([pre_tag(block) for block in state_transition_across_slots(spec, state, to_slot)])
 
@@ -146,7 +146,7 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
     assert spec.get_current_epoch(state) < fork_epoch
 
     # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    to_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     blocks = []
     blocks.extend([pre_tag(block) for block in state_transition_across_slots(spec, state, to_slot)])
 
@@ -161,7 +161,9 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
 
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
-    expected_slots = set(range(1, state.slot + 1)).difference({fork_epoch * spec.SLOTS_PER_EPOCH})
+    expected_slots = set(range(1, state.slot + 1)).difference(
+        {spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH}
+    )
     assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
@@ -187,7 +189,7 @@ def test_transition_missing_last_pre_fork_block(
     assert spec.get_current_epoch(state) < fork_epoch
 
     # regular state transition until fork:
-    last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    last_slot_of_pre_fork = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     to_slot = last_slot_of_pre_fork
     blocks = []
     blocks.extend(
@@ -235,7 +237,7 @@ def test_transition_only_blocks_post_fork(state, fork_epoch, spec, post_spec, pr
     assert spec.get_current_epoch(state) < fork_epoch
 
     # regular state transition until fork:
-    last_slot_of_pre_fork = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    last_slot_of_pre_fork = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     to_slot = last_slot_of_pre_fork
     blocks = []
     blocks.extend(
@@ -355,7 +357,7 @@ def _run_transition_test_with_attestations(
 
     assert set(slots_without_attestations) == {
         spec.SLOTS_PER_EPOCH,
-        fork_epoch * spec.SLOTS_PER_EPOCH,
+        spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     }
 
     yield "blocks", blocks
@@ -455,7 +457,7 @@ def test_transition_with_no_attestations_until_after_fork(
     assert spec.get_current_epoch(state) < fork_epoch
 
     # regular state transition until fork:
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    to_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     blocks = []
     blocks.extend([pre_tag(block) for block in state_transition_across_slots(spec, state, to_slot)])
 
@@ -502,7 +504,7 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     """
     # fill in historical_roots with non-empty values
     pre_historical_roots = [b"\x56" * 32]
-    state.historical_roots = pre_historical_roots
+    state.historical_roots = spec.HistoricalRoots(data=pre_historical_roots)
 
     transition_until_fork(spec, state, fork_epoch)
     # check pre state
@@ -525,4 +527,4 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     yield "post", state
 
     assert len(state.historical_roots) > 0
-    assert state.historical_roots == pre_historical_roots
+    assert list(state.historical_roots) == list(pre_historical_roots)

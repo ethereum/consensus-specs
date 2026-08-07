@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
 from eth_consensus_specs.test.helpers.state import next_slot
-from eth_consensus_specs.utils.ssz.ssz_typing import Bytes32
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
 @with_bellatrix_and_later

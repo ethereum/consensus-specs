@@ -14,7 +14,7 @@ from eth_consensus_specs.utils.ssz.ssz_impl import deserialize
 SSZObject = TypeVar("SSZObject")
 
 
-def get_ssz_object_from_ssz_encoded(file_path: Path, typ: SSZObject) -> SSZObject:
+def get_ssz_object_from_ssz_encoded[SSZObject](file_path: Path, typ: SSZObject) -> SSZObject:
     """
     Get the SSZObject from an SSZ-encoded file.
 
@@ -48,7 +48,7 @@ def get_ssz_object_from_ssz_encoded(file_path: Path, typ: SSZObject) -> SSZObjec
     return deserialize(typ, data)
 
 
-def output_ssz_to_file(
+def output_ssz_to_file[SSZObject](
     output_path: Path, obj: SSZObject, include_hash_tree_roots: bool = False
 ) -> None:
     """

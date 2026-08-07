@@ -39,8 +39,6 @@ upgrades when ready.
 
 ### Accompanying documents
 
-- [Merkle Proofs](ssz/merkle-proofs.md)
-- [SimpleSerialize (SSZ)](ssz/simple-serialize.md)
 - [Optimistic Sync](sync/optimistic.md)
 
 ### External specifications
@@ -51,6 +49,7 @@ upgrades when ready.
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
 - [Builder Specs](https://github.com/ethereum/builder-specs)
 - [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
+- [SimpleSerialize (SSZ) Specs](https://github.com/ethereum/ssz-specs)
 
 ### Reference tests
 

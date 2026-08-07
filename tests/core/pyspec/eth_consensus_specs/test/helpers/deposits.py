@@ -17,7 +17,6 @@ from eth_consensus_specs.test.helpers.state import get_balance
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
-from eth_consensus_specs.utils.ssz.ssz_typing import List
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
 
@@ -77,9 +76,7 @@ def build_deposit(spec, deposit_data_list, pubkey, privkey, amount, withdrawal_c
 
 def deposit_from_context(spec, deposit_data_list, index):
     deposit_data = deposit_data_list[index]
-    root = hash_tree_root(
-        List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list)
-    )
+    root = hash_tree_root(spec.DepositDataList(data=deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [
         len(deposit_data_list).to_bytes(32, "little")
@@ -88,7 +85,7 @@ def deposit_from_context(spec, deposit_data_list, index):
     assert spec.is_valid_merkle_branch(
         leaf, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH + 1, index, root
     )
-    deposit = spec.Deposit(proof=proof, data=deposit_data)
+    deposit = spec.Deposit(proof=spec.DepositProof(data=proof), data=deposit_data)
 
     return deposit, root, deposit_data_list
 
@@ -492,7 +489,7 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
         slot=state.slot,
     )
 
-    assert state.pending_deposits == [pending_deposit]
+    assert list(state.pending_deposits) == [pending_deposit]
 
 
 def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, effective=True):

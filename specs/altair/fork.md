@@ -89,17 +89,17 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
         slashings=pre.slashings,
-        previous_epoch_participation=[
-            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ],
-        current_epoch_participation=[
-            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ],
+        previous_epoch_participation=EpochParticipation(
+            data=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))]
+        ),
+        current_epoch_participation=EpochParticipation(
+            data=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))]
+        ),
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=[Uint64(0) for _ in range(len(pre.validators))],
+        inactivity_scores=InactivityScores(data=[Uint64(0) for _ in range(len(pre.validators))]),
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)

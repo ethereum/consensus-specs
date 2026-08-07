@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
 
 def _get_last_slot_of_current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
-    return (epoch + 1) * spec.SLOTS_PER_EPOCH - 1
+    return spec.compute_start_slot_at_epoch(epoch + 1) - 1
 
 
 def _setup_switch_to_compounding_validator(spec, state, validator_index):
@@ -80,8 +80,8 @@ def _build_multi_request_execution_requests(
     )
 
     return spec.ExecutionRequests(
-        consolidations=[consolidation_request],
-        deposits=[deposit_request],
+        consolidations=spec.ConsolidationRequests.of(consolidation_request),
+        deposits=spec.DepositRequests.of(deposit_request),
     )
 
 
@@ -127,9 +127,9 @@ def _build_all_requests_execution_requests(
     )
 
     return spec.ExecutionRequests(
-        deposits=[deposit_request],
-        withdrawals=withdrawal_requests,
-        consolidations=[consolidation_request],
+        deposits=spec.DepositRequests.of(deposit_request),
+        withdrawals=spec.WithdrawalRequests(data=withdrawal_requests),
+        consolidations=spec.ConsolidationRequests.of(consolidation_request),
     )
 
 
@@ -241,7 +241,7 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     # Block 2: after gap_epochs of missed slots (including slot 0 of the
     # epoch right after block_1), process the parent's execution requests.
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
-    block_2_slot = (block_1_epoch + gap_epochs) * spec.SLOTS_PER_EPOCH + 1
+    block_2_slot = spec.compute_start_slot_at_epoch(block_1_epoch + gap_epochs) + 1
     block_2 = _build_child_block_with_parent_requests(
         spec,
         state,
@@ -339,7 +339,7 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
     # Block 2: after the gap, with empty parent_execution_requests (parent
     # payload is empty).
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
-    block_2_slot = (block_1_epoch + gap_epochs) * spec.SLOTS_PER_EPOCH + 1
+    block_2_slot = spec.compute_start_slot_at_epoch(block_1_epoch + gap_epochs) + 1
     block_2 = build_empty_block(spec, state, slot=block_2_slot)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
@@ -458,7 +458,7 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     )
 
     execution_requests = spec.ExecutionRequests(
-        consolidations=[consolidation_request],
+        consolidations=spec.ConsolidationRequests.of(consolidation_request),
     )
 
     # 0x01 credentials cap effective balance at MIN_ACTIVATION_BALANCE.
@@ -518,14 +518,14 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
 
     # proposer_lookahead has fixed shape (MIN_SEED_LOOKAHEAD + 1) *
     # SLOTS_PER_EPOCH and each entry must reference a real validator.
-    expected_lookahead_len = (spec.MIN_SEED_LOOKAHEAD + 1) * spec.SLOTS_PER_EPOCH
+    expected_lookahead_len = spec.Uint64(spec.MIN_SEED_LOOKAHEAD + 1) * spec.SLOTS_PER_EPOCH
     assert len(state.proposer_lookahead) == expected_lookahead_len
     for proposer_index in state.proposer_lookahead:
         assert proposer_index < len(state.validators)
 
     # ptc_window has fixed shape (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH
     # of PTC-sized committees referencing real validators.
-    expected_ptc_window_len = (2 + spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH
+    expected_ptc_window_len = spec.Uint64(2 + spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH
     assert len(state.ptc_window) == expected_ptc_window_len
     for ptc_slice in state.ptc_window:
         assert len(ptc_slice) == spec.PTC_SIZE
@@ -562,7 +562,7 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     # Advance past SHARD_COMMITTEE_PERIOD so process_withdrawal_request
     # accepts the full-exit requests (each requires
     # current_epoch >= activation_epoch + SHARD_COMMITTEE_PERIOD).
-    target_slot = spec.Slot(spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    target_slot = spec.Slot(spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     spec.process_slots(state, target_slot)
 
     set_parent_block_full(spec, state)
@@ -619,7 +619,7 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     # epoch right after block_1), process the parent's execution requests.
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     gap_epochs = 5
-    block_2_slot = (block_1_epoch + gap_epochs) * spec.SLOTS_PER_EPOCH + 1
+    block_2_slot = spec.compute_start_slot_at_epoch(block_1_epoch + gap_epochs) + 1
     block_2 = _build_child_block_with_parent_requests(
         spec,
         state,

@@ -100,7 +100,9 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     # not touch it.
     validator_index = 0
     consolidation_request = prepare_switch_to_compounding_request(spec, state, validator_index)
-    execution_requests = spec.ExecutionRequests(consolidations=[consolidation_request])
+    execution_requests = spec.ExecutionRequests(
+        consolidations=spec.ConsolidationRequests.of(consolidation_request)
+    )
 
     # Build block_1 with a bid that commits to the requests we will deliver
     # in the envelope. The bid's execution_requests_root must match
@@ -274,4 +276,4 @@ def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     assert block.slot == proposal_state.slot
     state_transition_and_sign_block(spec, state, block)
 
-    assert list(state.payload_expected_withdrawals) == prepared_withdrawals
+    assert list(state.payload_expected_withdrawals) == list(prepared_withdrawals)

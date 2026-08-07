@@ -59,19 +59,23 @@ Including:
 ### New `ExtraData`
 
 ```python
-class ExtraData(ByteList[MAX_EXTRA_DATA_BYTES]):
+class ExtraData(ByteList):
     """
     Arbitrary extra data included in an execution payload.
     """
+
+    LIMIT = MAX_EXTRA_DATA_BYTES
 ```
 
 ### New `LogsBloom`
 
 ```python
-class LogsBloom(ByteVector[BYTES_PER_LOGS_BLOOM]):
+class LogsBloom(ByteVector):
     """
     A Bloom filter aggregating the logs emitted by an execution payload.
     """
+
+    LENGTH = BYTES_PER_LOGS_BLOOM
 ```
 
 ### New `Transaction`
@@ -83,20 +87,24 @@ class LogsBloom(ByteVector[BYTES_PER_LOGS_BLOOM]):
 or a legacy transaction.
 
 ```python
-class Transaction(ByteList[MAX_BYTES_PER_TRANSACTION]):
+class Transaction(ByteList):
     """
     An opaque execution-layer transaction, either a typed transaction
     envelope or a legacy RLP-encoded transaction.
     """
+
+    LIMIT = MAX_BYTES_PER_TRANSACTION
 ```
 
 ### New `Transactions`
 
 ```python
-class Transactions(List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]):
+class Transactions(List[Transaction]):
     """
     A list of execution-layer transactions.
     """
+
+    LIMIT = MAX_TRANSACTIONS_PER_PAYLOAD
 ```
 
 ## Constants
@@ -276,8 +284,8 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = [Gwei(0)] * len(state.validators)
+    penalties = [Gwei(0)] * len(state.validators)
     previous_epoch = get_previous_epoch(state)
     matching_target_indices = get_unslashed_participating_indices(
         state, TIMELY_TARGET_FLAG_INDEX, previous_epoch
