@@ -87,11 +87,6 @@ testing:
     - all-globs-to-any-file:
       - 'tests/**'
 
-ssz:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'ssz/**'
-
 lightclients:
   - changed-files:
     - any-glob-to-any-file:
