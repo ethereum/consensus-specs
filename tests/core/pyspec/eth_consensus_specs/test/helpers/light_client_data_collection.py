@@ -386,7 +386,7 @@ def _create_lc_update(test, spec, state, block, parent_bid):
 
     # If sync committee does not have sufficient participants, do not bump latest
     sync_aggregate = block.message.body.sync_aggregate
-    num_active_participants = sum(sync_aggregate.sync_committee_bits)
+    num_active_participants = spec.get_set_bit_count(sync_aggregate.sync_committee_bits)
     if num_active_participants < spec.MIN_SYNC_COMMITTEE_PARTICIPANTS:
         latest_signature_slot = attested_data.latest_signature_slot
     else:
@@ -474,7 +474,7 @@ def _process_head_change_for_light_client(test, spec, head_bid, old_finalized_bi
         best = _get_light_client_data(test.lc_data_store, bid).current_period_best_update
         if (
             best.spec is None
-            or sum(best.data.sync_aggregate.sync_committee_bits)
+            or spec.get_set_bit_count(best.data.sync_aggregate.sync_committee_bits)
             < spec.MIN_SYNC_COMMITTEE_PARTICIPANTS
         ):
             test.lc_data_store.db.best_updates.pop(period, None)

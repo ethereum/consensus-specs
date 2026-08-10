@@ -84,6 +84,7 @@
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
 - [Helpers](#helpers)
   - [Math](#math)
+    - [`get_set_bit_count`](#get_set_bit_count)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
@@ -928,6 +929,16 @@ class SignedBeaconBlockHeader(Container):
 necessarily optimal implementations.
 
 ### Math
+
+#### `get_set_bit_count`
+
+```python
+def get_set_bit_count(bits: Sequence[Boolean]) -> Uint64:
+    """
+    Return the number of bits that are set in ``bits``.
+    """
+    return Uint64(sum(1 for bit in bits if bit))
+```
 
 #### `integer_squareroot`
 
