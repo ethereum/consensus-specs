@@ -60,18 +60,16 @@ configs = "configs"
 eth_consensus_specs = "tests/core/pyspec/eth_consensus_specs"
 presets = "presets"
 specs = "specs"
-sync = "sync"
 
 [tool.setuptools.packages.find]
 where = ["tests/core/pyspec", "."]
-include = ["eth_consensus_specs*", "configs", "presets", "specs", "sync"]
+include = ["eth_consensus_specs*", "configs", "presets", "specs"]
 namespaces = true
 
 [tool.setuptools.package-data]
 configs = ["*.yaml"]
 presets = ["**/*.yaml", "**/*.json"]
 specs = ["**/*.md"]
-sync = ["optimistic.md"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

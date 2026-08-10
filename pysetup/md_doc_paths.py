@@ -31,8 +31,6 @@ PREVIOUS_FORK_OF = {
 
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
 
-EXTRA_SPEC_FILES = {BELLATRIX: "sync/optimistic.md"}
-
 DEFAULT_ORDER = ("beacon-chain",)
 
 
@@ -83,8 +81,5 @@ def get_md_doc_paths(spec_fork: str) -> str:
                 for filepath in sorted(filepaths, key=sort_key):
                     if filepath.endswith(".md"):
                         md_doc_paths += filepath + "\n"
-            # Append extra files if any
-            if fork in EXTRA_SPEC_FILES:
-                md_doc_paths += EXTRA_SPEC_FILES[fork] + "\n"
 
     return md_doc_paths
