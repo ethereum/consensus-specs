@@ -902,7 +902,7 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     if exit_balance > exit_balance_to_consume:
         balance_to_process = exit_balance - exit_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
+        earliest_exit_epoch += Epoch(additional_epochs)
         exit_balance_to_consume += additional_epochs * per_epoch_churn
 
     # Consume the balance and update state variables.
@@ -932,7 +932,7 @@ def compute_consolidation_epoch_and_update_churn(
     if consolidation_balance > consolidation_balance_to_consume:
         balance_to_process = consolidation_balance - consolidation_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_consolidation_churn + 1
-        earliest_consolidation_epoch += additional_epochs
+        earliest_consolidation_epoch += Epoch(additional_epochs)
         consolidation_balance_to_consume += additional_epochs * per_epoch_consolidation_churn
 
     # Consume the balance and update state variables.

@@ -55,7 +55,7 @@ def compute_sync_committee_inclusion_reward(spec, state):
         total_base_rewards
         * spec.SYNC_REWARD_WEIGHT
         // spec.WEIGHT_DENOMINATOR
-        // spec.SLOTS_PER_EPOCH
+        // spec.Uint64(spec.SLOTS_PER_EPOCH)
     )
     return max_participant_rewards // spec.SYNC_COMMITTEE_SIZE
 

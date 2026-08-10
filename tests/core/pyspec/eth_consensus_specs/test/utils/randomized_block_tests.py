@@ -509,7 +509,7 @@ def _randomized_scenario_setup(state_randomizer):
             Instead, just overwrite the ``state.slot`` and continue...
             """
             epochs_to_skip = epoch_producer(spec)
-            slots_to_skip = epochs_to_skip * spec.SLOTS_PER_EPOCH
+            slots_to_skip = spec.Uint64(epochs_to_skip) * spec.SLOTS_PER_EPOCH
             state.slot += slots_to_skip
 
         return f
