@@ -59,10 +59,13 @@ commitment. The state therefore holds one 32-byte word per validator and walks
 one link back per proposal.
 
 A commitment is registered once, through a new per-block-capped beacon
-operation. It cannot be updated in place, so a validator that ever needs a new
-chain exits and re-enters. Validators that have not registered a commitment
-continue to use the legacy BLS reveal; this is a transitional path intended for
-removal in a later upgrade.
+operation. It cannot be updated in place, and a validator index keeps its
+commitment for as long as the index exists, so the binding is one chain to one
+public key to one validator index. A validator that ever needs a new chain
+therefore obtains one the same way it would recover from a lost signing key: by
+onboarding a new validator under a new public key. Validators that have not
+registered a commitment continue to use the legacy BLS reveal; this is a
+transitional path intended for removal in a later upgrade.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -104,7 +107,7 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
-| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType('0x0F000000')` |
+| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType('0x11000000')` |
 
 ### Hash chain
 
@@ -339,10 +342,13 @@ zero word would silently store the sentinel and fall back onto the legacy
 branch.
 
 *Note*: The hash-chain path folds in the raw reveal with a hash accumulator
-rather than an `xor`. Commitments are copyable, so a validator may register
-another's commitment; because the accumulator has no efficiently computable
-inverse, re-injecting a copied reveal produces an unrelated mix rather than
-cancelling the victim's contribution.
+rather than an `xor`. Commitments carry no identity and are copyable, so a
+validator may register another's commitment. Doing so is self-defeating: the
+copier does not hold the preimage, so it cannot propose at all until its victim
+reveals, forfeiting every slot it is assigned in the meantime. Even once the
+victim reveals, the accumulator has no efficiently computable inverse, so
+re-injecting the copied reveal produces an unrelated mix rather than cancelling
+the victim's contribution, which an `xor` accumulator would have allowed.
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
@@ -413,7 +419,10 @@ def process_operations(
 
 This is the one-time path that moves a validator from the legacy BLS reveal onto
 its hash chain. It is valid only while the validator is unregistered, and only
-while it has no other registration in flight.
+while it has no other registration in flight. Nothing ever clears an entry of
+`randao_commitments`, so a registered validator index keeps its chain for as
+long as the index exists; replacing a lost chain means onboarding a new
+validator under a new public key.
 
 *Note*: Both checks are needed to make registration single-use. Once a
 registration has activated, the stored commitment is non-zero and any replay

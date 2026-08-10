@@ -9,6 +9,7 @@
 - [Registering a RANDAO commitment](#registering-a-randao-commitment)
   - [Generating the hash chain](#generating-the-hash-chain)
   - [Constructing and broadcasting the registration](#constructing-and-broadcasting-the-registration)
+  - [Replacing a lost chain](#replacing-a-lost-chain)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
@@ -42,12 +43,15 @@ Until then it stays on the legacy BLS reveal path, so registration is optional
 and can be performed at any time after the EIP-8321 fork.
 
 *Warning*: A commitment can be registered once and can never be updated in
-place. A validator that loses its chain secret, or registers a commitment whose
-chain it does not hold, can no longer propose on the hash-chain path and must
-exit and re-enter to obtain a fresh chain. The chain secret should be guarded
-with the same custody standards as the signing key, and should not be derived
-from it: a hash chain eventually reveals its seed, whereas a signing key must
-never be revealed.
+place. A validator that loses its chain secret, exhausts its chain, or registers
+a commitment whose chain it does not hold, can no longer propose, and there is
+no recovery for that validator index. See
+[Replacing a lost chain](#replacing-a-lost-chain) below.
+
+The chain secret should be guarded with the same custody standards as the
+signing key, and should not be derived from it: a hash chain eventually reveals
+its seed, whereas a signing key must never be revealed. It should also be backed
+up independently of the signing key, since the two now fail separately.
 
 ### Generating the hash chain
 
@@ -106,6 +110,27 @@ retained in the operation pool.
 *Note*: A validator **MUST** keep producing legacy BLS reveals until
 `state.randao_commitments[validator_index]` is non-zero in the state it proposes
 against, even if it has observed its registration included in some block.
+
+### Replacing a lost chain
+
+A registered commitment belongs to its validator index permanently: it is never
+reset, not by exiting, not by being slashed, and not by the balance reaching
+zero. Validator indices are never reclaimed either, and a deposit whose public
+key already appears in the registry tops up the existing index rather than
+creating a new one. A validator that loses its chain therefore cannot recover
+that index by any sequence of protocol operations, and depositing again under
+the same public key would land back on the dead commitment.
+
+The remedy is to onboard a **new validator under a new public key**, with a
+freshly generated chain, and to exit the old one to recover its stake. The
+binding is one chain to one public key to one validator index, for the lifetime
+of that index.
+
+This is deliberately the same failure model as losing a signing key, which
+avoids a reset operation and the grinding surface it would open: any mechanism
+that let a validator replace an active commitment would have to defend against a
+validator retiring an unfavourable chain on demand. Funds are never at risk, and
+the failure mode is missed proposals rather than slashing.
 
 ## Beacon chain responsibilities
 
