@@ -224,6 +224,12 @@ MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 
 BLOB_SCHEDULE: []
 
+# Gas Limit Scheduling (EIP-8261)
+# ---------------------------------------------------------------
+# Optional field: the default and recommended maximum gas limit per
+# fork epoch. Clients that do not support this field ignore it.
+GAS_LIMIT_SCHEDULE: []
+
 # Fast Confirmation Rule
 # ---------------------------------------------------------------
 CONFIRMATION_BYZANTINE_THRESHOLD: 25
