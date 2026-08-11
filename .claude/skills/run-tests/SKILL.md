@@ -21,6 +21,11 @@ directly to pytest with `-k` and therefore supports its features, such as
 boolean operators (`and`, `or`, `not`). For example,
 `make test k="gossip and valid"` is valid.
 
+## Debug mode
+
+`print()` output can be made visible with the `debug=true` flag. These messages
+are not shown when tests run in parallel.
+
 ## Filter by fork
 
 Tests can be limited to a single fork via the `fork=<fork>` flag. It is not
