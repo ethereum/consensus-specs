@@ -26,7 +26,7 @@ list satisfaction. It extends the
 When optimistically importing a block:
 
 - The
-  [`is_inclusion_list_satisfied`](../fork-choice.md#new-is_inclusion_list_satisfied)
+  [`is_inclusion_list_satisfied`](./fork-choice.md#new-is_inclusion_list_satisfied)
   function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
   An `INVALIDATED` response MUST return `False`.
 

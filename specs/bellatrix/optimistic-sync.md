@@ -162,14 +162,14 @@ these conditions.*
 To optimistically import a block:
 
 - The
-  [`verify_and_notify_new_payload`](../beacon-chain.md#verify_and_notify_new_payload)
+  [`verify_and_notify_new_payload`](./beacon-chain.md#verify_and_notify_new_payload)
   function MUST return `True` if the execution engine returns `NOT_VALIDATED` or
   `VALID`. An `INVALIDATED` response MUST return `False`.
-- The [`validate_merge_block`](../fork-choice.md#validate_merge_block) function
+- The [`validate_merge_block`](./fork-choice.md#validate_merge_block) function
   MUST NOT raise an assertion if both the `pow_block` and `pow_parent` are
   unknown to the execution engine.
   - All other assertions in
-    [`validate_merge_block`](../fork-choice.md#validate_merge_block) (e.g.,
+    [`validate_merge_block`](./fork-choice.md#validate_merge_block) (e.g.,
     `TERMINAL_BLOCK_HASH`) MUST prevent an optimistic import.
 - The parent of the block MUST NOT have an `INVALIDATED` execution payload.
 
@@ -204,9 +204,9 @@ set of `opt_store.optimistic_roots`.
 When a "merge block" (i.e. the first block which enables execution in a chain)
 is declared to be `VALID` by an execution engine (either directly or
 indirectly), the full
-[`validate_merge_block`](../fork-choice.md#validate_merge_block) MUST be run
+[`validate_merge_block`](./fork-choice.md#validate_merge_block) MUST be run
 against the merge block. If the block fails
-[`validate_merge_block`](../fork-choice.md#validate_merge_block), the merge
+[`validate_merge_block`](./fork-choice.md#validate_merge_block), the merge
 block MUST be treated the same as an `INVALIDATED` block (i.e., it and all its
 descendants are invalidated and removed from the block tree).
 
@@ -436,10 +436,10 @@ optimistic sync altogether.
 
 If the terminal block hash override is used (i.e.,
 `TERMINAL_BLOCK_HASH != Hash32()`), the
-[`validate_merge_block`](../fork-choice.md#validate_merge_block) function will
+[`validate_merge_block`](./fork-choice.md#validate_merge_block) function will
 deterministically return `True` or `False`. Whilst it's not *technically*
 required retrospectively call
-[`validate_merge_block`](../fork-choice.md#validate_merge_block) on a transition
+[`validate_merge_block`](./fork-choice.md#validate_merge_block) on a transition
 block that matches `TERMINAL_BLOCK_HASH` after an optimistic sync, doing so will
 have no effect. For simplicity, the optimistic sync specification does not
 define edge-case behaviour for when `TERMINAL_BLOCK_HASH` is used.
