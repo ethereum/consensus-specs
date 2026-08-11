@@ -15,7 +15,7 @@
 
 This document specifies the Heze modifications to optimistic sync for inclusion
 list satisfaction. It extends the
-[Bellatrix optimistic sync specification](../../bellatrix/optimistic/optimistic.md).
+[Bellatrix optimistic sync specification](../bellatrix/optimistic-sync.md).
 
 ## Mechanisms
 

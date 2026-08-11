@@ -612,7 +612,7 @@ More details on this check can be found in the
 [paper](https://arxiv.org/abs/2405.00549).
 
 This function **MUST** return `False` if `block_root` status is **not** `VALID`
-according to the [Optimistic sync](../bellatrix/optimistic/optimistic.md)
+according to the [Optimistic sync](../bellatrix/optimistic-sync.md)
 specification.
 
 ```python

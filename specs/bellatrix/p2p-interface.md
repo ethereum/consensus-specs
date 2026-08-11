@@ -113,7 +113,7 @@ to all nodes on the networks. Signed blocks are sent in their entirety. The
 
 *Note*: Blocks with execution enabled will be permitted to propagate regardless
 of the validity of the execution payload. This prevents network segregation
-between [optimistic](./optimistic/optimistic.md) and non-optimistic nodes.
+between [optimistic](./optimistic-sync.md) and non-optimistic nodes.
 
 ```python
 def validate_beacon_block_gossip(
@@ -222,7 +222,7 @@ details on how to handle transitioning gossip topics.
 
 ### The Req/Resp domain
 
-Non-faulty, [optimistic](./optimistic/optimistic.md) nodes may send blocks which
+Non-faulty, [optimistic](./optimistic-sync.md) nodes may send blocks which
 result in an INVALID response from an execution engine. To prevent network
 segregation between optimistic and non-optimistic nodes, transmission of an
 INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
