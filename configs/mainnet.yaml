@@ -231,9 +231,7 @@ BLOB_SCHEDULE:
   - EPOCH: 419072  # January 7, 2026, 01:01:11am UTC
     MAX_BLOBS_PER_BLOCK: 21
 
-# Gas Limit Scheduling (EIP-8261)
-# ---------------------------------------------------------------
-# Optional field: the default and recommended maximum gas limit per
+# Gas Limit Scheduling
 # fork epoch. Clients that do not support this field ignore it.
 GAS_LIMIT_SCHEDULE: []
 
