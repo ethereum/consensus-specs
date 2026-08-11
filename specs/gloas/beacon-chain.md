@@ -56,6 +56,7 @@
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
+  - [Gas limit schedule](#gas-limit-schedule)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Builder`](#builder)
@@ -93,6 +94,7 @@
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
+    - [New `get_scheduled_gas_limit`](#new-get_scheduled_gas_limit)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
@@ -614,6 +616,22 @@ same `Withdrawal` container can be used for validators and builders.
 | ----------------------------------- | -------------------- |
 | `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Epoch(2**6)` (= 64) |
 
+### Gas limit schedule
+
+*[New in Gloas:EIP8261]* This schedule defines the default and recommended
+maximum gas limit for a given epoch. The field is optional: clients that do not
+support it ignore it, and it introduces no new validity rules.
+
+There MUST NOT exist multiple gas limit schedule entries with the same epoch
+value. The epoch value in each entry MUST be greater than or equal to
+`GLOAS_FORK_EPOCH`. The gas limit schedule entries SHOULD be sorted by epoch in
+ascending order. The gas limit schedule MAY be empty.
+
+<!-- list-of-records:gas_limit_schedule -->
+
+| Epoch | Gas Limit | Date |
+| ----: | --------: | ---: |
+
 ## Containers
 
 ### New containers
@@ -1078,6 +1096,19 @@ def convert_builder_index_to_validator_index(builder_index: BuilderIndex) -> Val
 ```python
 def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) -> BuilderIndex:
     return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
+```
+
+#### New `get_scheduled_gas_limit`
+
+```python
+def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
+    """
+    Return the scheduled gas limit at a given epoch, if any.
+    """
+    for entry in sorted(GAS_LIMIT_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["GAS_LIMIT"]
+    return None
 ```
 
 #### New `get_pending_balance_to_withdraw_for_builder`
