@@ -15,6 +15,7 @@
   - [Execution](#execution)
   - [Domains](#domains)
 - [Containers](#containers)
+  - [New `ExecutionCheckpoint`](#new-executioncheckpoint)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
@@ -27,7 +28,12 @@
 ## Introduction
 
 These are the beacon-chain specifications to add EIP-8025, enabling stateless
-validation of execution payloads through execution proofs.
+validation of execution payloads through recursive execution proofs.
+
+An execution proof exposes an immutable origin and a head. Their chain
+relationship is established recursively by authenticating the beacon-block
+ancestry from the previous head to the new head and the signed execution payload
+bid committed by each block in that lineage.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
 and imports proof types from [proof-engine.md](./proof-engine.md).
@@ -70,12 +76,26 @@ class ProofType(Uint8):
 
 ## Containers
 
+### New `ExecutionCheckpoint`
+
+```python
+class ExecutionCheckpoint(Container):
+    slot: Slot
+    beacon_block_root: Root
+```
+
 ### New `PublicInput`
 
 ```python
 class PublicInput(Container):
-    new_payload_request_root: Root
+    origin: ExecutionCheckpoint
+    head: ExecutionCheckpoint
 ```
+
+`origin` is the configured trusted execution checkpoint, typically selected from
+the client's weak subjectivity checkpoint. It is preserved unchanged by every
+recursive step. `head` identifies the target full beacon block proven from that
+origin.
 
 ### New `ExecutionProof`
 

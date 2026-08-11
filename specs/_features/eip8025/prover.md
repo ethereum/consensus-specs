@@ -54,17 +54,38 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
    - Proof completion events from the proof engine via SSE. The concrete SSE
      event shape is defined by the proof engine API specification.
 2. Upon receiving an `execution_payload` event:
-   - Fetch the full `SignedExecutionPayloadEnvelope` and the corresponding
-     committed `ExecutionPayloadBid` via RPC.
-   - Construct `NewPayloadRequest` from the envelope and the committed bid.
-   - Create `ProofAttributes` with desired proof types.
+   - Fetch the accepted `SignedExecutionPayloadEnvelope` and its target beacon
+     block.
+   - Select the latest compatible proof for each requested proof type, or the
+     configured `ExecutionCheckpoint` origin if no proof exists.
+   - Fetch every produced beacon block from that predecessor through the target
+     block, inclusive. Slot gaps represent missed slots and require no witness.
+   - Build a `BeaconBlockBidWitness` for each fetched block by extracting its
+     `SignedExecutionPayloadBid` and its Merkle branch against the block
+     header's `body_root`. The resulting `beacon_lineage` starts with the
+     predecessor checkpoint and ends with the target block.
+   - Obtain the execution-specs `ExecutionWitness`, `ChainConfig`, and
+     transaction public keys for the target payload. The terminal parent header
+     in the execution witness MUST correspond to the execution block hash opened
+     from the predecessor checkpoint bid. If any intermediate produced block is
+     *full*, first generate a separate recursive proof for that transition.
+   - For each desired `proof_type`, assemble a `BeaconChainWitness` from its
+     compatible predecessor, beacon lineage, and signed envelope. Combine it
+     with the execution witness, chain configuration, and transaction public
+     keys as `PrivateInput`.
    - Call
-     `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`
+     `beacon_block_root = proof_engine.request_proof(private_input, proof_type)`
      to initiate proof generation, tracking the request by
-     `new_payload_request_root`.
-3. Upon receiving a proof completion event for a tracked
-   `new_payload_request_root`:
+     `(beacon_block_root, proof_type)`.
+3. The proof engine runs `process_private_input` in the selected guest. Proof
+   generation is abandoned if the selected lineage ceases to be canonical; a
+   later proof starts from the latest compatible predecessor.
+4. Upon receiving a proof completion event for a tracked
+   `(beacon_block_root, proof_type)`:
    - Fetch the completed `ExecutionProof` from the proof engine.
+   - Check that `proof.public_input.head.beacon_block_root` equals the tracked
+     `beacon_block_root` and that `proof.public_input.head.slot` equals the
+     target block slot.
    - Let `validator_index` be the prover's validator index.
    - Let
      `signature = get_execution_proof_signature(state, proof, prover_privkey)`.

@@ -10,37 +10,34 @@
 - [Introduction](#introduction)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [New `notify_new_payload`](#new-notify_new_payload)
-  - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
-  - [New `ProofAttributes`](#new-proofattributes)
-  - [New `request_proofs`](#new-request_proofs)
+  - [New `request_proof`](#new-request_proof)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the Proof Engine specification. The Proof Engine enables
-stateless validation of execution payloads through execution proofs.
+This document contains the host-side Proof Engine specification. The recursive
+guest interface and transition logic are defined separately in
+[guest-program.md](./guest-program.md).
 
 ## Proof engine
 
-The implementation-dependent `ProofEngine` protocol encapsulates the proof
-sub-system logic via:
+The implementation-dependent `ProofEngine` protocol encapsulates proof
+verification and asynchronous proof generation via:
 
-- a state object `self.proof_state` of type `ProofState` containing stored
-  proofs
-- a verification function `self.verify_execution_proof` to verify individual
-  proofs
-- a notification function `self.notify_new_payload` to notify the proof engine
-  of the new payload
-- a notification function `self.notify_forkchoice_updated` to notify the proof
-  engine of forkchoice state changes
-- a generation function `self.request_proofs` to initiate asynchronous proof
-  generation
+- a verification function `self.verify_execution_proof` to verify recursive
+  execution proofs; and
+- a generation function `self.request_proof` to generate a proof from a
+  `PrivateInput` containing the beacon-chain and execution witness material for
+  one `ProofType`.
 
-The body of these functions are implementation dependent. The Engine API may be
-used to implement this and similarly defined functions via an external proof
-engine.
+The Proof Engine does not receive payload or fork-choice notifications. The
+prover is responsible for assembling `PrivateInput` and for checking that the
+target remains canonical before broadcasting a completed proof.
+
+The bodies of these functions are implementation dependent. The Engine API may
+be extended to expose equivalent functions when the proof engine is an external
+process.
 
 ### New `verify_execution_proof`
 
@@ -50,57 +47,27 @@ def verify_execution_proof(
     execution_proof: ExecutionProof,
 ) -> bool:
     """
-    Verify an execution proof.
-    Return ``True`` if proof is valid.
+    Verify an execution proof and its committed ``PublicInput``.
+    Return ``True`` if the proof is valid.
     """
 ```
 
-### New `notify_new_payload`
+### New `request_proof`
 
 ```python
-def notify_new_payload(
+def request_proof(
     self: ProofEngine,
-    new_payload_request: NewPayloadRequest,
-) -> None:
-    """
-    Notify the proof engine of the new payload.
-    """
-```
-
-### New `notify_forkchoice_updated`
-
-```python
-def notify_forkchoice_updated(
-    self: ProofEngine,
-    head_block_hash: Hash32,
-    safe_block_hash: Hash32,
-    finalized_block_hash: Hash32,
-) -> None:
-    """
-    Notify the proof engine of a forkchoice state update. Allows the proof
-    engine to track the canonical chain for retention and pruning.
-    """
-```
-
-### New `ProofAttributes`
-
-```python
-@dataclass
-class ProofAttributes:
-    proof_types: Sequence[ProofType]
-```
-
-### New `request_proofs`
-
-```python
-def request_proofs(
-    self: ProofEngine,
-    new_payload_request: NewPayloadRequest,
-    proof_attributes: ProofAttributes,
+    private_input: PrivateInput,
+    proof_type: ProofType,
 ) -> Root:
     """
-    Request proof generation for a new payload request with specified proof
-    attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
-    generation request.
+    Request asynchronous proof generation for ``private_input`` using
+    ``proof_type``. Returns the target beacon block root
+    ``private_input.beacon_chain_witness.signed_envelope.message.beacon_block_root``
+    to track the generation request.
+
+    Requests are singular because the recursive predecessor in
+    ``private_input.beacon_chain_witness.previous_proof`` is specific to
+    ``proof_type``.
     """
 ```
