@@ -206,8 +206,8 @@ is declared to be `VALID` by an execution engine (either directly or
 indirectly), the full
 [`validate_merge_block`](./fork-choice.md#validate_merge_block) MUST be run
 against the merge block. If the block fails
-[`validate_merge_block`](./fork-choice.md#validate_merge_block), the merge
-block MUST be treated the same as an `INVALIDATED` block (i.e., it and all its
+[`validate_merge_block`](./fork-choice.md#validate_merge_block), the merge block
+MUST be treated the same as an `INVALIDATED` block (i.e., it and all its
 descendants are invalidated and removed from the block tree).
 
 ### How to apply `latestValidHash` when payload status is `INVALID`
