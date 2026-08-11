@@ -232,7 +232,6 @@ BLOB_SCHEDULE:
     MAX_BLOBS_PER_BLOCK: 21
 
 # Gas Limit Scheduling
-# fork epoch. Clients that do not support this field ignore it.
 GAS_LIMIT_SCHEDULE: []
 
 # Fast Confirmation Rule
