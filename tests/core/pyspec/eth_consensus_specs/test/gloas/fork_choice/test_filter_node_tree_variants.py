@@ -33,7 +33,8 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
 
     Block B is built on the justified checkpoint from a fork of its state, so
     its voting source is one epoch older than the store's justified checkpoint
-    and B fails the FFG test once the store advances. K builds on EMPTY(B)
+    and B fails the FFG test once the store advances past epoch
+    `justified_epoch + 1`. K builds on EMPTY(B)
     through a chain of blocks that carry attestations targeting the
     (B, justified_epoch + 1) checkpoint, so K's branch naturally justifies it
     and K's voting source is pulled up to the store's justified checkpoint,
@@ -51,8 +52,9 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     # B is the first block of epoch `justified_epoch + 1` on a fork of the
     # justified state. The fork has no on-chain votes, so B's voting source is
     # the fork's greatest justified checkpoint, one epoch older than the
-    # store's justified checkpoint. B passes the FFG test while the store is at
-    # epoch `justified_epoch + 1` and fails only once the store advances.
+    # store's justified checkpoint: `justified_epoch - 1`. B passes the FFG
+    # test while the store is at epoch `justified_epoch + 1` and fails from
+    # epoch `justified_epoch + 2` onwards.
     b_slot = spec.compute_start_slot_at_epoch(justified_epoch + 1)
     fork_state = justified_state.copy()
     next_slots(spec, fork_state, b_slot - fork_state.slot - 1)
@@ -137,15 +139,11 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     assert store.justified_checkpoint.epoch == justified_epoch + 1
     assert store.unrealized_justifications[k_root] == store.justified_checkpoint
 
-    # Advance to the next epoch so that B is more than two epochs behind the
-    # voting source required by the FFG test
-    next_epoch_slot = spec.compute_start_slot_at_epoch(justified_epoch + 3)
-    on_tick_and_append_step(
-        spec,
-        store,
-        store.genesis_time + next_epoch_slot * spec.config.SLOT_DURATION_MS // 1000,
-        test_steps,
-    )
+    # The store is already at the start of epoch `justified_epoch + 2`, where
+    # K was built. With B's voting source at `justified_epoch - 1`, B is more
+    # than two epochs behind the store's current epoch, so it fails the FFG
+    # test right here: no further advancement is needed for B to be filtered
+    # out.
 
     full_b_node = spec.ForkChoiceNode(root=b_root, payload_status=spec.PAYLOAD_STATUS_FULL)
     empty_b_node = spec.ForkChoiceNode(root=b_root, payload_status=spec.PAYLOAD_STATUS_EMPTY)
