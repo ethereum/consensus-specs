@@ -68,12 +68,14 @@ help-verbose:
 	@echo ""
 	@echo "  Output:"
 	@echo "    verbose=true       Enable verbose pytest output"
+	@echo "    debug=true         Enable print() output; disables parallelism"
 	@echo "    reftests=true      Generate reference test vectors"
 	@echo "    coverage=true      Enable code coverage tracking"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
 	@echo "    make test k=test_compute_fork_digest"
+	@echo "    make test k=test_compute_fork_digest debug=true"
 	@echo "    make test fork=deneb"
 	@echo "    make test preset=mainnet"
 	@echo "    make test preset=mainnet fork=deneb k=test_compute_fork_digest"
@@ -195,8 +197,8 @@ COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
 test: MAYBE_TEST := $(if $(k),-k "$(k)")
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(preset),--preset=$(preset),)
-# Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
-test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
+# Disable parallelism when debugging so print() output is visible (xdist swallows it).
+test: MAYBE_PARALLEL := $(if $(filter true,$(debug)),,-n logical --dist=worksteal)
 # Output
 test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
@@ -232,14 +234,12 @@ DOCS_BUILD_CONFIG = ./.zensical.build.toml
 DOCS_DIR = ./docs
 SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
-SYNC_DIR = ./sync
 
 # Copy files to the docs directory.
 _copy_docs:
 	@rm -rf $(DOCS_DIR)
 	@mkdir -p $(DOCS_DIR)
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
-	@cp -r $(SYNC_DIR) $(DOCS_DIR)/sync
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)/ssz
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
 	@$(UV_RUN) python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
