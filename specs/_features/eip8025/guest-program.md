@@ -8,8 +8,6 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Constants](#constants)
-  - [Generalized indices](#generalized-indices)
 - [Guest inputs](#guest-inputs)
   - [New `GuestPublicInput`](#new-guestpublicinput)
   - [New `BeaconBlockBidWitness`](#new-beaconblockbidwitness)
@@ -39,14 +37,6 @@ Proofs are produced only for *full* beacon blocks. *Empty* beacon blocks are
 included in the next proof's `beacon_lineage`, where their empty status is
 established by the next authenticated bid continuing from each empty block's
 parent execution block hash.
-
-## Constants
-
-### Generalized indices
-
-| Name                                  | Value                                                                            |
-| ------------------------------------- | -------------------------------------------------------------------------------- |
-| `SIGNED_EXECUTION_PAYLOAD_BID_GINDEX` | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid')` (= 357) |
 
 ## Guest inputs
 
@@ -198,14 +188,15 @@ the public chain-configuration commitment used by that validation.
 def verify_beacon_block_bid_witness(witness: BeaconBlockBidWitness) -> None:
     header = witness.header
     bid = witness.signed_bid.message
+    gindex = get_generalized_index(BeaconBlockBody, "signed_execution_payload_bid")
 
     assert bid.slot == header.slot
     assert bid.parent_block_root == header.parent_root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(witness.signed_bid),
         branch=witness.signed_bid_merkle_witness,
-        depth=floorlog2(SIGNED_EXECUTION_PAYLOAD_BID_GINDEX),
-        index=get_subtree_index(SIGNED_EXECUTION_PAYLOAD_BID_GINDEX),
+        depth=floorlog2(gindex),
+        index=get_subtree_index(gindex),
         root=header.body_root,
     )
 ```

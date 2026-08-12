@@ -13,12 +13,6 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
 """
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
-        return {
-            "SIGNED_EXECUTION_PAYLOAD_BID_GINDEX": "GeneralizedIndex(357)",
-        }
-
-    @classmethod
     def proof_engine_cls(cls) -> str:
         return """
 class NoopProofEngine(ProofEngine):
