@@ -17,8 +17,6 @@
   - [New `PrivateInput`](#new-privateinput)
 - [Guest interface](#guest-interface)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [New `compute_chain_config_root`](#new-compute_chain_config_root)
-  - [New `compute_new_payload_request_root`](#new-compute_new_payload_request_root)
   - [Execution-specs `verify_stateless_new_payload`](#execution-specs-verify_stateless_new_payload)
 - [Guest processing](#guest-processing)
   - [New `verify_beacon_block_bid_witness`](#new-verify_beacon_block_bid_witness)
@@ -149,23 +147,6 @@ def verify_execution_proof(
     """
 ```
 
-### New `compute_chain_config_root`
-
-```python
-def compute_chain_config_root(self: Guest, chain_config: Any) -> Root:
-    """Return the canonical commitment to the execution ``ChainConfig``."""
-```
-
-### New `compute_new_payload_request_root`
-
-```python
-def compute_new_payload_request_root(
-    self: Guest,
-    new_payload_request: NewPayloadRequest,
-) -> Root:
-    """Return the execution-specs commitment to ``new_payload_request``."""
-```
-
 ### Execution-specs `verify_stateless_new_payload`
 
 ```python
@@ -174,6 +155,7 @@ def verify_stateless_new_payload(
     new_payload_request: NewPayloadRequest,
     execution_witness: Any,
     chain_config: Any,
+    chain_config_root: Root,
     public_keys: Sequence[bytes],
 ) -> Any:
     """
@@ -185,15 +167,15 @@ def verify_stateless_new_payload(
 
 This operation is an integration boundary, not a second execution-validation
 algorithm. The adapter constructs exactly one execution-specs `StatelessInput`
-from the arguments. A typed implementation invokes
+from the private arguments and binds its `chain_config` to the public
+`chain_config_root`. A typed implementation invokes
 `verify_stateless_new_payload` directly. A serialized zkVM implementation MAY
-invoke `run_stateless_guest`, decode its output, and MUST check that the
-returned `new_payload_request_root` equals `compute_new_payload_request_root`
-for the constructed input before exposing the result. In both cases the logical
+invoke `run_stateless_guest` and decode its output. In both cases the logical
 operations and guarantees MUST match the execution specifications, including
 chain-configuration validation, parent-header authentication, block-hash
 validation, versioned-hash validation, transaction execution, and output-root
-checks.
+checks. The returned `StatelessValidationResult.chain_config_root` identifies
+the public chain-configuration commitment used by that validation.
 
 ## Guest processing
 
@@ -269,9 +251,10 @@ located with the static `get_generalized_index` helper alone.
 def process_private_input(
     guest: Guest,
     private_input: PrivateInput,
+    chain_config_root: Root,
 ) -> GuestPublicInput:
+    # ``chain_config_root`` is a public input supplied by the proof engine.
     beacon_chain_witness = private_input.beacon_chain_witness
-    chain_config_root = guest.compute_chain_config_root(private_input.chain_config)
 
     previous_proof = beacon_chain_witness.previous_proof
     if previous_proof is None:
@@ -442,13 +425,11 @@ def process_private_input(
         new_payload_request,
         private_input.execution_witness,
         private_input.chain_config,
+        chain_config_root,
         private_input.public_keys,
     )
     assert execution_result.successful_validation
-    assert execution_result.chain_config == private_input.chain_config
-    assert execution_result.new_payload_request_root == (
-        guest.compute_new_payload_request_root(new_payload_request)
-    )
+    assert execution_result.chain_config_root == chain_config_root
 
     return GuestPublicInput(
         origin=origin,

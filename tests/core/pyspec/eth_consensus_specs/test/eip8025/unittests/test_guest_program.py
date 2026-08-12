@@ -19,17 +19,11 @@ from eth_consensus_specs.test.helpers.state import state_transition_and_sign_blo
 
 
 class DummyGuest:
-    def __init__(self, spec, *, valid_request_root=True):
+    def __init__(self, spec, *, result_chain_config_root=None):
         self.spec = spec
-        self.valid_request_root = valid_request_root
+        self.result_chain_config_root = result_chain_config_root
         self.previous_proofs = []
         self.new_payload_requests = []
-
-    def compute_chain_config_root(self, chain_config):
-        return self.spec.Root(b"\xcc" * 32)
-
-    def compute_new_payload_request_root(self, new_payload_request):
-        return self.spec.Root(b"\xaa" * 32)
 
     def verify_execution_proof(self, previous_proof, chain_config_root):
         self.previous_proofs.append((previous_proof, chain_config_root))
@@ -40,17 +34,20 @@ class DummyGuest:
         new_payload_request,
         execution_witness,
         chain_config,
+        chain_config_root,
         public_keys,
     ):
         self.new_payload_requests.append(new_payload_request)
-        request_root = self.compute_new_payload_request_root(new_payload_request)
-        if not self.valid_request_root:
-            request_root = self.spec.Root(b"\xdd" * 32)
+        if self.result_chain_config_root is None:
+            self.result_chain_config_root = chain_config_root
         return SimpleNamespace(
             successful_validation=True,
-            chain_config=chain_config,
-            new_payload_request_root=request_root,
+            chain_config_root=self.result_chain_config_root,
         )
+
+
+def get_chain_config_root(spec):
+    return spec.Root(b"\xcc" * 32)
 
 
 def get_block_header(spec, block):
@@ -171,16 +168,15 @@ def build_private_input(spec, state):
 def test_process_private_input_valid(spec, state):
     private_input = build_private_input(spec, state)
     guest = DummyGuest(spec)
+    chain_config_root = get_chain_config_root(spec)
 
-    public_input = spec.process_private_input(guest, private_input)
+    public_input = spec.process_private_input(guest, private_input, chain_config_root)
 
     witness = private_input.beacon_chain_witness
     assert public_input.origin == witness.origin
     assert public_input.head.slot == witness.beacon_lineage[-1].header.slot
     assert public_input.head.beacon_block_root == witness.signed_envelope.message.beacon_block_root
-    assert public_input.chain_config_root == guest.compute_chain_config_root(
-        private_input.chain_config
-    )
+    assert public_input.chain_config_root == chain_config_root
     assert len(guest.new_payload_requests) == 1
 
 
@@ -191,7 +187,13 @@ def test_process_private_input_rejects_invalid_envelope_signature(spec, state):
     private_input = build_private_input(spec, state)
     private_input.beacon_chain_witness.signed_envelope.signature = spec.BLSSignature()
 
-    expect_assertion_error(lambda: spec.process_private_input(DummyGuest(spec), private_input))
+    expect_assertion_error(
+        lambda: spec.process_private_input(
+            DummyGuest(spec),
+            private_input,
+            get_chain_config_root(spec),
+        )
+    )
 
 
 @with_eip8025_and_later
@@ -200,19 +202,27 @@ def test_process_private_input_rejects_unauthenticated_state_field(spec, state):
     private_input = build_private_input(spec, state)
     private_input.beacon_chain_witness.target_state.genesis_time += 1
 
-    expect_assertion_error(lambda: spec.process_private_input(DummyGuest(spec), private_input))
+    expect_assertion_error(
+        lambda: spec.process_private_input(
+            DummyGuest(spec),
+            private_input,
+            get_chain_config_root(spec),
+        )
+    )
 
 
 @with_eip8025_and_later
 @spec_state_test
-def test_process_private_input_rejects_wrong_stateless_request_root(spec, state):
+def test_process_private_input_rejects_wrong_stateless_chain_config_root(spec, state):
     private_input = build_private_input(spec, state)
+    chain_config_root = get_chain_config_root(spec)
+    guest = DummyGuest(
+        spec,
+        result_chain_config_root=spec.Root(b"\xdd" * 32),
+    )
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
-            DummyGuest(spec, valid_request_root=False),
-            private_input,
-        )
+        lambda: spec.process_private_input(guest, private_input, chain_config_root)
     )
 
 
@@ -230,9 +240,8 @@ def test_process_private_input_recursion_uses_chain_config_root(spec, state):
     witness.previous_proof = previous_proof
     witness.origin = None
     guest = DummyGuest(spec)
+    chain_config_root = get_chain_config_root(spec)
 
-    spec.process_private_input(guest, private_input)
+    spec.process_private_input(guest, private_input, chain_config_root)
 
-    assert guest.previous_proofs == [
-        (previous_proof, guest.compute_chain_config_root(private_input.chain_config))
-    ]
+    assert guest.previous_proofs == [(previous_proof, chain_config_root)]
