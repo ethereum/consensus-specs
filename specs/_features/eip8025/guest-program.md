@@ -139,7 +139,7 @@ This operation is an integration boundary, not a second execution-validation
 algorithm. The adapter constructs exactly one execution-specs `StatelessInput`
 from the arguments. A typed implementation invokes
 `verify_stateless_new_payload` directly. A serialized zkVM implementation MAY
-invoke `run_stateless_guest`, decodes its output, and MUST check that the
+invoke `run_stateless_guest`, decode its output, and MUST check that the
 returned `new_payload_request_root` equals `compute_new_payload_request_root`
 for the constructed input before exposing the result. In both cases the logical
 operations and guarantees MUST match the execution specifications, including

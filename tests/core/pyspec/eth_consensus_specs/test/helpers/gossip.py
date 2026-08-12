@@ -170,6 +170,13 @@ _MESSAGE_INFO = {
         "file_prefix": "proposer_preferences",
         "validation_fn": "validate_proposer_preferences_gossip",
     },
+    ###########################################################################
+    # eip8025
+    ###########################################################################
+    "SignedExecutionProof": {
+        "file_prefix": "execution_proof",
+        "validation_fn": "validate_execution_proof_gossip",
+    },
 }
 
 

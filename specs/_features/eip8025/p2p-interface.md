@@ -16,6 +16,8 @@ Req/Resp protocol is defined.
 - [Constants](#constants)
   - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -42,6 +44,39 @@ Req/Resp protocol is defined.
 | --------------------------------- | ---------------------------- |
 | `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194497)` (= ~4 MiB) |
 
+## Helpers
+
+### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
+    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
+    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
+    # [New in EIP8025]
+    execution_proof_roots: Set[Root]
+    # [New in EIP8025]
+    valid_execution_proofs: Set[Tuple[Root, ProofType]]
+    # [New in EIP8025]
+    execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
+```
+
 ## The gossip domain: gossipsub
 
 ### Topics and messages
@@ -52,40 +87,96 @@ Req/Resp protocol is defined.
 
 This topic is used to propagate `SignedExecutionProof` messages.
 
-The following validations MUST pass before forwarding the
-`signed_execution_proof` on the network, assuming the alias
-`proof = signed_execution_proof.message`:
+```python
+def validate_execution_proof_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_execution_proof: SignedExecutionProof,
+    trusted_execution_checkpoint: ExecutionCheckpoint,
+    proof_engine: ProofEngine,
+) -> None:
+    """
+    Validate a SignedExecutionProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    proof = signed_execution_proof.message
+    proof_root = hash_tree_root(proof)
+    head = proof.public_input.head
+    head_root = head.beacon_block_root
 
-- _[IGNORE]_ The proof has not already been processed -- i.e.
-  `hash_tree_root(proof)` has not been seen before.
-- _[IGNORE]_ The beacon block identified by
-  `proof.public_input.head.beacon_block_root` and its accepted
-  `SignedExecutionPayloadEnvelope` have been seen (via gossip or non-gossip
-  sources). A client MAY queue the proof until both are available.
-- _[IGNORE]_ No *valid* proof has already been received for the tuple
-  `(proof.public_input.head.beacon_block_root, proof.proof_type)` -- i.e. no
-  *valid* proof for `proof.proof_type` from any prover has been received for the
-  same head.
-- _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.public_input.head.beacon_block_root, proof.proof_type, signed_execution_proof.validator_index)`
-  -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
-  `signed_execution_proof.validator_index`.
-- _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
-  is an active validator -- i.e.
-  `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
-  returns `True`.
-- _[REJECT]_ `signed_execution_proof.signature` is valid with respect to the
-  validator's public key.
-- _[REJECT]_ `proof.proof_data` is non-empty.
-- _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
-- _[REJECT]_ `proof.proof_type` is less than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
-- _[REJECT]_ `proof.public_input.origin` equals the locally configured trusted
-  `ExecutionCheckpoint`.
-- _[REJECT]_ `proof.public_input.head.slot` and
-  `proof.public_input.head.beacon_block_root` identify the accepted beacon
-  block.
-- _[REJECT]_ All of the conditions within `process_execution_proof` pass
-  validation.
+    # [IGNORE] The proof has not already been processed
+    if proof_root in seen.execution_proof_roots:
+        raise GossipIgnore("execution proof has already been processed")
+
+    # [IGNORE] The proof's head block has been seen
+    if head_root not in store.blocks:
+        raise GossipIgnore("execution proof's head block has not been seen")
+
+    # [REJECT] The proof's head block passes validation
+    if head_root not in store.block_states:
+        raise GossipReject("execution proof's head block failed validation")
+
+    # [IGNORE] The accepted payload envelope for the proof's head has been seen
+    if not is_payload_verified(store, head_root):
+        raise GossipIgnore("execution proof's payload envelope has not been seen")
+
+    # [IGNORE] No valid proof has been seen for this head and proof type
+    proof_key = (head_root, proof.proof_type)
+    if proof_key in seen.valid_execution_proofs:
+        raise GossipIgnore("valid proof already seen for this head and proof type")
+
+    # [IGNORE] This is the prover's first valid or invalid proof for this key
+    prover_key = (head_root, proof.proof_type, signed_execution_proof.validator_index)
+    if prover_key in seen.execution_proof_provers:
+        raise GossipIgnore("proof already seen from this prover for this head and proof type")
+
+    # Mark the proof as processed before validations that can reject it
+    seen.execution_proof_roots.add(proof_root)
+    seen.execution_proof_provers.add(prover_key)
+
+    # [REJECT] The prover is an active validator
+    validator_index = signed_execution_proof.validator_index
+    if validator_index >= len(state.validators):
+        raise GossipReject("execution proof's validator index is invalid")
+    validator = state.validators[validator_index]
+    if not is_active_validator(validator, get_current_epoch(state)):
+        raise GossipReject("execution proof's validator is not active")
+
+    # [REJECT] The prover signature is valid
+    domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
+    signing_root = compute_signing_root(proof, domain)
+    if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
+        raise GossipReject("execution proof's signature is invalid")
+
+    # [REJECT] The proof data is non-empty and within the size limit
+    if len(proof.proof_data) == 0:
+        raise GossipReject("execution proof data is empty")
+    if len(proof.proof_data) > MAX_PROOF_SIZE:
+        raise GossipReject("execution proof data exceeds the size limit")
+
+    # [REJECT] The proof type is supported
+    if proof.proof_type >= MAX_EXECUTION_PROOFS_PER_PAYLOAD:
+        raise GossipReject("execution proof type is unsupported")
+
+    # [REJECT] The proof starts at the locally trusted checkpoint
+    if proof.public_input.origin != trusted_execution_checkpoint:
+        raise GossipReject("execution proof's origin is not the trusted checkpoint")
+
+    # [REJECT] The proof's head identifies the accepted beacon block
+    block = store.blocks[head_root]
+    if head.slot != block.slot or hash_tree_root(block) != head_root:
+        raise GossipReject("execution proof's head does not identify the accepted block")
+
+    # [REJECT] All process_execution_proof conditions pass validation
+    try:
+        process_execution_proof(state, signed_execution_proof, proof_engine)
+    except AssertionError:
+        raise GossipReject("execution proof failed validation") from None
+
+    # Mark the proof as valid for this head and proof type
+    seen.valid_execution_proofs.add(proof_key)
+```
 
 ## The discovery domain: discv5
 
