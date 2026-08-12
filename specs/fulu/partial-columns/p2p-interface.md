@@ -234,7 +234,7 @@ def validate_partial_data_column_sidecar_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     has_header = len(sidecar.header) == 1
-    num_cells_present = sum(1 for b in sidecar.cells_present_bitmap if b)
+    num_cells_present = get_set_bit_count(sidecar.cells_present_bitmap)
     has_cells = num_cells_present > 0
 
     # [REJECT] A header and/or cells are present in the message

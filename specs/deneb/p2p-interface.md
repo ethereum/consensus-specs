@@ -625,7 +625,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
