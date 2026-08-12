@@ -1,7 +1,6 @@
 import re
 import textwrap
 from functools import reduce
-from typing import TypeVar
 
 from .constants import CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
 from .md_doc_paths import PREVIOUS_FORK_OF
@@ -265,10 +264,7 @@ def combine_protocols(
     return old_protocols
 
 
-T = TypeVar("T")
-
-
-def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T]:
+def combine_dicts[T](old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T]:
     return {**old_dict, **new_dict}
 
 
