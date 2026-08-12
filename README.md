@@ -41,7 +41,6 @@ upgrades when ready.
 
 - [Merkle Proofs](ssz/merkle-proofs.md)
 - [SimpleSerialize (SSZ)](ssz/simple-serialize.md)
-- [Optimistic Sync](sync/optimistic.md)
 
 ### External specifications
 
