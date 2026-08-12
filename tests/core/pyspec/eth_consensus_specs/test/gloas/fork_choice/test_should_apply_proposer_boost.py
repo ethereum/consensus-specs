@@ -234,3 +234,52 @@ def test_should_apply_proposer_boost_withheld(spec, state):
 
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
     yield "steps", test_steps
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="too slow")
+@spec_state_test
+def test_should_apply_proposer_boost_proposer_equivocation(spec, state):
+    """
+    The boosted block's own proposer equivocated: a second block from the same
+    proposer at the boosted block's slot. Boost is withheld regardless of the
+    parent-adjacency and weakness conditions checked later in the function. Here the
+    parent is two slots back, so absent the equivocation the "not adjacent" escape
+    would apply the boost; the equivocation overrides it.
+    """
+    store, state, test_steps = yield from setup_finalized_store(spec, state)
+
+    # Leave a gap so the boosted block's parent is two slots back (non-adjacent),
+    # which on its own would make should_apply_proposer_boost return True.
+    next_slot(spec, state)
+
+    pre_state = state.copy()
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    block_root = signed_block.message.hash_tree_root()
+    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    assert store.proposer_boost_root == block_root
+    # The boosted block's parent is two slots back (empty slot from next_slot above).
+    assert store.blocks[block.parent_root].slot + 2 == block.slot
+
+    # Baseline: without an equivocation, the boost applies (non-adjacent escape).
+    assert spec.should_apply_proposer_boost(store) is True
+    _assert_weight_reflects_boost(spec, store, block_root, boost_applied=True)
+
+    # Build a same-slot same-proposer equivocation of the boosted block.
+    equivocation_state = pre_state.copy()
+    equivocation_block = build_empty_block(spec, equivocation_state, slot=block.slot)
+    equivocation_block.body.graffiti = spec.Bytes32(b"\x01" * 32)
+    signed_equivocation = state_transition_and_sign_block(
+        spec, equivocation_state, equivocation_block
+    )
+    assert signed_equivocation.message.proposer_index == signed_block.message.proposer_index
+    assert signed_equivocation.message.hash_tree_root() != block_root
+    yield from add_block(spec, store, signed_equivocation, test_steps)
+
+    # The boosted block's proposer has now equivocated -> boost is withheld.
+    assert spec.should_apply_proposer_boost(store) is False
+    _assert_weight_reflects_boost(spec, store, block_root, boost_applied=False)
+
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+    yield "steps", test_steps

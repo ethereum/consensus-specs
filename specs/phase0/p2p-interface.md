@@ -636,7 +636,9 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer.
+    # Note: Implementations SHOULD still pass this block to `on_block` so both blocks enter
+    # `store.blocks` and `is_proposer_equivocation()` can observe the equivocation.
     proposer_slot_key = (block.slot, block.proposer_index)
     if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")

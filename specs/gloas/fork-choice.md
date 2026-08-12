@@ -486,6 +486,10 @@ def should_apply_proposer_boost(store: Store) -> bool:
     if store.proposer_boost_root == Root():
         return False
 
+    # Withhold boost if the boosted block's proposer has equivocated
+    if is_proposer_equivocation(store, store.proposer_boost_root):
+        return False
+
     block = store.blocks[store.proposer_boost_root]
     parent_root = block.parent_root
     parent = store.blocks[parent_root]
