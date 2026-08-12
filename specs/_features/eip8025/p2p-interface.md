@@ -72,8 +72,6 @@ class Seen:
     # [New in EIP8025]
     execution_proof_roots: Set[Root]
     # [New in EIP8025]
-    valid_execution_proofs: Set[Tuple[Root, ProofType]]
-    # [New in EIP8025]
     execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
 ```
 
@@ -94,7 +92,6 @@ def validate_execution_proof_gossip(
     state: BeaconState,
     signed_execution_proof: SignedExecutionProof,
     trusted_execution_checkpoint: ExecutionCheckpoint,
-    proof_engine: ProofEngine,
 ) -> None:
     """
     Validate a SignedExecutionProof for gossip propagation.
@@ -117,28 +114,22 @@ def validate_execution_proof_gossip(
     if head_root not in store.block_states:
         raise GossipReject("execution proof's head block failed validation")
 
-    # [IGNORE] The accepted payload envelope for the proof's head has been seen
-    if not is_payload_verified(store, head_root):
-        raise GossipIgnore("execution proof's payload envelope has not been seen")
-
-    # [IGNORE] No valid proof has been seen for this head and proof type
+    # [IGNORE] No verified proof is known for this head and proof type
     proof_key = (head_root, proof.proof_type)
-    if proof_key in seen.valid_execution_proofs:
-        raise GossipIgnore("valid proof already seen for this head and proof type")
+    if proof_key in store.execution_proofs:
+        raise GossipIgnore("verified proof already known for this head and proof type")
 
-    # [IGNORE] This is the prover's first valid or invalid proof for this key
-    prover_key = (head_root, proof.proof_type, signed_execution_proof.validator_index)
-    if prover_key in seen.execution_proof_provers:
-        raise GossipIgnore("proof already seen from this prover for this head and proof type")
-
-    # Mark the proof as processed before validations that can reject it
-    seen.execution_proof_roots.add(proof_root)
-    seen.execution_proof_provers.add(prover_key)
-
-    # [REJECT] The prover is an active validator
+    # [REJECT] The prover validator index is valid
     validator_index = signed_execution_proof.validator_index
     if validator_index >= len(state.validators):
         raise GossipReject("execution proof's validator index is invalid")
+
+    # [IGNORE] This is the prover's first valid or invalid proof for this key
+    prover_key = (head_root, proof.proof_type, validator_index)
+    if prover_key in seen.execution_proof_provers:
+        raise GossipIgnore("proof already seen from this prover for this head and proof type")
+
+    # [REJECT] The prover is an active validator
     validator = state.validators[validator_index]
     if not is_active_validator(validator, get_current_epoch(state)):
         raise GossipReject("execution proof's validator is not active")
@@ -148,6 +139,10 @@ def validate_execution_proof_gossip(
     signing_root = compute_signing_root(proof, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
         raise GossipReject("execution proof's signature is invalid")
+
+    # Mark the authenticated proof and prover attempt as seen
+    seen.execution_proof_roots.add(proof_root)
+    seen.execution_proof_provers.add(prover_key)
 
     # [REJECT] The proof data is non-empty and within the size limit
     if len(proof.proof_data) == 0:
@@ -165,17 +160,8 @@ def validate_execution_proof_gossip(
 
     # [REJECT] The proof's head identifies the accepted beacon block
     block = store.blocks[head_root]
-    if head.slot != block.slot or hash_tree_root(block) != head_root:
+    if head.slot != block.slot:
         raise GossipReject("execution proof's head does not identify the accepted block")
-
-    # [REJECT] All process_execution_proof conditions pass validation
-    try:
-        process_execution_proof(state, signed_execution_proof, proof_engine)
-    except AssertionError:
-        raise GossipReject("execution proof failed validation") from None
-
-    # Mark the proof as valid for this head and proof type
-    seen.valid_execution_proofs.add(proof_key)
 ```
 
 ## The discovery domain: discv5

@@ -1,11 +1,10 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
+    expect_assertion_error,
     spec_state_test,
     with_eip8025_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
-)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -14,17 +13,24 @@ from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
-def setup_store_with_payload(spec, state):
-    """Build and import one block and its accepted execution payload envelope."""
+class RecordingProofEngine:
+    def __init__(self, accept=True):
+        self.accept = accept
+        self.proofs = []
+
+    def verify_execution_proof(self, proof):
+        self.proofs.append(proof)
+        return self.accept
+
+
+def setup_store_with_block(spec, state):
+    """Build and import one block without requiring its payload envelope."""
     store, _anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
-
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    store.payloads[block_root] = signed_envelope.message
     return store, signed_block, block_root
 
 
@@ -56,9 +62,7 @@ def make_signed_execution_proof(
     )
 
 
-def validate(spec, seen, store, state, signed_proof, checkpoint, proof_engine=None):
-    if proof_engine is None:
-        proof_engine = spec.PROOF_ENGINE
+def validate(spec, seen, store, state, signed_proof, checkpoint):
     return run_validate_gossip(
         spec,
         seen=seen,
@@ -66,21 +70,39 @@ def validate(spec, seen, store, state, signed_proof, checkpoint, proof_engine=No
         state=state,
         signed_execution_proof=signed_proof,
         trusted_execution_checkpoint=checkpoint,
-        proof_engine=proof_engine,
     )
+
+
+def get_checkpoint(spec, signed_block, block_root):
+    return spec.ExecutionCheckpoint(
+        slot=signed_block.message.slot,
+        beacon_block_root=block_root,
+    )
+
+
+def assert_handler_rejects(spec, store, signed_proof, checkpoint, proof_engine):
+    proof = signed_proof.message
+    proof_key = (proof.public_input.head.beacon_block_root, proof.proof_type)
+    expect_assertion_error(
+        lambda: spec.on_execution_proof(
+            store,
+            signed_proof,
+            checkpoint,
+            proof_engine,
+        )
+    )
+    assert proof_key not in store.execution_proofs
 
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_valid_and_duplicate(spec, state):
-    store, signed_block, block_root = setup_store_with_payload(spec, state)
-    checkpoint = spec.ExecutionCheckpoint(
-        slot=signed_block.message.slot,
-        beacon_block_root=block_root,
-    )
+def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
     seen = get_seen(spec)
     signed_proof = make_signed_execution_proof(spec, state, checkpoint)
 
+    assert store.payloads == {}
     assert validate(spec, seen, store, state, signed_proof, checkpoint) == (
         "valid",
         None,
@@ -98,30 +120,30 @@ def test_validate_execution_proof_gossip_valid_and_duplicate(spec, state):
         proof_data=b"\x02",
     )
     assert validate(spec, seen, store, state, competing_proof, checkpoint) == (
+        "valid",
+        None,
+    )
+
+    spec.on_execution_proof(store, signed_proof, checkpoint, RecordingProofEngine())
+    later_proof = make_signed_execution_proof(
+        spec,
+        state,
+        checkpoint,
+        prover_index=2,
+        proof_data=b"\x03",
+    )
+    assert validate(spec, seen, store, state, later_proof, checkpoint) == (
         "ignore",
-        "valid proof already seen for this head and proof type",
+        "verified proof already known for this head and proof type",
     )
 
-
-@with_eip8025_and_later
-@spec_state_test
-def test_validate_execution_proof_gossip_waits_for_payload(spec, state):
-    store, signed_block, block_root = setup_store_with_payload(spec, state)
-    checkpoint = spec.ExecutionCheckpoint(
-        slot=signed_block.message.slot,
-        beacon_block_root=block_root,
+    alternate_type = make_signed_execution_proof(
+        spec,
+        state,
+        checkpoint,
+        proof_type=1,
     )
-    signed_proof = make_signed_execution_proof(spec, state, checkpoint)
-    seen = get_seen(spec)
-    envelope = store.payloads.pop(block_root)
-
-    assert validate(spec, seen, store, state, signed_proof, checkpoint) == (
-        "ignore",
-        "execution proof's payload envelope has not been seen",
-    )
-
-    store.payloads[block_root] = envelope
-    assert validate(spec, seen, store, state, signed_proof, checkpoint) == (
+    assert validate(spec, seen, store, state, alternate_type, checkpoint) == (
         "valid",
         None,
     )
@@ -129,12 +151,79 @@ def test_validate_execution_proof_gossip_waits_for_payload(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_tracks_invalid_prover_attempt(spec, state):
-    store, signed_block, block_root = setup_store_with_payload(spec, state)
-    checkpoint = spec.ExecutionCheckpoint(
-        slot=signed_block.message.slot,
-        beacon_block_root=block_root,
+def test_validate_execution_proof_gossip_unknown_and_failed_block(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
+    unknown_head = spec.ExecutionCheckpoint(
+        slot=checkpoint.slot,
+        beacon_block_root=spec.Root(b"\xaa" * 32),
     )
+    unknown_proof = make_signed_execution_proof(spec, state, checkpoint, head=unknown_head)
+
+    assert validate(spec, get_seen(spec), store, state, unknown_proof, checkpoint) == (
+        "ignore",
+        "execution proof's head block has not been seen",
+    )
+
+    signed_proof = make_signed_execution_proof(spec, state, checkpoint)
+    del store.block_states[block_root]
+    assert validate(spec, get_seen(spec), store, state, signed_proof, checkpoint) == (
+        "reject",
+        "execution proof's head block failed validation",
+    )
+
+
+@with_eip8025_and_later
+@spec_state_test
+@always_bls
+def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
+
+    out_of_range = make_signed_execution_proof(spec, state, checkpoint)
+    out_of_range.validator_index = spec.ValidatorIndex(len(state.validators))
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, state, out_of_range, checkpoint) == (
+        "reject",
+        "execution proof's validator index is invalid",
+    )
+    assert seen.execution_proof_roots == set()
+    assert seen.execution_proof_provers == set()
+
+    valid_proof = make_signed_execution_proof(spec, state, checkpoint)
+    invalid_signature = valid_proof.copy()
+    invalid_signature.signature = spec.BLSSignature()
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, state, invalid_signature, checkpoint) == (
+        "reject",
+        "execution proof's signature is invalid",
+    )
+    assert validate(spec, seen, store, state, valid_proof, checkpoint) == (
+        "valid",
+        None,
+    )
+
+    original_exit_epoch = state.validators[1].exit_epoch
+    state.validators[1].exit_epoch = spec.get_current_epoch(state)
+    inactive_proof = make_signed_execution_proof(spec, state, checkpoint, prover_index=1)
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, state, inactive_proof, checkpoint) == (
+        "reject",
+        "execution proof's validator is not active",
+    )
+    state.validators[1].exit_epoch = original_exit_epoch
+    active_proof = make_signed_execution_proof(spec, state, checkpoint, prover_index=1)
+    assert validate(spec, seen, store, state, active_proof, checkpoint) == (
+        "valid",
+        None,
+    )
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_validate_execution_proof_gossip_authenticated_attempt_is_consumed(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
     seen = get_seen(spec)
     empty_proof = make_signed_execution_proof(spec, state, checkpoint, proof_data=b"")
 
@@ -152,65 +241,170 @@ def test_validate_execution_proof_gossip_tracks_invalid_prover_attempt(spec, sta
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_rejects_public_input_mismatch(spec, state):
-    store, signed_block, block_root = setup_store_with_payload(spec, state)
-    checkpoint = spec.ExecutionCheckpoint(
-        slot=signed_block.message.slot,
-        beacon_block_root=block_root,
-    )
+def test_validate_execution_proof_gossip_structural_checks(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
     wrong_origin = spec.ExecutionCheckpoint(
         slot=checkpoint.slot,
         beacon_block_root=spec.Root(b"\xaa" * 32),
     )
-    signed_proof = make_signed_execution_proof(
+    wrong_head = spec.ExecutionCheckpoint(
+        slot=spec.Slot(checkpoint.slot + 1),
+        beacon_block_root=checkpoint.beacon_block_root,
+    )
+    cases = [
+        (
+            make_signed_execution_proof(spec, state, checkpoint, origin=wrong_origin),
+            "execution proof's origin is not the trusted checkpoint",
+        ),
+        (
+            make_signed_execution_proof(spec, state, checkpoint, prover_index=1, head=wrong_head),
+            "execution proof's head does not identify the accepted block",
+        ),
+        (
+            make_signed_execution_proof(
+                spec,
+                state,
+                checkpoint,
+                prover_index=2,
+                proof_type=int(spec.MAX_EXECUTION_PROOFS_PER_PAYLOAD),
+            ),
+            "execution proof type is unsupported",
+        ),
+        (
+            make_signed_execution_proof(
+                spec,
+                state,
+                checkpoint,
+                prover_index=3,
+                proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
+            ),
+            "execution proof data exceeds the size limit",
+        ),
+    ]
+
+    for signed_proof, error in cases:
+        assert validate(spec, get_seen(spec), store, state, signed_proof, checkpoint) == (
+            "reject",
+            error,
+        )
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_on_execution_proof_verifies_then_stores(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
+    signed_proof = make_signed_execution_proof(spec, state, checkpoint)
+    proof_key = (block_root, signed_proof.message.proof_type)
+    proof_engine = RecordingProofEngine()
+
+    spec.on_execution_proof(store, signed_proof, checkpoint, proof_engine)
+
+    assert proof_engine.proofs == [signed_proof.message]
+    assert store.execution_proofs[proof_key] == signed_proof.message
+    expect_assertion_error(
+        lambda: spec.on_execution_proof(
+            store,
+            signed_proof,
+            checkpoint,
+            proof_engine,
+        )
+    )
+
+    rejected_proof = make_signed_execution_proof(
         spec,
         state,
         checkpoint,
+        proof_type=1,
+    )
+    rejecting_engine = RecordingProofEngine(accept=False)
+    assert_handler_rejects(
+        spec,
+        store,
+        rejected_proof,
+        checkpoint,
+        rejecting_engine,
+    )
+    assert rejecting_engine.proofs == [rejected_proof.message]
+
+
+@with_eip8025_and_later
+@spec_state_test
+@always_bls
+def test_on_execution_proof_enforces_context_and_intrinsic_invariants(spec, state):
+    store, signed_block, block_root = setup_store_with_block(spec, state)
+    checkpoint = get_checkpoint(spec, signed_block, block_root)
+    proof_engine = RecordingProofEngine()
+
+    signed_proof = make_signed_execution_proof(spec, state, checkpoint)
+    block = store.blocks.pop(block_root)
+    assert_handler_rejects(spec, store, signed_proof, checkpoint, proof_engine)
+    store.blocks[block_root] = block
+
+    head_state = store.block_states.pop(block_root)
+    assert_handler_rejects(spec, store, signed_proof, checkpoint, proof_engine)
+    store.block_states[block_root] = head_state
+
+    empty_proof = make_signed_execution_proof(spec, state, checkpoint, proof_data=b"")
+    assert_handler_rejects(spec, store, empty_proof, checkpoint, proof_engine)
+
+    oversized_proof = make_signed_execution_proof(
+        spec,
+        state,
+        checkpoint,
+        prover_index=1,
+        proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
+    )
+    assert_handler_rejects(spec, store, oversized_proof, checkpoint, proof_engine)
+
+    unsupported_proof = make_signed_execution_proof(
+        spec,
+        state,
+        checkpoint,
+        prover_index=2,
+        proof_type=int(spec.MAX_EXECUTION_PROOFS_PER_PAYLOAD),
+    )
+    assert_handler_rejects(spec, store, unsupported_proof, checkpoint, proof_engine)
+
+    invalid_signature = make_signed_execution_proof(spec, state, checkpoint, prover_index=3)
+    invalid_signature.signature = spec.BLSSignature()
+    assert_handler_rejects(spec, store, invalid_signature, checkpoint, proof_engine)
+
+    original_exit_epoch = head_state.validators[4].exit_epoch
+    head_state.validators[4].exit_epoch = spec.get_current_epoch(head_state)
+    inactive_proof = make_signed_execution_proof(spec, head_state, checkpoint, prover_index=4)
+    assert_handler_rejects(spec, store, inactive_proof, checkpoint, proof_engine)
+    head_state.validators[4].exit_epoch = original_exit_epoch
+
+    out_of_range = make_signed_execution_proof(spec, state, checkpoint, prover_index=5)
+    out_of_range.validator_index = spec.ValidatorIndex(len(head_state.validators))
+    assert_handler_rejects(spec, store, out_of_range, checkpoint, proof_engine)
+
+    wrong_origin = spec.ExecutionCheckpoint(
+        slot=checkpoint.slot,
+        beacon_block_root=spec.Root(b"\xbb" * 32),
+    )
+    contextual_mismatch = make_signed_execution_proof(
+        spec,
+        state,
+        checkpoint,
+        prover_index=6,
         origin=wrong_origin,
     )
-
-    assert validate(spec, get_seen(spec), store, state, signed_proof, checkpoint) == (
-        "reject",
-        "execution proof's origin is not the trusted checkpoint",
-    )
+    assert_handler_rejects(spec, store, contextual_mismatch, checkpoint, proof_engine)
 
     wrong_head = spec.ExecutionCheckpoint(
         slot=spec.Slot(checkpoint.slot + 1),
         beacon_block_root=checkpoint.beacon_block_root,
     )
-    signed_proof = make_signed_execution_proof(
+    contextual_mismatch = make_signed_execution_proof(
         spec,
         state,
         checkpoint,
-        prover_index=1,
+        prover_index=7,
         head=wrong_head,
     )
-    assert validate(spec, get_seen(spec), store, state, signed_proof, checkpoint) == (
-        "reject",
-        "execution proof's head does not identify the accepted block",
-    )
+    assert_handler_rejects(spec, store, contextual_mismatch, checkpoint, proof_engine)
 
-
-@with_eip8025_and_later
-@spec_state_test
-def test_validate_execution_proof_gossip_rejects_invalid_proof(spec, state):
-    class RejectingProofEngine:
-        def verify_execution_proof(self, _proof):
-            return False
-
-    store, signed_block, block_root = setup_store_with_payload(spec, state)
-    checkpoint = spec.ExecutionCheckpoint(
-        slot=signed_block.message.slot,
-        beacon_block_root=block_root,
-    )
-    signed_proof = make_signed_execution_proof(spec, state, checkpoint)
-
-    assert validate(
-        spec,
-        get_seen(spec),
-        store,
-        state,
-        signed_proof,
-        checkpoint,
-        RejectingProofEngine(),
-    ) == ("reject", "execution proof failed validation")
+    assert proof_engine.proofs == []

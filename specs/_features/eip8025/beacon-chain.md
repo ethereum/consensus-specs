@@ -119,7 +119,8 @@ class SignedExecutionProof(Container):
 
 ### Execution proof
 
-*Note*: Proof storage is implementation-dependent, managed by the `ProofEngine`.
+Verified execution proofs are recorded by the fork-choice `on_execution_proof`
+handler. Any proof-engine-native artifacts remain implementation-dependent.
 
 #### New `process_execution_proof`
 
@@ -130,7 +131,10 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
+    assert signed_proof.validator_index < len(state.validators)
+    assert len(proof_message.proof_data) > 0
     assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
+    assert proof_message.proof_type < MAX_EXECUTION_PROOFS_PER_PAYLOAD
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]
