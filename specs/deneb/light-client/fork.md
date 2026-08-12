@@ -43,9 +43,9 @@ def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHea
             transactions_root=pre.execution.transactions_root,
             withdrawals_root=pre.execution.withdrawals_root,
             # [New in Deneb:EIP4844]
-            blob_gas_used=uint64(0),
+            blob_gas_used=Uint64(0),
             # [New in Deneb:EIP4844]
-            excess_blob_gas=uint64(0),
+            excess_blob_gas=Uint64(0),
         ),
         execution_branch=pre.execution_branch,
     )

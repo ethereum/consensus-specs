@@ -3,9 +3,19 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Types](#types)
+  - [`Cell`](#cell)
+  - [`CellIndex`](#cellindex)
+  - [`Cells`](#cells)
+  - [`ColumnIndex`](#columnindex)
+  - [`CustodyIndex`](#custodyindex)
+  - [`DataColumn`](#datacolumn)
+  - [`KZGCommitmentsInclusionProof`](#kzgcommitmentsinclusionproof)
+  - [`Proofs`](#proofs)
+  - [`RowIndex`](#rowindex)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Preset](#preset)
+  - [Blob](#blob)
   - [Size parameters](#size-parameters)
 - [Configuration](#configuration)
   - [Custody setting](#custody-setting)
@@ -34,11 +44,87 @@
 
 ## Types
 
-| Name           | SSZ equivalent | Description                                           |
-| -------------- | -------------- | ----------------------------------------------------- |
-| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
-| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
-| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
+### `Cell`
+
+```python
+class Cell(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]):
+    """
+    The unit of extended blob data that has its own ``KZGProof``.
+    """
+```
+
+### `CellIndex`
+
+```python
+class CellIndex(Uint64):
+    """
+    The index of a cell within an extended blob.
+    """
+```
+
+### `Cells`
+
+```python
+class Cells(Vector[Cell, CELLS_PER_EXT_BLOB]):
+    """
+    The cells of a single extended blob.
+    """
+```
+
+### `ColumnIndex`
+
+```python
+class ColumnIndex(Uint64):
+    """
+    The index of a column in the matrix of extended blob data.
+    """
+```
+
+### `CustodyIndex`
+
+```python
+class CustodyIndex(Uint64):
+    """
+    The index of a custody group.
+    """
+```
+
+### `DataColumn`
+
+```python
+class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    A column of the extended blob data matrix, with at most one cell per blob.
+    """
+```
+
+### `KZGCommitmentsInclusionProof`
+
+```python
+class KZGCommitmentsInclusionProof(Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]):
+    """
+    A Merkle branch proving a block's blob KZG commitments within
+    ``BeaconBlockBody``.
+    """
+```
+
+### `Proofs`
+
+```python
+class Proofs(Vector[KZGProof, CELLS_PER_EXT_BLOB]):
+    """
+    The KZG proofs for the cells of a single extended blob.
+    """
+```
+
+### `RowIndex`
+
+```python
+class RowIndex(Uint64):
+    """
+    The index of a row in the matrix of extended blob data.
+    """
+```
 
 ## Constants
 
@@ -49,15 +135,23 @@ specification.
 
 | Name          | Value                 |
 | ------------- | --------------------- |
-| `UINT256_MAX` | `uint256(2**256 - 1)` |
+| `UINT256_MAX` | `Uint256(2**256 - 1)` |
 
 ## Preset
 
+### Blob
+
+| Name                          | Value                                                    | Description                                              |
+| ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `FIELD_ELEMENTS_PER_EXT_BLOB` | `2 * FIELD_ELEMENTS_PER_BLOB`                            | Number of field elements in a Reed-Solomon extended blob |
+| `FIELD_ELEMENTS_PER_CELL`     | `Uint64(64)`                                             | Number of field elements in a cell                       |
+| `CELLS_PER_EXT_BLOB`          | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
+
 ### Size parameters
 
-| Name                | Value                        | Description                                   |
-| ------------------- | ---------------------------- | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `CELLS_PER_EXT_BLOB` (= 128) | Number of columns in the extended data matrix |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `Uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ## Configuration
 
@@ -65,9 +159,9 @@ specification.
 
 | Name                       | Value         | Description                                                                       |
 | -------------------------- | ------------- | --------------------------------------------------------------------------------- |
-| `SAMPLES_PER_SLOT`         | `uint64(8)`   | Minimum number of samples for an honest node                                      |
-| `NUMBER_OF_CUSTODY_GROUPS` | `uint64(128)` | Number of custody groups available for nodes to custody                           |
-| `CUSTODY_REQUIREMENT`      | `uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
+| `SAMPLES_PER_SLOT`         | `Uint64(8)`   | Minimum number of samples for an honest node                                      |
+| `NUMBER_OF_CUSTODY_GROUPS` | `Uint64(128)` | Number of custody groups available for nodes to custody                           |
+| `CUSTODY_REQUIREMENT`      | `Uint64(4)`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
 ## Containers
 
@@ -76,11 +170,11 @@ specification.
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    column: DataColumn
+    kzg_commitments: BlobKZGCommitments
+    kzg_proofs: KZGProofs
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof
 ```
 
 ### `MatrixEntry`
@@ -98,15 +192,15 @@ class MatrixEntry(Container):
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     # Skip computation if all groups are custodied
     if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
-    current_id = uint256(node_id)
-    custody_groups: List[CustodyIndex] = []
+    current_id = Uint256(node_id)
+    custody_groups: list[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
             bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
@@ -115,7 +209,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
             custody_groups.append(custody_group)
         if current_id == UINT256_MAX:
             # Overflow prevention
-            current_id = uint256(0)
+            current_id = Uint256(0)
         else:
             current_id += 1
 
@@ -146,7 +240,7 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     """
     matrix = []
     for blob_index, blob in enumerate(blobs):
-        cells, proofs = compute_cells_and_kzg_proofs(blob)
+        cells, proofs = kzg.compute_cells_and_kzg_proofs(blob)
         for cell_index, (cell, proof) in enumerate(zip(cells, proofs, strict=True)):
             matrix.append(
                 MatrixEntry(
@@ -159,23 +253,36 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     return matrix
 ```
 
+*Note*: The function `kzg.compute_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[Cells, Proofs]:
+    """
+    Extend ``blob`` and return all the cells and proofs of the extended blob.
+    """
+```
+
 ### `recover_matrix`
 
 ```python
 def recover_matrix(
-    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+    partial_matrix: Sequence[MatrixEntry], blob_count: Uint64
 ) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.
 
-    This helper demonstrates how to apply ``recover_cells_and_kzg_proofs``.
+    This helper demonstrates how to apply ``kzg.recover_cells_and_kzg_proofs``.
     The data structure for storing cells/proofs is implementation-dependent.
     """
     matrix = []
     for blob_index in range(blob_count):
         cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
-        recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
+        recovered_cells, recovered_proofs = kzg.recover_cells_and_kzg_proofs(cell_indices, cells)
         for cell_index, (cell, proof) in enumerate(
             zip(recovered_cells, recovered_proofs, strict=True)
         ):
@@ -188,6 +295,22 @@ def recover_matrix(
                 )
             )
     return matrix
+```
+
+*Note*: The function `kzg.recover_cells_and_kzg_proofs` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def recover_cells_and_kzg_proofs(
+    cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
+) -> Tuple[Cells, Proofs]:
+    """
+    Recover all the cells and proofs of an extended blob given at least half of
+    its cells.
+    """
 ```
 
 ## Custody

@@ -4,6 +4,9 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`CurrentSyncCommitteeBranch`](#currentsynccommitteebranch)
+  - [`FinalityBranch`](#finalitybranch)
+  - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -59,11 +62,33 @@ Additional documents describe how the light client sync protocol can be used:
 
 ## Types
 
-| Name                         | SSZ equivalent                                              | Description                                                       |
-| ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
-| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
+### `CurrentSyncCommitteeBranch`
+
+```python
+class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]):
+    """
+    A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
+    """
+```
+
+### `FinalityBranch`
+
+```python
+class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]):
+    """
+    A Merkle branch proving ``finalized_checkpoint.root`` within
+    ``BeaconState``.
+    """
+```
+
+### `NextSyncCommitteeBranch`
+
+```python
+class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]):
+    """
+    A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
+    """
+```
 
 ## Constants
 
@@ -77,10 +102,10 @@ Additional documents describe how the light client sync protocol can be used:
 
 ### Misc
 
-| Name                              | Value                                                | Unit       |
-| --------------------------------- | ---------------------------------------------------- | ---------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |
-| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      |
+| Name                              | Value                                                      |
+| --------------------------------- | ---------------------------------------------------------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `Uint64(1)`                                                |
+| `UPDATE_TIMEOUT`                  | `Slot(SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)` |
 
 ## Containers
 
@@ -166,8 +191,8 @@ class LightClientStore:
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
 ## Helpers
@@ -280,7 +305,7 @@ def is_next_sync_committee_known(store: LightClientStore) -> bool:
 ### `get_safety_threshold`
 
 ```python
-def get_safety_threshold(store: LightClientStore) -> uint64:
+def get_safety_threshold(store: LightClientStore) -> Uint64:
     return (
         max(
             store.previous_max_active_participants,
@@ -293,8 +318,8 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 ### `get_subtree_index`
 
 ```python
-def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
+def get_subtree_index(generalized_index: GeneralizedIndex) -> Uint64:
+    return Uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
 ```
 
 ### `is_valid_normalized_merkle_branch`
@@ -315,7 +340,7 @@ def is_valid_normalized_merkle_branch(
 ### `compute_sync_committee_period_at_slot`
 
 ```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+def compute_sync_committee_period_at_slot(slot: Slot) -> Uint64:
     return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 

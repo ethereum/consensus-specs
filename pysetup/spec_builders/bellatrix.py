@@ -11,7 +11,7 @@ class BellatrixSpecBuilder(BaseSpecBuilder):
         return f"""
 from typing import Protocol
 from eth_consensus_specs.altair import {preset_name} as altair
-from eth_consensus_specs.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
+from eth_consensus_specs.utils.ssz.ssz_typing import Bytes8, ByteList, ByteVector
 """
 
     @classmethod
@@ -21,7 +21,7 @@ ExecutionState = Any
 
 
 def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
-    return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0))
+    return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=Uint256(0))
 
 
 def validator_is_connected(validator_index: ValidatorIndex) -> bool:

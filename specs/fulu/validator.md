@@ -6,6 +6,8 @@
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Custody setting](#custody-setting)
+- [Types](#types)
+  - [`CellKZGProofs`](#cellkzgproofs)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -47,8 +49,19 @@ document and used throughout.
 
 | Name                                   | Value              | Description                                                                                                |
 | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `VALIDATOR_CUSTODY_REQUIREMENT`        | `8`                | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
+| `VALIDATOR_CUSTODY_REQUIREMENT`        | `Uint64(8)`        | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
 | `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody                               |
+
+## Types
+
+### `CellKZGProofs`
+
+```python
+class CellKZGProofs(List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    The KZG cell proofs for every blob in a block, one proof per cell.
+    """
+```
 
 ## Helpers
 
@@ -62,10 +75,10 @@ KZG proofs.
 ```python
 @dataclass
 class BlobsBundle:
-    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    commitments: BlobKZGCommitments
     # [Modified in Fulu:EIP7594]
-    proofs: List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    proofs: CellKZGProofs
+    blobs: Blobs
 ```
 
 ### Modified `GetPayloadResponse`
@@ -79,7 +92,7 @@ object.
 @dataclass
 class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
     # [Modified in Fulu:EIP7594]
     blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
@@ -97,7 +110,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
 ```
 
@@ -121,7 +134,7 @@ of `NUMBER_OF_CUSTODY_GROUPS`.
 ```python
 def get_validators_custody_requirement(
     state: BeaconState, validator_indices: Sequence[ValidatorIndex]
-) -> uint64:
+) -> Uint64:
     total_node_balance = sum(
         state.validators[index].effective_balance for index in validator_indices
     )
@@ -190,8 +203,21 @@ cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
+    cell_proofs = zip(kzg.compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
+```
+
+*Note*: The function `kzg.compute_cells` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def compute_cells(blob: Blob) -> Cells:
+    """
+    Extend ``blob`` and return all the cells of the extended blob.
+    """
 ```
 
 Moreover, the full sequence of sidecars can also be computed from
@@ -204,11 +230,9 @@ be retrieved from the local execution-layer client.
 ```python
 def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH],
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    kzg_commitments: BlobKZGCommitments,
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof,
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
@@ -240,9 +264,7 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
@@ -250,9 +272,11 @@ def get_data_column_sidecars_from_block(
     """
     blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
     signed_block_header = compute_signed_block_header(signed_block)
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"),
+    kzg_commitments_inclusion_proof = KZGCommitmentsInclusionProof(
+        compute_merkle_proof(
+            signed_block.message.body,
+            get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"),
+        )
     )
     return get_data_column_sidecars(
         signed_block_header,
@@ -267,9 +291,7 @@ def get_data_column_sidecars_from_block(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob corresponding

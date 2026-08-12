@@ -100,18 +100,18 @@ specifications before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name                               | Value         | Unit       |
-| ---------------------------------- | ------------- | ---------- |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+| Name                               | Value                 |
+| ---------------------------------- | --------------------- |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                  | Value          | Unit         | Duration                   |
-| --------------------- | -------------- | ------------ | -------------------------- |
-| `ATTESTATION_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS`   | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                  | Value          | Duration                   |
+| --------------------- | -------------- | -------------------------- |
+| `ATTESTATION_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS`   | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -119,9 +119,9 @@ specifications before continuing and use as a reference throughout.
 
 ```python
 class Eth1Block(Container):
-    timestamp: uint64
+    timestamp: Uint64
     deposit_root: Root
-    deposit_count: uint64
+    deposit_count: Uint64
     # All other eth1 block fields
 ```
 
@@ -459,7 +459,7 @@ An honest block proposer sets
 `block.body.eth1_data = get_eth1_vote(state, eth1_chain)` where:
 
 ```python
-def voting_period_start_time(state: BeaconState) -> uint64:
+def voting_period_start_time(state: BeaconState) -> Uint64:
     eth1_voting_period_start_slot = Slot(
         state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
     )
@@ -467,7 +467,7 @@ def voting_period_start_time(state: BeaconState) -> uint64:
 ```
 
 ```python
-def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
+def is_candidate_block(block: Eth1Block, period_start: Uint64) -> bool:
     return (
         block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= period_start
         and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2 >= period_start
@@ -665,9 +665,9 @@ Set `attestation.data = attestation_data` where `attestation_data` is the
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the
-  bit of the index of the validator in the `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be an `AggregationBits` of length
+  `len(committee)`, where the bit of the index of the validator in the
+  `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation)` should return a list
 of length equal to 1, containing `validator_index`.
@@ -700,13 +700,13 @@ The `subnet_id` for the `attestation` is calculated with:
 
 ```python
 def compute_subnet_for_attestation(
-    committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex
+    committees_per_slot: Uint64, slot: Slot, committee_index: CommitteeIndex
 ) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
     """
-    slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
+    slots_since_epoch_start = Uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
     return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
@@ -756,9 +756,9 @@ being aggregated.
 
 ##### Aggregation bits
 
-Let `aggregate_attestation.aggregation_bits` be a
-`Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each
-bit set from each individual attestation is set to `0b1`.
+Let `aggregate_attestation.aggregation_bits` be an `AggregationBits` of length
+`len(committee)`, where each bit set from each individual attestation is set to
+`0b1`.
 
 ##### Aggregate signature
 

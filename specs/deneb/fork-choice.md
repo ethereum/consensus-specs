@@ -24,7 +24,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 ```python
 @dataclass
 class PayloadAttributes:
-    timestamp: uint64
+    timestamp: Uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
@@ -39,7 +39,7 @@ class PayloadAttributes:
 The implementation of `is_data_available` will become more sophisticated during
 later scaling upgrades. Initially, verification requires every verifying actor
 to retrieve all matching `Blob`s and `KZGProof`s, and validate them with
-`verify_blob_kzg_proof_batch`.
+`kzg.verify_blob_kzg_proof_batch`.
 
 The block MUST NOT be considered valid until all valid `Blob`s have been
 downloaded. Blocks that have been previously validated as available SHOULD be
@@ -60,7 +60,23 @@ def is_data_available(
     # `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
     blobs, proofs = retrieve_blobs_and_proofs(beacon_block_root)
 
-    return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+    return kzg.verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
+```
+
+*Note*: The function `kzg.verify_blob_kzg_proof_batch` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof_batch(
+    blobs: Sequence[Blob], commitments_bytes: Sequence[Bytes48], proofs_bytes: Sequence[Bytes48]
+) -> bool:
+    """
+    Return ``True`` if and only if all blobs and their proofs match the
+    commitments.
+    """
 ```
 
 ## Handlers
@@ -76,6 +92,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
@@ -95,12 +117,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # [New in Deneb:EIP4844]
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
+    assert is_data_available(block_root, block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[block.parent_root])
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block

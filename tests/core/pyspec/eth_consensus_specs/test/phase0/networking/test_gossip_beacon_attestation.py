@@ -1,7 +1,8 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_all_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
@@ -11,18 +12,14 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    BELLATRIX,
-    CAPELLA,
     DENEB,
     ELECTRA,
-    FULU,
     PHASE0,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -47,14 +44,15 @@ def get_correct_subnet_for_attestation(spec, state, attestation):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__valid(spec, state):
     """
     Test that a valid unaggregated attestation passes gossip validation.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -78,18 +76,21 @@ def test_gossip_beacon_attestation__valid(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -98,6 +99,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -116,14 +118,15 @@ def test_gossip_beacon_attestation__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, state):
     """
     Test that an attestation with committee index out of range is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -147,11 +150,14 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    subnet_id = spec.uint64(0)
+    subnet_id = spec.Uint64(0)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -160,6 +166,7 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "committee index out of range"
@@ -179,14 +186,15 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     """
     Test that an attestation sent to the wrong subnet is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -206,11 +214,14 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
 
     # Get correct subnet and use a different one
     correct_subnet = get_correct_subnet_for_attestation(spec, state, attestation)
-    wrong_subnet = spec.uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    wrong_subnet = spec.Uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -219,6 +230,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=wrong_subnet,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation is for wrong subnet"
@@ -238,14 +250,15 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     """
     Test that an attestation with slot not in propagation range is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -264,7 +277,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -272,12 +285,15 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to be before the attestation slot (too far in future)
-    attestation_slot_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -286,6 +302,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -305,14 +322,15 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     """
     Test that an attestation at exactly the clock disparity boundary is valid.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -334,7 +352,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -342,12 +360,15 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to exactly the boundary (should still be valid)
-    attestation_slot_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -356,6 +377,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -374,14 +396,15 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state):
     """
     Test that an attestation at exactly the old boundary (expiry + clock disparity) is still valid.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -400,7 +423,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -409,13 +432,16 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
 
     # Set current time to exactly the boundary (should still be valid)
     attestation_latest_ms = spec.compute_time_at_slot_ms(
-        state, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+        store, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
     )
     current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -424,6 +450,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -442,14 +469,15 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     """
     Test that an attestation that is too old (past propagation range + clock disparity) is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -468,7 +496,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -477,13 +505,16 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
 
     # Set current time to just past the expiry boundary
     attestation_latest_ms = spec.compute_time_at_slot_ms(
-        state, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+        store, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
     )
     current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -492,6 +523,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -511,14 +543,15 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
     Test that an attestation with mismatched epoch and target is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -540,11 +573,14 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -553,6 +589,7 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation epoch does not match target epoch"
@@ -572,14 +609,15 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
+@with_all_phases_from_to(PHASE0, ELECTRA)
 @spec_state_test
 def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     """
     Test that an aggregated attestation (more than one bit set) is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -600,15 +638,18 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
         multi_bits = [False] * len(committee)
         multi_bits[0] = True
         multi_bits[1] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*multi_bits)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*multi_bits)
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -617,6 +658,7 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation is not unaggregated"
@@ -636,14 +678,15 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
+@with_all_phases_from_to(PHASE0, ELECTRA)
 @spec_state_test
 def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, state):
     """
     Test that an attestation with wrong aggregation bits size is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -662,15 +705,18 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     wrong_size = len(committee) + 5
     wrong_bits = [False] * wrong_size
     wrong_bits[0] = True  # Single bit set (unaggregated)
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*wrong_bits)
+    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*wrong_bits)
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -679,6 +725,7 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregation bits length does not match committee size"
@@ -698,14 +745,15 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     """
     Test that a duplicate attestation from same validator/epoch is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     messages = []
     seen = get_seen(spec)
@@ -728,19 +776,22 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     # First validation should pass
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -749,6 +800,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -762,6 +814,9 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     )
 
     # Second validation should be ignored
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -770,9 +825,10 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 600,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "ignore"
-    assert reason == "already seen attestation from this validator for this epoch"
+    assert reason == "already seen attestation for this epoch and validator"
     messages.append(
         {
             "subnet_id": int(subnet_id),
@@ -786,14 +842,15 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     """
     Test that an attestation for an unseen block is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -818,18 +875,21 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -838,6 +898,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block being voted for has not been seen"
@@ -857,14 +918,15 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     """
     Test that an attestation for a block that failed validation is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -902,18 +964,21 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -922,6 +987,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "block being voted for failed validation"
@@ -941,15 +1007,16 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     """
     Test that an attestation with invalid signature is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -971,17 +1038,20 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
     # Invalid signature (zeros)
     attestation.signature = spec.BLSSignature(b"\x00" * 96)
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -990,6 +1060,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "invalid attestation signature"
@@ -1009,14 +1080,15 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     """
     Test that an attestation whose target is not an ancestor of LMD vote is rejected.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1040,7 +1112,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         # Sign with the modified data
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
@@ -1048,11 +1120,14 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -1061,6 +1136,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "target block is not an ancestor of LMD vote block"
@@ -1080,14 +1156,15 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     """
     Test that an attestation for a block not descending from finalized checkpoint is ignored.
     """
+    anchor_state = state.copy()
     yield "topic", "meta", "beacon_attestation"
-    yield "state", state
+    yield "state", anchor_state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1126,7 +1203,7 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -1141,11 +1218,14 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
 
     yield "finalized_checkpoint", "meta", {"epoch": 0, "root": "0x" + "ef" * 32}
 
-    block_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -1154,6 +1234,7 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
         attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "finalized checkpoint is not an ancestor of block"

@@ -208,7 +208,7 @@ def messages_to_payload_attestations(spec, state, messages):
     for data, attesting_indices in groups.values():
         ptc = spec.get_ptc(state, data.slot)
         index_set = set(attesting_indices)
-        aggregation_bits = spec.Bitvector[spec.PTC_SIZE]()
+        aggregation_bits = spec.BitVector[spec.PTC_SIZE]()
         for i, validator_index in enumerate(ptc):
             if validator_index in index_set:
                 aggregation_bits[i] = True
@@ -234,16 +234,8 @@ def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
 
 def get_dependent_root(spec, state, slot):
     epoch = spec.compute_epoch_at_slot(slot)
-    if epoch <= spec.MIN_SEED_LOOKAHEAD:
-        dependent_slot = spec.GENESIS_SLOT
-    else:
-        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
-
-    if dependent_slot > spec.GENESIS_SLOT:
-        return spec.get_block_root_at_slot(state, dependent_slot)
-    else:
-        # Default genesis block value
-        return spec.Root()
+    dependent_slot = spec.compute_shuffling_dependent_slot(epoch)
+    return spec.get_block_root_at_slot(state, dependent_slot)
 
 
 def get_voting_source(spec, state, target):
@@ -254,7 +246,7 @@ def get_voting_source(spec, state, target):
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
-    pseudo_vrn = spec.uint64((proposer_index + 1) * (epoch + 1))
+    pseudo_vrn = spec.Uint64((proposer_index + 1) * (epoch + 1))
     pseudo_vrn_bytes = spec.uint_to_bytes(pseudo_vrn)
     randao_reveal_bytes = bytes(96 - len(pseudo_vrn_bytes)) + pseudo_vrn_bytes
     return spec.BLSSignature(randao_reveal_bytes)

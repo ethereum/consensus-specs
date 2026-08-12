@@ -63,7 +63,7 @@ def prepare_signed_execution_payload_bid(
         fee_recipient = spec.ExecutionAddress()
 
     if gas_limit is None:
-        gas_limit = spec.uint64(30000000)
+        gas_limit = spec.Uint64(30000000)
 
     if block_hash is None:
         block_hash = spec.Hash32()

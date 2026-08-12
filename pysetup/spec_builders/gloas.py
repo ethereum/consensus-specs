@@ -9,7 +9,7 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist, ProgressiveByteList, ProgressiveContainer, ProgressiveList
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitList, ProgressiveByteList, ProgressiveContainer, ProgressiveList
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
 """
@@ -42,6 +42,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",
+            "KZGCommitmentsInclusionProof",
+            "OptionalPartialDataColumnHeader",
             "PartialDataColumnHeader",
         }
 
@@ -56,9 +58,6 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
             "retrieve_column_sidecars",
             "upgrade_to_fulu",
             "verify_partial_data_column_header_inclusion_proof",
-            # TODO(jtraglia): Temporarily deprecate these until we update them for Gloas.
-            "validate_data_column_sidecar_gossip",
-            "validate_partial_data_column_sidecar_gossip",
         }
 
     @classmethod
@@ -66,8 +65,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return """
 def retrieve_column_sidecars_and_kzg_commitments(
     beacon_block_root: Root
-) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
-    return [], []
+) -> tuple[Sequence[DataColumnSidecar], BlobKZGCommitments]:
+    return [], BlobKZGCommitments()
 
 _get_parent_payload_status = get_parent_payload_status
 get_parent_payload_status = cache_this(

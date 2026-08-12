@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
+  - [Types](#types)
+    - [New `Syncnets`](#new-syncnets)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -46,6 +48,17 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
 
+### Types
+
+#### New `Syncnets`
+
+```python
+class Syncnets(BitVector[SYNC_COMMITTEE_SUBNET_COUNT]):
+    """
+    The sync committee subnets a node is subscribed to, one bit per subnet.
+    """
+```
+
 ### Helpers
 
 #### Modified `Seen`
@@ -53,19 +66,19 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
 ```
 
 #### Modified `compute_fork_version`
@@ -84,22 +97,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def is_current_slot(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given slot is the current slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(state, slot, 0, current_time_ms)
+    return is_within_slot_range(store, slot, 0, current_time_ms)
 ```
 
 #### New `get_sync_subcommittee_pubkeys`
 
 ```python
 def get_sync_subcommittee_pubkeys(
-    state: BeaconState, subcommittee_index: uint64
+    state: BeaconState, subcommittee_index: Uint64
 ) -> Sequence[BLSPubkey]:
     # Committees assigned to `slot` sign for `slot - 1`
     # This creates the exceptional logic below when transitioning between sync committee periods
@@ -124,9 +137,9 @@ communicate the sync committee subnet subscriptions:
 
 ```
 (
-  seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  seq_number: Uint64
+  attnets: Attnets
+  syncnets: Syncnets
 )
 ```
 
@@ -134,7 +147,7 @@ Where
 
 - `seq_number` and `attnets` have the same meaning defined in the Phase 0
   document.
-- `syncnets` is a `Bitvector` representing the node's sync committee subnet
+- `syncnets` is a `BitVector` representing the node's sync committee subnet
   subscriptions. This field should mirror the data in the node's ENR as outlined
   in the [validator guide](./validator.md#sync-committee-subnet-stability).
 
@@ -161,14 +174,14 @@ of the `Message` Protobuf, and interpreted as empty byte strings if missing. The
 - If `message.data` has a valid snappy decompression, set `message-id` to the
   first 20 bytes of the `SHA256` hash of the concatenation of the following
   data: `MESSAGE_DOMAIN_VALID_SNAPPY`, the length of the topic byte string
-  (encoded as little-endian `uint64`), the topic byte string, and the snappy
+  (encoded as little-endian `Uint64`), the topic byte string, and the snappy
   decompressed message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
+  `SHA256(MESSAGE_DOMAIN_VALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + snappy_decompress(message.data))[:20]`.
 - Otherwise, set `message-id` to the first 20 bytes of the `SHA256` hash of the
   concatenation of the following data: `MESSAGE_DOMAIN_INVALID_SNAPPY`, the
-  length of the topic byte string (encoded as little-endian `uint64`), the topic
+  length of the topic byte string (encoded as little-endian `Uint64`), the topic
   byte string, and the raw message data: i.e.
-  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(uint64(len(message.topic))) + message.topic + message.data)[:20]`.
+  `SHA256(MESSAGE_DOMAIN_INVALID_SNAPPY + uint_to_bytes(Uint64(len(message.topic))) + message.topic + message.data)[:20]`.
 
 Implementations may need to carefully handle the function that computes the
 `message-id`. In particular, messages on topics with the Phase 0 fork digest
@@ -217,9 +230,10 @@ be included in future blocks. The `state` parameter is the head state.
 ```python
 def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedContributionAndProof for gossip propagation.
@@ -229,7 +243,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution = contribution_and_proof.contribution
 
     # [IGNORE] The contribution's slot is for the current slot
-    if not is_current_slot(state, contribution.slot, current_time_ms):
+    if not is_current_slot(store, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
 
     # [REJECT] The subcommittee index is in the allowed range
@@ -269,11 +283,11 @@ def validate_sync_committee_contribution_and_proof_gossip(
         raise GossipIgnore("already seen contribution for this data")
 
     # [IGNORE] The sync committee contribution is the first valid contribution received
-    # for the aggregator with index contribution_and_proof.aggregator_index
-    # for the slot contribution.slot and subcommittee index contribution.subcommittee_index
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
     aggregator_key = (
-        contribution_and_proof.aggregator_index,
         contribution.slot,
+        contribution_and_proof.aggregator_index,
         contribution.subcommittee_index,
     )
     if aggregator_key in seen.sync_contribution_aggregator_slots:
@@ -334,9 +348,10 @@ gossiped to the global `sync_committee_contribution_and_proof` topic. The
 ```python
 def validate_sync_committee_message_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -344,7 +359,7 @@ def validate_sync_committee_message_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] The message's slot is for the current slot
-    if not is_current_slot(state, sync_committee_message.slot, current_time_ms):
+    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
 
     # [REJECT] The validator index is valid
@@ -544,9 +559,9 @@ facilitate sync committee subnet discovery. The length of this bitfield is
 bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
-| Key        | Value                                        |
-| ---------- | -------------------------------------------- |
-| `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
+| Key        | Value      |
+| ---------- | ---------- |
+| `syncnets` | `Syncnets` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for
 further details on how the new bits are used.

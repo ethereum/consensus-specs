@@ -282,7 +282,7 @@ def test_process_execution_payload_bid_non_payload_builder_version(spec, state):
     assert spec.is_active_builder(state, builder_index)
 
     # Mark the builder as a non-payload builder, leaving every other condition valid
-    state.builders[builder_index].version = spec.uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
+    state.builders[builder_index].version = spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
     assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
 
     # The builder can cover the bid, so the version check is the only failing condition
@@ -317,7 +317,7 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
         parent_block_root=block.parent_root,
         block_hash=spec.Hash32(),
         fee_recipient=spec.ExecutionAddress(),
-        gas_limit=spec.uint64(30000000),
+        gas_limit=spec.Uint64(30000000),
         builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
         value=spec.Gwei(1),

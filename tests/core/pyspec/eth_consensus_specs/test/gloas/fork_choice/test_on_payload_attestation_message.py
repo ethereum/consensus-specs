@@ -364,7 +364,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
         )
 
     # Build the PayloadAttestation aggregate
-    aggregation_bits = spec.Bitvector[spec.PTC_SIZE]()
+    aggregation_bits = spec.BitVector[spec.PTC_SIZE]()
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
             aggregation_bits[i] = True

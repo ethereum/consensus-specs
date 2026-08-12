@@ -251,7 +251,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                     withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
                     amount=spec.Gwei(32_000_000_000),
                     signature=spec.BLSSignature(b"\x03" * 96),
-                    index=spec.uint64(0),
+                    index=spec.Uint64(0),
                 )
             ]
         ),

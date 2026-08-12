@@ -4,9 +4,16 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `Blob`](#new-blob)
+  - [New `BlobIndex`](#new-blobindex)
+  - [New `BlobKZGCommitments`](#new-blobkzgcommitments)
+  - [New `KZGCommitment`](#new-kzgcommitment)
+  - [New `KZGProof`](#new-kzgproof)
+  - [New `VersionedHash`](#new-versionedhash)
 - [Constants](#constants)
   - [Blob](#blob)
 - [Preset](#preset)
+  - [Blob](#blob-1)
   - [Execution](#execution)
 - [Configuration](#configuration)
   - [Execution](#execution-1)
@@ -58,26 +65,83 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name            | SSZ equivalent | Description        |
-| --------------- | -------------- | ------------------ |
-| `VersionedHash` | `Bytes32`      | A versioned hash   |
-| `BlobIndex`     | `uint64`       | An index of a blob |
+### New `Blob`
+
+```python
+class Blob(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]):
+    """
+    A blob of data, encoded as a sequence of BLS scalar field elements.
+    """
+```
+
+### New `BlobIndex`
+
+```python
+class BlobIndex(Uint64):
+    """
+    The index of a blob within a block.
+    """
+```
+
+### New `BlobKZGCommitments`
+
+```python
+class BlobKZGCommitments(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    The KZG commitments to the blobs of a beacon block.
+    """
+```
+
+### New `KZGCommitment`
+
+```python
+class KZGCommitment(Bytes48):
+    """
+    A commitment to the polynomial defined by the field elements of a blob.
+    """
+```
+
+### New `KZGProof`
+
+```python
+class KZGProof(Bytes48):
+    """
+    A proof that the polynomial committed to by a ``KZGCommitment`` evaluates
+    to expected values at one or more points.
+    """
+```
+
+### New `VersionedHash`
+
+```python
+class VersionedHash(Bytes32):
+    """
+    A versioned hash of a blob's KZG commitment.
+    """
+```
 
 ## Constants
 
 ### Blob
 
-| Name                         | Value            |
-| ---------------------------- | ---------------- |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` |
+| Name                         | Value            | Description                                     |
+| ---------------------------- | ---------------- | ----------------------------------------------- |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | Version byte of a blob's versioned hash         |
+| `BYTES_PER_FIELD_ELEMENT`    | `Uint64(32)`     | Bytes used to encode a BLS scalar field element |
 
 ## Preset
+
+### Blob
+
+| Name                      | Value          | Description                        |
+| ------------------------- | -------------- | ---------------------------------- |
+| `FIELD_ELEMENTS_PER_BLOB` | `Uint64(4096)` | Number of field elements in a blob |
 
 ### Execution
 
 | Name                             | Value                     | Description                                                                     |
 | -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `Uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
@@ -85,7 +149,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                  | Value       | Description                                                                           |
 | --------------------- | ----------- | ------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `MAX_BLOBS_PER_BLOCK` | `Uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the
 EL/builder with their corresponding blobs being independently transmitted and
@@ -96,7 +160,7 @@ independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 | Name                                   | Value                |
 | -------------------------------------- | -------------------- |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `Uint64(2**3)` (= 8) |
 
 ## Containers
 
@@ -111,17 +175,17 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     # [Modified in Deneb:EIP4844]
     execution_payload: ExecutionPayload
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    bls_to_execution_changes: BLSToExecutionChanges
     # [New in Deneb:EIP4844]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    blob_kzg_commitments: BlobKZGCommitments
 ```
 
 #### `ExecutionPayload`
@@ -132,21 +196,21 @@ class ExecutionPayload(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
+    extra_data: ExtraData
+    base_fee_per_gas: Uint256
     block_hash: Hash32
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    transactions: Transactions
+    withdrawals: Withdrawals
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `ExecutionPayloadHeader`
@@ -157,56 +221,56 @@ class ExecutionPayloadHeader(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
-    block_number: uint64
-    gas_limit: uint64
-    gas_used: uint64
-    timestamp: uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
-    base_fee_per_gas: uint256
+    block_number: Uint64
+    gas_limit: Uint64
+    gas_used: Uint64
+    timestamp: Uint64
+    extra_data: ExtraData
+    base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root
     withdrawals_root: Root
     # [New in Deneb:EIP4844]
-    blob_gas_used: uint64
+    blob_gas_used: Uint64
     # [New in Deneb:EIP4844]
-    excess_blob_gas: uint64
+    excess_blob_gas: Uint64
 ```
 
 #### `BeaconState`
 
 ```python
 class BeaconState(Container):
-    genesis_time: uint64
+    genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    eth1_data_votes: Eth1DataVotes
+    eth1_deposit_index: Uint64
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Deneb:EIP4844]
     latest_execution_payload_header: ExecutionPayloadHeader
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
 ```
 
 ## Helpers
@@ -232,7 +296,7 @@ EIP-7045.
 
 ```python
 def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+    state: BeaconState, data: AttestationData, inclusion_delay: Uint64
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -271,7 +335,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_validator_activation_churn_limit`
 
 ```python
-def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
+def get_validator_activation_churn_limit(state: BeaconState) -> Uint64:
     """
     Return the validator activation churn limit for the current epoch.
     """

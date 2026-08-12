@@ -14,10 +14,10 @@
   - [Illegal types](#illegal-types)
     - [Compatible Merkleization](#compatible-merkleization)
 - [Serialization](#serialization)
-  - [`uintN`](#uintn)
-  - [`boolean`](#boolean)
-  - [`Bitvector[N]`](#bitvectorn)
-  - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
+  - [`UintN`](#uintn)
+  - [`Boolean`](#boolean)
+  - [`BitVector[N]`](#bitvectorn)
+  - [`BitList[N]`, `ProgressiveBitList`](#bitlistn-progressivebitlist)
   - [Vectors, containers, progressive containers, lists, progressive lists](#vectors-containers-progressive-containers-lists-progressive-lists)
   - [Union](#union)
   - [Compatible unions](#compatible-unions)
@@ -41,10 +41,10 @@
 
 ### Basic types
 
-- `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-- `byte`: 8-bit opaque data container, equivalent in serialization and hashing
-  to `uint8`
-- `boolean`: `True` or `False`
+- `UintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+- `Byte`: 8-bit opaque data container, equivalent in serialization and hashing
+  to `Uint8`
+- `Boolean`: `True` or `False`
 
 ### Composite types
 
@@ -52,50 +52,50 @@
   - python dataclass notation with key-type pairs, e.g.
   ```python
   class ContainerExample(Container):
-      foo: uint64
-      bar: boolean
+      foo: Uint64
+      bar: Boolean
   ```
 - **progressive container** _[EIP-7495]_: ordered heterogeneous collection of
   values with stable Merkleization
   - python dataclass notation with key-type pairs, e.g.
   ```python
   class Square(ProgressiveContainer(active_fields=[1, 0, 1])):
-      side: uint16  # Merkleized at field index #0 (location of first 1 in `active_fields`)
-      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
+      side: Uint16  # Merkleized at field index #0 (location of first 1 in `active_fields`)
+      color: Uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
 
 
   class Circle(ProgressiveContainer(active_fields=[0, 1, 1])):
-      radius: uint16  # Merkleized at field index #1 (location of first 1 in `active_fields`)
-      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
+      radius: Uint16  # Merkleized at field index #1 (location of first 1 in `active_fields`)
+      color: Uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
   ```
 - **vector**: ordered fixed-length homogeneous collection, with `N` values
-  - notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
+  - notation `Vector[type, N]`, e.g. `Vector[Uint64, N]`
 - **list**: ordered variable-length homogeneous collection, limited to `N`
   values
-  - notation `List[type, N]`, e.g. `List[uint64, N]`
+  - notation `List[type, N]`, e.g. `List[Uint64, N]`
 - **progressive list** _[EIP-7916]_: ordered variable-length homogeneous
   collection, without limit
-  - notation `ProgressiveList[type]`, e.g. `ProgressiveList[uint64]`
-- **bitvector**: ordered fixed-length collection of `boolean` values, with `N`
+  - notation `ProgressiveList[type]`, e.g. `ProgressiveList[Uint64]`
+- **bitvector**: ordered fixed-length collection of `Boolean` values, with `N`
   bits
-  - notation `Bitvector[N]`
-- **bitlist**: ordered variable-length collection of `boolean` values, limited
+  - notation `BitVector[N]`
+- **bitlist**: ordered variable-length collection of `Boolean` values, limited
   to `N` bits
-  - notation `Bitlist[N]`
+  - notation `BitList[N]`
 - **progressive bitlist** _[EIP-7916]_: ordered variable-length collection of
-  `boolean` values, without limit
-  - notation `ProgressiveBitlist`
+  `Boolean` values, without limit
+  - notation `ProgressiveBitList`
 - **union**: union type containing one of the given subtypes
-  - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
+  - notation `Union[type_0, type_1, ...]`, e.g. `union[None, Uint64, Uint32]`
 - **compatible union** _[EIP-8016, currently unused]_: union type containing one
   of the given subtypes with compatible Merkleization
   - notation `CompatibleUnion({selector: type})`, e.g.
     `CompatibleUnion({1: Square, 2: Circle})`
 
-*Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due
+*Note*: Both `Vector[Boolean, N]` and `BitVector[N]` are valid, yet distinct due
 to their different serialization requirements. Similarly, both
-`List[boolean, N]` and `Bitlist[N]` are valid, yet distinct. Generally
-`Bitvector[N]`/`Bitlist[N]` are preferred because of their serialization
+`List[Boolean, N]` and `BitList[N]` are valid, yet distinct. Generally
+`BitVector[N]`/`BitList[N]` are preferred because of their serialization
 efficiencies.
 
 ### Variable-size and fixed-size
@@ -107,17 +107,16 @@ types that contain a variable-size type. All other types are said to be
 
 ### Byte
 
-Although the SSZ serialization of `byte` is equivalent to that of `uint8`, the
+Although the SSZ serialization of `Byte` is equivalent to that of `Uint8`, the
 former is used for opaque data while the latter is intended as a number.
 
 ### Aliases
 
 For convenience we alias:
 
-- `bit` to `boolean`
-- `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
-- `ByteList[N]` to `List[byte, N]`
-- `ProgressiveByteList` to `ProgressiveList[byte]`
+- `BytesN` and `ByteVector[N]` to `Vector[Byte, N]` (this is *not* a basic type)
+- `ByteList[N]` to `List[Byte, N]`
+- `ProgressiveByteList` to `ProgressiveList[Byte]`
 
 Aliases are semantically equivalent to their underlying type and therefore share
 canonical representations both in SSZ and in related formats.
@@ -129,16 +128,16 @@ Assuming a helper function `default(type)` which returns the default value for
 
 | Type                                  | Default Value                                       |
 | ------------------------------------- | --------------------------------------------------- |
-| `uintN`                               | `0`                                                 |
-| `boolean`                             | `False`                                             |
+| `UintN`                               | `0`                                                 |
+| `Boolean`                             | `False`                                             |
 | `Container`                           | `[default(type) for type in container]`             |
 | `ProgressiveContainer(active_fields)` | `[default(type) for type in progressive_container]` |
 | `Vector[type, N]`                     | `[default(type)] * N`                               |
-| `Bitvector[N]`                        | `[False] * N`                                       |
+| `BitVector[N]`                        | `[False] * N`                                       |
 | `List[type, N]`                       | `[]`                                                |
 | `ProgressiveList[type]`               | `[]`                                                |
-| `Bitlist[N]`                          | `[]`                                                |
-| `ProgressiveBitlist`                  | `[]`                                                |
+| `BitList[N]`                          | `[]`                                                |
+| `ProgressiveBitList`                  | `[]`                                                |
 | `Union[type_0, type_1, ...]`          | `default(type_0)`                                   |
 | `CompatibleUnion({selector: type})`   | n/a (error)                                         |
 
@@ -149,7 +148,7 @@ is equal to the default value for that type.
 
 ### Illegal types
 
-- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Empty vector types (`Vector[type, 0]`, `BitVector[0]`) are illegal.
 - Containers with no fields are illegal.
 - `ProgressiveContainer` with no fields are illegal.
 - `ProgressiveContainer` with an `active_fields` configuration of more than 256
@@ -161,17 +160,17 @@ is equal to the default value for that type.
 - The `None` type option in a `Union` type is only legal as the first option
   (i.e. with index zero).
 - `CompatibleUnion({})` without any type options are illegal.
-- `CompatibleUnion({selector: type})` with a selector outside `uint8(1)` through
-  `uint8(127)` are illegal.
+- `CompatibleUnion({selector: type})` with a selector outside `Uint8(1)` through
+  `Uint8(127)` are illegal.
 - `CompatibleUnion({selector: type})` with a type option that has incompatible
   Merkleization with another type option are illegal.
 
 #### Compatible Merkleization
 
 - Types are compatible with themselves.
-- `byte` is compatible with `uint8` and vice versa.
-- `Bitlist[N]` are compatible if they share the same capacity `N`.
-- `Bitvector[N]` are compatible if they share the same capacity `N`.
+- `Byte` is compatible with `Uint8` and vice versa.
+- `BitList[N]` are compatible if they share the same capacity `N`.
+- `BitVector[N]` are compatible if they share the same capacity `N`.
 - `List[type, N]` are compatible if `type` is compatible and they share the same
   capacity `N`.
 - `Vector[type, N]` are compatible if `type` is compatible and they share the
@@ -194,21 +193,21 @@ We recursively define the `serialize` function which consumes an object `value`
 *Note*: In the function definitions below (`serialize`, `hash_tree_root`,
 `is_variable_size`, etc.) objects implicitly carry their type.
 
-### `uintN`
+### `UintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
 return value.to_bytes(N // BITS_PER_BYTE, "little")
 ```
 
-### `boolean`
+### `Boolean`
 
 ```python
 assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### `Bitvector[N]`
+### `BitVector[N]`
 
 ```python
 array = [0] * ((N + 7) // 8)
@@ -217,7 +216,7 @@ for i in range(N):
 return bytes(array)
 ```
 
-### `Bitlist[N]`, `ProgressiveBitlist`
+### `BitList[N]`, `ProgressiveBitList`
 
 Note that from the offset coding, the length (in bytes) of the bitlist is known.
 An additional `1` bit is added to the end, at index `e` where `e` is the length
@@ -245,7 +244,7 @@ assert sum(fixed_lengths + variable_lengths) < 2 ** (BYTES_PER_LENGTH_OFFSET * B
 
 # Interleave offsets of variable-size parts with fixed-size parts
 variable_offsets = [
-    serialize(uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))
+    serialize(Uint32(sum(fixed_lengths + variable_lengths[:i]))) for i in range(len(value))
 ]
 fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
 
@@ -349,7 +348,7 @@ We first define helper functions:
 - `chunk_count(type)`: calculate the amount of leaves for merkleization of the
   type.
   - all basic types: `1`
-  - `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size,
+  - `BitList[N]` and `BitVector[N]`: `(N + 255) // 256` (dividing by chunk size,
     rounding up)
   - `List[B, N]` and `Vector[B, N]`, where `B` is a basic type:
     `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
@@ -396,10 +395,10 @@ We first define helper functions:
 - `mix_in_active_fields`: Given a Merkle root `root` and an `active_fields`
   configuration return `hash(root, pack_bits(active_fields))`. Note that
   `active_fields` is restricted to ≤ 256 bits.
-- `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"`
+- `mix_in_length`: Given a Merkle root `root` and a length `length` (`"Uint256"`
   little-endian serialization) return `hash(root, length)`.
 - `mix_in_selector`: Given a Merkle root `root` and a type selector `selector`
-  (`"uint8"` serialization) return `hash(root, selector)`.
+  (`"Uint8"` serialization) return `hash(root, selector)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value`
 recursively:
@@ -460,20 +459,20 @@ value. Parsers may ignore additional JSON fields.
 
 | SSZ                                   | JSON            | Example                                  |
 | ------------------------------------- | --------------- | ---------------------------------------- |
-| `uintN`                               | string          | `"0"`                                    |
-| `byte`                                | hex-byte-string | `"0x00"`                                 |
-| `boolean`                             | bool            | `false`                                  |
+| `UintN`                               | string          | `"0"`                                    |
+| `Byte`                                | hex-byte-string | `"0x00"`                                 |
+| `Boolean`                             | bool            | `false`                                  |
 | `Container`                           | object          | `{ "field": ... }`                       |
 | `ProgressiveContainer(active_fields)` | object          | `{ "field": ... }`                       |
 | `Vector[type, N]`                     | array           | `[element, ...]`                         |
-| `Vector[byte, N]`                     | hex-byte-string | `"0x1122"`                               |
-| `Bitvector[N]`                        | hex-byte-string | `"0x1122"`                               |
+| `Vector[Byte, N]`                     | hex-byte-string | `"0x1122"`                               |
+| `BitVector[N]`                        | hex-byte-string | `"0x1122"`                               |
 | `List[type, N]`                       | array           | `[element, ...]`                         |
-| `List[byte, N]`                       | hex-byte-string | `"0x1122"`                               |
+| `List[Byte, N]`                       | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveList[type]`               | array           | `[element, ...]`                         |
-| `ProgressiveList[byte]`               | hex-byte-string | `"0x1122"`                               |
-| `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
-| `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveList[Byte]`               | hex-byte-string | `"0x1122"`                               |
+| `BitList[N]`                          | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveBitList`                  | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": string, "data": type_N }` |
 | `CompatibleUnion({selector: type})`   | selector-object | `{ "selector": string, "data": type }`   |
 
@@ -484,8 +483,8 @@ Aliases are encoded as their underlying type.
 `hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would
 appear in an SSZ stream.
 
-`List`, `ProgressiveList`, and `Vector` of `byte` (and aliases thereof) are
-encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
+`List`, `ProgressiveList`, and `Vector` of `Byte` (and aliases thereof) are
+encoded as `hex-byte-string`. `BitList`, `ProgressiveBitList`, and `BitVector`
 similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
 `Union` and `CompatibleUnion` are encoded as an object with a `selector` and

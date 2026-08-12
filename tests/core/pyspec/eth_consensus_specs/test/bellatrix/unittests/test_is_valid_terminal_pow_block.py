@@ -7,14 +7,14 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.pow_block import (
     prepare_random_pow_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import uint256
+from eth_consensus_specs.utils.ssz.ssz_typing import Uint256
 
 
 @with_bellatrix_and_later
 @spec_state_test
 def test_is_valid_terminal_pow_block_success_valid(spec, state):
     parent_block = prepare_random_pow_block(spec, rng=Random(1234))
-    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(1)
     block = prepare_random_pow_block(spec, rng=Random(2345))
     block.parent_hash = parent_block.block_hash
     block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
@@ -26,10 +26,10 @@ def test_is_valid_terminal_pow_block_success_valid(spec, state):
 @spec_state_test
 def test_is_valid_terminal_pow_block_fail_before_terminal(spec, state):
     parent_block = prepare_random_pow_block(spec, rng=Random(1234))
-    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(2)
+    parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(2)
     block = prepare_random_pow_block(spec, rng=Random(2345))
     block.parent_hash = parent_block.block_hash
-    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - Uint256(1)
 
     assert not spec.is_valid_terminal_pow_block(block, parent_block)
 
@@ -41,6 +41,6 @@ def test_is_valid_terminal_pow_block_fail_just_after_terminal(spec, state):
     parent_block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = prepare_random_pow_block(spec, rng=Random(2345))
     block.parent_hash = parent_block.block_hash
-    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
+    block.total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + Uint256(1)
 
     assert not spec.is_valid_terminal_pow_block(block, parent_block)

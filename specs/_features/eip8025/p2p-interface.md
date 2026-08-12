@@ -13,6 +13,10 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Constants](#constants)
   - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Types](#types)
+  - [New `ProofByRootIdentifiers`](#new-proofbyrootidentifiers)
+  - [New `ProofTypes`](#new-prooftypes)
+  - [New `SignedExecutionProofs`](#new-signedexecutionproofs)
 - [Containers](#containers)
   - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -40,13 +44,44 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `Uint64(4)` |
 
 ### Type-specific SSZ bounds
 
 | Name                              | Value                        |
 | --------------------------------- | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `uint64(4194449)` (= ~4 MiB) |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
+
+## Types
+
+### New `ProofByRootIdentifiers`
+
+```python
+class ProofByRootIdentifiers(List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    The identifiers of the execution proofs requested in an
+    ``ExecutionProofsByRoot`` request.
+    """
+```
+
+### New `ProofTypes`
+
+```python
+class ProofTypes(List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]):
+    """
+    A selection of execution proof types.
+    """
+```
+
+### New `SignedExecutionProofs`
+
+```python
+class SignedExecutionProofs(List[SignedExecutionProof, compute_max_request_execution_proofs()]):
+    """
+    Signed execution proofs returned in an ``ExecutionProofsByRange`` or
+    ``ExecutionProofsByRoot`` response.
+    """
+```
 
 ## Containers
 
@@ -55,7 +90,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+    proof_types: ProofTypes
 ```
 
 ## Helpers
@@ -63,11 +98,11 @@ class ProofByRootIdentifier(Container):
 ### New `compute_max_request_execution_proofs`
 
 ```python
-def compute_max_request_execution_proofs() -> uint64:
+def compute_max_request_execution_proofs() -> Uint64:
     """
     Return the maximum number of execution proofs in a single request.
     """
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
 
 ## The gossip domain: gossipsub
@@ -124,8 +159,8 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  count: Uint64
+  proof_types: ProofTypes
 )
 ```
 
@@ -133,7 +168,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 
@@ -173,7 +208,7 @@ Request Content:
 
 ```
 (
-  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  ProofByRootIdentifiers
 )
 ```
 
@@ -181,7 +216,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+  SignedExecutionProofs
 )
 ```
 
@@ -215,7 +250,7 @@ Request, Response Content:
 (
   block_root: Root
   slot: Slot
-  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  proof_types: ProofTypes
 )
 ```
 
@@ -257,7 +292,7 @@ of nodes that are aware of optional execution proofs.
 
 | Key      | Value                                    |
 | -------- | ---------------------------------------- |
-| `eproof` | Execution layer proof awareness, `uint8` |
+| `eproof` | Execution layer proof awareness, `Uint8` |
 
 A node is considered optional execution proof–aware if the `eproof` key is
 present and its value is not 0.

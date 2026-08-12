@@ -71,13 +71,13 @@ blocks can be reorged without any adversarial behavior and without slashing.
 
 | Name                                            | Value       | Description                                                                                                                                                                                                                                                                                                                     |
 | ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `uint64(5)` | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
+| `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `Uint64(5)` | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
 
 ### Configuration
 
 | Name                               | Value        | Max. Value   | Description                                                                |
 | ---------------------------------- | ------------ | ------------ | -------------------------------------------------------------------------- |
-| `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64(25)` | `uint64(25)` | Assumed maximum percentage of Byzantine validators among the validator set |
+| `CONFIRMATION_BYZANTINE_THRESHOLD` | `Uint64(25)` | `Uint64(25)` | Assumed maximum percentage of Byzantine validators among the validator set |
 
 ### Helpers
 
@@ -356,8 +356,8 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     """
     Return ``True`` if the range between ``start_slot`` and ``end_slot`` (inclusive of both) includes an entire epoch.
     """
-    start_full_epoch = compute_epoch_at_slot(start_slot + (SLOTS_PER_EPOCH - 1))
-    end_full_epoch = compute_epoch_at_slot(Slot(end_slot + 1))
+    start_full_epoch = compute_epoch_at_slot(start_slot + SLOTS_PER_EPOCH - Slot(1))
+    end_full_epoch = compute_epoch_at_slot(end_slot + Slot(1))
     return start_full_epoch < end_full_epoch
 ```
 

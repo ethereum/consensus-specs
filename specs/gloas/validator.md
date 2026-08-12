@@ -38,14 +38,14 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                          | Value          | Unit         | Duration                  |
-| ----------------------------- | -------------- | ------------ | ------------------------- |
-| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_DUE_BPS`             | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                          | Value          | Duration                  |
+| ----------------------------- | -------------- | ------------------------- |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -167,7 +167,7 @@ def get_signed_proposer_preferences(
     proposal_slot: Slot,
     validator_index: ValidatorIndex,
     fee_recipient: ExecutionAddress,
-    target_gas_limit: uint64,
+    target_gas_limit: Uint64,
     privkey: int,
 ) -> SignedProposerPreferences:
     proposal_epoch = compute_epoch_at_slot(proposal_slot)
@@ -212,8 +212,8 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
-    `should_build_on_full(store, head)` is true, otherwise
-    `state.latest_execution_payload_bid.parent_block_hash`.
+    `should_build_on_full(store, head, get_current_slot(store))` is true,
+    otherwise `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
   - The `bid.prev_randao` equals
     `get_randao_mix(state, get_current_epoch(state))`.
@@ -248,9 +248,9 @@ parent's execution payload. The proposer constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_build_on_full(store, head)` returns `True` (the proposer is
-  building on the parent's full payload), set `parent_execution_requests` to
-  `store.payloads[head.root].execution_requests`.
+- If `should_build_on_full(store, head, get_current_slot(store))` returns `True`
+  (the proposer is building on the parent's full payload), set
+  `parent_execution_requests` to `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 
@@ -319,10 +319,11 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
 ##### ExecutionPayload
 
 *Note*: `prepare_execution_payload` is modified to build on the parent's full
-payload or its empty variant, as decided by `should_build_on_full(store, head)`,
-which determines the withdrawals source and the execution head for the new
-payload. When building on a full parent, `apply_parent_execution_payload` is
-called so that withdrawals are computed against the post-processing state.
+payload or its empty variant, as decided by
+`should_build_on_full(store, head, get_current_slot(store))`, which determines
+the withdrawals source and the execution head for the new payload. When building
+on a full parent, `apply_parent_execution_payload` is called so that withdrawals
+are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
@@ -335,12 +336,12 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     # [New in Gloas]
-    target_gas_limit: uint64,
+    target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head):
+    if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
@@ -445,9 +446,7 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob

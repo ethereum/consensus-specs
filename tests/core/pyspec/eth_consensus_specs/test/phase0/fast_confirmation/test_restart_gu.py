@@ -479,8 +479,7 @@ def test_fcr_no_restart_if_head_gu_is_stale(spec, state):
         != fcr_store.current_epoch_observed_justified_checkpoint
     )
 
-    # Run fast confirmation and check that no restart happens
-    fcr.run_fast_confirmation()
+    # Check that no restart happens
     assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()

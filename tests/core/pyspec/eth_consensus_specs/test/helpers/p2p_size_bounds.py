@@ -9,7 +9,7 @@ def build_max_size_attestation(spec):
         aggregation_bits=aggregation_bits,
         data=spec.AttestationData(),
         signature=spec.BLSSignature(),
-        committee_bits=spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT](),
+        committee_bits=spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT](),
     )
 
 
@@ -27,7 +27,7 @@ def build_max_size_indexed_attestation(spec):
 
 def build_max_size_payload_attestation(spec):
     return spec.PayloadAttestation(
-        aggregation_bits=spec.Bitvector[spec.PTC_SIZE]([True] * spec.PTC_SIZE),
+        aggregation_bits=spec.BitVector[spec.PTC_SIZE]([True] * spec.PTC_SIZE),
         data=spec.PayloadAttestationData(),
         signature=spec.BLSSignature(),
     )
@@ -75,7 +75,7 @@ def build_max_size_data_column_sidecar(spec):
 
 
 def build_max_size_partial_data_column_sidecar(spec):
-    cells_present_bitmap = spec.ProgressiveBitlist([True] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
+    cells_present_bitmap = spec.ProgressiveBitList([True] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
     partial_column = spec.ProgressiveList[spec.Cell](
         [spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
     )
@@ -90,14 +90,14 @@ def build_max_size_partial_data_column_sidecar(spec):
 
 
 def build_max_size_signed_inclusion_list(spec):
-    payload_size = spec.config.MAX_BYTES_PER_INCLUSION_LIST
+    transactions_size = spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
     transactions = spec.ProgressiveList[spec.Transaction](
-        [spec.Transaction(b"\x00" * payload_size)]
+        [spec.Transaction(b"\x00" * transactions_size)]
     )
     inclusion_list = spec.InclusionList(
         slot=spec.Slot(0),
         validator_index=spec.ValidatorIndex(0),
-        inclusion_list_committee_root=spec.Root(),
+        dependent_root=spec.Root(),
         transactions=transactions,
     )
     return spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())

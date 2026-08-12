@@ -22,7 +22,7 @@ into a SSZ type:
 - Bitfields
   - [`bitvector`](#bitvector)
   - [`bitlist`](#bitlist)
-- ProgressiveBitlist
+- ProgressiveBitList
   - [`progressive_bitlist`](#progressive_bitlist)
 - Basic types
   - [`boolean`](#boolean)
@@ -32,7 +32,7 @@ into a SSZ type:
 - ProgressiveContainer
   - [`progressive_containers`](#progressive_containers)
 - CompatibleUnion
-  - [`compatible_unions`](#compatible_uniosn)
+  - [`compatible_unions`](#compatible_unions)
 
 ## Format
 
@@ -192,30 +192,30 @@ Data:
 
 ```python
 class SingleFieldTestStruct(Container):
-    A: byte
+    A: Byte
 
 
 class SmallTestStruct(Container):
-    A: uint16
-    B: uint16
+    A: Uint16
+    B: Uint16
 
 
 class FixedTestStruct(Container):
-    A: uint8
-    B: uint64
-    C: uint32
+    A: Uint8
+    B: Uint64
+    C: Uint32
 
 
 class VarTestStruct(Container):
-    A: uint16
-    B: List[uint16, 1024]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 1024]
+    C: Uint8
 
 
 class ComplexTestStruct(Container):
-    A: uint16
-    B: List[uint16, 128]
-    C: uint8
+    A: Uint16
+    B: List[Uint16, 128]
+    C: Uint8
     D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
@@ -223,33 +223,33 @@ class ComplexTestStruct(Container):
 
 
 class ProgressiveTestStruct(Container):
-    A: ProgressiveList[byte]
-    B: ProgressiveList[uint64]
+    A: ProgressiveList[Byte]
+    B: ProgressiveList[Uint64]
     C: ProgressiveList[SmallTestStruct]
     D: ProgressiveList[ProgressiveList[VarTestStruct]]
 
 
 class BitsStruct(Container):
-    A: Bitlist[5]
-    B: Bitvector[2]
-    C: Bitvector[1]
-    D: Bitlist[6]
-    E: Bitvector[8]
+    A: BitList[5]
+    B: BitVector[2]
+    C: BitVector[1]
+    D: BitList[6]
+    E: BitVector[8]
 
 
 class ProgressiveBitsStruct(Container):
-    A: Bitvector[256]
-    B: Bitlist[256]
-    C: ProgressiveBitlist
-    D: Bitvector[257]
-    E: Bitlist[257]
-    F: ProgressiveBitlist
-    G: Bitvector[1280]
-    H: Bitlist[1280]
-    I: ProgressiveBitlist
-    J: Bitvector[1281]
-    K: Bitlist[1281]
-    L: ProgressiveBitlist
+    A: BitVector[256]
+    B: BitList[256]
+    C: ProgressiveBitList
+    D: BitVector[257]
+    E: BitList[257]
+    F: ProgressiveBitList
+    G: BitVector[1280]
+    H: BitList[1280]
+    I: ProgressiveBitList
+    J: BitVector[1281]
+    K: BitList[1281]
+    L: ProgressiveBitList
 ```
 
 ### `progressive_containers`
@@ -270,17 +270,17 @@ Data:
 
 ```python
 class ProgressiveSingleFieldContainerTestStruct(ProgressiveContainer(active_fields=[1])):
-    A: byte
+    A: Byte
 
 
 class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_fields=[0, 0, 0, 0, 1])):
-    C: ProgressiveBitlist
+    C: ProgressiveBitList
 
 
 class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
-    A: byte
-    B: List[uint16, 123]
-    C: ProgressiveBitlist
+    A: Byte
+    B: List[Uint16, 123]
+    C: ProgressiveBitList
 
 
 class ProgressiveComplexTestStruct(
@@ -288,10 +288,10 @@ class ProgressiveComplexTestStruct(
         active_fields=[1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1]
     )
 ):
-    A: byte
-    B: List[uint16, 123]
-    C: ProgressiveBitlist
-    D: ProgressiveList[uint64]
+    A: Byte
+    B: List[Uint16, 123]
+    C: ProgressiveBitList
+    D: ProgressiveList[Uint64]
     E: ProgressiveList[SmallTestStruct]
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]

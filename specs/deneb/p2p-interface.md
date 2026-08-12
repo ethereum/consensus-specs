@@ -6,6 +6,12 @@
 - [Modifications in Deneb](#modifications-in-deneb)
   - [Preset](#preset)
   - [Configuration](#configuration)
+  - [Types](#types)
+    - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
+    - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
+    - [New `BlobIdentifiers`](#new-blobidentifiers)
+    - [New `BlobSidecars`](#new-blobsidecars)
+    - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
   - [Containers](#containers)
     - [New `BlobSidecar`](#new-blobsidecar)
     - [New `BlobIdentifier`](#new-blobidentifier)
@@ -54,7 +60,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                   | Value                                                                                                                                     | Description                                                                 |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
 ### Configuration
 
@@ -62,9 +68,62 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                    | Value                    | Description                                                    |
 | --------------------------------------- | ------------------------ | -------------------------------------------------------------- |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                   |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | Minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | Number of blob sidecar subnets used in the gossipsub protocol  |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `Uint64(2**7)` (= 128)   | Maximum number of blocks in a single request                   |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `Uint64(6)`              | Number of blob sidecar subnets used in the gossipsub protocol  |
+
+### Types
+
+#### Modified `BeaconBlockRoots`
+
+```python
+# [Modified in Deneb:EIP4844]
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
+```
+
+#### Modified `SignedBeaconBlocks`
+
+```python
+# [Modified in Deneb:EIP4844]
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
+```
+
+#### New `BlobIdentifiers`
+
+```python
+class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
+    """
+    The identifiers of the blob sidecars requested in a
+    ``BlobSidecarsByRoot`` request.
+    """
+```
+
+#### New `BlobSidecars`
+
+```python
+class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
+    """
+    Blob sidecars returned in a ``BlobSidecarsByRange`` or
+    ``BlobSidecarsByRoot`` response.
+    """
+```
+
+#### New `KZGCommitmentInclusionProof`
+
+```python
+class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+    """
+    A Merkle branch proving a blob's KZG commitment within
+    ``BeaconBlockBody``.
+    """
+```
 
 ### Containers
 
@@ -81,7 +140,7 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: KZGCommitmentInclusionProof
 ```
 
 #### New `BlobIdentifier`
@@ -101,16 +160,16 @@ class BlobIdentifier(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [New in Deneb]
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
@@ -138,16 +197,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ```python
 def is_within_epoch(
-    state: BeaconState,
+    store: Store,
     epoch: Epoch,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the current time is within the given epoch
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
     return is_within_slot_range(
-        state,
+        store,
         compute_start_slot_at_epoch(epoch),
         SLOTS_PER_EPOCH - 1,
         current_time_ms,
@@ -158,27 +217,27 @@ def is_within_epoch(
 
 ```python
 def is_current_or_previous_epoch(
-    state: BeaconState,
+    store: Store,
     epoch: Epoch,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> bool:
     """
     Check if the given epoch is the current or previous epoch
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    is_current = is_within_epoch(state, epoch, current_time_ms)
-    is_previous = is_within_epoch(state, Epoch(epoch + 1), current_time_ms)
+    is_current = is_within_epoch(store, epoch, current_time_ms)
+    is_previous = is_within_epoch(store, Epoch(epoch + 1), current_time_ms)
     return is_current or is_previous
 ```
 
 #### New `compute_max_request_blob_sidecars`
 
 ```python
-def compute_max_request_blob_sidecars() -> uint64:
+def compute_max_request_blob_sidecars() -> Uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
+    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
 ```
 
 #### New `verify_blob_sidecar_inclusion_proof`
@@ -241,7 +300,7 @@ def validate_beacon_block_gossip(
     store: Store,
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
@@ -253,7 +312,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if is_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -263,9 +322,10 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -293,25 +353,24 @@ def validate_beacon_block_gossip(
 
     if block.parent_root not in store.block_states:
         if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-            # [REJECT] The block's parent passes validation
-            raise GossipReject("block's parent is invalid and EL result is unknown")
+            # [REJECT] The block's parent failed validation and its execution payload is optimistic
+            raise GossipReject("block's parent is invalid and its payload is optimistic")
 
-        # [IGNORE] The block's parent passes validation
-        raise GossipIgnore("block's parent is invalid and EL result is known")
+        # [IGNORE] The block's parent failed validation and its execution payload is processed
+        raise GossipIgnore("block's parent is invalid and its payload is processed")
 
-    # [IGNORE] The block's parent's execution payload passes validation
+    # [IGNORE] The block's parent passed validation but its execution payload is invalid
     if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
-        raise GossipIgnore("block's parent is valid and EL result is invalid")
+        raise GossipIgnore("block's parent is valid and its payload is invalid")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [New in Deneb:EIP4844]
@@ -328,7 +387,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### Modified `beacon_aggregate_and_proof`
@@ -343,7 +402,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -362,13 +421,13 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [New in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, aggregate.data.slot, current_time_ms):
+    if is_future_slot(store, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("aggregate epoch is not current or previous epoch")
 
     # [REJECT] The aggregate attestation's epoch matches its target
@@ -392,11 +451,12 @@ def validate_beacon_aggregate_and_proof_gossip(
     if is_non_strict_superset(seen_bits, aggregate_bits):
         raise GossipIgnore("already seen aggregate for this data")
 
-    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
-    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
 
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
@@ -425,29 +485,27 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    if aggregate.data.beacon_block_root not in store.blocks:
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if aggregate.data.beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
-    checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
-    )
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
     if checkpoint_block != aggregate.data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The finalized checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    seen.aggregator_epochs.add(aggregator_epoch_key)
     if aggregate_data_root not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_data_root] = set()
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
@@ -529,7 +587,7 @@ def validate_beacon_attestation_gossip(
     store: Store,
     state: BeaconState,
     attestation: Attestation,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -556,13 +614,13 @@ def validate_beacon_attestation_gossip(
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, data.slot, current_time_ms):
+    if is_future_slot(store, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's epoch is either the current or previous epoch
     attestation_epoch = compute_epoch_at_slot(data.slot)
-    if not is_current_or_previous_epoch(state, attestation_epoch, current_time_ms):
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
         raise GossipIgnore("attestation epoch is not current or previous epoch")
 
     # [REJECT] The attestation's epoch matches its target
@@ -579,10 +637,11 @@ def validate_beacon_attestation_gossip(
     if len(aggregation_bits) != len(committee):
         raise GossipReject("aggregation bits length does not match committee size")
 
-    # [IGNORE] No other valid attestation seen for this validator and target epoch
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
     participant_index = committee[aggregation_bits.index(True)]
-    if (participant_index, target_epoch) in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation from this validator for this epoch")
+    attestation_epoch_key = (target_epoch, participant_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
     indexed_attestation = get_indexed_attestation(state, attestation)
@@ -591,28 +650,27 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
-    beacon_block_root = data.beacon_block_root
-    if beacon_block_root not in store.blocks:
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if beacon_block_root not in store.block_states:
+    if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
-    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The current finalized_checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((participant_index, target_epoch))
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
 ##### Blob subnets
@@ -630,7 +688,7 @@ def validate_blob_sidecar_gossip(
     store: Store,
     state: BeaconState,
     blob_sidecar: BlobSidecar,
-    current_time_ms: uint64,
+    current_time_ms: Uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -649,7 +707,7 @@ def validate_blob_sidecar_gossip(
 
     # [IGNORE] The sidecar is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+    if is_future_slot(store, block_header.slot, current_time_ms):
         raise GossipIgnore("blob sidecar is from a future slot")
 
     # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
@@ -670,22 +728,22 @@ def validate_blob_sidecar_gossip(
 
     # [IGNORE] The sidecar's block's parent has been seen
     # (MAY be queued for processing once the parent block is retrieved)
-    if block_header.parent_root not in store.blocks:
+    parent_root = block_header.parent_root
+    if parent_root not in store.blocks:
         raise GossipIgnore("blob sidecar's parent has not been seen")
 
     # [REJECT] The sidecar's block's parent passes validation
-    if block_header.parent_root not in store.block_states:
+    if parent_root not in store.block_states:
         raise GossipReject("blob sidecar's parent failed validation")
 
     # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
-    if block_header.slot <= store.blocks[block_header.parent_root].slot:
+    if block_header.slot <= store.blocks[parent_root].slot:
         raise GossipReject("blob sidecar is not from a higher slot than its parent")
 
     # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
-    checkpoint_block = get_checkpoint_block(
-        store, block_header.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
 
     # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof
@@ -693,7 +751,7 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("invalid blob sidecar inclusion proof")
 
     # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
-    if not verify_blob_kzg_proof(
+    if not kzg.verify_blob_kzg_proof(
         blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
     ):
         raise GossipReject("invalid blob kzg proof")
@@ -706,7 +764,7 @@ def validate_blob_sidecar_gossip(
 
     # [REJECT] The sidecar is proposed by the expected proposer_index
     # (if shuffling is not available, IGNORE instead and MAY be queued for later)
-    parent_state = store.block_states[block_header.parent_root].copy()
+    parent_state = store.block_states[parent_root].copy()
     process_slots(parent_state, block_header.slot)
     expected_proposer = get_beacon_proposer_index(parent_state)
     if block_header.proposer_index != expected_proposer:
@@ -714,6 +772,19 @@ def validate_blob_sidecar_gossip(
 
     # Mark this blob sidecar as seen
     seen.blob_sidecar_tuples.add(sidecar_tuple)
+```
+
+*Note*: The function `kzg.verify_blob_kzg_proof` is defined in
+[cryptography-specs](https://github.com/ethereum/cryptography-specs) with the
+following signature:
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def verify_blob_kzg_proof(blob: Blob, commitment_bytes: Bytes48, proof_bytes: Bytes48) -> bool:
+    """
+    Return ``True`` if and only if ``blob`` and its proof match the commitment.
+    """
 ```
 
 The `ForkDigest` context epoch is determined by
@@ -762,8 +833,8 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
-  step: uint64 # Deprecated, must be set to 1
+  count: Uint64
+  step: Uint64 # Deprecated, must be set to 1
 )
 ```
 
@@ -771,7 +842,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -798,7 +869,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+  BeaconBlockRoots
 )
 ```
 
@@ -806,7 +877,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -840,7 +911,7 @@ Request Content:
 ```
 (
   start_slot: Slot
-  count: uint64
+  count: Uint64
 )
 ```
 
@@ -848,7 +919,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 
@@ -857,7 +928,7 @@ leading up to the current head block as selected by fork choice.
 
 Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
-the expected KZG commitments through `verify_blob_kzg_proof`.
+the expected KZG commitments through `kzg.verify_blob_kzg_proof`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed
 on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
@@ -939,7 +1010,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, compute_max_request_blob_sidecars()]
+  BlobIdentifiers
 )
 ```
 
@@ -947,7 +1018,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 
@@ -957,7 +1028,7 @@ may be less in the case that the responding peer is missing blocks or sidecars.
 
 Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
-the expected KZG commitments through `verify_blob_kzg_proof`.
+the expected KZG commitments through `kzg.verify_blob_kzg_proof`.
 
 No more than `compute_max_request_blob_sidecars()` may be requested at a time.
 
