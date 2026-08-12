@@ -64,9 +64,10 @@ class ProofType(Uint8):
 
 *Note*: The execution values are not definitive.
 
-| Name             | Value                                  |
-| ---------------- | -------------------------------------- |
-| `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+| Name                | Value                                  |
+| ------------------- | -------------------------------------- |
+| `MAX_PROOF_SIZE`    | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+| `CHAIN_CONFIG_ROOT` | `Root()`                               |
 
 ### Domains
 
@@ -129,7 +130,6 @@ def process_execution_proof(
     state: BeaconState,
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
-    chain_config_root: Root,
 ) -> None:
     proof_message = signed_proof.message
     assert signed_proof.validator_index < len(state.validators)
@@ -145,5 +145,5 @@ def process_execution_proof(
     assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
-    assert proof_engine.verify_execution_proof(proof_message, chain_config_root)
+    assert proof_engine.verify_execution_proof(proof_message, CHAIN_CONFIG_ROOT)
 ```
