@@ -23,13 +23,19 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
         return """
 class NoopProofEngine(ProofEngine):
 
+    def is_supported_proof_type(self: ProofEngine,
+                                proof_type: ProofType) -> bool:
+        return False
+
     def verify_execution_proof(self: ProofEngine,
-                               execution_proof: ExecutionProof) -> bool:
-        return True
+                               execution_proof: ExecutionProof,
+                               trusted_chain_config_root: Root) -> bool:
+        return False
 
     def request_proof(self: ProofEngine,
                       private_input: PrivateInput,
-                      proof_type: ProofType) -> Root:
+                      proof_type: ProofType,
+                      trusted_chain_config_root: Root) -> Root:
         raise NotImplementedError("no default proof generation")
 
 

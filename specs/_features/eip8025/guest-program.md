@@ -12,15 +12,20 @@
   - [Generalized indices](#generalized-indices)
 - [Guest inputs](#guest-inputs)
   - [New `BeaconBlockBidWitness`](#new-beaconblockbidwitness)
+  - [New `BeaconStateWitness`](#new-beaconstatewitness)
   - [New `BeaconChainWitness`](#new-beaconchainwitness)
   - [New `PrivateInput`](#new-privateinput)
 - [Guest interface](#guest-interface)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
+  - [New `compute_chain_config_root`](#new-compute_chain_config_root)
+  - [New `compute_new_payload_request_root`](#new-compute_new_payload_request_root)
   - [Execution-specs `verify_stateless_new_payload`](#execution-specs-verify_stateless_new_payload)
 - [Guest processing](#guest-processing)
   - [New `verify_beacon_block_bid_witness`](#new-verify_beacon_block_bid_witness)
+  - [New `verify_beacon_state_field`](#new-verify_beacon_state_field)
+  - [New `get_progressive_list_element_field_gindex`](#new-get_progressive_list_element_field_gindex)
   - [New `process_private_input`](#new-process_private_input)
-- [Signature boundary](#signature-boundary)
+- [Availability boundary](#availability-boundary)
 
 <!-- mdformat-toc end -->
 
@@ -28,7 +33,9 @@
 
 This document defines the private witness interface and processing logic for a
 recursive guest program that produces an `ExecutionProof`. The execution proof
-commitment is the `PublicInput` defined in [beacon-chain.md](./beacon-chain.md).
+commitment is the `GuestPublicInput` defined in
+[beacon-chain.md](./beacon-chain.md). The gossiped `ExecutionProofClaim` omits
+the locally trusted chain-configuration commitment.
 
 Proofs are produced only for *full* beacon blocks. *Empty* beacon blocks are
 included in the next proof's `beacon_lineage`, where their empty status is
@@ -46,7 +53,7 @@ parent execution block hash.
 ## Guest inputs
 
 The guest inputs are implementation-level dataclasses, not consensus SSZ
-containers. Only the returned `PublicInput` is public.
+containers. Only the returned `GuestPublicInput` is public.
 
 ### New `BeaconBlockBidWitness`
 
@@ -58,6 +65,27 @@ class BeaconBlockBidWitness:
     signed_bid_merkle_witness: Sequence[Bytes32]
 ```
 
+### New `BeaconStateWitness`
+
+```python
+@dataclass
+class BeaconStateWitness:
+    genesis_time: Uint64
+    genesis_time_merkle_witness: Sequence[Bytes32]
+    fork: Fork
+    fork_merkle_witness: Sequence[Bytes32]
+    genesis_validators_root: Root
+    genesis_validators_root_merkle_witness: Sequence[Bytes32]
+    payload_expected_withdrawals: Withdrawals
+    payload_expected_withdrawals_merkle_witness: Sequence[Bytes32]
+    envelope_signer_pubkey: BLSPubkey
+    envelope_signer_pubkey_merkle_witness: Sequence[Bytes32]
+```
+
+Each branch is opened against the target beacon block header's `state_root`. The
+signer branch is opened at either the target proposer validator's `pubkey` or
+the selected builder's `pubkey`, as determined by `builder_index`.
+
 ### New `BeaconChainWitness`
 
 ```python
@@ -67,6 +95,7 @@ class BeaconChainWitness:
     previous_proof: Optional[ExecutionProof]
     beacon_lineage: Sequence[BeaconBlockBidWitness]
     signed_envelope: SignedExecutionPayloadEnvelope
+    target_state: BeaconStateWitness
 ```
 
 Exactly one of `origin` and `previous_proof` MUST be present. `origin` starts a
@@ -111,11 +140,30 @@ cryptographic encodings are deliberately outside the consensus specification.
 def verify_execution_proof(
     self: Guest,
     previous_proof: ExecutionProof,
+    chain_config_root: Root,
 ) -> bool:
     """
-    Recursively verify ``previous_proof`` and its committed public input.
+    Recursively verify ``previous_proof`` against ``GuestPublicInput`` rebuilt
+    from its claim and ``chain_config_root``.
     Return ``True`` only if its proof type is bound to this guest program.
     """
+```
+
+### New `compute_chain_config_root`
+
+```python
+def compute_chain_config_root(self: Guest, chain_config: Any) -> Root:
+    """Return the canonical commitment to the execution ``ChainConfig``."""
+```
+
+### New `compute_new_payload_request_root`
+
+```python
+def compute_new_payload_request_root(
+    self: Guest,
+    new_payload_request: NewPayloadRequest,
+) -> Root:
+    """Return the execution-specs commitment to ``new_payload_request``."""
 ```
 
 ### Execution-specs `verify_stateless_new_payload`
@@ -167,14 +215,63 @@ def verify_beacon_block_bid_witness(witness: BeaconBlockBidWitness) -> None:
     )
 ```
 
+The signed bid is authenticated as a complete field of an already accepted
+beacon block. Its BLS signature is not reverified by the guest.
+
+### New `verify_beacon_state_field`
+
+```python
+def verify_beacon_state_field(
+    value: Any,
+    branch: Sequence[Bytes32],
+    generalized_index: GeneralizedIndex,
+    state_root: Root,
+) -> None:
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(value),
+        branch=branch,
+        depth=floorlog2(generalized_index),
+        index=get_subtree_index(generalized_index),
+        root=state_root,
+    )
+```
+
+### New `get_progressive_list_element_field_gindex`
+
+```python
+def get_progressive_list_element_field_gindex(
+    container_type: Any,
+    container_field: str,
+    list_type: Any,
+    element_index: int,
+    element_type: Any,
+    element_field: str,
+) -> GeneralizedIndex:
+    """Return the state-relative gindex of a field in a progressive-list item."""
+    indices = (
+        get_generalized_index(container_type, container_field),
+        GeneralizedIndex(list_type.chunk_to_gindex(element_index)),
+        get_generalized_index(element_type, element_field),
+    )
+    result = GeneralizedIndex(1)
+    for index in indices:
+        depth = int(floorlog2(index))
+        result = GeneralizedIndex((int(result) << depth) | (int(index) ^ (1 << depth)))
+    return result
+```
+
+Progressive lists have index-dependent paths, so their element fields cannot be
+located with the static `get_generalized_index` helper alone.
+
 ### New `process_private_input`
 
 ```python
 def process_private_input(
     guest: Guest,
     private_input: PrivateInput,
-) -> PublicInput:
+) -> GuestPublicInput:
     beacon_chain_witness = private_input.beacon_chain_witness
+    chain_config_root = guest.compute_chain_config_root(private_input.chain_config)
 
     previous_proof = beacon_chain_witness.previous_proof
     if previous_proof is None:
@@ -183,9 +280,9 @@ def process_private_input(
         previous_head = origin
     else:
         assert beacon_chain_witness.origin is None
-        assert guest.verify_execution_proof(previous_proof)
-        origin = previous_proof.public_input.origin
-        previous_head = previous_proof.public_input.head
+        assert guest.verify_execution_proof(previous_proof, chain_config_root)
+        origin = previous_proof.claim.origin
+        previous_head = previous_proof.claim.head
 
     lineage = beacon_chain_witness.beacon_lineage
     assert len(lineage) >= 2
@@ -230,6 +327,59 @@ def process_private_input(
     target_bid = target.signed_bid.message
     envelope = beacon_chain_witness.signed_envelope.message
     payload = envelope.payload
+    target_state = beacon_chain_witness.target_state
+
+    # Authenticate every state-dependent input used below against the accepted
+    # target block's post-state root.
+    verify_beacon_state_field(
+        target_state.genesis_time,
+        target_state.genesis_time_merkle_witness,
+        get_generalized_index(BeaconState, "genesis_time"),
+        target_header.state_root,
+    )
+    verify_beacon_state_field(
+        target_state.fork,
+        target_state.fork_merkle_witness,
+        get_generalized_index(BeaconState, "fork"),
+        target_header.state_root,
+    )
+    verify_beacon_state_field(
+        target_state.genesis_validators_root,
+        target_state.genesis_validators_root_merkle_witness,
+        get_generalized_index(BeaconState, "genesis_validators_root"),
+        target_header.state_root,
+    )
+    verify_beacon_state_field(
+        target_state.payload_expected_withdrawals,
+        target_state.payload_expected_withdrawals_merkle_witness,
+        get_generalized_index(BeaconState, "payload_expected_withdrawals"),
+        target_header.state_root,
+    )
+
+    if envelope.builder_index == BUILDER_INDEX_SELF_BUILD:
+        signer_gindex = get_progressive_list_element_field_gindex(
+            BeaconState,
+            "validators",
+            Validators,
+            target_header.proposer_index,
+            Validator,
+            "pubkey",
+        )
+    else:
+        signer_gindex = get_progressive_list_element_field_gindex(
+            BeaconState,
+            "builders",
+            Builders,
+            envelope.builder_index,
+            Builder,
+            "pubkey",
+        )
+    verify_beacon_state_field(
+        target_state.envelope_signer_pubkey,
+        target_state.envelope_signer_pubkey_merkle_witness,
+        signer_gindex,
+        target_header.state_root,
+    )
 
     # Bind the payload envelope to the authenticated target bid and beacon
     # block header.
@@ -243,6 +393,40 @@ def process_private_input(
     assert hash_tree_root(envelope.execution_requests) == target_bid.execution_requests_root
     assert payload.slot_number == target_header.slot
     assert payload.parent_hash == parent_execution_block_hash
+    assert payload.timestamp == Uint64(
+        target_state.genesis_time + (target_header.slot - GENESIS_SLOT) * SLOT_DURATION_MS // 1000
+    )
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(
+        target_state.payload_expected_withdrawals
+    )
+
+    # Enforce the same count bounds as execution-payload-envelope gossip.
+    assert len(envelope.execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
+    assert len(envelope.execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+    assert (
+        len(envelope.execution_requests.builder_deposits)
+        <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
+    )
+    assert len(envelope.execution_requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
+    assert len(payload.withdrawals) <= MAX_WITHDRAWALS_PER_PAYLOAD
+
+    envelope_epoch = compute_epoch_at_slot(target_header.slot)
+    fork_version = (
+        target_state.fork.previous_version
+        if envelope_epoch < target_state.fork.epoch
+        else target_state.fork.current_version
+    )
+    domain = compute_domain(
+        DOMAIN_BEACON_BUILDER,
+        fork_version,
+        target_state.genesis_validators_root,
+    )
+    signing_root = compute_signing_root(envelope, domain)
+    assert bls.Verify(
+        target_state.envelope_signer_pubkey,
+        signing_root,
+        beacon_chain_witness.signed_envelope.signature,
+    )
 
     new_payload_request = NewPayloadRequest(
         execution_payload=payload,
@@ -262,26 +446,23 @@ def process_private_input(
     )
     assert execution_result.successful_validation
     assert execution_result.chain_config == private_input.chain_config
+    assert execution_result.new_payload_request_root == (
+        guest.compute_new_payload_request_root(new_payload_request)
+    )
 
-    return PublicInput(
+    return GuestPublicInput(
         origin=origin,
         head=ExecutionCheckpoint(
             slot=target_header.slot,
             beacon_block_root=target_beacon_block_root,
         ),
+        chain_config_root=chain_config_root,
     )
 ```
 
-## Signature boundary
+## Availability boundary
 
-*TODO*: Determine whether the guest should verify the bid and envelope BLS
-signatures and, if so, define how it authenticates the signer public key and
-signing domain from consensus state.
-
-`SignedExecutionPayloadBid` and `SignedExecutionPayloadEnvelope` are used as the
-standard consensus wire objects. The guest authenticates the complete signed bid
-through the beacon block body root, but does not verify either BLS signature.
-Consensus clients MUST perform the normal Gloas signature, builder, timing,
-withdrawal, availability, and state-dependent checks before accepting the block
-and envelope. The guest proves the consensus/execution binding and the execution
-transition itself.
+The proof replaces the payload-envelope and execution-engine validity checks; it
+does not prove payload data availability. The block-in-blob availability design
+provides that separate guarantee. This specification therefore introduces no
+fork-choice availability signal or proof-driven change to Gloas payload status.

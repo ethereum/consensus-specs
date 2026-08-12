@@ -9,6 +9,7 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Proof engine](#proof-engine)
+  - [New `is_supported_proof_type`](#new-is_supported_proof_type)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `request_proof`](#new-request_proof)
 
@@ -39,15 +40,33 @@ The bodies of these functions are implementation dependent. The Engine API may
 be extended to expose equivalent functions when the proof engine is an external
 process.
 
+### New `is_supported_proof_type`
+
+```python
+def is_supported_proof_type(
+    self: ProofEngine,
+    proof_type: ProofType,
+) -> bool:
+    """
+    Return ``True`` only when ``proof_type`` has a globally allocated verifier
+    and guest-program version supported by this proof engine.
+    """
+```
+
+`PROOF_TYPE_RESERVED` is never supported. Test harnesses MAY register a local
+dummy type, but it MUST NOT be accepted by production configurations.
+
 ### New `verify_execution_proof`
 
 ```python
 def verify_execution_proof(
     self: ProofEngine,
     execution_proof: ExecutionProof,
+    trusted_chain_config_root: Root,
 ) -> bool:
     """
-    Verify an execution proof and its committed ``PublicInput``.
+    Reconstruct ``GuestPublicInput`` from the gossiped claim and locally trusted
+    ``chain_config_root``, then verify the proof against that public input.
     Return ``True`` if the proof is valid.
     """
 ```
@@ -59,15 +78,19 @@ def request_proof(
     self: ProofEngine,
     private_input: PrivateInput,
     proof_type: ProofType,
+    trusted_chain_config_root: Root,
 ) -> Root:
     """
     Request asynchronous proof generation for ``private_input`` using
-    ``proof_type``. Returns the target beacon block root
+    ``proof_type`` and locally trusted chain configuration. Returns the target beacon block root
     ``private_input.beacon_chain_witness.signed_envelope.message.beacon_block_root``
     to track the generation request.
 
     Requests are singular because the recursive predecessor in
     ``private_input.beacon_chain_witness.previous_proof`` is specific to
     ``proof_type``.
+
+    The proof engine MUST reject the completed guest output unless its
+    ``chain_config_root`` equals ``trusted_chain_config_root``.
     """
 ```

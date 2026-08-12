@@ -16,7 +16,8 @@
   - [Domains](#domains)
 - [Containers](#containers)
   - [New `ExecutionCheckpoint`](#new-executioncheckpoint)
-  - [New `PublicInput`](#new-publicinput)
+  - [New `ExecutionProofClaim`](#new-executionproofclaim)
+  - [New `GuestPublicInput`](#new-guestpublicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -54,9 +55,14 @@ class ProofData(ProgressiveByteList):
 ```python
 class ProofType(Uint8):
     """
-    The identifier of the proof system that produced an execution proof.
+    The globally allocated identifier of an exact proof-system and guest-program
+    version pair.
     """
 ```
+
+`ProofType(0)` is reserved and MUST NOT identify a production proof system.
+Changing the guest predicate or any progressive SSZ schema committed by the
+guest requires a new `ProofType` allocation.
 
 ## Constants
 
@@ -67,6 +73,10 @@ class ProofType(Uint8):
 | Name             | Value                                  |
 | ---------------- | -------------------------------------- |
 | `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+
+| Name                  | Value          |
+| --------------------- | -------------- |
+| `PROOF_TYPE_RESERVED` | `ProofType(0)` |
 
 ### Domains
 
@@ -84,10 +94,10 @@ class ExecutionCheckpoint(Container):
     beacon_block_root: Root
 ```
 
-### New `PublicInput`
+### New `ExecutionProofClaim`
 
 ```python
-class PublicInput(Container):
+class ExecutionProofClaim(ProgressiveContainer(active_fields=[1] * 2)):
     origin: ExecutionCheckpoint
     head: ExecutionCheckpoint
 ```
@@ -97,13 +107,26 @@ the client's weak subjectivity checkpoint. It is preserved unchanged by every
 recursive step. `head` identifies the target full beacon block proven from that
 origin.
 
+### New `GuestPublicInput`
+
+```python
+class GuestPublicInput(ProgressiveContainer(active_fields=[1] * 3)):
+    origin: ExecutionCheckpoint
+    head: ExecutionCheckpoint
+    chain_config_root: Root
+```
+
+`GuestPublicInput` is the complete public input committed by the guest program.
+The locally trusted `chain_config_root` is injected at the proof-engine API
+boundary and is not transmitted in execution-proof gossip.
+
 ### New `ExecutionProof`
 
 ```python
-class ExecutionProof(Container):
+class ExecutionProof(ProgressiveContainer(active_fields=[1] * 3)):
     proof_data: ProofData
     proof_type: ProofType
-    public_input: PublicInput
+    claim: ExecutionProofClaim
 ```
 
 ### New `SignedExecutionProof`
@@ -129,12 +152,13 @@ def process_execution_proof(
     state: BeaconState,
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
+    trusted_chain_config_root: Root,
 ) -> None:
     proof_message = signed_proof.message
     assert signed_proof.validator_index < len(state.validators)
     assert len(proof_message.proof_data) > 0
     assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
-    assert proof_message.proof_type < MAX_EXECUTION_PROOFS_PER_PAYLOAD
+    assert proof_engine.is_supported_proof_type(proof_message.proof_type)
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]
@@ -145,5 +169,5 @@ def process_execution_proof(
     assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
-    assert proof_engine.verify_execution_proof(proof_message)
+    assert proof_engine.verify_execution_proof(proof_message, trusted_chain_config_root)
 ```

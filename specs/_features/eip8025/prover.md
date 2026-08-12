@@ -11,6 +11,7 @@
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
 - [Execution proof](#execution-proof)
+  - [Obtaining an execution witness](#obtaining-an-execution-witness)
   - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
 
 <!-- mdformat-toc end -->
@@ -44,6 +45,24 @@ def get_execution_proof_signature(
 
 ## Execution proof
 
+### Obtaining an execution witness
+
+The execution witness is obtained from the execution layer through a versioned
+Engine API `newPayloadWithWitness` method. This is an EL method: the consensus
+client sends the same `NewPayloadRequest` used by `engine_newPayload`, and the
+EL returns payload validation status together with the execution witness needed
+by the stateless guest.
+
+- `VALID` with a witness permits proof generation.
+- `SYNCING` or `ACCEPTED` is retryable and does not permit proof generation yet.
+- `INVALID` is terminal for that payload and no proof is requested.
+- A missing or malformed witness is an error even when the status is `VALID`.
+
+The locally configured execution `ChainConfig` is not supplied by the EL and is
+committed separately as `chain_config_root`. Transaction public keys are derived
+by the prover host from the payload transactions in the canonical form expected
+by the execution-specs stateless verifier.
+
 ### Constructing the `SignedExecutionProof`
 
 An honest prover who is an active validator and wants to generate execution
@@ -64,17 +83,22 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
      `SignedExecutionPayloadBid` and its Merkle branch against the block
      header's `body_root`. The resulting `beacon_lineage` starts with the
      predecessor checkpoint and ends with the target block.
-   - Obtain the execution-specs `ExecutionWitness`, `ChainConfig`, and
-     transaction public keys for the target payload. The terminal parent header
-     in the execution witness MUST correspond to the execution block hash opened
-     from the predecessor checkpoint bid. If any intermediate produced block is
+   - Call the EL `newPayloadWithWitness` Engine API method for the target
+     payload and require a `VALID` response with an `ExecutionWitness`. Load the
+     locally configured `ChainConfig`, derive the transaction public keys, and
+     compute the trusted `chain_config_root`. The terminal parent header in the
+     execution witness MUST correspond to the execution block hash opened from
+     the predecessor checkpoint bid. If any intermediate produced block is
      *full*, first generate a separate recursive proof for that transition.
+   - Build `BeaconStateWitness` branches for `genesis_time`, `fork`,
+     `genesis_validators_root`, `payload_expected_withdrawals`, and the selected
+     envelope signer public key against the target block's state root.
    - For each desired `proof_type`, assemble a `BeaconChainWitness` from its
      compatible predecessor, beacon lineage, and signed envelope. Combine it
      with the execution witness, chain configuration, and transaction public
      keys as `PrivateInput`.
    - Call
-     `beacon_block_root = proof_engine.request_proof(private_input, proof_type)`
+     `beacon_block_root = proof_engine.request_proof(private_input, proof_type, trusted_chain_config_root)`
      to initiate proof generation, tracking the request by
      `(beacon_block_root, proof_type)`.
 3. The proof engine runs `process_private_input` in the selected guest. Proof
@@ -83,9 +107,9 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
 4. Upon receiving a proof completion event for a tracked
    `(beacon_block_root, proof_type)`:
    - Fetch the completed `ExecutionProof` from the proof engine.
-   - Check that `proof.public_input.head.beacon_block_root` equals the tracked
-     `beacon_block_root` and that `proof.public_input.head.slot` equals the
-     target block slot.
+   - Check that `proof.claim.head.beacon_block_root` equals the tracked
+     `beacon_block_root` and that `proof.claim.head.slot` equals the target
+     block slot.
    - Let `validator_index` be the prover's validator index.
    - Let
      `signature = get_execution_proof_signature(state, proof, prover_privkey)`.

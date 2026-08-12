@@ -108,7 +108,7 @@ def build_max_size_signed_execution_proof(spec):
         message=spec.ExecutionProof(
             proof_data=spec.ProgressiveByteList(b"\x00" * spec.MAX_PROOF_SIZE),
             proof_type=spec.ProofType(0),
-            public_input=spec.PublicInput(),
+            claim=spec.ExecutionProofClaim(),
         ),
         validator_index=spec.ValidatorIndex(0),
         signature=spec.BLSSignature(),

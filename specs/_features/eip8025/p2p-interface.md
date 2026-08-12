@@ -14,7 +14,6 @@ Req/Resp protocol is defined.
 
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
-  - [Execution](#execution)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
@@ -29,14 +28,6 @@ Req/Resp protocol is defined.
 <!-- mdformat-toc end -->
 
 ## Constants
-
-### Execution
-
-*Note*: The execution values are not definitive.
-
-| Name                               | Value       |
-| ---------------------------------- | ----------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `Uint64(4)` |
 
 ### Type-specific SSZ bounds
 
@@ -70,8 +61,6 @@ class Seen:
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
     # [New in EIP8025]
-    execution_proof_roots: Set[Root]
-    # [New in EIP8025]
     execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
 ```
 
@@ -92,19 +81,35 @@ def validate_execution_proof_gossip(
     state: BeaconState,
     signed_execution_proof: SignedExecutionProof,
     trusted_execution_checkpoint: ExecutionCheckpoint,
+    proof_engine: ProofEngine,
 ) -> None:
     """
     Validate a SignedExecutionProof for gossip propagation.
     Raises GossipIgnore or GossipReject on validation failure.
     """
     proof = signed_execution_proof.message
-    proof_root = hash_tree_root(proof)
-    head = proof.public_input.head
+    head = proof.claim.head
     head_root = head.beacon_block_root
 
-    # [IGNORE] The proof has not already been processed
-    if proof_root in seen.execution_proof_roots:
-        raise GossipIgnore("execution proof has already been processed")
+    # [REJECT] The proof data is non-empty and within the size limit
+    if len(proof.proof_data) == 0:
+        raise GossipReject("execution proof data is empty")
+    if len(proof.proof_data) > MAX_PROOF_SIZE:
+        raise GossipReject("execution proof data exceeds the size limit")
+
+    # [REJECT] The proof type is globally allocated and locally supported
+    if not proof_engine.is_supported_proof_type(proof.proof_type):
+        raise GossipReject("execution proof type is unsupported")
+
+    # [REJECT] The prover validator index is valid
+    validator_index = signed_execution_proof.validator_index
+    if validator_index >= len(state.validators):
+        raise GossipReject("execution proof's validator index is invalid")
+
+    # [REJECT] The prover is an active validator
+    validator = state.validators[validator_index]
+    if not is_active_validator(validator, get_current_epoch(state)):
+        raise GossipReject("execution proof's validator is not active")
 
     # [IGNORE] The proof's head block has been seen
     if head_root not in store.blocks:
@@ -119,20 +124,19 @@ def validate_execution_proof_gossip(
     if proof_key in store.execution_proofs:
         raise GossipIgnore("verified proof already known for this head and proof type")
 
-    # [REJECT] The prover validator index is valid
-    validator_index = signed_execution_proof.validator_index
-    if validator_index >= len(state.validators):
-        raise GossipReject("execution proof's validator index is invalid")
-
     # [IGNORE] This is the prover's first valid or invalid proof for this key
     prover_key = (head_root, proof.proof_type, validator_index)
     if prover_key in seen.execution_proof_provers:
         raise GossipIgnore("proof already seen from this prover for this head and proof type")
 
-    # [REJECT] The prover is an active validator
-    validator = state.validators[validator_index]
-    if not is_active_validator(validator, get_current_epoch(state)):
-        raise GossipReject("execution proof's validator is not active")
+    # [REJECT] The proof starts at the locally trusted checkpoint
+    if proof.claim.origin != trusted_execution_checkpoint:
+        raise GossipReject("execution proof's origin is not the trusted checkpoint")
+
+    # [REJECT] The proof's head identifies the accepted beacon block
+    block = store.blocks[head_root]
+    if head.slot != block.slot:
+        raise GossipReject("execution proof's head does not identify the accepted block")
 
     # [REJECT] The prover signature is valid
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
@@ -140,28 +144,8 @@ def validate_execution_proof_gossip(
     if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
         raise GossipReject("execution proof's signature is invalid")
 
-    # Mark the authenticated proof and prover attempt as seen
-    seen.execution_proof_roots.add(proof_root)
+    # Mark the authenticated prover attempt as seen
     seen.execution_proof_provers.add(prover_key)
-
-    # [REJECT] The proof data is non-empty and within the size limit
-    if len(proof.proof_data) == 0:
-        raise GossipReject("execution proof data is empty")
-    if len(proof.proof_data) > MAX_PROOF_SIZE:
-        raise GossipReject("execution proof data exceeds the size limit")
-
-    # [REJECT] The proof type is supported
-    if proof.proof_type >= MAX_EXECUTION_PROOFS_PER_PAYLOAD:
-        raise GossipReject("execution proof type is unsupported")
-
-    # [REJECT] The proof starts at the locally trusted checkpoint
-    if proof.public_input.origin != trusted_execution_checkpoint:
-        raise GossipReject("execution proof's origin is not the trusted checkpoint")
-
-    # [REJECT] The proof's head identifies the accepted beacon block
-    block = store.blocks[head_root]
-    if head.slot != block.slot:
-        raise GossipReject("execution proof's head does not identify the accepted block")
 ```
 
 ## The discovery domain: discv5

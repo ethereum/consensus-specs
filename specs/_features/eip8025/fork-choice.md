@@ -94,9 +94,10 @@ def on_execution_proof(
     signed_execution_proof: SignedExecutionProof,
     trusted_execution_checkpoint: ExecutionCheckpoint,
     proof_engine: ProofEngine,
+    trusted_chain_config_root: Root,
 ) -> None:
     proof = signed_execution_proof.message
-    head = proof.public_input.head
+    head = proof.claim.head
     head_root = head.beacon_block_root
     proof_key = (head_root, proof.proof_type)
 
@@ -108,12 +109,17 @@ def on_execution_proof(
     assert proof_key not in store.execution_proofs
 
     # The public input must identify the trusted origin and local head block
-    assert proof.public_input.origin == trusted_execution_checkpoint
+    assert proof.claim.origin == trusted_execution_checkpoint
     assert head.slot == store.blocks[head_root].slot
 
     # Validate against the state associated with the proof's head block
     state = store.block_states[head_root]
-    process_execution_proof(state, signed_execution_proof, proof_engine)
+    process_execution_proof(
+        state,
+        signed_execution_proof,
+        proof_engine,
+        trusted_chain_config_root,
+    )
 
     # Store only proofs that pass downstream verification
     store.execution_proofs[proof_key] = proof
