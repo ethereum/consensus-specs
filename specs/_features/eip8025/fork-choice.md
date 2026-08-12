@@ -92,7 +92,7 @@ The handler `on_execution_proof` is called when the node accepts a
 def on_execution_proof(
     store: Store,
     signed_execution_proof: SignedExecutionProof,
-    trusted_execution_checkpoint: ExecutionCheckpoint,
+    execution_checkpoint: ExecutionCheckpoint,
     proof_engine: ProofEngine,
     chain_config_root: Root,
 ) -> None:
@@ -108,8 +108,8 @@ def on_execution_proof(
     # Only one verified proof is stored for each head and proof type
     assert proof_key not in store.execution_proofs
 
-    # The public input must identify the trusted origin and local head block
-    assert proof.claim.origin == trusted_execution_checkpoint
+    # The public input must identify the configured origin and local head block
+    assert proof.claim.origin == execution_checkpoint
     assert head.slot == store.blocks[head_root].slot
 
     # Validate against the state associated with the proof's head block

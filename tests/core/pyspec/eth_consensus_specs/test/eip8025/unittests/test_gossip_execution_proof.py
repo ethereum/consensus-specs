@@ -78,7 +78,7 @@ def validate(spec, seen, store, state, signed_proof, checkpoint, supported_proof
         store=store,
         state=state,
         signed_execution_proof=signed_proof,
-        trusted_execution_checkpoint=checkpoint,
+        execution_checkpoint=checkpoint,
         supported_proof_types=supported_proof_types,
     )
 
@@ -292,7 +292,7 @@ def test_validate_execution_proof_gossip_structural_checks(spec, state):
     cases = [
         (
             make_signed_execution_proof(spec, state, checkpoint, origin=wrong_origin),
-            "execution proof's origin is not the trusted checkpoint",
+            "execution proof's origin is not the execution checkpoint",
         ),
         (
             make_signed_execution_proof(spec, state, checkpoint, prover_index=1, head=wrong_head),

@@ -80,7 +80,7 @@ def validate_execution_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_execution_proof: SignedExecutionProof,
-    trusted_execution_checkpoint: ExecutionCheckpoint,
+    execution_checkpoint: ExecutionCheckpoint,
     supported_proof_types: Set[ProofType],
 ) -> None:
     """
@@ -129,9 +129,9 @@ def validate_execution_proof_gossip(
     if prover_key in seen.execution_proof_provers:
         raise GossipIgnore("proof already seen from this prover for this head and proof type")
 
-    # [REJECT] The proof starts at the locally trusted checkpoint
-    if proof.claim.origin != trusted_execution_checkpoint:
-        raise GossipReject("execution proof's origin is not the trusted checkpoint")
+    # [REJECT] The proof starts at the configured execution checkpoint
+    if proof.claim.origin != execution_checkpoint:
+        raise GossipReject("execution proof's origin is not the execution checkpoint")
 
     # [REJECT] The proof's head identifies the accepted beacon block
     block = store.blocks[head_root]

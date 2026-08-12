@@ -93,8 +93,8 @@ class ExecutionProofClaim(ProgressiveContainer(active_fields=[1] * 2)):
     head: ExecutionCheckpoint
 ```
 
-`origin` is the configured trusted execution checkpoint, typically selected from
-the client's weak subjectivity checkpoint. It is preserved unchanged by every
+`origin` is the configured execution checkpoint, typically selected from the
+client's weak subjectivity checkpoint. It is preserved unchanged by every
 recursive step. `head` identifies the target full beacon block proven from that
 origin.
 
