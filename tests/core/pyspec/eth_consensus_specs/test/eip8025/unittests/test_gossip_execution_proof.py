@@ -14,20 +14,13 @@ from eth_consensus_specs.test.helpers.state import state_transition_and_sign_blo
 
 TEST_PROOF_TYPE = 1
 ALTERNATE_TEST_PROOF_TYPE = 2
+UNSUPPORTED_TEST_PROOF_TYPE = 3
 
 
 class DummyProofEngine:
-    def __init__(self, accept=True, supported_types=None):
+    def __init__(self, accept=True):
         self.accept = accept
-        self.supported_types = (
-            {TEST_PROOF_TYPE, ALTERNATE_TEST_PROOF_TYPE}
-            if supported_types is None
-            else set(supported_types)
-        )
         self.proofs = []
-
-    def is_supported_proof_type(self, proof_type):
-        return int(proof_type) in self.supported_types
 
     def verify_execution_proof(self, proof, trusted_chain_config_root):
         self.proofs.append((proof, trusted_chain_config_root))
@@ -73,9 +66,12 @@ def make_signed_execution_proof(
     )
 
 
-def validate(spec, seen, store, state, signed_proof, checkpoint, proof_engine=None):
-    if proof_engine is None:
-        proof_engine = DummyProofEngine()
+def validate(spec, seen, store, state, signed_proof, checkpoint, supported_proof_types=None):
+    if supported_proof_types is None:
+        supported_proof_types = {
+            spec.ProofType(TEST_PROOF_TYPE),
+            spec.ProofType(ALTERNATE_TEST_PROOF_TYPE),
+        }
     return run_validate_gossip(
         spec,
         seen=seen,
@@ -83,7 +79,7 @@ def validate(spec, seen, store, state, signed_proof, checkpoint, proof_engine=No
         state=state,
         signed_execution_proof=signed_proof,
         trusted_execution_checkpoint=checkpoint,
-        proof_engine=proof_engine,
+        supported_proof_types=supported_proof_types,
     )
 
 
@@ -308,7 +304,7 @@ def test_validate_execution_proof_gossip_structural_checks(spec, state):
                 state,
                 checkpoint,
                 prover_index=2,
-                proof_type=int(spec.PROOF_TYPE_RESERVED),
+                proof_type=UNSUPPORTED_TEST_PROOF_TYPE,
             ),
             "execution proof type is unsupported",
         ),
@@ -406,15 +402,6 @@ def test_on_execution_proof_enforces_context_and_intrinsic_invariants(spec, stat
         proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
     )
     assert_handler_rejects(spec, store, oversized_proof, checkpoint, proof_engine)
-
-    unsupported_proof = make_signed_execution_proof(
-        spec,
-        state,
-        checkpoint,
-        prover_index=2,
-        proof_type=int(spec.PROOF_TYPE_RESERVED),
-    )
-    assert_handler_rejects(spec, store, unsupported_proof, checkpoint, proof_engine)
 
     invalid_signature = make_signed_execution_proof(spec, state, checkpoint, prover_index=3)
     invalid_signature.signature = spec.BLSSignature()

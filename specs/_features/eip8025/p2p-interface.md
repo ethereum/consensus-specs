@@ -81,7 +81,7 @@ def validate_execution_proof_gossip(
     state: BeaconState,
     signed_execution_proof: SignedExecutionProof,
     trusted_execution_checkpoint: ExecutionCheckpoint,
-    proof_engine: ProofEngine,
+    supported_proof_types: Set[ProofType],
 ) -> None:
     """
     Validate a SignedExecutionProof for gossip propagation.
@@ -97,8 +97,8 @@ def validate_execution_proof_gossip(
     if len(proof.proof_data) > MAX_PROOF_SIZE:
         raise GossipReject("execution proof data exceeds the size limit")
 
-    # [REJECT] The proof type is globally allocated and locally supported
-    if not proof_engine.is_supported_proof_type(proof.proof_type):
+    # [REJECT] The proof type is supported
+    if proof.proof_type not in supported_proof_types:
         raise GossipReject("execution proof type is unsupported")
 
     # [REJECT] The prover validator index is valid

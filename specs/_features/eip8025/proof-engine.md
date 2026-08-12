@@ -9,7 +9,6 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Proof engine](#proof-engine)
-  - [New `is_supported_proof_type`](#new-is_supported_proof_type)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `request_proof`](#new-request_proof)
 
@@ -39,22 +38,6 @@ target remains canonical before broadcasting a completed proof.
 The bodies of these functions are implementation dependent. The Engine API may
 be extended to expose equivalent functions when the proof engine is an external
 process.
-
-### New `is_supported_proof_type`
-
-```python
-def is_supported_proof_type(
-    self: ProofEngine,
-    proof_type: ProofType,
-) -> bool:
-    """
-    Return ``True`` only when ``proof_type`` has a globally allocated verifier
-    and guest-program version supported by this proof engine.
-    """
-```
-
-`PROOF_TYPE_RESERVED` is never supported. Test harnesses MAY register a local
-dummy type, but it MUST NOT be accepted by production configurations.
 
 ### New `verify_execution_proof`
 

@@ -55,14 +55,9 @@ class ProofData(ProgressiveByteList):
 ```python
 class ProofType(Uint8):
     """
-    The globally allocated identifier of an exact proof-system and guest-program
-    version pair.
+    Identifies the proof format used by an execution proof.
     """
 ```
-
-`ProofType(0)` is reserved and MUST NOT identify a production proof system.
-Changing the guest predicate or any progressive SSZ schema committed by the
-guest requires a new `ProofType` allocation.
 
 ## Constants
 
@@ -73,10 +68,6 @@ guest requires a new `ProofType` allocation.
 | Name             | Value                                  |
 | ---------------- | -------------------------------------- |
 | `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
-
-| Name                  | Value          |
-| --------------------- | -------------- |
-| `PROOF_TYPE_RESERVED` | `ProofType(0)` |
 
 ### Domains
 
@@ -158,7 +149,6 @@ def process_execution_proof(
     assert signed_proof.validator_index < len(state.validators)
     assert len(proof_message.proof_data) > 0
     assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
-    assert proof_engine.is_supported_proof_type(proof_message.proof_type)
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]

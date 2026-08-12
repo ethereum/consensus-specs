@@ -23,10 +23,6 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
         return """
 class NoopProofEngine(ProofEngine):
 
-    def is_supported_proof_type(self: ProofEngine,
-                                proof_type: ProofType) -> bool:
-        return False
-
     def verify_execution_proof(self: ProofEngine,
                                execution_proof: ExecutionProof,
                                trusted_chain_config_root: Root) -> bool:
