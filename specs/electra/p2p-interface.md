@@ -3,28 +3,27 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Electra](#modifications-in-electra)
-  - [Configuration](#configuration)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
-        - [Modified `attester_slashing`](#modified-attester_slashing)
-      - [Attestation subnets](#attestation-subnets)
-        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
-      - [Blob subnets](#blob-subnets)
-        - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+- [Configuration](#configuration)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [Modified `attester_slashing`](#modified-attester_slashing)
+    - [Attestation subnets](#attestation-subnets)
+      - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 
 <!-- mdformat-toc end -->
 
@@ -36,9 +35,7 @@ Electra.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Electra
-
-### Configuration
+## Configuration
 
 *[New in Electra:EIP7691]*
 
@@ -46,9 +43,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | ----------------------------------- | ----------- | ------------------------------------------------------------- |
 | `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `Uint64(9)` | Number of blob sidecar subnets used in the gossipsub protocol |
 
-### Helpers
+## Helpers
 
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -68,7 +65,7 @@ class Seen:
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -88,7 +85,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### Modified `compute_max_request_blob_sidecars`
+### Modified `compute_max_request_blob_sidecars`
 
 ```python
 def compute_max_request_blob_sidecars() -> Uint64:
@@ -99,11 +96,11 @@ def compute_max_request_blob_sidecars() -> Uint64:
     return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Electra to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
@@ -120,9 +117,9 @@ has not changed from the Deneb document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
-##### Global topics
+#### Global topics
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7691. The block's KZG commitment count
 is bounded by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
@@ -223,7 +220,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-###### Modified `beacon_aggregate_and_proof`
+##### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified per EIP-7549. The committee index is now
 encoded in `aggregate.committee_bits`, `aggregate.data.index` MUST be zero, and
@@ -356,16 +353,16 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
-###### Modified `attester_slashing`
+##### Modified `attester_slashing`
 
 *Note*: This function is modified per EIP-7549. The new `AttesterSlashing` type
 wraps an `IndexedAttestation` payload sized for
 `MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT` attesting indices; the
 validation logic is otherwise unchanged.
 
-##### Attestation subnets
+#### Attestation subnets
 
-###### Modified `beacon_attestation_{subnet_id}`
+##### Modified `beacon_attestation_{subnet_id}`
 
 *Note*: This function is modified per EIP-7549. The topic now propagates
 `SingleAttestation` objects: the attesting validator's index is carried directly
@@ -468,9 +465,9 @@ def validate_beacon_attestation_gossip(
     seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
-##### Blob subnets
+#### Blob subnets
 
-###### Modified `blob_sidecar_{subnet_id}`
+##### Modified `blob_sidecar_{subnet_id}`
 
 *Note*: This function is modified per EIP-7691. The sidecar's index is bounded
 by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
@@ -568,11 +565,11 @@ def validate_blob_sidecar_gossip(
     seen.blob_sidecar_tuples.add(sidecar_tuple)
 ```
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -590,7 +587,7 @@ beacon block type.
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -608,7 +605,7 @@ beacon block type.
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-##### BlobSidecarsByRange v1
+#### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
@@ -617,7 +614,7 @@ beacon block type.
 *Note*: The `compute_max_request_blob_sidecars` function has been modified which
 affects the request, response, and validation logic.
 
-##### BlobSidecarsByRoot v1
+#### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
