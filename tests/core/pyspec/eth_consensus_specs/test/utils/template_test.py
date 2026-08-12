@@ -2,13 +2,9 @@ import inspect
 from collections.abc import Callable
 from contextlib import suppress
 from functools import wraps
-from typing import TypeVar
 
 from eth_consensus_specs.test.helpers.constants import PHASE0, POST_FORK_OF
 from eth_consensus_specs.test.helpers.typing import SpecForkName
-
-# Type definitions
-F = TypeVar("F", bound=Callable[..., tuple[Callable, str]])
 
 
 def template_test[F: Callable[..., tuple[Callable, str]]](

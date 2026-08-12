@@ -37,10 +37,6 @@ upgrades when ready.
 | 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
 | 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
-### Accompanying documents
-
-- [Optimistic Sync](sync/optimistic.md)
-
 ### External specifications
 
 - [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)

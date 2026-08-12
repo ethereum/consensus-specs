@@ -59,15 +59,13 @@ class MegaStore:
 def get_optimistic_store(spec, anchor_state, anchor_block):
     assert anchor_block.state_root == anchor_state.hash_tree_root()
 
-    opt_store = spec.OptimisticStore(
-        optimistic_roots=set(),
-        head_block_root=anchor_block.hash_tree_root(),
-    )
     anchor_block_root = anchor_block.hash_tree_root()
-    opt_store.blocks[anchor_block_root] = anchor_block.copy()
-    opt_store.block_states[anchor_block_root] = anchor_state.copy()
-
-    return opt_store
+    return spec.OptimisticStore(
+        optimistic_roots=set(),
+        head_block_root=anchor_block_root,
+        blocks={anchor_block_root: anchor_block.copy()},
+        block_states={anchor_block_root: anchor_state.copy()},
+    )
 
 
 def get_valid_flag_value(status: PayloadStatusV1Status) -> bool:

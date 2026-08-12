@@ -3,46 +3,45 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Fulu](#modifications-in-fulu)
-  - [Preset](#preset)
-  - [Configuration](#configuration)
-  - [Types](#types)
-    - [New `DataColumnIndices`](#new-datacolumnindices)
-    - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
-    - [New `DataColumnSidecars`](#new-datacolumnsidecars)
-  - [Containers](#containers)
-    - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
-    - [New `verify_data_column_sidecar`](#new-verify_data_column_sidecar)
-    - [New `verify_data_column_sidecar_kzg_proofs`](#new-verify_data_column_sidecar_kzg_proofs)
-    - [New `verify_data_column_sidecar_inclusion_proof`](#new-verify_data_column_sidecar_inclusion_proof)
-    - [New `compute_subnet_for_data_column_sidecar`](#new-compute_subnet_for_data_column_sidecar)
-  - [MetaData](#metadata)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-      - [Blob subnets](#blob-subnets)
-        - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
-        - [New `data_column_sidecar_{subnet_id}`](#new-data_column_sidecar_subnet_id)
-        - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [Status v2](#status-v2)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
-      - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
-      - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
-      - [GetMetaData v3](#getmetadata-v3)
-      - [BeaconBlocksByHead v1](#beaconblocksbyhead-v1)
-  - [The discovery domain: discv5](#the-discovery-domain-discv5)
-    - [ENR structure](#enr-structure)
-      - [`eth2` field](#eth2-field)
-      - [Custody group count](#custody-group-count)
-      - [Next fork digest](#next-fork-digest)
+- [Preset](#preset)
+- [Configuration](#configuration)
+- [Types](#types)
+  - [New `DataColumnIndices`](#new-datacolumnindices)
+  - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
+  - [New `DataColumnSidecars`](#new-datacolumnsidecars)
+- [Containers](#containers)
+  - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
+  - [New `verify_data_column_sidecar`](#new-verify_data_column_sidecar)
+  - [New `verify_data_column_sidecar_kzg_proofs`](#new-verify_data_column_sidecar_kzg_proofs)
+  - [New `verify_data_column_sidecar_inclusion_proof`](#new-verify_data_column_sidecar_inclusion_proof)
+  - [New `compute_subnet_for_data_column_sidecar`](#new-compute_subnet_for_data_column_sidecar)
+- [MetaData](#metadata)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+    - [Blob subnets](#blob-subnets)
+      - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
+      - [New `data_column_sidecar_{subnet_id}`](#new-data_column_sidecar_subnet_id)
+      - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [Status v2](#status-v2)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+    - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+    - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
+    - [GetMetaData v3](#getmetadata-v3)
+    - [BeaconBlocksByHead v1](#beaconblocksbyhead-v1)
+- [The discovery domain: discv5](#the-discovery-domain-discv5)
+  - [ENR structure](#enr-structure)
+    - [`eth2` field](#eth2-field)
+    - [Custody group count](#custody-group-count)
+    - [Next fork digest](#next-fork-digest)
 - [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
 
@@ -55,15 +54,13 @@ This document contains the consensus-layer networking specifications for Fulu.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Fulu
-
-### Preset
+## Preset
 
 | Name                                    | Value                                                                                     | Description                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
-### Configuration
+## Configuration
 
 *[New in Fulu:EIP7594]*
 
@@ -72,9 +69,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `Uint64(2**7)` (= 128)   | Number of data column sidecar subnets used in the gossipsub protocol  |
 | `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
-### Types
+## Types
 
-#### New `DataColumnIndices`
+### New `DataColumnIndices`
 
 ```python
 class DataColumnIndices(List[ColumnIndex]):
@@ -85,7 +82,7 @@ class DataColumnIndices(List[ColumnIndex]):
     LIMIT = NUMBER_OF_COLUMNS
 ```
 
-#### New `DataColumnsByRootIdentifiers`
+### New `DataColumnsByRootIdentifiers`
 
 ```python
 class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier]):
@@ -97,7 +94,7 @@ class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier]):
     LIMIT = MAX_REQUEST_BLOCKS_DENEB
 ```
 
-#### New `DataColumnSidecars`
+### New `DataColumnSidecars`
 
 ```python
 class DataColumnSidecars(List[DataColumnSidecar]):
@@ -109,9 +106,9 @@ class DataColumnSidecars(List[DataColumnSidecar]):
     LIMIT = compute_max_request_data_column_sidecars()
 ```
 
-### Containers
+## Containers
 
-#### New `DataColumnsByRootIdentifier`
+### New `DataColumnsByRootIdentifier`
 
 ```python
 class DataColumnsByRootIdentifier(Container):
@@ -119,9 +116,9 @@ class DataColumnsByRootIdentifier(Container):
     columns: DataColumnIndices
 ```
 
-### Helpers
+## Helpers
 
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -145,7 +142,7 @@ class Seen:
     partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -167,7 +164,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### New `compute_max_request_data_column_sidecars`
+### New `compute_max_request_data_column_sidecars`
 
 ```python
 def compute_max_request_data_column_sidecars() -> Uint64:
@@ -177,7 +174,7 @@ def compute_max_request_data_column_sidecars() -> Uint64:
     return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
-#### New `verify_data_column_sidecar`
+### New `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -208,7 +205,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     return True
 ```
 
-#### New `verify_data_column_sidecar_kzg_proofs`
+### New `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -246,7 +243,7 @@ def verify_cell_kzg_proof_batch(
     """
 ```
 
-#### New `verify_data_column_sidecar_inclusion_proof`
+### New `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -262,14 +259,14 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-#### New `compute_subnet_for_data_column_sidecar`
+### New `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
     return SubnetID(column_index % DATA_COLUMN_SIDECAR_SUBNET_COUNT)
 ```
 
-### MetaData
+## MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to
 communicate the custody group count.
@@ -290,15 +287,15 @@ Where
 - `custody_group_count` represents the node's custody group count. Clients MAY
   reject peers with a value less than `CUSTODY_REQUIREMENT`.
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Fulu to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
-##### Global topics
+#### Global topics
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
@@ -401,13 +398,13 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-##### Blob subnets
+#### Blob subnets
 
-###### Deprecated `blob_sidecar_{subnet_id}`
+##### Deprecated `blob_sidecar_{subnet_id}`
 
 `blob_sidecar_{subnet_id}` is deprecated.
 
-###### New `data_column_sidecar_{subnet_id}`
+##### New `data_column_sidecar_{subnet_id}`
 
 The `data_column_sidecar_{subnet_id}` topics, where each column index maps to
 some `subnet_id`, are used to propagate new data column sidecars to nodes on the
@@ -509,7 +506,7 @@ all the sidecars of the same block, it verifies against the same set of
 result of the arguments tuple
 `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed blob publishing using blobs retrieved from local execution-layer client
+##### Distributed blob publishing using blobs retrieved from local execution-layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid
 `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching
@@ -532,11 +529,11 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### Status v2
+#### Status v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/status/2/`
 
@@ -571,7 +568,7 @@ As seen by the client at the time of sending the message:
   and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), it should advertise the
   earliest slot from which it can serve all blocks.
 
-##### BlobSidecarsByRange v1
+#### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
@@ -587,7 +584,7 @@ During the deprecation transition period:
 - Clients SHOULD NOT penalize peers for requesting blob sidecars from
   `FULU_FORK_EPOCH`.
 
-##### BlobSidecarsByRoot v1
+#### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
@@ -604,7 +601,7 @@ During the deprecation transition period:
 - Clients SHOULD NOT penalize peers for requesting blob sidecars from
   `FULU_FORK_EPOCH`.
 
-##### DataColumnSidecarsByRange v1
+#### DataColumnSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
 
@@ -710,7 +707,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | --------------------------- | ------------------------ |
 | `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
 
-##### DataColumnSidecarsByRoot v1
+#### DataColumnSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
 
@@ -776,7 +773,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | --------------------------- | ------------------------ |
 | `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
 
-##### GetMetaData v3
+#### GetMetaData v3
 
 **Protocol ID:** `/eth2/beacon_chain/req/metadata/3/`
 
@@ -794,7 +791,7 @@ Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from Altair. Other conditions for the `GetMetaData` protocol
 are unchanged from the Altair p2p networking document.
 
-##### BeaconBlocksByHead v1
+#### BeaconBlocksByHead v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_head/1/`
 
@@ -863,11 +860,11 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
-### The discovery domain: discv5
+## The discovery domain: discv5
 
-#### ENR structure
+### ENR structure
 
-##### `eth2` field
+#### `eth2` field
 
 *[Modified in Fulu:EIP7892]*
 
@@ -912,7 +909,7 @@ The fields of `ENRForkID` are defined as:
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
 
-##### Custody group count
+#### Custody group count
 
 A new field is added to the ENR under the key `cgc` to facilitate custody data
 column discovery. This new field MUST be added once `FULU_FORK_EPOCH` is
@@ -922,7 +919,7 @@ assigned any value other than `FAR_FUTURE_EPOCH`.
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
 | `cgc` | Custody group count, `Uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
 
-##### Next fork digest
+#### Next fork digest
 
 A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,

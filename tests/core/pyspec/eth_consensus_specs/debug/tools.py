@@ -3,15 +3,12 @@ Helper functions to get SSZ objects from files and output them.
 """
 
 from pathlib import Path
-from typing import TypeVar
 
 import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.debug.encode import encode
 from eth_consensus_specs.utils.ssz.ssz_impl import deserialize
-
-SSZObject = TypeVar("SSZObject")
 
 
 def get_ssz_object_from_ssz_encoded[SSZObject](file_path: Path, typ: SSZObject) -> SSZObject:
