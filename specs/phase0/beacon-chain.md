@@ -659,8 +659,8 @@ different configuration.
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
-containers.
+The following types are
+[SimpleSerialize (SSZ)](https://github.com/ethereum/ssz-specs) containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
 specification.
@@ -982,7 +982,7 @@ def bytes_to_uint64(data: bytes) -> Uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ specification](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](https://github.com/ethereum/ssz-specs).
 
 #### BLS signatures
 

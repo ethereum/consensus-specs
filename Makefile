@@ -233,14 +233,12 @@ DOCS_BUILD_CONFIG = ./.zensical.build.toml
 
 DOCS_DIR = ./docs
 SPEC_DIR = ./specs
-SSZ_DIR = ./ssz
 
 # Copy files to the docs directory.
 _copy_docs:
 	@rm -rf $(DOCS_DIR)
 	@mkdir -p $(DOCS_DIR)
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
-	@cp -r $(SSZ_DIR) $(DOCS_DIR)/ssz
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
 	@$(UV_RUN) python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
 	@$(UV_RUN) python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)

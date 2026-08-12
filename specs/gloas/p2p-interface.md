@@ -67,9 +67,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 These constants supersede
 [type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
-for the corresponding
-[variable-size](../../ssz/simple-serialize.md#variable-size-and-fixed-size)
-libp2p messages.
+for the corresponding variable-size libp2p messages.
 
 | Name                                    | Value                         |
 | --------------------------------------- | ----------------------------- |
