@@ -43,7 +43,7 @@ class Store:
     payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in EIP8025]
-    execution_proofs: Dict[Tuple[Root, ProofType], ExecutionProof]
+    execution_proofs: Dict[Root, Dict[ProofType, ExecutionProof]]
 ```
 
 ## Store initialization
@@ -98,14 +98,13 @@ def on_execution_proof(
     proof = signed_execution_proof.message
     head = proof.claim.head
     head_root = head.beacon_block_root
-    proof_key = (head_root, proof.proof_type)
 
     # The corresponding beacon block must be known and valid
     assert head_root in store.blocks
     assert head_root in store.block_states
 
     # Only one verified proof is stored for each head and proof type
-    assert proof_key not in store.execution_proofs
+    assert proof.proof_type not in store.execution_proofs.get(head_root, {})
 
     # The public input must identify the configured origin and local head block
     assert proof.claim.origin == execution_checkpoint
@@ -120,5 +119,7 @@ def on_execution_proof(
     )
 
     # Store only proofs that pass downstream verification
-    store.execution_proofs[proof_key] = proof
+    if head_root not in store.execution_proofs:
+        store.execution_proofs[head_root] = {}
+    store.execution_proofs[head_root][proof.proof_type] = proof
 ```

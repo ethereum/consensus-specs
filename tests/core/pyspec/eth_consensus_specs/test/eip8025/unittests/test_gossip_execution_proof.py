@@ -92,7 +92,7 @@ def get_checkpoint(spec, signed_block, block_root):
 
 def assert_handler_rejects(spec, store, signed_proof, checkpoint, proof_engine):
     proof = signed_proof.message
-    proof_key = (proof.claim.head.beacon_block_root, proof.proof_type)
+    head_root = proof.claim.head.beacon_block_root
     expect_assertion_error(
         lambda: spec.on_execution_proof(
             store,
@@ -101,7 +101,7 @@ def assert_handler_rejects(spec, store, signed_proof, checkpoint, proof_engine):
             proof_engine,
         )
     )
-    assert proof_key not in store.execution_proofs
+    assert proof.proof_type not in store.execution_proofs.get(head_root, {})
 
 
 @with_eip8025_and_later
@@ -327,7 +327,6 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     store, signed_block, block_root = setup_store_with_block(spec, state)
     checkpoint = get_checkpoint(spec, signed_block, block_root)
     signed_proof = make_signed_execution_proof(spec, state, checkpoint)
-    proof_key = (block_root, signed_proof.message.proof_type)
     proof_engine = DummyProofEngine()
 
     spec.on_execution_proof(
@@ -338,7 +337,9 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     )
 
     assert proof_engine.proofs == [(signed_proof.message, spec.CHAIN_CONFIG_ROOT)]
-    assert store.execution_proofs[proof_key] == signed_proof.message
+    assert store.execution_proofs[block_root] == {
+        signed_proof.message.proof_type: signed_proof.message
+    }
     expect_assertion_error(
         lambda: spec.on_execution_proof(
             store,
@@ -348,7 +349,7 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
         )
     )
 
-    rejected_proof = make_signed_execution_proof(
+    alternate_proof = make_signed_execution_proof(
         spec,
         state,
         checkpoint,
@@ -358,11 +359,22 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     assert_handler_rejects(
         spec,
         store,
-        rejected_proof,
+        alternate_proof,
         checkpoint,
         rejecting_engine,
     )
-    assert rejecting_engine.proofs == [(rejected_proof.message, spec.CHAIN_CONFIG_ROOT)]
+    assert rejecting_engine.proofs == [(alternate_proof.message, spec.CHAIN_CONFIG_ROOT)]
+
+    spec.on_execution_proof(
+        store,
+        alternate_proof,
+        checkpoint,
+        DummyProofEngine(),
+    )
+    assert store.execution_proofs[block_root] == {
+        signed_proof.message.proof_type: signed_proof.message,
+        alternate_proof.message.proof_type: alternate_proof.message,
+    }
 
 
 @with_eip8025_and_later

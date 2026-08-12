@@ -120,8 +120,7 @@ def validate_execution_proof_gossip(
         raise GossipReject("execution proof's head block failed validation")
 
     # [IGNORE] No verified proof is known for this head and proof type
-    proof_key = (head_root, proof.proof_type)
-    if proof_key in store.execution_proofs:
+    if proof.proof_type in store.execution_proofs.get(head_root, {}):
         raise GossipIgnore("verified proof already known for this head and proof type")
 
     # [IGNORE] This is the prover's first valid or invalid proof for this key
