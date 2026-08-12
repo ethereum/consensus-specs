@@ -1329,7 +1329,7 @@ def get_indexed_payload_attestation(
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=PTCAttestingIndices(sorted(attesting_indices)),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
     )
@@ -1572,7 +1572,9 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    state.pending_deposits = PendingDeposits(
+        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    )
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
@@ -1595,7 +1597,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
 
     old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
     new_payments = [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
-    state.builder_pending_payments = old_payments + new_payments
+    state.builder_pending_payments = BuilderPendingPayments(old_payments + new_payments)
 ```
 
 #### New `process_ptc_window`
@@ -1865,9 +1867,9 @@ def update_payload_expected_withdrawals(
 def update_builder_pending_withdrawals(
     state: BeaconState, processed_builder_withdrawals_count: Uint64
 ) -> None:
-    state.builder_pending_withdrawals = state.builder_pending_withdrawals[
-        processed_builder_withdrawals_count:
-    ]
+    state.builder_pending_withdrawals = BuilderPendingWithdrawals(
+        state.builder_pending_withdrawals[processed_builder_withdrawals_count:]
+    )
 ```
 
 ##### New `update_next_withdrawal_builder_index`

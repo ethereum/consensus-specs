@@ -1489,7 +1489,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=AttestingIndices(sorted(attesting_indices)),
         data=attestation.data,
         signature=attestation.signature,
     )

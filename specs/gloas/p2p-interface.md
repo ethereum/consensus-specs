@@ -5,51 +5,50 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Gloas](#modifications-in-gloas)
-  - [Preset](#preset)
-    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-  - [Configuration](#configuration)
-  - [Types](#types)
-    - [Modified `DataColumn`](#modified-datacolumn)
-    - [Modified `KZGProofs`](#modified-kzgproofs)
-    - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
-    - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
-  - [Containers](#containers)
-    - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
-    - [New `ProposerPreferences`](#new-proposerpreferences)
-    - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
-    - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
-    - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
-    - [New `is_past_slot`](#new-is_past_slot)
-    - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
-    - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
-    - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
-    - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
-    - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
-    - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
-        - [New `execution_payload`](#new-execution_payload)
-        - [New `payload_attestation_message`](#new-payload_attestation_message)
-        - [New `execution_payload_bid`](#new-execution_payload_bid)
-        - [New `proposer_preferences`](#new-proposer_preferences)
-      - [Attestation subnets](#attestation-subnets)
-        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
-      - [Blob subnets](#blob-subnets)
-        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
-      - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
+- [Preset](#preset)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Configuration](#configuration)
+- [Types](#types)
+  - [Modified `DataColumn`](#modified-datacolumn)
+  - [Modified `KZGProofs`](#modified-kzgproofs)
+  - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
+  - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
+- [Containers](#containers)
+  - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+  - [New `ProposerPreferences`](#new-proposerpreferences)
+  - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
+  - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
+  - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
+  - [New `is_past_slot`](#new-is_past_slot)
+  - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
+  - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
+  - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
+  - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
+  - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
+  - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [New `execution_payload`](#new-execution_payload)
+      - [New `payload_attestation_message`](#new-payload_attestation_message)
+      - [New `execution_payload_bid`](#new-execution_payload_bid)
+      - [New `proposer_preferences`](#new-proposer_preferences)
+    - [Attestation subnets](#attestation-subnets)
+      - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
+    - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
 <!-- mdformat-toc end -->
 
@@ -60,11 +59,9 @@ This document contains the consensus-layer networking specifications for Gloas.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Gloas
+## Preset
 
-### Preset
-
-#### Type-specific SSZ bounds
+### Type-specific SSZ bounds
 
 *[New in Gloas:EIP7688]*
 
@@ -79,15 +76,15 @@ for the corresponding variable-size libp2p messages.
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
-### Configuration
+## Configuration
 
 | Name                   | Value                  |
 | ---------------------- | ---------------------- |
 | `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
 
-### Types
+## Types
 
-#### Modified `DataColumn`
+### Modified `DataColumn`
 
 ```python
 # [Modified in Gloas:EIP7688]
@@ -97,7 +94,7 @@ class DataColumn(ProgressiveList[Cell]):
     """
 ```
 
-#### Modified `KZGProofs`
+### Modified `KZGProofs`
 
 ```python
 # [Modified in Gloas:EIP7688]
@@ -107,7 +104,7 @@ class KZGProofs(ProgressiveList[KZGProof]):
     """
 ```
 
-#### New `ExecutionPayloadEnvelopeRoots`
+### New `ExecutionPayloadEnvelopeRoots`
 
 ```python
 class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
@@ -117,7 +114,7 @@ class ExecutionPayloadEnvelopeRoots(List[Root, MAX_REQUEST_PAYLOADS]):
     """
 ```
 
-#### New `SignedExecutionPayloadEnvelopes`
+### New `SignedExecutionPayloadEnvelopes`
 
 ```python
 class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]):
@@ -128,9 +125,9 @@ class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope, MAX_R
     """
 ```
 
-### Containers
+## Containers
 
-#### Modified `DataColumnSidecar`
+### Modified `DataColumnSidecar`
 
 *Note*: The `signed_block_header`, `kzg_commitments`, and
 `kzg_commitments_inclusion_proof` fields have been removed from
@@ -158,7 +155,7 @@ class DataColumnSidecar(Container):
     beacon_block_root: Root
 ```
 
-#### New `ProposerPreferences`
+### New `ProposerPreferences`
 
 *[New in Gloas:EIP7732]*
 
@@ -171,7 +168,7 @@ class ProposerPreferences(Container):
     target_gas_limit: Uint64
 ```
 
-#### New `SignedProposerPreferences`
+### New `SignedProposerPreferences`
 
 *[New in Gloas:EIP7732]*
 
@@ -181,9 +178,9 @@ class SignedProposerPreferences(Container):
     signature: BLSSignature
 ```
 
-### Helpers
+## Helpers
 
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -217,7 +214,7 @@ class Seen:
     proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -241,7 +238,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### Modified `verify_data_column_sidecar_kzg_proofs`
+### Modified `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(
@@ -265,7 +262,7 @@ def verify_data_column_sidecar_kzg_proofs(
     )
 ```
 
-#### Modified `verify_data_column_sidecar`
+### Modified `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(
@@ -297,7 +294,7 @@ def verify_data_column_sidecar(
     return True
 ```
 
-#### New `is_current_or_next_slot`
+### New `is_current_or_next_slot`
 
 ```python
 def is_current_or_next_slot(
@@ -314,7 +311,7 @@ def is_current_or_next_slot(
     return is_current or is_next
 ```
 
-#### New `is_past_slot`
+### New `is_past_slot`
 
 ```python
 def is_past_slot(
@@ -330,7 +327,7 @@ def is_past_slot(
     return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
 ```
 
-#### New `is_gas_limit_target_compatible`
+### New `is_gas_limit_target_compatible`
 
 ```python
 def is_gas_limit_target_compatible(
@@ -351,7 +348,7 @@ def is_gas_limit_target_compatible(
     return gas_limit == target_gas_limit
 ```
 
-#### New `is_bid_compatible_with_head`
+### New `is_bid_compatible_with_head`
 
 ```python
 def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
@@ -379,7 +376,7 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     return builds_on_parent_payload
 ```
 
-#### New `is_valid_dependent_root`
+### New `is_valid_dependent_root`
 
 ```python
 def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
@@ -398,7 +395,7 @@ def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
     return False
 ```
 
-#### New `verify_attestation_payload_status`
+### New `verify_attestation_payload_status`
 
 ```python
 def verify_attestation_payload_status(
@@ -437,7 +434,7 @@ def verify_attestation_payload_status(
         raise GossipReject("attested payload is invalid")
 ```
 
-#### New `verify_block_body_operation_limits`
+### New `verify_block_body_operation_limits`
 
 ```python
 def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
@@ -474,7 +471,7 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
         raise GossipReject("too many payload attestations")
 ```
 
-#### New `verify_execution_requests_limits`
+### New `verify_execution_requests_limits`
 
 ```python
 def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
@@ -499,11 +496,11 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
         raise GossipReject("too many builder exit requests")
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Gloas to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
@@ -523,9 +520,9 @@ are given in this table:
 | `payload_attestation_message` | `PayloadAttestationMessage`      |
 | `proposer_preferences`        | `SignedProposerPreferences`      |
 
-##### Global topics
+#### Global topics
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7732. The execution payload is no
 longer carried inside `BeaconBlock`. As a result, all validations referring to
@@ -639,7 +636,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-###### Modified `beacon_aggregate_and_proof`
+##### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified per EIP-7732. `aggregate.data.index` is now
 restricted to `{0, 1}`, encoding whether the execution payload was present at
@@ -777,7 +774,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
-###### New `execution_payload`
+##### New `execution_payload`
 
 This topic is used to propagate execution payload messages as
 `SignedExecutionPayloadEnvelope`.
@@ -851,7 +848,7 @@ def validate_execution_payload_envelope_gossip(
     seen.execution_payloads[payload.block_hash] = payload
 ```
 
-###### New `payload_attestation_message`
+##### New `payload_attestation_message`
 
 This topic is used to propagate signed payload attestation message.
 
@@ -911,7 +908,7 @@ def validate_payload_attestation_message_gossip(
     seen.payload_attestation_validators.add(payload_attestation_key)
 ```
 
-###### New `execution_payload_bid`
+##### New `execution_payload_bid`
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
@@ -1045,7 +1042,7 @@ Possible strategies include: (1) only forwarding bids that exceed the current
 highest bid by a minimum threshold, or (2) forwarding only the highest observed
 bid at regular time intervals.
 
-###### New `proposer_preferences`
+##### New `proposer_preferences`
 
 This topic is used to propagate signed proposer preferences as
 `SignedProposerPreferences`. These messages allow validators to communicate
@@ -1119,9 +1116,9 @@ def validate_proposer_preferences_gossip(
     seen.proposer_preferences[prefs_key] = preferences
 ```
 
-##### Attestation subnets
+#### Attestation subnets
 
-###### Modified `beacon_attestation_{subnet_id}`
+##### Modified `beacon_attestation_{subnet_id}`
 
 *Note*: This function is modified per EIP-7732. `attestation.data.index` is now
 restricted to `{0, 1}`, encoding whether the execution payload was present at
@@ -1226,9 +1223,9 @@ def validate_beacon_attestation_gossip(
     seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
-##### Blob subnets
+#### Blob subnets
 
-###### Modified `data_column_sidecar_{subnet_id}`
+##### Modified `data_column_sidecar_{subnet_id}`
 
 The KZG commitments needed to verify a sidecar are now carried by the bid at
 `block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
@@ -1296,11 +1293,11 @@ def validate_data_column_sidecar_gossip(
     seen.data_column_sidecar_tuples.add(sidecar_key)
 ```
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -1320,7 +1317,7 @@ beacon block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -1340,7 +1337,7 @@ beacon block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
-##### ExecutionPayloadEnvelopesByRange v1
+#### ExecutionPayloadEnvelopesByRange v1
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
@@ -1379,7 +1376,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
-##### ExecutionPayloadEnvelopesByRoot v1
+#### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
