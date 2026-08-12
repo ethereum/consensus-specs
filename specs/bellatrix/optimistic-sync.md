@@ -85,8 +85,8 @@ where `time` is the UNIX time according to the local system clock.
 class OptimisticStore:
     optimistic_roots: Set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
 ```
 
 ```python
