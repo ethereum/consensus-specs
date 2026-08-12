@@ -22,8 +22,8 @@ class DummyProofEngine:
         self.accept = accept
         self.proofs = []
 
-    def verify_execution_proof(self, proof, trusted_chain_config_root):
-        self.proofs.append((proof, trusted_chain_config_root))
+    def verify_execution_proof(self, proof, chain_config_root):
+        self.proofs.append((proof, chain_config_root))
         return self.accept
 
 

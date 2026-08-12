@@ -45,7 +45,7 @@ process.
 def verify_execution_proof(
     self: ProofEngine,
     execution_proof: ExecutionProof,
-    trusted_chain_config_root: Root,
+    chain_config_root: Root,
 ) -> bool:
     """
     Reconstruct ``GuestPublicInput`` from the gossiped claim and locally trusted
@@ -61,11 +61,11 @@ def request_proof(
     self: ProofEngine,
     private_input: PrivateInput,
     proof_type: ProofType,
-    trusted_chain_config_root: Root,
+    chain_config_root: Root,
 ) -> Root:
     """
     Request asynchronous proof generation for ``private_input`` using
-    ``proof_type`` and locally trusted chain configuration. Returns the target beacon block root
+    ``proof_type`` and local chain configuration. Returns the target beacon block root
     ``private_input.beacon_chain_witness.signed_envelope.message.beacon_block_root``
     to track the generation request.
 
@@ -74,6 +74,6 @@ def request_proof(
     ``proof_type``.
 
     The proof engine MUST reject the completed guest output unless its
-    ``chain_config_root`` equals ``trusted_chain_config_root``.
+    ``chain_config_root`` equals ``chain_config_root``.
     """
 ```

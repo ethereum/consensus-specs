@@ -25,13 +25,13 @@ class NoopProofEngine(ProofEngine):
 
     def verify_execution_proof(self: ProofEngine,
                                execution_proof: ExecutionProof,
-                               trusted_chain_config_root: Root) -> bool:
+                               chain_config_root: Root) -> bool:
         return False
 
     def request_proof(self: ProofEngine,
                       private_input: PrivateInput,
                       proof_type: ProofType,
-                      trusted_chain_config_root: Root) -> Root:
+                      chain_config_root: Root) -> Root:
         raise NotImplementedError("no default proof generation")
 
 

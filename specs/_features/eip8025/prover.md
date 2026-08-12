@@ -98,7 +98,7 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
      with the execution witness, chain configuration, and transaction public
      keys as `PrivateInput`.
    - Call
-     `beacon_block_root = proof_engine.request_proof(private_input, proof_type, trusted_chain_config_root)`
+     `beacon_block_root = proof_engine.request_proof(private_input, proof_type, chain_config_root)`
      to initiate proof generation, tracking the request by
      `(beacon_block_root, proof_type)`.
 3. The proof engine runs `process_private_input` in the selected guest. Proof

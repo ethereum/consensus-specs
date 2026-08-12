@@ -35,7 +35,7 @@ This document defines the private witness interface and processing logic for a
 recursive guest program that produces an `ExecutionProof`. The execution proof
 commitment is the `GuestPublicInput` defined in
 [beacon-chain.md](./beacon-chain.md). The gossiped `ExecutionProofClaim` omits
-the locally trusted chain-configuration commitment.
+the local chain-configuration commitment.
 
 Proofs are produced only for *full* beacon blocks. *Empty* beacon blocks are
 included in the next proof's `beacon_lineage`, where their empty status is

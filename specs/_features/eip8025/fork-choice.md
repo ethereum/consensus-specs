@@ -94,7 +94,7 @@ def on_execution_proof(
     signed_execution_proof: SignedExecutionProof,
     trusted_execution_checkpoint: ExecutionCheckpoint,
     proof_engine: ProofEngine,
-    trusted_chain_config_root: Root,
+    chain_config_root: Root,
 ) -> None:
     proof = signed_execution_proof.message
     head = proof.claim.head
@@ -118,7 +118,7 @@ def on_execution_proof(
         state,
         signed_execution_proof,
         proof_engine,
-        trusted_chain_config_root,
+        chain_config_root,
     )
 
     # Store only proofs that pass downstream verification
