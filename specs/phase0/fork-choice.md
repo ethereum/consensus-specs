@@ -418,7 +418,9 @@ def get_node_children(
 
 *Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
 by the recursive logic in this function) MUST set `node` to a `ForkChoiceNode`
-with root `store.justified_checkpoint.root`.
+with root `store.justified_checkpoint.root`. In forks that extend
+`ForkChoiceNode` with a `payload_status` field (e.g. Gloas), that field MUST be
+set to `PAYLOAD_STATUS_PENDING`.
 
 ```python
 def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:

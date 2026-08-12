@@ -563,7 +563,6 @@ def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
         root=store.justified_checkpoint.root,
         payload_status=PAYLOAD_STATUS_PENDING,
     )
-    # [Modified in Gloas:EIP7732]
     viable_nodes: Set[ForkChoiceNode] = set()
     filter_node_tree(store, base, viable_nodes)
     return viable_nodes
