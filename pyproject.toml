@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eth-consensus-specs"
-version = "1.7.0-alpha.13"
+version = "1.7.0-alpha.14"
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 license = "CC0-1.0"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.11, <3.15"
+requires-python = ">=3.12, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "eth-remerkleable==0.1.31",
