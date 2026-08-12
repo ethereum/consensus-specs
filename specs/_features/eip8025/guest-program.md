@@ -11,6 +11,7 @@
 - [Constants](#constants)
   - [Generalized indices](#generalized-indices)
 - [Guest inputs](#guest-inputs)
+  - [New `GuestPublicInput`](#new-guestpublicinput)
   - [New `BeaconBlockBidWitness`](#new-beaconblockbidwitness)
   - [New `BeaconStateWitness`](#new-beaconstatewitness)
   - [New `BeaconChainWitness`](#new-beaconchainwitness)
@@ -31,9 +32,8 @@
 
 This document defines the private witness interface and processing logic for a
 recursive guest program that produces an `ExecutionProof`. The execution proof
-commitment is the `GuestPublicInput` defined in
-[beacon-chain.md](./beacon-chain.md). The gossiped `ExecutionProofClaim` omits
-the local chain-configuration commitment.
+commitment is the `GuestPublicInput` defined below. The gossiped
+`ExecutionProofClaim` omits the local chain-configuration commitment.
 
 Proofs are produced only for *full* beacon blocks. *Empty* beacon blocks are
 included in the next proof's `beacon_lineage`, where their empty status is
@@ -52,6 +52,19 @@ parent execution block hash.
 
 The guest inputs are implementation-level dataclasses, not consensus SSZ
 containers. Only the returned `GuestPublicInput` is public.
+
+### New `GuestPublicInput`
+
+```python
+class GuestPublicInput(ProgressiveContainer(active_fields=[1] * 3)):
+    origin: ExecutionCheckpoint
+    head: ExecutionCheckpoint
+    chain_config_root: Root
+```
+
+`GuestPublicInput` is the complete public input committed by the guest program.
+The local `chain_config_root` is injected at the proof-engine API boundary and
+is not transmitted in execution-proof gossip.
 
 ### New `BeaconBlockBidWitness`
 
@@ -253,7 +266,6 @@ def process_private_input(
     private_input: PrivateInput,
     chain_config_root: Root,
 ) -> GuestPublicInput:
-    # ``chain_config_root`` is a public input supplied by the proof engine.
     beacon_chain_witness = private_input.beacon_chain_witness
 
     previous_proof = beacon_chain_witness.previous_proof

@@ -17,7 +17,6 @@
 - [Containers](#containers)
   - [New `ExecutionCheckpoint`](#new-executioncheckpoint)
   - [New `ExecutionProofClaim`](#new-executionproofclaim)
-  - [New `GuestPublicInput`](#new-guestpublicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -97,19 +96,6 @@ class ExecutionProofClaim(ProgressiveContainer(active_fields=[1] * 2)):
 client's weak subjectivity checkpoint. It is preserved unchanged by every
 recursive step. `head` identifies the target full beacon block proven from that
 origin.
-
-### New `GuestPublicInput`
-
-```python
-class GuestPublicInput(ProgressiveContainer(active_fields=[1] * 3)):
-    origin: ExecutionCheckpoint
-    head: ExecutionCheckpoint
-    chain_config_root: Root
-```
-
-`GuestPublicInput` is the complete public input committed by the guest program.
-The local `chain_config_root` is injected at the proof-engine API boundary and
-is not transmitted in execution-proof gossip.
 
 ### New `ExecutionProof`
 
