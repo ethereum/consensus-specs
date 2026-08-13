@@ -2,16 +2,14 @@ import inspect
 from collections.abc import Callable
 from contextlib import suppress
 from functools import wraps
-from typing import TypeVar
 
 from eth_consensus_specs.test.helpers.constants import PHASE0, POST_FORK_OF
 from eth_consensus_specs.test.helpers.typing import SpecForkName
 
-# Type definitions
-F = TypeVar("F", bound=Callable[..., tuple[Callable, str]])
 
-
-def template_test(template_test_func: F) -> Callable[..., tuple[Callable, str]]:
+def template_test[F: Callable[..., tuple[Callable, str]]](
+    template_test_func: F,
+) -> Callable[..., tuple[Callable, str]]:
     """
     This is a decorator that applies to a template test function.
     The template test function returns a function and a string name.

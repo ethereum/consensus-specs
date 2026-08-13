@@ -234,16 +234,8 @@ def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
 
 def get_dependent_root(spec, state, slot):
     epoch = spec.compute_epoch_at_slot(slot)
-    if epoch <= spec.MIN_SEED_LOOKAHEAD:
-        dependent_slot = spec.GENESIS_SLOT
-    else:
-        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
-
-    if dependent_slot > spec.GENESIS_SLOT:
-        return spec.get_block_root_at_slot(state, dependent_slot)
-    else:
-        # Default genesis block value
-        return spec.Root()
+    dependent_slot = spec.compute_shuffling_dependent_slot(epoch)
+    return spec.get_block_root_at_slot(state, dependent_slot)
 
 
 def get_voting_source(spec, state, target):

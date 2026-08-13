@@ -5,22 +5,23 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Heze](#modifications-in-heze)
-  - [Preset](#preset)
-    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-  - [Configuration](#configuration)
-  - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
-        - [New `inclusion_list`](#new-inclusion_list)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
+- [Preset](#preset)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Configuration](#configuration)
+- [Types](#types)
+  - [New `SignedInclusionLists`](#new-signedinclusionlists)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
+      - [New `inclusion_list`](#new-inclusion_list)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
 
 <!-- mdformat-toc end -->
 
@@ -31,18 +32,16 @@ This document contains the consensus-layer networking specifications for Heze.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Heze
+## Preset
 
-### Preset
-
-#### Type-specific SSZ bounds
+### Type-specific SSZ bounds
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
 
-### Configuration
+## Configuration
 
 | Name                                        | Value                     | Description                                                     |
 | ------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
@@ -50,9 +49,21 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`    | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
 | `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST` | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
 
-### Helpers
+## Types
 
-#### Modified `compute_fork_version`
+### New `SignedInclusionLists`
+
+```python
+class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+    """
+    Signed inclusion lists returned in an ``InclusionListsByIndices``
+    response.
+    """
+```
+
+## Helpers
+
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -78,9 +89,9 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
-#### Topics and messages
+### Topics and messages
 
 The `execution_payload_bid` topic is modified to support Heze bids.
 
@@ -91,9 +102,9 @@ are given in this table:
 | ---------------- | --------------------- |
 | `inclusion_list` | `SignedInclusionList` |
 
-##### Global topics
+#### Global topics
 
-###### Modified `execution_payload_bid`
+##### Modified `execution_payload_bid`
 
 The following validations are added, assuming the alias
 `bid = signed_execution_payload_bid.message`:
@@ -104,7 +115,7 @@ The following validations are added, assuming the alias
   returns `True`, where `state` is the head state corresponding to processing
   the block up to the current slot as determined by the fork choice.
 
-###### New `inclusion_list`
+##### New `inclusion_list`
 
 This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on
@@ -117,20 +128,27 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
   `message.slot == current_slot`.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
+- _[IGNORE]_ The block with root `message.dependent_root` has been seen (via
+  gossip or non-gossip sources) (a client MAY queue the message for processing
+  once the block is retrieved).
+- _[REJECT]_ The slot of the block with root `message.dependent_root` is
+  strictly less than
+  `compute_start_slot_at_epoch(compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD)`.
+- _[IGNORE]_ `is_valid_dependent_root(store, message.dependent_root, epoch)`
+  returns `True`, where `store` is the fork choice store and `epoch` is
+  `compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD`.
 - _[REJECT]_ The message's validator index is in
-  `get_inclusion_list_committee(state, message.slot)`, where `state` is the head
-  state corresponding to processing the block up to the current slot as
-  determined by the fork choice.
-- _[REJECT]_ The `message.inclusion_list_committee_root` is equal to
-  `hash_tree_root(get_inclusion_list_committee(state, message.slot))`.
+  `get_inclusion_list_committee(state, message.slot)`, where `state` is the
+  state corresponding to processing the block with root `message.dependent_root`
+  up to the slot `message.slot`.
 - _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
   respect to the validator's public key.
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -151,7 +169,7 @@ block type.
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -172,7 +190,7 @@ block type.
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
 
-##### InclusionListsByIndices v1
+#### InclusionListsByIndices v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/inclusion_lists_by_indices/1/`
 
@@ -183,8 +201,8 @@ Request Content:
 ```
 (
   slot: Slot
-  inclusion_list_committee_root: Root
-  indices: BitVector[INCLUSION_LIST_COMMITTEE_SIZE]
+  dependent_root: Root
+  indices: InclusionListBits
 )
 ```
 
@@ -192,15 +210,17 @@ Response Content:
 
 ```
 (
-  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+  SignedInclusionLists
 )
 ```
 
-Requests inclusion lists by `slot`, `inclusion_list_committee_root` and
-inclusion list committee `indices`. The response is a list of
-`SignedInclusionList` whose length is less than or equal to the number of
-requested inclusion lists. It may be less in the case that the responding peer
-is missing inclusion lists.
+Requests inclusion lists by `slot`, `dependent_root`, and inclusion list
+committee `indices`. The `indices` field is interpreted with respect to
+`get_inclusion_list_committee(state, slot)`, where `state` is the state
+corresponding to processing the block with root `dependent_root` up to the slot
+`slot`. The response is a list of `SignedInclusionList` whose length is less
+than or equal to the number of requested inclusion lists. It may be less in the
+case that the responding peer is missing inclusion lists.
 
 No more than `MAX_REQUEST_INCLUSION_LIST` may be requested at a time.
 
@@ -226,8 +246,7 @@ MAY limit the number of inclusion lists in the response.
 Clients SHOULD include an inclusion list in the response as soon as it passes
 the gossip validation rules. Clients SHOULD NOT respond with inclusion lists
 that fail the gossip validation rules. Clients SHOULD NOT respond with inclusion
-lists from equivocators for the requested `slot` and
-`inclusion_list_committee_root`.
+lists from equivocators for the requested `slot` and `dependent_root`.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.

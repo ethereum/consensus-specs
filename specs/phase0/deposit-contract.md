@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`ExecutionAddress`](#executionaddress)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Staking deposit contract](#staking-deposit-contract)
@@ -22,9 +23,14 @@ contract, part of Phase 0.
 
 ## Types
 
-| Name               | SSZ equivalent | Description                               |
-| ------------------ | -------------- | ----------------------------------------- |
-| `ExecutionAddress` | `Bytes20`      | Address of account on the execution layer |
+### `ExecutionAddress`
+
+```python
+class ExecutionAddress(Bytes20):
+    """
+    The address of an account on the execution layer.
+    """
+```
 
 ## Constants
 

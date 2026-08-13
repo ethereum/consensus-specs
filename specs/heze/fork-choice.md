@@ -119,19 +119,17 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, list[Boolean]] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]] = field(default_factory=dict)
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]] = field(
-        default_factory=dict
-    )
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
+    block_timeliness: Dict[Root, list[Boolean]]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
+    payloads: Dict[Root, ExecutionPayloadEnvelope]
+    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
+    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: Dict[Root, Boolean] = field(default_factory=dict)
+    payload_inclusion_list_satisfaction: Dict[Root, Boolean]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -157,6 +155,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
         payload_timeliness_vote={},
@@ -176,7 +175,7 @@ even if their associated `InclusionList`s have subsequently been pruned.
 inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
 `VALID`, whether the payload satisfies the inclusion list constraints MUST be
 recorded according to the
-[Optimistic sync](../../sync/optimistic.md#how-to-track-inclusion-list-satisfaction)
+[Optimistic sync](./optimistic-sync.md#new-how-to-track-inclusion-list-satisfaction)
 specification.
 
 *Note*: Whether a payload satisfies the inclusion list constraints MUST NOT
@@ -264,12 +263,43 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     """
     Run ``on_inclusion_list`` upon receiving a new inclusion list.
     """
+    inclusion_list = signed_inclusion_list.message
+    current_slot = get_current_slot(store)
+
+    # The transactions must not exceed the maximum size
+    transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+    assert transactions_size <= MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+
+    # The slot must be within the retention window
+    assert inclusion_list.slot <= current_slot
+    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
+
+    # The dependent block must be known
+    assert inclusion_list.dependent_root in store.block_states
+
+    # Verify the validator is in the inclusion list committee
+    dependent_state = copy(store.block_states[inclusion_list.dependent_root])
+    if dependent_state.slot < inclusion_list.slot:
+        process_slots(dependent_state, inclusion_list.slot)
+    committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
+    assert inclusion_list.validator_index in committee
+
+    # Verify the signature
+    assert is_valid_inclusion_list_signature(dependent_state, signed_inclusion_list)
+
+    # The inclusion list is timely if it arrives in its slot before the deadline
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    inclusion_list_due_ms = get_inclusion_list_due_ms()
-    is_timely = time_into_slot_ms < inclusion_list_due_ms
+    is_current_slot = inclusion_list.slot == current_slot
+    is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
 
-    process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)
+    # Process the inclusion list
+    process_inclusion_list(
+        get_inclusion_list_store(),
+        signed_inclusion_list,
+        hash_tree_root(committee),
+        is_timely,
+    )
 ```
 
 ### Modified `on_execution_payload_envelope`

@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`compute_shuffling_dependent_slot`](#compute_shuffling_dependent_slot)
       - [`get_shuffling_dependent_root`](#get_shuffling_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
@@ -192,12 +193,12 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
+    block_timeliness: Dict[Root, Boolean]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
 ```
 
 #### `get_forkchoice_store`
@@ -230,7 +231,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
+        block_timeliness={},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
     )
 ```
@@ -879,16 +882,21 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `compute_shuffling_dependent_slot`
+
+```python
+def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_SLOT
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - Slot(1)
+```
+
 ##### `get_shuffling_dependent_root`
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     node = ForkChoiceNode(root=root)
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 

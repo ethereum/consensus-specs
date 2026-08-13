@@ -4,6 +4,17 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [Modified `AggregationBits`](#modified-aggregationbits)
+  - [Modified `Attestations`](#modified-attestations)
+  - [Modified `AttesterSlashings`](#modified-attesterslashings)
+  - [Modified `AttestingIndices`](#modified-attestingindices)
+  - [New `CommitteeBits`](#new-committeebits)
+  - [New `ConsolidationRequests`](#new-consolidationrequests)
+  - [New `DepositRequests`](#new-depositrequests)
+  - [New `PendingConsolidations`](#new-pendingconsolidations)
+  - [New `PendingDeposits`](#new-pendingdeposits)
+  - [New `PendingPartialWithdrawals`](#new-pendingpartialwithdrawals)
+  - [New `WithdrawalRequests`](#new-withdrawalrequests)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
@@ -129,13 +140,111 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name                    | SSZ equivalent                                                                 | Description                                                       |
-| ----------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `AggregationBits`       | `BitList[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]`              | Combined participation info for all participating committees      |
-| `AttestingIndices`      | `List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` | List of attesting validator indices                               |
-| `DepositRequests`       | `List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]`                       | List of deposit requests pertaining to an execution payload       |
-| `WithdrawalRequests`    | `List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]`                 | List of withdrawal requests pertaining to an execution payload    |
-| `ConsolidationRequests` | `List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]`           | List of consolidation requests pertaining to an execution payload |
+### Modified `AggregationBits`
+
+```python
+# [Modified in Electra:EIP7549]
+class AggregationBits(BitList[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]):
+    """
+    The participation bits of all committees participating in an attestation,
+    concatenated in committee order.
+    """
+```
+
+### Modified `Attestations`
+
+```python
+# [Modified in Electra:EIP7549]
+class Attestations(List[Attestation, MAX_ATTESTATIONS_ELECTRA]):
+    """
+    The attestations included in a beacon block.
+    """
+```
+
+### Modified `AttesterSlashings`
+
+```python
+# [Modified in Electra:EIP7549]
+class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]):
+    """
+    The attester slashings included in a beacon block.
+    """
+```
+
+### Modified `AttestingIndices`
+
+```python
+# [Modified in Electra:EIP7549]
+class AttestingIndices(
+    List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+):
+    """
+    The indices of the validators participating in an attestation.
+    """
+```
+
+### New `CommitteeBits`
+
+```python
+class CommitteeBits(BitVector[MAX_COMMITTEES_PER_SLOT]):
+    """
+    Bits marking which committees of a slot participate in an attestation.
+    """
+```
+
+### New `ConsolidationRequests`
+
+```python
+class ConsolidationRequests(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]):
+    """
+    The consolidation requests pertaining to a single execution payload.
+    """
+```
+
+### New `DepositRequests`
+
+```python
+class DepositRequests(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]):
+    """
+    The deposit requests pertaining to a single execution payload.
+    """
+```
+
+### New `PendingConsolidations`
+
+```python
+class PendingConsolidations(List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]):
+    """
+    The queue of consolidations awaiting processing.
+    """
+```
+
+### New `PendingDeposits`
+
+```python
+class PendingDeposits(List[PendingDeposit, PENDING_DEPOSITS_LIMIT]):
+    """
+    The queue of deposits awaiting processing.
+    """
+```
+
+### New `PendingPartialWithdrawals`
+
+```python
+class PendingPartialWithdrawals(List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]):
+    """
+    The queue of partial withdrawals awaiting processing.
+    """
+```
+
+### New `WithdrawalRequests`
+
+```python
+class WithdrawalRequests(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]):
+    """
+    The withdrawal requests pertaining to a single execution payload.
+    """
+```
 
 ## Constants
 
@@ -343,17 +452,17 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    proposer_slashings: ProposerSlashings
     # [Modified in Electra:EIP7549]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
+    attester_slashings: AttesterSlashings
     # [Modified in Electra:EIP7549]
-    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     execution_payload: ExecutionPayload
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    bls_to_execution_changes: BLSToExecutionChanges
+    blob_kzg_commitments: BlobKZGCommitments
     # [New in Electra]
     execution_requests: ExecutionRequests
 ```
@@ -367,7 +476,7 @@ class Attestation(Container):
     data: AttestationData
     signature: BLSSignature
     # [New in Electra:EIP7549]
-    committee_bits: BitVector[MAX_COMMITTEES_PER_SLOT]
+    committee_bits: CommitteeBits
 ```
 
 #### `IndexedAttestation`
@@ -389,29 +498,29 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: BitVector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_execution_payload_header: ExecutionPayloadHeader
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
     # [New in Electra:EIP6110]
     deposit_requests_start_index: Uint64
     # [New in Electra:EIP7251]
@@ -425,11 +534,11 @@ class BeaconState(Container):
     # [New in Electra:EIP7251]
     earliest_consolidation_epoch: Epoch
     # [New in Electra:EIP7251]
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
+    pending_deposits: PendingDeposits
     # [New in Electra:EIP7251]
-    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
+    pending_partial_withdrawals: PendingPartialWithdrawals
     # [New in Electra:EIP7251]
-    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    pending_consolidations: PendingConsolidations
 ```
 
 ## Dataclasses
@@ -699,7 +808,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     active_validator_count = Uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     i = Uint64(0)
-    sync_committee_indices: List[ValidatorIndex] = []
+    sync_committee_indices: list[ValidatorIndex] = []
     while len(sync_committee_indices) < SYNC_COMMITTEE_SIZE:
         shuffled_index = compute_shuffled_index(
             Uint64(i % active_validator_count), active_validator_count, seed
@@ -1056,7 +1165,9 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    state.pending_deposits = PendingDeposits(
+        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    )
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
@@ -1089,7 +1200,9 @@ def process_pending_consolidations(state: BeaconState) -> None:
         increase_balance(state, pending_consolidation.target_index, source_effective_balance)
         next_pending_consolidation += 1
 
-    state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
+    state.pending_consolidations = PendingConsolidations(
+        state.pending_consolidations[next_pending_consolidation:]
+    )
 ```
 
 #### Modified `process_effective_balance_updates`
@@ -1243,9 +1356,9 @@ def get_pending_partial_withdrawals(
     assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: Uint64 = 0
-    withdrawals: List[Withdrawal] = []
+    withdrawals: list[Withdrawal] = []
     for withdrawal in state.pending_partial_withdrawals:
-        all_withdrawals = prior_withdrawals + withdrawals
+        all_withdrawals = list(prior_withdrawals) + withdrawals
         is_withdrawable = withdrawal.withdrawable_epoch <= epoch
         has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if not is_withdrawable or has_reached_limit:
@@ -1289,10 +1402,10 @@ def get_validators_sweep_withdrawals(
     assert len(prior_withdrawals) < withdrawals_limit
 
     processed_count: Uint64 = 0
-    withdrawals: List[Withdrawal] = []
+    withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
-        all_withdrawals = prior_withdrawals + withdrawals
+        all_withdrawals = list(prior_withdrawals) + withdrawals
         has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
@@ -1334,7 +1447,7 @@ def get_validators_sweep_withdrawals(
 ```python
 def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
     withdrawal_index = state.next_withdrawal_index
-    withdrawals: List[Withdrawal] = []
+    withdrawals: list[Withdrawal] = []
 
     # [New in Electra:EIP7251]
     # Get partial withdrawals
@@ -1363,9 +1476,9 @@ def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
 def update_pending_partial_withdrawals(
     state: BeaconState, processed_partial_withdrawals_count: Uint64
 ) -> None:
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[
-        processed_partial_withdrawals_count:
-    ]
+    state.pending_partial_withdrawals = PendingPartialWithdrawals(
+        state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
+    )
 ```
 
 ##### Modified `process_withdrawals`

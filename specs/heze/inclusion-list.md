@@ -68,10 +68,11 @@ def get_inclusion_list_store() -> InclusionListStore:
 def process_inclusion_list(
     store: InclusionListStore,
     signed_inclusion_list: SignedInclusionList,
+    inclusion_list_committee_root: Root,
     is_timely: bool,
 ) -> None:
     inclusion_list = signed_inclusion_list.message
-    key = inclusion_list.inclusion_list_committee_root
+    key = inclusion_list_committee_root
 
     # Ignore an inclusion list that has already been stored
     inclusion_list_root = hash_tree_root(inclusion_list)
@@ -100,10 +101,10 @@ def process_inclusion_list(
 
 *Note*: `get_inclusion_list_transactions` returns a list of unique transactions
 from all valid and non-equivocating `InclusionList`s for the given slot and for
-which the `inclusion_list_committee_root` in the `InclusionList` matches the one
-calculated based on the current state. When `only_timely` is `True`, only
-`InclusionList`s received in a timely manner on the p2p network are considered;
-otherwise, timeliness is not considered.
+which the `inclusion_list_committee_root` compatible with the `dependent_root`
+in the `InclusionList` matches the one calculated from the given `state`. When
+`only_timely` is `True`, only `InclusionList`s received in a timely manner on
+the p2p network are considered; otherwise, timeliness is not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
 `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
@@ -119,7 +120,7 @@ def get_inclusion_list_transactions(
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
-    transactions = []
+    transactions: list[Transaction] = []
     for inclusion_list_entry in inclusion_lists.values():
         inclusion_list = inclusion_list_entry.signed_inclusion_list.message
 
@@ -142,7 +143,7 @@ def get_inclusion_list_transactions(
 ```python
 def get_inclusion_list_bits(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
-) -> BitVector[INCLUSION_LIST_COMMITTEE_SIZE]:
+) -> InclusionListBits:
     """
     Return a ``BitVector`` over inclusion list committee indices with bits set
     for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
@@ -167,9 +168,7 @@ def get_inclusion_list_bits(
 
         validator_indices.append(inclusion_list.validator_index)
 
-    return BitVector[INCLUSION_LIST_COMMITTEE_SIZE](
-        validator_index in validator_indices for validator_index in committee
-    )
+    return InclusionListBits(validator_index in validator_indices for validator_index in committee)
 ```
 
 ### New `is_inclusion_list_bits_inclusive`
@@ -179,7 +178,7 @@ def is_inclusion_list_bits_inclusive(
     store: InclusionListStore,
     state: BeaconState,
     slot: Slot,
-    inclusion_list_bits: BitVector[INCLUSION_LIST_COMMITTEE_SIZE],
+    inclusion_list_bits: InclusionListBits,
     only_timely: bool = True,
 ) -> bool:
     """

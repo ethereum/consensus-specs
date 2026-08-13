@@ -261,13 +261,13 @@ deposit requests and builder exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    deposits = []
-    withdrawals = []
-    consolidations = []
+    deposits = DepositRequests()
+    withdrawals = WithdrawalRequests()
+    consolidations = ConsolidationRequests()
     # [New in Gloas:EIP8282]
-    builder_deposits = []
+    builder_deposits = BuilderDepositRequests()
     # [New in Gloas:EIP8282]
-    builder_exits = []
+    builder_exits = BuilderExitRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,
@@ -446,9 +446,7 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob

@@ -3,6 +3,15 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Types](#types)
+  - [`Cell`](#cell)
+  - [`CellIndex`](#cellindex)
+  - [`Cells`](#cells)
+  - [`ColumnIndex`](#columnindex)
+  - [`CustodyIndex`](#custodyindex)
+  - [`DataColumn`](#datacolumn)
+  - [`KZGCommitmentsInclusionProof`](#kzgcommitmentsinclusionproof)
+  - [`Proofs`](#proofs)
+  - [`RowIndex`](#rowindex)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Preset](#preset)
@@ -35,13 +44,87 @@
 
 ## Types
 
-| Name           | SSZ equivalent                                                  | Description                                                |
-| -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
-| `Cell`         | `ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]` | The unit of blob data that can come with its own KZG proof |
-| `CellIndex`    | `Uint64`                                                        | Cell identifier in an extended blob                        |
-| `RowIndex`     | `Uint64`                                                        | Row identifier in the matrix of cells                      |
-| `ColumnIndex`  | `Uint64`                                                        | Column identifier in the matrix of cells                   |
-| `CustodyIndex` | `Uint64`                                                        | Custody group identifier in the set of custody groups      |
+### `Cell`
+
+```python
+class Cell(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]):
+    """
+    The unit of extended blob data that has its own ``KZGProof``.
+    """
+```
+
+### `CellIndex`
+
+```python
+class CellIndex(Uint64):
+    """
+    The index of a cell within an extended blob.
+    """
+```
+
+### `Cells`
+
+```python
+class Cells(Vector[Cell, CELLS_PER_EXT_BLOB]):
+    """
+    The cells of a single extended blob.
+    """
+```
+
+### `ColumnIndex`
+
+```python
+class ColumnIndex(Uint64):
+    """
+    The index of a column in the matrix of extended blob data.
+    """
+```
+
+### `CustodyIndex`
+
+```python
+class CustodyIndex(Uint64):
+    """
+    The index of a custody group.
+    """
+```
+
+### `DataColumn`
+
+```python
+class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    A column of the extended blob data matrix, with at most one cell per blob.
+    """
+```
+
+### `KZGCommitmentsInclusionProof`
+
+```python
+class KZGCommitmentsInclusionProof(Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]):
+    """
+    A Merkle branch proving a block's blob KZG commitments within
+    ``BeaconBlockBody``.
+    """
+```
+
+### `Proofs`
+
+```python
+class Proofs(Vector[KZGProof, CELLS_PER_EXT_BLOB]):
+    """
+    The KZG proofs for the cells of a single extended blob.
+    """
+```
+
+### `RowIndex`
+
+```python
+class RowIndex(Uint64):
+    """
+    The index of a row in the matrix of extended blob data.
+    """
+```
 
 ## Constants
 
@@ -87,11 +170,11 @@ specification.
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    column: DataColumn
+    kzg_commitments: BlobKZGCommitments
+    kzg_proofs: KZGProofs
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+    kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof
 ```
 
 ### `MatrixEntry`
@@ -117,7 +200,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
         return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
     current_id = Uint256(node_id)
-    custody_groups: List[CustodyIndex] = []
+    custody_groups: list[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
             bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
@@ -177,9 +260,7 @@ following signature:
 <!-- eth_consensus_specs: skip -->
 
 ```python
-def compute_cells_and_kzg_proofs(
-    blob: Blob,
-) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[Cells, Proofs]:
     """
     Extend ``blob`` and return all the cells and proofs of the extended blob.
     """
@@ -225,7 +306,7 @@ following signature:
 ```python
 def recover_cells_and_kzg_proofs(
     cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
-) -> Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]:
+) -> Tuple[Cells, Proofs]:
     """
     Recover all the cells and proofs of an extended blob given at least half of
     its cells.
