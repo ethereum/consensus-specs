@@ -84,6 +84,7 @@
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
 - [Helpers](#helpers)
   - [Math](#math)
+    - [`get_set_bit_count`](#get_set_bit_count)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
@@ -659,8 +660,8 @@ different configuration.
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
-containers.
+The following types are
+[SimpleSerialize (SSZ)](https://github.com/ethereum/ssz-specs) containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
 specification.
@@ -929,6 +930,16 @@ necessarily optimal implementations.
 
 ### Math
 
+#### `get_set_bit_count`
+
+```python
+def get_set_bit_count(bits: Sequence[Boolean]) -> Uint64:
+    """
+    Return the number of bits that are set in ``bits``.
+    """
+    return Uint64(sum(1 for bit in bits if bit))
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -982,7 +993,7 @@ def bytes_to_uint64(data: bytes) -> Uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ specification](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](https://github.com/ethereum/ssz-specs).
 
 #### BLS signatures
 
@@ -1489,7 +1500,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=AttestingIndices(sorted(attesting_indices)),
         data=attestation.data,
         signature=attestation.signature,
     )

@@ -37,12 +37,6 @@ upgrades when ready.
 | 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
 | 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
-### Accompanying documents
-
-- [Merkle Proofs](ssz/merkle-proofs.md)
-- [SimpleSerialize (SSZ)](ssz/simple-serialize.md)
-- [Optimistic Sync](sync/optimistic.md)
-
 ### External specifications
 
 - [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)
@@ -51,6 +45,7 @@ upgrades when ready.
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
 - [Builder Specs](https://github.com/ethereum/builder-specs)
 - [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
+- [SimpleSerialize (SSZ) Specs](https://github.com/ethereum/ssz-specs)
 
 ### Reference tests
 
