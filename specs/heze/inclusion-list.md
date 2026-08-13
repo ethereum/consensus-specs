@@ -7,7 +7,7 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`StoredInclusionList`](#storedinclusionlist)
+    - [`InclusionListEntry`](#inclusionlistentry)
     - [`InclusionListStore`](#inclusionliststore)
 - [Helpers](#helpers)
   - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
@@ -26,11 +26,11 @@ These are the inclusion list specifications to implement Heze.
 
 ### New containers
 
-#### `StoredInclusionList`
+#### `InclusionListEntry`
 
 ```python
-@dataclass
-class StoredInclusionList:
+@dataclass(eq=True, frozen=True)
+class InclusionListEntry:
     signed_inclusion_list: SignedInclusionList
     is_timely: Boolean
 ```
@@ -40,7 +40,7 @@ class StoredInclusionList:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Root, Dict[Root, StoredInclusionList]] = field(
+    inclusion_lists: DefaultDict[Root, Dict[Root, InclusionListEntry]] = field(
         default_factory=lambda: defaultdict(dict)
     )
     equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
@@ -83,14 +83,14 @@ def process_inclusion_list(
         return
 
     # Mark the validator as an equivocator if it published a different inclusion list
-    for stored_inclusion_list in store.inclusion_lists[key].values():
-        stored_message = stored_inclusion_list.signed_inclusion_list.message
+    for inclusion_list_entry in store.inclusion_lists[key].values():
+        stored_message = inclusion_list_entry.signed_inclusion_list.message
         if stored_message.validator_index == inclusion_list.validator_index:
             store.equivocators[key].add(inclusion_list.validator_index)
             return
 
     # Store the signed inclusion list and its timeliness
-    store.inclusion_lists[key][inclusion_list_root] = StoredInclusionList(
+    store.inclusion_lists[key][inclusion_list_root] = InclusionListEntry(
         signed_inclusion_list=signed_inclusion_list,
         is_timely=is_timely,
     )
@@ -120,15 +120,15 @@ def get_inclusion_list_transactions(
     equivocators = store.equivocators[key]
 
     transactions = []
-    for stored_inclusion_list in inclusion_lists.values():
-        inclusion_list = stored_inclusion_list.signed_inclusion_list.message
+    for inclusion_list_entry in inclusion_lists.values():
+        inclusion_list = inclusion_list_entry.signed_inclusion_list.message
 
         # Ignore inclusion lists from equivocators
         if inclusion_list.validator_index in equivocators:
             continue
 
         # Ignore untimely inclusion lists if only timely ones are requested
-        if only_timely and not stored_inclusion_list.is_timely:
+        if only_timely and not inclusion_list_entry.is_timely:
             continue
 
         transactions.extend(inclusion_list.transactions)
@@ -154,15 +154,15 @@ def get_inclusion_list_bits(
     equivocators = store.equivocators[key]
 
     validator_indices = []
-    for stored_inclusion_list in inclusion_lists.values():
-        inclusion_list = stored_inclusion_list.signed_inclusion_list.message
+    for inclusion_list_entry in inclusion_lists.values():
+        inclusion_list = inclusion_list_entry.signed_inclusion_list.message
 
         # Ignore inclusion lists from equivocators
         if inclusion_list.validator_index in equivocators:
             continue
 
         # Ignore untimely inclusion lists if only timely ones are requested
-        if only_timely and not stored_inclusion_list.is_timely:
+        if only_timely and not inclusion_list_entry.is_timely:
             continue
 
         validator_indices.append(inclusion_list.validator_index)
