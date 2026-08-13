@@ -622,10 +622,10 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
     committee_bits = sync_aggregate.sync_committee_bits
-    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+    if get_set_bit_count(committee_bits) == SYNC_COMMITTEE_SIZE:
         # All members participated - use precomputed aggregate key
         participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
-    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+    elif get_set_bit_count(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
         # More than half participated - subtract non-participant keys.
         # First determine nonparticipating members
         non_participant_pubkeys = [
