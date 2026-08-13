@@ -216,6 +216,26 @@ def prepare_withdrawal_request(spec, state, validator_index, address=None, amoun
     )
 
 
+def prepare_set_sweep_threshold_request(
+    spec, state, validator_index, threshold, source_address=None
+):
+    """
+    Create a set sweep threshold request for the validator at the given index,
+    authorized by its withdrawal address unless ``source_address`` is provided.
+    """
+    assert is_post_eip8148(spec)
+
+    validator = state.validators[validator_index]
+    if source_address is None:
+        source_address = validator.withdrawal_credentials[12:]
+
+    return spec.SetSweepThresholdRequest(
+        source_address=source_address,
+        validator_pubkey=validator.pubkey,
+        threshold=threshold,
+    )
+
+
 #
 # Run processing
 #

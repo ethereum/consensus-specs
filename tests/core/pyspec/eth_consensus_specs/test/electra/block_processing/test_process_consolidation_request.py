@@ -9,7 +9,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_gloas
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
@@ -1417,6 +1417,10 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
             spec.COMPOUNDING_WITHDRAWAL_PREFIX + pre_withdrawal_credentials[1:]
         )
         assert state.validators[source_index].withdrawal_credentials == post_withdrawal_credentials
+        if is_post_eip8148(spec):
+            assert (
+                state.validator_sweep_thresholds[source_index] == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+            )
         # Check excess balance is queued
         assert state.balances[source_index] == spec.MIN_ACTIVATION_BALANCE
         if pre_balance > spec.MIN_ACTIVATION_BALANCE:

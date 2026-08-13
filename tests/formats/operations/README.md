@@ -56,6 +56,7 @@ Operations:
 | `payload_attestation`            | `PayloadAttestation`                 | `payload_attestation`            | `process_payload_attestation(state, payload_attestation)` (new in Gloas)                          |
 | `builder_deposit_request`        | `BuilderDepositRequest`              | `builder_deposit_request`        | `process_builder_deposit_request(state, builder_deposit_request)` (new in Gloas)                  |
 | `builder_exit_request`           | `BuilderExitRequest`                 | `builder_exit_request`           | `process_builder_exit_request(state, builder_exit_request)` (new in Gloas)                        |
+| `set_sweep_threshold_request`    | `SetSweepThresholdRequest`           | `set_sweep_threshold_request`    | `process_set_sweep_threshold_request(state, set_sweep_threshold_request)` (new in EIP-8148)       |
 | `randao_commitment_registration` | `SignedRandaoCommitmentRegistration` | `randao_commitment_registration` | `process_randao_commitment_registration(state, randao_commitment_registration)` (new in EIP-8321) |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`),
