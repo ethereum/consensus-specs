@@ -1,5 +1,6 @@
 import argparse
 import copy
+import keyword
 import sys
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -124,9 +125,9 @@ def parse_build_targets(targets_str: str) -> list[BuildTarget]:
 
         name, preset_dir_path, config_path = data
 
-        # Validate preset name
-        if not name.isalnum():
-            raise ValueError(f"invalid target name (must be alphanumeric): {name!r}")
+        # Target names are used as Python module names in the generated package.
+        if not name.isidentifier() or keyword.iskeyword(name):
+            raise ValueError(f"invalid target name (must be a valid Python identifier): {name!r}")
 
         # Validate preset directory
         preset_dir = Path(preset_dir_path)
@@ -168,6 +169,9 @@ def generate_fork_specs(
     if fork not in spec_builders:
         raise ValueError(f"Unknown fork: {fork}. Available: {list(spec_builders.keys())}")
 
+    if not build_targets:
+        raise ValueError("at least one build target is required")
+
     # Auto-detect source files if not provided
     if source_files is None:
         md_doc_paths = get_md_doc_paths(fork)
@@ -208,9 +212,13 @@ def generate_fork_specs(
         if verbose:
             print(f"    Wrote: {output_file} ({len(spec_str):,} bytes)")
 
-    # Create __init__.py that imports mainnet as default
+    # Keep mainnet as the default when available, otherwise use the first build target.
+    default_target = next(
+        (target.name for target in build_targets if target.name == "mainnet"),
+        build_targets[0].name,
+    )
     init_file = out_dir / "__init__.py"
-    init_file.write_text("from . import mainnet as spec  # noqa:F401\n")
+    init_file.write_text(f"from . import {default_target} as spec  # noqa:F401\n")
 
     if verbose:
         print(f"  Wrote: {init_file}")
