@@ -1382,9 +1382,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
-            *([spec.KZGCommitment()] * over_limit)
-        ),
+        blob_kzg_commitments=spec.BlobKZGCommitments(*([spec.KZGCommitment()] * over_limit)),
     )
     yield get_filename(signed_bid), signed_bid
 
@@ -1452,9 +1450,7 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
-            *([spec.KZGCommitment()] * int(max_blobs))
-        ),
+        blob_kzg_commitments=spec.BlobKZGCommitments(*([spec.KZGCommitment()] * int(max_blobs))),
     )
     yield get_filename(signed_bid), signed_bid
 

@@ -1165,7 +1165,9 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    state.pending_deposits = PendingDeposits(
+        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    )
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
@@ -1198,7 +1200,9 @@ def process_pending_consolidations(state: BeaconState) -> None:
         increase_balance(state, pending_consolidation.target_index, source_effective_balance)
         next_pending_consolidation += 1
 
-    state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
+    state.pending_consolidations = PendingConsolidations(
+        state.pending_consolidations[next_pending_consolidation:]
+    )
 ```
 
 #### Modified `process_effective_balance_updates`
@@ -1472,9 +1476,9 @@ def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
 def update_pending_partial_withdrawals(
     state: BeaconState, processed_partial_withdrawals_count: Uint64
 ) -> None:
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[
-        processed_partial_withdrawals_count:
-    ]
+    state.pending_partial_withdrawals = PendingPartialWithdrawals(
+        state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
+    )
 ```
 
 ##### Modified `process_withdrawals`

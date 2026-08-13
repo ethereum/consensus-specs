@@ -119,7 +119,7 @@ def validate_partial_data_column_sidecar_gossip(
     Validate a PartialDataColumnSidecar for gossip propagation on a subnet.
     Raises GossipIgnore or GossipReject on validation failure.
     """
-    num_cells_present = sum(1 for b in sidecar.cells_present_bitmap if b)
+    num_cells_present = get_set_bit_count(sidecar.cells_present_bitmap)
 
     # [Modified in Gloas:EIP7732]
     # [REJECT] The message contains at least one cell

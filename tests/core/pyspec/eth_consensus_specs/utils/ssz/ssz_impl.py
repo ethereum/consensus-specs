@@ -1,5 +1,3 @@
-from typing import TypeVar
-
 from remerkleable.basic import uint as Uint
 from remerkleable.byte_arrays import Bytes32
 from remerkleable.core import Type, View
@@ -29,9 +27,6 @@ def uint_to_bytes(n: Uint) -> bytes:
     return serialize(n)
 
 
-V = TypeVar("V", bound=View)
-
-
 # Helper method for typing copies, and avoiding a example_input.copy() method call, instead of copy(example_input)
-def copy(obj: V) -> V:
+def copy[V: View](obj: V) -> V:
     return obj.copy()
