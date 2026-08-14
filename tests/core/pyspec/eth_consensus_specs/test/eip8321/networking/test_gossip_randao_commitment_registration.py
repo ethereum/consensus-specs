@@ -20,17 +20,12 @@ from eth_consensus_specs.test.helpers.gossip import (
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 
-# EIP-8321 is unscheduled, so it has no entry in `configs/` and the harness
-# genesis state carries the previous scheduled fork's version instead. Tests set
-# `state.fork.current_version` explicitly to get past the fork gate.
-
 
 @with_eip8321_and_later
 @spec_state_test
 @always_bls
 def test_gossip_randao_commitment_registration__valid(spec, state):
     """A well-formed registration for an unregistered validator passes gossip."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
 
     anchor_state = state.copy()
@@ -78,7 +73,7 @@ def test_gossip_randao_commitment_registration__ignore_pre_eip8321_head_state(sp
     preceding fork; only the gate stops it.
     """
     state.fork.current_version = get_previous_fork_version(spec, spec.fork)
-    assert state.fork.current_version < spec.EIP8321_FORK_VERSION
+    assert state.fork.current_version < spec.config.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
 
     anchor_state = state.copy()
@@ -128,7 +123,7 @@ def test_gossip_randao_commitment_registration__valid_post_eip8321_head_state(sp
     """
     # Stand in for a hypothetical fork scheduled after EIP-8321.
     state.fork.current_version = spec.Version(b"\xff\xff\xff\xff")
-    assert state.fork.current_version > spec.EIP8321_FORK_VERSION
+    assert state.fork.current_version > spec.config.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
 
     anchor_state = state.copy()
@@ -171,7 +166,6 @@ def test_gossip_randao_commitment_registration__valid_post_eip8321_head_state(sp
 @spec_state_test
 def test_gossip_randao_commitment_registration__reject_validator_index_out_of_range(spec, state):
     """A registration for an unknown validator index must be rejected."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(
         spec,
         state,
@@ -221,7 +215,6 @@ def test_gossip_randao_commitment_registration__reject_validator_index_out_of_ra
 @spec_state_test
 def test_gossip_randao_commitment_registration__ignore_already_seen(spec, state):
     """The second registration seen for a validator is ignored."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
 
     anchor_state = state.copy()
@@ -267,7 +260,6 @@ def test_gossip_randao_commitment_registration__ignore_already_seen(spec, state)
 @spec_state_test
 def test_gossip_randao_commitment_registration__reject_zero_commitment(spec, state):
     """A zero commitment is the unregistered sentinel and must be rejected."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(
         spec, state, validator_index=0, commitment=spec.Bytes32()
     )
@@ -313,7 +305,6 @@ def test_gossip_randao_commitment_registration__reject_zero_commitment(spec, sta
 @spec_state_test
 def test_gossip_randao_commitment_registration__ignore_already_registered(spec, state):
     """A registration for a validator that already has an active commitment is ignored."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
     activate_commitment(spec, state, validator_index=0)
 
@@ -358,7 +349,6 @@ def test_gossip_randao_commitment_registration__ignore_already_registered(spec, 
 @spec_state_test
 def test_gossip_randao_commitment_registration__ignore_already_pending(spec, state):
     """A registration is ignored while the validator has one pending in the queue."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(spec, state, validator_index=0)
     state.pending_randao_commitments.append(
         spec.PendingRandaoCommitment(
@@ -410,7 +400,6 @@ def test_gossip_randao_commitment_registration__ignore_already_pending(spec, sta
 @always_bls
 def test_gossip_randao_commitment_registration__reject_invalid_signature(spec, state):
     """A registration signed by the wrong key is rejected."""
-    state.fork.current_version = spec.EIP8321_FORK_VERSION
     signed_registration = get_signed_registration(
         spec, state, validator_index=0, privkey=privkeys[1]
     )

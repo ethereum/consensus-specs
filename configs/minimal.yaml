@@ -57,6 +57,9 @@ GLOAS_FORK_EPOCH: 18446744073709551615
 # [customized] Heze
 HEZE_FORK_VERSION: 0x08000001
 HEZE_FORK_EPOCH: 18446744073709551615
+# [customized] EIP8321
+EIP8321_FORK_VERSION: 0xe8321001
+EIP8321_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
