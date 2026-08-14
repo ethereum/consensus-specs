@@ -91,13 +91,10 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8321]
-        randao_commitments=RandaoCommitments(),
+        randao_commitments=RandaoCommitments([Bytes32() for _ in pre.validators]),
         # [New in EIP8321]
         pending_randao_commitments=PendingRandaoCommitments(),
     )
-
-    for _ in pre.validators:
-        post.randao_commitments.append(Bytes32())
 
     return post
 ```
