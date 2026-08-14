@@ -19,7 +19,7 @@
   - [New `ExecutionProofClaim`](#new-executionproofclaim)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+- [Execution proof verification](#execution-proof-verification)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
 
@@ -27,13 +27,18 @@
 
 ## Introduction
 
-These are the beacon-chain specifications to add EIP-8025, enabling stateless
-validation of execution payloads through recursive execution proofs.
+These are the beacon-chain data and verification specifications for EIP-8025,
+which defines recursive proofs of execution-payload validity.
 
 An execution proof exposes an immutable origin and a head. Their chain
 relationship is established recursively by authenticating the beacon-block
-ancestry from the previous head to the new head and the signed execution payload
-bid committed by each block in that lineage.
+ancestry from the previous head to the new head, the bids at both endpoints, and
+the execution head committed by the new head's post-state.
+
+Execution proofs are non-consensus artifacts. Verifying or storing one does not
+change beacon-chain state, fork choice, or Gloas payload status. Client policy
+for using a stored proof, including whether it can avoid payload retrieval, is
+outside this specification.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
 and imports proof types from [proof-engine.md](./proof-engine.md).
@@ -116,12 +121,13 @@ class SignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-## Beacon chain state transition function
+## Execution proof verification
 
 ### Execution proof
 
-Verified execution proofs are recorded by the fork-choice `on_execution_proof`
-handler. Any proof-engine-native artifacts remain implementation-dependent.
+This helper validates a proof for storage by the `on_execution_proof` handler.
+It is not invoked by the beacon state transition function. Any
+proof-engine-native artifacts remain implementation-dependent.
 
 #### New `process_execution_proof`
 

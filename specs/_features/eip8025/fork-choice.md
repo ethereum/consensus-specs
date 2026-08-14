@@ -1,6 +1,7 @@
 # EIP-8025 -- Fork Choice
 
-This document contains the fork-choice specifications for EIP-8025.
+This document extends the fork-choice `Store` as a convenient repository for
+verified EIP-8025 proofs. Stored proofs are not fork-choice inputs.
 
 *Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md).
 
@@ -87,6 +88,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 The handler `on_execution_proof` is called when the node accepts a
 `SignedExecutionProof` for downstream processing.
+
+This handler only verifies and stores the proof. Its result MUST NOT change
+fork-choice weights, head selection, beacon-chain consensus processing, or Gloas
+payload status.
 
 ```python
 def on_execution_proof(

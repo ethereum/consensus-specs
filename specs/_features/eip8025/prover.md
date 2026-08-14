@@ -20,8 +20,8 @@
 
 This document represents the prover guide accompanying EIP-8025. Provers are
 active validators who voluntarily generate and submit execution proofs without
-direct protocol-level compensation. They provide a public good by enabling
-stateless validation during the optional proof phase.
+direct protocol-level compensation. They provide a public good by producing
+independently verifiable execution proofs during the optional proof phase.
 
 *Note*: Provers are a transitional mechanism. In future mandatory proof forks,
 builders will be required to produce and gossip execution proofs as part of
@@ -79,20 +79,28 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
      configured `ExecutionCheckpoint` origin if no proof exists.
    - Fetch every produced beacon block from that predecessor through the target
      block, inclusive. Slot gaps represent missed slots and require no witness.
-   - Build a `BeaconBlockBidWitness` for each fetched block by extracting its
-     `SignedExecutionPayloadBid` and its Merkle branch against the block
-     header's `body_root`. The resulting `beacon_lineage` starts with the
-     predecessor checkpoint and ends with the target block.
+     Use their headers, in order, as `beacon_lineage`.
+   - For a base proof, set `origin` to the target checkpoint, omit
+     `previous_proof` and `previous_bid`, and use only the target header in
+     `beacon_lineage`. For a recursive proof, provide the predecessor proof and
+     build `previous_bid` by extracting the predecessor head's
+     `SignedExecutionPayloadBid` and its Merkle branch against that header's
+     `body_root`.
+   - Build `target_bid` from the target block's `SignedExecutionPayloadBid` and
+     its Merkle branch. Intermediate produced blocks require only headers.
    - Call the EL `newPayloadWithWitness` Engine API method for the target
      payload and require a `VALID` response with an `ExecutionWitness`. Load the
      locally configured `ChainConfig`, derive the transaction public keys, and
      compute the trusted `chain_config_root`. The terminal parent header in the
-     execution witness MUST correspond to the execution block hash opened from
-     the predecessor checkpoint bid. If any intermediate produced block is
-     *full*, first generate a separate recursive proof for that transition.
+     execution witness MUST correspond to the execution block hash authenticated
+     by the target post-state's `latest_block_hash`. For a recursive proof this
+     hash MUST equal the block hash opened by `previous_bid`. If an intermediate
+     produced block is *full*, first generate a separate recursive proof for
+     that transition.
    - Build `BeaconStateWitness` branches for `genesis_time`, `fork`,
-     `genesis_validators_root`, `payload_expected_withdrawals`, and the selected
-     envelope signer public key against the target block's state root.
+     `genesis_validators_root`, `payload_expected_withdrawals`,
+     `latest_block_hash`, and the selected envelope signer public key against
+     the target block's state root.
    - For each desired `proof_type`, assemble a `BeaconChainWitness` from its
      compatible predecessor, beacon lineage, and signed envelope. Combine it
      with the execution witness, chain configuration, and transaction public

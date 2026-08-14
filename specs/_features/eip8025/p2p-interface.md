@@ -74,6 +74,9 @@ class Seen:
 
 This topic is used to propagate `SignedExecutionProof` messages.
 
+<!-- TODO: Specify peer-scoring behavior for proofs that pass gossip
+validation but later fail asynchronous proof verification. -->
+
 ```python
 def validate_execution_proof_gossip(
     seen: Seen,

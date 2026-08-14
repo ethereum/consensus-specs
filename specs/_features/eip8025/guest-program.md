@@ -33,10 +33,10 @@ recursive guest program that produces an `ExecutionProof`. The execution proof
 commitment is the `GuestPublicInput` defined below. The gossiped
 `ExecutionProofClaim` omits the local chain-configuration commitment.
 
-Proofs are produced only for *full* beacon blocks. *Empty* beacon blocks are
-included in the next proof's `beacon_lineage`, where their empty status is
-established by the next authenticated bid continuing from each empty block's
-parent execution block hash.
+Proofs are produced only for *full* beacon blocks. Headers for intervening
+*empty* beacon blocks are included in the next proof's `beacon_lineage`. The
+target post-state's authenticated `latest_block_hash` establishes that the
+execution head did not change across those intervening blocks.
 
 ## Guest inputs
 
@@ -61,7 +61,6 @@ is not transmitted in execution-proof gossip.
 ```python
 @dataclass
 class BeaconBlockBidWitness:
-    header: BeaconBlockHeader
     signed_bid: SignedExecutionPayloadBid
     signed_bid_merkle_witness: Sequence[Bytes32]
 ```
@@ -79,6 +78,8 @@ class BeaconStateWitness:
     genesis_validators_root_merkle_witness: Sequence[Bytes32]
     payload_expected_withdrawals: Withdrawals
     payload_expected_withdrawals_merkle_witness: Sequence[Bytes32]
+    latest_block_hash: Hash32
+    latest_block_hash_merkle_witness: Sequence[Bytes32]
     envelope_signer_pubkey: BLSPubkey
     envelope_signer_pubkey_merkle_witness: Sequence[Bytes32]
 ```
@@ -94,18 +95,22 @@ the selected builder's `pubkey`, as determined by `builder_index`.
 class BeaconChainWitness:
     origin: Optional[ExecutionCheckpoint]
     previous_proof: Optional[ExecutionProof]
-    beacon_lineage: Sequence[BeaconBlockBidWitness]
+    previous_bid: Optional[BeaconBlockBidWitness]
+    beacon_lineage: Sequence[BeaconBlockHeader]
+    target_bid: BeaconBlockBidWitness
     signed_envelope: SignedExecutionPayloadEnvelope
     target_state: BeaconStateWitness
 ```
 
 Exactly one of `origin` and `previous_proof` MUST be present. `origin` starts a
-base proof. `previous_proof` advances an existing recursive proof.
-`beacon_lineage` starts with the selected origin or previous head, ends with the
-target head block. The only intervening blocks are produced *empty* beacon
-blocks; missed slots contribute no witness. Its first witness opens the
-checkpoint's signed execution payload bid and supplies its execution block hash
-to the next transition.
+base proof with `origin` equal to its target. `previous_proof` advances an
+existing recursive proof. `beacon_lineage` starts with the selected origin or
+previous head and ends with the target head block. Slot gaps represent missed
+slots. In a recursive proof, `previous_bid` authenticates the execution block
+hash proven at the previous head. `target_bid` authenticates the target
+envelope's bid. Intermediate blocks need only their headers because the target
+state's authenticated `latest_block_hash` establishes that none changed the
+execution head.
 
 ### New `PrivateInput`
 
@@ -158,7 +163,6 @@ def verify_stateless_new_payload(
     new_payload_request: NewPayloadRequest,
     execution_witness: Any,
     chain_config: Any,
-    chain_config_root: Root,
     public_keys: Sequence[bytes],
 ) -> Any:
     """
@@ -170,23 +174,25 @@ def verify_stateless_new_payload(
 
 This operation is an integration boundary, not a second execution-validation
 algorithm. The adapter constructs exactly one execution-specs `StatelessInput`
-from the private arguments and binds its `chain_config` to the public
-`chain_config_root`. A typed implementation invokes
+from the private arguments. A typed implementation invokes
 `verify_stateless_new_payload` directly. A serialized zkVM implementation MAY
 invoke `run_stateless_guest` and decode its output. In both cases the logical
 operations and guarantees MUST match the execution specifications, including
 chain-configuration validation, parent-header authentication, block-hash
 validation, versioned-hash validation, transaction execution, and output-root
-checks. The returned `StatelessValidationResult.chain_config_root` identifies
-the public chain-configuration commitment used by that validation.
+checks. The returned `StatelessValidationResult.chain_config` MUST be the exact
+configuration used by that validation. This interface does not return a
+`new_payload_request_root`.
 
 ## Guest processing
 
 ### New `verify_beacon_block_bid_witness`
 
 ```python
-def verify_beacon_block_bid_witness(witness: BeaconBlockBidWitness) -> None:
-    header = witness.header
+def verify_beacon_block_bid_witness(
+    header: BeaconBlockHeader,
+    witness: BeaconBlockBidWitness,
+) -> None:
     bid = witness.signed_bid.message
     gindex = get_generalized_index(BeaconBlockBody, "signed_execution_payload_bid")
 
@@ -271,49 +277,47 @@ def process_private_input(
         previous_head = previous_proof.claim.head
 
     lineage = beacon_chain_witness.beacon_lineage
-    assert len(lineage) >= 2
+    assert len(lineage) >= 1
 
-    checkpoint_witness = lineage[0]
-    verify_beacon_block_bid_witness(checkpoint_witness)
-    assert checkpoint_witness.header.slot == previous_head.slot
-    assert hash_tree_root(checkpoint_witness.header) == previous_head.beacon_block_root
+    checkpoint_header = lineage[0]
+    assert checkpoint_header.slot == previous_head.slot
+    assert hash_tree_root(checkpoint_header) == previous_head.beacon_block_root
 
     parent_beacon_block_root = previous_head.beacon_block_root
     previous_slot = previous_head.slot
-    parent_execution_block_hash = checkpoint_witness.signed_bid.message.block_hash
-    previous_bid = None
 
-    for witness in lineage[1:]:
-        header = witness.header
-        bid = witness.signed_bid.message
-
-        # Slots omitted from the lineage are missed slots. Every included block
-        # must advance the canonical beacon-block ancestry.
+    for header in lineage[1:]:
         assert header.slot > previous_slot
         assert header.parent_root == parent_beacon_block_root
 
-        # Authenticate the complete signed bid against the block body root.
-        verify_beacon_block_bid_witness(witness)
-
-        # Until the target payload is applied, every produced block continues
-        # from the execution head committed by the predecessor proof.
-        assert bid.parent_block_hash == parent_execution_block_hash
-
-        # The current bid establishes that the preceding produced block after
-        # the checkpoint was empty.
-        if previous_bid is not None:
-            assert bid.parent_block_hash != previous_bid.block_hash
-
         parent_beacon_block_root = hash_tree_root(header)
         previous_slot = header.slot
-        previous_bid = bid
 
-    target = lineage[-1]
-    target_header = target.header
-    target_bid = target.signed_bid.message
+    target_header = lineage[-1]
+    verify_beacon_block_bid_witness(target_header, beacon_chain_witness.target_bid)
+    target_bid = beacon_chain_witness.target_bid.signed_bid.message
     envelope = beacon_chain_witness.signed_envelope.message
     payload = envelope.payload
     target_state = beacon_chain_witness.target_state
+
+    target_checkpoint = ExecutionCheckpoint(
+        slot=target_header.slot,
+        beacon_block_root=hash_tree_root(target_header),
+    )
+    previous_execution_block_hash: Optional[Hash32] = None
+    if previous_proof is None:
+        assert len(lineage) == 1
+        assert beacon_chain_witness.previous_bid is None
+        assert origin == target_checkpoint
+    else:
+        assert len(lineage) >= 2
+        previous_bid = beacon_chain_witness.previous_bid
+        assert previous_bid is not None
+        verify_beacon_block_bid_witness(
+            checkpoint_header,
+            previous_bid,
+        )
+        previous_execution_block_hash = previous_bid.signed_bid.message.block_hash
 
     # Authenticate every state-dependent input used below against the accepted
     # target block's post-state root.
@@ -341,6 +345,15 @@ def process_private_input(
         get_generalized_index(BeaconState, "payload_expected_withdrawals"),
         target_header.state_root,
     )
+    verify_beacon_state_field(
+        target_state.latest_block_hash,
+        target_state.latest_block_hash_merkle_witness,
+        get_generalized_index(BeaconState, "latest_block_hash"),
+        target_header.state_root,
+    )
+
+    if previous_execution_block_hash is not None:
+        assert target_state.latest_block_hash == previous_execution_block_hash
 
     if envelope.builder_index == BUILDER_INDEX_SELF_BUILD:
         signer_gindex = get_progressive_list_element_field_gindex(
@@ -369,7 +382,7 @@ def process_private_input(
 
     # Bind the payload envelope to the authenticated target bid and beacon
     # block header.
-    target_beacon_block_root = hash_tree_root(target_header)
+    target_beacon_block_root = target_checkpoint.beacon_block_root
     assert envelope.beacon_block_root == target_beacon_block_root
     assert envelope.parent_beacon_block_root == target_header.parent_root
     assert envelope.builder_index == target_bid.builder_index
@@ -378,7 +391,7 @@ def process_private_input(
     assert payload.gas_limit == target_bid.gas_limit
     assert hash_tree_root(envelope.execution_requests) == target_bid.execution_requests_root
     assert payload.slot_number == target_header.slot
-    assert payload.parent_hash == parent_execution_block_hash
+    assert payload.parent_hash == target_state.latest_block_hash
     assert payload.timestamp == Uint64(
         target_state.genesis_time + (target_header.slot - GENESIS_SLOT) * SLOT_DURATION_MS // 1000
     )
@@ -428,11 +441,10 @@ def process_private_input(
         new_payload_request,
         private_input.execution_witness,
         private_input.chain_config,
-        chain_config_root,
         private_input.public_keys,
     )
     assert execution_result.successful_validation
-    assert execution_result.chain_config_root == chain_config_root
+    assert hash_tree_root(execution_result.chain_config) == chain_config_root
 
     return GuestPublicInput(
         origin=origin,
@@ -446,7 +458,9 @@ def process_private_input(
 
 ## Availability boundary
 
-The proof replaces the payload-envelope and execution-engine validity checks; it
+The guest proves the payload-envelope and execution-engine validity checks; it
 does not prove payload data availability. The block-in-blob availability design
-provides that separate guarantee. This specification therefore introduces no
-fork-choice availability signal or proof-driven change to Gloas payload status.
+provides that separate guarantee. Verification and storage of an execution proof
+do not change fork choice, beacon-chain consensus processing, or Gloas payload
+status. Any client policy that uses a stored proof to avoid payload retrieval is
+outside this specification.
