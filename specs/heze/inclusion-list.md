@@ -66,21 +66,20 @@ def process_inclusion_list(
 ) -> None:
     inclusion_list = signed_inclusion_list.message
     validator_index = inclusion_list.validator_index
+    key = (inclusion_list.slot, inclusion_list.dependent_root)
 
-    inclusion_lists = store.inclusion_lists[(inclusion_list.slot, inclusion_list.dependent_root)]
-    equivocators = store.equivocators[(inclusion_list.slot, inclusion_list.dependent_root)]
-
-    if validator_index in inclusion_lists:
+    if validator_index in store.inclusion_lists[key]:
         # Mark the validator as an equivocator if it published a different inclusion list
-        stored_inclusion_list = inclusion_lists[validator_index].signed_inclusion_list.message
+        stored_entry = store.inclusion_lists[key][validator_index]
+        stored_inclusion_list = stored_entry.signed_inclusion_list.message
         if stored_inclusion_list != inclusion_list:
-            equivocators.add(validator_index)
+            store.equivocators[key].add(validator_index)
 
         # Ignore an inclusion list that has already been processed
         return
 
     # Store the signed inclusion list and its timeliness
-    inclusion_lists[validator_index] = InclusionListEntry(
+    store.inclusion_lists[key][validator_index] = InclusionListEntry(
         signed_inclusion_list=signed_inclusion_list,
         timely=timely,
     )
