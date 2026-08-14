@@ -148,11 +148,11 @@ def validate_randao_commitment_registration_gossip(
         raise GossipIgnore("already seen RANDAO commitment registration for this validator")
 
     # [REJECT] The commitment is non-zero
-    if registration.commitment == Bytes32():
+    if registration.commitment == UNSET_RANDAO_COMMITMENT:
         raise GossipReject("commitment is zero")
 
     # [IGNORE] The validator is not registered yet
-    if state.randao_commitments[index] != Bytes32():
+    if state.randao_commitments[index] != UNSET_RANDAO_COMMITMENT:
         raise GossipIgnore("validator is already registered")
 
     # [IGNORE] The validator has no registration pending in the node's view

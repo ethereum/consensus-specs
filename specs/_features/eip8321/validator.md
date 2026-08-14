@@ -70,9 +70,9 @@ def compute_hash_chain(chain_secret: Bytes32, length: Uint64) -> Sequence[Bytes3
     chain = [chain_secret]
     for _ in range(length):
         chain.append(blake3(HASH_CHAIN_RANDAO_DST + chain[-1]))
-    # A zero link marks an unregistered validator and cannot be revealed, so
-    # the chain must be regenerated from a fresh secret if one occurs
-    assert all(value != Bytes32() for value in chain)
+    # A link equal to UNSET_RANDAO_COMMITMENT cannot be revealed, so the chain
+    # must be regenerated from a fresh secret if one occurs
+    assert all(value != UNSET_RANDAO_COMMITMENT for value in chain)
     return chain
 ```
 
@@ -149,7 +149,7 @@ replaces the signature.
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
     # [New in EIP8321]
-    if state.randao_commitments[block.proposer_index] != Bytes32():
+    if state.randao_commitments[block.proposer_index] != UNSET_RANDAO_COMMITMENT:
         return G2_POINT_AT_INFINITY
     domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(compute_epoch_at_slot(block.slot), domain)
@@ -173,7 +173,7 @@ def get_hash_chain_reveal(
     and is empty while the proposer has no commitment registered.
     """
     commitment = state.randao_commitments[block.proposer_index]
-    if commitment == Bytes32():
+    if commitment == UNSET_RANDAO_COMMITMENT:
         return Bytes32()
 
     index = chain.index(commitment)

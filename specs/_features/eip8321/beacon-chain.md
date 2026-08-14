@@ -114,9 +114,10 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 
 ### Hash chain
 
-| Name                    | Value                  |
-| ----------------------- | ---------------------- |
-| `HASH_CHAIN_RANDAO_DST` | `b'HASH_CHAIN_RANDAO'` |
+| Name                      | Value                  |
+| ------------------------- | ---------------------- |
+| `HASH_CHAIN_RANDAO_DST`   | `b'HASH_CHAIN_RANDAO'` |
+| `UNSET_RANDAO_COMMITMENT` | `Bytes32()`            |
 
 ## Preset
 
@@ -278,7 +279,7 @@ def add_validator_to_registry(
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8321]
-    set_or_append_list(state.randao_commitments, index, Bytes32())
+    set_or_append_list(state.randao_commitments, index, UNSET_RANDAO_COMMITMENT)
 ```
 
 ### RANDAO verifications
@@ -392,7 +393,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     proposer_index = get_beacon_proposer_index(state)
 
     # [New in EIP8321]
-    if state.randao_commitments[proposer_index] != Bytes32():
+    if state.randao_commitments[proposer_index] != UNSET_RANDAO_COMMITMENT:
         verify_hash_chain_reveal(state, body, proposer_index)
         mix = blake3(get_randao_mix(state, epoch) + body.hash_chain_reveal)
         state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -471,8 +472,8 @@ def process_randao_commitment_registration(
     index = registration.validator_index
 
     assert index < len(state.validators)
-    assert registration.commitment != Bytes32()
-    assert state.randao_commitments[index] == Bytes32()
+    assert registration.commitment != UNSET_RANDAO_COMMITMENT
+    assert state.randao_commitments[index] == UNSET_RANDAO_COMMITMENT
     assert all(pending.validator_index != index for pending in state.pending_randao_commitments)
 
     # Fork-agnostic domain since registrations are valid across forks
