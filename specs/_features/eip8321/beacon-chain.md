@@ -114,18 +114,18 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 
 ### Hash chain
 
-| Name                    | Value                  | Description                                            |
-| ----------------------- | ---------------------- | ------------------------------------------------------ |
-| `HASH_CHAIN_RANDAO_DST` | `b'HASH_CHAIN_RANDAO'` | Domain-separation tag prefixed to each hash-chain link |
+| Name                    | Value                  |
+| ----------------------- | ---------------------- |
+| `HASH_CHAIN_RANDAO_DST` | `b'HASH_CHAIN_RANDAO'` |
 
 ## Preset
 
 ### Hash-chain RANDAO
 
-| Name                                  | Value                  | Description                                                                        |
-| ------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------- |
-| `COMMITMENT_REGISTRATION_DELAY`       | `Epoch(3)` (= 3)       | *[New in EIP8321]* Epochs before a registered commitment becomes active            |
-| `MAX_RANDAO_COMMITMENT_REGISTRATIONS` | `Uint64(2**7)` (= 128) | *[New in EIP8321]* Maximum number of RANDAO commitment registrations in each block |
+| Name                                  | Value                  |
+| ------------------------------------- | ---------------------- |
+| `COMMITMENT_REGISTRATION_DELAY`       | `Epoch(3)` (= 3)       |
+| `MAX_RANDAO_COMMITMENT_REGISTRATIONS` | `Uint64(2**7)` (= 128) |
 
 *Note*: `COMMITMENT_REGISTRATION_DELAY` must be at least
 `MIN_SEED_LOOKAHEAD + 2` so that a registrant cannot know whether it proposes in

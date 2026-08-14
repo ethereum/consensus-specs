@@ -44,7 +44,7 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [New in EIP8321]
+            # [Modified in EIP8321]
             current_version=EIP8321_FORK_VERSION,
             epoch=epoch,
         ),
