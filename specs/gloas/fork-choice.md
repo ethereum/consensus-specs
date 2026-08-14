@@ -204,9 +204,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         payloads={},
         # [New in Gloas:EIP7732]
-        payload_timeliness_vote={},
+        payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Gloas:EIP7732]
-        payload_data_availability_vote={},
+        payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
     )
 ```
 

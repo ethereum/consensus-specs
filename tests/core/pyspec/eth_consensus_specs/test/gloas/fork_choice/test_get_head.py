@@ -5,8 +5,14 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
+    add_execution_payload,
     add_payload_vote_checks,
+    get_genesis_forkchoice_store_and_block,
+    on_tick_and_append_step,
     output_head_check,
 )
 from eth_consensus_specs.test.helpers.payload_attestation import (
@@ -100,5 +106,53 @@ def test_get_head_empty_payload_tiebreak(spec, state):
     assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
 
     add_payload_vote_checks(store, block_root, test_steps)
+    output_head_check(spec, store, test_steps)
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@spec_test
+@with_custom_state(balances_fn=ptc_size_balances, threshold_fn=default_activation_threshold)
+@single_phase
+def test_get_head_with_anchor_payload_delivered(spec, state):
+    """
+    ``get_head`` must not fail when the anchor (genesis) block is a previous
+    slot payload decision with its payload delivered.
+
+    ``get_forkchoice_store`` initializes the store's PTC vote arrays
+    (``payload_timeliness_vote`` and ``payload_data_availability_vote``) for
+    every block added via ``on_block``, but previously omitted the anchor
+    block. Once the store advances past the anchor's slot and the anchor's
+    payload is verified, the LMD-GHOST walk reaches the anchor's FULL/EMPTY
+    variants and ``should_extend_payload`` consults ``payload_timeliness``
+    and ``payload_data_availability``, which require the anchor root to be
+    present in the vote arrays. Without the arrays, ``get_head`` fails with an
+    ``AssertionError``.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    anchor_root = anchor_block.hash_tree_root()
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    # Deliver the anchor block's execution payload envelope so the FULL
+    # variant of the anchor exists
+    signed_anchor = spec.SignedBeaconBlock(message=anchor_block)
+    envelope = build_signed_execution_payload_envelope(spec, state, anchor_root, signed_anchor)
+    yield from add_execution_payload(spec, store, envelope, test_steps)
+
+    # Advance to the next slot: the anchor becomes a previous slot payload
+    # decision, and its payload status must be resolved without failing
+    on_tick_and_append_step(
+        spec, store, state.genesis_time + spec.config.SLOT_DURATION_MS // 1000, test_steps
+    )
+
+    # No PTC votes have been cast and there is no proposer boost, so the
+    # payload should be extended and the FULL variant chosen as the head
+    head = spec.get_head(store)
+    assert head.root == anchor_root
+    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
+
     output_head_check(spec, store, test_steps)
     yield "steps", test_steps
