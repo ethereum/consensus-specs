@@ -119,17 +119,13 @@ details.
 
 The `randao_commitment_registration` topic is used solely for propagating signed
 RANDAO commitment registrations on the network. Signed messages are sent in
-their entirety. The `state` parameter is the head state.
-
-*Note*: A validator registers at most once, so first-seen-per-validator
-deduplication bounds gossip to one signature verification per validator, ever.
+their entirety.
 
 ```python
 def validate_randao_commitment_registration_gossip(
     seen: Seen,
-    state: BeaconState,
+    store: Store,
     signed_registration: SignedRandaoCommitmentRegistration,
-    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedRandaoCommitmentRegistration for gossip propagation.
@@ -137,18 +133,11 @@ def validate_randao_commitment_registration_gossip(
     """
     registration = signed_registration.message
     index = registration.validator_index
+    state = store.block_states[get_head(store).root]
 
-    # [IGNORE] The current epoch is at or after the EIP-8321 fork epoch
-    # (where current_epoch is defined by the current wall-clock time)
-    time_since_genesis_ms = current_time_ms - state.genesis_time * 1000
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
-    current_epoch = compute_epoch_at_slot(current_slot)
-    if current_epoch < EIP8321_FORK_EPOCH:
-        raise GossipIgnore("current epoch is pre-eip8321")
-
-    # [REJECT] The commitment is non-zero
-    if registration.commitment == Bytes32():
-        raise GossipReject("commitment is zero")
+    # [IGNORE] The head state has upgraded to EIP-8321
+    if state.fork.current_version < EIP8321_FORK_VERSION:
+        raise GossipIgnore("head state is pre-eip8321")
 
     # [REJECT] The validator index is valid
     if index >= len(state.validators):
@@ -158,13 +147,17 @@ def validate_randao_commitment_registration_gossip(
     if index in seen.randao_commitment_registration_indices:
         raise GossipIgnore("already seen RANDAO commitment registration for this validator")
 
+    # [REJECT] The commitment is non-zero
+    if registration.commitment == Bytes32():
+        raise GossipReject("commitment is zero")
+
+    # [IGNORE] The validator is not registered yet
+    if state.randao_commitments[index] != Bytes32():
+        raise GossipIgnore("validator is already registered")
+
     # [IGNORE] The validator has no registration pending in the node's view
     if any(pending.validator_index == index for pending in state.pending_randao_commitments):
         raise GossipIgnore("RANDAO commitment registration is already pending for this validator")
-
-    # [REJECT] The validator is not registered yet
-    if state.randao_commitments[index] != Bytes32():
-        raise GossipReject("validator is already registered")
 
     # [REJECT] The signature is valid
     domain = compute_domain(
