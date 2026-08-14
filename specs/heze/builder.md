@@ -24,4 +24,7 @@ builder" to implement Heze.
 comprises all valid and non-equivocating inclusion lists they have observed.
 
 1. Set `bid.inclusion_list_bits` to
-   `get_inclusion_list_bits(get_inclusion_list_store(), state, Slot(bid.slot - 1), only_timely=False)`.
+   `get_inclusion_list_bits(get_inclusion_list_store(), state, slot, dependent_root, only_timely=False)`,
+   where `slot` is `bid.slot - Slot(1)` and `dependent_root` is
+   `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`
+   and `store` is the fork choice store.
