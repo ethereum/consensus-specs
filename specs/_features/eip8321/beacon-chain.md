@@ -27,6 +27,9 @@
     - [New `blake3`](#new-blake3)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+  - [RANDAO verifications](#randao-verifications)
+    - [New `verify_hash_chain_reveal`](#new-verify_hash_chain_reveal)
+    - [New `verify_bls_randao_reveal`](#new-verify_bls_randao_reveal)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
@@ -278,6 +281,39 @@ def add_validator_to_registry(
     set_or_append_list(state.randao_commitments, index, Bytes32())
 ```
 
+### RANDAO verifications
+
+#### New `verify_hash_chain_reveal`
+
+```python
+def verify_hash_chain_reveal(
+    state: BeaconState, body: BeaconBlockBody, proposer_index: ValidatorIndex
+) -> None:
+    """
+    Verify that ``body`` reveals the preimage of the proposer's stored commitment.
+    """
+    assert body.hash_chain_reveal != Bytes32()
+    assert body.randao_reveal == G2_POINT_AT_INFINITY
+    commitment = state.randao_commitments[proposer_index]
+    assert blake3(HASH_CHAIN_RANDAO_DST + body.hash_chain_reveal) == commitment
+```
+
+#### New `verify_bls_randao_reveal`
+
+```python
+def verify_bls_randao_reveal(
+    state: BeaconState, body: BeaconBlockBody, proposer_index: ValidatorIndex
+) -> None:
+    """
+    Verify that ``body`` reveals the proposer's signature over the current epoch.
+    """
+    assert body.hash_chain_reveal == Bytes32()
+    epoch = get_current_epoch(state)
+    signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
+    pubkey = state.validators[proposer_index].pubkey
+    assert bls.Verify(pubkey, signing_root, body.randao_reveal)
+```
+
 ## Beacon chain state transition function
 
 ### Epoch processing
@@ -354,25 +390,17 @@ the victim's contribution, which an `xor` accumulator would have allowed.
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     proposer_index = get_beacon_proposer_index(state)
-    commitment = state.randao_commitments[proposer_index]
+
     # [New in EIP8321]
-    if commitment != Bytes32():
-        # Verify the hash-chain reveal is the preimage of the stored commitment
-        assert body.hash_chain_reveal != Bytes32()
-        assert blake3(HASH_CHAIN_RANDAO_DST + body.hash_chain_reveal) == commitment
-        assert body.randao_reveal == G2_POINT_AT_INFINITY
-        # Mix in the hash-chain reveal and walk one link back
+    if state.randao_commitments[proposer_index] != Bytes32():
+        verify_hash_chain_reveal(state, body, proposer_index)
         mix = blake3(get_randao_mix(state, epoch) + body.hash_chain_reveal)
+        state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
         state.randao_commitments[proposer_index] = body.hash_chain_reveal
     else:
-        # Verify RANDAO reveal
-        assert body.hash_chain_reveal == Bytes32()
-        proposer = state.validators[proposer_index]
-        signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
-        assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
-        # Mix in RANDAO reveal
+        verify_bls_randao_reveal(state, body, proposer_index)
         mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
-    state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
+        state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 
 #### Operations
