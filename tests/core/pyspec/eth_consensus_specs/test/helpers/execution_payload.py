@@ -49,7 +49,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         raise ValueError("get_execution_payload_bid only available for gloas and later")
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     builder_index = spec.get_beacon_proposer_index(state)
 
     return spec.ExecutionPayloadBid(
@@ -297,7 +297,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     assert is_post_gloas(spec)
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     # Set block_hash to a different value than spec.Hash32(),
@@ -436,7 +436,7 @@ def build_randomized_execution_payload(spec, state, rng):
 def build_state_with_incomplete_transition(spec, state):
     if is_post_gloas(spec):
         # In Gloas, we need to set up the execution payload bid instead
-        kzgs = spec.ProgressiveList[spec.KZGCommitment]()
+        kzgs = spec.BlobKZGCommitments()
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),
@@ -534,7 +534,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         execution_requests = spec.ExecutionRequests()
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
+    kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     return spec.ExecutionPayloadBid(

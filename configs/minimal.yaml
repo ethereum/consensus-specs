@@ -222,10 +222,12 @@ MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS: 1
 MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 
 
-# Blob Scheduling
+# Scheduling
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE: []
+
+GAS_LIMIT_SCHEDULE: []
 
 # Fast Confirmation Rule
 # ---------------------------------------------------------------

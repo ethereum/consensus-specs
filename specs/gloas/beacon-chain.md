@@ -56,6 +56,7 @@
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
+  - [Gas limit schedule](#gas-limit-schedule)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Builder`](#builder)
@@ -93,6 +94,7 @@
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
+    - [New `get_scheduled_gas_limit`](#new-get_scheduled_gas_limit)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
@@ -171,6 +173,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
   Increase exit and consolidation churn
+- [EIP-8261](https://github.com/ethereum/EIPs/blob/f6b4668ef37612feba85aef151303f4100b79360/EIPS/eip-8261.md):
+  Gas Limit Schedule
 - [EIP-8282](https://github.com/ethereum/EIPs/blob/de4c6f02c7bec4686762c55f8ab6abcf97a77d7d/EIPS/eip-8282.md):
   Builder Execution Requests
 
@@ -613,6 +617,22 @@ same `Withdrawal` container can be used for validators and builders.
 | Name                                | Value                |
 | ----------------------------------- | -------------------- |
 | `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Epoch(2**6)` (= 64) |
+
+### Gas limit schedule
+
+*[New in Gloas:EIP8261]* This schedule defines the default and recommended
+maximum gas limit for a given epoch. The field is optional: clients that do not
+support it ignore it, and it introduces no new validity rules.
+
+There MUST NOT exist multiple gas limit schedule entries with the same epoch
+value. The epoch value in each entry MUST be greater than or equal to
+`GLOAS_FORK_EPOCH`. The gas limit schedule entries SHOULD be sorted by epoch in
+ascending order. The gas limit schedule MAY be empty.
+
+<!-- list-of-records:gas_limit_schedule -->
+
+| Epoch | Gas Limit | Date |
+| ----: | --------: | ---: |
 
 ## Containers
 
@@ -1080,6 +1100,19 @@ def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) ->
     return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
 ```
 
+#### New `get_scheduled_gas_limit`
+
+```python
+def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
+    """
+    Return the scheduled gas limit at a given epoch, if any.
+    """
+    for entry in sorted(GAS_LIMIT_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["GAS_LIMIT"]
+    return None
+```
+
 #### New `get_pending_balance_to_withdraw_for_builder`
 
 ```python
@@ -1329,7 +1362,7 @@ def get_indexed_payload_attestation(
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=PTCAttestingIndices(sorted(attesting_indices)),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
     )
@@ -1572,7 +1605,9 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    state.pending_deposits = PendingDeposits(
+        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+    )
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
@@ -1595,7 +1630,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
 
     old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
     new_payments = [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
-    state.builder_pending_payments = old_payments + new_payments
+    state.builder_pending_payments = BuilderPendingPayments(old_payments + new_payments)
 ```
 
 #### New `process_ptc_window`
@@ -1865,9 +1900,9 @@ def update_payload_expected_withdrawals(
 def update_builder_pending_withdrawals(
     state: BeaconState, processed_builder_withdrawals_count: Uint64
 ) -> None:
-    state.builder_pending_withdrawals = state.builder_pending_withdrawals[
-        processed_builder_withdrawals_count:
-    ]
+    state.builder_pending_withdrawals = BuilderPendingWithdrawals(
+        state.builder_pending_withdrawals[processed_builder_withdrawals_count:]
+    )
 ```
 
 ##### New `update_next_withdrawal_builder_index`

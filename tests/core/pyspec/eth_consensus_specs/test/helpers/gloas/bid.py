@@ -214,7 +214,7 @@ def build_signed_bid(
         # The field's own (progressive) type. Constructing it as a bounded
         # List would change the hash tree root and invalidate the signature
         # for consumers decoding the vector.
-        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment]()
+        blob_kzg_commitments = spec.BlobKZGCommitments()
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=parent_block_hash,
         parent_block_root=parent_block_root,
