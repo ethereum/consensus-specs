@@ -2328,7 +2328,6 @@ def process_attestation(
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in Gloas:EIP7732]
-        # Captured before the flag loop below, to credit each validator at most once.
         had_no_participation = epoch_participation[index] == ParticipationFlags(0b0000_0000)
         will_set_new_flag = False
 
@@ -2342,7 +2341,6 @@ def process_attestation(
                 will_set_new_flag = True
 
         # [New in Gloas:EIP7732]
-        # Add same-slot weight on the validator's first flag-setting inclusion only.
         if (
             will_set_new_flag
             and had_no_participation
