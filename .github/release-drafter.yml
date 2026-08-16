@@ -47,6 +47,9 @@ categories:
   - title: EIP-8148
     when:
       label: eip8148
+  - title: EIP-8205
+    when:
+      label: eip8205
 
   # Testing
   - title: Testing
