@@ -5,13 +5,13 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
     add_payload_vote_checks,
-    get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     output_head_check,
 )
@@ -20,6 +20,7 @@ from eth_consensus_specs.test.helpers.payload_attestation import (
     setup_verified_parent_with_distinct_ptc,
     vote_via_child_block,
 )
+from eth_consensus_specs.test.helpers.state import next_slots, state_transition_and_sign_block
 
 
 @with_gloas_and_later
@@ -116,8 +117,8 @@ def test_get_head_empty_payload_tiebreak(spec, state):
 @single_phase
 def test_get_head_with_anchor_payload_delivered(spec, state):
     """
-    ``get_head`` must not fail when the anchor (genesis) block is a previous
-    slot payload decision with its payload delivered.
+    ``get_head`` must not fail when the anchor block is a previous slot payload
+    decision with its payload delivered.
 
     ``get_forkchoice_store`` initializes the store's PTC vote arrays
     (``payload_timeliness_vote`` and ``payload_data_availability_vote``) for
@@ -130,22 +131,35 @@ def test_get_head_with_anchor_payload_delivered(spec, state):
     ``AssertionError``.
     """
     test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    # Anchor on a block at the start of an epoch so the anchor state is at a
+    # non-genesis slot (required for Heze's envelope delivery) and
+    # ``filter_block_tree`` won't walk past the anchor.
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
+    anchor_block = build_empty_block_for_next_slot(spec, state)
+    signed_anchor = state_transition_and_sign_block(spec, state, anchor_block)
+    anchor_state = state.copy()
     anchor_root = anchor_block.hash_tree_root()
 
-    yield "anchor_state", state
+    store = spec.get_forkchoice_store(anchor_state, anchor_block)
+
+    yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block
 
     # Deliver the anchor block's execution payload envelope so the FULL
     # variant of the anchor exists
-    signed_anchor = spec.SignedBeaconBlock(message=anchor_block)
-    envelope = build_signed_execution_payload_envelope(spec, state, anchor_root, signed_anchor)
+    envelope = build_signed_execution_payload_envelope(
+        spec, anchor_state, anchor_root, signed_anchor
+    )
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
     # Advance to the next slot: the anchor becomes a previous slot payload
     # decision, and its payload status must be resolved without failing
     on_tick_and_append_step(
-        spec, store, state.genesis_time + spec.config.SLOT_DURATION_MS // 1000, test_steps
+        spec,
+        store,
+        anchor_state.genesis_time + (anchor_state.slot + 1) * spec.config.SLOT_DURATION_MS // 1000,
+        test_steps,
     )
 
     # No PTC votes have been cast and there is no proposer boost, so the
