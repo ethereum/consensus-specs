@@ -2328,8 +2328,7 @@ def process_attestation(
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in Gloas:EIP7732]
-        # For same-slot attestations, check if we are setting any new flags.
-        # If we are, this validator has not contributed to this slot's quorum yet.
+        had_no_participation = epoch_participation[index] == ParticipationFlags(0b0000_0000)
         will_set_new_flag = False
 
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
@@ -2342,10 +2341,9 @@ def process_attestation(
                 will_set_new_flag = True
 
         # [New in Gloas:EIP7732]
-        # Add weight for same-slot attestations when any new flag is set.
-        # This ensures each validator contributes exactly once per slot.
         if (
             will_set_new_flag
+            and had_no_participation
             and is_attestation_same_slot(state, data)
             and payment.withdrawal.amount > 0
         ):
