@@ -97,7 +97,7 @@ payload status.
 def on_execution_proof(
     store: Store,
     signed_execution_proof: SignedExecutionProof,
-    proof_verifier: ProofVerifier,
+    proof_engine: ProofEngine,
 ) -> None:
     proof = signed_execution_proof.message
     head = proof.claim.head
@@ -118,7 +118,7 @@ def on_execution_proof(
     process_execution_proof(
         state,
         signed_execution_proof,
-        proof_verifier,
+        proof_engine,
     )
 
     # Store only proofs that pass downstream verification

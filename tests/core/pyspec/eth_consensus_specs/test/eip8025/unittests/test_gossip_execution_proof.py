@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from eth_consensus_specs.test.context import (
     always_bls,
     expect_assertion_error,
@@ -21,7 +19,7 @@ UNSUPPORTED_LOW_PROOF_TYPE = 0
 UNSUPPORTED_HIGH_PROOF_TYPE = 4
 
 
-class DummyProofVerifier:
+class DummyProofEngine:
     def __init__(self, accept=True):
         self.accept = accept
         self.proofs = []
@@ -29,6 +27,9 @@ class DummyProofVerifier:
     def verify_execution_proof(self, proof, chain_config_root):
         self.proofs.append((proof, chain_config_root))
         return self.accept
+
+    def request_proof(self, private_input, proof_type, chain_config_root):
+        raise NotImplementedError
 
 
 def setup_store_with_block(spec, state):
@@ -133,7 +134,7 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     spec.on_execution_proof(
         store,
         signed_proof,
-        DummyProofVerifier(),
+        DummyProofEngine(),
     )
     later_proof = make_signed_execution_proof(
         spec,
@@ -339,7 +340,7 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     store, signed_block, block_root = setup_store_with_block(spec, state)
     checkpoint = get_checkpoint(spec, signed_block, block_root)
     signed_proof = make_signed_execution_proof(spec, state, checkpoint)
-    proof_engine = DummyProofVerifier()
+    proof_engine = DummyProofEngine()
 
     spec.on_execution_proof(
         store,
@@ -365,7 +366,7 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
         checkpoint,
         proof_type=ALTERNATE_TEST_PROOF_TYPE,
     )
-    rejecting_engine = DummyProofVerifier(accept=False)
+    rejecting_engine = DummyProofEngine(accept=False)
     assert_handler_rejects(
         spec,
         store,
@@ -377,7 +378,7 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     spec.on_execution_proof(
         store,
         alternate_proof,
-        DummyProofVerifier(),
+        DummyProofEngine(),
     )
 
     different_origin = spec.ExecutionCheckpoint(
@@ -391,7 +392,7 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
         proof_type=THIRD_TEST_PROOF_TYPE,
         origin=different_origin,
     )
-    spec.on_execution_proof(store, third_proof, DummyProofVerifier())
+    spec.on_execution_proof(store, third_proof, DummyProofEngine())
 
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message,
@@ -400,60 +401,13 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
     }
 
 
-@with_eip8025_and_later(features=["stateless"])
-@spec_state_test
-def test_on_execution_proof_stateless_promotes_after_threshold(spec, state, eip8025_features):
-    assert "stateless" in eip8025_features
-    store, signed_block, block_root = setup_store_with_block(spec, state)
-    checkpoint = get_checkpoint(spec, signed_block, block_root)
-    first_proof = make_signed_execution_proof(spec, state, checkpoint)
-    second_proof = make_signed_execution_proof(
-        spec,
-        state,
-        checkpoint,
-        proof_type=ALTERNATE_TEST_PROOF_TYPE,
-    )
-    opt_store = SimpleNamespace(
-        optimistic_roots={block_root},
-        head_block_root=block_root,
-    )
-    block_payload_statuses = {
-        block_root: spec.PAYLOAD_STATUS_NOT_VALIDATED,
-    }
-    proof_verifier = DummyProofVerifier()
-
-    assert not spec.on_execution_proof_stateless(
-        store,
-        opt_store,
-        block_payload_statuses,
-        first_proof,
-        proof_verifier,
-    )
-    assert block_payload_statuses[block_root] == spec.PAYLOAD_STATUS_NOT_VALIDATED
-
-    assert spec.on_execution_proof_stateless(
-        store,
-        opt_store,
-        block_payload_statuses,
-        second_proof,
-        proof_verifier,
-    )
-    assert block_payload_statuses[block_root] == spec.PAYLOAD_STATUS_VALID
-    assert block_root not in opt_store.optimistic_roots
-    assert opt_store.head_block_root == block_root
-    assert proof_verifier.proofs == [
-        (first_proof.message, spec.CHAIN_CONFIG_ROOT),
-        (second_proof.message, spec.CHAIN_CONFIG_ROOT),
-    ]
-
-
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
 def test_on_execution_proof_enforces_context_and_intrinsic_invariants(spec, state):
     store, signed_block, block_root = setup_store_with_block(spec, state)
     checkpoint = get_checkpoint(spec, signed_block, block_root)
-    proof_engine = DummyProofVerifier()
+    proof_engine = DummyProofEngine()
 
     signed_proof = make_signed_execution_proof(spec, state, checkpoint)
     block = store.blocks.pop(block_root)

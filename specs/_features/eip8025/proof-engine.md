@@ -8,12 +8,9 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Proof interfaces](#proof-interfaces)
-  - [Proof verifier](#proof-verifier)
-    - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [Proof generator](#proof-generator)
-    - [New `request_proof`](#new-request_proof)
-  - [Composite proof engine](#composite-proof-engine)
+- [Proof engine](#proof-engine)
+  - [New `verify_execution_proof`](#new-verify_execution_proof)
+  - [New `request_proof`](#new-request_proof)
 
 <!-- mdformat-toc end -->
 
@@ -23,26 +20,34 @@ This document contains the host-side Proof Engine specification. The recursive
 guest interface and transition logic are defined separately in
 [guest-program.md](./guest-program.md).
 
-## Proof interfaces
+## Proof engine
+
+The implementation-dependent `ProofEngine` protocol encapsulates proof
+verification and asynchronous proof generation via:
+
+- a verification function `self.verify_execution_proof` to verify recursive
+  execution proofs; and
+- a generation function `self.request_proof` to generate a proof from a
+  `PrivateInput` containing the beacon-chain and execution witness material for
+  one `ProofType`.
 
 Proof verification is part of the baseline EIP-8025 profile. Proof generation is
 part of the optional `prover` feature, identified by the `eip8025-prover` tag.
+Implementations that do not support this feature may reject generation requests.
 
-### Proof verifier
+The Proof Engine does not receive payload or fork-choice notifications. The
+prover is responsible for assembling `PrivateInput` and for checking that the
+target remains canonical before broadcasting a completed proof.
 
-The implementation-dependent `ProofVerifier` protocol encapsulates recursive
-execution-proof verification. It does not receive payload or fork-choice
-notifications.
-
-The body of this function is implementation dependent. The Engine API may be
-extended to expose an equivalent function when the verifier is an external
+The bodies of these functions are implementation dependent. The Engine API may
+be extended to expose equivalent functions when the proof engine is an external
 process.
 
-#### New `verify_execution_proof`
+### New `verify_execution_proof`
 
 ```python
 def verify_execution_proof(
-    self: ProofVerifier,
+    self: ProofEngine,
     execution_proof: ExecutionProof,
     chain_config_root: Root,
 ) -> bool:
@@ -53,22 +58,11 @@ def verify_execution_proof(
     """
 ```
 
-### Proof generator
-
-The implementation-dependent `ProofGenerator` protocol encapsulates asynchronous
-proof generation. A prover is responsible for assembling `PrivateInput` and
-checking that the target remains canonical before broadcasting a completed
-proof.
-
-The body of this function is implementation dependent. The Engine API may be
-extended to expose an equivalent function when the generator is an external
-process.
-
-#### New `request_proof`
+### New `request_proof`
 
 ```python
 def request_proof(
-    self: ProofGenerator,
+    self: ProofEngine,
     private_input: PrivateInput,
     proof_type: ProofType,
     chain_config_root: Root,
@@ -87,11 +81,3 @@ def request_proof(
     ``chain_config_root`` equals ``chain_config_root``.
     """
 ```
-
-### Composite proof engine
-
-An implementation may expose one object implementing both interfaces. The
-executable specification defines `ProofEngine` as the composition of
-`ProofVerifier` and `ProofGenerator`. Baseline consumers depend only on
-`ProofVerifier`; prover consumers may depend on `ProofGenerator` or the
-composite `ProofEngine`.

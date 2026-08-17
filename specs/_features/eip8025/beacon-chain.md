@@ -142,7 +142,7 @@ proof-engine-native artifacts remain implementation-dependent.
 def process_execution_proof(
     state: BeaconState,
     signed_proof: SignedExecutionProof,
-    proof_verifier: ProofVerifier,
+    proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
     assert signed_proof.validator_index < len(state.validators)
@@ -159,5 +159,5 @@ def process_execution_proof(
     assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
-    assert proof_verifier.verify_execution_proof(proof_message, CHAIN_CONFIG_ROOT)
+    assert proof_engine.verify_execution_proof(proof_message, CHAIN_CONFIG_ROOT)
 ```

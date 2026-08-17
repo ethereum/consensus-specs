@@ -20,41 +20,24 @@ EIP8025_FEATURES = {
         "tag": "eip8025-prover",
         "status": "optional",
     },
-    "stateless": {
-        "tag": "eip8025-experimental",
-        "status": "experimental",
-    },
 }
 """
 
     @classmethod
     def proof_engine_cls(cls) -> str:
         return """
-class ProofEngine(ProofVerifier, ProofGenerator, Protocol):
-    pass
-
-
-class NoopProofVerifier(ProofVerifier):
-
-    def verify_execution_proof(self: ProofVerifier,
-                               execution_proof: ExecutionProof,
-                               chain_config_root: Root) -> bool:
-        return False
-
-
 class NoopProofEngine(ProofEngine):
 
-    def verify_execution_proof(self: ProofVerifier,
+    def verify_execution_proof(self: ProofEngine,
                                execution_proof: ExecutionProof,
                                chain_config_root: Root) -> bool:
         return False
 
-    def request_proof(self: ProofGenerator,
+    def request_proof(self: ProofEngine,
                       private_input: PrivateInput,
                       proof_type: ProofType,
                       chain_config_root: Root) -> Root:
         raise NotImplementedError("no default proof generation")
 
 
-PROOF_VERIFIER = NoopProofVerifier()
 PROOF_ENGINE = NoopProofEngine()"""
