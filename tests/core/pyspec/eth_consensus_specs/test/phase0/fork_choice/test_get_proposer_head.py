@@ -125,7 +125,7 @@ def _run_is_parent_root(spec, state, at_epoch_boundary):
             test_steps=test_steps,
         )
     else:
-        # Make an empty block.
+        # Make an empty block
         block = build_empty_block_for_next_slot(spec, state)
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
@@ -135,7 +135,7 @@ def _run_is_parent_root(spec, state, at_epoch_boundary):
         spec, state, store, 1, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
     )
 
-    # Fill a slot with attestations to its parent.
+    # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
     parent_block_slot = block.slot - 1
     block.body.attestations = get_valid_attestations_at_slot(
