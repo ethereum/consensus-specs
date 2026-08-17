@@ -97,8 +97,7 @@ payload status.
 def on_execution_proof(
     store: Store,
     signed_execution_proof: SignedExecutionProof,
-    execution_checkpoint: ExecutionCheckpoint,
-    proof_engine: ProofEngine,
+    proof_verifier: ProofVerifier,
 ) -> None:
     proof = signed_execution_proof.message
     head = proof.claim.head
@@ -111,8 +110,7 @@ def on_execution_proof(
     # Only one verified proof is stored for each head and proof type
     assert proof.proof_type not in store.execution_proofs.get(head_root, {})
 
-    # The public input must identify the configured origin and local head block
-    assert proof.claim.origin == execution_checkpoint
+    # The public input must identify the local head block
     assert head.slot == store.blocks[head_root].slot
 
     # Validate against the state associated with the proof's head block
@@ -120,7 +118,7 @@ def on_execution_proof(
     process_execution_proof(
         state,
         signed_execution_proof,
-        proof_engine,
+        proof_verifier,
     )
 
     # Store only proofs that pass downstream verification

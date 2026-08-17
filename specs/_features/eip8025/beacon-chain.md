@@ -69,10 +69,17 @@ class ProofType(Uint8):
 
 *Note*: The execution values are not definitive.
 
-| Name                | Value                                  |
-| ------------------- | -------------------------------------- |
-| `MAX_PROOF_SIZE`    | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
-| `CHAIN_CONFIG_ROOT` | `Root()`                               |
+| Name                    | Value                                                        |
+| ----------------------- | ------------------------------------------------------------ |
+| `MAX_PROOF_SIZE`        | `Uint64(4194304)` (= 4,096 KiB, 4 MiB)                       |
+| `CHAIN_CONFIG_ROOT`     | `Root()`                                                     |
+| `SUPPORTED_PROOF_TYPES` | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
+
+The initial proof type assignments are provisional. A `ProofType` identifies an
+immutable combination of proof system, guest program, and version. Assignments
+MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`; during a
+migration, an active guest may recursively verify proofs produced by a retired
+predecessor type.
 
 ### Domains
 
@@ -98,8 +105,8 @@ class ExecutionProofClaim(ProgressiveContainer(active_fields=[1] * 2)):
     head: ExecutionCheckpoint
 ```
 
-`origin` is the configured execution checkpoint, typically selected from the
-client's weak subjectivity checkpoint. It is preserved unchanged by every
+`origin` identifies the full beacon block where the recursive proof chain began.
+It is authenticated by the proof engine and preserved unchanged by every
 recursive step. `head` identifies the target full beacon block proven from that
 origin.
 
@@ -135,12 +142,13 @@ proof-engine-native artifacts remain implementation-dependent.
 def process_execution_proof(
     state: BeaconState,
     signed_proof: SignedExecutionProof,
-    proof_engine: ProofEngine,
+    proof_verifier: ProofVerifier,
 ) -> None:
     proof_message = signed_proof.message
     assert signed_proof.validator_index < len(state.validators)
     assert len(proof_message.proof_data) > 0
     assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
+    assert proof_message.proof_type in SUPPORTED_PROOF_TYPES
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]
@@ -151,5 +159,5 @@ def process_execution_proof(
     assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
-    assert proof_engine.verify_execution_proof(proof_message, CHAIN_CONFIG_ROOT)
+    assert proof_verifier.verify_execution_proof(proof_message, CHAIN_CONFIG_ROOT)
 ```

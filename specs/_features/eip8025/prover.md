@@ -2,6 +2,9 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
+> **EIP-8025 feature:** `prover` (`eip8025-prover`). This feature is optional;
+> proof verification remains part of the baseline profile.
+
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
@@ -75,8 +78,8 @@ proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
 2. Upon receiving an `execution_payload` event:
    - Fetch the accepted `SignedExecutionPayloadEnvelope` and its target beacon
      block.
-   - Select the latest compatible proof for each requested proof type, or the
-     configured `ExecutionCheckpoint` origin if no proof exists.
+   - Select the latest compatible proof for each requested proof type. If none
+     exists, start a base proof at the target checkpoint.
    - Fetch every produced beacon block from that predecessor through the target
      block, inclusive. Slot gaps represent missed slots and require no witness.
      Use their headers, in order, as `beacon_lineage`.

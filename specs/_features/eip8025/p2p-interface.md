@@ -83,8 +83,6 @@ def validate_execution_proof_gossip(
     store: Store,
     state: BeaconState,
     signed_execution_proof: SignedExecutionProof,
-    execution_checkpoint: ExecutionCheckpoint,
-    supported_proof_types: Set[ProofType],
 ) -> None:
     """
     Validate a SignedExecutionProof for gossip propagation.
@@ -101,7 +99,7 @@ def validate_execution_proof_gossip(
         raise GossipReject("execution proof data exceeds the size limit")
 
     # [REJECT] The proof type is supported
-    if proof.proof_type not in supported_proof_types:
+    if proof.proof_type not in SUPPORTED_PROOF_TYPES:
         raise GossipReject("execution proof type is unsupported")
 
     # [REJECT] The prover validator index is valid
@@ -130,10 +128,6 @@ def validate_execution_proof_gossip(
     prover_key = (head_root, proof.proof_type, validator_index)
     if prover_key in seen.execution_proof_provers:
         raise GossipIgnore("proof already seen from this prover for this head and proof type")
-
-    # [REJECT] The proof starts at the configured execution checkpoint
-    if proof.claim.origin != execution_checkpoint:
-        raise GossipReject("execution proof's origin is not the execution checkpoint")
 
     # [REJECT] The proof's head identifies the accepted beacon block
     block = store.blocks[head_root]
