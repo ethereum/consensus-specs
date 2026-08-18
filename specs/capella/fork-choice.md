@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Handlers](#handlers)
@@ -24,10 +24,7 @@ Unless stated explicitly, all prior functionality from
 
 ### `ExecutionEngine`
 
-*Note*: The `notify_forkchoice_updated` function is modified in the
-`ExecutionEngine` protocol at the Capella upgrade.
-
-#### `notify_forkchoice_updated`
+#### Modified `notify_forkchoice_updated`
 
 The only change made is to the `PayloadAttributes` container through the
 addition of `withdrawals`. Otherwise, `notify_forkchoice_updated` inherits all
