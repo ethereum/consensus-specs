@@ -205,6 +205,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         builder_pending_withdrawals=BuilderPendingWithdrawals(),
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(
+            slot=pre.latest_block_header.slot,
             block_hash=pre.latest_execution_payload_header.block_hash,
             gas_limit=pre.latest_execution_payload_header.gas_limit,
             execution_requests_root=hash_tree_root(ExecutionRequests()),

@@ -40,7 +40,7 @@
     - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
-      - [`is_not_epoch_boundary`](#is_not_epoch_boundary)
+      - [`is_shuffling_stable`](#is_shuffling_stable)
       - [`is_ffg_competitive`](#is_ffg_competitive)
       - [`is_finalization_ok`](#is_finalization_ok)
       - [`is_proposing_on_time`](#is_proposing_on_time)
@@ -590,10 +590,10 @@ def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
-##### `is_not_epoch_boundary`
+##### `is_shuffling_stable`
 
 ```python
-def is_not_epoch_boundary(slot: Slot) -> bool:
+def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
 ```
 
@@ -697,8 +697,8 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     # Only re-org the head block if it arrived later than the attestation deadline.
     head_late = is_head_late(store, head_node.root)
 
-    # Do not re-org on an epoch boundary.
-    not_epoch_boundary = is_not_epoch_boundary(slot)
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = is_shuffling_stable(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
@@ -726,7 +726,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        not_epoch_boundary,
+        shuffling_stable,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,
