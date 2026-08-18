@@ -73,11 +73,11 @@ transitional path intended for removal in a later upgrade.
 *Note*: The deposit contract's fields are fixed and carry no commitment, so a
 new validator cannot set one at deposit time; it registers through this
 upgrade's operation like everyone else. Setting the commitment at deposit time
-is deferred to a fork that already needs to change the deposit flow, such as
-the one that retires the transitional BLS-signature path for a post-quantum
-scheme. Retiring that path will also need a way to push already-onboarded
-validators who never registered to do so, for example by no longer accepting
-blocks from them; this upgrade does not specify that mechanism.
+is deferred to a fork that already needs to change the deposit flow, such as the
+one that retires the transitional BLS-signature path for a post-quantum scheme.
+Retiring that path will also need a way to push already-onboarded validators who
+never registered to do so, for example by no longer accepting blocks from them;
+this upgrade does not specify that mechanism.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
