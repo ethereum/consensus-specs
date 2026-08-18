@@ -165,6 +165,9 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     WARNING UNSAFE: Only use when generating valid-looking invalid blocks for test vectors
     """
 
+    # Cache the parent slot before overwriting the header, as `process_block` does
+    parent_slot = state.latest_block_header.slot
+
     # Perform single mutation in `process_block_header`
     state.latest_block_header = spec.BeaconBlockHeader(
         slot=block.slot,
@@ -186,9 +189,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_randao(state, block.body)
     spec.process_eth1_data(state, block.body)
     if is_post_gloas(spec):
-        # The bid is not processed here, so the bid in the state is still
-        # the parent block's bid and its slot is the parent block's slot.
-        spec.process_operations(state, block.body, state.latest_execution_payload_bid.slot)
+        spec.process_operations(state, block.body, parent_slot)
     else:
         spec.process_operations(state, block.body)
     if is_post_altair(spec):

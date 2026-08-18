@@ -19,9 +19,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import BitList
 
 
 def get_parent_slot(state):
-    # Outside of block processing, the bid in the state is still the
-    # parent block's bid, so its slot is the parent block's slot.
-    return state.latest_execution_payload_bid.slot
+    return state.latest_block_header.slot
 
 
 def process_attestation(spec, state, attestation):

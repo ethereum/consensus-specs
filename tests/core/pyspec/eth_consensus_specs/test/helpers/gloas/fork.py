@@ -85,11 +85,6 @@ def run_fork_test(post_spec, pre_state):
     assert post_state.fork.current_version == post_spec.config.GLOAS_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
-    # `process_execution_payload_bid` returns this slot as the `parent_slot` of
-    # the first Gloas block, which is where `process_attestation` looks up the
-    # availability of the attested payload.
-    assert post_state.latest_execution_payload_bid.slot == pre_state.latest_block_header.slot
-
     yield "post", post_state
 
     return post_state
