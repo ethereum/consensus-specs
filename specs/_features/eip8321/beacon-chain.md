@@ -12,7 +12,7 @@
 - [Constants](#constants)
   - [Domains](#domains)
   - [Hash chain](#hash-chain)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Hash-chain RANDAO](#hash-chain-randao)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -128,7 +128,7 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 | `HASH_CHAIN_RANDAO_DST`   | `b'HASH_CHAIN_RANDAO'` |
 | `UNSET_RANDAO_COMMITMENT` | `Bytes32()`            |
 
-## Preset
+## Presets
 
 ### Hash-chain RANDAO
 

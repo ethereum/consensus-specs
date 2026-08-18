@@ -13,9 +13,9 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Modified randao reveal](#modified-randao-reveal)
-      - [New hash chain reveal](#new-hash-chain-reveal)
-      - [New RANDAO commitment registrations](#new-randao-commitment-registrations)
+      - [Randao reveal](#randao-reveal)
+      - [Hash chain reveal](#hash-chain-reveal)
+      - [RANDAO commitment registrations](#randao-commitment-registrations)
 
 <!-- mdformat-toc end -->
 
@@ -140,7 +140,7 @@ All validator responsibilities remain unchanged other than those noted below.
 
 #### Constructing the `BeaconBlockBody`
 
-##### Modified randao reveal
+##### Randao reveal
 
 *Note*: The function `get_epoch_signature` is modified to return the point at
 infinity once the proposer has an active commitment, since the hash-chain reveal
@@ -156,7 +156,7 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
     return bls.Sign(privkey, signing_root)
 ```
 
-##### New hash chain reveal
+##### Hash chain reveal
 
 Set `block.body.hash_chain_reveal = hash_chain_reveal` where `hash_chain_reveal`
 is obtained from:
@@ -183,7 +183,7 @@ def get_hash_chain_reveal(
     return chain[index - 1]
 ```
 
-##### New RANDAO commitment registrations
+##### RANDAO commitment registrations
 
 Up to `MAX_RANDAO_COMMITMENT_REGISTRATIONS`,
 [`SignedRandaoCommitmentRegistration`](./beacon-chain.md#signedrandaocommitmentregistration)

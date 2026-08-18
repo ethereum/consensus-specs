@@ -5,15 +5,14 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in EIP-8321](#modifications-in-eip-8321)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [New `randao_commitment_registration`](#new-randao_commitment_registration)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [New `randao_commitment_registration`](#new-randao_commitment_registration)
 
 <!-- mdformat-toc end -->
 
@@ -25,11 +24,9 @@ EIP-8321.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in EIP-8321
+## Helpers
 
-### Helpers
-
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -56,7 +53,7 @@ class Seen:
     randao_commitment_registration_indices: Set[ValidatorIndex]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -84,9 +81,9 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades. All existing topics
 remain stable except the beacon block topic, which is updated with the modified
@@ -100,13 +97,13 @@ given in this table:
 | `beacon_block`                   | `SignedBeaconBlock` (modified)       |
 | `randao_commitment_registration` | `SignedRandaoCommitmentRegistration` |
 
-##### Global topics
+#### Global topics
 
 EIP-8321 changes the type of the global beacon block topic and adds one global
 topic to propagate RANDAO commitment registrations to all potential proposers of
 beacon blocks.
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in EIP-8321. Specifically, this type changes with the
@@ -115,7 +112,7 @@ inner `BeaconBlockBody`. See the EIP-8321
 [state transition document](./beacon-chain.md#beaconblockbody) for further
 details.
 
-###### New `randao_commitment_registration`
+##### New `randao_commitment_registration`
 
 The `randao_commitment_registration` topic is used solely for propagating signed
 RANDAO commitment registrations on the network. Signed messages are sent in

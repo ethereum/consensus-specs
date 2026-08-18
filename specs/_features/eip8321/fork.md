@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to EIP-8321](#fork-to-eip-8321)
 
 <!-- mdformat-toc end -->
@@ -14,7 +14,7 @@
 
 This document describes the process of the EIP-8321 upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
