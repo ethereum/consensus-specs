@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
@@ -25,7 +25,7 @@ validator records. Refers to
 *Note*: This specification is built upon
 [Capella](../../capella/beacon-chain.md).
 
-## Preset
+## Presets
 
 ### Time parameters
 

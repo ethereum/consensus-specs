@@ -5,9 +5,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Types](#types)
   - [New `SignedInclusionLists`](#new-signedinclusionlists)
 - [Helpers](#helpers)
@@ -32,7 +32,7 @@ This document contains the consensus-layer networking specifications for Heze.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
+## Presets
 
 ### Type-specific SSZ bounds
 
@@ -41,7 +41,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
 
-## Configuration
+## Configs
 
 | Name                                        | Value                     | Description                                                     |
 | ------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
