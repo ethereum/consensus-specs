@@ -5,9 +5,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Types](#types)
   - [New `SignedInclusionLists`](#new-signedinclusionlists)
 - [Helpers](#helpers)
@@ -32,7 +32,7 @@ This document contains the consensus-layer networking specifications for Heze.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
+## Presets
 
 ### Type-specific SSZ bounds
 
@@ -41,7 +41,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
 
-## Configuration
+## Configs
 
 | Name                                        | Value                     | Description                                                     |
 | ------------------------------------------- | ------------------------- | --------------------------------------------------------------- |
@@ -111,9 +111,12 @@ The following validations are added, assuming the alias
 
 - _[IGNORE]_ `bid.inclusion_list_bits` is inclusive of the node's view of
   inclusion lists for the slot preceding the bid's slot -- i.e.
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, Slot(bid.slot - 1), bid.inclusion_list_bits, only_timely=True)`
-  returns `True`, where `state` is the head state corresponding to processing
-  the block up to the current slot as determined by the fork choice.
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`
+  returns `True`, where `inclusion_list_committee` is
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - Slot(1)`,
+  `dependent_root` is
+  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
+  and `store` is the fork choice store.
 
 ##### New `inclusion_list`
 

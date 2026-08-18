@@ -48,12 +48,12 @@
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
   - [Gas limit schedule](#gas-limit-schedule)
@@ -575,7 +575,7 @@ same `Withdrawal` container can be used for validators and builders.
 | `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
 | `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
 
-## Preset
+## Presets
 
 ### Misc
 
@@ -602,7 +602,7 @@ same `Withdrawal` container can be used for validators and builders.
 | ------------------------------------ | -------------------------- |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `Uint64(2**14)` (= 16,384) |
 
-## Configuration
+## Configs
 
 ### Validator cycle
 
@@ -2328,8 +2328,7 @@ def process_attestation(
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in Gloas:EIP7732]
-        # For same-slot attestations, check if we are setting any new flags.
-        # If we are, this validator has not contributed to this slot's quorum yet.
+        had_no_participation = epoch_participation[index] == ParticipationFlags(0b0000_0000)
         will_set_new_flag = False
 
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
@@ -2342,10 +2341,9 @@ def process_attestation(
                 will_set_new_flag = True
 
         # [New in Gloas:EIP7732]
-        # Add weight for same-slot attestations when any new flag is set.
-        # This ensures each validator contributes exactly once per slot.
         if (
             will_set_new_flag
+            and had_no_participation
             and is_attestation_same_slot(state, data)
             and payment.withdrawal.amount > 0
         ):
