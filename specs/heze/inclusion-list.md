@@ -126,7 +126,7 @@ def get_inclusion_list_transactions(
 ```python
 def get_inclusion_list_bits(
     store: InclusionListStore,
-    state: BeaconState,
+    committee: InclusionListCommittee,
     slot: Slot,
     dependent_root: Root,
     only_timely: bool = True,
@@ -147,7 +147,6 @@ def get_inclusion_list_bits(
 
         validator_indices.append(validator_index)
 
-    committee = get_inclusion_list_committee(state, slot)
     return InclusionListBits(validator_index in validator_indices for validator_index in committee)
 ```
 
@@ -156,14 +155,14 @@ def get_inclusion_list_bits(
 ```python
 def is_inclusion_list_bits_inclusive(
     store: InclusionListStore,
-    state: BeaconState,
+    committee: InclusionListCommittee,
     slot: Slot,
     dependent_root: Root,
     inclusion_list_bits: InclusionListBits,
     only_timely: bool = True,
 ) -> bool:
     local_inclusion_list_bits = get_inclusion_list_bits(
-        store, state, slot, dependent_root, only_timely
+        store, committee, slot, dependent_root, only_timely
     )
 
     for i in range(INCLUSION_LIST_COMMITTEE_SIZE):

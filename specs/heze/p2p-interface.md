@@ -111,9 +111,11 @@ The following validations are added, assuming the alias
 
 - _[IGNORE]_ `bid.inclusion_list_bits` is inclusive of the node's view of
   inclusion lists for the slot preceding the bid's slot -- i.e.
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`
-  returns `True`, where `slot` is `bid.slot - Slot(1)` and `dependent_root` is
-  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`
+  returns `True`, where `inclusion_list_committee` is
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - Slot(1)`,
+  `dependent_root` is
+  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
   and `store` is the fork choice store.
 
 ##### New `inclusion_list`
