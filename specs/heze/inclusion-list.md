@@ -101,8 +101,9 @@ they MAY be pruned.
 def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
 ) -> Sequence[Transaction]:
-    inclusion_lists = store.inclusion_lists[(slot, dependent_root)]
-    equivocators = store.equivocators[(slot, dependent_root)]
+    key = (slot, dependent_root)
+    inclusion_lists = store.inclusion_lists[key]
+    equivocators = store.equivocators[key]
 
     transactions: list[Transaction] = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -130,8 +131,9 @@ def get_inclusion_list_bits(
     dependent_root: Root,
     only_timely: bool = True,
 ) -> InclusionListBits:
-    inclusion_lists = store.inclusion_lists[(slot, dependent_root)]
-    equivocators = store.equivocators[(slot, dependent_root)]
+    key = (slot, dependent_root)
+    inclusion_lists = store.inclusion_lists[key]
+    equivocators = store.equivocators[key]
 
     validator_indices = []
     for validator_index, inclusion_list in inclusion_lists.items():
