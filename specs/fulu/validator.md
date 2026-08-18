@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Custody setting](#custody-setting)
 - [Types](#types)
   - [`CellKZGProofs`](#cellkzgproofs)
@@ -43,7 +43,7 @@ All terminology, constants, functions, and protocol mechanics defined in
 [Fulu -- Data Availability Sampling Core](./das-core.md) are requisite for this
 document and used throughout.
 
-## Configuration
+## Configs
 
 ### Custody setting
 

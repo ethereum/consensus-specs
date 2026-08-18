@@ -6,7 +6,7 @@
 - [Types](#types)
   - [New `ProposerIndices`](#new-proposerindices)
   - [New `ProposerLookahead`](#new-proposerlookahead)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Blob schedule](#blob-schedule)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
@@ -67,7 +67,7 @@ class ProposerLookahead(Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_
     """
 ```
 
-## Configuration
+## Configs
 
 ### Blob schedule
 

@@ -19,7 +19,7 @@
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
   - [State list lengths](#state-list-lengths)
@@ -27,7 +27,7 @@
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
   - [Pending deposits processing](#pending-deposits-processing)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
@@ -272,7 +272,7 @@ specification.
 | `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1('0x01')` |
 | `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
 
-## Preset
+## Presets
 
 ### Gwei values
 
@@ -323,7 +323,7 @@ specification.
 | -------------------------------- | --------------------- | ------------------------------------------------------- |
 | `MAX_PENDING_DEPOSITS_PER_EPOCH` | `Uint64(2**4)` (= 16) | Maximum number of pending deposits to process per epoch |
 
-## Configuration
+## Configs
 
 ### Execution
 

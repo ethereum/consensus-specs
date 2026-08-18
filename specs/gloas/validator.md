@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
@@ -34,7 +34,7 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement Gloas.
 
-## Configuration
+## Configs
 
 ### Time parameters
 

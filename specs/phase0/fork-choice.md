@@ -4,8 +4,8 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
-  - [Configuration](#configuration)
+  - [Constants](#constants)
+  - [Configs](#configs)
     - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
     - [`ForkChoiceNode`](#forkchoicenode)
@@ -116,13 +116,13 @@ handlers must not modify `store`.
    computation, space, or any other resource. A number of optimized alternatives
    can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Constant
+### Constants
 
 | Name           | Value           |
 | -------------- | --------------- |
 | `BASIS_POINTS` | `Uint64(10000)` |
 
-### Configuration
+### Configs
 
 | Name                                  | Value         |
 | ------------------------------------- | ------------- |

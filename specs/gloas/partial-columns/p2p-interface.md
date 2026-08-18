@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Types](#types)
   - [Modified `CellsBitList`](#modified-cellsbitlist)
@@ -30,7 +30,7 @@ particular, this document builds on the
 [Fulu partial columns networking specification](../../fulu/partial-columns/p2p-interface.md)
 and the [Gloas networking specification](../p2p-interface.md).
 
-## Preset
+## Presets
 
 ### Type-specific SSZ bounds
 

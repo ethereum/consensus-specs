@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
@@ -20,7 +20,7 @@
 
 This document describes the process of the Gloas upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
