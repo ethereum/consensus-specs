@@ -1,15 +1,18 @@
 from eth_consensus_specs.test.helpers.keys import privkeys
 
 
-def find_upcoming_proposal_slot(spec, state):
+def find_upcoming_proposal_slot(spec, state, epoch=None):
     """
     Return the next future slot in the proposer lookahead, with the validator
-    that is proposing it.
+    that is proposing it. If ``epoch`` is given, only slots in that epoch are
+    considered.
     """
     current_epoch_start = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     for offset, validator_index in enumerate(state.proposer_lookahead):
         slot = spec.Slot(current_epoch_start + offset)
         if slot <= state.slot:
+            continue
+        if epoch is not None and spec.compute_epoch_at_slot(slot) != epoch:
             continue
         return slot, validator_index
     raise AssertionError("no upcoming proposal slot found in lookahead")

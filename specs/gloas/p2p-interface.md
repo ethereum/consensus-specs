@@ -1071,7 +1071,11 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
+    # The genesis block is the dependent block for the first MIN_SEED_LOOKAHEAD + 1 epochs
+    if proposal_epoch <= MIN_SEED_LOOKAHEAD:
+        lookahead_epoch = GENESIS_EPOCH
+    else:
+        lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     if is_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
@@ -1091,7 +1095,8 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent block failed validation")
 
     # [REJECT] The dependent root is a valid dependent block for the proposal slot
-    if store.blocks[preferences.dependent_root].slot >= lookahead_epoch_start_slot:
+    dependent_slot = compute_shuffling_dependent_slot(proposal_epoch)
+    if store.blocks[preferences.dependent_root].slot > dependent_slot:
         raise GossipReject("dependent root is not before the proposer lookahead epoch")
 
     # [IGNORE] The dependent root is a possible dependent block for the lookahead epoch
@@ -1100,7 +1105,8 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     lookahead_state = store.block_states[preferences.dependent_root].copy()
-    process_slots(lookahead_state, lookahead_epoch_start_slot)
+    if lookahead_state.slot < lookahead_epoch_start_slot:
+        process_slots(lookahead_state, lookahead_epoch_start_slot)
     lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
     if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")

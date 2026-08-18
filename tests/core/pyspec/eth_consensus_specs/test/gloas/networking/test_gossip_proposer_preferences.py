@@ -1193,3 +1193,78 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
             }
         ],
     )
+
+
+def run_genesis_dependent_root_test(spec, state, proposal_epoch):
+    """
+    Validate preferences for a proposal in ``proposal_epoch`` whose dependent
+    root is the genesis block, with no other block imported yet.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks = setup_store_with_advanced_state(spec, state, state.slot)
+    dependent_root = blocks[0].message.hash_tree_root()
+    assert store.blocks[dependent_root].slot == spec.GENESIS_SLOT
+    assert spec.compute_shuffling_dependent_slot(proposal_epoch) == spec.GENESIS_SLOT
+
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state, epoch=proposal_epoch)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=dependent_root,
+    )
+
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "current_time_ms": int(time_ms),
+                "message": get_filename(signed_prefs),
+                "expected": result,
+            }
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__valid_genesis_dependent_root_in_first_epoch(spec, state):
+    """
+    Preferences for a proposal in the first epoch are valid with the genesis
+    block as dependent_root. ``compute_shuffling_dependent_slot`` returns
+    ``GENESIS_SLOT`` for every epoch up to ``MIN_SEED_LOOKAHEAD``, so the
+    genesis block is the only possible dependent block there.
+    """
+    yield from run_genesis_dependent_root_test(spec, state, spec.GENESIS_EPOCH)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_proposer_preferences__valid_genesis_dependent_root_in_lookahead_epoch(spec, state):
+    """
+    The same holds at ``MIN_SEED_LOOKAHEAD``, the last epoch whose shuffling
+    dependent slot is ``GENESIS_SLOT``.
+    """
+    yield from run_genesis_dependent_root_test(spec, state, spec.Epoch(spec.MIN_SEED_LOOKAHEAD))
