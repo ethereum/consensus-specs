@@ -259,8 +259,10 @@ def test_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
 
-    # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
-    pubkey = b"\x00" * 48
+    # G1 point with x=4: on the curve, but not in the prime-order subgroup.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
+    pubkey = bytes.fromhex(pubkey_hex)
 
     deposit = prepare_state_and_deposit(
         spec, state, validator_index, amount, pubkey=pubkey, signed=True
@@ -278,6 +280,42 @@ def test_key_validate_invalid_decompression(spec, state):
     # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
     # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
     pubkey_hex = "c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    deposit = prepare_state_and_deposit(
+        spec, state, validator_index, amount, pubkey=pubkey, signed=True
+    )
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases_from_to(PHASE0, FULU)
+@spec_state_test
+def test_key_validate_invalid_not_on_curve(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # G1 compressed encoding with x=1: not a point on the curve.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    deposit = prepare_state_and_deposit(
+        spec, state, validator_index, amount, pubkey=pubkey, signed=True
+    )
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases_from_to(PHASE0, FULU)
+@spec_state_test
+def test_key_validate_invalid_identity(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+
+    # G1 point at infinity (identity): on the curve and in the subgroup, but KeyValidate rejects it.
+    # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
+    pubkey_hex = "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     pubkey = bytes.fromhex(pubkey_hex)
 
     deposit = prepare_state_and_deposit(

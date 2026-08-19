@@ -244,7 +244,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     unknown pubkeys are no-ops.
     """
     requests = spec.ExecutionRequests(
-        deposits=spec.ProgressiveList[spec.DepositRequest](
+        deposits=spec.DepositRequests(
             [
                 spec.DepositRequest(
                     pubkey=spec.BLSPubkey(b"\x01" * 48),
@@ -255,7 +255,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                 )
             ]
         ),
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
+        withdrawals=spec.WithdrawalRequests(
             [
                 spec.WithdrawalRequest(
                     source_address=spec.ExecutionAddress(b"\x04" * 20),
@@ -264,7 +264,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                 )
             ]
         ),
-        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
+        consolidations=spec.ConsolidationRequests(
             [
                 spec.ConsolidationRequest(
                     source_address=spec.ExecutionAddress(b"\x06" * 20),
@@ -346,9 +346,9 @@ def test_process_parent_execution_payload__builder_credential_deposits_queued(sp
     )
 
     requests = spec.ExecutionRequests(
-        deposits=spec.ProgressiveList[spec.DepositRequest]([deposit_request_1, deposit_request_2]),
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](),
-        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](),
+        deposits=spec.DepositRequests([deposit_request_1, deposit_request_2]),
+        withdrawals=spec.WithdrawalRequests(),
+        consolidations=spec.ConsolidationRequests(),
     )
 
     _commit_parent_requests(spec, state, requests)
@@ -489,7 +489,7 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     )
 
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.ProgressiveList[spec.BuilderDepositRequest](
+        builder_deposits=spec.BuilderDepositRequests(
             [builder_deposit_request_1, builder_deposit_request_2]
         ),
     )
@@ -536,7 +536,7 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
 
     builder = state.builders[builder_index]
     requests = spec.ExecutionRequests(
-        builder_exits=spec.ProgressiveList[spec.BuilderExitRequest](
+        builder_exits=spec.BuilderExitRequests(
             [
                 spec.BuilderExitRequest(
                     source_address=builder.execution_address,
@@ -566,7 +566,7 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
 @spec_state_test
 def test_deposit_requests_greater_than_electra_max(spec, state):
     requests = spec.ExecutionRequests(
-        deposits=spec.ProgressiveList[spec.DepositRequest](
+        deposits=spec.DepositRequests(
             [spec.DepositRequest()] * (spec.electra.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
@@ -583,7 +583,7 @@ def test_deposit_requests_greater_than_electra_max(spec, state):
 @spec_state_test
 def test_max_withdrawal_requests(spec, state):
     requests = spec.ExecutionRequests(
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
+        withdrawals=spec.WithdrawalRequests(
             [spec.WithdrawalRequest()] * spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
         ),
     )
@@ -600,7 +600,7 @@ def test_max_withdrawal_requests(spec, state):
 @spec_state_test
 def test_invalid_too_many_withdrawal_requests(spec, state):
     requests = spec.ExecutionRequests(
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
+        withdrawals=spec.WithdrawalRequests(
             [spec.WithdrawalRequest()] * (spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
@@ -617,7 +617,7 @@ def test_invalid_too_many_withdrawal_requests(spec, state):
 @spec_state_test
 def test_max_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(
-        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
+        consolidations=spec.ConsolidationRequests(
             [spec.ConsolidationRequest()] * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
         ),
     )
@@ -634,7 +634,7 @@ def test_max_consolidation_requests(spec, state):
 @spec_state_test
 def test_invalid_too_many_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(
-        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
+        consolidations=spec.ConsolidationRequests(
             [spec.ConsolidationRequest()] * (spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
@@ -651,7 +651,7 @@ def test_invalid_too_many_consolidation_requests(spec, state):
 @spec_state_test
 def test_max_builder_deposit_requests(spec, state):
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.ProgressiveList[spec.BuilderDepositRequest](
+        builder_deposits=spec.BuilderDepositRequests(
             [spec.BuilderDepositRequest()] * spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
         ),
     )
@@ -668,7 +668,7 @@ def test_max_builder_deposit_requests(spec, state):
 @spec_state_test
 def test_invalid_too_many_builder_deposit_requests(spec, state):
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.ProgressiveList[spec.BuilderDepositRequest](
+        builder_deposits=spec.BuilderDepositRequests(
             [spec.BuilderDepositRequest()] * (spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
@@ -685,7 +685,7 @@ def test_invalid_too_many_builder_deposit_requests(spec, state):
 @spec_state_test
 def test_max_builder_exit_requests(spec, state):
     requests = spec.ExecutionRequests(
-        builder_exits=spec.ProgressiveList[spec.BuilderExitRequest](
+        builder_exits=spec.BuilderExitRequests(
             [spec.BuilderExitRequest()] * spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
         ),
     )
@@ -702,7 +702,7 @@ def test_max_builder_exit_requests(spec, state):
 @spec_state_test
 def test_invalid_too_many_builder_exit_requests(spec, state):
     requests = spec.ExecutionRequests(
-        builder_exits=spec.ProgressiveList[spec.BuilderExitRequest](
+        builder_exits=spec.BuilderExitRequests(
             [spec.BuilderExitRequest()] * (spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )

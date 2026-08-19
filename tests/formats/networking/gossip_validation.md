@@ -85,22 +85,23 @@ An SSZ-snappy encoded `BeaconState`: the anchor state on which the blocks in
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                                   | File prefix                     | SSZ type                     |
-| --------------------------------------- | ------------------------------- | ---------------------------- |
-| `beacon_block`                          | `block_`                        | `SignedBeaconBlock`          |
-| `beacon_attestation`                    | `attestation_`                  | `Attestation`                |
-| `beacon_aggregate_and_proof`            | `aggregate_`                    | `SignedAggregateAndProof`    |
-| `proposer_slashing`                     | `proposer_slashing_`            | `ProposerSlashing`           |
-| `attester_slashing`                     | `attester_slashing_`            | `AttesterSlashing`           |
-| `voluntary_exit`                        | `voluntary_exit_`               | `SignedVoluntaryExit`        |
-| `sync_committee_contribution_and_proof` | `contribution_`                 | `SignedContributionAndProof` |
-| `sync_committee`                        | `sync_committee_message_`       | `SyncCommitteeMessage`       |
-| `bls_to_execution_change`               | `bls_to_execution_change_`      | `SignedBLSToExecutionChange` |
-| `blob_sidecar`                          | `blob_sidecar_`                 | `BlobSidecar`                |
-| `data_column_sidecar`                   | `data_column_sidecar_`          | `DataColumnSidecar`          |
-| `partial_data_column_group_id`          | `partial_data_column_group_id_` | `PartialDataColumnGroupID`   |
-| `partial_data_column_header`            | `partial_data_column_header_`   | `PartialDataColumnHeader`    |
-| `partial_data_column_sidecar`           | `partial_data_column_sidecar_`  | `PartialDataColumnSidecar`   |
+| Topic                                   | File prefix                       | SSZ type                             |
+| --------------------------------------- | --------------------------------- | ------------------------------------ |
+| `beacon_block`                          | `block_`                          | `SignedBeaconBlock`                  |
+| `beacon_attestation`                    | `attestation_`                    | `Attestation`                        |
+| `beacon_aggregate_and_proof`            | `aggregate_`                      | `SignedAggregateAndProof`            |
+| `proposer_slashing`                     | `proposer_slashing_`              | `ProposerSlashing`                   |
+| `attester_slashing`                     | `attester_slashing_`              | `AttesterSlashing`                   |
+| `voluntary_exit`                        | `voluntary_exit_`                 | `SignedVoluntaryExit`                |
+| `sync_committee_contribution_and_proof` | `contribution_`                   | `SignedContributionAndProof`         |
+| `sync_committee`                        | `sync_committee_message_`         | `SyncCommitteeMessage`               |
+| `bls_to_execution_change`               | `bls_to_execution_change_`        | `SignedBLSToExecutionChange`         |
+| `blob_sidecar`                          | `blob_sidecar_`                   | `BlobSidecar`                        |
+| `data_column_sidecar`                   | `data_column_sidecar_`            | `DataColumnSidecar`                  |
+| `partial_data_column_group_id`          | `partial_data_column_group_id_`   | `PartialDataColumnGroupID`           |
+| `partial_data_column_header`            | `partial_data_column_header_`     | `PartialDataColumnHeader`            |
+| `partial_data_column_sidecar`           | `partial_data_column_sidecar_`    | `PartialDataColumnSidecar`           |
+| `randao_commitment_registration`        | `randao_commitment_registration_` | `SignedRandaoCommitmentRegistration` |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 

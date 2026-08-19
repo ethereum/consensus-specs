@@ -11,7 +11,7 @@
 - [Constants](#constants)
   - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
   - [Sweep threshold validation](#sweep-threshold-validation)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Execution](#execution)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -87,7 +87,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 | --------------------- | --------------------------------------------- |
 | `MIN_SWEEP_THRESHOLD` | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
 
-## Preset
+## Presets
 
 ### Execution
 

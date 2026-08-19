@@ -177,6 +177,13 @@ _MESSAGE_INFO = {
         "file_prefix": "execution_proof",
         "validation_fn": "validate_execution_proof_gossip",
     },
+    ###########################################################################
+    # eip8321
+    ###########################################################################
+    "SignedRandaoCommitmentRegistration": {
+        "file_prefix": "randao_commitment_registration",
+        "validation_fn": "validate_randao_commitment_registration_gossip",
+    },
 }
 
 

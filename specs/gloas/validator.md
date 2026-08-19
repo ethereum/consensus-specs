@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
@@ -34,7 +34,7 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement Gloas.
 
-## Configuration
+## Configs
 
 ### Time parameters
 
@@ -261,13 +261,13 @@ deposit requests and builder exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    deposits = []
-    withdrawals = []
-    consolidations = []
+    deposits = DepositRequests()
+    withdrawals = WithdrawalRequests()
+    consolidations = ConsolidationRequests()
     # [New in Gloas:EIP8282]
-    builder_deposits = []
+    builder_deposits = BuilderDepositRequests()
     # [New in Gloas:EIP8282]
-    builder_exits = []
+    builder_exits = BuilderExitRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,
@@ -372,6 +372,8 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        # [New in Gloas:EIP8070]
+        custody_columns=None,
     )
 ```
 
