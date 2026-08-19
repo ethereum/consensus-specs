@@ -623,7 +623,7 @@ def test_invalid_too_many_deposits(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_max_voluntary_exits(spec, state):
-    next_slots(spec, state, spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     num_exits = spec.MAX_VOLUNTARY_EXITS
     full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
         :num_exits
@@ -643,7 +643,7 @@ def test_max_voluntary_exits(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_invalid_too_many_voluntary_exits(spec, state):
-    next_slots(spec, state, spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     num_exits = spec.MAX_VOLUNTARY_EXITS + 1
     full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
         :num_exits
@@ -952,7 +952,7 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # Move state forward SHARD_COMMITTEE_PERIOD epochs so the validator can exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Set up the parent block as FULL with a bid that commits to a full-exit
     # withdrawal request for the validator.

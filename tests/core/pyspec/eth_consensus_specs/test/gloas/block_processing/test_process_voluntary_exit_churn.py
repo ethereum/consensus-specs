@@ -23,7 +23,7 @@ def run_exit_at_churn_boundary(spec, state):
     ``exit_balance_to_consume`` reflect the exit churn limit. Spans multiple
     epochs when the validator's effective balance exceeds the per-epoch churn.
     """
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     exit_churn = spec.get_exit_churn_limit(state)

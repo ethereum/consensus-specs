@@ -125,7 +125,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
             spec.get_active_validator_indices(state, spec.get_current_epoch(state))
         )
         avg_balance = spec.get_total_active_balance(state) // num_validators
-        committee_size = num_validators // spec.SLOTS_PER_EPOCH
+        committee_size = num_validators // spec.Uint64(spec.SLOTS_PER_EPOCH)
         committee_weight = committee_size * avg_balance
         proposer_score = (committee_weight * spec.config.PROPOSER_SCORE_BOOST) // 100
 

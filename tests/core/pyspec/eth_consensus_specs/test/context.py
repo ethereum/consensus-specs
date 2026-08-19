@@ -123,7 +123,7 @@ def default_balances(spec: Spec, num_validators=None):
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
     if num_validators is None:
-        num_validators = spec.SLOTS_PER_EPOCH * 8
+        num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -135,7 +135,7 @@ def default_balances_electra(spec: Spec):
     if not is_post_electra(spec):
         return default_balances(spec)
 
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
 
 
@@ -146,7 +146,9 @@ def scaled_churn_balances_min_churn_limit(spec: Spec):
     See the second argument of ``max`` in ``get_validator_churn_limit``.
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -156,15 +158,15 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
             // spec.MIN_ACTIVATION_BALANCE
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
-        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -176,7 +178,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * (
                 spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
@@ -186,8 +188,8 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
-        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -199,7 +201,7 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             2
             * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
@@ -207,7 +209,7 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = (
+    num_validators = spec.Uint64(
         2
         * spec.config.CHURN_LIMIT_QUOTIENT
         * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
@@ -224,7 +226,7 @@ def low_balances(spec: Spec):
     Helper method to create a series of low balances.
     Usage: `@with_custom_state(balances_fn=low_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     # Technically the balances cannot be this low starting from genesis, but it is useful for testing
     low_balance = 18 * 10**9
     return [low_balance] * num_validators
@@ -235,7 +237,7 @@ def misc_balances(spec: Spec):
     Helper method to create a series of balances that includes some misc. balances.
     Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
     rng = Random(1234)
     rng.shuffle(balances)
@@ -250,7 +252,7 @@ def misc_balances_electra(spec: Spec):
     if not is_post_electra(spec):
         return misc_balances(spec)
 
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     balances = [
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)
     ]
@@ -265,7 +267,7 @@ def misc_balances_in_default_range_with_many_validators(spec: Spec):
     none that are below the ``EJECTION_BALANCE``.
     """
     # Double validators to facilitate randomized testing
-    num_validators = spec.SLOTS_PER_EPOCH * 8 * 2
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8 * 2)
     floor = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     balances = [
         max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor)
