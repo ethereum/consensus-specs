@@ -79,6 +79,8 @@ def _records():
 
 
 def build_profile(records: list[dict], name: str):
+    if name == "all":
+        return len(records), records
     if name == "standard":
         _, normal = cover(records, INPUT_ASPECTS, 2, "normal", accept=ACCEPT)
         _, normal_outcomes = cover(records, OUTCOME_ASPECT, 1, "normal", accept=ACCEPT)
