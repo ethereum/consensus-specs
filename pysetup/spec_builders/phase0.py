@@ -25,6 +25,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+from hashlib import sha256
 from typing import (
     Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )
@@ -35,7 +36,6 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96, BitList)
 from eth_consensus_specs.utils.ssz.ssz_typing import BitVector  # noqa: F401
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.hash_function import hash
 """
 
     @classmethod

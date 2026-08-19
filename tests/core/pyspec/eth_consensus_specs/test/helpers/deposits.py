@@ -103,7 +103,7 @@ def prepare_full_genesis_deposits(
         pubkey = pubkeys[pubkey_index]
         privkey = privkeys[pubkey_index]
         # insecurely use pubkey as withdrawal key if no credentials provided
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
             deposit_data_list=deposit_data_list,
@@ -143,7 +143,7 @@ def prepare_random_genesis_deposits(
         privkey = privkeys[pubkey_index]
         amount = rng.randint(min_amount, max_amount)
         random_byte = bytes([rng.randint(0, 255)])
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(random_byte)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(random_byte)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
             deposit_data_list=deposit_data_list,
@@ -180,7 +180,7 @@ def prepare_state_and_deposit(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(pubkey)[1:]
 
     deposit, root, deposit_data_list = build_deposit(
         spec,
@@ -222,7 +222,7 @@ def prepare_deposit_request(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(pubkey)[1:]
 
     deposit_data = build_deposit_data(
         spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed
@@ -282,7 +282,7 @@ def prepare_builder_deposit_request(
     if withdrawal_credentials is None:
         # Builder withdrawal prefix followed by an eth1 address derived from the pubkey
         withdrawal_credentials = (
-            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256_hash(pubkey)[12:]
         )
 
     request = spec.BuilderDepositRequest(
@@ -317,7 +317,7 @@ def prepare_pending_deposit(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(pubkey)[1:]
 
     # use GENESIS_SLOT which is always finalized if no slot provided
     if slot is None:
@@ -428,7 +428,7 @@ def run_deposit_processing_with_specific_fork_version(
 
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(pubkey)[1:]
 
     deposit_message = spec.DepositMessage(
         pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount

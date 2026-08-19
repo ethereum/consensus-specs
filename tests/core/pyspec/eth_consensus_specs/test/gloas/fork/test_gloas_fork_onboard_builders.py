@@ -23,7 +23,7 @@ from eth_consensus_specs.test.utils import with_meta_tags
 
 def get_builder_withdrawal_credentials(spec, pubkey):
     """Create builder withdrawal credentials from a pubkey."""
-    return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+    return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256_hash(pubkey)[12:]
 
 
 def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True):

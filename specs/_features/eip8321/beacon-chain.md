@@ -24,7 +24,7 @@
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
-    - [New `blake3`](#new-blake3)
+    - [New `blake3_hash`](#new-blake3_hash)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
   - [RANDAO verifications](#randao-verifications)
@@ -259,14 +259,15 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 48)):
 
 ### Crypto
 
-#### New `blake3`
+#### New `blake3_hash`
 
-`def blake3(data: bytes) -> Bytes32` is the BLAKE3 hash function in its default
-unkeyed hash mode, with no derive-key context, restricted to its default 32-byte
-output.
-
-All hashing introduced by this upgrade uses `blake3`; the `hash` helper
-continues to serve the legacy reveal path.
+```python
+def blake3_hash(data: bytes) -> Bytes32:
+    """
+    Return the BLAKE3 hash of ``data``.
+    """
+    return Bytes32(blake3(data).digest())
+```
 
 ### Validator registry
 
@@ -305,7 +306,7 @@ def verify_hash_chain_reveal(
     assert body.hash_chain_reveal != Bytes32()
     assert body.randao_reveal == G2_POINT_AT_INFINITY
     commitment = state.randao_commitments[proposer_index]
-    assert blake3(HASH_CHAIN_RANDAO_DST + body.hash_chain_reveal) == commitment
+    assert blake3_hash(HASH_CHAIN_RANDAO_DST + body.hash_chain_reveal) == commitment
 ```
 
 #### New `verify_bls_randao_reveal`
@@ -404,12 +405,12 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     # [New in EIP8321]
     if state.randao_commitments[proposer_index] != UNSET_RANDAO_COMMITMENT:
         verify_hash_chain_reveal(state, body, proposer_index)
-        mix = blake3(get_randao_mix(state, epoch) + body.hash_chain_reveal)
+        mix = blake3_hash(get_randao_mix(state, epoch) + body.hash_chain_reveal)
         state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
         state.randao_commitments[proposer_index] = body.hash_chain_reveal
     else:
         verify_bls_randao_reveal(state, body, proposer_index)
-        mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+        mix = xor(get_randao_mix(state, epoch), sha256_hash(body.randao_reveal))
         state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 

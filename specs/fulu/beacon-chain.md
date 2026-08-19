@@ -326,7 +326,7 @@ def compute_fork_digest(
         bytes(
             xor(
                 base_digest,
-                hash(
+                sha256_hash(
                     uint_to_bytes(Uint64(blob_parameters.epoch))
                     + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
                 ),
@@ -345,7 +345,9 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [
+        sha256_hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)
+    ]
     return ProposerIndices(compute_proposer_index(state, indices, seed) for seed in seeds)
 ```
 

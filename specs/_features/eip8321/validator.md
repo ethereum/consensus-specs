@@ -69,7 +69,7 @@ def compute_hash_chain(chain_secret: Bytes32, length: Uint64) -> Sequence[Bytes3
     """
     chain = [chain_secret]
     for _ in range(length):
-        chain.append(blake3(HASH_CHAIN_RANDAO_DST + chain[-1]))
+        chain.append(blake3_hash(HASH_CHAIN_RANDAO_DST + chain[-1]))
     # A link equal to UNSET_RANDAO_COMMITMENT cannot be revealed, so the chain
     # must be regenerated from a fresh secret if one occurs
     assert all(value != UNSET_RANDAO_COMMITMENT for value in chain)

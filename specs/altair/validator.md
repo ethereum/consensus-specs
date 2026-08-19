@@ -454,7 +454,7 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
         // SYNC_COMMITTEE_SUBNET_COUNT
         // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE,
     )
-    return bytes_to_uint64(hash(signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(sha256_hash(signature)[0:8]) % modulo == 0
 ```
 
 *Note*: The set of aggregators generally changes every slot; however, the

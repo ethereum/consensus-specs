@@ -356,7 +356,7 @@ def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
 def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(b"junk")[1:]
     pending_deposit = prepare_pending_deposit(
         spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )

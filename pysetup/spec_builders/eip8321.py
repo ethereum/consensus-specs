@@ -9,7 +9,7 @@ class EIP8321SpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.utils.hash_function import blake3
+from blake3 import blake3
 
 from eth_consensus_specs.heze import {preset_name} as heze
 """

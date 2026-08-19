@@ -58,7 +58,7 @@ def test_randao_commitment_registration_lifecycle(spec, state):
             # The proposer has walked one link back already
             assert state.randao_commitments[index] != expected
             assert (
-                spec.blake3(spec.HASH_CHAIN_RANDAO_DST + state.randao_commitments[index])
+                spec.blake3_hash(spec.HASH_CHAIN_RANDAO_DST + state.randao_commitments[index])
                 == expected
             )
         else:
