@@ -84,10 +84,12 @@ class PayloadStatus(Uint8):
 ### New `CustodyColumnBits`
 
 ```python
-class CustodyColumnBits(BitVector[NUMBER_OF_COLUMNS]):
+class CustodyColumnBits(BitVector):
     """
     Bits marking the data columns custodied by a node, one bit per column.
     """
+
+    LENGTH = NUMBER_OF_COLUMNS
 ```
 
 ## Constants
