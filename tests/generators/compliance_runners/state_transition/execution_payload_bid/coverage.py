@@ -17,8 +17,12 @@ from types import SimpleNamespace
 from ..aspect_coverage import cover, dedup, enumerate_signatures
 from .materializer import ExecutionPayloadBidMaterializer, _DIMS
 
-# Input aspects (realization + the handler-local bid amount).
-INPUT_ASPECTS = {
+# Fine-grained input aspects (realization + the handler-local bid amount).
+#
+# Keep these available for the detailed profile.  The default profiles below
+# use the coarser logical groups, where the dimensions in each group form one
+# composite factor for pairwise coverage.
+FINE_INPUT_ASPECTS = {
     "entity_reference": ["builder_ref"],
     "builder_lifecycle": ["builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set"],
     "builder_version": ["builder_version_valid"],
@@ -33,6 +37,36 @@ INPUT_ASPECTS = {
                       "bid_prev_randao_matches"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
+
+# A complete builder/state tuple participates in pairwise joins with every
+# other aspect.  This is intentionally a tuple-valued aspect rather than a
+# new MiniZinc predicate: the handler still constrains each realization
+# dimension independently and aspect_coverage.py joins their feasible values.
+INPUT_ASPECTS = {
+    "builder_state": [
+        "builder_ref",
+        "builder_deposit_to_finalized_epoch",
+        "builder_withdrawable_epoch_set",
+        "builder_version_valid",
+        "builder_has_pending_withdrawal",
+        "builder_has_pending_payment",
+        "builder_balance_to_min_balance",
+        "builder_available_to_bid",
+    ],
+    "signed_message": ["builder_signature_valid"],
+    "self_build_signature": ["self_build_signature_is_infinity"],
+    "bid_amount": ["amount_positive"],
+    "beacon_context": [
+        "bid_kzg_to_max",
+        "bid_slot_to_state",
+        "state_slot_past_genesis",
+        "bid_parent_block_hash_matches",
+        "bid_parent_block_root_matches",
+        "bid_prev_randao_matches",
+    ],
+}
+
+FINE_ALL_ASPECTS = {**FINE_INPUT_ASPECTS, **OUTCOME_ASPECT}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
 MODEL = Path(__file__).parent / "models" / "handler_execution_payload_bid.mzn"
 
@@ -64,11 +98,14 @@ PROFILES = {
     "onewise": (ALL_ASPECTS, 1, None),
     "pairwise": (ALL_ASPECTS, 2, None),
     "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": ({"entity_reference": ["builder_ref"], **OUTCOME_ASPECT}, 2, "exceptional"),
+    "exceptional": ({"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT}, 2, "exceptional"),
+    "detailed": (FINE_ALL_ASPECTS, 2, None),
 }
 
 
 def build_profile(recs, name):
+    if name == "all":
+        return len(recs), recs
     if name == "standard":  # rich within accept, each rejection on each feasible branch
         _, normal = cover(recs, *PROFILES["normal"])
         _, exc = cover(recs, *PROFILES["exceptional"])
@@ -81,12 +118,14 @@ def main() -> int:
     materialize = "--materialize" in sys.argv
 
     print("Enumerating feasible space (~20s)...")
-    recs = enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
+    # Preserve the fine-grained signature space so that both coarse and
+    # detailed profiles can be selected from the same enumeration.
+    recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
     print(f"distinct aspect-state signatures: {len(recs)}\n")
 
     if not args:
         print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional"):
+        for name in ("onewise", "normal", "exceptional", "detailed"):
             n_obl, chosen = build_profile(recs, name)
             print(f"{name:14} {n_obl:>12} {len(chosen):>7}")
         _, std = build_profile(recs, "standard")

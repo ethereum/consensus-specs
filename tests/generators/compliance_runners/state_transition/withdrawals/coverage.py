@@ -1,4 +1,9 @@
-"""Coverage profiles for the Gloas ``process_withdrawals`` handler."""
+"""Coverage profiles for the Gloas ``process_withdrawals`` handler.
+
+Aspects follow the handler body: the parent guard, one aspect per stage of
+``get_expected_withdrawals``, the pre-state bookkeeping the getter does not
+determine, and one effect aspect per group of state updates.
+"""
 
 from __future__ import annotations
 
@@ -18,36 +23,37 @@ from tests.generators.compliance_runners.state_transition.withdrawals.materializ
 )
 
 INPUT_ASPECTS = {
-    "parent_payload": ["parent_payload_revealed"],
-    "builder_pending": ["builder_pending_nonempty"],
-    "pending_partial": ["pending_partial_nonempty"],
-    "builder_sweep": ["builder_sweep_nonempty"],
-    "validator_sweep": ["validator_sweep_nonempty"],
-    "withdrawal_capacity": ["withdrawals_over_limit"],
+    "parent": ["parent_payload_revealed"],
+    "builder_pending": ["bp_queue", "bp_amount_to_balance"],
+    "pending_partial": ["pp_queue", "pp_withdrawable", "pp_eligible", "pp_amount_to_excess"],
+    "builder_sweep": ["bs_registry", "bs_eligible", "bs_cursor_high"],
+    "validator_sweep": ["vs_fill", "vs_cursor_high"],
+    "bookkeeping": ["next_index_start", "stale_payload_expected"],
 }
-OUTCOME_ASPECT = {"outcome": ["outcome", "state_effected"]}
-ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-ACCEPT = {
-    "FULL_NO_WITHDRAWALS",
-    "BUILDER_PENDING",
-    "PENDING_PARTIAL",
-    "BUILDER_SWEEP",
-    "VALIDATOR_SWEEP",
-    "MIXED_WITHDRAWALS",
-    "MAX_WITHDRAWALS_LIMIT",
+# One aspect per group of update_* calls, so an effect obligation is stated
+# against the statement that produces it rather than against the inputs.
+EFFECT_ASPECTS = {
+    "outcome": ["outcome", "reserve_saturated"],
+    "queue_updates": ["eff_builder_pending", "eff_pending_partial"],
+    "cursor_updates": ["eff_builder_cursor", "eff_validator_cursor"],
+    "write_updates": ["eff_next_index", "eff_payload_expected"],
+    "saturation": ["eff_builder_saturated", "eff_partial_truncated"],
 }
+ALL_ASPECTS = {**INPUT_ASPECTS, **EFFECT_ASPECTS}
+ACCEPT = {"NO_WITHDRAWALS", "PARTIAL_PAYLOAD", "FULL_PAYLOAD"}
 MODEL = Path(__file__).parent / "models" / "handler_withdrawals.mzn"
 
 
 def _nfaults(record: dict) -> int:
+    """Rank: a revealed parent is the cleaner representative of any signature."""
     return int(not record["parent_payload_revealed"])
 
 
 PROFILES = {
     "onewise": (ALL_ASPECTS, 1, None),
     "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": (OUTCOME_ASPECT, 1, "exceptional"),
+    "normal": ({**INPUT_ASPECTS, **EFFECT_ASPECTS}, 2, "normal"),
+    "exceptional": ({**INPUT_ASPECTS, "outcome": EFFECT_ASPECTS["outcome"]}, 1, "exceptional"),
 }
 
 
@@ -56,6 +62,8 @@ def _recs():
 
 
 def build_profile(records, name: str):
+    if name == "all":
+        return len(records), records
     if name == "standard":
         _, normal = cover(records, *PROFILES["normal"], accept=ACCEPT)
         _, exceptional = cover(records, *PROFILES["exceptional"], accept=ACCEPT)

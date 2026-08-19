@@ -42,6 +42,8 @@ def _recs():
 
 
 def build_profile(recs, name):
+    if name == "all":
+        return len(recs), recs
     if name == "standard":
         _, normal = cover(recs, *PROFILES["normal"])
         _, exceptional = cover(recs, *PROFILES["exceptional"])
