@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Types](#types)
   - [New `PayloadStatus`](#new-payloadstatus)
+  - [New `CustodyColumnBits`](#new-custodycolumnbits)
 - [Constants](#constants)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
@@ -17,7 +18,7 @@
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-  - [New `get_custody_columns_bits`](#new-get_custody_columns_bits)
+  - [New `get_custody_column_bits`](#new-get_custody_column_bits)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [Modified `is_data_available`](#modified-is_data_available)
   - [New `is_payload_verified`](#new-is_payload_verified)
@@ -80,6 +81,15 @@ class PayloadStatus(Uint8):
     """
 ```
 
+### New `CustodyColumnBits`
+
+```python
+class CustodyColumnBits(BitVector[NUMBER_OF_COLUMNS]):
+    """
+    Bits marking the data columns custodied by a node, one bit per column.
+    """
+```
+
 ## Constants
 
 | Name                                 | Value                           |
@@ -118,7 +128,7 @@ The function signature is extended with the `custody_columns` parameter, which
 communicates the node's custody set to the execution engine. The execution
 engine adopts this set as its sampling set for blob transactions in the
 transaction pool. A node that provides custody services SHOULD set this
-parameter to `get_custody_columns_bits(node_id, custody_group_count)`, where
+parameter to `get_custody_column_bits(node_id, custody_group_count)`, where
 `custody_group_count` is the custody group count that the node advertises.
 Otherwise, the parameter MUST be `None`.
 
@@ -130,7 +140,7 @@ def notify_forkchoice_updated(
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
     # [New in Gloas:EIP8070]
-    custody_columns: Optional[BitVector[NUMBER_OF_COLUMNS]],
+    custody_columns: Optional[CustodyColumnBits],
 ) -> Optional[PayloadId]: ...
 ```
 
@@ -237,16 +247,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
-### New `get_custody_columns_bits`
+### New `get_custody_column_bits`
 
 ```python
-def get_custody_columns_bits(
-    node_id: NodeID, custody_group_count: Uint64
-) -> BitVector[NUMBER_OF_COLUMNS]:
+def get_custody_column_bits(node_id: NodeID, custody_group_count: Uint64) -> CustodyColumnBits:
     """
     Compute the bitvector of column indices custodied by ``node_id``.
     """
-    bits = BitVector[NUMBER_OF_COLUMNS]()
+    bits = CustodyColumnBits()
     for custody_group in get_custody_groups(node_id, custody_group_count):
         for column in compute_columns_for_custody_group(custody_group):
             bits[column] = True
