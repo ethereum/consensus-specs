@@ -372,6 +372,8 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        # [New in Gloas:EIP8070]
+        custody_columns=None,
     )
 ```
 
