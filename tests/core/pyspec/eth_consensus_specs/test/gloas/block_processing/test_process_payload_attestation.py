@@ -379,7 +379,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     """
     epoch = spec.get_current_epoch(state)
     active_validator_count = len(spec.get_active_validator_indices(state, epoch))
-    limit = active_validator_count // spec.SLOTS_PER_EPOCH
+    limit = active_validator_count // spec.Uint64(spec.SLOTS_PER_EPOCH)
     assert limit > 0
 
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
