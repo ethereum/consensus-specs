@@ -7,7 +7,7 @@
 - [Types](#types)
   - [`Ether`](#ether)
 - [Constants](#constants)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
@@ -53,7 +53,7 @@ class Ether(Uint64):
 | ------------- | --------------- |
 | `ETH_TO_GWEI` | `Uint64(10**9)` |
 
-## Configuration
+## Configs
 
 | Name           | Value        |
 | -------------- | ------------ |

@@ -17,7 +17,7 @@
     - [`SignedBeaconBlocks`](#signedbeaconblocks)
     - [`SubnetID`](#subnetid)
   - [Constants](#constants)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [Helpers](#helpers)
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
@@ -282,7 +282,7 @@ class SubnetID(Uint64):
 | -------------- | ------------- |
 | `NODE_ID_BITS` | `Uint64(256)` |
 
-### Configuration
+### Configs
 
 This section outlines configurations that are used in this specification.
 

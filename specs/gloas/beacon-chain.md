@@ -48,12 +48,12 @@
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
   - [Gas limit schedule](#gas-limit-schedule)
@@ -169,6 +169,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Enshrined Proposer-Builder Separation
 - [EIP-7843](https://github.com/ethereum/EIPs/blob/c3bfd4ba41cf0fcbfe8c404f33ba89f5174971e0/EIPS/eip-7843.md):
   SLOTNUM opcode
+- [EIP-8070](https://github.com/ethereum/EIPs/blob/f516cef8b482bf123d554ee12ff5b421f5578d38/EIPS/eip-8070.md):
+  eth/72 - Sparse Blobpool
 - [EIP-8045](https://github.com/ethereum/EIPs/blob/414a8404198c5afaa3cfed10a385a9aae1dfaae3/EIPS/eip-8045.md):
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
@@ -575,7 +577,7 @@ same `Withdrawal` container can be used for validators and builders.
 | `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
 | `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
 
-## Preset
+## Presets
 
 ### Misc
 
@@ -602,7 +604,7 @@ same `Withdrawal` container can be used for validators and builders.
 | ------------------------------------ | -------------------------- |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `Uint64(2**14)` (= 16,384) |
 
-## Configuration
+## Configs
 
 ### Validator cycle
 

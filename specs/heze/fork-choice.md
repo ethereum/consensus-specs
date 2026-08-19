@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
@@ -29,7 +29,7 @@
 
 This is the modification of the fork choice accompanying the Heze upgrade.
 
-## Configuration
+## Configs
 
 ### Time parameters
 
@@ -80,6 +80,7 @@ def notify_forkchoice_updated(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
+    custody_columns: Optional[CustodyColumnBits],
 ) -> Optional[PayloadId]: ...
 ```
 

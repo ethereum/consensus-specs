@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import next_slot
 from eth_consensus_specs.utils.ssz.ssz_typing import Bytes32
 
@@ -22,12 +23,15 @@ def test_noop_execution_engine_notify_forkchoice_updated(spec, state):
     pre_state = state.copy()
 
     # Test notify_forkchoice_updated
-    result = engine.notify_forkchoice_updated(
-        head_block_hash=Bytes32(),
-        safe_block_hash=Bytes32(),
-        finalized_block_hash=Bytes32(),
-        payload_attributes=None,
-    )
+    kwargs = {
+        "head_block_hash": Bytes32(),
+        "safe_block_hash": Bytes32(),
+        "finalized_block_hash": Bytes32(),
+        "payload_attributes": None,
+    }
+    if is_post_gloas(spec):
+        kwargs["custody_columns"] = None
+    result = engine.notify_forkchoice_updated(**kwargs)
 
     # Verify behavior
     assert result is None
