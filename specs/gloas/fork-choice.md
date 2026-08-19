@@ -124,13 +124,10 @@ Where:
 *Note*: `get_safe_execution_block_hash` is modified in Gloas, see
 [Fast Confirmation](./fast-confirmation.md#modified-get_safe_execution_block_hash).
 
-The function signature is extended with the `custody_columns` parameter, which
-communicates the node's custody set to the execution engine. The execution
-engine adopts this set as its sampling set for blob transactions in the
-transaction pool. A node that provides custody services SHOULD set this
-parameter to `get_custody_column_bits(node_id, custody_group_count)`, where
-`custody_group_count` is the custody group count that the node advertises.
-Otherwise, the parameter MUST be `None`.
+*Note*: The execution engine uses `custody_columns` as its sampling set for blob
+transactions in the transaction pool. This SHOULD be
+`get_custody_column_bits(node_id, custody_group_count)` using the node's
+advertised custody group count.
 
 ```python
 def notify_forkchoice_updated(
