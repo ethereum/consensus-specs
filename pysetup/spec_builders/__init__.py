@@ -5,6 +5,7 @@ from .deneb import DenebSpecBuilder
 from .eip8025 import EIP8025SpecBuilder
 from .eip8148 import EIP8148SpecBuilder
 from .eip8205 import EIP8205SpecBuilder
+from .eip8321 import EIP8321SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
 from .gloas import GloasSpecBuilder
@@ -26,5 +27,6 @@ spec_builders = {
         EIP8025SpecBuilder,
         EIP8148SpecBuilder,
         EIP8205SpecBuilder,
+        EIP8321SpecBuilder,
     )
 }

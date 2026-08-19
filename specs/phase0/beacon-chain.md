@@ -41,14 +41,14 @@
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Genesis settings](#genesis-settings)
   - [Time parameters](#time-parameters-1)
   - [Validator cycle](#validator-cycle)
@@ -533,7 +533,7 @@ specification.
 **MUST** be non-zero. This expression for any other `DomainType` in the
 consensus-layer specifications **MUST** be zero.
 
-## Preset
+## Presets
 
 *Note*: The below configuration is bundled as a preset: a bundle of
 configuration variables which are expected to differ between different modes of
@@ -624,7 +624,7 @@ operation, e.g. testing, but not generally between different networks.
 | `MAX_DEPOSITS`           | `Uint64(2**4)` (= 16)  |
 | `MAX_VOLUNTARY_EXITS`    | `Uint64(2**4)` (= 16)  |
 
-## Configuration
+## Configs
 
 *Note*: The default mainnet configuration values are included here for
 illustrative purposes. Defaults for this more dynamic type of configuration are

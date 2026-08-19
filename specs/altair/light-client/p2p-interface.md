@@ -5,7 +5,7 @@
 - [Networking](#networking)
   - [Types](#types)
     - [`LightClientUpdates`](#lightclientupdates)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -41,7 +41,7 @@ class LightClientUpdates(List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATE
     """
 ```
 
-### Configuration
+### Configs
 
 | Name                               | Value                  | Description                                                         |
 | ---------------------------------- | ---------------------- | ------------------------------------------------------------------- |
