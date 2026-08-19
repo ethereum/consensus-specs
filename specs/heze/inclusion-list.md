@@ -32,7 +32,7 @@ These are the inclusion list specifications to implement Heze.
 @dataclass(eq=True, frozen=True)
 class InclusionListEntry:
     signed_inclusion_list: SignedInclusionList
-    is_timely: Boolean
+    timely: Boolean
 ```
 
 #### `InclusionListStore`
@@ -40,12 +40,8 @@ class InclusionListEntry:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Root, Dict[Root, InclusionListEntry]] = field(
-        default_factory=lambda: defaultdict(dict)
-    )
-    equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
-        default_factory=lambda: defaultdict(set)
-    )
+    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[ValidatorIndex, InclusionListEntry]]
+    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]]
 ```
 
 ## Helpers
@@ -66,45 +62,36 @@ def get_inclusion_list_store() -> InclusionListStore:
 
 ```python
 def process_inclusion_list(
-    store: InclusionListStore,
-    signed_inclusion_list: SignedInclusionList,
-    inclusion_list_committee_root: Root,
-    is_timely: bool,
+    store: InclusionListStore, signed_inclusion_list: SignedInclusionList, timely: bool
 ) -> None:
     inclusion_list = signed_inclusion_list.message
-    key = inclusion_list_committee_root
+    validator_index = inclusion_list.validator_index
+    key = (inclusion_list.slot, inclusion_list.dependent_root)
 
-    # Ignore an inclusion list that has already been stored
-    inclusion_list_root = hash_tree_root(inclusion_list)
-    if inclusion_list_root in store.inclusion_lists[key]:
+    if validator_index in store.inclusion_lists[key]:
+        # Mark the validator as an equivocator if it published a different inclusion list
+        stored_entry = store.inclusion_lists[key][validator_index]
+        stored_inclusion_list = stored_entry.signed_inclusion_list.message
+        if stored_inclusion_list != inclusion_list:
+            store.equivocators[key].add(validator_index)
+
+        # Ignore an inclusion list that has already been processed
         return
-
-    # Ignore inclusion lists from equivocators
-    if inclusion_list.validator_index in store.equivocators[key]:
-        return
-
-    # Mark the validator as an equivocator if it published a different inclusion list
-    for inclusion_list_entry in store.inclusion_lists[key].values():
-        stored_message = inclusion_list_entry.signed_inclusion_list.message
-        if stored_message.validator_index == inclusion_list.validator_index:
-            store.equivocators[key].add(inclusion_list.validator_index)
-            return
 
     # Store the signed inclusion list and its timeliness
-    store.inclusion_lists[key][inclusion_list_root] = InclusionListEntry(
+    store.inclusion_lists[key][validator_index] = InclusionListEntry(
         signed_inclusion_list=signed_inclusion_list,
-        is_timely=is_timely,
+        timely=timely,
     )
 ```
 
 ### New `get_inclusion_list_transactions`
 
 *Note*: `get_inclusion_list_transactions` returns a list of unique transactions
-from all valid and non-equivocating `InclusionList`s for the given slot and for
-which the `inclusion_list_committee_root` compatible with the `dependent_root`
-in the `InclusionList` matches the one calculated from the given `state`. When
-`only_timely` is `True`, only `InclusionList`s received in a timely manner on
-the p2p network are considered; otherwise, timeliness is not considered.
+from all valid and non-equivocating `InclusionList`s for the given `slot` and
+`dependent_root`. When `only_timely` is `True`, only `InclusionList`s received
+in a timely manner on the p2p network are considered; otherwise, timeliness is
+not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
 `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
@@ -112,27 +99,23 @@ they MAY be pruned.
 
 ```python
 def get_inclusion_list_transactions(
-    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
+    store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
 ) -> Sequence[Transaction]:
-    committee = get_inclusion_list_committee(state, slot)
-    key = hash_tree_root(committee)
-
+    key = (slot, dependent_root)
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
     transactions: list[Transaction] = []
-    for inclusion_list_entry in inclusion_lists.values():
-        inclusion_list = inclusion_list_entry.signed_inclusion_list.message
-
+    for validator_index, inclusion_list in inclusion_lists.items():
         # Ignore inclusion lists from equivocators
-        if inclusion_list.validator_index in equivocators:
+        if validator_index in equivocators:
             continue
 
         # Ignore untimely inclusion lists if only timely ones are requested
-        if only_timely and not inclusion_list_entry.is_timely:
+        if only_timely and not inclusion_list.timely:
             continue
 
-        transactions.extend(inclusion_list.transactions)
+        transactions.extend(inclusion_list.signed_inclusion_list.message.transactions)
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
     return list(set(transactions))
@@ -142,31 +125,27 @@ def get_inclusion_list_transactions(
 
 ```python
 def get_inclusion_list_bits(
-    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
+    store: InclusionListStore,
+    committee: InclusionListCommittee,
+    slot: Slot,
+    dependent_root: Root,
+    only_timely: bool = True,
 ) -> InclusionListBits:
-    """
-    Return a ``BitVector`` over inclusion list committee indices with bits set
-    for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
-    """
-    committee = get_inclusion_list_committee(state, slot)
-    key = hash_tree_root(committee)
-
+    key = (slot, dependent_root)
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
     validator_indices = []
-    for inclusion_list_entry in inclusion_lists.values():
-        inclusion_list = inclusion_list_entry.signed_inclusion_list.message
-
+    for validator_index, inclusion_list in inclusion_lists.items():
         # Ignore inclusion lists from equivocators
-        if inclusion_list.validator_index in equivocators:
+        if validator_index in equivocators:
             continue
 
         # Ignore untimely inclusion lists if only timely ones are requested
-        if only_timely and not inclusion_list_entry.is_timely:
+        if only_timely and not inclusion_list.timely:
             continue
 
-        validator_indices.append(inclusion_list.validator_index)
+        validator_indices.append(validator_index)
 
     return InclusionListBits(validator_index in validator_indices for validator_index in committee)
 ```
@@ -176,16 +155,15 @@ def get_inclusion_list_bits(
 ```python
 def is_inclusion_list_bits_inclusive(
     store: InclusionListStore,
-    state: BeaconState,
+    committee: InclusionListCommittee,
     slot: Slot,
+    dependent_root: Root,
     inclusion_list_bits: InclusionListBits,
     only_timely: bool = True,
 ) -> bool:
-    """
-    Return ``True`` if and only if ``inclusion_list_bits`` has a bit set for
-    every bit set in the local inclusion list bits for the given ``slot``.
-    """
-    local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
+    local_inclusion_list_bits = get_inclusion_list_bits(
+        store, committee, slot, dependent_root, only_timely
+    )
 
     for i in range(INCLUSION_LIST_COMMITTEE_SIZE):
         if local_inclusion_list_bits[i] and not inclusion_list_bits[i]:

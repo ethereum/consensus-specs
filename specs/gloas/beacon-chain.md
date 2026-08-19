@@ -48,12 +48,12 @@
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
   - [Gas limit schedule](#gas-limit-schedule)
@@ -577,7 +577,7 @@ same `Withdrawal` container can be used for validators and builders.
 | `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
 | `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
 
-## Preset
+## Presets
 
 ### Misc
 
@@ -604,7 +604,7 @@ same `Withdrawal` container can be used for validators and builders.
 | ------------------------------------ | -------------------------- |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `Uint64(2**14)` (= 16,384) |
 
-## Configuration
+## Configs
 
 ### Validator cycle
 

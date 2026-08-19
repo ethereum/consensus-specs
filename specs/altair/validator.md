@@ -12,7 +12,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
   - [`SyncSubcommitteeBits`](#syncsubcommitteebits)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`SyncCommitteeMessage`](#synccommitteemessage)
@@ -93,7 +93,7 @@ class SyncSubcommitteeBits(BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNE
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `Uint64(2**4)` (= 16) |
 | `SYNC_COMMITTEE_SUBNET_COUNT`              | `Uint64(2**2)` (= 4)  |
 
-## Configuration
+## Configs
 
 ### Time parameters
 

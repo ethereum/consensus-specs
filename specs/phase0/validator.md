@@ -10,7 +10,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
@@ -104,7 +104,7 @@ specifications before continuing and use as a reference throughout.
 | ---------------------------------- | --------------------- |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) |
 
-## Configuration
+## Configs
 
 ### Time parameters
 

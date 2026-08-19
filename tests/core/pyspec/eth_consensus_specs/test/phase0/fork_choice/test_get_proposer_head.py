@@ -23,6 +23,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_fulu
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -70,9 +71,7 @@ def test_basic_is_head_root(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_to(ALTAIR, GLOAS)
-@spec_state_test
-def test_basic_is_parent_root(spec, state):
+def _run_is_parent_root(spec, state, at_epoch_boundary):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -100,10 +99,36 @@ def test_basic_is_parent_root(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
 
-    # Make an empty block
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+    if at_epoch_boundary:
+        # Align the proposal slot with the next epoch boundary. Four slots are
+        # consumed below: one initial block, the parent, the late head, and the proposal.
+        state, store, _ = yield from apply_next_slots_with_attestations(
+            spec,
+            state,
+            store,
+            spec.SLOTS_PER_EPOCH - 4,
+            fill_cur_epoch=True,
+            fill_prev_epoch=True,
+            test_steps=test_steps,
+        )
+
+    if at_epoch_boundary:
+        # Include enough attestations before the parent to keep finalization healthy
+        # without changing FFG information in the late head.
+        state, store, _ = yield from apply_next_slots_with_attestations(
+            spec,
+            state,
+            store,
+            1,
+            fill_cur_epoch=True,
+            fill_prev_epoch=True,
+            test_steps=test_steps,
+        )
+    else:
+        # Make an empty block
+        block = build_empty_block_for_next_slot(spec, state)
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     # Fill a slot (parent)
     state, store, signed_parent_block = yield from apply_next_slots_with_attestations(
@@ -155,7 +180,14 @@ def test_basic_is_parent_root(spec, state):
 
     # The conditions in `get_proposer_head`
     assert spec.is_head_late(store, head.root)
-    assert spec.is_not_epoch_boundary(slot)
+    if at_epoch_boundary:
+        assert slot % spec.SLOTS_PER_EPOCH == 0
+    else:
+        assert slot % spec.SLOTS_PER_EPOCH != 0
+    if is_post_fulu(spec):
+        assert not hasattr(spec, "is_shuffling_stable")
+    else:
+        assert spec.is_shuffling_stable(slot) == (not at_epoch_boundary)
     assert spec.is_ffg_competitive(store, head.root, parent_root)
     assert spec.is_finalization_ok(store, slot)
     assert spec.is_proposing_on_time(store)
@@ -169,7 +201,9 @@ def test_basic_is_parent_root(spec, state):
     assert spec.is_parent_strong(store, head.root)
 
     proposer_head = spec.get_proposer_head(store, head, state.slot)
-    assert proposer_head.root == parent_root
+    expect_reorg = not at_epoch_boundary or is_post_fulu(spec)
+    expected_root = parent_root if expect_reorg else head.root
+    assert proposer_head.root == expected_root
 
     output_store_checks(spec, store, test_steps)
     test_steps.append(
@@ -181,3 +215,15 @@ def test_basic_is_parent_root(spec, state):
     )
 
     yield "steps", test_steps
+
+
+@with_all_phases_from_to(ALTAIR, GLOAS)
+@spec_state_test
+def test_basic_is_parent_root(spec, state):
+    yield from _run_is_parent_root(spec, state, at_epoch_boundary=False)
+
+
+@with_all_phases_from_to(ALTAIR, GLOAS)
+@spec_state_test
+def test_epoch_boundary(spec, state):
+    yield from _run_is_parent_root(spec, state, at_epoch_boundary=True)

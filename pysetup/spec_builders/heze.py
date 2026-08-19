@@ -16,7 +16,10 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
     def sundry_functions(cls) -> str:
         return """
 def cached_or_new_inclusion_list_store() -> InclusionListStore:
-    return InclusionListStore()
+    return InclusionListStore(
+        inclusion_lists=defaultdict(dict),
+        equivocators=defaultdict(set),
+    )
 """
 
     @classmethod
