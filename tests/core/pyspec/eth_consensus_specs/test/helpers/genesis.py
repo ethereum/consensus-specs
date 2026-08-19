@@ -230,7 +230,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         )
 
     if is_post_eip8321(spec):
-        state.randao_commitments = [spec.Bytes32()] * len(validator_balances)
+        state.randao_commitments = spec.RandaoCommitments(
+            data=[spec.Bytes32()] * len(validator_balances)
+        )
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list

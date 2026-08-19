@@ -29,7 +29,9 @@ def test_randao_commitment_registration_lifecycle(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.randao_commitment_registrations = registrations
+    block.body.randao_commitment_registrations = spec.RandaoCommitmentRegistrations(
+        data=registrations
+    )
     blocks = [state_transition_and_sign_block(spec, state, block)]
 
     # The registrations are queued, and every validator is still on the legacy path
