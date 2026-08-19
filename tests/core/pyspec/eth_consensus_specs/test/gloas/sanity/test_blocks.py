@@ -1072,7 +1072,9 @@ def test_builder_payment_weight_no_double_counting_target_equivocation(spec, sta
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.attestations = [attestation_wrong_target, attestation_right_target]
+    block.body.attestations = spec.Attestations(
+        data=[attestation_wrong_target, attestation_right_target]
+    )
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield "blocks", [signed_block]
