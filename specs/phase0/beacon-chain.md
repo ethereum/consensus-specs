@@ -41,14 +41,14 @@
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Genesis settings](#genesis-settings)
   - [Time parameters](#time-parameters-1)
   - [Validator cycle](#validator-cycle)
@@ -84,6 +84,7 @@
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
 - [Helpers](#helpers)
   - [Math](#math)
+    - [`get_set_bit_count`](#get_set_bit_count)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
@@ -532,7 +533,7 @@ specification.
 **MUST** be non-zero. This expression for any other `DomainType` in the
 consensus-layer specifications **MUST** be zero.
 
-## Preset
+## Presets
 
 *Note*: The below configuration is bundled as a preset: a bundle of
 configuration variables which are expected to differ between different modes of
@@ -623,7 +624,7 @@ operation, e.g. testing, but not generally between different networks.
 | `MAX_DEPOSITS`           | `Uint64(2**4)` (= 16)  |
 | `MAX_VOLUNTARY_EXITS`    | `Uint64(2**4)` (= 16)  |
 
-## Configuration
+## Configs
 
 *Note*: The default mainnet configuration values are included here for
 illustrative purposes. Defaults for this more dynamic type of configuration are
@@ -659,8 +660,8 @@ different configuration.
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
-containers.
+The following types are
+[SimpleSerialize (SSZ)](https://github.com/ethereum/ssz-specs) containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
 specification.
@@ -929,6 +930,16 @@ necessarily optimal implementations.
 
 ### Math
 
+#### `get_set_bit_count`
+
+```python
+def get_set_bit_count(bits: Sequence[Boolean]) -> Uint64:
+    """
+    Return the number of bits that are set in ``bits``.
+    """
+    return Uint64(sum(1 for bit in bits if bit))
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -982,7 +993,7 @@ def bytes_to_uint64(data: bytes) -> Uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ specification](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](https://github.com/ethereum/ssz-specs).
 
 #### BLS signatures
 
@@ -1489,7 +1500,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=AttestingIndices(sorted(attesting_indices)),
         data=attestation.data,
         signature=attestation.signature,
     )

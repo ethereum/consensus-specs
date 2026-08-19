@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
 - [Protocols](#protocols)
@@ -29,7 +29,7 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement Heze.
 
-## Configuration
+## Configs
 
 ## Helpers
 
@@ -116,7 +116,12 @@ with respect to the proposer's inclusion list view, which comprises all valid
 and non-equivocating inclusion lists they have observed.
 
 - The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, only_timely=False)`.
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`,
+  where `inclusion_list_committee` is
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - Slot(1)`,
+  `dependent_root` is
+  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
+  and `store` is the fork choice store.
 
 ##### ExecutionPayload
 
@@ -168,7 +173,12 @@ def prepare_execution_payload(
         target_gas_limit=target_gas_limit,
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
-            get_inclusion_list_store(), state, Slot(state.slot - 1), only_timely=False
+            get_inclusion_list_store(),
+            state.slot - Slot(1),
+            get_shuffling_dependent_root(
+                store, head.root, compute_epoch_at_slot(state.slot - Slot(1))
+            ),
+            only_timely=False,
         ),
     )
     return execution_engine.notify_forkchoice_updated(
@@ -176,6 +186,7 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        custody_columns=None,
     )
 ```
 

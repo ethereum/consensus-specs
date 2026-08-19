@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Altair](#fork-to-altair)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -15,7 +15,7 @@
 This document describes the process of the first upgrade of the beacon chain:
 the Altair upgrade, introducing light client support and other improvements.
 
-## Configuration
+## Configs
 
 | Name                  | Value                                         |
 | --------------------- | --------------------------------------------- |
@@ -89,17 +89,17 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
         slashings=pre.slashings,
-        previous_epoch_participation=[
+        previous_epoch_participation=EpochParticipation([
             ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ],
-        current_epoch_participation=[
+        ]),
+        current_epoch_participation=EpochParticipation([
             ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ],
+        ]),
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=[Uint64(0) for _ in range(len(pre.validators))],
+        inactivity_scores=InactivityScores([Uint64(0) for _ in range(len(pre.validators))]),
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)
