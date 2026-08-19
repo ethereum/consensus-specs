@@ -134,8 +134,9 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
         for signed_inclusion_list in signed_inclusion_lists:
             spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
 
+        dependent_root = signed_inclusion_lists[0].message.dependent_root
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == {
@@ -162,10 +163,14 @@ def test_inclusion_list_store_by_slot_and_dependent_root__empty_slot(spec, state
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_slot_0)
 
         inclusion_list_transactions_slot_0 = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store,
+            state.slot,
+            signed_inclusion_list_slot_0.message.dependent_root,
         )
         inclusion_list_transactions_slot_1 = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot + 1
+            inclusion_list_store,
+            state.slot + 1,
+            signed_inclusion_list_slot_0.message.dependent_root,
         )
 
         assert set(inclusion_list_transactions_slot_0) == set(
@@ -225,15 +230,14 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
-        # Only the inclusion list whose dependent root is compatible with the
-        # given state is returned.
+        # Only the inclusion list stored under the given dependent root is returned.
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, inclusion_list_0.dependent_root
         )
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_0.message.transactions)
 
         fork_inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, fork_state, fork_state.slot
+            inclusion_list_store, fork_state.slot, inclusion_list_1.dependent_root
         )
         assert set(fork_inclusion_list_transactions) == set(
             signed_inclusion_list_1.message.transactions
@@ -263,12 +267,13 @@ def test_inclusion_list_store_equivocation(spec, state):
         signed_inclusion_list_4 = get_sample_signed_inclusion_list(
             spec, forkchoice_store, state, validator_index=inclusion_list_committee[1]
         )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
 
         # The first IL from an IL committee member should be stored successfully.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
@@ -277,7 +282,7 @@ def test_inclusion_list_store_equivocation(spec, state):
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert inclusion_list_transactions == []
@@ -286,7 +291,7 @@ def test_inclusion_list_store_equivocation(spec, state):
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_4)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
@@ -295,7 +300,7 @@ def test_inclusion_list_store_equivocation(spec, state):
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
@@ -324,13 +329,14 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         signed_inclusion_list_2 = get_sample_signed_inclusion_list(
             spec, forkchoice_store, state, validator_index=validator_index
         )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
 
         # An IL committee member equivocates.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert inclusion_list_transactions == []
@@ -353,11 +359,12 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         signed_inclusion_list_3 = get_sample_signed_inclusion_list(
             spec, forkchoice_store, state, validator_index=validator_index
         )
+        dependent_root = signed_inclusion_list_3.message.dependent_root
 
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_3.message.transactions)
@@ -383,12 +390,13 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         signed_inclusion_list_3 = get_sample_signed_inclusion_list(
             spec, forkchoice_store, state, validator_index=inclusion_list_committee[1]
         )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
 
         # An IL received before the inclusion list due should be stored successfully.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
@@ -405,7 +413,7 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
@@ -414,7 +422,7 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
-            inclusion_list_store, state, state.slot
+            inclusion_list_store, state.slot, dependent_root
         )
 
         assert inclusion_list_transactions == []

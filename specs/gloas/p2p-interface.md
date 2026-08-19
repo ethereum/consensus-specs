@@ -5,9 +5,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Types](#types)
   - [Modified `DataColumn`](#modified-datacolumn)
   - [Modified `KZGProofs`](#modified-kzgproofs)
@@ -59,7 +59,7 @@ This document contains the consensus-layer networking specifications for Gloas.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
+## Presets
 
 ### Type-specific SSZ bounds
 
@@ -76,7 +76,7 @@ for the corresponding variable-size libp2p messages.
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
-## Configuration
+## Configs
 
 | Name                   | Value                  |
 | ---------------------- | ---------------------- |

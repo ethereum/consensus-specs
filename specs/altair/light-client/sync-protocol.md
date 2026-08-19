@@ -8,7 +8,7 @@
   - [`FinalityBranch`](#finalitybranch)
   - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Constants](#constants)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc)
 - [Containers](#containers)
   - [`LightClientHeader`](#lightclientheader)
@@ -104,7 +104,7 @@ class NextSyncCommitteeBranch(Vector[Bytes32]):
 | `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54)        |
 | `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55)           |
 
-## Preset
+## Presets
 
 ### Misc
 

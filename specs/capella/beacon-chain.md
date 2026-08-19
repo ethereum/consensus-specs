@@ -10,7 +10,7 @@
   - [New `Withdrawals`](#new-withdrawals)
 - [Constants](#constants)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
@@ -123,7 +123,7 @@ class Withdrawals(List[Withdrawal]):
 | -------------------------------- | -------------------------- |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
-## Preset
+## Presets
 
 ### Max operations per block
 

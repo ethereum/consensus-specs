@@ -10,7 +10,7 @@
   - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
 - [Constants](#constants)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Inclusion list committee](#inclusion-list-committee)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -72,7 +72,7 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
 | --------------------------------- | -------------------------- |
 | `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x10000000')` |
 
-## Preset
+## Presets
 
 ### Inclusion list committee
 

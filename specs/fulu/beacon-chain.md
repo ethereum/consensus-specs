@@ -6,7 +6,7 @@
 - [Types](#types)
   - [New `ProposerIndices`](#new-proposerindices)
   - [New `ProposerLookahead`](#new-proposerlookahead)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Blob schedule](#blob-schedule)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
@@ -71,7 +71,7 @@ class ProposerLookahead(Vector[ValidatorIndex]):
     LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 1) * Uint64(SLOTS_PER_EPOCH)
 ```
 
-## Configuration
+## Configs
 
 ### Blob schedule
 

@@ -9,10 +9,10 @@
   - [New `Transaction`](#new-transaction)
   - [New `Transactions`](#new-transactions)
 - [Constants](#constants)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Transition settings](#transition-settings)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -113,7 +113,7 @@ class Transactions(List[Transaction]):
 | ------------------ | ---------- |
 | `EMPTY_BLOCK_HASH` | `Hash32()` |
 
-## Preset
+## Presets
 
 ### Rewards and penalties
 
@@ -135,7 +135,7 @@ final, maximum security values.
 | `BYTES_PER_LOGS_BLOOM`         | `Uint64(2**8)` (= 256)            |
 | `MAX_EXTRA_DATA_BYTES`         | `Uint64(2**5)` (= 32)             |
 
-## Configuration
+## Configs
 
 ### Transition settings
 

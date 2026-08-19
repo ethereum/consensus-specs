@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import lru_cache
 from random import randbytes
 
@@ -147,7 +148,10 @@ def run_with_inclusion_list_store(spec, func):
 
     @lru_cache(maxsize=1)
     def cached_or_new_inclusion_list_store():
-        return spec.InclusionListStore()
+        return spec.InclusionListStore(
+            inclusion_lists=defaultdict(dict),
+            equivocators=defaultdict(set),
+        )
 
     cached_or_new_inclusion_list_store_backup = spec.cached_or_new_inclusion_list_store
     spec.cached_or_new_inclusion_list_store = cached_or_new_inclusion_list_store

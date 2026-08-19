@@ -30,7 +30,12 @@ class CaptureEngine:
         self.payload_attributes = None
 
     def notify_forkchoice_updated(
-        self, head_block_hash, safe_block_hash, finalized_block_hash, payload_attributes
+        self,
+        head_block_hash,
+        safe_block_hash,
+        finalized_block_hash,
+        payload_attributes,
+        custody_columns,
     ):
         self.head_block_hash = head_block_hash
         self.payload_attributes = payload_attributes

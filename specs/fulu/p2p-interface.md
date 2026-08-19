@@ -3,8 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
-- [Configuration](#configuration)
+- [Presets](#presets)
+- [Configs](#configs)
 - [Types](#types)
   - [New `DataColumnIndices`](#new-datacolumnindices)
   - [New `DataColumnsByRootIdentifiers`](#new-datacolumnsbyrootidentifiers)
@@ -54,13 +54,13 @@ This document contains the consensus-layer networking specifications for Fulu.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
+## Presets
 
 | Name                                    | Value                                                                                     | Description                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
-## Configuration
+## Configs
 
 *[New in Fulu:EIP7594]*
 

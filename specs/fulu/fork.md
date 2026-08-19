@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
 - [Fork to Fulu](#fork-to-fulu)
@@ -16,7 +16,7 @@
 
 This document describes the process of the Fulu upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 

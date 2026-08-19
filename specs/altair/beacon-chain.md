@@ -14,10 +14,10 @@
   - [Incentivization weights](#incentivization-weights)
   - [Domains](#domains)
   - [Misc](#misc)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Sync committee](#sync-committee)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Inactivity penalties](#inactivity-penalties)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -159,7 +159,7 @@ class SyncCommitteePubkeys(Vector[BLSPubkey]):
 | ---------------------------- | ------------------------------------------------------------------ |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
-## Preset
+## Presets
 
 ### Rewards and penalties
 
@@ -179,7 +179,7 @@ to their final, maximum security values.
 | `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  |
 
-## Configuration
+## Configs
 
 ### Inactivity penalties
 
