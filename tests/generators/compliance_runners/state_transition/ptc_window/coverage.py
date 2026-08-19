@@ -31,6 +31,8 @@ def _recs():
 
 
 def build_profile(records, name):
+    if name == "all":
+        return len(records), records
     return cover(records, ASPECTS, 1 if name == "onewise" else 2)
 
 
