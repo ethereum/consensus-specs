@@ -28,7 +28,7 @@ class DummyProofEngine:
         self.proofs.append((proof, chain_config_root))
         return self.accept
 
-    def request_proof(self, private_input, proof_type, chain_config_root):
+    def request_proof(self, private_input, proof_type):
         raise NotImplementedError
 
 

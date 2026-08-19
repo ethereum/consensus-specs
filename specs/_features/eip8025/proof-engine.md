@@ -11,6 +11,7 @@
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `request_proof`](#new-request_proof)
+  - [New `get_proof`](#new-get_proof)
 
 <!-- mdformat-toc end -->
 
@@ -29,19 +30,13 @@ verification and asynchronous proof generation via:
   execution proofs; and
 - a generation function `self.request_proof` to generate a proof from a
   `PrivateInput` containing the beacon-chain and execution witness material for
-  one `ProofType`.
+  one `ProofType`; and
+- a retrieval function `self.get_proof` to wait for and return a generated
+  proof.
 
 Proof verification is part of the baseline EIP-8025 profile. Proof generation is
 part of the optional `prover` feature, identified by the `eip8025-prover` tag.
 Implementations that do not support this feature may reject generation requests.
-
-The Proof Engine does not receive payload or fork-choice notifications. The
-prover is responsible for assembling `PrivateInput` and for checking that the
-target remains canonical before broadcasting a completed proof.
-
-The bodies of these functions are implementation dependent. The Engine API may
-be extended to expose equivalent functions when the proof engine is an external
-process.
 
 ### New `verify_execution_proof`
 
@@ -52,9 +47,8 @@ def verify_execution_proof(
     chain_config_root: Root,
 ) -> bool:
     """
-    Reconstruct ``GuestPublicInput`` from the gossiped claim and locally trusted
-    ``chain_config_root``, then verify the proof against that public input.
-    Return ``True`` if the proof is valid.
+    Verify ``execution_proof`` against the locally trusted
+    ``chain_config_root``. Return ``True`` if the proof is valid.
     """
 ```
 
@@ -65,19 +59,31 @@ def request_proof(
     self: ProofEngine,
     private_input: PrivateInput,
     proof_type: ProofType,
-    chain_config_root: Root,
 ) -> Root:
     """
     Request asynchronous proof generation for ``private_input`` using
-    ``proof_type`` and local chain configuration. Returns the target beacon block root
-    ``private_input.beacon_chain_witness.signed_envelope.message.beacon_block_root``
-    to track the generation request.
+    ``proof_type`` and local chain configuration. Return the target beacon block
+    root from ``private_input`` to track the generation request.
 
     Requests are singular because the recursive predecessor in
     ``private_input.beacon_chain_witness.previous_proof`` is specific to
     ``proof_type``.
+    """
+```
 
-    The proof engine MUST reject the completed guest output unless its
-    ``chain_config_root`` equals ``chain_config_root``.
+### New `get_proof`
+
+```python
+def get_proof(
+    self: ProofEngine,
+    beacon_block_root: Root,
+    proof_type: ProofType,
+) -> ExecutionProof:
+    """
+    Wait for the generation request identified by ``beacon_block_root`` and
+    ``proof_type`` to complete, then return its proof.
+
+    If generation fails or is abandoned, this function MUST NOT return an
+    ``ExecutionProof``.
     """
 ```

@@ -35,9 +35,13 @@ class NoopProofEngine(ProofEngine):
 
     def request_proof(self: ProofEngine,
                       private_input: PrivateInput,
-                      proof_type: ProofType,
-                      chain_config_root: Root) -> Root:
+                      proof_type: ProofType) -> Root:
         raise NotImplementedError("no default proof generation")
+
+    def get_proof(self: ProofEngine,
+                  beacon_block_root: Root,
+                  proof_type: ProofType) -> ExecutionProof:
+        raise NotImplementedError("no default proof retrieval")
 
 
 PROOF_ENGINE = NoopProofEngine()"""

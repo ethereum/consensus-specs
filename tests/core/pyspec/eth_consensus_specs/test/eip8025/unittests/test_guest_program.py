@@ -263,12 +263,12 @@ def build_recursive_private_input(
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_valid_base_proof(spec, state):
+def test_verify_execution_transition_valid_base_proof(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     guest = DummyGuest(spec)
     chain_config_root = get_chain_config_root(spec)
 
-    public_input = spec.process_private_input(guest, private_input, chain_config_root)
+    public_input = spec.verify_execution_transition(guest, private_input, chain_config_root)
 
     witness = private_input.beacon_chain_witness
     target_header = witness.beacon_lineage[-1]
@@ -283,12 +283,12 @@ def test_process_private_input_valid_base_proof(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_base_origin_must_equal_target(spec, state):
+def test_verify_execution_transition_base_origin_must_equal_target(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     private_input.beacon_chain_witness.origin.beacon_block_root = spec.Root(b"\xaa" * 32)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -299,13 +299,13 @@ def test_process_private_input_base_origin_must_equal_target(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_base_rejects_previous_bid(spec, state):
+def test_verify_execution_transition_base_rejects_previous_bid(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     witness = private_input.beacon_chain_witness
     witness.previous_bid = witness.target_bid
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -316,12 +316,12 @@ def test_process_private_input_base_rejects_previous_bid(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_valid_recursive_proof(spec, state):
+def test_verify_execution_transition_valid_recursive_proof(spec, state):
     private_input, previous_proof = build_recursive_private_input(spec, state)
     guest = DummyGuest(spec)
     chain_config_root = get_chain_config_root(spec)
 
-    public_input = spec.process_private_input(guest, private_input, chain_config_root)
+    public_input = spec.verify_execution_transition(guest, private_input, chain_config_root)
 
     assert public_input.origin == previous_proof.claim.origin
     assert public_input.head.slot == private_input.beacon_chain_witness.beacon_lineage[-1].slot
@@ -331,14 +331,14 @@ def test_process_private_input_valid_recursive_proof(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_recursive_proof_accepts_missed_slot(spec, state):
+def test_verify_execution_transition_recursive_proof_accepts_missed_slot(spec, state):
     private_input, _previous_proof = build_recursive_private_input(
         spec,
         state,
         missed_slot=True,
     )
 
-    spec.process_private_input(
+    spec.verify_execution_transition(
         DummyGuest(spec),
         private_input,
         get_chain_config_root(spec),
@@ -348,14 +348,14 @@ def test_process_private_input_recursive_proof_accepts_missed_slot(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_recursive_proof_accepts_empty_intermediate(spec, state):
+def test_verify_execution_transition_recursive_proof_accepts_empty_intermediate(spec, state):
     private_input, _previous_proof = build_recursive_private_input(
         spec,
         state,
         with_intermediate=True,
     )
 
-    spec.process_private_input(
+    spec.verify_execution_transition(
         DummyGuest(spec),
         private_input,
         get_chain_config_root(spec),
@@ -365,7 +365,7 @@ def test_process_private_input_recursive_proof_accepts_empty_intermediate(spec, 
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_recursive_proof_rejects_changed_execution_head(spec, state):
+def test_verify_execution_transition_recursive_proof_rejects_changed_execution_head(spec, state):
     private_input, _previous_proof = build_recursive_private_input(
         spec,
         state,
@@ -374,7 +374,7 @@ def test_process_private_input_recursive_proof_rejects_changed_execution_head(sp
     )
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -385,11 +385,11 @@ def test_process_private_input_recursive_proof_rejects_changed_execution_head(sp
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_rejects_invalid_previous_proof(spec, state):
+def test_verify_execution_transition_rejects_invalid_previous_proof(spec, state):
     private_input, _previous_proof = build_recursive_private_input(spec, state)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec, previous_proof_is_valid=False),
             private_input,
             get_chain_config_root(spec),
@@ -400,12 +400,12 @@ def test_process_private_input_rejects_invalid_previous_proof(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_rejects_previous_head_mismatch(spec, state):
+def test_verify_execution_transition_rejects_previous_head_mismatch(spec, state):
     private_input, previous_proof = build_recursive_private_input(spec, state)
     previous_proof.claim.head.beacon_block_root = spec.Root(b"\xbb" * 32)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -416,12 +416,12 @@ def test_process_private_input_rejects_previous_head_mismatch(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_rejects_broken_beacon_ancestry(spec, state):
+def test_verify_execution_transition_rejects_broken_beacon_ancestry(spec, state):
     private_input, _previous_proof = build_recursive_private_input(spec, state)
     private_input.beacon_chain_witness.beacon_lineage[-1].parent_root = spec.Root(b"\xdd" * 32)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -432,12 +432,12 @@ def test_process_private_input_rejects_broken_beacon_ancestry(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_rejects_invalid_envelope_signature(spec, state):
+def test_verify_execution_transition_rejects_invalid_envelope_signature(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     private_input.beacon_chain_witness.signed_envelope.signature = spec.BLSSignature()
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -447,12 +447,12 @@ def test_process_private_input_rejects_invalid_envelope_signature(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_process_private_input_rejects_unauthenticated_latest_block_hash(spec, state):
+def test_verify_execution_transition_rejects_unauthenticated_latest_block_hash(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     private_input.beacon_chain_witness.target_state.latest_block_hash = spec.Hash32(b"\xee" * 32)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -462,7 +462,7 @@ def test_process_private_input_rejects_unauthenticated_latest_block_hash(spec, s
 
 @with_eip8025_and_later
 @spec_state_test
-def test_process_private_input_rejects_invalid_latest_block_hash_branch(spec, state):
+def test_verify_execution_transition_rejects_invalid_latest_block_hash_branch(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     target_state = private_input.beacon_chain_witness.target_state
     branch = list(target_state.latest_block_hash_merkle_witness)
@@ -470,7 +470,7 @@ def test_process_private_input_rejects_invalid_latest_block_hash_branch(spec, st
     target_state.latest_block_hash_merkle_witness = branch
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec),
             private_input,
             get_chain_config_root(spec),
@@ -512,7 +512,7 @@ def mutate_envelope_binding(spec, private_input, case):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_process_private_input_rejects_envelope_binding_mismatch(spec, state):
+def test_verify_execution_transition_rejects_envelope_binding_mismatch(spec, state):
     pre_state = state.copy()
     cases = (
         "beacon_block_root",
@@ -534,7 +534,7 @@ def test_process_private_input_rejects_envelope_binding_mismatch(spec, state):
         )
         mutate_envelope_binding(spec, private_input, case)
         expect_assertion_error(
-            lambda private_input=private_input: spec.process_private_input(
+            lambda private_input=private_input: spec.verify_execution_transition(
                 DummyGuest(spec),
                 private_input,
                 get_chain_config_root(spec),
@@ -544,11 +544,11 @@ def test_process_private_input_rejects_envelope_binding_mismatch(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_process_private_input_rejects_failed_stateless_validation(spec, state):
+def test_verify_execution_transition_rejects_failed_stateless_validation(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             DummyGuest(spec, successful_validation=False),
             private_input,
             get_chain_config_root(spec),
@@ -558,7 +558,7 @@ def test_process_private_input_rejects_failed_stateless_validation(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_process_private_input_rejects_wrong_stateless_chain_config(spec, state):
+def test_verify_execution_transition_rejects_wrong_stateless_chain_config(spec, state):
     private_input, _signed_block, _signed_envelope = build_base_private_input(spec, state)
     guest = DummyGuest(
         spec,
@@ -566,7 +566,7 @@ def test_process_private_input_rejects_wrong_stateless_chain_config(spec, state)
     )
 
     expect_assertion_error(
-        lambda: spec.process_private_input(
+        lambda: spec.verify_execution_transition(
             guest,
             private_input,
             get_chain_config_root(spec),

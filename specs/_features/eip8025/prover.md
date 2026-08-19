@@ -14,8 +14,8 @@
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
 - [Execution proof](#execution-proof)
-  - [Obtaining an execution witness](#obtaining-an-execution-witness)
-  - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
+  - [Requesting proof generation](#requesting-proof-generation)
+  - [Signing and publishing a proof](#signing-and-publishing-a-proof)
 
 <!-- mdformat-toc end -->
 
@@ -24,7 +24,8 @@
 This document represents the prover guide accompanying EIP-8025. Provers are
 active validators who voluntarily generate and submit execution proofs without
 direct protocol-level compensation. They provide a public good by producing
-independently verifiable execution proofs during the optional proof phase.
+independently verifiable execution proofs during the optional proof phase. The
+execution `ChainConfig` is part of the CL's static configuration.
 
 *Note*: Provers are a transitional mechanism. In future mandatory proof forks,
 builders will be required to produce and gossip execution proofs as part of
@@ -48,82 +49,27 @@ def get_execution_proof_signature(
 
 ## Execution proof
 
-### Obtaining an execution witness
+### Requesting proof generation
 
-The execution witness is obtained from the execution layer through a versioned
-Engine API `newPayloadWithWitness` method. This is an EL method: the consensus
-client sends the same `NewPayloadRequest` used by `engine_newPayload`, and the
-EL returns payload validation status together with the execution witness needed
-by the stateless guest.
+An honest prover performs the following steps for a received
+`SignedExecutionPayloadEnvelope` and a supported `proof_type`:
 
-- `VALID` with a witness permits proof generation.
-- `SYNCING` or `ACCEPTED` is retryable and does not permit proof generation yet.
-- `INVALID` is terminal for that payload and no proof is requested.
-- A missing or malformed witness is an error even when the status is `VALID`.
+1. Call the versioned Engine API `newPayloadWithWitness` method with the
+   corresponding `NewPayloadRequest` and obtain a `VALID` execution witness.
+2. Construct `PrivateInput` from the execution witness and the corresponding
+   beacon-chain data and state.
+3. Call
+   `beacon_block_root = proof_engine.request_proof(private_input, proof_type)`.
+4. Subsequently call
+   `proof = proof_engine.get_proof(beacon_block_root, proof_type)`.
 
-The locally configured execution `ChainConfig` is not supplied by the EL and is
-committed separately as `chain_config_root`. Transaction public keys are derived
-by the prover host from the payload transactions in the canonical form expected
-by the execution-specs stateless verifier.
+### Signing and publishing a proof
 
-### Constructing the `SignedExecutionProof`
+The prover performs the following steps:
 
-An honest prover who is an active validator and wants to generate execution
-proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
-
-1. At startup, subscribe to:
-   - `execution_payload` events from the beacon node via SSE.
-   - Proof completion events from the proof engine via SSE. The concrete SSE
-     event shape is defined by the proof engine API specification.
-2. Upon receiving an `execution_payload` event:
-   - Fetch the accepted `SignedExecutionPayloadEnvelope` and its target beacon
-     block.
-   - Select the latest compatible proof for each requested proof type. If none
-     exists, start a base proof at the target checkpoint.
-   - Fetch every produced beacon block from that predecessor through the target
-     block, inclusive. Slot gaps represent missed slots and require no witness.
-     Use their headers, in order, as `beacon_lineage`.
-   - For a base proof, set `origin` to the target checkpoint, omit
-     `previous_proof` and `previous_bid`, and use only the target header in
-     `beacon_lineage`. For a recursive proof, provide the predecessor proof and
-     build `previous_bid` by extracting the predecessor head's
-     `SignedExecutionPayloadBid` and its Merkle branch against that header's
-     `body_root`.
-   - Build `target_bid` from the target block's `SignedExecutionPayloadBid` and
-     its Merkle branch. Intermediate produced blocks require only headers.
-   - Call the EL `newPayloadWithWitness` Engine API method for the target
-     payload and require a `VALID` response with an `ExecutionWitness`. Load the
-     locally configured `ChainConfig`, derive the transaction public keys, and
-     compute the trusted `chain_config_root`. The terminal parent header in the
-     execution witness MUST correspond to the execution block hash authenticated
-     by the target post-state's `latest_block_hash`. For a recursive proof this
-     hash MUST equal the block hash opened by `previous_bid`. If an intermediate
-     produced block is *full*, first generate a separate recursive proof for
-     that transition.
-   - Build `BeaconStateWitness` branches for `genesis_time`, `fork`,
-     `genesis_validators_root`, `payload_expected_withdrawals`,
-     `latest_block_hash`, and the selected envelope signer public key against
-     the target block's state root.
-   - For each desired `proof_type`, assemble a `BeaconChainWitness` from its
-     compatible predecessor, beacon lineage, and signed envelope. Combine it
-     with the execution witness, chain configuration, and transaction public
-     keys as `PrivateInput`.
-   - Call
-     `beacon_block_root = proof_engine.request_proof(private_input, proof_type, chain_config_root)`
-     to initiate proof generation, tracking the request by
-     `(beacon_block_root, proof_type)`.
-3. The proof engine runs `process_private_input` in the selected guest. Proof
-   generation is abandoned if the selected lineage ceases to be canonical; a
-   later proof starts from the latest compatible predecessor.
-4. Upon receiving a proof completion event for a tracked
-   `(beacon_block_root, proof_type)`:
-   - Fetch the completed `ExecutionProof` from the proof engine.
-   - Check that `proof.claim.head.beacon_block_root` equals the tracked
-     `beacon_block_root` and that `proof.claim.head.slot` equals the target
-     block slot.
-   - Let `validator_index` be the prover's validator index.
-   - Let
-     `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
-   - Let
-     `signed_proof = SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`.
-   - Broadcast `signed_proof` on the `execution_proof` gossip topic.
+1. Check the returned proof's root, proof type, and head slot.
+2. Let `validator_index` be the prover's validator index and let
+   `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
+3. Construct
+   `SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`
+   and broadcast it on the `execution_proof` topic.

@@ -21,7 +21,7 @@
   - [New `verify_beacon_block_bid_witness`](#new-verify_beacon_block_bid_witness)
   - [New `verify_beacon_state_field`](#new-verify_beacon_state_field)
   - [New `get_progressive_list_element_field_gindex`](#new-get_progressive_list_element_field_gindex)
-  - [New `process_private_input`](#new-process_private_input)
+  - [New `verify_execution_transition`](#new-verify_execution_transition)
 - [Availability boundary](#availability-boundary)
 
 <!-- mdformat-toc end -->
@@ -255,10 +255,10 @@ def get_progressive_list_element_field_gindex(
 Progressive lists have index-dependent paths, so their element fields cannot be
 located with the static `get_generalized_index` helper alone.
 
-### New `process_private_input`
+### New `verify_execution_transition`
 
 ```python
-def process_private_input(
+def verify_execution_transition(
     guest: Guest,
     private_input: PrivateInput,
     chain_config_root: Root,
