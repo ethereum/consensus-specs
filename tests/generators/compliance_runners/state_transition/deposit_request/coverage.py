@@ -38,6 +38,8 @@ PROFILES = {
 
 
 def build_profile(recs, name):
+    if name == "all":
+        return len(recs), recs
     aspects, t, filt = PROFILES[name]
     return cover(recs, aspects, t, filt)
 
