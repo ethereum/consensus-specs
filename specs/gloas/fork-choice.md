@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `PayloadStatus`](#new-payloadstatus)
 - [Constants](#constants)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
@@ -68,9 +69,15 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Types
 
-| Name            | SSZ equivalent | Description                                     |
-| --------------- | -------------- | ----------------------------------------------- |
-| `PayloadStatus` | `Uint8`        | Possible status of a payload in the fork-choice |
+### New `PayloadStatus`
+
+```python
+class PayloadStatus(Uint8):
+    """
+    The fork-choice status of an execution payload, one of the
+    ``PAYLOAD_STATUS_*`` values.
+    """
+```
 
 ## Constants
 
@@ -159,21 +166,19 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
     # [Modified in Gloas:EIP7732]
-    block_timeliness: Dict[Root, list[Boolean]] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    block_timeliness: Dict[Root, list[Boolean]]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
     # [New in Gloas:EIP7732]
-    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
+    payloads: Dict[Root, ExecutionPayloadEnvelope]
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]] = field(
-        default_factory=dict
-    )
+    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -200,6 +205,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
         payloads={},
@@ -768,9 +774,6 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     # Only re-org the head block if it arrived later than the attestation deadline.
     head_late = is_head_late(store, head_node.root)
 
-    # Do not re-org on an epoch boundary.
-    not_epoch_boundary = is_not_epoch_boundary(slot)
-
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
 
@@ -797,7 +800,6 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        not_epoch_boundary,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,
@@ -912,16 +914,12 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     # [Modified in Gloas:EIP7732]
     node = ForkChoiceNode(
         root=root,
         payload_status=PAYLOAD_STATUS_PENDING,
     )
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 

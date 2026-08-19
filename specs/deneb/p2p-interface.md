@@ -3,37 +3,42 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Deneb](#modifications-in-deneb)
-  - [Preset](#preset)
-  - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [New `BlobSidecar`](#new-blobsidecar)
-    - [New `BlobIdentifier`](#new-blobidentifier)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [New `is_within_epoch`](#new-is_within_epoch)
-    - [New `is_current_or_previous_epoch`](#new-is_current_or_previous_epoch)
-    - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
-    - [New `verify_blob_sidecar_inclusion_proof`](#new-verify_blob_sidecar_inclusion_proof)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
-        - [Modified `voluntary_exit`](#modified-voluntary_exit)
-      - [Attestation subnets](#attestation-subnets)
-        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
-      - [Blob subnets](#blob-subnets)
-        - [New `blob_sidecar_{subnet_id}`](#new-blob_sidecar_subnet_id)
-        - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+- [Presets](#presets)
+- [Configs](#configs)
+- [Types](#types)
+  - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
+  - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
+  - [New `BlobIdentifiers`](#new-blobidentifiers)
+  - [New `BlobSidecars`](#new-blobsidecars)
+  - [New `KZGCommitmentInclusionProof`](#new-kzgcommitmentinclusionproof)
+- [Containers](#containers)
+  - [New `BlobSidecar`](#new-blobsidecar)
+  - [New `BlobIdentifier`](#new-blobidentifier)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [New `is_within_epoch`](#new-is_within_epoch)
+  - [New `is_current_or_previous_epoch`](#new-is_current_or_previous_epoch)
+  - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
+  - [New `verify_blob_sidecar_inclusion_proof`](#new-verify_blob_sidecar_inclusion_proof)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [Modified `voluntary_exit`](#modified-voluntary_exit)
+    - [Attestation subnets](#attestation-subnets)
+      - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [New `blob_sidecar_{subnet_id}`](#new-blob_sidecar_subnet_id)
+      - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 - [Design decision rationale](#design-decision-rationale)
   - [Why are blobs relayed as a sidecar, separate from beacon blocks?](#why-are-blobs-relayed-as-a-sidecar-separate-from-beacon-blocks)
 
@@ -46,9 +51,7 @@ This document contains the consensus-layer networking specifications for Deneb.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Deneb
-
-### Preset
+## Presets
 
 *[New in Deneb:EIP4844]*
 
@@ -56,7 +59,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
-### Configuration
+## Configs
 
 *[New in Deneb:EIP4844]*
 
@@ -66,9 +69,62 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `Epoch(2**12)` (= 4,096) | Minimum epoch range over which a node must serve blob sidecars |
 | `BLOB_SIDECAR_SUBNET_COUNT`             | `Uint64(6)`              | Number of blob sidecar subnets used in the gossipsub protocol  |
 
-### Containers
+## Types
 
-#### New `BlobSidecar`
+### Modified `BeaconBlockRoots`
+
+```python
+# [Modified in Deneb:EIP4844]
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
+```
+
+### Modified `SignedBeaconBlocks`
+
+```python
+# [Modified in Deneb:EIP4844]
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]):
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
+```
+
+### New `BlobIdentifiers`
+
+```python
+class BlobIdentifiers(List[BlobIdentifier, compute_max_request_blob_sidecars()]):
+    """
+    The identifiers of the blob sidecars requested in a
+    ``BlobSidecarsByRoot`` request.
+    """
+```
+
+### New `BlobSidecars`
+
+```python
+class BlobSidecars(List[BlobSidecar, compute_max_request_blob_sidecars()]):
+    """
+    Blob sidecars returned in a ``BlobSidecarsByRange`` or
+    ``BlobSidecarsByRoot`` response.
+    """
+```
+
+### New `KZGCommitmentInclusionProof`
+
+```python
+class KZGCommitmentInclusionProof(Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]):
+    """
+    A Merkle branch proving a blob's KZG commitment within
+    ``BeaconBlockBody``.
+    """
+```
+
+## Containers
+
+### New `BlobSidecar`
 
 *[New in Deneb:EIP4844]*
 
@@ -81,10 +137,10 @@ class BlobSidecar(Container):
     kzg_commitment: KZGCommitment
     kzg_proof: KZGProof
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
+    kzg_commitment_inclusion_proof: KZGCommitmentInclusionProof
 ```
 
-#### New `BlobIdentifier`
+### New `BlobIdentifier`
 
 *[New in Deneb:EIP4844]*
 
@@ -94,9 +150,9 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
-### Helpers
+## Helpers
 
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -116,7 +172,7 @@ class Seen:
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -134,7 +190,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### New `is_within_epoch`
+### New `is_within_epoch`
 
 ```python
 def is_within_epoch(
@@ -154,7 +210,7 @@ def is_within_epoch(
     )
 ```
 
-#### New `is_current_or_previous_epoch`
+### New `is_current_or_previous_epoch`
 
 ```python
 def is_current_or_previous_epoch(
@@ -171,7 +227,7 @@ def is_current_or_previous_epoch(
     return is_current or is_previous
 ```
 
-#### New `compute_max_request_blob_sidecars`
+### New `compute_max_request_blob_sidecars`
 
 ```python
 def compute_max_request_blob_sidecars() -> Uint64:
@@ -181,7 +237,7 @@ def compute_max_request_blob_sidecars() -> Uint64:
     return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
 ```
 
-#### New `verify_blob_sidecar_inclusion_proof`
+### New `verify_blob_sidecar_inclusion_proof`
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
@@ -197,11 +253,11 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
     )
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Deneb to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
@@ -228,9 +284,9 @@ are given in this table:
 | -------------------------- | ------------------------------------ |
 | `blob_sidecar_{subnet_id}` | `BlobSidecar` [New in Deneb:EIP4844] |
 
-##### Global topics
+#### Global topics
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 *Note*: This function is modified to validate the number of blob kzg commitments
 included in the beacon block body.
@@ -331,7 +387,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-###### Modified `beacon_aggregate_and_proof`
+##### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified to ignore aggregate attestations from future
 slots and ignore aggregate attestations whose epoch is not the current or
@@ -452,7 +508,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
 ```
 
-###### Modified `voluntary_exit`
+##### Modified `voluntary_exit`
 
 *Note*: This function is modified to use `CAPELLA_FORK_VERSION` in the signature
 domain computation so that voluntary exits remain valid across fork boundaries.
@@ -510,9 +566,9 @@ def validate_voluntary_exit_gossip(
     seen.voluntary_exit_indices.add(validator_index)
 ```
 
-##### Attestation subnets
+#### Attestation subnets
 
-###### Modified `beacon_attestation_{subnet_id}`
+##### Modified `beacon_attestation_{subnet_id}`
 
 *[Modified in Deneb:EIP7045]* Attestations from the previous epoch are now
 propagated through the entire current epoch rather than only the next
@@ -569,7 +625,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
@@ -614,9 +670,9 @@ def validate_beacon_attestation_gossip(
     seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
-##### Blob subnets
+#### Blob subnets
 
-###### New `blob_sidecar_{subnet_id}`
+##### New `blob_sidecar_{subnet_id}`
 
 The `blob_sidecar_{subnet_id}` topics, where each blob index maps to some
 `subnet_id`, are used solely for propagating new blob sidecars to all nodes on
@@ -739,7 +795,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
-###### Blob retrieval via local execution-layer client
+##### Blob retrieval via local execution-layer client
 
 In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by
 querying the execution layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
@@ -755,17 +811,17 @@ particular they MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
-#### Transitioning the gossip
+### Transitioning the gossip
 
 See gossip transition details found in the
 [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for this upgrade.
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -783,7 +839,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -802,7 +858,7 @@ beacon block type.
 
 No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
@@ -810,7 +866,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+  BeaconBlockRoots
 )
 ```
 
@@ -818,7 +874,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+  SignedBeaconBlocks
 )
 ```
 
@@ -841,7 +897,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 soon as it passes the gossip validation rules. Clients SHOULD NOT respond with
 blocks that fail the beacon-chain state transition.
 
-##### BlobSidecarsByRange v1
+#### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
@@ -860,7 +916,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 
@@ -941,7 +997,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
-##### BlobSidecarsByRoot v1
+#### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
@@ -951,7 +1007,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, compute_max_request_blob_sidecars()]
+  BlobIdentifiers
 )
 ```
 
@@ -959,7 +1015,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, compute_max_request_blob_sidecars()]
+  BlobSidecars
 )
 ```
 

@@ -115,7 +115,7 @@ def create_light_client_update(
 ) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
     assert (
-        sum(block.message.body.sync_aggregate.sync_committee_bits)
+        get_set_bit_count(block.message.body.sync_aggregate.sync_committee_bits)
         >= MIN_SYNC_COMMITTEE_PARTICIPANTS
     )
 

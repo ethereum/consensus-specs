@@ -3,20 +3,20 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Bellatrix](#modifications-in-bellatrix)
-  - [Types](#types)
-  - [Constants](#constants)
-  - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+- [Types](#types)
+  - [New `PayloadValidationStatus`](#new-payloadvalidationstatus)
+- [Constants](#constants)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 - [Gossipsub](#gossipsub)
   - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
   - [Req/Resp](#reqresp)
@@ -39,15 +39,18 @@ document" and "Altair document" respectively, hereafter. Readers should
 understand the Phase 0 and Altair documents and use them as a basis to
 understand the changes outlined in this document.
 
-## Modifications in Bellatrix
+## Types
 
-### Types
+### New `PayloadValidationStatus`
 
-| Name                      | SSZ equivalent | Description                                     |
-| ------------------------- | -------------- | ----------------------------------------------- |
-| `PayloadValidationStatus` | `Uint8`        | Execution payload validation status for a block |
+```python
+class PayloadValidationStatus(Uint8):
+    """
+    The status of an execution payload's validation by the execution engine.
+    """
+```
 
-### Constants
+## Constants
 
 | Name                           | Value                        |
 | ------------------------------ | ---------------------------- |
@@ -55,9 +58,9 @@ understand the changes outlined in this document.
 | `PAYLOAD_STATUS_INVALIDATED`   | `PayloadValidationStatus(1)` |
 | `PAYLOAD_STATUS_NOT_VALIDATED` | `PayloadValidationStatus(2)` |
 
-### Helpers
+## Helpers
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -71,11 +74,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Bellatrix to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades. All topics remain
 stable except the beacon block topic which is updated with the modified type.
@@ -95,11 +98,11 @@ are given in this table:
 Note that the `ForkDigestValue` path segment of the topic separates the old and
 the new `beacon_block` topics.
 
-##### Global topics
+#### Global topics
 
 Bellatrix changes the type of the global beacon block topic.
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
 to all nodes on the networks. Signed blocks are sent in their entirety. The
@@ -107,7 +110,7 @@ to all nodes on the networks. Signed blocks are sent in their entirety. The
 
 *Note*: Blocks with execution enabled will be permitted to propagate regardless
 of the validity of the execution payload. This prevents network segregation
-between [optimistic](../../sync/optimistic.md) and non-optimistic nodes.
+between [optimistic](./optimistic-sync.md) and non-optimistic nodes.
 
 ```python
 def validate_beacon_block_gossip(
@@ -208,15 +211,15 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-#### Transitioning the gossip
+### Transitioning the gossip
 
 See gossip transition details found in the
 [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics.
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-Non-faulty, [optimistic](../../sync/optimistic.md) nodes may send blocks which
+Non-faulty, [optimistic](./optimistic-sync.md) nodes may send blocks which
 result in an INVALID response from an execution engine. To prevent network
 segregation between optimistic and non-optimistic nodes, transmission of an
 INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
@@ -224,9 +227,9 @@ down-scored or disconnected. Transmission of a block which is invalid due to any
 consensus-layer rules (i.e., *not* execution-layer rules) MAY result in
 down-scoring or disconnection.
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -241,7 +244,7 @@ the `context` enum to specify Bellatrix block type.
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 

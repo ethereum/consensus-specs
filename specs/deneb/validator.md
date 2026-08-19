@@ -4,6 +4,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Types](#types)
+  - [`Blobs`](#blobs)
+  - [`KZGProofs`](#kzgproofs)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -37,6 +40,26 @@ updated [beacon-chain specifications of Deneb](./beacon-chain.md) are requisite
 for this document and used throughout. Please see related beacon-chain
 specifications before continuing and use them as a reference throughout.
 
+## Types
+
+### `Blobs`
+
+```python
+class Blobs(List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    The blobs of a single beacon block.
+    """
+```
+
+### `KZGProofs`
+
+```python
+class KZGProofs(List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+    """
+    A list of KZG proofs, one for each blob or cell being proven.
+    """
+```
+
 ## Helpers
 
 ### `BlobsBundle`
@@ -46,9 +69,9 @@ specifications before continuing and use them as a reference throughout.
 ```python
 @dataclass
 class BlobsBundle:
-    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    commitments: BlobKZGCommitments
+    proofs: KZGProofs
+    blobs: Blobs
 ```
 
 ### Modified `GetPayloadResponse`

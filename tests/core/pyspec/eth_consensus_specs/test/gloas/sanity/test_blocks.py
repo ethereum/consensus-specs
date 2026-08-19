@@ -10,7 +10,11 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
     prepare_signed_payload_attestation,
 )
-from eth_consensus_specs.test.helpers.attestations import get_max_attestations
+from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
+    get_valid_attestation,
+    sign_attestation,
+)
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_max_attester_slashings,
     get_valid_attester_slashing_by_indices,
@@ -36,6 +40,7 @@ from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
     next_slots,
     state_transition_and_sign_block,
+    transition_to_slot_via_block,
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
@@ -176,7 +181,7 @@ def test_missed_payload_next_block_with_withdrawals_satisfying_payload(spec, sta
     assert list(current_expected) != block_1_withdrawals
 
     # A payload with Block 1's stale withdrawals (W_1) is accepted
-    satisfying = spec.ProgressiveList[spec.Withdrawal](block_1_withdrawals)
+    satisfying = spec.Withdrawals(block_1_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, satisfying)
 
 
@@ -202,7 +207,7 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     # Block 2 must still accept Block 1's stale withdrawals.
-    satisfying = spec.ProgressiveList[spec.Withdrawal](block_1_withdrawals)
+    satisfying = spec.Withdrawals(block_1_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, satisfying)
 
     # Build Block 3 so block processing treats Block 2 as a FULL parent.
@@ -229,7 +234,7 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     # Exactly two validators remained after Block 1's full payload-sized sweep.
     assert len(resumed_withdrawals) == 2
 
-    resumed = spec.ProgressiveList[spec.Withdrawal](resumed_withdrawals)
+    resumed = spec.Withdrawals(resumed_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, resumed)
 
     # Once recovery resumes, Block 1's stale withdrawals must be rejected.
@@ -258,7 +263,7 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     # Block 2 must still accept Block 1's stale withdrawals.
-    satisfying = spec.ProgressiveList[spec.Withdrawal](block_1_withdrawals)
+    satisfying = spec.Withdrawals(block_1_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, satisfying)
 
     # Build Block 3 so block processing treats Block 2 as a FULL parent.
@@ -281,7 +286,7 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
     resumed_withdrawals = list(state.payload_expected_withdrawals)
     assert resumed_withdrawals == []
 
-    empty_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
+    empty_withdrawals = spec.Withdrawals()
     assert _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
 
     # Once recovery is complete, the stale Block 1 withdrawals must no longer be accepted.
@@ -316,7 +321,7 @@ def test_missed_payload_next_block_with_withdrawals_unsatisfying_payload(spec, s
     assert list(current_expected) != block_1_withdrawals
 
     # A payload with fresh withdrawals (not W_1) is rejected
-    unsatisfying = spec.ProgressiveList[spec.Withdrawal](current_expected)
+    unsatisfying = spec.Withdrawals(current_expected)
     assert not _attempt_payload_with_withdrawals(spec, state, unsatisfying)
 
 
@@ -345,7 +350,7 @@ def test_missed_payload_next_block_without_withdrawals_satisfying_payload(spec, 
     assert len(current_expected) == 0
 
     # Despite no current withdrawals, payload must include W_1 — and it's accepted
-    satisfying = spec.ProgressiveList[spec.Withdrawal](block_1_withdrawals)
+    satisfying = spec.Withdrawals(block_1_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, satisfying)
 
 
@@ -372,7 +377,7 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
     assert len(current_expected) == 0
 
     # An empty payload is rejected — it must include W_1
-    empty_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
+    empty_withdrawals = spec.Withdrawals()
     assert not _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
 
 
@@ -851,6 +856,94 @@ def test_builder_payment_after_missed_epochs(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_attestations_after_missed_slot_use_applied_parent_payload_availability(spec, state):
+    """
+    Test that attestations from a missed slot use the availability of their
+    parent block's payload after that payload is applied by the including block.
+    """
+    set_parent_block_full(spec, state)
+
+    block_1 = build_empty_block_for_next_slot(spec, state)
+    parent_slot = block_1.slot
+    parent_block_hash = spec.Hash32(b"\x42" * 32)
+    block_1.body.signed_execution_payload_bid.message.block_hash = parent_block_hash
+
+    yield "pre", state
+
+    signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
+
+    parent_slot_index = parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT
+    assert not state.execution_payload_availability[parent_slot_index]
+
+    # Slot after Block 1 is missed. Build an attestation at that slot for the
+    # inherited Block 1 root and for the available payload.
+    attestation_slot = parent_slot + 1
+    attestation_state = state.copy()
+    next_slots(spec, attestation_state, 1)
+    assert attestation_state.slot == attestation_slot
+
+    committee = spec.get_beacon_committee(attestation_state, attestation_slot, 0)
+    matching_attesters = set(committee[::2])
+    mismatching_attesters = set(committee[1::2])
+    assert matching_attesters
+    assert mismatching_attesters
+
+    matching_attestation = get_valid_attestation(
+        spec,
+        attestation_state,
+        slot=attestation_slot,
+        payload_index=1,
+        filter_participant_set=lambda participants: participants & matching_attesters,
+        signed=True,
+    )
+    mismatching_attestation = get_valid_attestation(
+        spec,
+        attestation_state,
+        slot=attestation_slot,
+        payload_index=0,
+        filter_participant_set=lambda participants: participants & mismatching_attesters,
+        signed=True,
+    )
+
+    matching_indices = spec.get_attesting_indices(attestation_state, matching_attestation)
+    mismatching_indices = spec.get_attesting_indices(attestation_state, mismatching_attestation)
+    assert matching_indices.isdisjoint(mismatching_indices)
+    for validator_index in matching_indices | mismatching_indices:
+        assert not spec.has_flag(
+            state.current_epoch_participation[validator_index],
+            spec.TIMELY_HEAD_FLAG_INDEX,
+        )
+
+    # Block 2 confirms Block 1's payload before processing the attestation.
+    child_slot = attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    block_2 = build_empty_block(spec, state, slot=child_slot)
+    block_2.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+    block_2.body.attestations = [matching_attestation, mismatching_attestation]
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+
+    yield "blocks", [signed_block_1, signed_block_2]
+    yield "post", state
+
+    attestation_slot_index = attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT
+    assert not spec.is_attestation_same_slot(state, matching_attestation.data)
+    assert not spec.is_attestation_same_slot(state, mismatching_attestation.data)
+    assert state.execution_payload_availability[parent_slot_index]
+    assert not state.execution_payload_availability[attestation_slot_index]
+
+    for validator_index in matching_indices:
+        assert spec.has_flag(
+            state.current_epoch_participation[validator_index],
+            spec.TIMELY_HEAD_FLAG_INDEX,
+        )
+    for validator_index in mismatching_indices:
+        assert not spec.has_flag(
+            state.current_epoch_participation[validator_index],
+            spec.TIMELY_HEAD_FLAG_INDEX,
+        )
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, state):
     """
     Test that a voluntary exit is rejected when the parent payload's deferred
@@ -866,7 +959,7 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     set_parent_block_full(spec, state)
     withdrawal_request = prepare_withdrawal_request(spec, state, validator_index)
     requests = spec.ExecutionRequests(
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest]([withdrawal_request]),
+        withdrawals=spec.WithdrawalRequests([withdrawal_request]),
     )
     state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(requests)
 
@@ -925,3 +1018,68 @@ def test_proposer_lookahead_excludes_slashed_validators(spec, state):
     # The newly appended lookahead epoch matches the Gloas selection
     last_epoch_start = len(state.proposer_lookahead) - spec.SLOTS_PER_EPOCH
     assert list(state.proposer_lookahead[last_epoch_start:]) == list(proposers_in_gloas)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_no_double_counting_target_equivocation(spec, state):
+    """
+    A validator that equivocates on the attestation target (same source, different
+    target roots) is credited to the builder payment weight at most once, even when
+    both attestations land in the same block.
+    """
+    # Block at slot 1, then advance so slot 1's block root is retrievable from state.
+    transition_to_slot_via_block(spec, state, 1)
+    next_slots(spec, state, 1)
+
+    attestation_slot = spec.Slot(1)
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attester = committee[0]
+    # A block was proposed at the attestation slot, so these are same-slot attestations.
+    head_root = spec.get_block_root_at_slot(state, attestation_slot)
+
+    def build(wrong_target):
+        attestation = get_valid_attestation(
+            spec,
+            state,
+            slot=attestation_slot,
+            index=0,
+            payload_index=0,
+            beacon_block_root=head_root,
+            filter_participant_set=lambda _: {attester},
+        )
+        if wrong_target:
+            attestation.data.target.root = spec.Root(b"\x11" * 32)
+        sign_attestation(spec, state, attestation)
+        assert spec.is_attestation_same_slot(state, attestation.data)
+        return attestation
+
+    attestation_wrong_target = build(wrong_target=True)
+    attestation_right_target = build(wrong_target=False)
+    assert attestation_wrong_target.data.target.root != attestation_right_target.data.target.root
+
+    # Give slot 1 a builder payment to accrue weight against.
+    payment_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    state.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=spec.Gwei(1000000000),
+            builder_index=0,
+        ),
+    )
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attestations = [attestation_wrong_target, attestation_right_target]
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Credited once, not once per flag set.
+    assert (
+        state.builder_pending_payments[payment_index].weight
+        == state.validators[attester].effective_balance
+    )

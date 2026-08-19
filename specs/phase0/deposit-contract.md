@@ -4,8 +4,9 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`ExecutionAddress`](#executionaddress)
 - [Constants](#constants)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Staking deposit contract](#staking-deposit-contract)
   - [`deposit` function](#deposit-function)
     - [Deposit amount](#deposit-amount)
@@ -22,9 +23,14 @@ contract, part of Phase 0.
 
 ## Types
 
-| Name               | SSZ equivalent | Description                               |
-| ------------------ | -------------- | ----------------------------------------- |
-| `ExecutionAddress` | `Bytes20`      | Address of account on the execution layer |
+### `ExecutionAddress`
+
+```python
+class ExecutionAddress(Bytes20):
+    """
+    The address of an account on the execution layer.
+    """
+```
 
 ## Constants
 
@@ -35,7 +41,7 @@ specification.
 | ----------------------------- | --------------------- |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
 
-## Configuration
+## Configs
 
 *Note*: The default mainnet configuration values are included here for
 specification-design purposes.

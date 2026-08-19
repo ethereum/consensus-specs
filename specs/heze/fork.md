@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Heze](#fork-to-heze)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -15,7 +15,7 @@
 
 This document describes the process of the Heze upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -49,7 +49,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
         execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
         # [New in Heze:EIP7805]
-        inclusion_list_bits=BitVector[INCLUSION_LIST_COMMITTEE_SIZE](),
+        inclusion_list_bits=InclusionListBits(),
     )
 
     post = BeaconState(

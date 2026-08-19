@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Electra](#fork-to-electra)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -14,7 +14,7 @@
 
 This document describes the process of the Electra upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -95,11 +95,11 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         # [New in Electra:EIP7251]
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
         # [New in Electra:EIP7251]
-        pending_deposits=[],
+        pending_deposits=PendingDeposits(),
         # [New in Electra:EIP7251]
-        pending_partial_withdrawals=[],
+        pending_partial_withdrawals=PendingPartialWithdrawals(),
         # [New in Electra:EIP7251]
-        pending_consolidations=[],
+        pending_consolidations=PendingConsolidations(),
     )
 
     post.exit_balance_to_consume = get_activation_exit_churn_limit(post)

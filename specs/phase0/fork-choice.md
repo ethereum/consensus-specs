@@ -4,8 +4,8 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
-  - [Configuration](#configuration)
+  - [Constants](#constants)
+  - [Configs](#configs)
     - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
     - [`ForkChoiceNode`](#forkchoicenode)
@@ -40,7 +40,7 @@
     - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
-      - [`is_not_epoch_boundary`](#is_not_epoch_boundary)
+      - [`is_shuffling_stable`](#is_shuffling_stable)
       - [`is_ffg_competitive`](#is_ffg_competitive)
       - [`is_finalization_ok`](#is_finalization_ok)
       - [`is_proposing_on_time`](#is_proposing_on_time)
@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`compute_shuffling_dependent_slot`](#compute_shuffling_dependent_slot)
       - [`get_shuffling_dependent_root`](#get_shuffling_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
@@ -115,13 +116,13 @@ handlers must not modify `store`.
    computation, space, or any other resource. A number of optimized alternatives
    can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Constant
+### Constants
 
 | Name           | Value           |
 | -------------- | --------------- |
 | `BASIS_POINTS` | `Uint64(10000)` |
 
-### Configuration
+### Configs
 
 | Name                                  | Value         |
 | ------------------------------------- | ------------- |
@@ -192,12 +193,12 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
+    block_timeliness: Dict[Root, Boolean]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
 ```
 
 #### `get_forkchoice_store`
@@ -230,7 +231,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
+        block_timeliness={},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
     )
 ```
@@ -587,10 +590,10 @@ def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
-##### `is_not_epoch_boundary`
+##### `is_shuffling_stable`
 
 ```python
-def is_not_epoch_boundary(slot: Slot) -> bool:
+def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
 ```
 
@@ -694,8 +697,8 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     # Only re-org the head block if it arrived later than the attestation deadline.
     head_late = is_head_late(store, head_node.root)
 
-    # Do not re-org on an epoch boundary.
-    not_epoch_boundary = is_not_epoch_boundary(slot)
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = is_shuffling_stable(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
@@ -723,7 +726,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        not_epoch_boundary,
+        shuffling_stable,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,
@@ -879,16 +882,21 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `compute_shuffling_dependent_slot`
+
+```python
+def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_SLOT
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - Slot(1)
+```
+
 ##### `get_shuffling_dependent_root`
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     node = ForkChoiceNode(root=root)
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 

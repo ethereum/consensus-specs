@@ -31,8 +31,7 @@ def build_signed_proposer_preferences(
 
     if dependent_root is None:
         proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
-        lookahead_epoch = spec.Epoch(proposal_epoch - spec.MIN_SEED_LOOKAHEAD)
-        dependent_slot = spec.Slot(spec.compute_start_slot_at_epoch(lookahead_epoch) - 1)
+        dependent_slot = spec.compute_shuffling_dependent_slot(proposal_epoch)
         dependent_root = spec.get_block_root_at_slot(state, dependent_slot)
 
     if fee_recipient is None:

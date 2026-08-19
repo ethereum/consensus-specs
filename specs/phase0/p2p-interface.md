@@ -10,8 +10,14 @@
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
+    - [`Attnets`](#attnets)
+    - [`BeaconBlockRoots`](#beaconblockroots)
+    - [`ErrorMessage`](#errormessage)
+    - [`NodeID`](#nodeid)
+    - [`SignedBeaconBlocks`](#signedbeaconblocks)
+    - [`SubnetID`](#subnetid)
   - [Constants](#constants)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [Helpers](#helpers)
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
@@ -215,10 +221,60 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name       | SSZ equivalent | Description       |
-| ---------- | -------------- | ----------------- |
-| `NodeID`   | `Uint256`      | Node identifier   |
-| `SubnetID` | `Uint64`       | Subnet identifier |
+#### `Attnets`
+
+```python
+class Attnets(BitVector[ATTESTATION_SUBNET_COUNT]):
+    """
+    The attestation subnets a node is subscribed to, one bit per subnet.
+    """
+```
+
+#### `BeaconBlockRoots`
+
+```python
+class BeaconBlockRoots(List[Root, MAX_REQUEST_BLOCKS]):
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
+```
+
+#### `ErrorMessage`
+
+```python
+class ErrorMessage(List[Byte, 256]):
+    """
+    The error message of an unsuccessful response chunk.
+    """
+```
+
+#### `NodeID`
+
+```python
+class NodeID(Uint256):
+    """
+    A node identifier on the discovery network.
+    """
+```
+
+#### `SignedBeaconBlocks`
+
+```python
+class SignedBeaconBlocks(List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]):
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
+```
+
+#### `SubnetID`
+
+```python
+class SubnetID(Uint64):
+    """
+    The identifier of a gossip subnet, like an attestation subnet.
+    """
+```
 
 ### Constants
 
@@ -226,7 +282,7 @@ We define the following Python custom types for type hinting and readability:
 | -------------- | ------------- |
 | `NODE_ID_BITS` | `Uint64(256)` |
 
-### Configuration
+### Configs
 
 This section outlines configurations that are used in this specification.
 
@@ -390,7 +446,7 @@ Clients MUST locally store the following `MetaData`:
 ```
 (
   seq_number: Uint64
-  attnets: BitVector[ATTESTATION_SUBNET_COUNT]
+  attnets: Attnets
 )
 ```
 
@@ -974,7 +1030,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
@@ -1208,13 +1264,12 @@ unsigned byte:
   expected message schema and encoding specified in the request.
 - 1: **InvalidRequest** -- the contents of the request are semantically invalid,
   or the payload is malformed, or could not be understood. The response payload
-  adheres to the `ErrorMessage` schema (described below).
+  adheres to the schema (described below).
 - 2: **ServerError** -- the responder encountered an error while processing the
-  request. The response payload adheres to the `ErrorMessage` schema (described
-  below).
+  request. The response payload adheres to the schema (described below).
 - 3: **ResourceUnavailable** -- the responder does not have requested resource.
-  The response payload adheres to the `ErrorMessage` schema (described below).
-  *Note*: This response code is only valid as a response where specified.
+  The response payload adheres to the schema (described below). *Note*: This
+  response code is only valid as a response where specified.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous
 request-specific responses.
@@ -1222,11 +1277,9 @@ request-specific responses.
 The range `[4, 127]` is RESERVED for future usages, and should be treated as
 error if not recognized expressly.
 
-The `ErrorMessage` schema is:
-
 ```
 (
-  error_message: List[Byte, 256]
+  error_message: ErrorMessage
 )
 ```
 
@@ -1243,8 +1296,7 @@ IDs defined in this specification.
 The token of the negotiated protocol ID specifies the type of encoding to be
 used for the req/resp interaction. Only one value is possible at this time:
 
-- `ssz_snappy`: The contents are first
-  [SSZ-encoded](../../ssz/simple-serialize.md) and then compressed with
+- `ssz_snappy`: The contents are first SSZ-encoded and then compressed with
   [Snappy](https://github.com/google/snappy) frames compression. For objects
   containing a single field, only the field is SSZ-encoded not a container with
   a single field. For example, the `BeaconBlocksByRoot` request is an
@@ -1253,7 +1305,7 @@ used for the req/resp interaction. Only one value is possible at this time:
 
 ##### SSZ-snappy encoding strategy
 
-The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md)
+The [SimpleSerialize (SSZ) specification](https://github.com/ethereum/ssz-specs)
 outlines how objects are SSZ-encoded.
 
 To achieve snappy encoding on top of SSZ, we feed the serialized form of the
@@ -1315,11 +1367,10 @@ In case of an invalid input (header or payload), a reader MUST:
 All messages that contain only a single field MUST be encoded directly as the
 type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send
-their constituents individually as `response_chunk`s. For example, the
-`List[SignedBeaconBlock, ...]` response type sends zero or more
-`response_chunk`s. Each _successful_ `response_chunk` contains a single
-`SignedBeaconBlock` payload.
+Responses that are SSZ-lists (for example `SignedBeaconBlocks`) send their
+constituents individually as `response_chunk`s. For example, the
+`SignedBeaconBlocks` response type sends zero or more `response_chunk`s. Each
+_successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 #### Messages
 
@@ -1428,7 +1479,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 
@@ -1504,7 +1555,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS]
+  BeaconBlockRoots
 )
 ```
 
@@ -1512,7 +1563,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 
@@ -1658,9 +1709,9 @@ The ENR `attnets` entry signifies the attestation subnet bitfield with the
 following form to more easily discover peers participating in particular
 attestation gossip subnets.
 
-| Key       | Value                                     |
-| --------- | ----------------------------------------- |
-| `attnets` | SSZ `BitVector[ATTESTATION_SUBNET_COUNT]` |
+| Key       | Value     |
+| --------- | --------- |
+| `attnets` | `Attnets` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
 `attnets` entry with the same value as `MetaData.attnets`.
@@ -1674,9 +1725,9 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
-| Key    | Value           |
-| ------ | --------------- |
-| `eth2` | SSZ `ENRForkID` |
+| Key    | Value       |
+| ------ | ----------- |
+| `eth2` | `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
 object (`ENRForkID`)
