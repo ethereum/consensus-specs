@@ -17,7 +17,9 @@ from types import SimpleNamespace
 from ..aspect_coverage import cover, dedup, enumerate_signatures
 from .materializer import WithdrawalRequestMaterializer, _DIMS
 
-INPUT_ASPECTS = {
+# Fine-grained input aspects. These remain available through the detailed
+# profile; the default profiles use the composite validator_state factor.
+FINE_INPUT_ASPECTS = {
     "withdrawal_amount": ["is_full_exit_request"],
     "partial_queue_capacity": ["partial_queue_full"],
     "validator_membership": ["validator_pubkey_found"],
@@ -28,6 +30,22 @@ INPUT_ASPECTS = {
     "validator_balance": ["sufficient_effective_balance", "has_excess_balance"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
+INPUT_ASPECTS = {
+    "withdrawal_amount": ["is_full_exit_request"],
+    "partial_queue_capacity": ["partial_queue_full"],
+    "validator_state": [
+        "validator_pubkey_found",
+        "validator_credential",
+        "source_address_matches",
+        "validator_active",
+        "validator_exiting",
+        "validator_old_enough",
+        "has_pending_partial_withdrawal",
+        "sufficient_effective_balance",
+        "has_excess_balance",
+    ],
+}
+FINE_ALL_ASPECTS = {**FINE_INPUT_ASPECTS, **OUTCOME_ASPECT}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
 ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}
 MODEL = Path(__file__).parent / "models" / "handler_withdrawal_request.mzn"
@@ -51,10 +69,13 @@ PROFILES = {
     "pairwise": (ALL_ASPECTS, 2, None),
     "normal": (INPUT_ASPECTS, 2, "normal"),
     "exceptional": (OUTCOME_ASPECT, 1, "exceptional"),
+    "detailed": (FINE_ALL_ASPECTS, 2, None),
 }
 
 
 def build_profile(recs, name):
+    if name == "all":
+        return len(recs), recs
     if name == "standard":
         _, normal = cover(recs, *PROFILES["normal"], accept=ACCEPT)
         _, exc = cover(recs, *PROFILES["exceptional"], accept=ACCEPT)
@@ -64,7 +85,7 @@ def build_profile(recs, name):
 
 
 def _recs():
-    return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
+    return enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
 
 
 def materialize_profile(name: str) -> int:
@@ -83,7 +104,7 @@ def main() -> int:
 
     if not args:
         print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional"):
+        for name in ("onewise", "normal", "exceptional", "detailed"):
             n_obl, chosen = build_profile(recs, name)
             print(f"{name:14} {n_obl:>12} {len(chosen):>7}")
         _, std = build_profile(recs, "standard")

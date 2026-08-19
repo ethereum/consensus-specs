@@ -41,6 +41,8 @@ def _recs():
 
 
 def build_profile(recs, name):
+    if name == "all":
+        return len(recs), recs
     if name == "standard":
         _, normal_inputs = cover(recs, INPUT_ASPECTS, 2, "normal", accept=ACCEPT)
         _, normal_outcomes = cover(recs, OUTCOME_ASPECT, 1, "normal", accept=ACCEPT)
