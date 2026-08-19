@@ -343,6 +343,8 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
     block = store.blocks[node.root]
     if block.slot > slot:
         # [Modified in Gloas:EIP7732]
+        if block.parent_root not in store.blocks:
+            return node
         parent = ForkChoiceNode(
             root=block.parent_root,
             payload_status=get_parent_payload_status(store, block),
