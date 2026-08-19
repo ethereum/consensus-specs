@@ -130,7 +130,7 @@ def notify_forkchoice_updated(
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
     # [New in Gloas:EIP8070]
-    custody_columns: Optional[BitVector[NUMBER_OF_COLUMNS]] = None,
+    custody_columns: Optional[BitVector[NUMBER_OF_COLUMNS]],
 ) -> Optional[PayloadId]: ...
 ```
 
