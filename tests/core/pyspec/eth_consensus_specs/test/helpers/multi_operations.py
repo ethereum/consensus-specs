@@ -31,7 +31,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     Helper function to run a test that slashes and exits two validators
     """
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     yield "pre", state
 
@@ -271,7 +271,7 @@ def run_test_full_random_operations(spec, state, rng=None):
     if rng is None:
         rng = Random(2080)
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     num_deposits = None
     if is_post_fulu(spec):

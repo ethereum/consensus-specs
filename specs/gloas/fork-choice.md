@@ -7,16 +7,18 @@
 - [Introduction](#introduction)
 - [Types](#types)
   - [New `PayloadStatus`](#new-payloadstatus)
+  - [New `CustodyColumnBits`](#new-custodycolumnbits)
 - [Constants](#constants)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [Modified `ForkChoiceNode`](#modified-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
+  - [New `get_custody_column_bits`](#new-get_custody_column_bits)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [Modified `is_data_available`](#modified-is_data_available)
   - [New `is_payload_verified`](#new-is_payload_verified)
@@ -79,6 +81,15 @@ class PayloadStatus(Uint8):
     """
 ```
 
+### New `CustodyColumnBits`
+
+```python
+class CustodyColumnBits(BitVector[NUMBER_OF_COLUMNS]):
+    """
+    Bits marking the data columns custodied by a node, one bit per column.
+    """
+```
+
 ## Constants
 
 | Name                                 | Value                           |
@@ -96,7 +107,7 @@ class PayloadStatus(Uint8):
 
 ### `ExecutionEngine`
 
-#### `notify_forkchoice_updated`
+#### Modified `notify_forkchoice_updated`
 
 In Gloas, `finalized_block_hash` and `safe_block_hash` values **MUST** be
 computed as the following. All other semantics of `notify_forkchoice_updated`
@@ -112,6 +123,23 @@ Where:
 
 *Note*: `get_safe_execution_block_hash` is modified in Gloas, see
 [Fast Confirmation](./fast-confirmation.md#modified-get_safe_execution_block_hash).
+
+*Note*: The execution engine uses `custody_columns` as its sampling set for blob
+transactions in the transaction pool. This SHOULD be
+`get_custody_column_bits(node_id, custody_group_count)` using the node's
+advertised custody group count.
+
+```python
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+    # [New in Gloas:EIP8070]
+    custody_columns: Optional[CustodyColumnBits],
+) -> Optional[PayloadId]: ...
+```
 
 ## Helpers
 
@@ -214,6 +242,20 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
     )
+```
+
+### New `get_custody_column_bits`
+
+```python
+def get_custody_column_bits(node_id: NodeID, custody_group_count: Uint64) -> CustodyColumnBits:
+    """
+    Compute the bitvector of column indices custodied by ``node_id``.
+    """
+    bits = CustodyColumnBits()
+    for custody_group in get_custody_groups(node_id, custody_group_count):
+        for column in compute_columns_for_custody_group(custody_group):
+            bits[column] = True
+    return bits
 ```
 
 ### New `notify_ptc_messages`

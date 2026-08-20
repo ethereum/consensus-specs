@@ -169,6 +169,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Enshrined Proposer-Builder Separation
 - [EIP-7843](https://github.com/ethereum/EIPs/blob/c3bfd4ba41cf0fcbfe8c404f33ba89f5174971e0/EIPS/eip-7843.md):
   SLOTNUM opcode
+- [EIP-8070](https://github.com/ethereum/EIPs/blob/f516cef8b482bf123d554ee12ff5b421f5578d38/EIPS/eip-8070.md):
+  eth/72 - Sparse Blobpool
 - [EIP-8045](https://github.com/ethereum/EIPs/blob/414a8404198c5afaa3cfed10a385a9aae1dfaae3/EIPS/eip-8045.md):
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
@@ -1309,7 +1311,7 @@ def get_attestation_participation_flag_indices(
     else:
         slot_index = parent_slot % SLOTS_PER_HISTORICAL_ROOT
         payload_index = state.execution_payload_availability[slot_index]
-        payload_matches = data.index == payload_index
+        payload_matches = Uint64(data.index) == Uint64(payload_index)
 
     # Matching head
     head_root = get_block_root_at_slot(state, data.slot)
@@ -1343,7 +1345,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> PTC:
         assert epoch + 1 == state_epoch
         return state.ptc_window[slot % SLOTS_PER_EPOCH]
     assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
-    offset = (epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
     return state.ptc_window[offset + slot % SLOTS_PER_EPOCH]
 ```
 
@@ -1375,7 +1377,7 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
-    per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    per_slot_balance = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
@@ -1449,7 +1451,7 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     if exit_balance > exit_balance_to_consume:
         balance_to_process = exit_balance - exit_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
+        earliest_exit_epoch += Epoch(additional_epochs)
         exit_balance_to_consume += additional_epochs * per_epoch_churn
 
     # Consume the balance and update state variables.

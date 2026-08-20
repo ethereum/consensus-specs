@@ -1239,7 +1239,7 @@ def compute_start_slot_at_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
-    return Slot(epoch * SLOTS_PER_EPOCH)
+    return Slot(epoch) * SLOTS_PER_EPOCH
 ```
 
 #### `compute_activation_exit_epoch`
@@ -1406,7 +1406,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
         min(
             MAX_COMMITTEES_PER_SLOT,
             Uint64(len(get_active_validator_indices(state, epoch)))
-            // SLOTS_PER_EPOCH
+            // Uint64(SLOTS_PER_EPOCH)
             // TARGET_COMMITTEE_SIZE,
         ),
     )
@@ -1426,8 +1426,8 @@ def get_beacon_committee(
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
-        count=committees_per_slot * SLOTS_PER_EPOCH,
+        index=Uint64(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
+        count=committees_per_slot * Uint64(SLOTS_PER_EPOCH),
     )
 ```
 
@@ -1891,7 +1891,7 @@ def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> 
 
 ```python
 def get_finality_delay(state: BeaconState) -> Uint64:
-    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
+    return Uint64(get_previous_epoch(state) - state.finalized_checkpoint.epoch)
 ```
 
 ```python
@@ -1988,7 +1988,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
         max_attester_reward = Gwei(
             get_base_reward(state, index) - get_proposer_reward(state, index)
         )
-        rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
+        rewards[index] += Gwei(max_attester_reward // Uint64(attestation.inclusion_delay))
 
     # No penalties associated with inclusion delay
     penalties = [Gwei(0) for _ in range(len(state.validators))]
@@ -2174,7 +2174,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+    if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
             block_roots=state.block_roots, state_roots=state.state_roots
         )
@@ -2247,7 +2247,7 @@ def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
     if (
         state.eth1_data_votes.count(body.eth1_data) * 2
-        > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH
+        > Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     ):
         state.eth1_data = body.eth1_data
 ```

@@ -518,14 +518,14 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
 
     # proposer_lookahead has fixed shape (MIN_SEED_LOOKAHEAD + 1) *
     # SLOTS_PER_EPOCH and each entry must reference a real validator.
-    expected_lookahead_len = (spec.MIN_SEED_LOOKAHEAD + 1) * spec.SLOTS_PER_EPOCH
+    expected_lookahead_len = spec.Uint64(spec.MIN_SEED_LOOKAHEAD + 1) * spec.SLOTS_PER_EPOCH
     assert len(state.proposer_lookahead) == expected_lookahead_len
     for proposer_index in state.proposer_lookahead:
         assert proposer_index < len(state.validators)
 
     # ptc_window has fixed shape (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH
     # of PTC-sized committees referencing real validators.
-    expected_ptc_window_len = (2 + spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH
+    expected_ptc_window_len = spec.Uint64(2 + spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH
     assert len(state.ptc_window) == expected_ptc_window_len
     for ptc_slice in state.ptc_window:
         assert len(ptc_slice) == spec.PTC_SIZE
@@ -562,7 +562,7 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     # Advance past SHARD_COMMITTEE_PERIOD so process_withdrawal_request
     # accepts the full-exit requests (each requires
     # current_epoch >= activation_epoch + SHARD_COMMITTEE_PERIOD).
-    target_slot = spec.Slot(spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    target_slot = spec.Slot(spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     spec.process_slots(state, target_slot)
 
     set_parent_block_full(spec, state)
