@@ -18,7 +18,7 @@
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+- [Execution proof verification](#execution-proof-verification)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
 
@@ -26,8 +26,13 @@
 
 ## Introduction
 
-These are the beacon-chain specifications to add EIP-8025, enabling stateless
-validation of execution payloads through execution proofs.
+These are the beacon-chain data and verification specifications for EIP-8025,
+enabling stateless validation of execution payloads through execution proofs.
+
+Execution proofs are non-consensus artifacts. Verifying or storing one does not
+change beacon-chain state, fork choice, or Gloas payload status. Client policy
+for using a stored proof, including whether it can avoid payload retrieval, is
+outside this specification.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
 and imports proof types from [proof-engine.md](./proof-engine.md).
@@ -48,7 +53,7 @@ class ProofData(ProgressiveByteList):
 ```python
 class ProofType(Uint8):
     """
-    The identifier of the proof system that produced an execution proof.
+    Identifies the proof format used by an execution proof.
     """
 ```
 
@@ -58,9 +63,14 @@ class ProofType(Uint8):
 
 *Note*: The execution values are not definitive.
 
-| Name             | Value                                  |
-| ---------------- | -------------------------------------- |
-| `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+| Name                    | Value                                                        |
+| ----------------------- | ------------------------------------------------------------ |
+| `MAX_PROOF_SIZE`        | `Uint64(4194304)` (= 4,096 KiB, 4 MiB)                       |
+| `SUPPORTED_PROOF_TYPES` | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
+
+The initial proof type assignments are provisional. A `ProofType` identifies an
+immutable proof format and version. Assignments MUST NOT be reused. A future
+fork may change `SUPPORTED_PROOF_TYPES`.
 
 ### Domains
 
@@ -73,8 +83,8 @@ class ProofType(Uint8):
 ### New `PublicInput`
 
 ```python
-class PublicInput(Container):
-    new_payload_request_root: Root
+class PublicInput(ProgressiveContainer(active_fields=[1])):
+    beacon_block_root: Root
 ```
 
 ### New `ExecutionProof`
@@ -95,11 +105,13 @@ class SignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-## Beacon chain state transition function
+## Execution proof verification
 
 ### Execution proof
 
-*Note*: Proof storage is implementation-dependent, managed by the `ProofEngine`.
+This helper validates a proof for storage by the `on_execution_proof` handler.
+It is not invoked by the beacon state transition function. Any
+proof-engine-native artifacts remain implementation-dependent.
 
 #### New `process_execution_proof`
 
@@ -110,7 +122,10 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
+    assert signed_proof.validator_index < len(state.validators)
+    assert len(proof_message.proof_data) > 0
     assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
+    assert proof_message.proof_type in SUPPORTED_PROOF_TYPES
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]

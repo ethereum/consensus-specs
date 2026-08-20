@@ -185,6 +185,8 @@ def objects_to_spec(
     execution_engine_cls = reduce(
         lambda txt, builder: builder.execution_engine_cls() or txt, builders, ""
     )
+    # Keep proof engine from the most recent fork
+    proof_engine_cls = reduce(lambda txt, builder: builder.proof_engine_cls() or txt, builders, "")
 
     # Remove deprecated constants
     deprecate_constants = reduce(
@@ -243,6 +245,7 @@ def objects_to_spec(
         functions_spec,
         sundry_functions,
         execution_engine_cls,
+        proof_engine_cls,
         ssz_dep_constants_verification,
         func_dep_presets_verification,
     ]
