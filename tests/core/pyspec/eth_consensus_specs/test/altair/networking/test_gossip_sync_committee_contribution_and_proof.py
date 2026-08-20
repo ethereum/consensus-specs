@@ -193,7 +193,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     # Advance to the last slot of the first sync committee period
-    period_length = spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     transition_to(spec, state, period_length - 1)
 
     seen = get_seen(spec)

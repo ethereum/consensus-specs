@@ -43,7 +43,7 @@ def test_transition_with_proposer_slashing_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.PROPOSER_SLASHING,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -68,7 +68,7 @@ def test_transition_with_proposer_slashing_right_before_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.PROPOSER_SLASHING,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1,
     )
 
 
@@ -98,7 +98,7 @@ def test_transition_with_attester_slashing_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.ATTESTER_SLASHING,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -123,7 +123,7 @@ def test_transition_with_attester_slashing_right_before_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.ATTESTER_SLASHING,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1,
     )
 
 
@@ -153,7 +153,7 @@ def test_transition_with_deposit_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.DEPOSIT,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -178,7 +178,7 @@ def test_transition_with_deposit_right_before_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.DEPOSIT,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1,
     )
 
 
@@ -202,7 +202,7 @@ def test_transition_with_voluntary_exit_right_after_fork(
     fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
-    state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot = spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     yield from run_transition_with_operation(
         state,
@@ -212,7 +212,7 @@ def test_transition_with_voluntary_exit_right_after_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.VOLUNTARY_EXIT,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH,
     )
 
 
@@ -231,7 +231,7 @@ def test_transition_with_voluntary_exit_right_before_fork(
     fork_epoch=66 because minimal preset `SHARD_COMMITTEE_PERIOD` is 64 epochs.
     """
     # Fast forward to the future epoch so that validator can do voluntary exit
-    state.slot = spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot = spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     yield from run_transition_with_operation(
         state,
@@ -241,5 +241,5 @@ def test_transition_with_voluntary_exit_right_before_fork(
         pre_tag,
         post_tag,
         operation_type=OperationType.VOLUNTARY_EXIT,
-        operation_at_slot=fork_epoch * spec.SLOTS_PER_EPOCH - 1,
+        operation_at_slot=spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1,
     )

@@ -38,7 +38,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Pick a validator to exit
@@ -70,7 +70,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Pick a validator to exit
@@ -111,7 +111,7 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Create voluntary exit with invalid validator index
@@ -149,7 +149,7 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Pick a validator and make it inactive by setting activation_epoch to far future
     validator_index = 0
@@ -185,7 +185,7 @@ def test_gossip_voluntary_exit__reject_already_initiated_exit(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Pick a validator and set their exit_epoch (simulating already initiated exit)
     validator_index = 0
@@ -221,7 +221,7 @@ def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Pick a validator
@@ -295,7 +295,7 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     seen = get_seen(spec)
 
     # Advance state past SHARD_COMMITTEE_PERIOD
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Pick a validator

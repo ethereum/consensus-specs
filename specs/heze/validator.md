@@ -186,6 +186,7 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        custody_columns=None,
     )
 ```
 
