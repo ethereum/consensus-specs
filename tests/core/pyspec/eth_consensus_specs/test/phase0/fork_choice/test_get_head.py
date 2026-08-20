@@ -65,8 +65,8 @@ def test_genesis(spec, state):
         assert anchor_root not in store.payloads
         # The anchor's PTC vote arrays are initialized with no votes cast
         assert anchor_root in store.payload_timeliness_vote
-        assert all(vote is None for vote in store.payload_timeliness_vote[anchor_root])
         assert anchor_root in store.payload_data_availability_vote
+        assert all(vote is None for vote in store.payload_timeliness_vote[anchor_root])
         assert all(vote is None for vote in store.payload_data_availability_vote[anchor_root])
 
         # get_head returns ForkChoiceNode
