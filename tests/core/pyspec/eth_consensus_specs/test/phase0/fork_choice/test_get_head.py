@@ -66,6 +66,8 @@ def test_genesis(spec, state):
         # The anchor's PTC vote arrays are initialized with no votes cast
         assert anchor_root in store.payload_timeliness_vote
         assert anchor_root in store.payload_data_availability_vote
+        assert len(store.payload_timeliness_vote[anchor_root]) == spec.PTC_SIZE
+        assert len(store.payload_data_availability_vote[anchor_root]) == spec.PTC_SIZE
         assert all(vote is None for vote in store.payload_timeliness_vote[anchor_root])
         assert all(vote is None for vote in store.payload_data_availability_vote[anchor_root])
 
