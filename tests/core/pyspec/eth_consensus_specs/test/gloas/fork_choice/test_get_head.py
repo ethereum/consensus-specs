@@ -117,24 +117,12 @@ def test_get_head_empty_payload_tiebreak(spec, state):
 @single_phase
 def test_get_head_with_anchor_payload_delivered(spec, state):
     """
-    ``get_head`` must not fail when the anchor block is a previous slot payload
-    decision with its payload delivered.
-
-    ``get_forkchoice_store`` initializes the store's PTC vote arrays
-    (``payload_timeliness_vote`` and ``payload_data_availability_vote``) for
-    every block added via ``on_block``, but previously omitted the anchor
-    block. Once the store advances past the anchor's slot and the anchor's
-    payload is verified, the LMD-GHOST walk reaches the anchor's FULL/EMPTY
-    variants and ``should_extend_payload`` consults ``payload_timeliness``
-    and ``payload_data_availability``, which require the anchor root to be
-    present in the vote arrays. Without the arrays, ``get_head`` fails with an
-    ``AssertionError``.
+    Test that get_head picks the FULL variant when the anchor payload is present.
     """
     test_steps = []
 
-    # Anchor on a block at the start of an epoch so the anchor state is at a
-    # non-genesis slot (required for Heze's envelope delivery) and
-    # ``filter_block_tree`` won't walk past the anchor.
+    # Anchor on the first block of the next epoch so it can have a payload and
+    # get_head can decide between its FULL and EMPTY variants
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
     anchor_block = build_empty_block_for_next_slot(spec, state)
     signed_anchor = state_transition_and_sign_block(spec, state, anchor_block)
@@ -146,24 +134,17 @@ def test_get_head_with_anchor_payload_delivered(spec, state):
     yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block
 
-    # Deliver the anchor block's execution payload envelope so the FULL
-    # variant of the anchor exists
+    # Deliver the anchor payload, so the anchor has the FULL variant
     envelope = build_signed_execution_payload_envelope(
         spec, anchor_state, anchor_root, signed_anchor
     )
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
-    # Advance to the next slot: the anchor becomes a previous slot payload
-    # decision, and its payload status must be resolved without failing
-    on_tick_and_append_step(
-        spec,
-        store,
-        anchor_state.genesis_time + (anchor_state.slot + 1) * spec.config.SLOT_DURATION_MS // 1000,
-        test_steps,
-    )
+    # Advance to the next slot so get_head can decide between the anchor's payload variants
+    time = (state.slot + 1) * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
+    on_tick_and_append_step(spec, store, time, test_steps)
 
-    # No PTC votes have been cast and there is no proposer boost, so the
-    # payload should be extended and the FULL variant chosen as the head
+    # With no PTC votes or proposer boost, get_head should choose the FULL variant
     head = spec.get_head(store)
     assert head.root == anchor_root
     assert head.payload_status == spec.PAYLOAD_STATUS_FULL
