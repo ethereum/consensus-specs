@@ -48,11 +48,11 @@ takes over as the protocol's correlation pricing mechanism.
 
 ### Penalty factor
 
-| Name                               | Value                       | Description                                                                                                     |
-| ---------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `MAX_PENALTY_FACTOR`               | `Uint64(2**7)` (= 128)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                 |
-| `PENALTY_SLOPE`                    | `Uint64(381)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)` |
-| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots   |
+| Name                               | Value                       | Description                                                                                                                |
+| ---------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `MAX_PENALTY_FACTOR`               | `uint64(2**8)` (= 256)      | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                            |
+| `PENALTY_SLOPE`                    | `uint64(765)`               | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`            |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `uint64(2**17)` (= 131,072) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 91,000 slots (~12.6 days) |
 
 ## Containers
 
