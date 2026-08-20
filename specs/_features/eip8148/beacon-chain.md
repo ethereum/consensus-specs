@@ -26,6 +26,8 @@
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `switch_to_compounding_validator`](#modified-switch_to_compounding_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -245,6 +247,21 @@ def add_validator_to_registry(
         if has_compounding_withdrawal_credential(validator)
         else Gwei(0),
     )
+```
+
+### Beacon state mutators
+
+#### Modified `switch_to_compounding_validator`
+
+```python
+def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    validator.withdrawal_credentials = (
+        COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+    )
+    queue_excess_active_balance(state, index)
+    # [New in EIP8148]
+    state.validator_sweep_thresholds[index] = MAX_EFFECTIVE_BALANCE_ELECTRA
 ```
 
 ## Beacon chain state transition function
