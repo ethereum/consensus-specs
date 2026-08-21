@@ -8,7 +8,6 @@ materializer nor the model.
 """
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -105,37 +104,3 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     if changed != bool(claimed.get("exit_initiated")):
         errors.append(f"state_changed={changed} but exit_initiated={claimed.get('exit_initiated')}")
     return checks, errors
-
-
-def main() -> int:
-    default = Path(__file__).parent / "reftests"
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else default
-    case_dirs = sorted(root.glob("**/operations/builder_exit_request/**/case_*"))
-    if not case_dirs:
-        print(f"No cases found under {root}")
-        return 1
-
-    total_mm = total_err = 0
-    for case_dir in case_dirs:
-        checks, errors = validate_case(case_dir)
-        mism = [c for c in checks if c.status == "mismatch"]
-        total_mm += len(mism)
-        total_err += len(errors)
-        status = "OK" if not mism and not errors else "FAIL"
-        outcome = next((c.claimed for c in checks if c.dimension == "outcome"), "?")
-        print(f"{case_dir.name}: {status}  [{outcome}]")
-        for c in mism:
-            print(f"    dim {c.dimension}: claimed={c.claimed!r} actual={c.actual!r}")
-        for e in errors:
-            print(f"    oracle: {e}")
-
-    print()
-    if total_mm or total_err:
-        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
-        return 1
-    print(f"PASSED: {len(case_dirs)} cases, all dimensions and oracle checks consistent")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -20,7 +20,7 @@ Run and validate the standard profile:
 
 ```bash
 UV_CACHE_DIR=.uv-cache uv run python -m \
-  tests.generators.compliance_runners.state_transition.builder_pending_payments.run
+  tests.generators.compliance_runners.state_transition.run builder_pending_payments
 ```
 
 Inspect coverage profiles or materialize a specific profile:
