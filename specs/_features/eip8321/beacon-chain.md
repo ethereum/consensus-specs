@@ -248,7 +248,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 48)):
     builder_pending_withdrawals: BuilderPendingWithdrawals
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8321]
     randao_commitments: RandaoCommitments
     # [New in EIP8321]
