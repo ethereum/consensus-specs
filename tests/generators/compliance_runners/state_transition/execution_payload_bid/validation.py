@@ -11,37 +11,22 @@ Usage:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
 
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str  # ok | mismatch
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
-
 def _cmp(a: int, b: int) -> str:
     return "LT" if a < b else ("EQ" if a == b else "GT")
 
-
 def _tri(x: bool) -> str:
     return "T" if x else "F"
-
 
 def recover(pre: Any, signed: Any) -> dict[str, Any]:
     bid = signed.message
@@ -120,7 +105,6 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
     r["outcome"] = _derive_outcome(r)
     return r
 
-
 def _derive_outcome(r: dict[str, Any]) -> str:
     def common() -> str:
         if r["bid_kzg_to_max"] not in ("LT", "EQ"):
@@ -155,10 +139,9 @@ def _derive_outcome(r: dict[str, Any]) -> str:
         return "REJECT_BAD_SIGNATURE"
     return common()
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    signed = _decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    signed = decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, signed)
 
@@ -183,7 +166,7 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     if not accepted and post_path.exists():
         errors.append("handler rejected but post present")
     if accepted and post_path.exists():
-        post = _decode(post_path, spec.BeaconState)
+        post = decode(post_path, spec.BeaconState)
         if oracle.hash_tree_root() != post.hash_tree_root():
             errors.append("post does not match spec re-execution")
     if accepted != (claimed.get("outcome") == "ACCEPT"):

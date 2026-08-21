@@ -1,31 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
 
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: object
-    actual: object
-    status: str
-
-
-def _decode(p, t):
-    return t.decode_bytes(snappy.decompress(p.read_bytes()))
-
-
 def validate_case(d):
-    pre = _decode(d / "pre.ssz_snappy", spec.BeaconState)
-    post = _decode(d / "post.ssz_snappy", spec.BeaconState)
+    pre = decode(d / "pre.ssz_snappy", spec.BeaconState)
+    post = decode(d / "post.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((d / "dimensions.yaml").read_text())["claimed"]
     spe = int(spec.SLOTS_PER_EPOCH)
     epoch = spec.Epoch(spec.get_current_epoch(pre) + spec.MIN_SEED_LOOKAHEAD + 1)
