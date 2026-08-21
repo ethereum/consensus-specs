@@ -8,29 +8,16 @@ materializer nor the model.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     return {
@@ -39,11 +26,10 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "outcome": "APPENDED",
     }
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = _decode(case_dir / "post.ssz_snappy", spec.BeaconState)
-    request = _decode(case_dir / "deposit_request.ssz_snappy", spec.DepositRequest)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
+    request = decode(case_dir / "deposit_request.ssz_snappy", spec.DepositRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
 
