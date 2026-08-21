@@ -1,33 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 Y = YAML(typ="safe")
 
-
-def dec(p, t):
-    return t.decode_bytes(snappy.decompress(p.read_bytes()))
-
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = dec(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = dec(case_dir / "post.ssz_snappy", spec.BeaconState)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     spe = int(spec.SLOTS_PER_EPOCH)
     q = spec.get_builder_payment_quorum_threshold(pre)
     claimed = Y.load((case_dir / "dimensions.yaml").read_text())["claimed"]

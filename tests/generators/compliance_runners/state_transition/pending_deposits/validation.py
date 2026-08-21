@@ -2,29 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
 
 def _role(state: Any, deposit: Any, next_epoch: Any) -> str:
     pubkeys = [validator.pubkey for validator in state.validators]
@@ -42,7 +29,6 @@ def _role(state: Any, deposit: Any, next_epoch: Any) -> str:
     if validator.exit_epoch < spec.FAR_FUTURE_EPOCH:
         return "EXITING"
     return "ACTIVE"
-
 
 def replay(pre: Any) -> dict[str, Any]:
     """Recover the handler's loop trace without invoking the handler itself."""
@@ -87,7 +73,6 @@ def replay(pre: Any) -> dict[str, Any]:
         "expected_queue": list(pre.pending_deposits[consumed:]) + postponed,
         "expected_churn": available - processed_amount if gate == "CHURN_LIMIT" else 0,
     }
-
 
 def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
     deposits = pre.pending_deposits
@@ -218,10 +203,9 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
         "outcome": outcome,
     }
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = _decode(case_dir / "post.ssz_snappy", spec.BeaconState)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     trace = replay(pre)
     actual = recover_dimensions(pre, trace)

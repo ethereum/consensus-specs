@@ -4,9 +4,24 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable
+from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from typing import Any
+
+import snappy
+
+
+@dataclass
+class Check:
+    dimension: str
+    claimed: Any
+    actual: Any
+    status: str
+
+
+def decode(path: Path, sedes: Any) -> Any:
+    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 
 
 HANDLERS = (
@@ -90,7 +105,11 @@ def main() -> int:
     )
     args = parser.parse_args()
     test_dir = args.test_dir
-    selected_cases = args.cases
+    selected_cases = (
+        {case.strip() for case in args.cases.split(",") if case.strip()}
+        if args.cases
+        else None
+    )
 
     handlers = discover_handlers(test_dir)
     result = 0
