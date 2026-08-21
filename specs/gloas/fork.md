@@ -36,13 +36,14 @@ Warning: this configuration is not definitive.
 ```python
 def initialize_ptc_window(
     state: BeaconState,
-) -> PTCWindow:
+) -> PayloadTimelinessCommitteeWindow:
     """
     Return the cached PTC window starting from the current epoch.
     Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
     """
     empty_previous_epoch = [
-        PTC([ValidatorIndex(0) for _ in range(PTC_SIZE)]) for _ in range(SLOTS_PER_EPOCH)
+        PayloadTimelinessCommittee([ValidatorIndex(0) for _ in range(PTC_SIZE)])
+        for _ in range(SLOTS_PER_EPOCH)
     ]
 
     ptcs = []
@@ -52,7 +53,7 @@ def initialize_ptc_window(
         start_slot = compute_start_slot_at_epoch(epoch)
         ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
 
-    return PTCWindow(empty_previous_epoch + ptcs)
+    return PayloadTimelinessCommitteeWindow(empty_previous_epoch + ptcs)
 ```
 
 ### New `onboard_builders_from_pending_deposits`
