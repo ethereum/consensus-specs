@@ -15,7 +15,7 @@ re-executes the specification as an oracle.
 ```bash
 # Generate and validate the standard profile.
 uv run python -m \
-  tests.generators.compliance_runners.state_transition.parent_execution_payload.run
+  tests.generators.compliance_runners.state_transition.run parent_execution_payload
 
 # Inspect profile sizes, or materialize another profile.
 uv run python -m \

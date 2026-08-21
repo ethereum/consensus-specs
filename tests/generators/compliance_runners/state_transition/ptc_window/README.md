@@ -21,7 +21,7 @@ Run and validate the standard profile:
 
 ```bash
 UV_CACHE_DIR=.uv-cache uv run python -m \
-  tests.generators.compliance_runners.state_transition.ptc_window.run
+  tests.generators.compliance_runners.state_transition.run ptc_window
 ```
 
 Inspect coverage profiles or materialize a specific profile:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -132,27 +131,3 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     if not post.validators[operation.signed_header_1.message.proposer_index].slashed:
         errors.append("proposer was not slashed")
     return checks, errors
-
-
-def main() -> int:
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    cases = sorted(root.glob("**/operations/proposer_slashing/**/case_*"))
-    if not cases:
-        print(f"No cases found under {root}")
-        return 1
-    bad = 0
-    for case in cases:
-        checks, errors = validate_case(case)
-        mismatches = [c for c in checks if c.status == "mismatch"]
-        bad += len(mismatches) + len(errors)
-        print(f"{case.name}: {'OK' if not mismatches and not errors else 'FAIL'}")
-        for check in mismatches:
-            print(f"    {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
-        for error in errors:
-            print(f"    {error}")
-    print(f"{'PASSED' if not bad else 'FAILED'}: {len(cases)} cases")
-    return int(bool(bad))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

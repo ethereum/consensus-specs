@@ -10,6 +10,6 @@ The handler does not mutate state. Rejected vectors omit `post`; accepted
 vectors retain a byte-identical state and are independently replayed.
 
 ```bash
-uv run python -m tests.generators.compliance_runners.state_transition.payload_attestation.run
+uv run python -m tests.generators.compliance_runners.state_transition.run payload_attestation
 uv run python -m tests.generators.compliance_runners.state_transition.payload_attestation.coverage
 ```

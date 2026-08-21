@@ -48,6 +48,6 @@ specification.
 Run it with:
 
 ```bash
-uv run python -m tests.generators.compliance_runners.state_transition.pending_deposits.run
+uv run python -m tests.generators.compliance_runners.state_transition.run pending_deposits
 uv run python -m tests.generators.compliance_runners.state_transition.pending_deposits.coverage
 ```

@@ -76,7 +76,7 @@ The handler's full feasible space is 83,592 solutions across 14 outcomes.
 
 ```bash
 # smoke profile: generate + validate
-uv run python -m tests.generators.compliance_runners.state_transition.execution_payload_bid.run
+uv run python -m tests.generators.compliance_runners.state_transition.run execution_payload_bid
 
 # combinatorial-over-aspects coverage: profile summary, or materialize one
 uv run python -m ...execution_payload_bid.coverage                       # summary

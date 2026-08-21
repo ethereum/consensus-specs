@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import snappy
 from ruamel.yaml import YAML
@@ -15,135 +16,135 @@ def dec(p, t):
     return t.decode_bytes(snappy.decompress(p.read_bytes()))
 
 
-def main():
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    bad = 0
-    cases = sorted(root.glob("**/epoch_processing/builder_pending_payments/**/case_*"))
-    if not cases:
-        print(f"No cases found under {root}")
-        return 1
-    for d in cases:
-        pre = dec(d / "pre.ssz_snappy", spec.BeaconState)
-        post = dec(d / "post.ssz_snappy", spec.BeaconState)
-        spe = int(spec.SLOTS_PER_EPOCH)
-        q = spec.get_builder_payment_quorum_threshold(pre)
-        claimed = Y.load((d / "dimensions.yaml").read_text())["claimed"]
 
-        appended = [p.withdrawal for p in pre.builder_pending_payments[:spe] if p.weight >= q]
-        payments = list(pre.builder_pending_payments[spe:]) + [
-            spec.BuilderPendingPayment() for _ in range(spe)
-        ]
-        withdrawals = list(pre.builder_pending_withdrawals) + appended
+@dataclass
+class Check:
+    dimension: str
+    claimed: Any
+    actual: Any
+    status: str
 
-        expected = pre.copy()
-        expected.builder_pending_payments = payments
-        expected.builder_pending_withdrawals = withdrawals
 
-        first = list(pre.builder_pending_payments[:spe])
-        occupied = [p for p in first if p != spec.BuilderPendingPayment()]
+def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+    pre = dec(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = dec(case_dir / "post.ssz_snappy", spec.BeaconState)
+    spe = int(spec.SLOTS_PER_EPOCH)
+    q = spec.get_builder_payment_quorum_threshold(pre)
+    claimed = Y.load((case_dir / "dimensions.yaml").read_text())["claimed"]
 
-        relation = "NA"
-        if occupied:
-            if occupied[0].weight < q:
-                relation = "LT"
-            elif occupied[0].weight == q:
-                relation = "EQ"
-            else:
-                relation = "GT"
+    appended = [p.withdrawal for p in pre.builder_pending_payments[:spe] if p.weight >= q]
+    payments = list(pre.builder_pending_payments[spe:]) + [
+        spec.BuilderPendingPayment() for _ in range(spe)
+    ]
+    withdrawals = list(pre.builder_pending_withdrawals) + appended
 
-        if not occupied:
-            previous_epoch_occupancy = "EMPTY"
-        elif len(occupied) == 1:
-            previous_epoch_occupancy = "SINGLE"
+    expected = pre.copy()
+    expected.builder_pending_payments = payments
+    expected.builder_pending_withdrawals = withdrawals
+
+    first = list(pre.builder_pending_payments[:spe])
+    occupied = [p for p in first if p != spec.BuilderPendingPayment()]
+
+    relation = "NA"
+    if occupied:
+        if occupied[0].weight < q:
+            relation = "LT"
+        elif occupied[0].weight == q:
+            relation = "EQ"
         else:
-            previous_epoch_occupancy = "MULTIPLE"
+            relation = "GT"
 
-        if not occupied:
-            target_amount_nonzero = "NA"
-        elif occupied[0].withdrawal.amount:
-            target_amount_nonzero = "T"
+    if not occupied:
+        previous_epoch_occupancy = "EMPTY"
+    elif len(occupied) == 1:
+        previous_epoch_occupancy = "SINGLE"
+    else:
+        previous_epoch_occupancy = "MULTIPLE"
+
+    if not occupied:
+        target_amount_nonzero = "NA"
+    elif occupied[0].withdrawal.amount:
+        target_amount_nonzero = "T"
+    else:
+        target_amount_nonzero = "F"
+
+    if not appended:
+        qualifying_payment_count = "ZERO"
+    elif len(appended) == 1:
+        qualifying_payment_count = "ONE"
+    else:
+        qualifying_payment_count = "MULTIPLE_COUNT"
+
+    quorum_relations = set()
+    for payment in occupied:
+        if payment.weight < q:
+            quorum_relations.add("LT")
+        elif payment.weight == q:
+            quorum_relations.add("EQ")
         else:
-            target_amount_nonzero = "F"
+            quorum_relations.add("GT")
+    mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
 
-        if not appended:
-            qualifying_payment_count = "ZERO"
-        elif len(appended) == 1:
-            qualifying_payment_count = "ONE"
-        else:
-            qualifying_payment_count = "MULTIPLE_COUNT"
+    next_epoch_payments_nondefault = any(
+        p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
+    )
 
-        quorum_relations = set()
-        for payment in occupied:
-            if payment.weight < q:
-                quorum_relations.add("LT")
-            elif payment.weight == q:
-                quorum_relations.add("EQ")
-            else:
-                quorum_relations.add("GT")
-        mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
+    preexisting_withdrawals_nonempty = bool(pre.builder_pending_withdrawals)
 
-        next_epoch_payments_nondefault = any(
-            p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
-        )
+    if not appended:
+        withdrawals_appended = "ZERO"
+    elif len(appended) == 1:
+        withdrawals_appended = "ONE"
+    else:
+        withdrawals_appended = "MULTIPLE_COUNT"
 
-        preexisting_withdrawals_nonempty = bool(pre.builder_pending_withdrawals)
+    previous_epoch_discarded = all(
+        p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
+    )
 
-        if not appended:
-            withdrawals_appended = "ZERO"
-        elif len(appended) == 1:
-            withdrawals_appended = "ONE"
-        else:
-            withdrawals_appended = "MULTIPLE_COUNT"
+    next_epoch_shifted_forward = (
+        list(post.builder_pending_payments[:spe])
+        == list(pre.builder_pending_payments[spe:])
+    )
 
-        previous_epoch_discarded = all(
-            p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
-        )
+    new_tail_defaulted = all(
+        p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
+    )
 
-        next_epoch_shifted_forward = (
-            list(post.builder_pending_payments[:spe])
-            == list(pre.builder_pending_payments[spe:])
-        )
+    if not occupied and not any(
+        p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
+    ):
+        outcome = "NO_STATE_CHANGE"
+    elif not appended:
+        outcome = "ROTATED_ONLY"
+    elif len(appended) == 1:
+        outcome = "APPENDED_ONE_AND_ROTATED"
+    else:
+        outcome = "APPENDED_MULTIPLE_AND_ROTATED"
 
-        new_tail_defaulted = all(
-            p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
-        )
+    state_effected = expected.hash_tree_root() != pre.hash_tree_root()
 
-        if not occupied and not any(
-            p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
-        ):
-            outcome = "NO_STATE_CHANGE"
-        elif not appended:
-            outcome = "ROTATED_ONLY"
-        elif len(appended) == 1:
-            outcome = "APPENDED_ONE_AND_ROTATED"
-        else:
-            outcome = "APPENDED_MULTIPLE_AND_ROTATED"
-
-        state_effected = expected.hash_tree_root() != pre.hash_tree_root()
-
-        actual = {
-            "previous_epoch_occupancy": previous_epoch_occupancy,
-            "target_weight_to_quorum": relation,
-            "target_amount_nonzero": target_amount_nonzero,
-            "qualifying_payment_count": qualifying_payment_count,
-            "mixed_quorum_relations": mixed_quorum_relations,
-            "next_epoch_payments_nondefault": next_epoch_payments_nondefault,
-            "preexisting_withdrawals_nonempty": preexisting_withdrawals_nonempty,
-            "withdrawals_appended": withdrawals_appended,
-            "previous_epoch_discarded": previous_epoch_discarded,
-            "next_epoch_shifted_forward": next_epoch_shifted_forward,
-            "new_tail_defaulted": new_tail_defaulted,
-            "outcome": outcome,
-            "state_effected": state_effected,
-        }
-        mismatches = [name for name, value in claimed.items() if actual.get(name) != value]
-        ok = post.hash_tree_root() == expected.hash_tree_root() and not mismatches
-        print(d.name, "OK" if ok else "FAIL")
-        for name in mismatches:
-            print(f"  {name}: claimed={claimed[name]!r} actual={actual.get(name)!r}")
-        bad += not ok
-    return int(bool(bad))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    actual = {
+        "previous_epoch_occupancy": previous_epoch_occupancy,
+        "target_weight_to_quorum": relation,
+        "target_amount_nonzero": target_amount_nonzero,
+        "qualifying_payment_count": qualifying_payment_count,
+        "mixed_quorum_relations": mixed_quorum_relations,
+        "next_epoch_payments_nondefault": next_epoch_payments_nondefault,
+        "preexisting_withdrawals_nonempty": preexisting_withdrawals_nonempty,
+        "withdrawals_appended": withdrawals_appended,
+        "previous_epoch_discarded": previous_epoch_discarded,
+        "next_epoch_shifted_forward": next_epoch_shifted_forward,
+        "new_tail_defaulted": new_tail_defaulted,
+        "outcome": outcome,
+        "state_effected": state_effected,
+    }
+    checks = [
+        Check(name, value, actual.get(name, "<none>"),
+              "ok" if actual.get(name, "<none>") == value else "mismatch")
+        for name, value in claimed.items()
+    ]
+    errors: list[str] = []
+    if post.hash_tree_root() != expected.hash_tree_root():
+        errors.append("post state does not match expected rotation and append")
+    return checks, errors
