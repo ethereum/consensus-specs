@@ -7,29 +7,16 @@ the model or materializer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
 
 def _committee_dimensions(pre: Any, attestation: Any) -> tuple[bool, bool, bool]:
     """Recover independent committee-index, nonempty, and length predicates."""
@@ -55,7 +42,6 @@ def _committee_dimensions(pre: Any, attestation: Any) -> tuple[bool, bool, bool]
     except (AssertionError, IndexError):
         return False, False, False
 
-
 def _signature_valid(pre: Any, attestation: Any) -> bool:
     try:
         return bool(
@@ -64,13 +50,11 @@ def _signature_valid(pre: Any, attestation: Any) -> bool:
     except (AssertionError, IndexError):
         return False
 
-
 def _is_attestation_same_slot(pre: Any, data: Any) -> bool:
     try:
         return bool(spec.is_attestation_same_slot(pre, data))
     except AssertionError:
         return False
-
 
 def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) -> bool:
     if not same_slot:
@@ -90,7 +74,6 @@ def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) ->
         )
     except (AssertionError, IndexError):
         return False
-
 
 def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
     data = attestation.data
@@ -156,13 +139,12 @@ def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
         "outcome": handler_outcome,
     }
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    attestation = _decode(case_dir / "attestation.ssz_snappy", spec.Attestation)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    attestation = decode(case_dir / "attestation.ssz_snappy", spec.Attestation)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     post_path = case_dir / "post.ssz_snappy"
-    post = _decode(post_path, spec.BeaconState) if post_path.exists() else None
+    post = decode(post_path, spec.BeaconState) if post_path.exists() else None
     actual = recover(pre, attestation, post)
     checks = [
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
