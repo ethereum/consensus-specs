@@ -7,11 +7,11 @@ re-execution). Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
@@ -19,22 +19,8 @@ from eth_consensus_specs.gloas import minimal as spec
 _YAML = YAML(typ="safe")
 _ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}
 
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
-
 def _tri(x: bool) -> str:
     return "T" if x else "F"
-
 
 def _credential(v: Any) -> str:
     prefix = bytes(v.withdrawal_credentials[:1])
@@ -43,7 +29,6 @@ def _credential(v: Any) -> str:
     if prefix == bytes(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX):
         return "CRED_ETH1"
     return "CRED_BLS"
-
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     current_epoch = spec.get_current_epoch(pre)
@@ -85,7 +70,6 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     r["withdrawal_effected"] = r["outcome"] in _ACCEPT
     return r
 
-
 def _derive(r: dict) -> str:
     if r["partial_queue_full"] and not r["is_full_exit_request"]:
         return "REJECTED_QUEUE_FULL"
@@ -109,11 +93,10 @@ def _derive(r: dict) -> str:
         return "PARTIAL_NOOP_NO_EXCESS_BALANCE"
     return "PARTIAL_QUEUED"
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = _decode(case_dir / "post.ssz_snappy", spec.BeaconState)
-    request = _decode(case_dir / "withdrawal_request.ssz_snappy", spec.WithdrawalRequest)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
+    request = decode(case_dir / "withdrawal_request.ssz_snappy", spec.WithdrawalRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
 

@@ -2,30 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 from eth_consensus_specs.utils import bls
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
 
 def recover(pre: Any, slashing: Any) -> dict[str, Any]:
     h1, h2 = slashing.signed_header_1, slashing.signed_header_2
@@ -107,10 +94,9 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
     )
     return r
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    operation = _decode(case_dir / "proposer_slashing.ssz_snappy", spec.ProposerSlashing)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    operation = decode(case_dir / "proposer_slashing.ssz_snappy", spec.ProposerSlashing)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, operation)
     checks = [
@@ -124,7 +110,7 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         return checks, errors
     if not post_path.exists():
         return checks, ["accepted operation is missing post state"]
-    post, oracle = _decode(post_path, spec.BeaconState), pre.copy()
+    post, oracle = decode(post_path, spec.BeaconState), pre.copy()
     spec.process_proposer_slashing(oracle, operation)
     if oracle.hash_tree_root() != post.hash_tree_root():
         errors.append("post state does not match spec re-execution")

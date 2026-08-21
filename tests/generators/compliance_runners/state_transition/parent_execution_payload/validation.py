@@ -2,29 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from ..validation import Check, decode
+
 from pathlib import Path
 from typing import Any
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
-
 
 def _payment_dimensions(pre: Any) -> tuple[str, bool]:
     parent_bid = pre.latest_execution_payload_bid
@@ -43,7 +30,6 @@ def _payment_dimensions(pre: Any) -> tuple[str, bool]:
         settlement = "EVICTED"
         nonzero = int(parent_bid.value) > 0
     return settlement, nonzero
-
 
 def recover(pre: Any, block: Any) -> dict[str, Any]:
     """Recover input, trace, outcome, and effect dimensions from a vector."""
@@ -120,7 +106,6 @@ def recover(pre: Any, block: Any) -> dict[str, Any]:
         "payment_slot_cleared": applied and settlement in {"CURRENT_EPOCH", "PREVIOUS_EPOCH"},
     }
 
-
 def _check_applied_output(pre: Any, post: Any, actual: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     parent_bid = pre.latest_execution_payload_bid
@@ -155,12 +140,11 @@ def _check_applied_output(pre: Any, post: Any, actual: dict[str, Any]) -> list[s
         errors.append("evicted payment changed builder_pending_payments")
     return errors
 
-
 def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    block = _decode(case_dir / "block.ssz_snappy", spec.BeaconBlock)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    block = decode(case_dir / "block.ssz_snappy", spec.BeaconBlock)
     post_path = case_dir / "post.ssz_snappy"
-    post = _decode(post_path, spec.BeaconState) if post_path.exists() else None
+    post = decode(post_path, spec.BeaconState) if post_path.exists() else None
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, block)
     checks = [
