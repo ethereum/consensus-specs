@@ -65,3 +65,24 @@ def test_expiry_sweep_keeps_binding_for_covered_outstanding_payload(spec, state)
     yield from run_epoch_processing_with(spec, state, "process_preregistration_expiry")
 
     assert len(state.validator_preregistrations) == 1
+
+
+@with_eip8205_and_later
+@spec_state_test
+def test_expiry_sweep_multiple_expired(spec, state):
+    # Every record whose deadline is at or below the outstanding parent slot is
+    # swept in a single pass, and the still-active record keeps its position
+    state.latest_execution_payload_bid.slot = spec.PREREGISTRATION_EXPIRY_SLOTS
+    state.slot = spec.Slot(state.latest_execution_payload_bid.slot + spec.SLOTS_PER_EPOCH - 1)
+    for pubkey in [pubkeys[-1], pubkeys[-2], pubkeys[-3]]:
+        state.validator_preregistrations.append(
+            _stored_preregistration(spec, pubkey, spec.PREREGISTRATION_EXPIRY_SLOTS)
+        )
+    state.validator_preregistrations.append(
+        _stored_preregistration(spec, pubkeys[-4], spec.PREREGISTRATION_EXPIRY_SLOTS + 1)
+    )
+
+    yield from run_epoch_processing_with(spec, state, "process_preregistration_expiry")
+
+    assert len(state.validator_preregistrations) == 1
+    assert state.validator_preregistrations[0].pubkey == pubkeys[-4]

@@ -28,18 +28,17 @@ All validator responsibilities remain unchanged other than those noted below.
 ##### Execution requests
 
 *Note*: The function `get_execution_requests` is modified to parse the validator
-preregistration requests. The final value of `PREREGISTRATION_REQUEST_TYPE` must
-be inserted in strict ascending order.
+preregistration requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    deposits = []
-    withdrawals = []
-    consolidations = []
-    builder_deposits = []
-    builder_exits = []
+    deposits = DepositRequests()
+    withdrawals = WithdrawalRequests()
+    consolidations = ConsolidationRequests()
+    builder_deposits = BuilderDepositRequests()
+    builder_exits = BuilderExitRequests()
     # [New in EIP8205]
-    preregistrations = []
+    preregistrations = PreregistrationRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,

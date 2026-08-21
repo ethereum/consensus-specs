@@ -10,8 +10,8 @@
   - [New `ValidatorPreregistrations`](#new-validatorpreregistrations)
 - [Constants](#constants)
   - [Domains](#domains)
-  - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
-- [Preset](#preset)
+  - [Execution-layer triggered requests](#execution-layer-triggered-requests)
+- [Presets](#presets)
   - [Execution](#execution)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -27,6 +27,7 @@
     - [New `is_active_preregistration`](#new-is_active_preregistration)
   - [Misc](#misc)
     - [New `get_stored_preregistration_index`](#new-get_stored_preregistration_index)
+    - [New `get_active_preregistration`](#new-get_active_preregistration)
     - [New `remove_stored_preregistration`](#new-remove_stored_preregistration)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
@@ -94,31 +95,21 @@ cross-network replay.
 | ------------------------ | -------------------------- |
 | `DOMAIN_PREREGISTRATION` | `DomainType('0x11000000')` |
 
-### New execution layer triggered request type
-
-Warning: the request-type assignment is not definitive. Gloas uses `0x00`
-through `0x04`, Heze adds none, and the EIP-8148 feature uses `0x05`. `0x06` is
-therefore the next apparent candidate, but it requires coordination before final
-assignment.
+### Execution-layer triggered requests
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1('0x06')` |
+| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1('0x05')` |
 
-## Preset
+## Presets
 
 ### Execution
 
-| Name                                       | Value                       | Description                                                                             |
-| ------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------- |
-| `MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**2)` (= 4)        | *[New in EIP8205]* Maximum number of validator preregistration requests in each payload |
-| `PREREGISTRATIONS_LIMIT`                   | `Uint64(2**19)` (= 524,288) | *[New in EIP8205]* Maximum number of active preregistrations in the beacon state        |
-| `PREREGISTRATION_EXPIRY_SLOTS`             | `Slot(2**18)` (= 262,144)   | *[New in EIP8205]* Preregistration lifetime in slots                                    |
-
-*Note*: `PREREGISTRATIONS_LIMIT` is a state-transition limit on active records,
-enforced in `process_preregistration_request`, not an SSZ limit on
-`ProgressiveList`. The physical list may transiently hold expired records beyond
-the limit until the next garbage-collection sweep.
+| Name                                       | Value                       |
+| ------------------------------------------ | --------------------------- |
+| `MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**2)` (= 4)        |
+| `PREREGISTRATIONS_LIMIT`                   | `Uint64(2**19)` (= 524,288) |
+| `PREREGISTRATION_EXPIRY_SLOTS`             | `Slot(2**18)` (= 262,144)   |
 
 ## Containers
 
@@ -173,7 +164,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     builder_pending_withdrawals: BuilderPendingWithdrawals
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8205]
     validator_preregistrations: ValidatorPreregistrations
 ```
@@ -280,6 +271,21 @@ def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> O
     return None
 ```
 
+#### New `get_active_preregistration`
+
+```python
+def get_active_preregistration(
+    state: BeaconState, pubkey: BLSPubkey
+) -> Optional[StoredPreregistration]:
+    index = get_stored_preregistration_index(state, pubkey)
+    if index is None:
+        return None
+    preregistration = state.validator_preregistrations[index]
+    if not is_active_preregistration(state, preregistration):
+        return None
+    return preregistration
+```
+
 #### New `remove_stored_preregistration`
 
 ```python
@@ -345,10 +351,6 @@ def process_preregistration_expiry(state: BeaconState) -> None:
 
 ##### Modified `get_execution_requests_list`
 
-*Note*: Encodes execution requests as defined by
-[EIP-7685](https://eips.ethereum.org/EIPS/eip-7685). The final request-type
-assignment must preserve ascending order in this table.
-
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
     requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
@@ -375,13 +377,10 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 ```python
 def process_preregistration_request(state: BeaconState, request: PreregistrationRequest) -> None:
     pubkey = request.pubkey
-    index = get_stored_preregistration_index(state, pubkey)
 
     # An active binding for this pubkey makes the new request a no-op,
     # whether the duplicate is exact or conflicting
-    if index is not None and is_active_preregistration(
-        state, state.validator_preregistrations[index]
-    ):
+    if get_active_preregistration(state, pubkey) is not None:
         return
 
     # A pubkey with an existing validator cannot be preregistered
@@ -411,6 +410,7 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
         withdrawal_credentials=request.withdrawal_credentials,
         expiry_slot=Slot(state.slot + PREREGISTRATION_EXPIRY_SLOTS),
     )
+    index = get_stored_preregistration_index(state, pubkey)
     if index is not None:
         # Replace the expired record in place
         state.validator_preregistrations[index] = preregistration
@@ -421,27 +421,16 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
 ##### Modified `process_deposit_request`
 
 *Note*: The function `process_deposit_request` is modified to enforce an active
-preregistration binding. It modifies the validator deposit request processing
-inherited from [Fulu](../../fulu/beacon-chain.md). Builder deposit requests use
-`process_builder_deposit_request` and are unaffected: builder requests neither
-consume nor enforce validator preregistrations.
+preregistration binding.
 
 ```python
 def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
     # [New in EIP8205]
-    # Only an active binding is enforced; an expired record is ignored
-    index = get_stored_preregistration_index(state, deposit_request.pubkey)
-    if index is not None and is_active_preregistration(
-        state, state.validator_preregistrations[index]
-    ):
-        preregistration = state.validator_preregistrations[index]
-        # A deposit that does not match the preregistered withdrawal
-        # credentials is discarded
+    preregistration = get_active_preregistration(state, deposit_request.pubkey)
+    if preregistration is not None:
         if deposit_request.withdrawal_credentials != preregistration.withdrawal_credentials:
             return
 
-        # A deposit with an invalid signature is discarded while a binding is
-        # active, so that it cannot consume the preregistration
         if not is_valid_deposit_signature(
             deposit_request.pubkey,
             deposit_request.withdrawal_credentials,
