@@ -5,7 +5,7 @@ withdrawal sources (builder pending, pending partial, builder sweep, validator
 sweep), and the `MAX_WITHDRAWALS_PER_PAYLOAD` boundary.
 
 ```bash
-uv run python -m tests.generators.compliance_runners.state_transition.withdrawals.run
+uv run python -m tests.generators.compliance_runners.state_transition.run withdrawals
 uv run python -m tests.generators.compliance_runners.state_transition.withdrawals.coverage
 ```
 
