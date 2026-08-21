@@ -113,6 +113,20 @@ def build_profile(recs, name):
     return cover(recs, *PROFILES[name])
 
 
+def _materialize(recs, name: str) -> int:
+    _, chosen = build_profile(recs, name)
+    from eth_consensus_specs.gloas import minimal as spec
+
+    reps = [SimpleNamespace(**rec) for rec in chosen]
+    out = Path(__file__).parent / "reftests"
+    return ExecutionPayloadBidMaterializer(spec, MODEL).materialize_reps(out, reps)
+
+
+def materialize_profile(name: str) -> int:
+    recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
+    return _materialize(recs, name)
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     materialize = "--materialize" in sys.argv
@@ -137,11 +151,8 @@ def main() -> int:
     print(f"profile '{args[0]}': {len(chosen)} cases"
           + (f" covering {n_obl} obligations" if n_obl >= 0 else ""))
     if materialize:
-        from eth_consensus_specs.gloas import minimal as spec
-        reps = [SimpleNamespace(**rec) for rec in chosen]
-        out = Path(__file__).parent / "reftests"
         print()
-        ExecutionPayloadBidMaterializer(spec, MODEL).materialize_reps(out, reps)
+        _materialize(recs, args[0])
         print("Validate with: python -m ...execution_payload_bid.validation")
     return 0
 
