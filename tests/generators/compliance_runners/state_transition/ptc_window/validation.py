@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import snappy
@@ -9,6 +9,14 @@ from ruamel.yaml import YAML
 from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
+
+
+@dataclass
+class Check:
+    dimension: str
+    claimed: object
+    actual: object
+    status: str
 
 
 def _decode(p, t):
@@ -58,22 +66,8 @@ def validate_case(d):
         errors.append("get_ptc does not resolve the shifted previous epoch")
     if spec.get_ptc(probe, current_slot) != post.ptc_window[spe + int(current_slot % spe)]:
         errors.append("get_ptc does not resolve the shifted current epoch")
-    return [(k, v, actual.get(k)) for k, v in claimed.items() if actual.get(k) != v], errors
-
-
-def main():
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    cases = sorted(root.glob("**/epoch_processing/ptc_window/**/case_*"))
-    if not cases:
-        print(f"No cases found under {root}")
-        return 1
-    failures = 0
-    for d in cases:
-        m, e = validate_case(d)
-        failures += len(m) + len(e)
-        print(d.name, "OK" if not m and not e else "FAIL")
-    return int(bool(failures))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    checks = [
+        Check(k, v, actual.get(k), "ok" if actual.get(k) == v else "mismatch")
+        for k, v in claimed.items()
+    ]
+    return checks, errors

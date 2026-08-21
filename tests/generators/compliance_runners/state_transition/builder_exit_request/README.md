@@ -39,7 +39,7 @@ operation never raises — a rejection is a no-op, so `post` is always present.
 ## Usage
 
 ```bash
-uv run python -m ...builder_exit_request.run                       # standard profile + validate
+uv run python -m tests.generators.compliance_runners.state_transition.run builder_exit_request                       # standard profile + validate
 uv run python -m ...builder_exit_request.coverage                  # profile summary
 uv run python -m ...builder_exit_request.coverage onewise --materialize
 ```
