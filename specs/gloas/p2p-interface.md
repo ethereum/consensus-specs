@@ -1066,6 +1066,10 @@ def validate_proposer_preferences_gossip(
     preferences = signed_proposer_preferences.message
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
 
+    # [IGNORE] The proposal epoch is after the Gloas upgrade
+    if proposal_epoch < GLOAS_FORK_EPOCH:
+        raise GossipIgnore("proposal epoch is pre-gloas")
+
     # [IGNORE] The proposal slot has not started yet
     if is_past_slot(store, preferences.proposal_slot, current_time_ms):
         raise GossipIgnore("proposal slot has already started")
