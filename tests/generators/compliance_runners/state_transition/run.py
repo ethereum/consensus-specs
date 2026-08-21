@@ -7,50 +7,17 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
+from importlib import import_module
 from pathlib import Path
-from typing import Any
 
 from .validation import main as validate
 
 
-def _run_operation(
-    handler: str,
-    materialize_profile: Callable[[str], Any],
-) -> int:
-    materialize_profile("standard")
+def run(handler: str) -> int:
+    coverage = import_module(f".{handler}.coverage", __package__)
+    coverage.materialize_profile("standard")
     print()
     return validate(Path(__file__).parent / handler / "reftests")
-
-
-def _run_execution_payload_bid() -> int:
-    from .execution_payload_bid.materializer import main as generate  # noqa: PLC0415
-
-    generate()
-    print()
-    return validate(Path(__file__).parent / "execution_payload_bid" / "reftests")
-
-
-def run(handler: str) -> int:
-    if handler == "execution_payload_bid":
-        return _run_execution_payload_bid()
-
-    if handler == "builder_pending_payments":
-        from .builder_pending_payments.coverage import materialize_profile  # noqa: PLC0415
-
-        materialize_profile("standard")
-        return validate(Path(__file__).parent / handler / "reftests")
-
-    if handler == "ptc_window":
-        from .ptc_window.coverage import materialize_profile  # noqa: PLC0415
-
-        materialize_profile("standard")
-        return validate(Path(__file__).parent / handler / "reftests")
-
-    from importlib import import_module
-
-    coverage = import_module(f".{handler}.coverage", __package__)
-    return _run_operation(handler, coverage.materialize_profile)
 
 
 def main() -> int:
