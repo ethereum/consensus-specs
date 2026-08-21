@@ -44,7 +44,7 @@ takes a set.
 ## Usage
 
 ```bash
-uv run python -m ...builder_deposit_request.run                    # standard + validate
+uv run python -m tests.generators.compliance_runners.state_transition.run builder_deposit_request  # standard + validate
 uv run python -m ...builder_deposit_request.coverage               # profile summary
 uv run python -m ...builder_deposit_request.coverage onewise --materialize
 ```

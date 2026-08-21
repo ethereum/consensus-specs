@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -307,27 +306,3 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
             errors.append("new validator balance does not equal its applied deposit amount")
             break
     return checks, errors
-
-
-def main() -> int:
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    case_dirs = sorted(root.glob("**/epoch_processing/pending_deposits/**/case_*"))
-    if not case_dirs:
-        print(f"No cases found under {root}")
-        return 1
-    failures = 0
-    for case_dir in case_dirs:
-        checks, errors = validate_case(case_dir)
-        mismatches = [check for check in checks if check.status == "mismatch"]
-        failures += len(mismatches) + len(errors)
-        print(f"{case_dir.name}: {'OK' if not mismatches and not errors else 'FAIL'}")
-        for check in mismatches:
-            print(f"    {check.dimension}: claimed={check.claimed!r}, actual={check.actual!r}")
-        for error in errors:
-            print(f"    {error}")
-    print(f"{'PASSED' if not failures else 'FAILED'}: {len(case_dirs)} cases")
-    return int(bool(failures))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

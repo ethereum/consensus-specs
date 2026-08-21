@@ -7,6 +7,6 @@ current- and previous-epoch targets, exercising their distinct participation and
 pending-payment queue locations.
 
 ```bash
-uv run python -m tests.generators.compliance_runners.state_transition.attestation.run
+uv run python -m tests.generators.compliance_runners.state_transition.run attestation
 uv run python -m tests.generators.compliance_runners.state_transition.attestation.coverage
 ```

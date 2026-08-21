@@ -46,7 +46,7 @@ Never raises — `post` is always present. No BLS, no churn gate.
 ## Usage
 
 ```bash
-uv run python -m ...withdrawal_request.run                    # standard + validate
+uv run python -m tests.generators.compliance_runners.state_transition.run withdrawal_request                    # standard + validate
 uv run python -m ...withdrawal_request.coverage               # profile summary
 uv run python -m ...withdrawal_request.coverage onewise --materialize
 ```

@@ -34,6 +34,6 @@ modification), and `post == spec re-execution`.
 ## Usage
 
 ```bash
-uv run python -m ...deposit_request.run                    # standard + validate
+uv run python -m tests.generators.compliance_runners.state_transition.run deposit_request                    # standard + validate
 uv run python -m ...deposit_request.coverage               # profile summary
 ```
