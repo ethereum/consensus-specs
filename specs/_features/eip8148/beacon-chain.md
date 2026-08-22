@@ -20,10 +20,12 @@
   - [New containers](#new-containers)
     - [`SetSweepThresholdRequest`](#setsweepthresholdrequest)
 - [Helper functions](#helper-functions)
+  - [Math](#math)
+    - [New `bytes_to_uint16`](#new-bytes_to_uint16)
   - [Predicates](#predicates)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc)
-    - [New `get_credential_sweep_threshold`](#new-get_credential_sweep_threshold)
+    - [New `get_initial_sweep_threshold`](#new-get_initial_sweep_threshold)
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
@@ -88,6 +90,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 | ----------------------------------- | ------------------------ |
 | `MIN_SWEEP_THRESHOLD`               | `MIN_ACTIVATION_BALANCE` |
 | `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)`             |
+| `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` | `Uint64(2)`              |
 
 ## Preset
 
@@ -181,6 +184,18 @@ class SetSweepThresholdRequest(Container):
 
 ## Helper functions
 
+### Math
+
+#### New `bytes_to_uint16`
+
+```python
+def bytes_to_uint16(data: bytes) -> Uint16:
+    """
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+    """
+    return Uint16(int.from_bytes(data, ENDIANNESS))
+```
+
 ### Predicates
 
 #### Modified `is_partially_withdrawable_validator`
@@ -208,40 +223,46 @@ def is_partially_withdrawable_validator(
 
 ### Misc
 
-#### New `get_credential_sweep_threshold`
+#### New `get_initial_sweep_threshold`
 
 A validator may be created with a custom sweep threshold already in place, by
 encoding it in the compounding withdrawal credentials of the deposit that
-creates it. The two bytes at `SWEEP_THRESHOLD_CREDENTIAL_OFFSET`, which no
-consensus function read before this upgrade, hold the threshold expressed in
-units of `EFFECTIVE_BALANCE_INCREMENT` as a big-endian integer:
+creates it. The `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` bytes starting at
+`SWEEP_THRESHOLD_CREDENTIAL_OFFSET`, which are unused before this upgrade, hold
+the threshold in units of `EFFECTIVE_BALANCE_INCREMENT`, encoded as a
+little-endian integer:
 
-| Bytes    | Contents                                                     |
-| -------- | ------------------------------------------------------------ |
-| `0`      | `COMPOUNDING_WITHDRAWAL_PREFIX` (`0x02`)                     |
-| `1..9`   | Reserved, must be zero                                       |
-| `10..11` | Threshold in `EFFECTIVE_BALANCE_INCREMENT` units, big-endian |
-| `12..31` | Execution address                                            |
+| Bytes    | Contents                                         |
+| -------- | ------------------------------------------------ |
+| `0`      | `COMPOUNDING_WITHDRAWAL_PREFIX` (`0x02`)         |
+| `1..9`   | Reserved                                         |
+| `10..11` | Threshold in `EFFECTIVE_BALANCE_INCREMENT` units |
+| `12..31` | Execution address                                |
 
 *Note*: A threshold that is out of range is ignored rather than rejected, so
 that a deposit built by tooling unaware of this upgrade, or carrying a
-nonsensical value, still creates a validator with the default threshold.
+nonsensical value, still creates a validator with the default threshold. Only
+compounding credentials carry a threshold; for any other prefix this returns 0,
+which means the default applies.
 
 ```python
-def get_credential_sweep_threshold(withdrawal_credentials: Bytes32) -> Gwei:
+def get_initial_sweep_threshold(withdrawal_credentials: Bytes32) -> Gwei:
     """
-    Decode the optional sweep threshold embedded in compounding withdrawal
-    credentials. Returns 0 when unset or out of range, in which case the
-    default threshold applies.
+    Get the initial sweep threshold for a validator created with
+    ``withdrawal_credentials``.
     """
-    increments = (
-        withdrawal_credentials[SWEEP_THRESHOLD_CREDENTIAL_OFFSET] * 256
-        + withdrawal_credentials[SWEEP_THRESHOLD_CREDENTIAL_OFFSET + 1]
-    )
-
-    threshold = Gwei(increments * EFFECTIVE_BALANCE_INCREMENT)
-    if threshold < MIN_SWEEP_THRESHOLD or threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
+    if not is_compounding_withdrawal_credential(withdrawal_credentials):
         return Gwei(0)
+
+    start = SWEEP_THRESHOLD_CREDENTIAL_OFFSET
+    end = start + SWEEP_THRESHOLD_CREDENTIAL_LENGTH
+    increments = bytes_to_uint16(withdrawal_credentials[start:end])
+    threshold = Gwei(increments) * EFFECTIVE_BALANCE_INCREMENT
+
+    if threshold < MIN_SWEEP_THRESHOLD:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+    if threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
 
     return threshold
 ```
@@ -264,9 +285,7 @@ def get_effective_sweep_threshold(validator: Validator, sweep_threshold: Gwei) -
 #### Modified `add_validator_to_registry`
 
 *Note*: The function `add_validator_to_registry` is modified to initialize the
-item in the `validator_sweep_thresholds` list, from the threshold embedded in
-the withdrawal credentials when there is one. A threshold below the deposited
-amount is ignored.
+item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
@@ -279,14 +298,8 @@ def add_validator_to_registry(
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
-
     # [New in EIP8148]
-    threshold = Gwei(0)
-    if has_compounding_withdrawal_credential(validator):
-        threshold = get_credential_sweep_threshold(withdrawal_credentials)
-        if threshold < amount:
-            threshold = MAX_EFFECTIVE_BALANCE_ELECTRA
-
+    threshold = get_initial_sweep_threshold(withdrawal_credentials)
     set_or_append_list(state.validator_sweep_thresholds, index, threshold)
 ```
 
