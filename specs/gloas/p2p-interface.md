@@ -1253,11 +1253,6 @@ def validate_data_column_sidecar_gossip(
     Validate a DataColumnSidecar for gossip propagation on a subnet.
     Raises GossipIgnore or GossipReject on validation failure.
     """
-    # [IGNORE] This is the first sidecar seen for this block root and column index
-    sidecar_key = (sidecar.beacon_block_root, sidecar.index)
-    if sidecar_key in seen.data_column_sidecar_tuples:
-        raise GossipIgnore("already seen sidecar for this block root and index")
-
     # [REJECT] The sidecar is for the correct subnet
     if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
         raise GossipReject("sidecar is for wrong subnet")
@@ -1292,6 +1287,11 @@ def validate_data_column_sidecar_gossip(
     # [REJECT] The sidecar's column data passes KZG verification
     if not verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments):
         raise GossipReject("invalid sidecar kzg proofs")
+
+    # [IGNORE] This is the first sidecar seen for this block root and column index
+    sidecar_key = (sidecar.beacon_block_root, sidecar.index)
+    if sidecar_key in seen.data_column_sidecar_tuples:
+        raise GossipIgnore("already seen sidecar for this block root and index")
 
     # Mark this data column sidecar as seen
     seen.data_column_sidecar_tuples.add(sidecar_key)
