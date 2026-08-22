@@ -84,10 +84,10 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 ### Sweep threshold validation
 
-| Name                                | Value                    | Description                                                            |
-| ----------------------------------- | ------------------------ | ---------------------------------------------------------------------- |
-| `MIN_SWEEP_THRESHOLD`               | `MIN_ACTIVATION_BALANCE` |                                                                        |
-| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)`             | Byte offset of the threshold embedded in `0x02` withdrawal credentials |
+| Name                                | Value                    |
+| ----------------------------------- | ------------------------ |
+| `MIN_SWEEP_THRESHOLD`               | `MIN_ACTIVATION_BALANCE` |
+| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)`             |
 
 ## Preset
 
