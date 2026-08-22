@@ -86,11 +86,10 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 ### Sweep threshold validation
 
-| Name                                | Value                    |
-| ----------------------------------- | ------------------------ |
-| `MIN_SWEEP_THRESHOLD`               | `MIN_ACTIVATION_BALANCE` |
-| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)`             |
-| `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` | `Uint64(2)`              |
+| Name                                | Value        |
+| ----------------------------------- | ------------ |
+| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)` |
+| `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` | `Uint64(2)`  |
 
 ## Preset
 
@@ -259,7 +258,7 @@ def get_initial_sweep_threshold(withdrawal_credentials: Bytes32) -> Gwei:
     increments = bytes_to_uint16(withdrawal_credentials[start:end])
     threshold = Gwei(increments) * EFFECTIVE_BALANCE_INCREMENT
 
-    if threshold < MIN_SWEEP_THRESHOLD:
+    if threshold < MIN_ACTIVATION_BALANCE:
         return MAX_EFFECTIVE_BALANCE_ELECTRA
     if threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
         return MAX_EFFECTIVE_BALANCE_ELECTRA
@@ -424,7 +423,7 @@ def process_set_sweep_threshold_request(
         return
     if request.threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
-    if request.threshold < MIN_SWEEP_THRESHOLD:
+    if request.threshold < MIN_ACTIVATION_BALANCE:
         return
     if request.threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
         return
