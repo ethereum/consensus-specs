@@ -26,7 +26,11 @@
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `switch_to_compounding_validator`](#modified-switch_to_compounding_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
@@ -247,7 +251,51 @@ def add_validator_to_registry(
     )
 ```
 
+### Beacon state mutators
+
+#### Modified `switch_to_compounding_validator`
+
+```python
+def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    validator.withdrawal_credentials = (
+        COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+    )
+    queue_excess_active_balance(state, index)
+    # [New in EIP8148]
+    state.validator_sweep_thresholds[index] = MAX_EFFECTIVE_BALANCE_ELECTRA
+```
+
 ## Beacon chain state transition function
+
+### Epoch processing
+
+#### Modified `process_effective_balance_updates`
+
+*Note*: The function `process_effective_balance_updates` is modified to use
+custom sweep thresholds.
+
+```python
+def process_effective_balance_updates(state: BeaconState) -> None:
+    # Update effective balances with hysteresis
+    for index, validator in enumerate(state.validators):
+        balance = state.balances[index]
+        HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
+        # [Modified in EIP8148]
+        sweep_threshold = state.validator_sweep_thresholds[index]
+        effective_sweep_threshold = get_effective_sweep_threshold(validator, sweep_threshold)
+
+        if (
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
+        ):
+            # [Modified in EIP8148]
+            validator.effective_balance = min(
+                balance - balance % EFFECTIVE_BALANCE_INCREMENT, effective_sweep_threshold
+            )
+```
 
 ### Block processing
 
