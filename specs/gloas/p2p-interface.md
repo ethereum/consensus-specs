@@ -436,6 +436,8 @@ def verify_attestation_payload_status(
 
 ### New `verify_block_body_operation_limits`
 
+*Note*: These checks MAY be performed when deserializing `BeaconBlockBody`.
+
 ```python
 def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
     """
@@ -472,6 +474,8 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
 ```
 
 ### New `verify_execution_requests_limits`
+
+*Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
 
 ```python
 def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:

@@ -21,6 +21,10 @@ from eth_consensus_specs.utils.ssz.ssz_typing import List
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
 
+def get_max_deposits(spec):
+    return spec.MAX_DEPOSITS
+
+
 def make_withdrawal_credentials(spec, prefix, address_byte):
     """Create withdrawal credentials with the given prefix and a 20-byte address from a repeated byte."""
     return prefix + b"\x00" * 11 + address_byte * 20

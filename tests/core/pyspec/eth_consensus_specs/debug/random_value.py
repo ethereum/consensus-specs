@@ -55,6 +55,7 @@ def get_random_ssz_object(
     max_list_length: int,
     mode: RandomizationMode,
     chaos: bool,
+    list_length_limits: dict[type[View], int] | None = None,
 ) -> View:
     """
     Create an object for a given type, filled with random data.
@@ -64,6 +65,9 @@ def get_random_ssz_object(
     :param max_list_length: the max. length for a random list
     :param mode: how to randomize
     :param chaos: if true, the randomization-mode will be randomly changed
+    :param list_length_limits: optional map of ProgressiveList type to max
+        length. Used to keep generated objects within consensus/gossip count
+        limits that SSZ no longer enforces.
     :return: the random object instance, of the given type.
     """
     if chaos:
@@ -104,7 +108,15 @@ def get_random_ssz_object(
     elif issubclass(typ, Vector | BitVector):
         elem_type = typ.element_cls() if issubclass(typ, Vector) else Boolean
         return typ(
-            get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
+            get_random_ssz_object(
+                rng,
+                elem_type,
+                max_bytes_length,
+                max_list_length,
+                mode,
+                chaos,
+                list_length_limits,
+            )
             for _ in range(typ.vector_length())
         )
     elif issubclass(typ, List | ProgressiveList | BitList | ProgressiveBitList):
@@ -112,10 +124,18 @@ def get_random_ssz_object(
         # SSZ imposes a hard limit on lists, we can't put in more than that
         if not issubclass(typ, ProgressiveList | ProgressiveBitList) and typ.limit() < limit:
             limit = typ.limit()
+        # ProgressiveList has no SSZ bound. Apply optional per-type caps so
+        # generated objects stay within consensus/gossip count limits.
+        if (
+            issubclass(typ, ProgressiveList | ProgressiveBitList)
+            and list_length_limits is not None
+            and typ in list_length_limits
+        ):
+            limit = min(limit, list_length_limits[typ])
 
         length = rng.randint(0, limit)
         if mode == RandomizationMode.mode_one_count:
-            length = 1
+            length = min(1, limit)
         elif mode == RandomizationMode.mode_max_count:
             length = limit
         elif mode == RandomizationMode.mode_nil_count:
@@ -124,7 +144,15 @@ def get_random_ssz_object(
         elem_type = Boolean if issubclass(typ, BitList | ProgressiveBitList) else typ.element_cls()
         max_list_length = 1 << (max_list_length.bit_length() >> 1)
         return typ(
-            get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
+            get_random_ssz_object(
+                rng,
+                elem_type,
+                max_bytes_length,
+                max_list_length,
+                mode,
+                chaos,
+                list_length_limits,
+            )
             for _ in range(length)
         )
     elif issubclass(typ, Container | ProgressiveContainer):
@@ -133,7 +161,13 @@ def get_random_ssz_object(
         return typ(
             **{
                 field_name: get_random_ssz_object(
-                    rng, field_type, max_bytes_length, max_list_length, mode, chaos
+                    rng,
+                    field_type,
+                    max_bytes_length,
+                    max_list_length,
+                    mode,
+                    chaos,
+                    list_length_limits,
                 )
                 for field_name, field_type in fields.items()
             }
@@ -153,7 +187,13 @@ def get_random_ssz_object(
             elem = None
         else:
             elem = get_random_ssz_object(
-                rng, elem_type, max_bytes_length, max_list_length, mode, chaos
+                rng,
+                elem_type,
+                max_bytes_length,
+                max_list_length,
+                mode,
+                chaos,
+                list_length_limits,
             )
         return typ(selector=selector, value=elem)
     elif issubclass(typ, CompatibleUnion):
@@ -169,7 +209,13 @@ def get_random_ssz_object(
         return typ(
             selector=selector,
             data=get_random_ssz_object(
-                rng, elem_type, max_bytes_length, max_list_length, mode, chaos
+                rng,
+                elem_type,
+                max_bytes_length,
+                max_list_length,
+                mode,
+                chaos,
+                list_length_limits,
             ),
         )
     else:
