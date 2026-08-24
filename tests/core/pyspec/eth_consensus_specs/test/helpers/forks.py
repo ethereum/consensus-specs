@@ -3,6 +3,7 @@ from .constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
+    EIP7716,
     EIP8025,
     EIP8148,
     EIP8321,
@@ -61,6 +62,10 @@ def is_post_gloas(spec):
 
 def is_post_heze(spec):
     return is_post_fork(spec.fork, HEZE)
+
+
+def is_post_eip7716(spec):
+    return is_post_fork(spec.fork, EIP7716)
 
 
 def is_post_eip8025(spec):
