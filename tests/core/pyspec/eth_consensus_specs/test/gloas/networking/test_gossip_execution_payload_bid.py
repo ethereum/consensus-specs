@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import (
-    spec_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
@@ -106,7 +106,7 @@ def _seed_bid_context(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid(spec, state):
     """A bid for the next slot from an active builder with matching preferences is valid."""
     anchor_state = state.copy()
@@ -164,7 +164,7 @@ def test_gossip_execution_payload_bid__valid(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
     """The first bid for a slot and parent is valid even with a zero value.
 
@@ -227,7 +227,7 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
     """A bid whose slot is far in the future is ignored."""
     anchor_state = state.copy()
@@ -287,7 +287,7 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec, state):
     """A bid whose slot is 1ms before the lower clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -356,7 +356,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state):
     """A bid whose slot lands exactly on the lower clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -465,7 +465,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state):
     """A bid whose slot lands exactly on the upper clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -569,7 +569,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec, state):
     """A bid whose slot is 1ms past the upper clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -634,7 +634,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state):
     """A second bid from the same builder for the same slot and parent is ignored.
 
@@ -732,7 +732,7 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     """A bid whose value does not exceed the best bid for this slot/parent is ignored.
 
@@ -829,7 +829,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     """A bid whose value merely equals (does not exceed) the best bid is ignored.
 
@@ -927,7 +927,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
     """A bid whose value strictly exceeds the best bid for this slot/parent is valid.
 
@@ -1023,7 +1023,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, state):
     """A bid whose builder_index is past the builder registry is rejected.
 
@@ -1089,7 +1089,7 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     """A bid whose value exceeds what the builder can cover is ignored."""
     # Zero out the builder's balance so it cannot cover even a tiny bid. This
@@ -1154,7 +1154,7 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, state):
     """A bid whose execution_payment is non-zero is rejected."""
     anchor_state = state.copy()
@@ -1214,7 +1214,7 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
     """A bid from an inactive builder is rejected."""
     anchor_state = state.copy()
@@ -1276,7 +1276,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, state):
     """A bid from a builder whose version is not PAYLOAD_BUILDER_VERSION is rejected.
 
@@ -1344,7 +1344,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     """A bid whose blob KZG commitment count exceeds the per-epoch limit is rejected."""
     anchor_state = state.copy()
@@ -1410,7 +1410,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     """A bid with exactly the per-epoch blob KZG commitment limit is valid.
 
@@ -1477,7 +1477,7 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
     """A bid whose parent_block_root is not in store.blocks is ignored.
 
@@ -1541,7 +1541,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, state):
     """A bid whose slot is not greater than its parent block's slot is rejected.
 
@@ -1638,7 +1638,7 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, state):
     """A bid whose parent_block_hash is not in seen.execution_payloads is ignored.
 
@@ -1702,7 +1702,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, state):
     """A bid whose parent block's state is missing is ignored."""
     anchor_state = state.copy()
@@ -1791,7 +1791,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, state):
     """
     A bid whose slot is more than MIN_SEED_LOOKAHEAD epochs ahead of its parent
@@ -1880,7 +1880,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     """A bid whose matching proposer preferences have not been seen is ignored."""
     anchor_state = state.copy()
@@ -1958,7 +1958,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state):
     """A bid whose fee_recipient does not match the proposer's preference is ignored."""
     anchor_state = state.copy()
@@ -2061,7 +2061,7 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state):
     """A bid whose gas_limit is incompatible with the proposer's target is ignored."""
     anchor_state = state.copy()
@@ -2165,7 +2165,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state):
     """A bid whose prev_randao does not match the parent state's RANDAO mix is rejected."""
     anchor_state = state.copy()
@@ -2273,7 +2273,7 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     """A bid with an invalid signature is rejected once all other checks pass."""
     anchor_state = state.copy()
@@ -2492,7 +2492,7 @@ def _run_bid_gas_limit_scenario(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_increase_within_limit(spec, state):
     """A bid with gas_limit raised within the EIP-1559 step toward target is valid."""
     yield from _run_bid_gas_limit_scenario(
@@ -2507,7 +2507,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_increase_within_limit(spe
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_increase_exceeding_limit(spec, state):
     """When target is above the EIP-1559 max, a bid pinned to the max value is valid."""
     # max_gas_limit_difference = 60_000_000 // 1024 - 1 = 58_592
@@ -2523,7 +2523,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_increase_exceeding_limit(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_gas_limit_increase_exceeding_limit_off_by_one(
     spec, state
 ):
@@ -2540,7 +2540,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_increase_exceeding_limit
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_decrease_within_limit(spec, state):
     """A bid with gas_limit lowered within the EIP-1559 step toward target is valid."""
     yield from _run_bid_gas_limit_scenario(
@@ -2555,7 +2555,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_decrease_within_limit(spe
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_decrease_exceeding_limit(spec, state):
     """When target is below the EIP-1559 min, a bid pinned to the min value is valid."""
     yield from _run_bid_gas_limit_scenario(
@@ -2570,7 +2570,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_decrease_exceeding_limit(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_gas_limit_decrease_exceeding_limit_off_by_one(
     spec, state
 ):
@@ -2587,7 +2587,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_decrease_exceeding_limit
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_target_equals_parent(spec, state):
     """A bid whose gas_limit equals both target and parent gas_limit is valid."""
     yield from _run_bid_gas_limit_scenario(
@@ -2602,7 +2602,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_target_equals_parent(spec
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_gas_limit_parent_under_step(spec, state):
     """A bid is valid when parent gas_limit is below the 1024 step (step floors to 1)."""
     yield from _run_bid_gas_limit_scenario(
@@ -2617,7 +2617,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_parent_under_step(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoch(spec, state):
     """
     A bid that is only coverable because validation advances the state across
