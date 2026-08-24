@@ -281,7 +281,7 @@ class BeaconState(Container):
 
 ```python
 def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> VersionedHash:
-    return VERSIONED_HASH_VERSION_KZG + sha256_hash(kzg_commitment)[1:]
+    return VERSIONED_HASH_VERSION_KZG + sha256(kzg_commitment)[1:]
 ```
 
 ### Beacon state accessors

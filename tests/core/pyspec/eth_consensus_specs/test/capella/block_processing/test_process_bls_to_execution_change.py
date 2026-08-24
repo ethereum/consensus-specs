@@ -273,9 +273,7 @@ def test_valid_signature_from_staking_deposit_cli(spec, state):
         "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
     )
     validator = state.validators[validator_index]
-    validator.withdrawal_credentials = (
-        spec.BLS_WITHDRAWAL_PREFIX + spec.sha256_hash(from_bls_pubkey)[1:]
-    )
+    validator.withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(from_bls_pubkey)[1:]
 
     address_change = spec.BLSToExecutionChange(
         validator_index=validator_index,

@@ -11,9 +11,7 @@ def compute_chain_secret(spec, validator_index):
     Return a deterministic chain secret for ``validator_index``, so that a test
     can recompute any validator's chain on demand.
     """
-    return spec.Bytes32(
-        spec.blake3_hash(b"chain_secret" + int(validator_index).to_bytes(8, "little"))
-    )
+    return spec.Bytes32(spec.blake3(b"chain_secret" + int(validator_index).to_bytes(8, "little")))
 
 
 def compute_hash_chain(spec, validator_index, length=HASH_CHAIN_LENGTH):

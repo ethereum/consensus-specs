@@ -47,12 +47,12 @@ def test_hash_chain_reveal(spec, state):
     block = build_empty_block(spec, state)
     reveal = block.body.hash_chain_reveal
     assert reveal != spec.Bytes32()
-    assert spec.blake3_hash(spec.HASH_CHAIN_RANDAO_DST + reveal) == commitment
+    assert spec.blake3(spec.HASH_CHAIN_RANDAO_DST + reveal) == commitment
 
     yield from run_process_randao(spec, state, block)
 
     # The raw reveal is folded in with a hash accumulator
-    assert spec.get_randao_mix(state, epoch) == spec.blake3_hash(pre_mix + reveal)
+    assert spec.get_randao_mix(state, epoch) == spec.blake3(pre_mix + reveal)
     # And the chain walks one link back
     assert state.randao_commitments[proposer_index] == reveal
 
@@ -89,7 +89,7 @@ def test_unregistered_proposer_uses_bls_reveal(spec, state):
     yield from run_process_randao(spec, state, block)
 
     assert spec.get_randao_mix(state, epoch) == spec.xor(
-        pre_mix, spec.sha256_hash(block.body.randao_reveal)
+        pre_mix, spec.sha256(block.body.randao_reveal)
     )
     # An unregistered validator stays unregistered
     assert state.randao_commitments[proposer_index] == spec.Bytes32()
@@ -133,7 +133,7 @@ def test_invalid_zero_hash_chain_reveal(spec, state):
 
     # Committing to the hash of the zero word would let a zero reveal pass the chain
     # step, but the sentinel guard rejects it first
-    state.randao_commitments[proposer_index] = spec.blake3_hash(
+    state.randao_commitments[proposer_index] = spec.blake3(
         spec.HASH_CHAIN_RANDAO_DST + spec.Bytes32()
     )
     block.body.hash_chain_reveal = spec.Bytes32()

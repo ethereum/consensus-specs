@@ -242,7 +242,7 @@ def get_beacon_proposer_index_and_threshold(spec, state) -> tuple[Uint64, Uint64
     along with the threshold for that index.
     """
     epoch = spec.get_current_epoch(state)
-    seed = spec.sha256_hash(
+    seed = spec.sha256(
         spec.get_seed(state, epoch, spec.DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot)
     )
     indices = spec.get_active_validator_indices(state, epoch)
@@ -263,7 +263,7 @@ def electra_compute_proposer_index_and_threshold(
     while True:
         candidate_index = indices[spec.compute_shuffled_index(i % total, total, seed)]
         # [Modified in Electra]
-        random_bytes = spec.sha256_hash(seed + uint_to_bytes(i // 16))
+        random_bytes = spec.sha256(seed + uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance

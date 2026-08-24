@@ -238,7 +238,7 @@ def validate_bls_to_execution_change_gossip(
 
     # [REJECT] The bls_to_execution_change is for the validator's withdrawal pubkey
     pubkey = bls_to_execution_change.from_bls_pubkey
-    if validator.withdrawal_credentials[1:] != sha256_hash(pubkey)[1:]:
+    if validator.withdrawal_credentials[1:] != sha256(pubkey)[1:]:
         raise GossipReject("pubkey does not match validator withdrawal credentials")
 
     # [REJECT] The signature is valid

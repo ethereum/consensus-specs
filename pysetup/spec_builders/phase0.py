@@ -25,7 +25,7 @@ from dataclasses import (
     dataclass,
     field,
 )
-from hashlib import sha256
+from hashlib import sha256 as sha256_hash
 from typing import (
     Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )

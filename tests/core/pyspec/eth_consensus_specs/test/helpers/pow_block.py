@@ -22,8 +22,8 @@ def prepare_random_pow_block(spec, rng=None):
     if rng is None:
         rng = Random(3131)
     return spec.PowBlock(
-        block_hash=spec.Hash32(spec.sha256_hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
-        parent_hash=spec.Hash32(spec.sha256_hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
+        block_hash=spec.Hash32(spec.sha256(bytearray(rng.getrandbits(8) for _ in range(32)))),
+        parent_hash=spec.Hash32(spec.sha256(bytearray(rng.getrandbits(8) for _ in range(32)))),
         total_difficulty=Uint256(0),
     )
 
