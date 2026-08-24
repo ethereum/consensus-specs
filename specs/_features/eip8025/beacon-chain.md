@@ -30,9 +30,7 @@ These are the beacon-chain data and verification specifications for EIP-8025,
 enabling stateless validation of execution payloads through execution proofs.
 
 Execution proofs are non-consensus artifacts. Verifying or storing one does not
-change beacon-chain state, fork choice, or Gloas payload status. Client policy
-for using a stored proof, including whether it can avoid payload retrieval, is
-outside this specification.
+change beacon-chain state, fork choice, or Gloas payload status.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
 and imports proof types from [proof-engine.md](./proof-engine.md).
