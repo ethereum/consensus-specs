@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 PAYLOAD_STATUS_VALID = "VALID"
@@ -21,6 +22,28 @@ PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
 def wrap_genesis_block(spec, block):
     """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
     return spec.SignedBeaconBlock(message=block)
+
+
+def get_store_from_state(spec, state):
+    """
+    Build a fork-choice store whose head is ``state``.
+
+    Genesis states use ``get_genesis_forkchoice_store_and_block``. States that
+    have been mutated or advanced without recording blocks (e.g. slot bumps in
+    voluntary-exit tests) get a synthetic anchor block so ``get_head(store)``
+    still returns this state.
+    Returns ``(store, signed_anchor)``.
+    """
+    if state.slot == spec.GENESIS_SLOT:
+        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    else:
+        anchor_block = spec.BeaconBlock(slot=state.slot, state_root=state.hash_tree_root())
+        if is_post_gloas(spec):
+            anchor_block.body.signed_execution_payload_bid.message = (
+                state.latest_execution_payload_bid
+            )
+        store = spec.get_forkchoice_store(state, anchor_block)
+    return store, wrap_genesis_block(spec, anchor_block)
 
 
 def add_pending_block_to_store(store, signed_block):

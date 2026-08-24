@@ -222,13 +222,12 @@ Altair for further details.
 ##### New `sync_committee_contribution_and_proof`
 
 This topic is used to propagate partially aggregated sync committee messages to
-be included in future blocks. The `state` parameter is the head state.
+be included in future blocks.
 
 ```python
 def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
     current_time_ms: Uint64,
 ) -> None:
@@ -254,6 +253,8 @@ def validate_sync_committee_contribution_and_proof_gossip(
     # [REJECT] The selection_proof selects the validator as an aggregator for the slot
     if not is_sync_committee_aggregator(contribution_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The aggregator index is valid
     if contribution_and_proof.aggregator_index >= len(state.validators):
@@ -339,14 +340,12 @@ messages to subsections of the network.
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync
 committee messages to the subnet `subnet_id` to be aggregated before being
-gossiped to the global `sync_committee_contribution_and_proof` topic. The
-`state` parameter is the head state.
+gossiped to the global `sync_committee_contribution_and_proof` topic.
 
 ```python
 def validate_sync_committee_message_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -358,6 +357,8 @@ def validate_sync_committee_message_gossip(
     # [IGNORE] The message's slot is for the current slot
     if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
     if sync_committee_message.validator_index >= len(state.validators):
