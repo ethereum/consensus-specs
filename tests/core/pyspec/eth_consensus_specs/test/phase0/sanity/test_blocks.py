@@ -1021,7 +1021,7 @@ def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, [validator_index])
     yield "pre", state
@@ -1049,7 +1049,7 @@ def test_invalid_duplicate_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Same index tries to exit twice, but should only be able to do so once.
     signed_exits = prepare_signed_exits(spec, state, [validator_index, validator_index])
@@ -1073,7 +1073,7 @@ def test_multiple_different_validator_exits_same_block(spec, state):
         spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i] for i in range(3)
     ]
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     signed_exits = prepare_signed_exits(spec, state, validator_indices)
     yield "pre", state
@@ -1174,7 +1174,7 @@ def test_historical_batch(spec, state):
 @with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
-    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
+    voting_period_slots = spec.Uint64(spec.EPOCHS_PER_ETH1_VOTING_PERIOD) * spec.SLOTS_PER_EPOCH
 
     offset_block = build_empty_block(spec, state, slot=voting_period_slots - 1)
     state_transition_and_sign_block(spec, state, offset_block)
@@ -1215,7 +1215,7 @@ def test_eth1_data_votes_consensus(spec, state):
 @with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):
-    voting_period_slots = spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH
+    voting_period_slots = spec.Uint64(spec.EPOCHS_PER_ETH1_VOTING_PERIOD) * spec.SLOTS_PER_EPOCH
 
     pre_eth1_hash = state.eth1_data.block_hash
 

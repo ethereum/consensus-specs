@@ -6,7 +6,7 @@
 - [Types](#types)
   - [`ExecutionAddress`](#executionaddress)
 - [Constants](#constants)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Staking deposit contract](#staking-deposit-contract)
   - [`deposit` function](#deposit-function)
     - [Deposit amount](#deposit-amount)
@@ -41,7 +41,7 @@ specification.
 | ----------------------------- | --------------------- |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `Uint64(2**5)` (= 32) |
 
-## Configuration
+## Configs
 
 *Note*: The default mainnet configuration values are included here for
 specification-design purposes.

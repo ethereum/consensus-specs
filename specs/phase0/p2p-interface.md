@@ -17,7 +17,7 @@
     - [`SignedBeaconBlocks`](#signedbeaconblocks)
     - [`SubnetID`](#subnetid)
   - [Constants](#constants)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [Helpers](#helpers)
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
@@ -282,7 +282,7 @@ class SubnetID(Uint64):
 | -------------- | ------------- |
 | `NODE_ID_BITS` | `Uint64(256)` |
 
-### Configuration
+### Configs
 
 This section outlines configurations that are used in this specification.
 
@@ -1792,7 +1792,7 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
     prefix_bits = int(compute_attestation_subnet_prefix_bits())
     node_id_prefix = node_id >> int(NODE_ID_BITS - prefix_bits)
     node_offset = Uint64(node_id % Uint256(EPOCHS_PER_SUBNET_SUBSCRIPTION))
-    permutation_seed = hash(
+    permutation_seed = sha256(
         uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(

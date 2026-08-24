@@ -37,10 +37,10 @@
   - [New `Builders`](#new-builders)
   - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
   - [New `PayloadAttestations`](#new-payloadattestations)
-  - [New `PTC`](#new-ptc)
-  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
-  - [New `PTCBits`](#new-ptcbits)
-  - [New `PTCWindow`](#new-ptcwindow)
+  - [New `PayloadTimelinessCommittee`](#new-payloadtimelinesscommittee)
+  - [New `PayloadTimelinessCommitteeIndices`](#new-payloadtimelinesscommitteeindices)
+  - [New `PayloadTimelinessCommitteeBits`](#new-payloadtimelinesscommitteebits)
+  - [New `PayloadTimelinessCommitteeWindow`](#new-payloadtimelinesscommitteewindow)
 - [Constants](#constants)
   - [Index flags](#index-flags)
   - [Domains](#domains)
@@ -48,14 +48,15 @@
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
+  - [Gas limit schedule](#gas-limit-schedule)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`Builder`](#builder)
@@ -93,6 +94,7 @@
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
+    - [New `get_scheduled_gas_limit`](#new-get_scheduled_gas_limit)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
@@ -167,10 +169,14 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Enshrined Proposer-Builder Separation
 - [EIP-7843](https://github.com/ethereum/EIPs/blob/c3bfd4ba41cf0fcbfe8c404f33ba89f5174971e0/EIPS/eip-7843.md):
   SLOTNUM opcode
+- [EIP-8070](https://github.com/ethereum/EIPs/blob/f516cef8b482bf123d554ee12ff5b421f5578d38/EIPS/eip-8070.md):
+  eth/72 - Sparse Blobpool
 - [EIP-8045](https://github.com/ethereum/EIPs/blob/414a8404198c5afaa3cfed10a385a9aae1dfaae3/EIPS/eip-8045.md):
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
   Increase exit and consolidation churn
+- [EIP-8261](https://github.com/ethereum/EIPs/blob/f6b4668ef37612feba85aef151303f4100b79360/EIPS/eip-8261.md):
+  Gas Limit Schedule
 - [EIP-8282](https://github.com/ethereum/EIPs/blob/de4c6f02c7bec4686762c55f8ab6abcf97a77d7d/EIPS/eip-8282.md):
   Builder Execution Requests
 
@@ -485,38 +491,41 @@ class PayloadAttestations(ProgressiveList[PayloadAttestation]):
     """
 ```
 
-### New `PTC`
+### New `PayloadTimelinessCommittee`
 
 ```python
-class PTC(Vector[ValidatorIndex, PTC_SIZE]):
+class PayloadTimelinessCommittee(Vector[ValidatorIndex, PTC_SIZE]):
     """
     The payload timeliness committee of a slot.
     """
 ```
 
-### New `PTCAttestingIndices`
+### New `PayloadTimelinessCommitteeIndices`
 
 ```python
-class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
+class PayloadTimelinessCommitteeIndices(List[ValidatorIndex, PTC_SIZE]):
     """
-    The indices of the PTC members participating in a payload attestation.
+    The indices of payload timeliness committee members, as a list limited
+    by the size of the committee.
     """
 ```
 
-### New `PTCBits`
+### New `PayloadTimelinessCommitteeBits`
 
 ```python
-class PTCBits(BitVector[PTC_SIZE]):
+class PayloadTimelinessCommitteeBits(BitVector[PTC_SIZE]):
     """
     The participation bits of the payload timeliness committee, one bit per
     member in committee order.
     """
 ```
 
-### New `PTCWindow`
+### New `PayloadTimelinessCommitteeWindow`
 
 ```python
-class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
+class PayloadTimelinessCommitteeWindow(
+    Vector[PayloadTimelinessCommittee, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
+):
     """
     A rolling window of payload timeliness committees for the previous,
     current, and lookahead epochs.
@@ -571,7 +580,7 @@ same `Withdrawal` container can be used for validators and builders.
 | `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
 | `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
 
-## Preset
+## Presets
 
 ### Misc
 
@@ -598,7 +607,7 @@ same `Withdrawal` container can be used for validators and builders.
 | ------------------------------------ | -------------------------- |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `Uint64(2**14)` (= 16,384) |
 
-## Configuration
+## Configs
 
 ### Validator cycle
 
@@ -613,6 +622,22 @@ same `Withdrawal` container can be used for validators and builders.
 | Name                                | Value                |
 | ----------------------------------- | -------------------- |
 | `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `Epoch(2**6)` (= 64) |
+
+### Gas limit schedule
+
+*[New in Gloas:EIP8261]* This schedule defines the default and recommended
+maximum gas limit for a given epoch. The field is optional: clients that do not
+support it ignore it, and it introduces no new validity rules.
+
+There MUST NOT exist multiple gas limit schedule entries with the same epoch
+value. The epoch value in each entry MUST be greater than or equal to
+`GLOAS_FORK_EPOCH`. The gas limit schedule entries SHOULD be sorted by epoch in
+ascending order. The gas limit schedule MAY be empty.
+
+<!-- list-of-records:gas_limit_schedule -->
+
+| Epoch | Gas Limit | Date |
+| ----: | --------: | ---: |
 
 ## Containers
 
@@ -680,7 +705,7 @@ class PayloadAttestationData(Container):
 
 ```python
 class PayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    aggregation_bits: PTCBits
+    aggregation_bits: PayloadTimelinessCommitteeBits
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -698,7 +723,7 @@ class PayloadAttestationMessage(Container):
 
 ```python
 class IndexedPayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    attesting_indices: PTCAttestingIndices
+    attesting_indices: PayloadTimelinessCommitteeIndices
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -878,7 +903,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
 ```
 
 #### `ExecutionPayload`
@@ -1080,6 +1105,19 @@ def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) ->
     return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
 ```
 
+#### New `get_scheduled_gas_limit`
+
+```python
+def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
+    """
+    Return the scheduled gas limit at a given epoch, if any.
+    """
+    for entry in sorted(GAS_LIMIT_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        if epoch >= entry["EPOCH"]:
+            return entry["GAS_LIMIT"]
+    return None
+```
+
 #### New `get_pending_balance_to_withdraw_for_builder`
 
 ```python
@@ -1136,7 +1174,7 @@ def compute_balance_weighted_selection(
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
-            random_bytes = hash(seed + uint_to_bytes(i // 16))
+            random_bytes = sha256(seed + uint_to_bytes(i // 16))
         next_index = i % total
         if shuffle_indices:
             next_index = compute_shuffled_index(next_index, total, seed)
@@ -1163,7 +1201,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         compute_balance_weighted_selection(state, indices, seed, size=1, shuffle_indices=True)[0]
@@ -1174,19 +1212,19 @@ def compute_proposer_indices(
 #### New `compute_ptc`
 
 ```python
-def compute_ptc(state: BeaconState, slot: Slot) -> PTC:
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
     indices: list[ValidatorIndex] = []
     # Concatenate all committees for this slot in order
     committees_per_slot = get_committee_count_per_slot(state, epoch)
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return PTC(
+    return PayloadTimelinessCommittee(
         compute_balance_weighted_selection(
             state, indices, seed, size=PTC_SIZE, shuffle_indices=False
         )
@@ -1276,7 +1314,7 @@ def get_attestation_participation_flag_indices(
     else:
         slot_index = parent_slot % SLOTS_PER_HISTORICAL_ROOT
         payload_index = state.execution_payload_availability[slot_index]
-        payload_matches = data.index == payload_index
+        payload_matches = Uint64(data.index) == Uint64(payload_index)
 
     # Matching head
     head_root = get_block_root_at_slot(state, data.slot)
@@ -1300,7 +1338,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_ptc`
 
 ```python
-def get_ptc(state: BeaconState, slot: Slot) -> PTC:
+def get_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
@@ -1310,7 +1348,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> PTC:
         assert epoch + 1 == state_epoch
         return state.ptc_window[slot % SLOTS_PER_EPOCH]
     assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
-    offset = (epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
     return state.ptc_window[offset + slot % SLOTS_PER_EPOCH]
 ```
 
@@ -1329,7 +1367,7 @@ def get_indexed_payload_attestation(
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
-        attesting_indices=PTCAttestingIndices(sorted(attesting_indices)),
+        attesting_indices=PayloadTimelinessCommitteeIndices(sorted(attesting_indices)),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
     )
@@ -1342,7 +1380,7 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
-    per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    per_slot_balance = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
@@ -1416,7 +1454,7 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     if exit_balance > exit_balance_to_consume:
         balance_to_process = exit_balance - exit_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
+        earliest_exit_epoch += Epoch(additional_epochs)
         exit_balance_to_consume += additional_epochs * per_epoch_churn
 
     # Consume the balance and update state variables.
@@ -2295,8 +2333,7 @@ def process_attestation(
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in Gloas:EIP7732]
-        # For same-slot attestations, check if we are setting any new flags.
-        # If we are, this validator has not contributed to this slot's quorum yet.
+        had_no_participation = epoch_participation[index] == ParticipationFlags(0b0000_0000)
         will_set_new_flag = False
 
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
@@ -2309,10 +2346,9 @@ def process_attestation(
                 will_set_new_flag = True
 
         # [New in Gloas:EIP7732]
-        # Add weight for same-slot attestations when any new flag is set.
-        # This ensures each validator contributes exactly once per slot.
         if (
             will_set_new_flag
+            and had_no_participation
             and is_attestation_same_slot(state, data)
             and payment.withdrawal.amount > 0
         ):

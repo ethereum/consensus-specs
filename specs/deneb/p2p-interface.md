@@ -3,8 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
-- [Configuration](#configuration)
+- [Presets](#presets)
+- [Configs](#configs)
 - [Types](#types)
   - [Modified `BeaconBlockRoots`](#modified-beaconblockroots)
   - [Modified `SignedBeaconBlocks`](#modified-signedbeaconblocks)
@@ -51,7 +51,7 @@ This document contains the consensus-layer networking specifications for Deneb.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Preset
+## Presets
 
 *[New in Deneb:EIP4844]*
 
@@ -59,7 +59,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
-## Configuration
+## Configs
 
 *[New in Deneb:EIP4844]*
 

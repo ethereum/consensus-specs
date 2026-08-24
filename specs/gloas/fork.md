@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
@@ -20,7 +20,7 @@
 
 This document describes the process of the Gloas upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -36,13 +36,14 @@ Warning: this configuration is not definitive.
 ```python
 def initialize_ptc_window(
     state: BeaconState,
-) -> PTCWindow:
+) -> PayloadTimelinessCommitteeWindow:
     """
     Return the cached PTC window starting from the current epoch.
     Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
     """
     empty_previous_epoch = [
-        PTC([ValidatorIndex(0) for _ in range(PTC_SIZE)]) for _ in range(SLOTS_PER_EPOCH)
+        PayloadTimelinessCommittee([ValidatorIndex(0) for _ in range(PTC_SIZE)])
+        for _ in range(SLOTS_PER_EPOCH)
     ]
 
     ptcs = []
@@ -52,7 +53,7 @@ def initialize_ptc_window(
         start_slot = compute_start_slot_at_epoch(epoch)
         ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
 
-    return PTCWindow(empty_previous_epoch + ptcs)
+    return PayloadTimelinessCommitteeWindow(empty_previous_epoch + ptcs)
 ```
 
 ### New `onboard_builders_from_pending_deposits`
@@ -205,8 +206,17 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         builder_pending_withdrawals=BuilderPendingWithdrawals(),
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(
+            parent_block_hash=pre.latest_execution_payload_header.parent_hash,
+            parent_block_root=pre.latest_block_header.parent_root,
             block_hash=pre.latest_execution_payload_header.block_hash,
+            prev_randao=pre.latest_execution_payload_header.prev_randao,
+            fee_recipient=ExecutionAddress(),
             gas_limit=pre.latest_execution_payload_header.gas_limit,
+            builder_index=BUILDER_INDEX_SELF_BUILD,
+            slot=pre.latest_block_header.slot,
+            value=Gwei(0),
+            execution_payment=Gwei(0),
+            blob_kzg_commitments=BlobKZGCommitments(),
             execution_requests_root=hash_tree_root(ExecutionRequests()),
         ),
         # [New in Gloas:EIP7732]

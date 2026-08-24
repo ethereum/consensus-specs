@@ -170,6 +170,13 @@ _MESSAGE_INFO = {
         "file_prefix": "proposer_preferences",
         "validation_fn": "validate_proposer_preferences_gossip",
     },
+    ###########################################################################
+    # eip8321
+    ###########################################################################
+    "SignedRandaoCommitmentRegistration": {
+        "file_prefix": "randao_commitment_registration",
+        "validation_fn": "validate_randao_commitment_registration_gossip",
+    },
 }
 
 

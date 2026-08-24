@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Fast Confirmation Rule](#fast-confirmation-rule)
   - [Constants](#constants)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [Helpers](#helpers)
     - [`FastConfirmationStore`](#fastconfirmationstore)
     - [`get_fast_confirmation_store`](#get_fast_confirmation_store)
@@ -73,7 +73,7 @@ blocks can be reorged without any adversarial behavior and without slashing.
 | ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `Uint64(5)` | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
 
-### Configuration
+### Configs
 
 | Name                               | Value        | Max. Value   | Description                                                                |
 | ---------------------------------- | ------------ | ------------ | -------------------------------------------------------------------------- |
@@ -401,16 +401,18 @@ def estimate_committee_weight_between_slots(
 
     start_epoch = compute_epoch_at_slot(start_slot)
     end_epoch = compute_epoch_at_slot(end_slot)
-    committee_weight = total_active_balance // SLOTS_PER_EPOCH
+    committee_weight = total_active_balance // Uint64(SLOTS_PER_EPOCH)
     if start_epoch == end_epoch:
-        return committee_weight * (end_slot - start_slot + 1)
+        return committee_weight * Uint64(end_slot - start_slot + 1)
     else:
         # First, calculate the number of committees in the end epoch
-        num_slots_in_end_epoch = compute_slots_since_epoch_start(end_slot) + 1
+        num_slots_in_end_epoch = Uint64(compute_slots_since_epoch_start(end_slot) + 1)
         # Next, calculate the number of slots remaining in the end epoch
-        remaining_slots_in_end_epoch = SLOTS_PER_EPOCH - num_slots_in_end_epoch
+        remaining_slots_in_end_epoch = Uint64(SLOTS_PER_EPOCH) - num_slots_in_end_epoch
         # Then, calculate the number of slots in the start epoch
-        num_slots_in_start_epoch = SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
+        num_slots_in_start_epoch = Uint64(
+            SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
+        )
 
         start_epoch_weight = committee_weight * num_slots_in_start_epoch
         end_epoch_weight = committee_weight * num_slots_in_end_epoch
@@ -419,7 +421,7 @@ def estimate_committee_weight_between_slots(
         # needs pro-rata calculation, see https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20
         # start_epoch_weight_pro_rated = start_epoch_weight * (1 - num_slots_in_end_epoch / SLOTS_PER_EPOCH)
         start_epoch_weight_pro_rated = (
-            start_epoch_weight // SLOTS_PER_EPOCH * remaining_slots_in_end_epoch
+            start_epoch_weight // Uint64(SLOTS_PER_EPOCH) * remaining_slots_in_end_epoch
         )
 
         return adjust_committee_weight_estimate_to_ensure_safety(

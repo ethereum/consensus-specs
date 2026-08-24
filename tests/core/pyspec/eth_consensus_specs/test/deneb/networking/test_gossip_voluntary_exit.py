@@ -29,7 +29,7 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     yield "topic", "meta", "voluntary_exit"
 
     seen = get_seen(spec)
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0)
@@ -55,7 +55,7 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     yield "topic", "meta", "voluntary_exit"
 
     seen = get_seen(spec)
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
     # Sign with DENEB fork version (the wrong domain under EIP-7044).

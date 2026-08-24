@@ -16,7 +16,10 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
     def sundry_functions(cls) -> str:
         return """
 def cached_or_new_inclusion_list_store() -> InclusionListStore:
-    return InclusionListStore()
+    return InclusionListStore(
+        inclusion_lists=defaultdict(dict),
+        equivocators=defaultdict(set),
+    )
 """
 
     @classmethod
@@ -34,7 +37,8 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                                  payload_attributes: Optional[PayloadAttributes],
+                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:

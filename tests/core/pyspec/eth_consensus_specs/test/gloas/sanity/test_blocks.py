@@ -13,6 +13,7 @@ from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attest
 from eth_consensus_specs.test.helpers.attestations import (
     get_max_attestations,
     get_valid_attestation,
+    sign_attestation,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_max_attester_slashings,
@@ -39,6 +40,7 @@ from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
     next_slots,
     state_transition_and_sign_block,
+    transition_to_slot_via_block,
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
@@ -621,7 +623,7 @@ def test_invalid_too_many_deposits(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_max_voluntary_exits(spec, state):
-    next_slots(spec, state, spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     num_exits = spec.MAX_VOLUNTARY_EXITS
     full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
         :num_exits
@@ -641,7 +643,7 @@ def test_max_voluntary_exits(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_invalid_too_many_voluntary_exits(spec, state):
-    next_slots(spec, state, spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH)
+    next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
     num_exits = spec.MAX_VOLUNTARY_EXITS + 1
     full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
         :num_exits
@@ -950,7 +952,7 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
 
     # Move state forward SHARD_COMMITTEE_PERIOD epochs so the validator can exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Set up the parent block as FULL with a bid that commits to a full-exit
     # withdrawal request for the validator.
@@ -1016,3 +1018,68 @@ def test_proposer_lookahead_excludes_slashed_validators(spec, state):
     # The newly appended lookahead epoch matches the Gloas selection
     last_epoch_start = len(state.proposer_lookahead) - spec.SLOTS_PER_EPOCH
     assert list(state.proposer_lookahead[last_epoch_start:]) == list(proposers_in_gloas)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_no_double_counting_target_equivocation(spec, state):
+    """
+    A validator that equivocates on the attestation target (same source, different
+    target roots) is credited to the builder payment weight at most once, even when
+    both attestations land in the same block.
+    """
+    # Block at slot 1, then advance so slot 1's block root is retrievable from state.
+    transition_to_slot_via_block(spec, state, 1)
+    next_slots(spec, state, 1)
+
+    attestation_slot = spec.Slot(1)
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attester = committee[0]
+    # A block was proposed at the attestation slot, so these are same-slot attestations.
+    head_root = spec.get_block_root_at_slot(state, attestation_slot)
+
+    def build(wrong_target):
+        attestation = get_valid_attestation(
+            spec,
+            state,
+            slot=attestation_slot,
+            index=0,
+            payload_index=0,
+            beacon_block_root=head_root,
+            filter_participant_set=lambda _: {attester},
+        )
+        if wrong_target:
+            attestation.data.target.root = spec.Root(b"\x11" * 32)
+        sign_attestation(spec, state, attestation)
+        assert spec.is_attestation_same_slot(state, attestation.data)
+        return attestation
+
+    attestation_wrong_target = build(wrong_target=True)
+    attestation_right_target = build(wrong_target=False)
+    assert attestation_wrong_target.data.target.root != attestation_right_target.data.target.root
+
+    # Give slot 1 a builder payment to accrue weight against.
+    payment_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    state.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=spec.Gwei(1000000000),
+            builder_index=0,
+        ),
+    )
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.attestations = [attestation_wrong_target, attestation_right_target]
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # Credited once, not once per flag set.
+    assert (
+        state.builder_pending_payments[payment_index].weight
+        == state.validators[attester].effective_balance
+    )

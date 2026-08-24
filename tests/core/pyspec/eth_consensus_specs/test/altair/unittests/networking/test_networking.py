@@ -11,7 +11,9 @@ from eth_consensus_specs.test.helpers.state import (
 @spec_state_test
 def test_get_sync_subcommittee_pubkeys_current_sync_committee(state, spec):
     # Transition to the head of the next period
-    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    transition_to(
+        spec, state, spec.SLOTS_PER_EPOCH * spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
+    )
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
     assert spec.compute_sync_committee_period(
@@ -30,7 +32,9 @@ def test_get_sync_subcommittee_pubkeys_current_sync_committee(state, spec):
 @spec_state_test
 def test_get_sync_subcommittee_pubkeys_next_sync_committee(state, spec):
     # Transition to the end of the current period
-    transition_to(spec, state, spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 1)
+    transition_to(
+        spec, state, spec.SLOTS_PER_EPOCH * spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) - 1
+    )
 
     next_slot_epoch = spec.compute_epoch_at_slot(state.slot + 1)
     assert spec.compute_sync_committee_period(

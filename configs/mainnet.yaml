@@ -61,6 +61,9 @@ GLOAS_FORK_EPOCH: 18446744073709551615
 # Heze
 HEZE_FORK_VERSION: 0x08000000
 HEZE_FORK_EPOCH: 18446744073709551615
+# EIP8321
+EIP8321_FORK_VERSION: 0xe8321000
+EIP8321_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -222,7 +225,7 @@ MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS: 1
 MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 
 
-# Blob Scheduling
+# Scheduling
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE:
@@ -230,6 +233,8 @@ BLOB_SCHEDULE:
     MAX_BLOBS_PER_BLOCK: 15
   - EPOCH: 419072  # January 7, 2026, 01:01:11am UTC
     MAX_BLOBS_PER_BLOCK: 21
+
+GAS_LIMIT_SCHEDULE: []
 
 # Fast Confirmation Rule
 # ---------------------------------------------------------------

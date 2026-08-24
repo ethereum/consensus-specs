@@ -10,7 +10,7 @@
   - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
 - [Constants](#constants)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Inclusion list committee](#inclusion-list-committee)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -68,7 +68,7 @@ class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZ
 | --------------------------------- | -------------------------- |
 | `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x10000000')` |
 
-## Preset
+## Presets
 
 ### Inclusion list committee
 
@@ -179,7 +179,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
 ```
 
 ## Helpers

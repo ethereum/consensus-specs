@@ -12,10 +12,10 @@
   - [New `VersionedHash`](#new-versionedhash)
 - [Constants](#constants)
   - [Blob](#blob)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Blob](#blob-1)
   - [Execution](#execution)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Execution](#execution-1)
   - [Validator cycle](#validator-cycle)
 - [Containers](#containers)
@@ -129,7 +129,7 @@ class VersionedHash(Bytes32):
 | `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | Version byte of a blob's versioned hash         |
 | `BYTES_PER_FIELD_ELEMENT`    | `Uint64(32)`     | Bytes used to encode a BLS scalar field element |
 
-## Preset
+## Presets
 
 ### Blob
 
@@ -143,7 +143,7 @@ class VersionedHash(Bytes32):
 | -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
 | `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `Uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
-## Configuration
+## Configs
 
 ### Execution
 
@@ -281,7 +281,7 @@ class BeaconState(Container):
 
 ```python
 def kzg_commitment_to_versioned_hash(kzg_commitment: KZGCommitment) -> VersionedHash:
-    return VERSIONED_HASH_VERSION_KZG + hash(kzg_commitment)[1:]
+    return VERSIONED_HASH_VERSION_KZG + sha256(kzg_commitment)[1:]
 ```
 
 ### Beacon state accessors

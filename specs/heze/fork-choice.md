@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
@@ -29,7 +29,7 @@
 
 This is the modification of the fork choice accompanying the Heze upgrade.
 
-## Configuration
+## Configs
 
 ### Time parameters
 
@@ -80,6 +80,7 @@ def notify_forkchoice_updated(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     payload_attributes: Optional[PayloadAttributes],
+    custody_columns: Optional[CustodyColumnBits],
 ) -> Optional[PayloadId]: ...
 ```
 
@@ -158,8 +159,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
-        payload_timeliness_vote={},
-        payload_data_availability_vote={},
+        payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
+        payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Heze:EIP7805]
         payload_inclusion_list_satisfaction={},
     )
@@ -185,13 +186,14 @@ constraints remains valid, but fork choice does not extend it.
 ```python
 def record_payload_inclusion_list_satisfaction(
     store: Store,
-    state: BeaconState,
     root: Root,
     payload: ExecutionPayload,
     execution_engine: ExecutionEngine,
 ) -> None:
+    slot = store.blocks[root].slot - Slot(1)
+    dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
     inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), state, Slot(state.slot - 1), only_timely=True
+        get_inclusion_list_store(), slot, dependent_root, only_timely=True
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
         payload, inclusion_list_transactions
@@ -294,12 +296,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
 
     # Process the inclusion list
-    process_inclusion_list(
-        get_inclusion_list_store(),
-        signed_inclusion_list,
-        hash_tree_root(committee),
-        is_timely,
-    )
+    process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)
 ```
 
 ### Modified `on_execution_payload_envelope`
@@ -328,7 +325,7 @@ def on_execution_payload_envelope(
     # Check if this payload satisfies the inclusion list constraints
     # If not, add this payload to the store as inclusion list constraints unsatisfied
     record_payload_inclusion_list_satisfaction(
-        store, state, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
+        store, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
     )
 
     # Add execution payload envelope to the store

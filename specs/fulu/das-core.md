@@ -14,10 +14,10 @@
   - [`RowIndex`](#rowindex)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Blob](#blob)
   - [Size parameters](#size-parameters)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Custody setting](#custody-setting)
 - [Containers](#containers)
   - [`DataColumnSidecar`](#datacolumnsidecar)
@@ -137,7 +137,7 @@ specification.
 | ------------- | --------------------- |
 | `UINT256_MAX` | `Uint256(2**256 - 1)` |
 
-## Preset
+## Presets
 
 ### Blob
 
@@ -153,7 +153,7 @@ specification.
 | ------------------- | ------------------------------------ | --------------------------------------------- |
 | `NUMBER_OF_COLUMNS` | `Uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
-## Configuration
+## Configs
 
 ### Custody setting
 
@@ -203,7 +203,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
     custody_groups: list[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
-            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
+            bytes_to_uint64(sha256(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
         )
         if custody_group not in custody_groups:
             custody_groups.append(custody_group)
