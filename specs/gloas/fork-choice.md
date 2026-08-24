@@ -152,12 +152,6 @@ class ForkChoiceNode:
     root: Root
     # [New in Gloas:EIP7732]
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
-
-    # The dataclass-generated ``__hash__`` would call the SHA256 ``hash``
-    # function defined in this module instead of the builtin ``hash``, so
-    # it is defined explicitly.
-    def __hash__(self) -> int:
-        return int.from_bytes(self.root, "little") * 31 + int(self.payload_status)
 ```
 
 ### Modified `PayloadAttributes`
