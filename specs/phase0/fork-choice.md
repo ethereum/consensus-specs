@@ -152,12 +152,6 @@ This abstraction is introduced to support upgradability.
 @dataclass(eq=True, frozen=True)
 class ForkChoiceNode:
     root: Root
-
-    # The dataclass-generated ``__hash__`` would call the SHA256 ``hash``
-    # function defined in this module instead of the builtin ``hash``, so
-    # it is defined explicitly.
-    def __hash__(self) -> int:
-        return int.from_bytes(self.root, "little")
 ```
 
 #### `LatestMessage`
