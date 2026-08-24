@@ -1,15 +1,13 @@
 # EIP-8025 -- Fork Choice
 
-This document extends the fork-choice `Store` as a convenient repository for
-verified EIP-8025 proofs. Stored proofs are not fork-choice inputs.
-
-*Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md).
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
+- [Introduction](#introduction)
 - [Data structures](#data-structures)
   - [Modified `Store`](#modified-store)
 - [Store initialization](#store-initialization)
@@ -18,6 +16,13 @@ verified EIP-8025 proofs. Stored proofs are not fork-choice inputs.
   - [New `on_execution_proof`](#new-on_execution_proof)
 
 <!-- mdformat-toc end -->
+
+## Introduction
+
+This document extends the fork-choice `Store` to retain verified EIP-8025
+proofs. Stored proofs are not fork-choice inputs.
+
+*Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md).
 
 ## Data structures
 
@@ -88,16 +93,15 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ### New `on_execution_proof`
 
-The handler `on_execution_proof` is called when the node accepts a
-`SignedExecutionProof` for downstream processing. It verifies and stores the
-proof without changing fork-choice weights, head selection, beacon-chain state,
-or Gloas payload status.
+The handler `on_execution_proof` is called after a received
+`SignedExecutionProof` passes gossip validation. It stores the verified proof
+without changing fork-choice weights, head selection, beacon-chain state, or
+Gloas payload status.
 
 ```python
 def on_execution_proof(
     store: Store,
     signed_execution_proof: SignedExecutionProof,
-    proof_engine: ProofEngine,
 ) -> None:
     proof = signed_execution_proof.message
     beacon_block_root = proof.public_input.beacon_block_root
@@ -109,15 +113,7 @@ def on_execution_proof(
     # Only one verified proof is stored for each beacon block and proof type
     assert proof.proof_type not in store.execution_proofs.get(beacon_block_root, {})
 
-    # Validate against the state associated with the beacon block
-    state = store.block_states[beacon_block_root]
-    process_execution_proof(
-        state,
-        signed_execution_proof,
-        proof_engine,
-    )
-
-    # Store only proofs that pass downstream verification
+    # Store the verified proof
     if beacon_block_root not in store.execution_proofs:
         store.execution_proofs[beacon_block_root] = {}
     store.execution_proofs[beacon_block_root][proof.proof_type] = proof

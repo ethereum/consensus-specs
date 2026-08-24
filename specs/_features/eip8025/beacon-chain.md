@@ -18,16 +18,13 @@
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-- [Execution proof verification](#execution-proof-verification)
-  - [Execution proof](#execution-proof)
-    - [New `process_execution_proof`](#new-process_execution_proof)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-These are the beacon-chain data and verification specifications for EIP-8025,
-enabling stateless validation of execution payloads through execution proofs.
+These are the beacon-chain specifications to add EIP-8025, enabling stateless
+validation of execution payloads through execution proofs.
 
 Execution proofs are non-consensus artifacts. Verifying or storing one does not
 change beacon-chain state, fork choice, or Gloas payload status.
@@ -51,7 +48,8 @@ class ProofData(ProgressiveByteList):
 ```python
 class ProofType(Uint8):
     """
-    Identifies the proof format used by an execution proof.
+    The identifier of the proof system, guest program, and version associated
+    with an execution proof.
     """
 ```
 
@@ -67,8 +65,8 @@ class ProofType(Uint8):
 | `SUPPORTED_PROOF_TYPES` | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
 
 The initial proof type assignments are provisional. A `ProofType` identifies an
-immutable proof format and version. Assignments MUST NOT be reused. A future
-fork may change `SUPPORTED_PROOF_TYPES`.
+immutable combination of proof system, guest program, and version. Assignments
+MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`.
 
 ### Domains
 
@@ -101,38 +99,4 @@ class SignedExecutionProof(Container):
     message: ExecutionProof
     validator_index: ValidatorIndex
     signature: BLSSignature
-```
-
-## Execution proof verification
-
-### Execution proof
-
-This helper validates a proof for storage by the `on_execution_proof` handler.
-It is not invoked by the beacon state transition function. Any
-proof-engine-native artifacts remain implementation-dependent.
-
-#### New `process_execution_proof`
-
-```python
-def process_execution_proof(
-    state: BeaconState,
-    signed_proof: SignedExecutionProof,
-    proof_engine: ProofEngine,
-) -> None:
-    proof_message = signed_proof.message
-    assert signed_proof.validator_index < len(state.validators)
-    assert len(proof_message.proof_data) > 0
-    assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
-    assert proof_message.proof_type in SUPPORTED_PROOF_TYPES
-
-    # Verify prover is an active validator
-    validator = state.validators[signed_proof.validator_index]
-    assert is_active_validator(validator, get_current_epoch(state))
-
-    domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof_message, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
-
-    # Verify the execution proof
-    assert proof_engine.verify_execution_proof(proof_message)
 ```

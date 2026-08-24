@@ -69,20 +69,16 @@ def make_signed_execution_proof(
     )
 
 
-def validate(spec, seen, store, signed_proof):
+def validate(spec, seen, store, signed_proof, proof_engine=None):
+    if proof_engine is None:
+        proof_engine = DummyProofEngine()
     return run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_proof=signed_proof,
+        proof_engine=proof_engine,
     )
-
-
-def assert_handler_rejects(spec, store, signed_proof, proof_engine):
-    proof = signed_proof.message
-    beacon_block_root = proof.public_input.beacon_block_root
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
-    assert proof.proof_type not in store.execution_proofs.get(beacon_block_root, {})
 
 
 @with_eip8025_and_later
@@ -103,7 +99,7 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     )
     assert validate(spec, seen, store, competing_proof) == ("valid", None)
 
-    spec.on_execution_proof(store, signed_proof, DummyProofEngine())
+    spec.on_execution_proof(store, signed_proof)
     later_proof = make_signed_execution_proof(
         spec, state, block_root, prover_index=2, proof_data=b"\x03"
     )
@@ -226,31 +222,44 @@ def test_validate_execution_proof_gossip_structural_checks(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_on_execution_proof_verifies_then_stores(spec, state):
+def test_gossip_verifies_before_handler_stores(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof(spec, state, block_root)
     proof_engine = DummyProofEngine()
 
-    spec.on_execution_proof(store, signed_proof, proof_engine)
-
+    assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == ("valid", None)
     assert proof_engine.proofs == [signed_proof.message]
+    assert block_root not in store.execution_proofs
+
+    spec.on_execution_proof(store, signed_proof)
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message
     }
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
 
     alternate_proof = make_signed_execution_proof(
         spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE
     )
     rejecting_engine = DummyProofEngine(accept=False)
-    assert_handler_rejects(spec, store, alternate_proof, rejecting_engine)
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, alternate_proof, rejecting_engine) == (
+        "reject",
+        "execution proof is invalid",
+    )
     assert rejecting_engine.proofs == [alternate_proof.message]
+    assert alternate_proof.message.proof_type not in store.execution_proofs[block_root]
+    assert validate(spec, seen, store, alternate_proof) == (
+        "ignore",
+        "proof already seen from this prover for this beacon block and proof type",
+    )
 
-    spec.on_execution_proof(store, alternate_proof, DummyProofEngine())
+    assert validate(spec, get_seen(spec), store, alternate_proof) == ("valid", None)
+    spec.on_execution_proof(store, alternate_proof)
     third_proof = make_signed_execution_proof(
         spec, state, block_root, proof_type=THIRD_TEST_PROOF_TYPE
     )
-    spec.on_execution_proof(store, third_proof, DummyProofEngine())
+    assert validate(spec, get_seen(spec), store, third_proof) == ("valid", None)
+    spec.on_execution_proof(store, third_proof)
 
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message,
@@ -262,33 +271,14 @@ def test_on_execution_proof_verifies_then_stores(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_on_execution_proof_enforces_context_and_intrinsic_invariants(spec, state):
+def test_on_execution_proof_enforces_storage_context(spec, state):
     store, block_root = setup_store_with_block(spec, state)
-    proof_engine = DummyProofEngine()
     signed_proof = make_signed_execution_proof(spec, state, block_root)
 
     block = store.blocks.pop(block_root)
-    assert_handler_rejects(spec, store, signed_proof, proof_engine)
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
     store.blocks[block_root] = block
 
     block_state = store.block_states.pop(block_root)
-    assert_handler_rejects(spec, store, signed_proof, proof_engine)
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
     store.block_states[block_root] = block_state
-
-    empty_proof = make_signed_execution_proof(spec, state, block_root, proof_data=b"")
-    assert_handler_rejects(spec, store, empty_proof, proof_engine)
-
-    invalid_signature = make_signed_execution_proof(spec, state, block_root, prover_index=1)
-    invalid_signature.signature = spec.BLSSignature()
-    assert_handler_rejects(spec, store, invalid_signature, proof_engine)
-
-    out_of_range = make_signed_execution_proof(spec, state, block_root, prover_index=2)
-    out_of_range.validator_index = spec.ValidatorIndex(len(block_state.validators))
-    assert_handler_rejects(spec, store, out_of_range, proof_engine)
-
-    unsupported = make_signed_execution_proof(
-        spec, state, block_root, prover_index=3, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
-    )
-    assert_handler_rejects(spec, store, unsupported, proof_engine)
-
-    assert proof_engine.proofs == []

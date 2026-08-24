@@ -9,6 +9,7 @@ from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_sl
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.gossip import get_seen
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
@@ -79,7 +80,8 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state, eip8025_feature
         validator_index=validator_index,
         signature=signature,
     )
-    spec.on_execution_proof(store, signed_proof, proof_engine)
+    spec.validate_execution_proof_gossip(get_seen(spec), store, signed_proof, proof_engine)
+    spec.on_execution_proof(store, signed_proof)
 
     assert proof_engine.verified == [proof]
     assert store.execution_proofs[beacon_block_root][proof.proof_type] == proof

@@ -74,14 +74,12 @@ class Seen:
 
 This topic is used to propagate `SignedExecutionProof` messages.
 
-<!-- TODO: Specify peer-scoring behavior for proofs that pass gossip
-validation but later fail asynchronous proof verification. -->
-
 ```python
 def validate_execution_proof_gossip(
     seen: Seen,
     store: Store,
     signed_execution_proof: SignedExecutionProof,
+    proof_engine: ProofEngine,
 ) -> None:
     """
     Validate a SignedExecutionProof for gossip propagation.
@@ -139,6 +137,10 @@ def validate_execution_proof_gossip(
 
     # Mark the authenticated prover attempt as seen
     seen.execution_proof_provers.add(prover_key)
+
+    # Verify before forwarding to prevent invalid proofs from propagating
+    if not proof_engine.verify_execution_proof(proof):
+        raise GossipReject("execution proof is invalid")
 ```
 
 ## The discovery domain: discv5

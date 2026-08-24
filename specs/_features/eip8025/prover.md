@@ -2,9 +2,6 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-> **EIP-8025 feature:** `prover` (`eip8025-prover`). This feature is optional;
-> proof verification remains part of the baseline profile.
-
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
