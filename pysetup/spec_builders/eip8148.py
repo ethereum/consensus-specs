@@ -10,4 +10,5 @@ class EIP8148SpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.heze import {preset_name} as heze
+from eth_consensus_specs.utils.ssz.ssz_typing import Uint16
 """
