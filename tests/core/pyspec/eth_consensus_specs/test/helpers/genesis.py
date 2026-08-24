@@ -31,7 +31,7 @@ from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
         pubkey=builder_pubkeys[i],
-        execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
+        execution_address=spec.ExecutionAddress(spec.sha256(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
@@ -47,15 +47,15 @@ def build_mock_validator(spec, i: int, balance: int):
             withdrawal_credentials = (
                 spec.COMPOUNDING_WITHDRAWAL_PREFIX
                 + b"\x00" * 11
-                + spec.hash(withdrawal_pubkey)[12:]
+                + spec.sha256(withdrawal_pubkey)[12:]
             )
         else:
             # insecurely use pubkey as withdrawal key as well
-            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     else:
         # insecurely use pubkey as withdrawal key as well
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     validator = spec.Validator(
