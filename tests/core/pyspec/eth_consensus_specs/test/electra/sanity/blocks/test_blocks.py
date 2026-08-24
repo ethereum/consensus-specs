@@ -43,7 +43,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
 @spec_state_test
 def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     address = b"\x22" * 20
@@ -72,7 +72,7 @@ def test_basic_el_withdrawal_request(spec, state):
 @spec_state_test
 def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
@@ -118,7 +118,7 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
 @spec_state_test
 def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
@@ -168,7 +168,7 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
 @spec_state_test
 def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     address = b"\x22" * 20
@@ -201,7 +201,7 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
 @spec_state_test
 def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_index = 0
     address = b"\x22" * 20
@@ -241,7 +241,7 @@ def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
 @spec_state_test
 def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     validator_indices = [1, 2]
     addresses = [bytes([v * 0x11]) * 20 for v in validator_indices]
@@ -484,7 +484,7 @@ def test_deposit_request_max_per_payload(spec, state):
 @single_phase
 def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # We are going to process two blocks:
     #   1) A block which processes a withdrawal and consolidation.
@@ -585,7 +585,7 @@ def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
 @single_phase
 def test_consolidation_requests_when_pending_consolidation_queue_is_full(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Fill up the queue with invalid pending consolidations
     # Making these legit would be too much work
@@ -646,7 +646,7 @@ def test_consolidation_requests_when_pending_consolidation_queue_is_full(spec, s
 @single_phase
 def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Fill up the queue with invalid pending consolidations
     # Making these legit would be too much work
@@ -720,7 +720,7 @@ def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full
 @spec_state_test
 def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limit(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # We didn't use the `scaled_churn_balances_exceed_activation_exit_churn_limit` state, so this
     # state shouldn't have enough churn to process any consolidation requests.
@@ -786,7 +786,7 @@ def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limi
 @spec_state_test
 def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for withdrawal
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Fill up the queue with invalid pending withdrawals
     # Making these legit would be too much work
@@ -858,7 +858,7 @@ def test_multi_epoch_consolidation_chain(spec, state):
     """
 
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Check that we're at the first slot of the epoch
     assert state.slot % spec.SLOTS_PER_EPOCH == 0

@@ -3,20 +3,19 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Capella](#modifications-in-capella)
-  - [Helpers](#helpers)
-    - [Modified `Seen`](#modified-seen)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [New `bls_to_execution_change`](#new-bls_to_execution_change)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [New `bls_to_execution_change`](#new-bls_to_execution_change)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 
 <!-- mdformat-toc end -->
 
@@ -28,11 +27,9 @@ Capella.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Capella
+## Helpers
 
-### Helpers
-
-#### Modified `Seen`
+### Modified `Seen`
 
 ```python
 @dataclass
@@ -51,7 +48,7 @@ class Seen:
     bls_to_execution_change_indices: Set[ValidatorIndex]
 ```
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -67,12 +64,12 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 A new topic is added to support the gossip of withdrawal credential change
 messages. And an existing topic is upgraded for updated types in Capella.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades. All existing topics
 remain stable except the beacon block topic which is updated with the modified
@@ -89,13 +86,13 @@ are given in this table:
 Note that the `ForkDigestValue` path segment of the topic separates the old and
 the new `beacon_block` topics.
 
-##### Global topics
+#### Global topics
 
 Capella changes the type of the global beacon block topic and adds one global
 topic to propagate withdrawal credential change messages to all potential
 proposers of beacon blocks.
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in Capella. Specifically, this type changes with the
@@ -197,7 +194,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add(proposer_slot_key)
 ```
 
-###### New `bls_to_execution_change`
+##### New `bls_to_execution_change`
 
 The `bls_to_execution_change` topic is used solely for propagating signed BLS to
 execution change messages on the network. Signed messages are sent in their
@@ -259,17 +256,17 @@ def validate_bls_to_execution_change_gossip(
     seen.bls_to_execution_change_indices.add(validator_index)
 ```
 
-#### Transitioning the gossip
+### Transitioning the gossip
 
 See gossip transition details found in the
 [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics for Capella.
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -285,7 +282,7 @@ block type.
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 

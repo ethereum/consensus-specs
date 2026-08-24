@@ -14,6 +14,7 @@ def get_process_calls(spec):
         "process_inactivity_updates",  # altair
         "process_rewards_and_penalties",
         "process_registry_updates",
+        "process_pending_randao_commitments",  # eip8321
         "process_slashings",
         "process_eth1_data_reset",
         "process_pending_deposits",  # electra

@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Custody setting](#custody-setting)
 - [Types](#types)
   - [`CellKZGProofs`](#cellkzgproofs)
@@ -43,7 +43,7 @@ All terminology, constants, functions, and protocol mechanics defined in
 [Fulu -- Data Availability Sampling Core](./das-core.md) are requisite for this
 document and used throughout.
 
-## Configuration
+## Configs
 
 ### Custody setting
 
@@ -242,7 +242,8 @@ def get_data_column_sidecars(
 
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
-        column_cells, column_proofs = [], []
+        column_cells = DataColumn()
+        column_proofs = KZGProofs()
         for cells, proofs in cells_and_kzg_proofs:
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])

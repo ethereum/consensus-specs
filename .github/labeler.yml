@@ -82,15 +82,17 @@ eip8148:
       - 'presets/*/eip8148.yaml'
       - 'pysetup/spec_builders/eip8148.py'
 
+eip8321:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip8321/**'
+      - 'presets/*/eip8321.yaml'
+      - 'pysetup/spec_builders/eip8321.py'
+
 testing:
   - changed-files:
     - all-globs-to-any-file:
       - 'tests/**'
-
-ssz:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'ssz/**'
 
 lightclients:
   - changed-files:

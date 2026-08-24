@@ -1,8 +1,6 @@
 def initialize_ptc_window(spec, state):
     empty_previous_epoch = [
-        spec.Vector[spec.ValidatorIndex, spec.PTC_SIZE](
-            [spec.ValidatorIndex(0) for _ in range(spec.PTC_SIZE)]
-        )
+        spec.PayloadTimelinessCommittee([spec.ValidatorIndex(0) for _ in range(spec.PTC_SIZE)])
         for _ in range(spec.SLOTS_PER_EPOCH)
     ]
     ptcs = []

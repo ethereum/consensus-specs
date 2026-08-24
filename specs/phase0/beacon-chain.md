@@ -41,14 +41,14 @@
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
   - [Time parameters](#time-parameters)
   - [State list lengths](#state-list-lengths)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Max operations per block](#max-operations-per-block)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Genesis settings](#genesis-settings)
   - [Time parameters](#time-parameters-1)
   - [Validator cycle](#validator-cycle)
@@ -84,6 +84,7 @@
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
 - [Helpers](#helpers)
   - [Math](#math)
+    - [`get_set_bit_count`](#get_set_bit_count)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
@@ -532,7 +533,7 @@ specification.
 **MUST** be non-zero. This expression for any other `DomainType` in the
 consensus-layer specifications **MUST** be zero.
 
-## Preset
+## Presets
 
 *Note*: The below configuration is bundled as a preset: a bundle of
 configuration variables which are expected to differ between different modes of
@@ -623,7 +624,7 @@ operation, e.g. testing, but not generally between different networks.
 | `MAX_DEPOSITS`           | `Uint64(2**4)` (= 16)  |
 | `MAX_VOLUNTARY_EXITS`    | `Uint64(2**4)` (= 16)  |
 
-## Configuration
+## Configs
 
 *Note*: The default mainnet configuration values are included here for
 illustrative purposes. Defaults for this more dynamic type of configuration are
@@ -659,8 +660,8 @@ different configuration.
 
 ## Containers
 
-The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
-containers.
+The following types are
+[SimpleSerialize (SSZ)](https://github.com/ethereum/ssz-specs) containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
 specification.
@@ -929,6 +930,16 @@ necessarily optimal implementations.
 
 ### Math
 
+#### `get_set_bit_count`
+
+```python
+def get_set_bit_count(bits: Sequence[Boolean]) -> Uint64:
+    """
+    Return the number of bits that are set in ``bits``.
+    """
+    return Uint64(sum(1 for bit in bits if bit))
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -982,7 +993,7 @@ def bytes_to_uint64(data: bytes) -> Uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ specification](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](https://github.com/ethereum/ssz-specs).
 
 #### BLS signatures
 
@@ -1228,7 +1239,7 @@ def compute_start_slot_at_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
-    return Slot(epoch * SLOTS_PER_EPOCH)
+    return Slot(epoch) * SLOTS_PER_EPOCH
 ```
 
 #### `compute_activation_exit_epoch`
@@ -1395,7 +1406,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
         min(
             MAX_COMMITTEES_PER_SLOT,
             Uint64(len(get_active_validator_indices(state, epoch)))
-            // SLOTS_PER_EPOCH
+            // Uint64(SLOTS_PER_EPOCH)
             // TARGET_COMMITTEE_SIZE,
         ),
     )
@@ -1415,8 +1426,8 @@ def get_beacon_committee(
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
-        count=committees_per_slot * SLOTS_PER_EPOCH,
+        index=Uint64(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
+        count=committees_per_slot * Uint64(SLOTS_PER_EPOCH),
     )
 ```
 
@@ -1489,7 +1500,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     attesting_indices = get_attesting_indices(state, attestation)
 
     return IndexedAttestation(
-        attesting_indices=sorted(attesting_indices),
+        attesting_indices=AttestingIndices(sorted(attesting_indices)),
         data=attestation.data,
         signature=attestation.signature,
     )
@@ -1880,7 +1891,7 @@ def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> 
 
 ```python
 def get_finality_delay(state: BeaconState) -> Uint64:
-    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
+    return Uint64(get_previous_epoch(state) - state.finalized_checkpoint.epoch)
 ```
 
 ```python
@@ -1977,7 +1988,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
         max_attester_reward = Gwei(
             get_base_reward(state, index) - get_proposer_reward(state, index)
         )
-        rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
+        rewards[index] += Gwei(max_attester_reward // Uint64(attestation.inclusion_delay))
 
     # No penalties associated with inclusion delay
     penalties = [Gwei(0) for _ in range(len(state.validators))]
@@ -2163,7 +2174,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+    if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
             block_roots=state.block_roots, state_roots=state.state_roots
         )
@@ -2236,7 +2247,7 @@ def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
     if (
         state.eth1_data_votes.count(body.eth1_data) * 2
-        > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH
+        > Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     ):
         state.eth1_data = body.eth1_data
 ```

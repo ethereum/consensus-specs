@@ -254,12 +254,12 @@ def do_fork_generate(
 
 
 def transition_until_fork(spec, state, fork_epoch):
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    to_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     transition_to(spec, state, to_slot)
 
 
 def _transition_until_fork_minus_one(spec, state, fork_epoch):
-    to_slot = fork_epoch * spec.SLOTS_PER_EPOCH - 2
+    to_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 2
     transition_to(spec, state, to_slot)
 
 
@@ -333,8 +333,8 @@ def run_transition_with_operation(
     Generate `operation_type` operation with the spec before fork.
     The operation would be included into the block at `operation_at_slot`.
     """
-    is_at_fork = operation_at_slot == fork_epoch * spec.SLOTS_PER_EPOCH
-    is_right_before_fork = operation_at_slot == fork_epoch * spec.SLOTS_PER_EPOCH - 1
+    is_at_fork = operation_at_slot == spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH
+    is_right_before_fork = operation_at_slot == spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     assert is_at_fork or is_right_before_fork
 
     if is_at_fork:

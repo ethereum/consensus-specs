@@ -10,7 +10,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
@@ -104,7 +104,7 @@ specifications before continuing and use as a reference throughout.
 | ---------------------------------- | --------------------- |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) |
 
-## Configuration
+## Configs
 
 ### Time parameters
 
@@ -461,7 +461,7 @@ An honest block proposer sets
 ```python
 def voting_period_start_time(state: BeaconState) -> Uint64:
     eth1_voting_period_start_slot = Slot(
-        state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
+        state.slot - state.slot % (Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH)
     )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```

@@ -10,7 +10,7 @@
   - [New `Withdrawals`](#new-withdrawals)
 - [Constants](#constants)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
@@ -117,7 +117,7 @@ class Withdrawals(List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]):
 | -------------------------------- | -------------------------- |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
-## Preset
+## Presets
 
 ### Max operations per block
 
@@ -373,7 +373,7 @@ def process_epoch(state: BeaconState) -> None:
 def process_historical_summaries_update(state: BeaconState) -> None:
     # Set historical block root accumulator.
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+    if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_summary = HistoricalSummary(
             block_summary_root=hash_tree_root(state.block_roots),
             state_summary_root=hash_tree_root(state.state_roots),

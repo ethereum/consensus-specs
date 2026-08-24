@@ -14,10 +14,10 @@
   - [Incentivization weights](#incentivization-weights)
   - [Domains](#domains)
   - [Misc](#misc)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Sync committee](#sync-committee)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Inactivity penalties](#inactivity-penalties)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -151,7 +151,7 @@ class SyncCommitteePubkeys(Vector[BLSPubkey, SYNC_COMMITTEE_SIZE]):
 | ---------------------------- | ------------------------------------------------------------------ |
 | `PARTICIPATION_FLAG_WEIGHTS` | `[TIMELY_SOURCE_WEIGHT, TIMELY_TARGET_WEIGHT, TIMELY_HEAD_WEIGHT]` |
 
-## Preset
+## Presets
 
 ### Rewards and penalties
 
@@ -171,7 +171,7 @@ to their final, maximum security values.
 | `SYNC_COMMITTEE_SIZE`              | `Uint64(2**9)` (= 512) |
 | `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256)  |
 
-## Configuration
+## Configs
 
 ### Inactivity penalties
 
@@ -622,10 +622,10 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
     committee_bits = sync_aggregate.sync_committee_bits
-    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+    if get_set_bit_count(committee_bits) == SYNC_COMMITTEE_SIZE:
         # All members participated - use precomputed aggregate key
         participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
-    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+    elif get_set_bit_count(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
         # More than half participated - subtract non-participant keys.
         # First determine nonparticipating members
         non_participant_pubkeys = [
@@ -661,7 +661,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
     max_participant_rewards = Gwei(
-        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH
+        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
     )
     participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
     proposer_reward = Gwei(
