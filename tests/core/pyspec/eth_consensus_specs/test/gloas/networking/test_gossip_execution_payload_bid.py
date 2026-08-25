@@ -2586,6 +2586,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         {
             "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
+            "state_block": get_filename(signed_payload_block),
             "expected": result,
         }
     )
