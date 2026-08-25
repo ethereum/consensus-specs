@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import shutil
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
-from eth_consensus_specs.test.utils.dumper import Dumper
 from eth_consensus_specs.utils import bls
-from ...gen_base.gen_typing import TestCase, TestCasePart, TestCaseResult
-from ...gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from ...gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 EPOCHS_PAST_GENESIS = 10
 PROPOSER_INDEX = 1
@@ -44,10 +39,9 @@ def _b(sol: Any, name: str) -> bool:
     return bool(getattr(sol, name))
 
 
-class ProposerSlashingMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec, self.model_path = spec, model_path
-        self.fork_name, self.preset_name = fork_name, preset_name
+class ProposerSlashingMaterializer(Materializer):
+    runner_name = "operations"
+    handler_name = "proposer_slashing"
 
     def _base_state(self) -> Any:
         state = create_genesis_state(
@@ -70,7 +64,7 @@ class ProposerSlashingMaterializer:
         )
         return self.spec.SignedBeaconBlockHeader(message=header, signature=signature)
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any, Any | None, dict]:
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
         current = int(spec.get_current_epoch(pre))
         proposer = pre.validators[PROPOSER_INDEX]
@@ -132,45 +126,11 @@ class ProposerSlashingMaterializer:
         claimed = {
             n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
         }
-        return pre, slashing, post, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, sol: Any) -> None:
-        pre, operation, post, claimed = self.materialize_solution(sol)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name,
-            preset_name=self.preset_name,
-            runner_name="operations",
-            handler_name="proposer_slashing",
-            suite_name="main",
-            case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
-            ("proposer_slashing", "ssz", operation.encode_bytes()),
+            ("proposer_slashing", "ssz", slashing.encode_bytes()),
         ]
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
-        dump_test_case_result(
-            TestCaseResult(
-                test_case=test_case,
-                meta={
-                    "description": f"process_proposer_slashing: {claimed['outcome']}",
-                    "bls_setting": 1,
-                },
-                case_parts=parts,
-            ),
-            dumper,
-        )
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> int:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
-        dumper = Dumper()
-        for index, sol in enumerate(reps):
-            self.write_case(dumper, output_dir, index, sol)
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
+        meta = {"description": f"process_proposer_slashing: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        return meta, parts

@@ -52,10 +52,10 @@ def build_profile(recs, name):
     return cover(recs, aspects, t, filt)
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return PayloadAttestationMaterializer(spec, MODEL).materialize_reps(
-        Path(__file__).parent / "reftests", [SimpleNamespace(**r) for r in chosen]
+        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
 
 
