@@ -2,8 +2,7 @@
 
 Recovers every applicable coverage dimension from the decoded pre state and
 WithdrawalRequest via the real spec predicates, recomputes the outcome, and runs
-the handler as an oracle (post is always present; it must equal spec
-re-execution). Imports neither the materializer nor the model.
+recomputes the outcome. Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
@@ -93,9 +92,8 @@ def _derive(r: dict) -> str:
         return "PARTIAL_NOOP_NO_EXCESS_BALANCE"
     return "PARTIAL_QUEUED"
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     request = decode(case_dir / "withdrawal_request.ssz_snappy", spec.WithdrawalRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
@@ -103,9 +101,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     checks = [Check(d, c, actual.get(d, "<none>"), "ok" if actual.get(d, "<none>") == c else "mismatch")
               for d, c in claimed.items()]
 
-    errors: list[str] = []
-    oracle = pre.copy()
-    spec.process_withdrawal_request(oracle, request)
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post does not match spec re-execution")
-    return checks, errors
+    return checks

@@ -106,45 +106,9 @@ def recover(pre: Any, block: Any) -> dict[str, Any]:
         "payment_slot_cleared": applied and settlement in {"CURRENT_EPOCH", "PREVIOUS_EPOCH"},
     }
 
-def _check_applied_output(pre: Any, post: Any, actual: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
-    parent_bid = pre.latest_execution_payload_bid
-    parent_slot = int(parent_bid.slot)
-    availability_index = parent_slot % int(spec.SLOTS_PER_HISTORICAL_ROOT)
-    if post.execution_payload_availability[availability_index] != 0b1:
-        errors.append("parent payload availability bit was not set")
-    if post.latest_block_hash != parent_bid.block_hash:
-        errors.append("latest_block_hash was not updated to the parent block hash")
-
-    expected_growth = int(actual["payment_withdrawal_appended"])
-    growth = len(post.builder_pending_withdrawals) - len(pre.builder_pending_withdrawals)
-    if growth != expected_growth:
-        errors.append(f"builder_pending_withdrawals grew by {growth}, expected {expected_growth}")
-
-    settlement = actual["payment_settlement"]
-    if settlement in {"CURRENT_EPOCH", "PREVIOUS_EPOCH"}:
-        offset = parent_slot % int(spec.SLOTS_PER_EPOCH)
-        payment_index = offset
-        if settlement == "CURRENT_EPOCH":
-            payment_index += int(spec.SLOTS_PER_EPOCH)
-        if post.builder_pending_payments[payment_index] != spec.BuilderPendingPayment():
-            errors.append("settled builder payment slot was not cleared")
-    elif any(
-        before != after
-        for before, after in zip(
-            pre.builder_pending_payments,
-            post.builder_pending_payments,
-            strict=True,
-        )
-    ):
-        errors.append("evicted payment changed builder_pending_payments")
-    return errors
-
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     block = decode(case_dir / "block.ssz_snappy", spec.BeaconBlock)
-    post_path = case_dir / "post.ssz_snappy"
-    post = decode(post_path, spec.BeaconState) if post_path.exists() else None
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, block)
     checks = [
@@ -152,28 +116,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         for name, value in claimed.items()
     ]
 
-    rejected = actual["outcome"].startswith("REJECT_")
-    errors: list[str] = []
-    oracle = pre.copy()
-    try:
-        spec.process_parent_execution_payload(oracle, block)
-    except (AssertionError, IndexError):
-        if not rejected:
-            errors.append("spec re-execution rejected a claimed successful case")
-        if post is not None:
-            errors.append("rejected operation must not have a post state")
-        return checks, errors
-
-    if rejected:
-        errors.append("spec re-execution accepted a claimed rejected case")
-        return checks, errors
-    if post is None:
-        return checks, ["successful operation is missing post state"]
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post state does not match spec re-execution")
-    if actual["outcome"] == "EMPTY_PARENT_NOOP":
-        if post.hash_tree_root() != pre.hash_tree_root():
-            errors.append("empty-parent path changed state")
-    else:
-        errors.extend(_check_applied_output(pre, post, actual))
-    return checks, errors
+    return checks

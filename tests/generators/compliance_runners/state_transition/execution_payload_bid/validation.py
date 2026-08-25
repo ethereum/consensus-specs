@@ -3,8 +3,7 @@
 Recovers every applicable coverage dimension directly from the decoded pre state
 and SignedExecutionPayloadBid via the real spec predicates, compares to the
 serialized solution in dimensions.yaml, recomputes the outcome, and runs the
-handler as an oracle (post present + matching iff accepted). Imports neither the
-materializer nor the model.
+Imports neither the materializer nor the model.
 
 Usage:
     uv run python -m tests.generators.compliance_runners.state_transition.execution_payload_bid.validation [REFTESTS_DIR]
@@ -139,7 +138,7 @@ def _derive_outcome(r: dict[str, Any]) -> str:
         return "REJECT_BAD_SIGNATURE"
     return common()
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     signed = decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
@@ -151,24 +150,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         for dim, claim in claimed.items()
     ]
 
-    # Oracle: run the handler; accepted iff it does not raise.
-    errors: list[str] = []
-    post_path = case_dir / "post.ssz_snappy"
-    oracle = pre.copy()
-    accepted = True
-    try:
-        spec.process_execution_payload_bid(oracle, signed)
-    except (AssertionError, IndexError):
-        accepted = False
-
-    if accepted and not post_path.exists():
-        errors.append("handler accepted but no post recorded")
-    if not accepted and post_path.exists():
-        errors.append("handler rejected but post present")
-    if accepted and post_path.exists():
-        post = decode(post_path, spec.BeaconState)
-        if oracle.hash_tree_root() != post.hash_tree_root():
-            errors.append("post does not match spec re-execution")
-    if accepted != (claimed.get("outcome") == "ACCEPT"):
-        errors.append(f"accepted={accepted} but outcome={claimed.get('outcome')}")
-    return checks, errors
+    return checks

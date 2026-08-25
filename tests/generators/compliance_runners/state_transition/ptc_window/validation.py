@@ -10,7 +10,7 @@ from eth_consensus_specs.gloas import minimal as spec
 
 _YAML = YAML(typ="safe")
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = {
@@ -40,4 +40,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         Check(k, v, actual.get(k), "ok" if actual.get(k) == v else "mismatch")
         for k, v in claimed.items()
     ]
-    return checks, []
+    return checks

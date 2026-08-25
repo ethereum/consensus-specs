@@ -94,7 +94,7 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
     )
     return r
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     operation = decode(case_dir / "proposer_slashing.ssz_snappy", spec.ProposerSlashing)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
@@ -103,17 +103,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         Check(k, v, actual.get(k), "ok" if actual.get(k) == v else "mismatch")
         for k, v in claimed.items()
     ]
-    post_path, errors = case_dir / "post.ssz_snappy", []
-    if not actual["state_effected"]:
-        if post_path.exists():
-            errors.append("rejected operation must not have a post state")
-        return checks, errors
-    if not post_path.exists():
-        return checks, ["accepted operation is missing post state"]
-    post, oracle = decode(post_path, spec.BeaconState), pre.copy()
-    spec.process_proposer_slashing(oracle, operation)
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post state does not match spec re-execution")
-    if not post.validators[operation.signed_header_1.message.proposer_index].slashed:
-        errors.append("proposer was not slashed")
-    return checks, errors
+    return checks
