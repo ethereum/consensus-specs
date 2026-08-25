@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-import shutil
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase, TestCaseResult
-from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 _DIMS = [
     "epoch_position",
@@ -22,11 +17,11 @@ _DIMS = [
 ]
 
 
-class PtcWindowMaterializer:
-    def __init__(self, spec: Any):
-        self.spec = spec
+class PtcWindowMaterializer(Materializer):
+    runner_name = "epoch_processing"
+    handler_name = "ptc_window"
 
-    def materialize_solution(self, sol: Any):
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         s = self.spec
         pre = create_genesis_state(
             s,
@@ -43,35 +38,6 @@ class PtcWindowMaterializer:
         claimed = {
             n: (bool(v) if isinstance(v := getattr(sol, n), bool) else str(v)) for n in _DIMS
         }
-        return pre, post, claimed
-
-    def materialize_reps(self, output_dir: Path, reps: list[Any]):
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
-        dumper = Dumper()
-        for i, sol in enumerate(reps):
-            pre, post, claimed = self.materialize_solution(sol)
-            case = f"case_{i:04d}"
-            tc = TestCase(
-                fork_name="gloas",
-                preset_name="minimal",
-                runner_name="epoch_processing",
-                handler_name="ptc_window",
-                suite_name="main",
-                case_name=case,
-            )
-            tc.set_output_dir(str(output_dir))
-            dump_test_case_result(
-                TestCaseResult(
-                    test_case=tc,
-                    meta={"description": "process_ptc_window"},
-                    case_parts=[
-                        ("pre", "ssz", pre.encode_bytes()),
-                        ("post", "ssz", post.encode_bytes()),
-                    ],
-                ),
-                dumper,
-            )
-            dumper.dump_data(tc.dir, "dimensions", {"case": case, "claimed": claimed})
-        return len(reps)
+        meta = {"description": "process_ptc_window", "claimed": claimed}
+        parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
+        return meta, parts

@@ -95,21 +95,25 @@ def discover_handlers(test_dir: Path) -> list[str]:
     return [handler for _, handler in candidates]
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--test-dir", type=Path, required=True)
-    parser.add_argument(
-        "--cases",
-        type=str,
-        help="comma-separated case names to validate, e.g. case_0205,case_0206",
-    )
-    args = parser.parse_args()
-    test_dir = args.test_dir
-    selected_cases = (
-        {case.strip() for case in args.cases.split(",") if case.strip()}
-        if args.cases
-        else None
-    )
+def main(
+    test_dir: Path | None = None,
+    selected_cases: set[str] | None = None,
+) -> int:
+    if test_dir is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--test-dir", type=Path, required=True)
+        parser.add_argument(
+            "--cases",
+            type=str,
+            help="comma-separated case names to validate, e.g. case_0205,case_0206",
+        )
+        args = parser.parse_args()
+        test_dir = args.test_dir
+        selected_cases = (
+            {case.strip() for case in args.cases.split(",") if case.strip()}
+            if args.cases
+            else None
+        )
 
     handlers = discover_handlers(test_dir)
     result = 0
