@@ -20,9 +20,12 @@
   - [New containers](#new-containers)
     - [`SetSweepThresholdRequest`](#setsweepthresholdrequest)
 - [Helper functions](#helper-functions)
+  - [Math](#math)
+    - [New `bytes_to_uint16`](#new-bytes_to_uint16)
   - [Predicates](#predicates)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc)
+    - [New `get_initial_sweep_threshold`](#new-get_initial_sweep_threshold)
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
@@ -87,9 +90,10 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 ### Sweep threshold validation
 
-| Name                  | Value                                         |
-| --------------------- | --------------------------------------------- |
-| `MIN_SWEEP_THRESHOLD` | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
+| Name                                | Value        |
+| ----------------------------------- | ------------ |
+| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)` |
+| `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` | `Uint64(2)`  |
 
 ## Presets
 
@@ -183,6 +187,18 @@ class SetSweepThresholdRequest(Container):
 
 ## Helper functions
 
+### Math
+
+#### New `bytes_to_uint16`
+
+```python
+def bytes_to_uint16(data: bytes) -> Uint16:
+    """
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+    """
+    return Uint16(int.from_bytes(data, ENDIANNESS))
+```
+
 ### Predicates
 
 #### Modified `is_partially_withdrawable_validator`
@@ -209,6 +225,50 @@ def is_partially_withdrawable_validator(
 ```
 
 ### Misc
+
+#### New `get_initial_sweep_threshold`
+
+A validator may be created with a custom sweep threshold already in place, by
+encoding it in the compounding withdrawal credentials of the deposit that
+creates it. The `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` bytes starting at
+`SWEEP_THRESHOLD_CREDENTIAL_OFFSET`, which are unused before this upgrade, hold
+the threshold in units of `EFFECTIVE_BALANCE_INCREMENT`, encoded as a
+little-endian integer:
+
+| Bytes    | Contents                                         |
+| -------- | ------------------------------------------------ |
+| `0`      | `COMPOUNDING_WITHDRAWAL_PREFIX` (`0x02`)         |
+| `1..9`   | Reserved                                         |
+| `10..11` | Threshold in `EFFECTIVE_BALANCE_INCREMENT` units |
+| `12..31` | Execution address                                |
+
+*Note*: A threshold that is out of range is ignored rather than rejected, so
+that a deposit built by tooling unaware of this upgrade, or carrying a
+nonsensical value, still creates a validator with the default threshold. Only
+compounding credentials carry a threshold; for any other prefix this returns 0,
+which means the default applies.
+
+```python
+def get_initial_sweep_threshold(withdrawal_credentials: Bytes32) -> Gwei:
+    """
+    Get the initial sweep threshold for a validator created with
+    ``withdrawal_credentials``.
+    """
+    if not is_compounding_withdrawal_credential(withdrawal_credentials):
+        return Gwei(0)
+
+    start = SWEEP_THRESHOLD_CREDENTIAL_OFFSET
+    end = start + SWEEP_THRESHOLD_CREDENTIAL_LENGTH
+    increments = bytes_to_uint16(withdrawal_credentials[start:end])
+    threshold = Gwei(increments) * EFFECTIVE_BALANCE_INCREMENT
+
+    if threshold < MIN_ACTIVATION_BALANCE:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+    if threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+
+    return threshold
+```
 
 #### New `get_effective_sweep_threshold`
 
@@ -242,13 +302,8 @@ def add_validator_to_registry(
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8148]
-    set_or_append_list(
-        state.validator_sweep_thresholds,
-        index,
-        MAX_EFFECTIVE_BALANCE_ELECTRA
-        if has_compounding_withdrawal_credential(validator)
-        else Gwei(0),
-    )
+    threshold = get_initial_sweep_threshold(withdrawal_credentials)
+    set_or_append_list(state.validator_sweep_thresholds, index, threshold)
 ```
 
 ### Beacon state mutators
@@ -416,7 +471,7 @@ def process_set_sweep_threshold_request(
         return
     if request.threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
-    if request.threshold < MIN_SWEEP_THRESHOLD:
+    if request.threshold < MIN_ACTIVATION_BALANCE:
         return
     if request.threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
         return
