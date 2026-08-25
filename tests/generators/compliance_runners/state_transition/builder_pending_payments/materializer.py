@@ -1,15 +1,8 @@
 from __future__ import annotations
 
-import shutil
-from typing import Any, TYPE_CHECKING
-
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase, TestCaseResult
-from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 _DIMS = [
     "previous_epoch_occupancy",
@@ -28,11 +21,11 @@ _DIMS = [
 ]
 
 
-class BuilderPendingPaymentsMaterializer:
-    def __init__(self, spec: Any):
-        self.spec = spec
+class BuilderPendingPaymentsMaterializer(Materializer):
+    runner_name = "epoch_processing"
+    handler_name = "builder_pending_payments"
 
-    def materialize_solution(self, sol):
+    def materialize_solution(self, sol) -> tuple[dict, list[TestCasePart]]:
         s = self.spec
         pre = create_genesis_state(
             s,
@@ -89,34 +82,6 @@ class BuilderPendingPaymentsMaterializer:
         claimed = {
             n: (bool(v) if isinstance(v := getattr(sol, n), bool) else str(v)) for n in _DIMS
         }
-        return pre, post, claimed
-
-    def materialize_reps(self, out: Path, reps: list[Any]):
-        if out.exists():
-            shutil.rmtree(out)
-        out.mkdir(parents=True)
-        d = Dumper()
-        for i, sol in enumerate(reps):
-            pre, post, c = self.materialize_solution(sol)
-            tc = TestCase(
-                fork_name="gloas",
-                preset_name="minimal",
-                runner_name="epoch_processing",
-                handler_name="builder_pending_payments",
-                suite_name="main",
-                case_name=f"case_{i:04d}",
-            )
-            tc.set_output_dir(str(out))
-            dump_test_case_result(
-                TestCaseResult(
-                    test_case=tc,
-                    meta={"description": "process_builder_pending_payments"},
-                    case_parts=[
-                        ("pre", "ssz", pre.encode_bytes()),
-                        ("post", "ssz", post.encode_bytes()),
-                    ],
-                ),
-                d,
-            )
-            d.dump_data(tc.dir, "dimensions", {"claimed": c})
-        return len(reps)
+        meta = {"description": "process_builder_pending_payments", "claimed": claimed}
+        parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
+        return meta, parts

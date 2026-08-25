@@ -48,11 +48,11 @@ def _recs():
     return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     from eth_consensus_specs.gloas import minimal as spec
     _, chosen = build_profile(_recs(), name)
     reps = [SimpleNamespace(**r) for r in chosen]
-    out = Path(__file__).parent / "reftests"
+    out = output_dir or (Path(__file__).parent / "reftests")
     return DepositRequestMaterializer(spec, MODEL).materialize_reps(out, reps)
 
 

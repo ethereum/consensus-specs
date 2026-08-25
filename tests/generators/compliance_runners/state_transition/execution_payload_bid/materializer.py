@@ -14,19 +14,15 @@ Usage:
 """
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
 from typing import Any
 
-import minizinc
-
-from eth_consensus_specs.test.utils.dumper import Dumper
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
 from eth_consensus_specs.utils import bls
 
-from ...gen_base.gen_typing import TestCase, TestCaseResult, TestCasePart
-from ...gen_base.output import dump_test_case_result
+from ...gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
+
 
 BUILDER_PUBKEY = builder_pubkeys[0]         # the referenced builder
 WRONG_PUBKEY = builder_pubkeys[1]           # a different signer, for invalid signatures
@@ -55,12 +51,9 @@ def _b(sol: Any, name: str) -> bool:
     return bool(getattr(sol, name))
 
 
-class ExecutionPayloadBidMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec = spec
-        self.model_path = model_path
-        self.fork_name = fork_name
-        self.preset_name = preset_name
+class ExecutionPayloadBidMaterializer(Materializer):
+    runner_name = "operations"
+    handler_name = "execution_payload_bid"
 
     def _sign(self, state: Any, bid: Any, privkey: int) -> Any:
         spec = self.spec
@@ -85,7 +78,7 @@ class ExecutionPayloadBidMaterializer:
         )
         return state
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any, Any, bool, dict]:
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         ref = _s(sol, "builder_ref")
         self_build = _b(sol, "self_build")
@@ -224,61 +217,16 @@ class ExecutionPayloadBidMaterializer:
 
         claimed = {name: (_s(sol, name) if not isinstance(getattr(sol, name), bool) else _b(sol, name))
                    for name in _DIMS}
-        return pre, signed, post, accepted, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, sol: Any) -> None:
-        """Materialize one solution-like object and write its case directory."""
-        pre, signed, post, accepted, claimed = self.materialize_solution(sol)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name, preset_name=self.preset_name,
-            runner_name="operations", handler_name="execution_payload_bid",
-            suite_name="main", case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
-        case_parts: list[TestCasePart] = [
-            ("pre", "ssz", pre.encode_bytes()),  # type: ignore
-            ("execution_payload_bid", "ssz", signed.encode_bytes()),  # type: ignore
+        parts: list[TestCasePart] = [
+            ("pre", "ssz", pre.encode_bytes()),
+            ("execution_payload_bid", "ssz", signed.encode_bytes()),
         ]
         if accepted:
-            case_parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore
+            parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore
         meta = {
             "description": f"process_execution_payload_bid: {claimed['outcome']} "
                            f"(self_build={int(bool(claimed['self_build']))})",
             "bls_setting": 1,
+            "claimed": claimed,
         }
-        dump_test_case_result(TestCaseResult(test_case=test_case, meta=meta, case_parts=case_parts), dumper)
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> int:
-        """Materialize a pre-selected list of solution-like objects."""
-        if output_dir.exists():
-            shutil.rmtree(output_dir)  # avoid stale files (e.g. a post from a prior profile)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        dumper = Dumper()
-        for i, sol in enumerate(reps):
-            self.write_case(dumper, output_dir, i, sol)
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
-
-    def materialize_test_cases(self, output_dir: Path) -> int:
-        """Smoke profile: solve coverage_smoke and reduce by cover_each((outcome, self_build))."""
-        model = minizinc.Model(str(self.model_path))
-        result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
-        reps: dict[tuple, Any] = {}
-        for sol in result:
-            reps.setdefault((str(sol.outcome), bool(sol.self_build)), sol)
-        ordered = [sol for _, sol in sorted(reps.items(), key=lambda kv: (kv[0][0], kv[0][1]))]
-        return self.materialize_reps(output_dir, ordered)
-
-
-def main():
-    from eth_consensus_specs.gloas import minimal as gloas_minimal
-
-    model_path = Path(__file__).parent / "models" / "coverage_smoke.mzn"
-    output_dir = Path(__file__).parent / "reftests"
-    ExecutionPayloadBidMaterializer(gloas_minimal, model_path).materialize_test_cases(output_dir)
-
-
-if __name__ == "__main__":
-    main()
+        return meta, parts

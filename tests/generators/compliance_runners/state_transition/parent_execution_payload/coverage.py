@@ -99,10 +99,10 @@ def build_profile(records: list[dict], name: str):
     raise ValueError(f"unknown profile: {name}")
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_records(), name)
     reps = [SimpleNamespace(**record) for record in chosen]
-    output_dir = Path(__file__).parent / "reftests"
+    output_dir = output_dir or (Path(__file__).parent / "reftests")
     return ParentExecutionPayloadMaterializer(spec, MODEL).materialize_reps(output_dir, reps)
 
 
