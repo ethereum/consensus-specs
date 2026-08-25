@@ -332,8 +332,15 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     config_vars = combine_dicts(spec0.config_vars, spec1.config_vars)
     ssz_dep_constants = combine_dicts(spec0.ssz_dep_constants, spec1.ssz_dep_constants)
     func_dep_presets = combine_dicts(spec0.func_dep_presets, spec1.func_dep_presets)
-    ssz_objects = combine_ssz_objects(spec0.ssz_objects, spec1.ssz_objects)
-    dataclasses = combine_dicts(spec0.dataclasses, spec1.dataclasses)
+    # A newer definition may change a class between a dataclass and an SSZ object.
+    ssz_objects = combine_ssz_objects(
+        {key: value for key, value in spec0.ssz_objects.items() if key not in spec1.dataclasses},
+        spec1.ssz_objects,
+    )
+    dataclasses = combine_dicts(
+        {key: value for key, value in spec0.dataclasses.items() if key not in spec1.ssz_objects},
+        spec1.dataclasses,
+    )
     return SpecObject(
         functions=functions,
         protocols=protocols,

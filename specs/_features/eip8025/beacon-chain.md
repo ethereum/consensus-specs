@@ -15,14 +15,11 @@
   - [Execution](#execution)
   - [Domains](#domains)
 - [Containers](#containers)
-  - [New `NewPayloadRequestData`](#new-newpayloadrequestdata)
+  - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
-- [Helpers](#helpers)
-  - [New `compute_new_payload_request_root`](#new-compute_new_payload_request_root)
-  - [New `build_execution_proof`](#new-build_execution_proof)
 - [Execution proof verification](#execution-proof-verification)
   - [New `process_execution_proof`](#new-process_execution_proof)
 
@@ -83,10 +80,10 @@ MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`.
 
 ## Containers
 
-### New `NewPayloadRequestData`
+### Modified `NewPayloadRequest`
 
 ```python
-class NewPayloadRequestData(Container):
+class NewPayloadRequest(ProgressiveContainer(active_fields=[1] * 4)):
     execution_payload: ExecutionPayload
     versioned_hashes: List[VersionedHash, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     parent_beacon_block_root: Root
@@ -127,35 +124,6 @@ class SignedExecutionProofEnvelope(Container):
     signature: BLSSignature
 ```
 
-## Helpers
-
-### New `compute_new_payload_request_root`
-
-```python
-def compute_new_payload_request_root(new_payload_request: NewPayloadRequest) -> Root:
-    request_data = NewPayloadRequestData(
-        execution_payload=new_payload_request.execution_payload,
-        versioned_hashes=new_payload_request.versioned_hashes,
-        parent_beacon_block_root=new_payload_request.parent_beacon_block_root,
-        execution_requests=new_payload_request.execution_requests,
-    )
-    return hash_tree_root(request_data)
-```
-
-### New `build_execution_proof`
-
-```python
-def build_execution_proof(
-    proof_envelope: ExecutionProofEnvelope,
-    public_input: PublicInput,
-) -> ExecutionProof:
-    return ExecutionProof(
-        proof_data=proof_envelope.proof_data,
-        proof_type=proof_envelope.proof_type,
-        public_input=public_input,
-    )
-```
-
 ## Execution proof verification
 
 ### New `process_execution_proof`
@@ -183,6 +151,10 @@ def process_execution_proof(
     assert bls.Verify(validator.pubkey, signing_root, signed_proof_envelope.signature)
 
     # Verify the execution proof
-    proof = build_execution_proof(proof_envelope, public_input)
+    proof = ExecutionProof(
+        proof_data=proof_envelope.proof_data,
+        proof_type=proof_envelope.proof_type,
+        public_input=public_input,
+    )
     assert proof_engine.verify_execution_proof(proof)
 ```

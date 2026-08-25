@@ -53,8 +53,7 @@ An honest prover performs the following steps for a received
 1. Let `beacon_block_root = signed_envelope.message.beacon_block_root`.
 2. Construct the corresponding `NewPayloadRequest` from the beacon block and
    `signed_envelope`.
-3. Let
-   `new_payload_request_root = compute_new_payload_request_root(new_payload_request)`.
+3. Let `new_payload_request_root = hash_tree_root(new_payload_request)`.
 4. Construct `ProofAttributes` containing the desired proof types.
 5. Call `proof_engine.request_proofs(new_payload_request, proof_attributes)`.
 6. For each requested `proof_type`, subsequently call

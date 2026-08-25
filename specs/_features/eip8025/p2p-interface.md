@@ -141,7 +141,11 @@ def validate_execution_proof_gossip(
 
     # Verify before propagation so peers can be scored for invalid proofs
     public_input = compute_execution_proof_public_input(store, beacon_block_root)
-    proof = build_execution_proof(proof_envelope, public_input)
+    proof = ExecutionProof(
+        proof_data=proof_envelope.proof_data,
+        proof_type=proof_envelope.proof_type,
+        public_input=public_input,
+    )
     is_valid = proof_engine.verify_execution_proof(proof)
 
     # Mark the authenticated prover attempt as seen after verification completes

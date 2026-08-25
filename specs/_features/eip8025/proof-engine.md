@@ -77,7 +77,7 @@ def request_proofs(
     ``proof_attributes``.
 
     Internally associate generated proofs with
-    ``compute_new_payload_request_root(new_payload_request)``.
+    ``hash_tree_root(new_payload_request)``.
     """
 ```
 

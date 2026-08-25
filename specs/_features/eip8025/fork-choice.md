@@ -111,9 +111,7 @@ def compute_execution_proof_public_input(
         parent_beacon_block_root=envelope.parent_beacon_block_root,
         execution_requests=envelope.execution_requests,
     )
-    return PublicInput(
-        new_payload_request_root=compute_new_payload_request_root(new_payload_request)
-    )
+    return PublicInput(new_payload_request_root=hash_tree_root(new_payload_request))
 ```
 
 ## Handlers

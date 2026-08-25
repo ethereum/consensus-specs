@@ -46,7 +46,7 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     proof_data = spec.ProofData(b"\x01")
     proof_engine = MockProofEngine(proof_data=proof_data)
     new_payload_request = make_new_payload_request(spec, store.payloads[beacon_block_root])
-    new_payload_request_root = spec.compute_new_payload_request_root(new_payload_request)
+    new_payload_request_root = spec.hash_tree_root(new_payload_request)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
     result = proof_engine.request_proofs(new_payload_request, proof_attributes)
@@ -75,7 +75,11 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     spec.on_execution_proof(store, signed_proof, proof_engine)
 
     public_input = spec.PublicInput(new_payload_request_root=new_payload_request_root)
-    proof = spec.build_execution_proof(proof_envelope, public_input)
+    proof = spec.ExecutionProof(
+        proof_data=proof_envelope.proof_data,
+        proof_type=proof_envelope.proof_type,
+        public_input=public_input,
+    )
     assert proof_engine.verifications == [proof, proof]
     assert store.execution_proofs[beacon_block_root][proof_type] == proof_envelope
 
@@ -93,6 +97,4 @@ def test_default_proof_engine_rejects_prover_operations(spec, state):
         spec.PROOF_ENGINE.request_proofs(new_payload_request, proof_attributes)
 
     with pytest.raises(NotImplementedError, match="no default proof retrieval"):
-        spec.PROOF_ENGINE.get_proof(
-            spec.compute_new_payload_request_root(new_payload_request), proof_type
-        )
+        spec.PROOF_ENGINE.get_proof(spec.hash_tree_root(new_payload_request), proof_type)

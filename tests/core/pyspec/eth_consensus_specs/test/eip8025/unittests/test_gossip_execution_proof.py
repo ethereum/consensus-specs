@@ -74,7 +74,11 @@ def get_proof_engine_input(spec, store, signed_proof):
     public_input = spec.compute_execution_proof_public_input(
         store, proof_envelope.beacon_block_root
     )
-    return spec.build_execution_proof(proof_envelope, public_input)
+    return spec.ExecutionProof(
+        proof_data=proof_envelope.proof_data,
+        proof_type=proof_envelope.proof_type,
+        public_input=public_input,
+    )
 
 
 @with_eip8025_and_later
