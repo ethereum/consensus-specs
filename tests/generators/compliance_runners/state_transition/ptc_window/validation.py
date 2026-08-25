@@ -27,6 +27,14 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
                 else "MIXED_BALANCE"
             )
         ),
+        "validator_activity": (
+            "ALL_ACTIVE"
+            if all(
+                validator.activation_epoch <= spec.get_current_epoch(pre)
+                for validator in pre.validators
+            )
+            else "SOME_INACTIVE"
+        ),
     }
     checks = [
         Check(k, v, actual.get(k), "ok" if actual.get(k) == v else "mismatch")
