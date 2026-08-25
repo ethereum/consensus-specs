@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import shutil
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase, TestCaseResult
-from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 _DIMS = [
     "queue_layout",
@@ -36,11 +31,9 @@ _DIMS = [
 NUM_VALIDATORS = 128
 
 
-class PendingDepositsMaterializer:
-    def __init__(self, spec: Any, fork_name: str = "gloas", preset_name: str = "minimal"):
-        self.spec = spec
-        self.fork_name = fork_name
-        self.preset_name = preset_name
+class PendingDepositsMaterializer(Materializer):
+    runner_name = "epoch_processing"
+    handler_name = "pending_deposits"
 
     def _base_state(self) -> Any:
         state = create_genesis_state(
@@ -70,7 +63,7 @@ class PendingDepositsMaterializer:
             slot=self.spec.GENESIS_SLOT if slot is None else slot,
         )
 
-    def materialize_solution(self, solution: Any) -> tuple[Any, Any, dict[str, str]]:
+    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
         layout = str(solution.queue_layout)
@@ -148,42 +141,6 @@ class PendingDepositsMaterializer:
             name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
             for name in _DIMS
         }
-        return pre, post, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, solution: Any) -> None:
-        pre, post, claimed = self.materialize_solution(solution)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name,
-            preset_name=self.preset_name,
-            runner_name="epoch_processing",
-            handler_name="pending_deposits",
-            suite_name="main",
-            case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
-        dump_test_case_result(
-            TestCaseResult(
-                test_case=test_case,
-                meta={
-                    "description": f"process_pending_deposits: {claimed['outcome']}",
-                    "bls_setting": 1,
-                },
-                case_parts=[
-                    ("pre", "ssz", pre.encode_bytes()),  # type: ignore[arg-type]
-                    ("post", "ssz", post.encode_bytes()),  # type: ignore[arg-type]
-                ],
-            ),
-            dumper,
-        )
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-
-    def materialize_reps(self, output_dir: Path, reps: list[Any]) -> int:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
-        dumper = Dumper()
-        for index, solution in enumerate(reps):
-            self.write_case(dumper, output_dir, index, solution)
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
+        meta = {"description": f"process_pending_deposits: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
+        return meta, parts

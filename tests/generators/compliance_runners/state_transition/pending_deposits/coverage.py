@@ -79,10 +79,10 @@ def build_profile(records, name: str):
     return cover(records, ALL_ASPECTS, strength)
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return PendingDepositsMaterializer(spec).materialize_reps(
-        Path(__file__).parent / "reftests", [SimpleNamespace(**record) for record in chosen]
+        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**record) for record in chosen]
     )
 
 

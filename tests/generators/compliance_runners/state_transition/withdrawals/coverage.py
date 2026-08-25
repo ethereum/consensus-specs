@@ -72,10 +72,10 @@ def build_profile(records, name: str):
     return cover(records, aspects, strength, outcome_filter, accept=ACCEPT)
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return WithdrawalsMaterializer(spec, MODEL).materialize_reps(
-        Path(__file__).parent / "reftests", [SimpleNamespace(**record) for record in chosen]
+        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**record) for record in chosen]
     )
 
 
