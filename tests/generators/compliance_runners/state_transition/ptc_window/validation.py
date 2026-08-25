@@ -18,6 +18,15 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         if int(spec.get_current_epoch(pre)) == 0
         else "LATER_EPOCH_END",
         "validator_count": "MINIMUM" if len(pre.validators) == 64 else "MANY",
+        "validator_balance": (
+            "MAXIMUM_BALANCE"
+            if all(balance == spec.MAX_EFFECTIVE_BALANCE for balance in pre.balances)
+            else (
+                "MINIMUM_BALANCE"
+                if all(balance == spec.EFFECTIVE_BALANCE_INCREMENT for balance in pre.balances)
+                else "MIXED_BALANCE"
+            )
+        ),
     }
     checks = [
         Check(k, v, actual.get(k), "ok" if actual.get(k) == v else "mismatch")
