@@ -56,8 +56,6 @@ seen_partial_data_column_headers: [{
 current_time_ms: int         -- The base time in milliseconds since genesis.
 messages: [{                 -- List of messages to validate in sequence.
     offset_ms: int,          -- Time offset from current_time_ms when message is received.
-    state_block: string,     -- Optional. Block file whose post-state is passed to
-                             -- validation instead of the head state.
     subnet_id: int,          -- Optional. The subnet ID for subnet-scoped topics.
     column_index: int,       -- Optional. The column index for
                              -- `partial_data_column_sidecar` vectors.
@@ -147,10 +145,9 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
      `offset_ms` values are independent and need not be monotonic.
    - Deserialize the message file based on the topic type.
-   - Execute the appropriate validation function, using the store built above.
-     Use the post-state of `message.state_block` when specified. Otherwise, use
-     the head state derived from the imported blocks (advanced with empty slots
-     to the current slot where required).
+   - Execute the appropriate validation function, using the store built above
+     and the head state derived from the imported blocks (advanced with empty
+     slots to the current slot where required).
      - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
        and `data_column_sidecar`, pass `message.subnet_id`.
      - For `partial_data_column_sidecar`, pass the `PartialDataColumnGroupID`

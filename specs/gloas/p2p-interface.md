@@ -783,7 +783,6 @@ This topic is used to propagate execution payload messages as
 def validate_execution_payload_envelope_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_execution_payload_envelope: SignedExecutionPayloadEnvelope,
 ) -> None:
     """
@@ -802,6 +801,8 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The envelope's block passes validation
     if block_root not in store.block_states:
         raise GossipReject("envelope's block failed validation")
+
+    state = store.block_states[block_root]
 
     # [IGNORE] The node has not seen another valid envelope for this block root from this builder
     envelope_key = (block_root, envelope.builder_index)
