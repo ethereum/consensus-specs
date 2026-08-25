@@ -1,8 +1,8 @@
 """Coverage profiles for process_deposit_request.
 
 This handler has no rejections, so there is no normal/exceptional split — just a
-combinatorial sweep over its one control-flow dimension (`start_index_unset`) and
-two input-shape dimensions. `standard` = pairwise over all aspects.
+combinatorial sweep over its input-shape dimensions. `standard` = pairwise over
+all aspects.
 
 Run:
     uv run python -m ...deposit_request.coverage
@@ -17,11 +17,12 @@ from ..aspect_coverage import cover, enumerate_signatures
 from .materializer import DepositRequestMaterializer, _DIMS
 
 INPUT_ASPECTS = {
-    "deposit_amount": ["amount_nonzero"],
+    "deposit_amount": ["amount_profile", "amount_nonzero"],
+    "withdrawal_credentials": ["withdrawal_credentials_profile"],
+    "signature": ["signature_profile"],
     "deposit_pubkey": ["pubkey_is_existing_validator"],
 }
-OUTCOME_ASPECT = {"outcome": ["outcome"]}
-ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
+ALL_ASPECTS = INPUT_ASPECTS
 MODEL = Path(__file__).parent / "models" / "handler_deposit_request.mzn"
 
 
