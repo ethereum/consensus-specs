@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -58,28 +57,3 @@ def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     return AttestationMaterializer(spec, MODEL).materialize_reps(
         output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
-
-
-def main() -> int:
-    args, materialize = (
-        [a for a in sys.argv[1:] if not a.startswith("--")],
-        "--materialize" in sys.argv,
-    )
-    recs = _recs()
-    if not args:
-        for name in ("onewise", "standard"):
-            obligations, cases = build_profile(recs, name)
-            print(
-                f"{name}: {len(cases)} cases"
-                + (f", {obligations} obligations" if obligations >= 0 else "")
-            )
-        return 0
-    _, cases = build_profile(recs, args[0])
-    print(f"profile '{args[0]}': {len(cases)} cases")
-    if materialize:
-        materialize_profile(args[0])
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

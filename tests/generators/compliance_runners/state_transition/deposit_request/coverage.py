@@ -10,7 +10,6 @@ Run:
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -54,28 +53,3 @@ def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
     return DepositRequestMaterializer(spec, MODEL).materialize_reps(out, reps)
-
-
-def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    materialize = "--materialize" in sys.argv
-    recs = _recs()
-    print(f"distinct aspect-state signatures: {len(recs)}\n")
-
-    if not args:
-        print(f"{'profile':10} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "pairwise"):
-            n_obl, chosen = build_profile(recs, name)
-            print(f"{name:10} {n_obl:>12} {len(chosen):>7}")
-        return 0
-
-    n_obl, chosen = build_profile(recs, args[0])
-    print(f"profile '{args[0]}': {len(chosen)} cases covering {n_obl} obligations")
-    if materialize:
-        materialize_profile(args[0])
-        print("Validate with: python -m ...deposit_request.validation")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
