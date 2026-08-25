@@ -12,7 +12,11 @@
 include "../../aspects/deposit_amount.mzn";
 include "../../aspects/deposit_pubkey.mzn";
 
-enum Outcome = { APPENDED };
+enum AmountProfile = { ZERO, MINIMUM, ACTIVATION, ABOVE_ACTIVATION };
+enum WithdrawalCredentialsProfile = { BLS, ETH1, COMPOUNDING, BUILDER };
+enum SignatureProfile = { VALID, INVALID };
 
-var Outcome: outcome;
-constraint outcome = APPENDED;
+var AmountProfile: amount_profile;
+constraint amount_nonzero <-> amount_profile != ZERO;
+var WithdrawalCredentialsProfile: withdrawal_credentials_profile;
+var SignatureProfile: signature_profile;
