@@ -7,7 +7,7 @@ materializer nor the model.
 """
 from __future__ import annotations
 
-from ..validation import Check, decode
+from ..validation import check_dimensions, decode
 
 from pathlib import Path
 from typing import Any
@@ -144,8 +144,4 @@ def validate_case(case_dir: Path) -> list[Check]:
     request = decode(case_dir / "consolidation_request.ssz_snappy", spec.ConsolidationRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
-
-    checks = [Check(d, c, actual.get(d, "<none>"), "ok" if actual.get(d, "<none>") == c else "mismatch")
-              for d, c in claimed.items()]
-
-    return checks
+    return check_dimensions(claimed, actual)
