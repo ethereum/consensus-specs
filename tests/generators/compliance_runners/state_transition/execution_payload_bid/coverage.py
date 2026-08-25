@@ -10,7 +10,6 @@ Run:
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -125,37 +124,3 @@ def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
     return _materialize(recs, name, output_dir)
-
-
-def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    materialize = "--materialize" in sys.argv
-
-    print("Enumerating feasible space (~20s)...")
-    # Preserve the fine-grained signature space so that both coarse and
-    # detailed profiles can be selected from the same enumeration.
-    recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
-    print(f"distinct aspect-state signatures: {len(recs)}\n")
-
-    if not args:
-        print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional", "detailed"):
-            n_obl, chosen = build_profile(recs, name)
-            print(f"{name:14} {n_obl:>12} {len(chosen):>7}")
-        _, std = build_profile(recs, "standard")
-        print(f"{'standard':14} {'(union)':>12} {len(std):>7}")
-        print("\n(also: coverage pairwise --materialize)")
-        return 0
-
-    n_obl, chosen = build_profile(recs, args[0])
-    print(f"profile '{args[0]}': {len(chosen)} cases"
-          + (f" covering {n_obl} obligations" if n_obl >= 0 else ""))
-    if materialize:
-        print()
-        _materialize(recs, args[0])
-        print("Validate with: python -m ...execution_payload_bid.validation")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
