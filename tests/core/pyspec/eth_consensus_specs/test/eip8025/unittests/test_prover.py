@@ -44,6 +44,7 @@ def setup_store_with_block(spec, state):
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
+    store.payloads[block_root] = spec.ExecutionPayloadEnvelope(beacon_block_root=block_root)
     return store, block_root
 
 

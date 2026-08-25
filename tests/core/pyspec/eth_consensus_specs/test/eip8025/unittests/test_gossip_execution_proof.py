@@ -35,6 +35,12 @@ class DummyProofEngine:
         raise NotImplementedError
 
 
+class TimingOutProofEngine(DummyProofEngine):
+    def verify_execution_proof(self, proof):
+        self.proofs.append(proof)
+        raise TimeoutError
+
+
 def setup_store_with_block(spec, state):
     """Build one accepted block and return its fork-choice store and root."""
     store, _anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -43,6 +49,7 @@ def setup_store_with_block(spec, state):
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
+    store.payloads[block_root] = spec.ExecutionPayloadEnvelope(beacon_block_root=block_root)
 
     return store, block_root
 
@@ -138,6 +145,15 @@ def test_validate_execution_proof_gossip_block_context(spec, state):
         "execution proof's beacon block failed validation",
     )
     store.block_states[block_root] = block_state
+
+    payload = store.payloads.pop(block_root)
+    proof_engine = DummyProofEngine()
+    assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == (
+        "ignore",
+        "execution proof's payload is unavailable",
+    )
+    assert proof_engine.proofs == []
+    store.payloads[block_root] = payload
 
 
 @with_eip8025_and_later
@@ -266,6 +282,22 @@ def test_gossip_verifies_before_handler_stores(spec, state):
         alternate_proof.message.proof_type: alternate_proof.message,
         third_proof.message.proof_type: third_proof.message,
     }
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_gossip_ignores_proof_engine_timeout(spec, state):
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof(spec, state, block_root)
+    proof_engine = TimingOutProofEngine()
+    seen = get_seen(spec)
+
+    assert validate(spec, seen, store, signed_proof, proof_engine) == (
+        "ignore",
+        "execution proof verification timed out",
+    )
+    assert proof_engine.proofs == [signed_proof.message]
+    assert seen.execution_proof_provers == set()
 
 
 @with_eip8025_and_later

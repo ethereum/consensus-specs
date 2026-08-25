@@ -49,6 +49,11 @@ def verify_execution_proof(
     """
     Verify an execution proof.
     Return ``True`` if proof is valid.
+
+    Internally resolve the beacon block and verified execution payload envelope
+    identified by ``execution_proof.public_input.beacon_block_root``. Construct
+    the corresponding ``NewPayloadRequest`` and use its root as the proof-system
+    public input.
     """
 ```
 

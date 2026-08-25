@@ -106,6 +106,10 @@ def validate_execution_proof_gossip(
     if beacon_block_root not in store.block_states:
         raise GossipReject("execution proof's beacon block failed validation")
 
+    # [IGNORE] The proof's execution payload is available
+    if beacon_block_root not in store.payloads:
+        raise GossipIgnore("execution proof's payload is unavailable")
+
     state = store.block_states[beacon_block_root]
 
     # [REJECT] The prover validator index is valid
@@ -135,11 +139,17 @@ def validate_execution_proof_gossip(
     if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
         raise GossipReject("execution proof's signature is invalid")
 
-    # Mark the authenticated prover attempt as seen
+    # Ignore timeouts because they do not establish that the peer supplied an invalid proof
+    try:
+        is_valid = proof_engine.verify_execution_proof(proof)
+    except TimeoutError:
+        raise GossipIgnore("execution proof verification timed out") from None
+
+    # Mark the authenticated prover attempt as seen after verification completes
     seen.execution_proof_provers.add(prover_key)
 
-    # Verify before forwarding to prevent invalid proofs from propagating
-    if not proof_engine.verify_execution_proof(proof):
+    # Reject completed verification failures to prevent invalid proofs from propagating
+    if not is_valid:
         raise GossipReject("execution proof is invalid")
 ```
 
