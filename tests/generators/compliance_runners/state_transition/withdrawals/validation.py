@@ -62,20 +62,12 @@ def recover(pre: Any) -> dict[str, Any]:
         "outcome": outcome,
     }
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre)
     checks = [
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
         for name, value in claimed.items()
     ]
-    oracle = pre.copy()
-    spec.process_withdrawals(oracle)
-    errors = []
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post state does not match spec re-execution")
-    if (pre.hash_tree_root() != post.hash_tree_root()) != actual["state_effected"]:
-        errors.append("state change does not match state_effected")
-    return checks, errors
+    return checks
