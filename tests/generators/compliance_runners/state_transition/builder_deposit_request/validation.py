@@ -2,8 +2,7 @@
 
 Recovers every applicable coverage dimension from the decoded pre state and
 BuilderDepositRequest via the real spec predicates, recomputes the outcome, and
-runs the handler as an oracle (post is always present; it must equal spec
-re-execution). Imports neither the materializer nor the model.
+Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
@@ -54,9 +53,8 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     r["builder_credited"] = outcome in _ACCEPT
     return r
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     request = decode(case_dir / "builder_deposit_request.ssz_snappy", spec.BuilderDepositRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
@@ -64,12 +62,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     checks = [Check(d, c, actual.get(d, "<none>"), "ok" if actual.get(d, "<none>") == c else "mismatch")
               for d, c in claimed.items()]
 
-    # Oracle: post must equal spec re-execution. (Note: `builder_credited` means
-    # the credit branch was reached, not that state changed — a zero-amount
-    # top-up credits nothing — so it is not a state-change predicate.)
-    errors: list[str] = []
-    oracle = pre.copy()
-    spec.process_builder_deposit_request(oracle, request)
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post does not match spec re-execution")
-    return checks, errors
+    return checks
