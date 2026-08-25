@@ -581,7 +581,7 @@ def compute_proposer_index(
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
         # [Modified in Electra]
-        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        random_bytes = sha256(seed + uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance
@@ -815,7 +815,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
         )
         candidate_index = active_validator_indices[shuffled_index]
         # [Modified in Electra]
-        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        random_bytes = sha256(seed + uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance

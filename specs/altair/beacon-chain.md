@@ -326,7 +326,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
             Uint64(i % active_validator_count), active_validator_count, seed
         )
         candidate_index = active_validator_indices[shuffled_index]
-        random_byte = hash(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
+        random_byte = sha256(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             sync_committee_indices.append(candidate_index)
