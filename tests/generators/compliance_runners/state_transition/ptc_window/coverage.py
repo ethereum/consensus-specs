@@ -14,14 +14,7 @@ from .materializer import _DIMS, PtcWindowMaterializer
 MODEL = Path(__file__).parent / "models" / "handler_ptc_window.mzn"
 ASPECTS = {
     "epoch_context": ["epoch_position"],
-    "effects": [
-        "old_sections_distinguishable",
-        "tail_epoch_to_current",
-        "retained_sections_shifted",
-        "new_tail_recomputed",
-        "state_effected",
-    ],
-    "outcome": ["outcome"],
+    "state": ["validator_count"],
 }
 
 
