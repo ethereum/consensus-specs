@@ -10,6 +10,7 @@ GLOAS = "gloas"
 HEZE = "heze"
 EIP8025 = "eip8025"
 EIP8148 = "eip8148"
+EIP8205 = "eip8205"
 EIP8321 = "eip8321"
 
 
