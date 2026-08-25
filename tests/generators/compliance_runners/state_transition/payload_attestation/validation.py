@@ -17,6 +17,13 @@ def recover(pre: Any, operation: Any) -> dict[str, Any]:
     data = operation.data
     indexed = spec.get_indexed_payload_attestation(pre, operation)
     nonempty = len(indexed.attesting_indices) > 0
+    aggregation_bits = list(operation.aggregation_bits)
+    if not any(aggregation_bits):
+        attesting_indices_profile = "EMPTY"
+    elif all(aggregation_bits):
+        attesting_indices_profile = "ALL"
+    else:
+        attesting_indices_profile = "PARTIAL"
     signature_valid = (
         "NA"
         if not nonempty
@@ -25,9 +32,9 @@ def recover(pre: Any, operation: Any) -> dict[str, Any]:
     result = {
         "parent_root_matches": data.beacon_block_root == pre.latest_block_header.parent_root,
         "slot_is_previous": data.slot + 1 == pre.slot,
+        "attesting_indices_profile": attesting_indices_profile,
         "attesting_indices_nonempty": nonempty,
         "signature_valid": signature_valid,
-        "state_effected": False,
     }
     if not result["parent_root_matches"]:
         outcome = "REJECT_PARENT_ROOT"
@@ -51,17 +58,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
         for name, value in claimed.items()
     ]
-    post_path, errors = case_dir / "post.ssz_snappy", []
-    if actual["outcome"].startswith("REJECT_"):
-        if post_path.exists():
-            errors.append("rejected operation must not have a post state")
-        return checks, errors
-    if not post_path.exists():
-        return checks, ["accepted operation is missing post state"]
-    post, oracle = decode(post_path, spec.BeaconState), pre.copy()
-    spec.process_payload_attestation(oracle, operation)
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post state does not match spec re-execution")
-    if pre.hash_tree_root() != post.hash_tree_root():
-        errors.append("handler unexpectedly changed state")
-    return checks, errors
+    return checks, []

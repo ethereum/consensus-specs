@@ -13,9 +13,13 @@ enum Outcome = {
   ACCEPT
 };
 
+enum AttestingIndicesProfile = { EMPTY, PARTIAL, ALL };
+
 var bool: parent_root_matches;
 var bool: slot_is_previous;
+var AttestingIndicesProfile: attesting_indices_profile;
 var bool: attesting_indices_nonempty;
+constraint attesting_indices_nonempty <-> attesting_indices_profile != EMPTY;
 var Dim: signature_valid;
 constraint signed_message_ok(signature_valid, attesting_indices_nonempty);
 constraint attesting_indices_nonempty -> signature_valid in BOOLV;
@@ -27,6 +31,3 @@ constraint outcome =
   elseif not attesting_indices_nonempty then REJECT_EMPTY
   elseif signature_valid != T then REJECT_SIGNATURE
   else ACCEPT endif;
-
-var bool: state_effected;
-constraint state_effected <-> false;
