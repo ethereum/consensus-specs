@@ -36,10 +36,10 @@ def build_profile(records, name):
     return cover(records, ASPECTS, 1 if name == "onewise" else 2)
 
 
-def materialize_profile(name):
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return PtcWindowMaterializer(spec).materialize_reps(
-        Path(__file__).parent / "reftests", [SimpleNamespace(**r) for r in chosen]
+        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
 
 
