@@ -12,6 +12,8 @@
   - [Modified `Store`](#modified-store)
 - [Store initialization](#store-initialization)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
+- [Helpers](#helpers)
+  - [New `compute_execution_proof_public_input`](#new-compute_execution_proof_public_input)
 - [Handlers](#handlers)
   - [New `on_execution_proof`](#new-on_execution_proof)
 
@@ -20,7 +22,7 @@
 ## Introduction
 
 This document extends the fork-choice `Store` to retain verified
-`ExecutionProof`s. Stored proofs are not fork-choice inputs.
+`ExecutionProofEnvelope`s. Stored proofs are not fork-choice inputs.
 
 *Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md).
 
@@ -49,7 +51,7 @@ class Store:
     payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in EIP8025]
-    execution_proofs: Dict[Root, Dict[ProofType, ExecutionProof]]
+    execution_proofs: Dict[Root, Dict[ProofType, ExecutionProofEnvelope]]
 ```
 
 `execution_proofs` is keyed by beacon block root and then proof type.
@@ -89,23 +91,48 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
+## Helpers
+
+### New `compute_execution_proof_public_input`
+
+```python
+def compute_execution_proof_public_input(
+    store: Store,
+    beacon_block_root: Root,
+) -> PublicInput:
+    block = store.blocks[beacon_block_root]
+    envelope = store.payloads[beacon_block_root]
+    bid = block.body.signed_execution_payload_bid.message
+    new_payload_request = NewPayloadRequest(
+        execution_payload=envelope.payload,
+        versioned_hashes=[
+            kzg_commitment_to_versioned_hash(commitment) for commitment in bid.blob_kzg_commitments
+        ],
+        parent_beacon_block_root=envelope.parent_beacon_block_root,
+        execution_requests=envelope.execution_requests,
+    )
+    return PublicInput(
+        new_payload_request_root=compute_new_payload_request_root(new_payload_request)
+    )
+```
+
 ## Handlers
 
 ### New `on_execution_proof`
 
 The handler `on_execution_proof` is called when the node receives a
-`SignedExecutionProof` for downstream processing. It verifies and stores the
-proof without changing fork-choice weights, head selection, beacon-chain state,
-or Gloas payload status.
+`SignedExecutionProofEnvelope` for downstream processing. It verifies and stores
+the proof envelope without changing fork-choice weights, head selection,
+beacon-chain state, or Gloas payload status.
 
 ```python
 def on_execution_proof(
     store: Store,
-    signed_execution_proof: SignedExecutionProof,
+    signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
-    proof = signed_execution_proof.message
-    beacon_block_root = proof.public_input.beacon_block_root
+    proof_envelope = signed_proof_envelope.message
+    beacon_block_root = proof_envelope.beacon_block_root
 
     # The corresponding beacon block must be known and consensus-valid
     assert beacon_block_root in store.blocks
@@ -115,14 +142,15 @@ def on_execution_proof(
     assert beacon_block_root in store.payloads
 
     # Only one verified proof is stored for each beacon block and proof type
-    assert proof.proof_type not in store.execution_proofs.get(beacon_block_root, {})
+    assert proof_envelope.proof_type not in store.execution_proofs.get(beacon_block_root, {})
 
     # Validate against the state associated with the beacon block
     state = store.block_states[beacon_block_root]
-    process_execution_proof(state, signed_execution_proof, proof_engine)
+    public_input = compute_execution_proof_public_input(store, beacon_block_root)
+    process_execution_proof(state, signed_proof_envelope, public_input, proof_engine)
 
     # Store only proofs that pass downstream verification
     if beacon_block_root not in store.execution_proofs:
         store.execution_proofs[beacon_block_root] = {}
-    store.execution_proofs[beacon_block_root][proof.proof_type] = proof
+    store.execution_proofs[beacon_block_root][proof_envelope.proof_type] = proof_envelope
 ```

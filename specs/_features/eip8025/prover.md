@@ -9,7 +9,7 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Helpers](#helpers)
-  - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
+  - [New `get_execution_proof_envelope_signature`](#new-get_execution_proof_envelope_signature)
 - [Execution proof](#execution-proof)
   - [Requesting proof generation](#requesting-proof-generation)
   - [Signing and publishing a proof](#signing-and-publishing-a-proof)
@@ -32,14 +32,14 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Helpers
 
-### New `get_execution_proof_signature`
+### New `get_execution_proof_envelope_signature`
 
 ```python
-def get_execution_proof_signature(
-    state: BeaconState, proof: ExecutionProof, privkey: int
+def get_execution_proof_envelope_signature(
+    state: BeaconState, proof_envelope: ExecutionProofEnvelope, privkey: int
 ) -> BLSSignature:
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof, domain)
+    signing_root = compute_signing_root(proof_envelope, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
@@ -51,21 +51,23 @@ An honest prover performs the following steps for a received
 `SignedExecutionPayloadEnvelope` and a set of supported proof types:
 
 1. Let `beacon_block_root = signed_envelope.message.beacon_block_root`.
-2. Construct the same `NewPayloadRequest` used to validate `signed_envelope`.
-3. Construct `ProofAttributes` containing the desired proof types.
-4. Call
-   `proof_engine.request_proofs(beacon_block_root, new_payload_request, proof_attributes)`.
-5. For each requested `proof_type`, subsequently call
-   `proof = proof_engine.get_proof(beacon_block_root, proof_type)`.
+2. Construct the corresponding `NewPayloadRequest` from the beacon block and
+   `signed_envelope`.
+3. Let
+   `new_payload_request_root = compute_new_payload_request_root(new_payload_request)`.
+4. Construct `ProofAttributes` containing the desired proof types.
+5. Call `proof_engine.request_proofs(new_payload_request, proof_attributes)`.
+6. For each requested `proof_type`, subsequently call
+   `proof_data = proof_engine.get_proof(new_payload_request_root, proof_type)`.
 
 ### Signing and publishing a proof
 
-For each returned proof, the prover performs the following steps:
+For each returned `proof_data`, the prover performs the following steps:
 
-1. Check that `proof.public_input.beacon_block_root` equals the tracked
-   `beacon_block_root` and that `proof.proof_type` is the requested type.
+1. Construct `ExecutionProofEnvelope` from `proof_data`, `proof_type`, and
+   `beacon_block_root`.
 2. Let `validator_index` be the prover's validator index and let
-   `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
+   `signature = get_execution_proof_envelope_signature(state, proof_envelope, prover_privkey)`.
 3. Construct
-   `SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`
+   `SignedExecutionProofEnvelope(message=proof_envelope, validator_index=validator_index, signature=signature)`
    and broadcast it on the `execution_proof` topic.

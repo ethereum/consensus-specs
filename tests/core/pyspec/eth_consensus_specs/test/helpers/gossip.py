@@ -173,7 +173,7 @@ _MESSAGE_INFO = {
     ###########################################################################
     # eip8025
     ###########################################################################
-    "SignedExecutionProof": {
+    "SignedExecutionProofEnvelope": {
         "file_prefix": "execution_proof",
         "validation_fn": "validate_execution_proof_gossip",
     },

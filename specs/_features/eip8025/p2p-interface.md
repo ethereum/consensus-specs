@@ -31,9 +31,9 @@ Req/Resp protocol is defined.
 
 ### Type-specific SSZ bounds
 
-| Name                              | Value                        |
-| --------------------------------- | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
+| Name                                       | Value                        |
+| ------------------------------------------ | ---------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
 ## Helpers
 
@@ -72,30 +72,30 @@ class Seen:
 
 ##### New `execution_proof`
 
-This topic is used to propagate `SignedExecutionProof` messages.
+This topic is used to propagate `SignedExecutionProofEnvelope` messages.
 
 ```python
 def validate_execution_proof_gossip(
     seen: Seen,
     store: Store,
-    signed_execution_proof: SignedExecutionProof,
+    signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
     """
-    Validate a SignedExecutionProof for gossip propagation.
+    Validate a SignedExecutionProofEnvelope for gossip propagation.
     Raises GossipIgnore or GossipReject on validation failure.
     """
-    proof = signed_execution_proof.message
-    beacon_block_root = proof.public_input.beacon_block_root
+    proof_envelope = signed_proof_envelope.message
+    beacon_block_root = proof_envelope.beacon_block_root
 
     # [REJECT] The proof data is non-empty and within the size limit
-    if len(proof.proof_data) == 0:
+    if len(proof_envelope.proof_data) == 0:
         raise GossipReject("execution proof data is empty")
-    if len(proof.proof_data) > MAX_PROOF_SIZE:
+    if len(proof_envelope.proof_data) > MAX_PROOF_SIZE:
         raise GossipReject("execution proof data exceeds the size limit")
 
     # [REJECT] The proof type is supported
-    if proof.proof_type not in SUPPORTED_PROOF_TYPES:
+    if proof_envelope.proof_type not in SUPPORTED_PROOF_TYPES:
         raise GossipReject("execution proof type is unsupported")
 
     # [IGNORE] The proof's beacon block has been seen
@@ -113,7 +113,7 @@ def validate_execution_proof_gossip(
     state = store.block_states[beacon_block_root]
 
     # [REJECT] The prover validator index is valid
-    validator_index = signed_execution_proof.validator_index
+    validator_index = signed_proof_envelope.validator_index
     if validator_index >= len(state.validators):
         raise GossipReject("execution proof's validator index is invalid")
 
@@ -123,11 +123,11 @@ def validate_execution_proof_gossip(
         raise GossipReject("execution proof's validator is not active")
 
     # [IGNORE] No verified proof is known for this beacon block and proof type
-    if proof.proof_type in store.execution_proofs.get(beacon_block_root, {}):
+    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
         raise GossipIgnore("verified proof already known for this beacon block and proof type")
 
     # [IGNORE] This is the prover's first valid or invalid proof for this key
-    prover_key = (beacon_block_root, proof.proof_type, validator_index)
+    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
     if prover_key in seen.execution_proofs:
         raise GossipIgnore(
             "proof already seen from this prover for this beacon block and proof type"
@@ -135,11 +135,13 @@ def validate_execution_proof_gossip(
 
     # [REJECT] The prover signature is valid
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof, domain)
-    if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
+    signing_root = compute_signing_root(proof_envelope, domain)
+    if not bls.Verify(validator.pubkey, signing_root, signed_proof_envelope.signature):
         raise GossipReject("execution proof's signature is invalid")
 
     # Verify before propagation so peers can be scored for invalid proofs
+    public_input = compute_execution_proof_public_input(store, beacon_block_root)
+    proof = build_execution_proof(proof_envelope, public_input)
     is_valid = proof_engine.verify_execution_proof(proof)
 
     # Mark the authenticated prover attempt as seen after verification completes

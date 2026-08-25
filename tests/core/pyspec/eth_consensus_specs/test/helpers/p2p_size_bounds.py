@@ -95,12 +95,12 @@ def build_max_size_signed_inclusion_list(spec):
     return spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())
 
 
-def build_max_size_signed_execution_proof(spec):
-    return spec.SignedExecutionProof(
-        message=spec.ExecutionProof(
+def build_max_size_signed_execution_proof_envelope(spec):
+    return spec.SignedExecutionProofEnvelope(
+        message=spec.ExecutionProofEnvelope(
             proof_data=spec.ProofData(b"\x00" * spec.MAX_PROOF_SIZE),
             proof_type=spec.ProofType(0),
-            public_input=spec.PublicInput(),
+            beacon_block_root=spec.Root(),
         ),
         validator_index=spec.ValidatorIndex(0),
         signature=spec.BLSSignature(),
@@ -134,5 +134,5 @@ def get_max_signed_inclusion_list_size(spec):
     return spec.MAX_SIGNED_INCLUSION_LIST_SIZE
 
 
-def get_max_signed_execution_proof_size(spec):
-    return spec.MAX_SIGNED_EXECUTION_PROOF_SIZE
+def get_max_signed_execution_proof_envelope_size(spec):
+    return spec.MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE

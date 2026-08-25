@@ -22,14 +22,13 @@ class NoopProofEngine(ProofEngine):
         return False
 
     def request_proofs(self: ProofEngine,
-                       beacon_block_root: Root,
                        new_payload_request: NewPayloadRequest,
                        proof_attributes: ProofAttributes) -> None:
         raise NotImplementedError("no default proof generation")
 
     def get_proof(self: ProofEngine,
-                  beacon_block_root: Root,
-                  proof_type: ProofType) -> ExecutionProof:
+                  new_payload_request_root: Root,
+                  proof_type: ProofType) -> ProofData:
         raise NotImplementedError("no default proof retrieval")
 
 

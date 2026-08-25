@@ -50,10 +50,8 @@ def verify_execution_proof(
     Verify an execution proof.
     Return ``True`` if the proof is valid.
 
-    Internally resolve the beacon block and verified execution payload envelope
-    identified by ``execution_proof.public_input.beacon_block_root``. Construct
-    the corresponding ``NewPayloadRequest`` and use
-    ``hash_tree_root(new_payload_request)`` as the proof-system public input.
+    Use ``execution_proof.public_input.new_payload_request_root`` as the
+    proof-system public input.
     """
 ```
 
@@ -71,7 +69,6 @@ class ProofAttributes:
 # Only required for clients performing the prover role
 def request_proofs(
     self: ProofEngine,
-    beacon_block_root: Root,
     new_payload_request: NewPayloadRequest,
     proof_attributes: ProofAttributes,
 ) -> None:
@@ -79,9 +76,8 @@ def request_proofs(
     Request asynchronous proof generation for ``new_payload_request`` using
     ``proof_attributes``.
 
-    Internally associate ``hash_tree_root(new_payload_request)`` with
-    ``beacon_block_root``. This association is not exposed to the consensus
-    client.
+    Internally associate generated proofs with
+    ``compute_new_payload_request_root(new_payload_request)``.
     """
 ```
 
@@ -91,14 +87,14 @@ def request_proofs(
 # Only required for clients performing the prover role
 def get_proof(
     self: ProofEngine,
-    beacon_block_root: Root,
+    new_payload_request_root: Root,
     proof_type: ProofType,
-) -> ExecutionProof:
+) -> ProofData:
     """
-    Wait for the generation request identified by ``beacon_block_root`` and
-    ``proof_type`` to complete, then return its proof.
+    Wait for the generation request identified by ``new_payload_request_root``
+    and ``proof_type`` to complete, then return its proof data.
 
-    If generation fails or is abandoned, this function MUST NOT return an
-    ``ExecutionProof``.
+    If generation fails or is abandoned, this function MUST NOT return a
+    ``ProofData``.
     """
 ```

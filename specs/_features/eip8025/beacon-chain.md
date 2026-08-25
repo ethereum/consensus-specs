@@ -15,9 +15,14 @@
   - [Execution](#execution)
   - [Domains](#domains)
 - [Containers](#containers)
+  - [New `NewPayloadRequestData`](#new-newpayloadrequestdata)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
-  - [New `SignedExecutionProof`](#new-signedexecutionproof)
+  - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
+  - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
+- [Helpers](#helpers)
+  - [New `compute_new_payload_request_root`](#new-compute_new_payload_request_root)
+  - [New `build_execution_proof`](#new-build_execution_proof)
 - [Execution proof verification](#execution-proof-verification)
   - [New `process_execution_proof`](#new-process_execution_proof)
 
@@ -78,11 +83,21 @@ MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`.
 
 ## Containers
 
+### New `NewPayloadRequestData`
+
+```python
+class NewPayloadRequestData(Container):
+    execution_payload: ExecutionPayload
+    versioned_hashes: List[VersionedHash, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
+```
+
 ### New `PublicInput`
 
 ```python
 class PublicInput(ProgressiveContainer(active_fields=[1])):
-    beacon_block_root: Root
+    new_payload_request_root: Root
 ```
 
 ### New `ExecutionProof`
@@ -94,13 +109,51 @@ class ExecutionProof(Container):
     public_input: PublicInput
 ```
 
-### New `SignedExecutionProof`
+### New `ExecutionProofEnvelope`
 
 ```python
-class SignedExecutionProof(Container):
-    message: ExecutionProof
+class ExecutionProofEnvelope(Container):
+    proof_data: ProofData
+    proof_type: ProofType
+    beacon_block_root: Root
+```
+
+### New `SignedExecutionProofEnvelope`
+
+```python
+class SignedExecutionProofEnvelope(Container):
+    message: ExecutionProofEnvelope
     validator_index: ValidatorIndex
     signature: BLSSignature
+```
+
+## Helpers
+
+### New `compute_new_payload_request_root`
+
+```python
+def compute_new_payload_request_root(new_payload_request: NewPayloadRequest) -> Root:
+    request_data = NewPayloadRequestData(
+        execution_payload=new_payload_request.execution_payload,
+        versioned_hashes=new_payload_request.versioned_hashes,
+        parent_beacon_block_root=new_payload_request.parent_beacon_block_root,
+        execution_requests=new_payload_request.execution_requests,
+    )
+    return hash_tree_root(request_data)
+```
+
+### New `build_execution_proof`
+
+```python
+def build_execution_proof(
+    proof_envelope: ExecutionProofEnvelope,
+    public_input: PublicInput,
+) -> ExecutionProof:
+    return ExecutionProof(
+        proof_data=proof_envelope.proof_data,
+        proof_type=proof_envelope.proof_type,
+        public_input=public_input,
+    )
 ```
 
 ## Execution proof verification
@@ -110,24 +163,26 @@ class SignedExecutionProof(Container):
 ```python
 def process_execution_proof(
     state: BeaconState,
-    signed_proof: SignedExecutionProof,
+    signed_proof_envelope: SignedExecutionProofEnvelope,
+    public_input: PublicInput,
     proof_engine: ProofEngine,
 ) -> None:
-    proof = signed_proof.message
-    assert signed_proof.validator_index < len(state.validators)
-    assert len(proof.proof_data) > 0
-    assert len(proof.proof_data) <= MAX_PROOF_SIZE
-    assert proof.proof_type in SUPPORTED_PROOF_TYPES
+    proof_envelope = signed_proof_envelope.message
+    assert signed_proof_envelope.validator_index < len(state.validators)
+    assert len(proof_envelope.proof_data) > 0
+    assert len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
+    assert proof_envelope.proof_type in SUPPORTED_PROOF_TYPES
 
     # Verify the prover is an active validator
-    validator = state.validators[signed_proof.validator_index]
+    validator = state.validators[signed_proof_envelope.validator_index]
     assert is_active_validator(validator, get_current_epoch(state))
 
     # Verify the prover signature
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
+    signing_root = compute_signing_root(proof_envelope, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_proof_envelope.signature)
 
     # Verify the execution proof
+    proof = build_execution_proof(proof_envelope, public_input)
     assert proof_engine.verify_execution_proof(proof)
 ```
