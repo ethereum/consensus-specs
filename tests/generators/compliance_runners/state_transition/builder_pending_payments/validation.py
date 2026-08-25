@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..validation import Check, decode
+from ..validation import check_dimensions, decode
 
 from pathlib import Path
 from typing import Any
@@ -121,9 +121,4 @@ def validate_case(case_dir: Path) -> list[Check]:
         "outcome": outcome,
         "state_effected": state_effected,
     }
-    checks = [
-        Check(name, value, actual.get(name, "<none>"),
-              "ok" if actual.get(name, "<none>") == value else "mismatch")
-        for name, value in claimed.items()
-    ]
-    return checks
+    return check_dimensions(claimed, actual)

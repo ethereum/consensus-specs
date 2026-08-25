@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..validation import Check, decode
+from ..validation import check_dimensions, decode
 
 from pathlib import Path
 from typing import Any
@@ -208,8 +208,4 @@ def validate_case(case_dir: Path) -> list[Check]:
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     trace = replay(pre)
     actual = recover_dimensions(pre, trace)
-    checks = [
-        Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
-        for name, value in claimed.items()
-    ]
-    return checks
+    return check_dimensions(claimed, actual)
