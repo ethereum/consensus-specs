@@ -27,7 +27,7 @@ def build_max_size_indexed_attestation(spec):
 
 def build_max_size_payload_attestation(spec):
     return spec.PayloadAttestation(
-        aggregation_bits=spec.PTCBits([True] * spec.PTC_SIZE),
+        aggregation_bits=spec.PayloadTimelinessCommitteeBits([True] * spec.PTC_SIZE),
         data=spec.PayloadAttestationData(),
         signature=spec.BLSSignature(),
     )
