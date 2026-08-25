@@ -13,17 +13,6 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
 """
 
     @classmethod
-    def preparations(cls) -> str:
-        return """
-EIP8025_FEATURES = {
-    "prover": {
-        "tag": "eip8025-prover",
-        "status": "optional",
-    },
-}
-"""
-
-    @classmethod
     def proof_engine_cls(cls) -> str:
         return """
 class NoopProofEngine(ProofEngine):

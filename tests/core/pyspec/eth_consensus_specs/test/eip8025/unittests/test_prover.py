@@ -56,11 +56,10 @@ def make_execution_proof(spec, beacon_block_root, *, proof_type=TEST_PROOF_TYPE)
     )
 
 
-@with_eip8025_and_later(features=("prover",))
+@with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_prover_can_request_retrieve_sign_and_store(spec, state, eip8025_features):
-    assert eip8025_features == frozenset({"prover"})
+def test_prover_can_request_retrieve_sign_and_store(spec, state):
     store, beacon_block_root = setup_store_with_block(spec, state)
     proof = make_execution_proof(spec, beacon_block_root)
     proof_engine = RecordingProofEngine(proof, beacon_block_root)
@@ -88,10 +87,9 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state, eip8025_feature
     assert store.execution_proofs[beacon_block_root][proof.proof_type] == proof
 
 
-@with_eip8025_and_later(features=("prover",))
+@with_eip8025_and_later
 @spec_state_test
-def test_default_proof_engine_rejects_prover_operations(spec, state, eip8025_features):
-    assert eip8025_features == frozenset({"prover"})
+def test_default_proof_engine_rejects_prover_operations(spec, state):
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
     beacon_block_root = spec.Root(b"\x11" * 32)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])

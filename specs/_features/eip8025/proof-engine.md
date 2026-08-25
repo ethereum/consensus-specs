@@ -23,8 +23,8 @@ stateless validation of execution payloads through execution proofs.
 
 ## Proof engine
 
-> **EIP-8025 feature:** `prover` (`eip8025-prover`). This feature is optional;
-> proof verification remains part of the baseline profile.
+Proof generation and retrieval are optional. Proof verification remains part of
+the baseline EIP-8025 specification.
 
 The implementation-dependent `ProofEngine` protocol encapsulates proof
 verification and asynchronous proof generation via:
@@ -36,8 +36,8 @@ verification and asynchronous proof generation via:
 - a retrieval function `self.get_proof` to wait for and return a generated
   proof.
 
-Implementations that do not support the `prover` feature may reject generation
-and retrieval requests.
+Implementations that do not support proof generation may reject generation and
+retrieval requests.
 
 ### New `verify_execution_proof`
 
