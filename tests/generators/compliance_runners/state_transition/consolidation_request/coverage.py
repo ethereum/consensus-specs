@@ -10,7 +10,6 @@ Run:
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -89,31 +88,3 @@ def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
     return ConsolidationRequestMaterializer(spec, MODEL).materialize_reps(out, reps)
-
-
-def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    materialize = "--materialize" in sys.argv
-    recs = _recs()
-    print(f"distinct aspect-state signatures: {len(recs)}\n")
-
-    if not args:
-        print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional", "detailed", "all"):
-            n_obl, chosen = build_profile(recs, name)
-            print(f"{name:14} {n_obl:>12} {len(chosen):>7}")
-        _, std = build_profile(recs, "standard")
-        print(f"{'standard':14} {'(union)':>12} {len(std):>7}")
-        return 0
-
-    n_obl, chosen = build_profile(recs, args[0])
-    print(f"profile '{args[0]}': {len(chosen)} cases"
-          + (f" covering {n_obl} obligations" if n_obl >= 0 else ""))
-    if materialize:
-        materialize_profile(args[0])
-        print("Validate with: python -m ...consolidation_request.validation")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

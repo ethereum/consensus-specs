@@ -7,7 +7,6 @@ determine, and one effect aspect per group of state updates.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -77,30 +76,3 @@ def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     return WithdrawalsMaterializer(spec, MODEL).materialize_reps(
         output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**record) for record in chosen]
     )
-
-
-def main() -> int:
-    args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
-    materialize = "--materialize" in sys.argv
-    records = _recs()
-    print(f"distinct aspect-state signatures: {len(records)}\n")
-    if not args:
-        print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional"):
-            obligations, cases = build_profile(records, name)
-            print(f"{name:14} {obligations:>12} {len(cases):>7}")
-        _, cases = build_profile(records, "standard")
-        print(f"{'standard':14} {'(union)':>12} {len(cases):>7}")
-        return 0
-    obligations, cases = build_profile(records, args[0])
-    print(
-        f"profile '{args[0]}': {len(cases)} cases"
-        + (f" covering {obligations} obligations" if obligations >= 0 else "")
-    )
-    if materialize:
-        materialize_profile(args[0])
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
