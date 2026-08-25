@@ -1,14 +1,4 @@
-include "../../aspects/base.mzn";
 enum EpochPosition = { GENESIS_END, LATER_EPOCH_END };
-enum Outcome = { SHIFTED_AND_RECOMPUTED };
-enum TailEpoch = { LOOKAHEAD_PLUS_ONE };
+enum ValidatorCount = { MINIMUM, MANY };
 var EpochPosition: epoch_position;
-var bool: old_sections_distinguishable;
-var TailEpoch: tail_epoch_to_current;
-var bool: retained_sections_shifted;
-var bool: new_tail_recomputed;
-var bool: state_effected;
-var Outcome: outcome;
-constraint old_sections_distinguishable /\ retained_sections_shifted /\ new_tail_recomputed /\ state_effected;
-constraint outcome == SHIFTED_AND_RECOMPUTED;
-constraint tail_epoch_to_current == LOOKAHEAD_PLUS_ONE;
+var ValidatorCount: validator_count;
