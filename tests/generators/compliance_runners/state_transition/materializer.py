@@ -48,8 +48,6 @@ class Materializer:
             case_name=f"case_{index:04d}",
         )
         test_case.set_output_dir(str(output_dir))
-        if test_case.dir.exists():
-            shutil.rmtree(test_case.dir)
         result = TestCaseResult(test_case=test_case, meta=meta, case_parts=parts)
         dump_test_case_result(result, dumper)
         dumper.dump_data(
@@ -60,6 +58,16 @@ class Materializer:
 
     def materialize_reps(self, output_dir: Path, representatives: list[Any]) -> int:
         """Write all model representatives into a fresh reference-test directory."""
+        suite_dir = (
+            output_dir
+            / self.preset_name
+            / self.fork_name
+            / self.runner_name
+            / self.handler_name
+            / "main"
+        )
+        if suite_dir.exists():
+            shutil.rmtree(suite_dir)
         dumper = Dumper()
         for index, solution in enumerate(representatives):
             self.write_case(dumper, output_dir, index, solution)
