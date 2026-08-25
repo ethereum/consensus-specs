@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-import shutil
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.state import transition_to
-from eth_consensus_specs.test.utils.dumper import Dumper
 
-from ...gen_base.gen_typing import TestCase, TestCasePart, TestCaseResult
-from ...gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from ...gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 EPOCHS_PAST_GENESIS = 10
 _DIMS = [
@@ -50,10 +45,9 @@ def _b(sol: Any, name: str) -> bool:
     return bool(getattr(sol, name))
 
 
-class AttestationMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec, self.model_path = spec, model_path
-        self.fork_name, self.preset_name = fork_name, preset_name
+class AttestationMaterializer(Materializer):
+    runner_name = "operations"
+    handler_name = "attestation"
 
     def _base_state(self) -> Any:
         state = create_genesis_state(
@@ -64,7 +58,7 @@ class AttestationMaterializer:
         state.slot = self.spec.Slot(EPOCHS_PAST_GENESIS * self.spec.SLOTS_PER_EPOCH + 2)
         return state
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any, Any | None, dict]:
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
         same_slot = _b(sol, "attestation_is_same_slot")
         if same_slot:
@@ -155,42 +149,8 @@ class AttestationMaterializer:
         claimed = {
             name: (_b(sol, name) if name != "outcome" else str(sol.outcome)) for name in _DIMS
         }
-        return pre, attestation, post, claimed
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> int:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
-        dumper = Dumper()
-        for index, sol in enumerate(reps):
-            pre, operation, post, claimed = self.materialize_solution(sol)
-            case_name = f"case_{index:04d}"
-            test_case = TestCase(
-                fork_name=self.fork_name,
-                preset_name=self.preset_name,
-                runner_name="operations",
-                handler_name="attestation",
-                suite_name="main",
-                case_name=case_name,
-            )
-            test_case.set_output_dir(str(output_dir))
-            parts: list[TestCasePart] = [
-                ("pre", "ssz", pre.encode_bytes()),
-                ("attestation", "ssz", operation.encode_bytes()),
-            ]
-            if post is not None:
-                parts.append(("post", "ssz", post.encode_bytes()))
-            dump_test_case_result(
-                TestCaseResult(
-                    test_case=test_case,
-                    meta={
-                        "description": f"process_attestation: {claimed['outcome']}",
-                        "bls_setting": 1,
-                    },
-                    case_parts=parts,
-                ),
-                dumper,
-            )
-            dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
+        meta = {"description": f"process_attestation: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        parts: list[TestCasePart] = [("pre", "ssz", pre.encode_bytes()), ("attestation", "ssz", attestation.encode_bytes())]
+        if post is not None:
+            parts.append(("post", "ssz", post.encode_bytes()))
+        return meta, parts

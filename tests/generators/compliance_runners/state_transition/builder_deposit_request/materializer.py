@@ -8,17 +8,14 @@ Spec: specs/gloas/beacon-chain.md process_builder_deposit_request.
 """
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
 from typing import Any
 
-from eth_consensus_specs.test.utils.dumper import Dumper
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
 from eth_consensus_specs.utils import bls
 
-from ...gen_base.gen_typing import TestCase, TestCaseResult, TestCasePart
-from ...gen_base.output import dump_test_case_result
+from ...gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 REQUEST_PUBKEY = builder_pubkeys[0]
 WRONG_PUBKEY = builder_pubkeys[1]
@@ -39,12 +36,9 @@ def _b(sol: Any, n: str) -> bool:
     return bool(getattr(sol, n))
 
 
-class BuilderDepositRequestMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec = spec
-        self.model_path = model_path
-        self.fork_name = fork_name
-        self.preset_name = preset_name
+class BuilderDepositRequestMaterializer(Materializer):
+    runner_name = "operations"
+    handler_name = "builder_deposit_request"
 
     def _sign(self, request: Any, privkey: int) -> Any:
         spec = self.spec
@@ -66,7 +60,7 @@ class BuilderDepositRequestMaterializer:
         state.slot = spec.Slot(EPOCHS_PAST_GENESIS * spec.SLOTS_PER_EPOCH)
         return state
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any, Any, dict]:
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         found = _b(sol, "builder_pubkey_found")
         pre = self._base_state()
@@ -104,33 +98,11 @@ class BuilderDepositRequestMaterializer:
         post = pre.copy()
         spec.process_builder_deposit_request(post, request)  # never raises
 
-        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
-        return pre, request, post, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, sol: Any) -> None:
-        pre, request, post, claimed = self.materialize_solution(sol)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name, preset_name=self.preset_name,
-            runner_name="operations", handler_name="builder_deposit_request",
-            suite_name="main", case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
-        case_parts: list[TestCasePart] = [
-            ("pre", "ssz", pre.encode_bytes()),  # type: ignore
-            ("builder_deposit_request", "ssz", request.encode_bytes()),  # type: ignore
-            ("post", "ssz", post.encode_bytes()),  # type: ignore
+        parts = [
+            ("pre", "ssz", pre.encode_bytes()),
+            ("builder_deposit_request", "ssz", request.encode_bytes()),
+            ("post", "ssz", post.encode_bytes()),
         ]
-        meta = {"description": f"process_builder_deposit_request: {claimed['outcome']}", "bls_setting": 1}
-        dump_test_case_result(TestCaseResult(test_case=test_case, meta=meta, case_parts=case_parts), dumper)
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> int:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        dumper = Dumper()
-        for i, sol in enumerate(reps):
-            self.write_case(dumper, output_dir, i, sol)
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
+        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
+        meta = {"description": f"process_builder_deposit_request: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        return meta, parts

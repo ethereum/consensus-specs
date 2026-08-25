@@ -7,18 +7,13 @@ that assignment, then records the original solution with the vector.
 
 from __future__ import annotations
 
-import shutil
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from eth_consensus_specs.test.helpers.withdrawals import prepare_process_withdrawals
-from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase, TestCaseResult
-from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 _DIMS = [
     "parent_payload_revealed",
@@ -41,10 +36,9 @@ def _s(solution: Any, name: str) -> str:
     return str(getattr(solution, name))
 
 
-class WithdrawalsMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec, self.model_path = spec, model_path
-        self.fork_name, self.preset_name = fork_name, preset_name
+class WithdrawalsMaterializer(Materializer):
+    runner_name = "operations"
+    handler_name = "withdrawals"
 
     def _base_state(self) -> Any:
         spec = self.spec
@@ -71,7 +65,7 @@ class WithdrawalsMaterializer:
                 )
             )
 
-    def materialize_solution(self, solution: Any) -> tuple[Any, Any, dict]:
+    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
         parent_full = _b(solution, "parent_payload_revealed")
@@ -121,39 +115,6 @@ class WithdrawalsMaterializer:
             )
             for name in _DIMS
         }
-        return pre, post, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, solution: Any) -> None:
-        pre, post, claimed = self.materialize_solution(solution)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name,
-            preset_name=self.preset_name,
-            runner_name="operations",
-            handler_name="withdrawals",
-            suite_name="main",
-            case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
-        dump_test_case_result(
-            TestCaseResult(
-                test_case=test_case,
-                meta={"description": f"process_withdrawals: {claimed['outcome']}"},
-                case_parts=[
-                    ("pre", "ssz", pre.encode_bytes()),
-                    ("post", "ssz", post.encode_bytes()),
-                ],
-            ),
-            dumper,
-        )
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> int:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True)
-        dumper = Dumper()
-        for index, solution in enumerate(reps):
-            self.write_case(dumper, output_dir, index, solution)
-        print(f"Generated {len(reps)} test cases in {output_dir}")
-        return len(reps)
+        meta = {"description": f"process_withdrawals: {claimed['outcome']}", "claimed": claimed}
+        parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
+        return meta, parts

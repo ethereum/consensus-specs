@@ -113,18 +113,18 @@ def build_profile(recs, name):
     return cover(recs, *PROFILES[name])
 
 
-def _materialize(recs, name: str) -> int:
+def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(recs, name)
     from eth_consensus_specs.gloas import minimal as spec
 
     reps = [SimpleNamespace(**rec) for rec in chosen]
-    out = Path(__file__).parent / "reftests"
+    out = output_dir or (Path(__file__).parent / "reftests")
     return ExecutionPayloadBidMaterializer(spec, MODEL).materialize_reps(out, reps)
 
 
-def materialize_profile(name: str) -> int:
+def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
-    return _materialize(recs, name)
+    return _materialize(recs, name, output_dir)
 
 
 def main() -> int:
