@@ -20,6 +20,18 @@ class Check:
     status: str
 
 
+def check_dimensions(claimed: dict, actual: dict) -> list[Check]:
+    return [
+        Check(
+            name,
+            value,
+            actual.get(name, "<none>"),
+            "ok" if actual.get(name, "<none>") == value else "mismatch",
+        )
+        for name, value in claimed.items()
+    ]
+
+
 def decode(path: Path, sedes: Any) -> Any:
     return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 

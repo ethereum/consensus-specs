@@ -10,7 +10,7 @@ Usage:
 """
 from __future__ import annotations
 
-from ..validation import Check, decode
+from ..validation import check_dimensions, decode
 
 from pathlib import Path
 from typing import Any
@@ -143,11 +143,4 @@ def validate_case(case_dir: Path) -> list[Check]:
     signed = decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, signed)
-
-    checks = [
-        Check(dim, claim, actual.get(dim, "<none>"),
-              "ok" if actual.get(dim, "<none>") == claim else "mismatch")
-        for dim, claim in claimed.items()
-    ]
-
-    return checks
+    return check_dimensions(claimed, actual)
