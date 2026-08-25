@@ -51,11 +51,11 @@ An honest prover performs the following steps for a received
 `SignedExecutionPayloadEnvelope` and a set of supported proof types:
 
 1. Let `beacon_block_root = signed_envelope.message.beacon_block_root`.
-2. Construct `ProofAttributes` containing the desired proof types.
-3. Call
-   `requested_root = proof_engine.request_proofs(beacon_block_root, proof_attributes)`
-   and check that `requested_root == beacon_block_root`.
-4. For each requested `proof_type`, subsequently call
+2. Construct the same `NewPayloadRequest` used to validate `signed_envelope`.
+3. Construct `ProofAttributes` containing the desired proof types.
+4. Call
+   `proof_engine.request_proofs(beacon_block_root, new_payload_request, proof_attributes)`.
+5. For each requested `proof_type`, subsequently call
    `proof = proof_engine.get_proof(beacon_block_root, proof_type)`.
 
 ### Signing and publishing a proof

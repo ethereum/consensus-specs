@@ -23,8 +23,8 @@ stateless validation of execution payloads through execution proofs.
 
 ## Proof engine
 
-Proof generation and retrieval are optional. Proof verification remains part of
-the baseline EIP-8025 specification.
+Proof generation and retrieval are only required for the prover role. Proof
+verification remains part of the baseline EIP-8025 specification.
 
 The implementation-dependent `ProofEngine` protocol encapsulates proof
 verification and asynchronous proof generation via:
@@ -48,12 +48,12 @@ def verify_execution_proof(
 ) -> bool:
     """
     Verify an execution proof.
-    Return ``True`` if proof is valid.
+    Return ``True`` if the proof is valid.
 
     Internally resolve the beacon block and verified execution payload envelope
     identified by ``execution_proof.public_input.beacon_block_root``. Construct
-    the corresponding ``NewPayloadRequest`` and use its root as the proof-system
-    public input.
+    the corresponding ``NewPayloadRequest`` and use
+    ``hash_tree_root(new_payload_request)`` as the proof-system public input.
     """
 ```
 
@@ -68,21 +68,27 @@ class ProofAttributes:
 ### New `request_proofs`
 
 ```python
+# Only required for clients performing the prover role
 def request_proofs(
     self: ProofEngine,
     beacon_block_root: Root,
+    new_payload_request: NewPayloadRequest,
     proof_attributes: ProofAttributes,
-) -> Root:
+) -> None:
     """
-    Request asynchronous proof generation for ``beacon_block_root`` using
-    ``proof_attributes``. Return ``beacon_block_root`` to track the generation
-    request.
+    Request asynchronous proof generation for ``new_payload_request`` using
+    ``proof_attributes``.
+
+    Internally associate ``hash_tree_root(new_payload_request)`` with
+    ``beacon_block_root``. This association is not exposed to the consensus
+    client.
     """
 ```
 
 ### New `get_proof`
 
 ```python
+# Only required for clients performing the prover role
 def get_proof(
     self: ProofEngine,
     beacon_block_root: Root,

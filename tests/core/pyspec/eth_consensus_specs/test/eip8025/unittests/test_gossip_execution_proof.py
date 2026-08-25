@@ -28,17 +28,11 @@ class DummyProofEngine:
         self.proofs.append(proof)
         return self.accept
 
-    def request_proofs(self, beacon_block_root, proof_attributes):
+    def request_proofs(self, beacon_block_root, new_payload_request, proof_attributes):
         raise NotImplementedError
 
     def get_proof(self, beacon_block_root, proof_type):
         raise NotImplementedError
-
-
-class TimingOutProofEngine(DummyProofEngine):
-    def verify_execution_proof(self, proof):
-        self.proofs.append(proof)
-        raise TimeoutError
 
 
 def setup_store_with_block(spec, state):
@@ -94,9 +88,10 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     store, block_root = setup_store_with_block(spec, state)
     seen = get_seen(spec)
     signed_proof = make_signed_execution_proof(spec, state, block_root)
+    proof_engine = DummyProofEngine()
 
-    assert validate(spec, seen, store, signed_proof) == ("valid", None)
-    assert validate(spec, seen, store, signed_proof) == (
+    assert validate(spec, seen, store, signed_proof, proof_engine) == ("valid", None)
+    assert validate(spec, seen, store, signed_proof, proof_engine) == (
         "ignore",
         "proof already seen from this prover for this beacon block and proof type",
     )
@@ -106,7 +101,7 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     )
     assert validate(spec, seen, store, competing_proof) == ("valid", None)
 
-    spec.on_execution_proof(store, signed_proof)
+    spec.on_execution_proof(store, signed_proof, proof_engine)
     later_proof = make_signed_execution_proof(
         spec, state, block_root, prover_index=2, proof_data=b"\x03"
     )
@@ -169,7 +164,7 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
         "reject",
         "execution proof's validator index is invalid",
     )
-    assert seen.execution_proof_provers == set()
+    assert seen.execution_proofs == set()
 
     valid_proof = make_signed_execution_proof(spec, state, block_root)
     invalid_signature = valid_proof.copy()
@@ -247,11 +242,12 @@ def test_gossip_verifies_before_handler_stores(spec, state):
     assert proof_engine.proofs == [signed_proof.message]
     assert block_root not in store.execution_proofs
 
-    spec.on_execution_proof(store, signed_proof)
+    spec.on_execution_proof(store, signed_proof, proof_engine)
+    assert proof_engine.proofs == [signed_proof.message, signed_proof.message]
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message
     }
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
 
     alternate_proof = make_signed_execution_proof(
         spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE
@@ -270,12 +266,13 @@ def test_gossip_verifies_before_handler_stores(spec, state):
     )
 
     assert validate(spec, get_seen(spec), store, alternate_proof) == ("valid", None)
-    spec.on_execution_proof(store, alternate_proof)
+    accepting_engine = DummyProofEngine()
+    spec.on_execution_proof(store, alternate_proof, accepting_engine)
     third_proof = make_signed_execution_proof(
         spec, state, block_root, proof_type=THIRD_TEST_PROOF_TYPE
     )
     assert validate(spec, get_seen(spec), store, third_proof) == ("valid", None)
-    spec.on_execution_proof(store, third_proof)
+    spec.on_execution_proof(store, third_proof, DummyProofEngine())
 
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message,
@@ -286,31 +283,28 @@ def test_gossip_verifies_before_handler_stores(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_gossip_ignores_proof_engine_timeout(spec, state):
-    store, block_root = setup_store_with_block(spec, state)
-    signed_proof = make_signed_execution_proof(spec, state, block_root)
-    proof_engine = TimingOutProofEngine()
-    seen = get_seen(spec)
-
-    assert validate(spec, seen, store, signed_proof, proof_engine) == (
-        "ignore",
-        "execution proof verification timed out",
-    )
-    assert proof_engine.proofs == [signed_proof.message]
-    assert seen.execution_proof_provers == set()
-
-
-@with_eip8025_and_later
-@spec_state_test
 @always_bls
 def test_on_execution_proof_enforces_storage_context(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof(spec, state, block_root)
 
     block = store.blocks.pop(block_root)
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
+    proof_engine = DummyProofEngine()
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.blocks[block_root] = block
 
     block_state = store.block_states.pop(block_root)
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof))
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.block_states[block_root] = block_state
+
+    payload = store.payloads.pop(block_root)
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
+    store.payloads[block_root] = payload
+
+    rejecting_engine = DummyProofEngine(accept=False)
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, rejecting_engine))
+    assert rejecting_engine.proofs == [signed_proof.message]
+    assert block_root not in store.execution_proofs
+
+    spec.on_execution_proof(store, signed_proof, proof_engine)
+    assert proof_engine.proofs == [signed_proof.message]

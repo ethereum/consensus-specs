@@ -61,7 +61,7 @@ class Seen:
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
     # [New in EIP8025]
-    execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
+    execution_proofs: Set[Tuple[Root, ProofType, ValidatorIndex]]
 ```
 
 ## The gossip domain: gossipsub
@@ -102,7 +102,7 @@ def validate_execution_proof_gossip(
     if beacon_block_root not in store.blocks:
         raise GossipIgnore("execution proof's beacon block has not been seen")
 
-    # [REJECT] The proof's beacon block has been accepted
+    # [REJECT] The proof's beacon block has passed consensus validation
     if beacon_block_root not in store.block_states:
         raise GossipReject("execution proof's beacon block failed validation")
 
@@ -128,7 +128,7 @@ def validate_execution_proof_gossip(
 
     # [IGNORE] This is the prover's first valid or invalid proof for this key
     prover_key = (beacon_block_root, proof.proof_type, validator_index)
-    if prover_key in seen.execution_proof_provers:
+    if prover_key in seen.execution_proofs:
         raise GossipIgnore(
             "proof already seen from this prover for this beacon block and proof type"
         )
@@ -139,14 +139,11 @@ def validate_execution_proof_gossip(
     if not bls.Verify(validator.pubkey, signing_root, signed_execution_proof.signature):
         raise GossipReject("execution proof's signature is invalid")
 
-    # Ignore timeouts because they do not establish that the peer supplied an invalid proof
-    try:
-        is_valid = proof_engine.verify_execution_proof(proof)
-    except TimeoutError:
-        raise GossipIgnore("execution proof verification timed out") from None
+    # Verify before propagation so peers can be scored for invalid proofs
+    is_valid = proof_engine.verify_execution_proof(proof)
 
     # Mark the authenticated prover attempt as seen after verification completes
-    seen.execution_proof_provers.add(prover_key)
+    seen.execution_proofs.add(prover_key)
 
     # Reject completed verification failures to prevent invalid proofs from propagating
     if not is_valid:

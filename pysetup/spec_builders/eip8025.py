@@ -23,7 +23,8 @@ class NoopProofEngine(ProofEngine):
 
     def request_proofs(self: ProofEngine,
                        beacon_block_root: Root,
-                       proof_attributes: ProofAttributes) -> Root:
+                       new_payload_request: NewPayloadRequest,
+                       proof_attributes: ProofAttributes) -> None:
         raise NotImplementedError("no default proof generation")
 
     def get_proof(self: ProofEngine,
