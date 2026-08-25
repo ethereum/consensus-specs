@@ -13,9 +13,9 @@ from tests.generators.compliance_runners.state_transition.materializer import Ma
 _DIMS = [
     "parent_root_matches",
     "slot_is_previous",
+    "attesting_indices_profile",
     "attesting_indices_nonempty",
     "signature_valid",
-    "state_effected",
     "outcome",
 ]
 
@@ -49,13 +49,23 @@ class PayloadAttestationMaterializer(Materializer):
             if _b(sol, "parent_root_matches")
             else spec.Root(b"\x42" * 32)
         )
+        ptc = spec.get_ptc(pre, slot)
+        indices_profile = _s(sol, "attesting_indices_profile")
+        if indices_profile == "EMPTY":
+            attesting_indices = []
+        elif indices_profile == "PARTIAL":
+            attesting_indices = ptc[: max(1, len(ptc) // 2)]
+        elif indices_profile == "ALL":
+            attesting_indices = None
+        else:
+            raise ValueError(f"unknown attesting indices profile: {indices_profile}")
         nonempty = _b(sol, "attesting_indices_nonempty")
         operation = prepare_signed_payload_attestation(
             spec,
             pre,
             slot=slot,
             beacon_block_root=root,
-            attesting_indices=None if nonempty else [],
+            attesting_indices=attesting_indices,
             valid_signature=nonempty and _s(sol, "signature_valid") == "T",
         )
         post = pre.copy()
