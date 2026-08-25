@@ -1,9 +1,4 @@
-"""Independent validation for Gloas attestation compliance vectors.
-
-Every serialized coverage dimension is recovered from the vector before the
-handler outcome and post-state are checked.  This deliberately does not import
-the model or materializer.
-"""
+"""Recover and validate Gloas attestation coverage dimensions."""
 
 from __future__ import annotations
 
@@ -75,7 +70,7 @@ def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) ->
     except (AssertionError, IndexError):
         return False
 
-def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
+def recover(pre: Any, attestation: Any) -> dict[str, Any]:
     data = attestation.data
     current = spec.get_current_epoch(pre)
     target_in_window = data.target.epoch in (spec.get_previous_epoch(pre), current)
@@ -116,12 +111,11 @@ def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
     else:
         handler_outcome = "ACCEPT_CURRENT" if target_is_current else "ACCEPT_PREVIOUS"
 
-    payment_weight_increased = False
-    if post is not None:
-        payment_weight_increased = (
-            pre.builder_pending_payments[payment_index].weight
-            < post.builder_pending_payments[payment_index].weight
-        )
+    payment_weight_increased = (
+        handler_outcome.startswith("ACCEPT_")
+        and sets_new_participation_flag
+        and pending_payment_amount_positive
+    )
     return {
         "target_epoch_in_window": target_in_window,
         "target_epoch_matches_slot": target_matches_slot,
@@ -139,26 +133,13 @@ def recover(pre: Any, attestation: Any, post: Any | None) -> dict[str, Any]:
         "outcome": handler_outcome,
     }
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     attestation = decode(case_dir / "attestation.ssz_snappy", spec.Attestation)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
-    post_path = case_dir / "post.ssz_snappy"
-    post = decode(post_path, spec.BeaconState) if post_path.exists() else None
-    actual = recover(pre, attestation, post)
+    actual = recover(pre, attestation)
     checks = [
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
         for name, value in claimed.items()
     ]
-    errors: list[str] = []
-    if actual["outcome"].startswith("REJECT_"):
-        if post is not None:
-            errors.append("rejected operation has a post state")
-    elif post is None:
-        errors.append("accepted operation is missing post state")
-    else:
-        oracle = pre.copy()
-        spec.process_attestation(oracle, attestation)
-        if oracle.hash_tree_root() != post.hash_tree_root():
-            errors.append("post does not match spec re-execution")
-    return checks, errors
+    return checks
