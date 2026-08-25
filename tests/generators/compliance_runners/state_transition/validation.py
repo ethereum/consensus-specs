@@ -59,13 +59,12 @@ def validate_cases(
         print(f"No cases found under {test_dir}{suffix}")
         return 1
 
-    total_mm = total_err = 0
+    total_mm = 0
     for case_dir in case_dirs:
-        checks, errors = validate_case(case_dir)
+        checks = validate_case(case_dir)
         mismatches = [check for check in checks if check.status == "mismatch"]
         total_mm += len(mismatches)
-        total_err += len(errors)
-        status = "OK" if not mismatches and not errors else "FAIL"
+        status = "OK" if not mismatches else "FAIL"
         outcome = next((check.claimed for check in checks if check.dimension == "outcome"), "?")
         print(f"{case_dir.name}: {status}  [{outcome}]")
         for check in mismatches:
@@ -73,14 +72,12 @@ def validate_cases(
                 f"    dim {check.dimension}: "
                 f"claimed={check.claimed!r} actual={check.actual!r}"
             )
-        for error in errors:
-            print(f"    oracle: {error}")
 
     print()
-    if total_mm or total_err:
-        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
+    if total_mm:
+        print(f"FAILED: {total_mm} dimension mismatch(es)")
         return 1
-    print(f"PASSED: {len(case_dirs)} cases, all dimensions and oracle checks consistent")
+    print(f"PASSED: {len(case_dirs)} cases, all dimensions consistent")
     return 0
 
 

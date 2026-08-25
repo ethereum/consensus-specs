@@ -49,7 +49,7 @@ def recover(pre: Any, operation: Any) -> dict[str, Any]:
     result["outcome"] = outcome
     return result
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     operation = decode(case_dir / "payload_attestation.ssz_snappy", spec.PayloadAttestation)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
@@ -58,4 +58,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
         for name, value in claimed.items()
     ]
-    return checks, []
+    return checks

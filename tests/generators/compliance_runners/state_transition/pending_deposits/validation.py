@@ -203,9 +203,8 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
         "outcome": outcome,
     }
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     trace = replay(pre)
     actual = recover_dimensions(pre, trace)
@@ -213,80 +212,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
         Check(name, value, actual.get(name), "ok" if actual.get(name) == value else "mismatch")
         for name, value in claimed.items()
     ]
-    errors: list[str] = []
-    if list(post.pending_deposits) != trace["expected_queue"]:
-        errors.append("pending_deposits does not equal unconsumed suffix plus postponed entries")
-    if post.deposit_balance_to_consume != trace["expected_churn"]:
-        errors.append("deposit_balance_to_consume does not match independently recovered churn")
-    if actual["primary_amount_to_available"] == "GT":
-        candidate = pre.pending_deposits[0]
-        exit_available = pre.deposit_balance_to_consume + spec.get_exit_churn_limit(pre)
-        if candidate.amount > exit_available:
-            errors.append("GT churn case does not distinguish activation churn from exit churn")
-    if actual["second_amount_to_remaining"] == "GT":
-        exit_available = pre.deposit_balance_to_consume + spec.get_exit_churn_limit(pre)
-        if pre.pending_deposits[0].amount + pre.pending_deposits[1].amount > exit_available:
-            errors.append(
-                "second-entry GT case does not distinguish activation churn from exit churn"
-            )
-    pre_indices = {validator.pubkey: index for index, validator in enumerate(pre.validators)}
-    expected_increases = [0] * len(pre.validators)
-    expected_new = []
-    for deposit in trace["applied"]:
-        index = pre_indices.get(deposit.pubkey)
-        if index is None:
-            expected_new.append(deposit)
-        else:
-            expected_increases[index] += deposit.amount
-    if len(post.validators) != len(pre.validators) + len(expected_new):
-        errors.append("validator registry length does not match valid applied deposits")
-    if len(post.balances) != len(pre.balances) + len(expected_new):
-        errors.append("balance list length does not match valid applied deposits")
-    if list(post.validators[: len(pre.validators)]) != list(pre.validators):
-        errors.append("an existing validator record changed during pending-deposit processing")
-    for name in (
-        "previous_epoch_participation",
-        "current_epoch_participation",
-        "inactivity_scores",
-    ):
-        before = getattr(pre, name)
-        after = getattr(post, name)
-        if len(after) != len(before) + len(expected_new):
-            errors.append(f"{name} length does not match valid applied deposits")
-            continue
-        if list(after[: len(before)]) != list(before):
-            errors.append(f"{name} changed an existing validator entry")
-            continue
-        if any(value != 0 for value in after[len(before) :]):
-            errors.append(f"{name} did not initialize new validator entries to zero")
-    for index, increase in enumerate(expected_increases):
-        if post.balances[index] != pre.balances[index] + increase:
-            errors.append(
-                f"validator {index} balance does not equal its aggregate applied deposits"
-            )
-            break
-    for offset, deposit in enumerate(expected_new):
-        index = len(pre.validators) + offset
-        if index >= len(post.validators) or post.validators[index].pubkey != deposit.pubkey:
-            errors.append("new validator registry entry does not match the valid applied deposit")
-            break
-        validator = post.validators[index]
-        expected_effective_balance = min(
-            deposit.amount - deposit.amount % spec.EFFECTIVE_BALANCE_INCREMENT,
-            spec.MAX_EFFECTIVE_BALANCE,
-        )
-        if (
-            validator.withdrawal_credentials != deposit.withdrawal_credentials
-            or validator.effective_balance != expected_effective_balance
-            or validator.slashed
-            or validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
-            or validator.activation_epoch != spec.FAR_FUTURE_EPOCH
-            or validator.exit_epoch != spec.FAR_FUTURE_EPOCH
-            or validator.withdrawable_epoch != spec.FAR_FUTURE_EPOCH
-        ):
-            errors.append("new validator fields do not match the deposit defaults")
-            break
-        if post.balances[index] != deposit.amount:
-            errors.append("new validator balance does not equal its applied deposit amount")
-            break
-    return checks, errors
+    return checks

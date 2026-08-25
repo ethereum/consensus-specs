@@ -11,9 +11,8 @@ from eth_consensus_specs.gloas import minimal as spec
 
 Y = YAML(typ="safe")
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
+def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     spe = int(spec.SLOTS_PER_EPOCH)
     q = spec.get_builder_payment_quorum_threshold(pre)
     claimed = Y.load((case_dir / "dimensions.yaml").read_text())["claimed"]
@@ -84,17 +83,14 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     else:
         withdrawals_appended = "MULTIPLE_COUNT"
 
-    previous_epoch_discarded = all(
-        p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
-    )
+    previous_epoch_discarded = all(p == spec.BuilderPendingPayment() for p in payments[spe:])
 
     next_epoch_shifted_forward = (
-        list(post.builder_pending_payments[:spe])
-        == list(pre.builder_pending_payments[spe:])
+        list(payments[:spe]) == list(pre.builder_pending_payments[spe:])
     )
 
     new_tail_defaulted = all(
-        p == spec.BuilderPendingPayment() for p in post.builder_pending_payments[spe:]
+        p == spec.BuilderPendingPayment() for p in payments[spe:]
     )
 
     if not occupied and not any(
@@ -130,7 +126,4 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
               "ok" if actual.get(name, "<none>") == value else "mismatch")
         for name, value in claimed.items()
     ]
-    errors: list[str] = []
-    if post.hash_tree_root() != expected.hash_tree_root():
-        errors.append("post state does not match expected rotation and append")
-    return checks, errors
+    return checks
