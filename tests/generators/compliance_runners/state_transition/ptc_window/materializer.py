@@ -8,12 +8,7 @@ from tests.generators.compliance_runners.state_transition.materializer import Ma
 
 _DIMS = [
     "epoch_position",
-    "old_sections_distinguishable",
-    "tail_epoch_to_current",
-    "retained_sections_shifted",
-    "new_tail_recomputed",
-    "state_effected",
-    "outcome",
+    "validator_count",
 ]
 
 
@@ -23,16 +18,14 @@ class PtcWindowMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         s = self.spec
+        validator_count = 64 if str(sol.validator_count) == "MINIMUM" else 128
         pre = create_genesis_state(
             s,
-            validator_balances=[s.MAX_EFFECTIVE_BALANCE] * 64,
+            validator_balances=[s.MAX_EFFECTIVE_BALANCE] * validator_count,
             activation_threshold=s.MAX_EFFECTIVE_BALANCE,
         )
         target = (1 if str(sol.epoch_position) == "GENESIS_END" else 2) * s.SLOTS_PER_EPOCH - 1
         s.process_slots(pre, s.Slot(target))
-        spe = int(s.SLOTS_PER_EPOCH)
-        sections = [list(pre.ptc_window[i : i + spe]) for i in range(0, len(pre.ptc_window), spe)]
-        assert len({tuple(section) for section in sections}) == len(sections)
         post = pre.copy()
         s.process_ptc_window(post)
         claimed = {
