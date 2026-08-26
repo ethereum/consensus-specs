@@ -1,9 +1,13 @@
-% Realization aspect: withdrawal-credential prefix.
+% Realization aspect: withdrawal-credential profile.
 %
-% is_builder_withdrawal_credential(request.withdrawal_credentials):
-%   withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX (0xB0)
-% (specs/gloas/beacon-chain.md is_builder_withdrawal_credential).
+% withdrawal_credentials[:1]: BLS (0x00), ETH1 (0x01), COMPOUNDING (0x02), or
+% BUILDER (0xB0). The builder predicate is derived from this profile.
+% (specs/gloas/beacon-chain.md withdrawal credential prefixes).
 
 include "base.mzn";
 
+enum WithdrawalCredentialsProfile = { BLS, ETH1, COMPOUNDING, BUILDER };
+
+var WithdrawalCredentialsProfile: withdrawal_credentials_profile;
 var bool: wc_is_builder_prefix;
+constraint wc_is_builder_prefix <-> withdrawal_credentials_profile == BUILDER;

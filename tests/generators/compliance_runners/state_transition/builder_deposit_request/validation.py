@@ -15,6 +15,8 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
+from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
+
 _YAML = YAML(typ="safe")
 _ACCEPT = {"ADDED_NEW_BUILDER", "TOPPED_UP", "TOPPED_UP_AFTER_RESET"}
 
@@ -24,7 +26,9 @@ def _tri(x: bool) -> str:
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     pubkeys = [b.pubkey for b in pre.builders]
     found = request.pubkey in pubkeys
+    credential_profile = withdrawal_credentials_profile(spec, request.withdrawal_credentials)
     r: dict[str, Any] = {
+        "withdrawal_credentials_profile": credential_profile,
         "wc_is_builder_prefix": bool(spec.is_builder_withdrawal_credential(request.withdrawal_credentials)),
         "builder_pubkey_found": found,
         "builder_signature_valid": _tri(bool(spec.is_valid_builder_deposit_signature(request))),
