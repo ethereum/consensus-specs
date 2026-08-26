@@ -107,6 +107,7 @@ def discover_handlers(test_dir: Path) -> list[str]:
 def main(
     test_dir: Path | None = None,
     selected_cases: set[str] | None = None,
+    handlers: tuple[str, ...] | None = None,
 ) -> int:
     if test_dir is None:
         parser = argparse.ArgumentParser()
@@ -124,7 +125,7 @@ def main(
             else None
         )
 
-    handlers = discover_handlers(test_dir)
+    handlers = handlers if handlers is not None else tuple(discover_handlers(test_dir))
     result = 0
     for handler in handlers:
         module = import_module(f".{handler}.validation", __package__)
