@@ -10,6 +10,7 @@ class EIP8025SpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.gloas import {preset_name} as gloas
+from eth_consensus_specs.utils.ssz.ssz_typing import Uint16
 """
 
     @classmethod
@@ -23,6 +24,8 @@ class NoopProofEngine(ProofEngine):
 
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,
+                       chain_id: Uint64,
+                       schema_id: Uint16,
                        proof_attributes: ProofAttributes) -> Root:
         raise NotImplementedError("no default proof generation")
 

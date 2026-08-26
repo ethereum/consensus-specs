@@ -55,17 +55,37 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     proof = spec.ExecutionProof(
         proof_data=proof_data,
         proof_type=proof_type,
-        public_input=spec.PublicInput(new_payload_request_root=new_payload_request_root),
+        public_input=spec.PublicInput(
+            new_payload_request_root=new_payload_request_root,
+            successful_validation=True,
+            chain_id=spec.config.DEPOSIT_CHAIN_ID,
+            schema_id=spec.STATELESS_INPUT_SCHEMA_ID,
+        ),
     )
     proof_engine = MockProofEngine(proof=proof)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
-    request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)
+    request_root = proof_engine.request_proofs(
+        new_payload_request,
+        spec.config.DEPOSIT_CHAIN_ID,
+        spec.STATELESS_INPUT_SCHEMA_ID,
+        proof_attributes,
+    )
     assert request_root == new_payload_request_root
-    assert proof_engine.requests == [(new_payload_request, proof_attributes)]
+    assert proof_engine.requests == [
+        (
+            new_payload_request,
+            spec.config.DEPOSIT_CHAIN_ID,
+            spec.STATELESS_INPUT_SCHEMA_ID,
+            proof_attributes,
+        )
+    ]
 
     returned_proof = proof_engine.get_proof(request_root, proof_type)
     assert returned_proof.public_input.new_payload_request_root == new_payload_request_root
+    assert returned_proof.public_input.successful_validation
+    assert returned_proof.public_input.chain_id == spec.config.DEPOSIT_CHAIN_ID
+    assert returned_proof.public_input.schema_id == spec.STATELESS_INPUT_SCHEMA_ID
     assert returned_proof.proof_type == proof_type
     assert proof_engine.retrievals == [(request_root, proof_type)]
 
@@ -100,7 +120,12 @@ def test_default_proof_engine_rejects_prover_operations(spec, state):
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
     with pytest.raises(NotImplementedError, match="no default proof generation"):
-        spec.PROOF_ENGINE.request_proofs(new_payload_request, proof_attributes)
+        spec.PROOF_ENGINE.request_proofs(
+            new_payload_request,
+            spec.config.DEPOSIT_CHAIN_ID,
+            spec.STATELESS_INPUT_SCHEMA_ID,
+            proof_attributes,
+        )
 
     with pytest.raises(NotImplementedError, match="no default proof retrieval"):
         spec.PROOF_ENGINE.get_proof(spec.hash_tree_root(new_payload_request), proof_type)

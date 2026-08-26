@@ -55,11 +55,14 @@ An honest prover performs the following steps for a received
    `signed_payload_envelope`.
 3. Construct `ProofAttributes` containing the desired proof types.
 4. Let
-   `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`.
+   `new_payload_request_root = proof_engine.request_proofs(new_payload_request, DEPOSIT_CHAIN_ID, STATELESS_INPUT_SCHEMA_ID, proof_attributes)`.
 5. For each requested `proof_type`, subsequently call
    `proof = proof_engine.get_proof(new_payload_request_root, proof_type)`.
-6. Verify that `proof.public_input.new_payload_request_root` equals
-   `new_payload_request_root` and that `proof.proof_type` equals `proof_type`.
+6. Verify that `proof.public_input` has `new_payload_request_root` equal to
+   `new_payload_request_root`, `successful_validation` equal to `True`,
+   `chain_id` equal to `DEPOSIT_CHAIN_ID`, and `schema_id` equal to
+   `STATELESS_INPUT_SCHEMA_ID`. Also verify that `proof.proof_type` equals
+   `proof_type`.
 
 ### Signing and publishing a proof
 

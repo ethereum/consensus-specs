@@ -64,14 +64,18 @@ class ProofType(Uint8):
 
 *Note*: The execution values are not definitive.
 
-| Name                    | Value                                                        |
-| ----------------------- | ------------------------------------------------------------ |
-| `MAX_PROOF_SIZE`        | `Uint64(4194304)` (= 4,096 KiB, 4 MiB)                       |
-| `SUPPORTED_PROOF_TYPES` | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
+| Name                        | Value                                                        |
+| --------------------------- | ------------------------------------------------------------ |
+| `MAX_PROOF_SIZE`            | `Uint64(4194304)` (= 4,096 KiB, 4 MiB)                       |
+| `SUPPORTED_PROOF_TYPES`     | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
+| `STATELESS_INPUT_SCHEMA_ID` | `Uint16(0x1501)`                                             |
 
 The initial proof type assignments are provisional. A `ProofType` identifies an
 immutable combination of proof system, guest program, and version. Assignments
 MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`.
+
+`STATELESS_INPUT_SCHEMA_ID` encodes the Amsterdam protocol fork (`0x15`) and
+schema revision (`0x01`).
 
 ### Domains
 
@@ -94,8 +98,11 @@ class NewPayloadRequest(ProgressiveContainer(active_fields=[1] * 4)):
 ### New `PublicInput`
 
 ```python
-class PublicInput(ProgressiveContainer(active_fields=[1])):
+class PublicInput(ProgressiveContainer(active_fields=[1] * 4)):
     new_payload_request_root: Root
+    successful_validation: Boolean
+    chain_id: Uint64
+    schema_id: Uint16
 ```
 
 ### New `ExecutionProof`
@@ -162,7 +169,12 @@ def validate_execution_proof_envelope(
         parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
         execution_requests=payload_envelope.execution_requests,
     )
-    public_input = PublicInput(new_payload_request_root=hash_tree_root(new_payload_request))
+    public_input = PublicInput(
+        new_payload_request_root=hash_tree_root(new_payload_request),
+        successful_validation=True,
+        chain_id=DEPOSIT_CHAIN_ID,
+        schema_id=STATELESS_INPUT_SCHEMA_ID,
+    )
     return ExecutionProof(
         proof_data=proof_envelope.proof_data,
         proof_type=proof_envelope.proof_type,

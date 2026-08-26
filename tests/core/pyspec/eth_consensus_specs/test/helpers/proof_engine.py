@@ -13,8 +13,8 @@ class MockProofEngine:
         self.verifications.append(proof)
         return self.verification_result
 
-    def request_proofs(self, new_payload_request, proof_attributes):
-        self.requests.append((new_payload_request, proof_attributes))
+    def request_proofs(self, new_payload_request, chain_id, schema_id, proof_attributes):
+        self.requests.append((new_payload_request, chain_id, schema_id, proof_attributes))
         return hash_tree_root(new_payload_request)
 
     def get_proof(self, new_payload_request_root, proof_type):

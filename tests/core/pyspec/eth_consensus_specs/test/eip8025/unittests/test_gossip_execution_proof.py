@@ -84,7 +84,10 @@ def get_proof_engine_input(spec, store, signed_proof):
         execution_requests=payload_envelope.execution_requests,
     )
     public_input = spec.PublicInput(
-        new_payload_request_root=spec.hash_tree_root(new_payload_request)
+        new_payload_request_root=spec.hash_tree_root(new_payload_request),
+        successful_validation=True,
+        chain_id=spec.config.DEPOSIT_CHAIN_ID,
+        schema_id=spec.STATELESS_INPUT_SCHEMA_ID,
     )
     return spec.ExecutionProof(
         proof_data=proof_envelope.proof_data,

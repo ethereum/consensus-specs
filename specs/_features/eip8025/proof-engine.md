@@ -50,8 +50,8 @@ def verify_execution_proof(
     Verify an execution proof.
     Return ``True`` if the proof is valid.
 
-    Use ``execution_proof.public_input.new_payload_request_root`` as the
-    proof-system public input.
+    Use ``hash_tree_root(execution_proof.public_input)`` as the proof-system
+    public input.
     """
 ```
 
@@ -70,11 +70,16 @@ class ProofAttributes:
 def request_proofs(
     self: ProofEngine,
     new_payload_request: NewPayloadRequest,
+    chain_id: Uint64,
+    schema_id: Uint16,
     proof_attributes: ProofAttributes,
 ) -> Root:
     """
     Request asynchronous proof generation for ``new_payload_request`` using
-    ``proof_attributes``.
+    ``chain_id``, ``schema_id``, and ``proof_attributes``.
+
+    Generated proofs use ``hash_tree_root(new_payload_request)``, ``True``,
+    ``chain_id``, and ``schema_id`` as their ``PublicInput`` fields.
 
     Return ``hash_tree_root(new_payload_request)`` as the identifier for
     retrieving generated proofs.
