@@ -61,13 +61,6 @@ heze:
       - 'presets/*/heze.yaml'
       - 'pysetup/spec_builders/heze.py'
 
-eip6914:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip6914/**'
-      - 'presets/*/eip6914.yaml'
-      - 'pysetup/spec_builders/eip6914.py'
-
 eip8025:
   - changed-files:
     - any-glob-to-any-file:
@@ -81,6 +74,13 @@ eip8148:
       - 'specs/_features/eip8148/**'
       - 'presets/*/eip8148.yaml'
       - 'pysetup/spec_builders/eip8148.py'
+
+eip8205:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip8205/**'
+      - 'presets/*/eip8205.yaml'
+      - 'pysetup/spec_builders/eip8205.py'
 
 eip8321:
   - changed-files:
