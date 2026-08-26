@@ -696,11 +696,11 @@ def test_fork_valid_then_invalid_validator_then_builder_deposit(spec, phases, st
     )
     builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
 
-    state.pending_deposits = [
+    state.pending_deposits = spec.PendingDeposits.of(
         valid_validator_deposit,
         invalid_validator_deposit,
         builder_deposit,
-    ]
+    )
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -751,11 +751,11 @@ def test_fork_invalid_then_valid_validator_then_builder_deposit(spec, phases, st
     )
     builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
 
-    state.pending_deposits = [
+    state.pending_deposits = spec.PendingDeposits.of(
         invalid_validator_deposit,
         valid_validator_deposit,
         builder_deposit,
-    ]
+    )
 
     post_state = yield from run_fork_test(post_spec, state)
 
@@ -809,13 +809,13 @@ def test_fork_mixed_validity_validator_deposits_surrounding_builder_deposits(spe
     )
     builder_deposit_2 = create_pending_deposit_for_builder(post_spec, pubkey, amount)
 
-    state.pending_deposits = [
+    state.pending_deposits = spec.PendingDeposits.of(
         valid_validator_deposit,
         invalid_validator_deposit_1,
         builder_deposit_1,
         invalid_validator_deposit_2,
         builder_deposit_2,
-    ]
+    )
 
     post_state = yield from run_fork_test(post_spec, state)
 
