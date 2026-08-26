@@ -10,37 +10,33 @@
 - [Introduction](#introduction)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [New `notify_new_payload`](#new-notify_new_payload)
-  - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
-  - [New `ProofAttributes`](#new-proofattributes)
-  - [New `request_proofs`](#new-request_proofs)
+  - [New `request_proof`](#new-request_proof)
+  - [New `get_proof`](#new-get_proof)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the Proof Engine specification. The Proof Engine enables
-stateless validation of execution payloads through execution proofs.
+This document contains the host-side Proof Engine specification. The recursive
+guest interface and transition logic are defined separately in
+[guest-program.md](./guest-program.md).
 
 ## Proof engine
 
-The implementation-dependent `ProofEngine` protocol encapsulates the proof
-sub-system logic via:
+The implementation-dependent `ProofEngine` protocol encapsulates proof
+verification and asynchronous proof generation via:
 
-- a state object `self.proof_state` of type `ProofState` containing stored
-  proofs
-- a verification function `self.verify_execution_proof` to verify individual
-  proofs
-- a notification function `self.notify_new_payload` to notify the proof engine
-  of the new payload
-- a notification function `self.notify_forkchoice_updated` to notify the proof
-  engine of forkchoice state changes
-- a generation function `self.request_proofs` to initiate asynchronous proof
-  generation
+- a verification function `self.verify_execution_proof` to verify recursive
+  execution proofs; and
+- a generation function `self.request_proof` to generate a proof from a
+  `PrivateInput` containing the beacon-chain and execution witness material for
+  one `ProofType`; and
+- a retrieval function `self.get_proof` to wait for and return a generated
+  proof.
 
-The body of these functions are implementation dependent. The Engine API may be
-used to implement this and similarly defined functions via an external proof
-engine.
+Proof verification is part of the baseline EIP-8025 profile. Proof generation is
+part of the optional `prover` feature, identified by the `eip8025-prover` tag.
+Implementations that do not support this feature may reject generation requests.
 
 ### New `verify_execution_proof`
 
@@ -48,59 +44,46 @@ engine.
 def verify_execution_proof(
     self: ProofEngine,
     execution_proof: ExecutionProof,
+    chain_config_root: Root,
 ) -> bool:
     """
-    Verify an execution proof.
-    Return ``True`` if proof is valid.
+    Verify ``execution_proof`` against the locally trusted
+    ``chain_config_root``. Return ``True`` if the proof is valid.
     """
 ```
 
-### New `notify_new_payload`
+### New `request_proof`
 
 ```python
-def notify_new_payload(
+def request_proof(
     self: ProofEngine,
-    new_payload_request: NewPayloadRequest,
-) -> None:
-    """
-    Notify the proof engine of the new payload.
-    """
-```
-
-### New `notify_forkchoice_updated`
-
-```python
-def notify_forkchoice_updated(
-    self: ProofEngine,
-    head_block_hash: Hash32,
-    safe_block_hash: Hash32,
-    finalized_block_hash: Hash32,
-) -> None:
-    """
-    Notify the proof engine of a forkchoice state update. Allows the proof
-    engine to track the canonical chain for retention and pruning.
-    """
-```
-
-### New `ProofAttributes`
-
-```python
-@dataclass
-class ProofAttributes:
-    proof_types: Sequence[ProofType]
-```
-
-### New `request_proofs`
-
-```python
-def request_proofs(
-    self: ProofEngine,
-    new_payload_request: NewPayloadRequest,
-    proof_attributes: ProofAttributes,
+    private_input: PrivateInput,
+    proof_type: ProofType,
 ) -> Root:
     """
-    Request proof generation for a new payload request with specified proof
-    attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
-    generation request.
+    Request asynchronous proof generation for ``private_input`` using
+    ``proof_type`` and local chain configuration. Return the target beacon block
+    root from ``private_input`` to track the generation request.
+
+    Requests are singular because the recursive predecessor in
+    ``private_input.beacon_chain_witness.previous_proof`` is specific to
+    ``proof_type``.
+    """
+```
+
+### New `get_proof`
+
+```python
+def get_proof(
+    self: ProofEngine,
+    beacon_block_root: Root,
+    proof_type: ProofType,
+) -> ExecutionProof:
+    """
+    Wait for the generation request identified by ``beacon_block_root`` and
+    ``proof_type`` to complete, then return its proof.
+
+    If generation fails or is abandoned, this function MUST NOT return an
+    ``ExecutionProof``.
     """
 ```

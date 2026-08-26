@@ -13,6 +13,17 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
 """
 
     @classmethod
+    def preparations(cls) -> str:
+        return """
+EIP8025_FEATURES = {
+    "prover": {
+        "tag": "eip8025-prover",
+        "status": "optional",
+    },
+}
+"""
+
+    @classmethod
     def execution_engine_cls(cls) -> str:
         return """
 class NoopExecutionEngine(ExecutionEngine):
@@ -49,28 +60,27 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()
+"""
 
-
+    @classmethod
+    def proof_engine_cls(cls) -> str:
+        return """
 class NoopProofEngine(ProofEngine):
 
     def verify_execution_proof(self: ProofEngine,
-                               execution_proof: ExecutionProof) -> bool:
-        return True
+                               execution_proof: ExecutionProof,
+                               chain_config_root: Root) -> bool:
+        return False
 
-    def notify_new_payload(self: ProofEngine,
-                           new_payload_request: NewPayloadRequest) -> None:
-        return None
-
-    def notify_forkchoice_updated(self: ProofEngine,
-                                  head_block_hash: Hash32,
-                                  safe_block_hash: Hash32,
-                                  finalized_block_hash: Hash32) -> None:
-        return None
-
-    def request_proofs(self: ProofEngine,
-                       new_payload_request: NewPayloadRequest,
-                       proof_attributes: ProofAttributes) -> Root:
+    def request_proof(self: ProofEngine,
+                      private_input: PrivateInput,
+                      proof_type: ProofType) -> Root:
         raise NotImplementedError("no default proof generation")
+
+    def get_proof(self: ProofEngine,
+                  beacon_block_root: Root,
+                  proof_type: ProofType) -> ExecutionProof:
+        raise NotImplementedError("no default proof retrieval")
 
 
 PROOF_ENGINE = NoopProofEngine()"""

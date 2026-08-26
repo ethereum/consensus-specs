@@ -2,6 +2,9 @@
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
+> **EIP-8025 feature:** `prover` (`eip8025-prover`). This feature is optional;
+> proof verification remains part of the baseline profile.
+
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
@@ -11,7 +14,8 @@
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
 - [Execution proof](#execution-proof)
-  - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
+  - [Requesting proof generation](#requesting-proof-generation)
+  - [Signing and publishing a proof](#signing-and-publishing-a-proof)
 
 <!-- mdformat-toc end -->
 
@@ -19,8 +23,9 @@
 
 This document represents the prover guide accompanying EIP-8025. Provers are
 active validators who voluntarily generate and submit execution proofs without
-direct protocol-level compensation. They provide a public good by enabling
-stateless validation during the optional proof phase.
+direct protocol-level compensation. They provide a public good by producing
+independently verifiable execution proofs during the optional proof phase. The
+execution `ChainConfig` is part of the CL's static configuration.
 
 *Note*: Provers are a transitional mechanism. In future mandatory proof forks,
 builders will be required to produce and gossip execution proofs as part of
@@ -44,30 +49,27 @@ def get_execution_proof_signature(
 
 ## Execution proof
 
-### Constructing the `SignedExecutionProof`
+### Requesting proof generation
 
-An honest prover who is an active validator and wants to generate execution
-proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
+An honest prover performs the following steps for a received
+`SignedExecutionPayloadEnvelope` and a supported `proof_type`:
 
-1. At startup, subscribe to:
-   - `execution_payload` events from the beacon node via SSE.
-   - Proof completion events from the proof engine via SSE. The concrete SSE
-     event shape is defined by the proof engine API specification.
-2. Upon receiving an `execution_payload` event:
-   - Fetch the full `SignedExecutionPayloadEnvelope` and the corresponding
-     committed `ExecutionPayloadBid` via RPC.
-   - Construct `NewPayloadRequest` from the envelope and the committed bid.
-   - Create `ProofAttributes` with desired proof types.
-   - Call
-     `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`
-     to initiate proof generation, tracking the request by
-     `new_payload_request_root`.
-3. Upon receiving a proof completion event for a tracked
-   `new_payload_request_root`:
-   - Fetch the completed `ExecutionProof` from the proof engine.
-   - Let `validator_index` be the prover's validator index.
-   - Let
-     `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
-   - Let
-     `signed_proof = SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`.
-   - Broadcast `signed_proof` on the `execution_proof` gossip topic.
+1. Call the versioned Engine API `newPayloadWithWitness` method with the
+   corresponding `NewPayloadRequest` and obtain a `VALID` execution witness.
+2. Construct `PrivateInput` from the execution witness and the corresponding
+   beacon-chain data and state.
+3. Call
+   `beacon_block_root = proof_engine.request_proof(private_input, proof_type)`.
+4. Subsequently call
+   `proof = proof_engine.get_proof(beacon_block_root, proof_type)`.
+
+### Signing and publishing a proof
+
+The prover performs the following steps:
+
+1. Check the returned proof's root, proof type, and head slot.
+2. Let `validator_index` be the prover's validator index and let
+   `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
+3. Construct
+   `SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`
+   and broadcast it on the `execution_proof` topic.
