@@ -15,6 +15,7 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
+from ..aspects_helpers.deposit_amount import deposit_amount_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
 
 _YAML = YAML(typ="safe")
@@ -32,6 +33,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "wc_is_builder_prefix": bool(spec.is_builder_withdrawal_credential(request.withdrawal_credentials)),
         "builder_pubkey_found": found,
         "builder_signature_valid": _tri(bool(spec.is_valid_builder_deposit_signature(request))),
+        "amount_profile": deposit_amount_profile(spec, request.amount),
         "amount_nonzero": int(request.amount) > 0,
     }
 
