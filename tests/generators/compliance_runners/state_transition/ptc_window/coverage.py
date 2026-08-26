@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    cover,
+    build_profile as _build_profile,
     enumerate_signatures,
 )
 
@@ -19,13 +19,15 @@ ASPECTS = {
 
 
 def _recs():
-    return enumerate_signatures(MODEL, _DIMS, ASPECTS)
+    return enumerate_signatures(MODEL, _DIMS, ASPECTS, _nfaults)
+
+
+def _nfaults(_r: dict) -> int:
+    return 0
 
 
 def build_profile(records, name):
-    if name == "all":
-        return len(records), records
-    return cover(records, ASPECTS, 1 if name == "onewise" else 2)
+    return _build_profile(records, name, ASPECTS, ASPECTS, {"outcome": ["outcome"]})
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:

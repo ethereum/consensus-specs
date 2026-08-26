@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import AttestationMaterializer, _DIMS
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from .materializer import _DIMS, AttestationMaterializer
 
 INPUT_ASPECTS = {
     "data": [
@@ -27,12 +27,27 @@ INPUT_ASPECTS = {
 }
 OUTCOME_ASPECT = {"outcome": ["target_is_current", "payment_weight_increased", "outcome"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-ACCEPT = {"ACCEPT_CURRENT", "ACCEPT_PREVIOUS"}
 MODEL = Path(__file__).parent / "models" / "handler_attestation.mzn"
 
 
 def _nfaults(r: dict) -> int:
-    return sum(not r[n] for n in _DIMS[:8])
+    # Count independent failing checks. Structural checks are a dependency
+    # chain: later checks are not applicable when an earlier check already
+    # prevents the attestation from being indexed and processed.
+    faults = int(not r["target_epoch_in_window"])
+    if r["target_epoch_in_window"]:
+        faults += int(not r["target_epoch_matches_slot"])
+    faults += int(not r["inclusion_delay_ok"])
+    faults += int(not r["index_valid"])
+    if r["index_valid"]:
+        faults += int(not r["committee_indices_valid"])
+        if r["committee_indices_valid"]:
+            faults += int(not r["committee_nonempty"])
+            if r["committee_nonempty"]:
+                faults += int(not r["aggregation_length_valid"])
+                if r["aggregation_length_valid"]:
+                    faults += int(not r["signature_valid"])
+    return faults
 
 
 def _recs():
@@ -40,16 +55,14 @@ def _recs():
 
 
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":
-        _, normal_inputs = cover(recs, INPUT_ASPECTS, 2, "normal", accept=ACCEPT)
-        _, normal_outcomes = cover(recs, OUTCOME_ASPECT, 1, "normal", accept=ACCEPT)
-        _, exceptional = cover(recs, OUTCOME_ASPECT, 1, "exceptional", accept=ACCEPT)
-        return -1, dedup(normal_inputs + normal_outcomes + exceptional, ALL_ASPECTS)
-    if name == "onewise":
-        return cover(recs, ALL_ASPECTS, 1, accept=ACCEPT)
-    return cover(recs, ALL_ASPECTS, 2, accept=ACCEPT)
+    return _build_profile(
+        recs,
+        name,
+        ALL_ASPECTS,
+        INPUT_ASPECTS,
+        OUTCOME_ASPECT,
+        normal_outcome_aspect=OUTCOME_ASPECT,
+    )
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
