@@ -137,6 +137,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     # voting source is pulled up to the store's justified checkpoint, which
     # advances to (B, justified_epoch + 1)
     assert store.justified_checkpoint.epoch == justified_epoch + 1
+    assert store.justified_checkpoint.root == b_root
     assert store.unrealized_justifications[k_root] == store.justified_checkpoint
 
     # The store is already at the start of epoch `justified_epoch + 2`, where
