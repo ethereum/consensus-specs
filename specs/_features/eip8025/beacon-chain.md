@@ -21,6 +21,7 @@
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
 - [Execution proof verification](#execution-proof-verification)
+  - [New `validate_execution_proof_envelope`](#new-validate_execution_proof_envelope)
   - [New `process_execution_proof`](#new-process_execution_proof)
 
 <!-- mdformat-toc end -->
@@ -126,16 +127,17 @@ class SignedExecutionProofEnvelope(Container):
 
 ## Execution proof verification
 
-### New `process_execution_proof`
+### New `validate_execution_proof_envelope`
 
 ```python
-def process_execution_proof(
+def validate_execution_proof_envelope(
     state: BeaconState,
     signed_proof_envelope: SignedExecutionProofEnvelope,
-    public_input: PublicInput,
-    proof_engine: ProofEngine,
-) -> None:
+    payload_envelope: ExecutionPayloadEnvelope,
+) -> ExecutionProof:
+    """Authenticate the envelope and construct the ``ExecutionProof``."""
     proof_envelope = signed_proof_envelope.message
+    assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
     assert len(proof_envelope.proof_data) > 0
     assert len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
@@ -150,11 +152,39 @@ def process_execution_proof(
     signing_root = compute_signing_root(proof_envelope, domain)
     assert bls.Verify(validator.pubkey, signing_root, signed_proof_envelope.signature)
 
-    # Verify the execution proof
-    proof = ExecutionProof(
+    # Construct the proof-system public input from the accepted execution payload
+    bid = state.latest_execution_payload_bid
+    new_payload_request = NewPayloadRequest(
+        execution_payload=payload_envelope.payload,
+        versioned_hashes=[
+            kzg_commitment_to_versioned_hash(commitment) for commitment in bid.blob_kzg_commitments
+        ],
+        parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
+        execution_requests=payload_envelope.execution_requests,
+    )
+    public_input = PublicInput(new_payload_request_root=hash_tree_root(new_payload_request))
+    return ExecutionProof(
         proof_data=proof_envelope.proof_data,
         proof_type=proof_envelope.proof_type,
         public_input=public_input,
+    )
+```
+
+### New `process_execution_proof`
+
+```python
+def process_execution_proof(
+    state: BeaconState,
+    signed_proof_envelope: SignedExecutionProofEnvelope,
+    payload_envelope: ExecutionPayloadEnvelope,
+    proof_engine: ProofEngine,
+) -> None:
+    """Authenticate and verify an execution proof envelope."""
+    # Verify the execution proof
+    proof = validate_execution_proof_envelope(
+        state,
+        signed_proof_envelope,
+        payload_envelope,
     )
     assert proof_engine.verify_execution_proof(proof)
 ```

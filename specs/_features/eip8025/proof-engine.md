@@ -71,13 +71,13 @@ def request_proofs(
     self: ProofEngine,
     new_payload_request: NewPayloadRequest,
     proof_attributes: ProofAttributes,
-) -> None:
+) -> Root:
     """
     Request asynchronous proof generation for ``new_payload_request`` using
     ``proof_attributes``.
 
-    Internally associate generated proofs with
-    ``hash_tree_root(new_payload_request)``.
+    Return ``hash_tree_root(new_payload_request)`` as the identifier for
+    retrieving generated proofs.
     """
 ```
 
@@ -89,12 +89,9 @@ def get_proof(
     self: ProofEngine,
     new_payload_request_root: Root,
     proof_type: ProofType,
-) -> ProofData:
+) -> ExecutionProof:
     """
     Wait for the generation request identified by ``new_payload_request_root``
-    and ``proof_type`` to complete, then return its proof data.
-
-    If generation fails or is abandoned, this function MUST NOT return a
-    ``ProofData``.
+    and ``proof_type`` to complete, then return the execution proof.
     """
 ```

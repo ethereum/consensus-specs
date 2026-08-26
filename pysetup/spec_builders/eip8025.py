@@ -23,12 +23,12 @@ class NoopProofEngine(ProofEngine):
 
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,
-                       proof_attributes: ProofAttributes) -> None:
+                       proof_attributes: ProofAttributes) -> Root:
         raise NotImplementedError("no default proof generation")
 
     def get_proof(self: ProofEngine,
                   new_payload_request_root: Root,
-                  proof_type: ProofType) -> ProofData:
+                  proof_type: ProofType) -> ExecutionProof:
         raise NotImplementedError("no default proof retrieval")
 
 

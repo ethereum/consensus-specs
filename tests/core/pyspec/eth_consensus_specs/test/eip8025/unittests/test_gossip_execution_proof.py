@@ -71,8 +71,20 @@ def validate(spec, seen, store, signed_proof, proof_engine=None):
 
 def get_proof_engine_input(spec, store, signed_proof):
     proof_envelope = signed_proof.message
-    public_input = spec.compute_execution_proof_public_input(
-        store, proof_envelope.beacon_block_root
+    state = store.block_states[proof_envelope.beacon_block_root]
+    payload_envelope = store.payloads[proof_envelope.beacon_block_root]
+    bid = state.latest_execution_payload_bid
+    new_payload_request = spec.NewPayloadRequest(
+        execution_payload=payload_envelope.payload,
+        versioned_hashes=[
+            spec.kzg_commitment_to_versioned_hash(commitment)
+            for commitment in bid.blob_kzg_commitments
+        ],
+        parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
+        execution_requests=payload_envelope.execution_requests,
+    )
+    public_input = spec.PublicInput(
+        new_payload_request_root=spec.hash_tree_root(new_payload_request)
     )
     return spec.ExecutionProof(
         proof_data=proof_envelope.proof_data,
@@ -92,7 +104,15 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     assert validate(spec, seen, store, signed_proof, proof_engine) == ("valid", None)
     assert validate(spec, seen, store, signed_proof, proof_engine) == (
         "ignore",
-        "proof already seen from this prover for this beacon block and proof type",
+        "execution proof has already been processed",
+    )
+
+    same_proof_from_another_prover = make_signed_execution_proof_envelope(
+        spec, state, block_root, prover_index=1
+    )
+    assert validate(spec, seen, store, same_proof_from_another_prover) == (
+        "ignore",
+        "execution proof has already been processed",
     )
 
     competing_proof = make_signed_execution_proof_envelope(
@@ -161,20 +181,15 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
     out_of_range = make_signed_execution_proof_envelope(spec, state, block_root)
     out_of_range.validator_index = spec.ValidatorIndex(len(state.validators))
     seen = get_seen(spec)
-    assert validate(spec, seen, store, out_of_range) == (
-        "reject",
-        "execution proof's validator index is invalid",
-    )
-    assert seen.execution_proofs == set()
+    expect_assertion_error(lambda: validate(spec, seen, store, out_of_range))
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
 
     valid_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     invalid_signature = valid_proof.copy()
     invalid_signature.signature = spec.BLSSignature()
     seen = get_seen(spec)
-    assert validate(spec, seen, store, invalid_signature) == (
-        "reject",
-        "execution proof's signature is invalid",
-    )
+    expect_assertion_error(lambda: validate(spec, seen, store, invalid_signature))
     assert validate(spec, seen, store, valid_proof) == ("valid", None)
 
     original_exit_epoch = store.block_states[block_root].validators[1].exit_epoch
@@ -184,10 +199,7 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
         spec, block_state, block_root, prover_index=1
     )
     seen = get_seen(spec)
-    assert validate(spec, seen, store, inactive_proof) == (
-        "reject",
-        "execution proof's validator is not active",
-    )
+    expect_assertion_error(lambda: validate(spec, seen, store, inactive_proof))
     block_state.validators[1].exit_epoch = original_exit_epoch
     active_proof = make_signed_execution_proof_envelope(
         spec, block_state, block_root, prover_index=1
@@ -200,40 +212,33 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
 def test_validate_execution_proof_gossip_structural_checks(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     cases = [
-        (
-            make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
-            "execution proof data is empty",
+        make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
+        make_signed_execution_proof_envelope(
+            spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
         ),
-        (
-            make_signed_execution_proof_envelope(
-                spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
-            ),
-            "execution proof type is unsupported",
+        make_signed_execution_proof_envelope(
+            spec,
+            state,
+            block_root,
+            prover_index=1,
+            proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
         ),
-        (
-            make_signed_execution_proof_envelope(
-                spec,
-                state,
-                block_root,
-                prover_index=1,
-                proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
-            ),
-            "execution proof type is unsupported",
-        ),
-        (
-            make_signed_execution_proof_envelope(
-                spec,
-                state,
-                block_root,
-                prover_index=2,
-                proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
-            ),
-            "execution proof data exceeds the size limit",
+        make_signed_execution_proof_envelope(
+            spec,
+            state,
+            block_root,
+            prover_index=2,
+            proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
         ),
     ]
 
-    for signed_proof, error in cases:
-        assert validate(spec, get_seen(spec), store, signed_proof) == ("reject", error)
+    for signed_proof in cases:
+        seen = get_seen(spec)
+        expect_assertion_error(
+            lambda seen=seen, signed_proof=signed_proof: validate(spec, seen, store, signed_proof)
+        )
+        assert seen.execution_proof_roots == {}
+        assert seen.execution_proof_provers == set()
 
 
 @with_eip8025_and_later
@@ -268,6 +273,14 @@ def test_gossip_verifies_before_handler_stores(spec, state):
     assert rejecting_engine.verifications == [expected_alternate_proof]
     assert alternate_proof.message.proof_type not in store.execution_proofs[block_root]
     assert validate(spec, seen, store, alternate_proof) == (
+        "ignore",
+        "execution proof has already been processed",
+    )
+
+    alternate_attempt = make_signed_execution_proof_envelope(
+        spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE, proof_data=b"\x04"
+    )
+    assert validate(spec, seen, store, alternate_attempt) == (
         "ignore",
         "proof already seen from this prover for this beacon block and proof type",
     )
@@ -305,6 +318,12 @@ def test_on_execution_proof_enforces_storage_context(spec, state):
     store.block_states[block_root] = block_state
 
     payload = store.payloads.pop(block_root)
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
+    store.payloads[block_root] = payload
+
+    mismatched_payload = payload.copy()
+    mismatched_payload.beacon_block_root = spec.Root(b"\xbb" * 32)
+    store.payloads[block_root] = mismatched_payload
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.payloads[block_root] = payload
 

@@ -28,10 +28,14 @@ def setup_store_with_block(spec, state):
     return store, block_root
 
 
-def make_new_payload_request(spec, payload_envelope):
+def make_new_payload_request(spec, state, payload_envelope):
+    bid = state.latest_execution_payload_bid
     return spec.NewPayloadRequest(
         execution_payload=payload_envelope.payload,
-        versioned_hashes=[],
+        versioned_hashes=[
+            spec.kzg_commitment_to_versioned_hash(commitment)
+            for commitment in bid.blob_kzg_commitments
+        ],
         parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
         execution_requests=payload_envelope.execution_requests,
     )
@@ -44,23 +48,31 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     store, beacon_block_root = setup_store_with_block(spec, state)
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
     proof_data = spec.ProofData(b"\x01")
-    proof_engine = MockProofEngine(proof_data=proof_data)
-    new_payload_request = make_new_payload_request(spec, store.payloads[beacon_block_root])
+    new_payload_request = make_new_payload_request(
+        spec, store.block_states[beacon_block_root], store.payloads[beacon_block_root]
+    )
     new_payload_request_root = spec.hash_tree_root(new_payload_request)
+    proof = spec.ExecutionProof(
+        proof_data=proof_data,
+        proof_type=proof_type,
+        public_input=spec.PublicInput(new_payload_request_root=new_payload_request_root),
+    )
+    proof_engine = MockProofEngine(proof=proof)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
-    result = proof_engine.request_proofs(new_payload_request, proof_attributes)
-    assert result is None
+    request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)
+    assert request_root == new_payload_request_root
     assert proof_engine.requests == [(new_payload_request, proof_attributes)]
 
-    returned_proof_data = proof_engine.get_proof(new_payload_request_root, proof_type)
-    assert returned_proof_data == proof_data
-    assert proof_engine.retrievals == [(new_payload_request_root, proof_type)]
+    returned_proof = proof_engine.get_proof(request_root, proof_type)
+    assert returned_proof.public_input.new_payload_request_root == new_payload_request_root
+    assert returned_proof.proof_type == proof_type
+    assert proof_engine.retrievals == [(request_root, proof_type)]
 
     validator_index = spec.ValidatorIndex(0)
     proof_envelope = spec.ExecutionProofEnvelope(
-        proof_data=returned_proof_data,
-        proof_type=proof_type,
+        proof_data=returned_proof.proof_data,
+        proof_type=returned_proof.proof_type,
         beacon_block_root=beacon_block_root,
     )
     signature = spec.get_execution_proof_envelope_signature(
@@ -74,12 +86,6 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     spec.validate_execution_proof_gossip(get_seen(spec), store, signed_proof, proof_engine)
     spec.on_execution_proof(store, signed_proof, proof_engine)
 
-    public_input = spec.PublicInput(new_payload_request_root=new_payload_request_root)
-    proof = spec.ExecutionProof(
-        proof_data=proof_envelope.proof_data,
-        proof_type=proof_envelope.proof_type,
-        public_input=public_input,
-    )
     assert proof_engine.verifications == [proof, proof]
     assert store.execution_proofs[beacon_block_root][proof_type] == proof_envelope
 
@@ -90,7 +96,7 @@ def test_default_proof_engine_rejects_prover_operations(spec, state):
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
     beacon_block_root = spec.Root(b"\x11" * 32)
     payload_envelope = spec.ExecutionPayloadEnvelope(beacon_block_root=beacon_block_root)
-    new_payload_request = make_new_payload_request(spec, payload_envelope)
+    new_payload_request = make_new_payload_request(spec, state, payload_envelope)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
     with pytest.raises(NotImplementedError, match="no default proof generation"):

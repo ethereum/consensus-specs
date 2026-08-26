@@ -12,8 +12,6 @@
   - [Modified `Store`](#modified-store)
 - [Store initialization](#store-initialization)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-- [Helpers](#helpers)
-  - [New `compute_execution_proof_public_input`](#new-compute_execution_proof_public_input)
 - [Handlers](#handlers)
   - [New `on_execution_proof`](#new-on_execution_proof)
 
@@ -91,29 +89,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
-## Helpers
-
-### New `compute_execution_proof_public_input`
-
-```python
-def compute_execution_proof_public_input(
-    store: Store,
-    beacon_block_root: Root,
-) -> PublicInput:
-    block = store.blocks[beacon_block_root]
-    envelope = store.payloads[beacon_block_root]
-    bid = block.body.signed_execution_payload_bid.message
-    new_payload_request = NewPayloadRequest(
-        execution_payload=envelope.payload,
-        versioned_hashes=[
-            kzg_commitment_to_versioned_hash(commitment) for commitment in bid.blob_kzg_commitments
-        ],
-        parent_beacon_block_root=envelope.parent_beacon_block_root,
-        execution_requests=envelope.execution_requests,
-    )
-    return PublicInput(new_payload_request_root=hash_tree_root(new_payload_request))
-```
-
 ## Handlers
 
 ### New `on_execution_proof`
@@ -134,18 +109,17 @@ def on_execution_proof(
 
     # The corresponding beacon block must be known and consensus-valid
     assert beacon_block_root in store.blocks
-    assert beacon_block_root in store.block_states
+    state = store.block_states.get(beacon_block_root)
+    assert state is not None
 
     # The corresponding execution payload must be available
-    assert beacon_block_root in store.payloads
+    payload_envelope = store.payloads.get(beacon_block_root)
+    assert payload_envelope is not None
 
     # Only one verified proof is stored for each beacon block and proof type
     assert proof_envelope.proof_type not in store.execution_proofs.get(beacon_block_root, {})
 
-    # Validate against the state associated with the beacon block
-    state = store.block_states[beacon_block_root]
-    public_input = compute_execution_proof_public_input(store, beacon_block_root)
-    process_execution_proof(state, signed_proof_envelope, public_input, proof_engine)
+    process_execution_proof(state, signed_proof_envelope, payload_envelope, proof_engine)
 
     # Store only proofs that pass downstream verification
     if beacon_block_root not in store.execution_proofs:
