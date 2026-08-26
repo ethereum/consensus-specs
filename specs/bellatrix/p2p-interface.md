@@ -149,6 +149,7 @@ def validate_beacon_block_gossip(
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
 
+    # [New in Bellatrix]
     parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
     if block.parent_root in block_payload_statuses:
         parent_payload_status = block_payload_statuses[block.parent_root]
@@ -165,8 +166,8 @@ def validate_beacon_block_gossip(
             # [IGNORE] The block's parent failed validation and its execution payload is processed
             raise GossipIgnore("block's parent is invalid and its payload is processed")
 
-        # [REJECT] The block's parent passes validation
         # [Modified in Bellatrix]
+        # [REJECT] The block's parent passes validation
         raise GossipReject("block's parent is invalid and execution is not enabled")
 
     state = store.block_states[get_head(store).root]
