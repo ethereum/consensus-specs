@@ -11,6 +11,8 @@ from typing import Any
 
 import snappy
 
+from .materializer import SUITE_NAME
+
 
 @dataclass
 class Check:
@@ -63,7 +65,7 @@ def validate_cases(
 ) -> int:
     """Run a handler validator over its materialized reference-test cases."""
     phase = "epoch_processing" if handler in EPOCH_HANDLERS else "operations"
-    case_dirs = sorted(test_dir.glob(f"**/{phase}/{handler}/**/case_*"))
+    case_dirs = sorted(test_dir.glob(f"**/{phase}/{handler}/{SUITE_NAME}/case_*"))
     if selected_cases is not None:
         case_dirs = [case_dir for case_dir in case_dirs if case_dir.name in selected_cases]
     if not case_dirs:
@@ -80,10 +82,7 @@ def validate_cases(
         outcome = next((check.claimed for check in checks if check.dimension == "outcome"), "?")
         print(f"{case_dir.name}: {status}  [{outcome}]")
         for check in mismatches:
-            print(
-                f"    dim {check.dimension}: "
-                f"claimed={check.claimed!r} actual={check.actual!r}"
-            )
+            print(f"    dim {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
 
     print()
     if total_mm:
@@ -119,11 +118,10 @@ def main(
         )
         args = parser.parse_args()
         test_dir = args.test_dir
-        selected_cases = (
-            {case.strip() for case in args.cases.split(",") if case.strip()}
-            if args.cases
-            else None
-        )
+        if args.cases:
+            selected_cases = {case.strip() for case in args.cases.split(",") if case.strip()}
+        else:
+            selected_cases = None
 
     handlers = handlers if handlers is not None else tuple(discover_handlers(test_dir))
     result = 0
