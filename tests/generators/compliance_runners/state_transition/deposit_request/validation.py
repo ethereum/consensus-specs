@@ -16,24 +16,15 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
+from ..aspects_helpers.deposit_amount import deposit_amount_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
 
 _YAML = YAML(typ="safe")
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     amount = int(request.amount)
-    if amount == 0:
-        amount_profile = "ZERO"
-    elif amount == int(spec.MIN_DEPOSIT_AMOUNT):
-        amount_profile = "MINIMUM"
-    elif amount == int(spec.MIN_ACTIVATION_BALANCE):
-        amount_profile = "ACTIVATION"
-    elif amount > int(spec.MIN_ACTIVATION_BALANCE):
-        amount_profile = "ABOVE_ACTIVATION"
-    else:
-        amount_profile = "UNKNOWN"
     return {
-        "amount_profile": amount_profile,
+        "amount_profile": deposit_amount_profile(spec, amount),
         "amount_nonzero": amount > 0,
         "withdrawal_credentials_profile": withdrawal_credentials_profile(
             spec, request.withdrawal_credentials
