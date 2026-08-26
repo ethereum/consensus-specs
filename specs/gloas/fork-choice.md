@@ -589,7 +589,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
 ### Modified `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
+def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
@@ -599,9 +599,7 @@ def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
         root=store.justified_checkpoint.root,
         payload_status=PAYLOAD_STATUS_PENDING,
     )
-    viable_nodes: Set[ForkChoiceNode] = set()
-    filter_node_tree(store, base, viable_nodes)
-    return viable_nodes
+    return filter_node_tree(store, base)
 ```
 
 ### Modified `get_node_children`

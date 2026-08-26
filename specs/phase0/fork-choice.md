@@ -410,26 +410,19 @@ def get_node_children(
 
 #### `filter_node_tree`
 
-*Note*: External calls to `filter_node_tree` (i.e., any calls that are not made
-by the recursive logic in this function) MUST set `node` to a `ForkChoiceNode`
-with root `store.justified_checkpoint.root`. In forks that extend
-`ForkChoiceNode` with a `payload_status` field (e.g. Gloas), that field MUST be
-set to `PAYLOAD_STATUS_PENDING`.
-
 ```python
-def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkChoiceNode]) -> bool:
+def filter_node_tree(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
     children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
-    # add to filtered node tree and signal viability to parent.
+    # include this node and those descendants in the filtered node tree.
     if any(children):
-        filter_node_tree_result = [
-            filter_node_tree(store, child, viable_nodes) for child in children
-        ]
-        if any(filter_node_tree_result):
-            viable_nodes.add(node)
-            return True
-        return False
+        viable_nodes: list[ForkChoiceNode] = []
+        for child in children:
+            viable_nodes.extend(filter_node_tree(store, child))
+        if any(viable_nodes):
+            return viable_nodes + [node]
+        return []
 
     current_epoch = get_current_store_epoch(store)
     voting_source = get_voting_source(store, node.root)
@@ -455,25 +448,22 @@ def filter_node_tree(store: Store, node: ForkChoiceNode, viable_nodes: Set[ForkC
 
     # If expected finalized/justified, add to viable node tree and signal viability to parent.
     if correct_justified and correct_finalized:
-        viable_nodes.add(node)
-        return True
+        return [node]
 
     # Otherwise, branch not viable
-    return False
+    return []
 ```
 
 #### `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Set[ForkChoiceNode]:
+def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
     """
     base = ForkChoiceNode(root=store.justified_checkpoint.root)
-    viable_nodes: Set[ForkChoiceNode] = set()
-    filter_node_tree(store, base, viable_nodes)
-    return viable_nodes
+    return filter_node_tree(store, base)
 ```
 
 #### `get_head`
