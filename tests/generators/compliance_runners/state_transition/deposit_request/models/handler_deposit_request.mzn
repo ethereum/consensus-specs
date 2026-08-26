@@ -13,9 +13,6 @@ include "../../aspects/deposit_amount.mzn";
 include "../../aspects/deposit_pubkey.mzn";
 include "../../aspects/withdrawal_credential.mzn";
 
-enum AmountProfile = { ZERO, MINIMUM, ACTIVATION, ABOVE_ACTIVATION };
 enum SignatureProfile = { VALID, INVALID };
 
-var AmountProfile: amount_profile;
-constraint amount_nonzero <-> amount_profile != ZERO;
 var SignatureProfile: signature_profile;
