@@ -7,14 +7,11 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    cover,
-    dedup,
+    build_profile as _build_profile,
     enumerate_signatures,
 )
-from tests.generators.compliance_runners.state_transition.parent_execution_payload.materializer import (
-    _DIMS,
-    ParentExecutionPayloadMaterializer,
-)
+
+from .materializer import _DIMS, ParentExecutionPayloadMaterializer
 
 INPUT_ASPECTS = {
     "parent_delivery": [
@@ -51,14 +48,6 @@ OUTCOME_ASPECT = {
     ]
 }
 ALL_ASPECTS = {**INPUT_ASPECTS, **TRACE_ASPECT, **OUTCOME_ASPECT}
-ACCEPT = {
-    "EMPTY_PARENT_NOOP",
-    "APPLY_CURRENT_WITH_WITHDRAWAL",
-    "APPLY_CURRENT_NO_WITHDRAWAL",
-    "APPLY_PREVIOUS_WITH_WITHDRAWAL",
-    "APPLY_EVICTED_WITH_WITHDRAWAL",
-    "APPLY_EVICTED_NO_WITHDRAWAL",
-}
 MODEL = Path(__file__).parent / "models" / "handler_parent_execution_payload.mzn"
 
 
@@ -78,24 +67,15 @@ def _records():
 
 
 def build_profile(records: list[dict], name: str):
-    if name == "all":
-        return len(records), records
-    if name == "standard":
-        _, normal = cover(records, INPUT_ASPECTS, 2, "normal", accept=ACCEPT)
-        _, normal_outcomes = cover(records, OUTCOME_ASPECT, 1, "normal", accept=ACCEPT)
-        _, exceptional = cover(
-            records,
-            {**TRACE_ASPECT, **OUTCOME_ASPECT},
-            1,
-            "exceptional",
-            accept=ACCEPT,
-        )
-        return -1, dedup(normal + normal_outcomes + exceptional, ALL_ASPECTS)
-    if name == "onewise":
-        return cover(records, ALL_ASPECTS, 1, accept=ACCEPT)
-    if name == "pairwise":
-        return cover(records, ALL_ASPECTS, 2, accept=ACCEPT)
-    raise ValueError(f"unknown profile: {name}")
+    return _build_profile(
+        records,
+        name,
+        ALL_ASPECTS,
+        INPUT_ASPECTS,
+        OUTCOME_ASPECT,
+        normal_outcome_aspect=OUTCOME_ASPECT,
+        exceptional_aspects={**TRACE_ASPECT, **OUTCOME_ASPECT},
+    )
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:

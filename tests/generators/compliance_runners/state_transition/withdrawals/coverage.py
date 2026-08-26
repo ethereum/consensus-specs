@@ -12,8 +12,7 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    cover,
-    dedup,
+    build_profile as _build_profile,
     enumerate_signatures,
 )
 from tests.generators.compliance_runners.state_transition.withdrawals.materializer import (
@@ -23,37 +22,23 @@ from tests.generators.compliance_runners.state_transition.withdrawals.materializ
 
 INPUT_ASPECTS = {
     "parent": ["parent_payload_revealed"],
-    "builder_pending": ["bp_queue", "bp_amount_to_balance"],
-    "pending_partial": ["pp_queue", "pp_withdrawable", "pp_eligible", "pp_amount_to_excess"],
-    "builder_sweep": ["bs_registry", "bs_eligible", "bs_cursor_high"],
-    "validator_sweep": ["vs_fill", "vs_cursor_high"],
-    "bookkeeping": ["next_index_start", "stale_payload_expected"],
+    "builder_pending": ["builder_pending_nonempty"],
+    "pending_partial": ["pending_partial_nonempty"],
+    "builder_sweep": ["builder_sweep_nonempty"],
+    "validator_sweep": ["validator_sweep_nonempty"],
+    "capacity": ["withdrawals_over_limit"],
 }
-# One aspect per group of update_* calls, so an effect obligation is stated
-# against the statement that produces it rather than against the inputs.
 EFFECT_ASPECTS = {
-    "outcome": ["outcome", "reserve_saturated"],
-    "queue_updates": ["eff_builder_pending", "eff_pending_partial"],
-    "cursor_updates": ["eff_builder_cursor", "eff_validator_cursor"],
-    "write_updates": ["eff_next_index", "eff_payload_expected"],
-    "saturation": ["eff_builder_saturated", "eff_partial_truncated"],
+    "outcome": ["outcome"],
+    "effects": ["state_effected"],
 }
+OUTCOME_ASPECT = {"outcome": ["outcome"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **EFFECT_ASPECTS}
-ACCEPT = {"NO_WITHDRAWALS", "PARTIAL_PAYLOAD", "FULL_PAYLOAD"}
 MODEL = Path(__file__).parent / "models" / "handler_withdrawals.mzn"
 
 
 def _nfaults(record: dict) -> int:
-    """Rank: a revealed parent is the cleaner representative of any signature."""
-    return int(not record["parent_payload_revealed"])
-
-
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": ({**INPUT_ASPECTS, **EFFECT_ASPECTS}, 2, "normal"),
-    "exceptional": ({**INPUT_ASPECTS, "outcome": EFFECT_ASPECTS["outcome"]}, 1, "exceptional"),
-}
+    return 0
 
 
 def _recs():
@@ -61,18 +46,12 @@ def _recs():
 
 
 def build_profile(records, name: str):
-    if name == "all":
-        return len(records), records
-    if name == "standard":
-        _, normal = cover(records, *PROFILES["normal"], accept=ACCEPT)
-        _, exceptional = cover(records, *PROFILES["exceptional"], accept=ACCEPT)
-        return -1, dedup(normal + exceptional, ALL_ASPECTS)
-    aspects, strength, outcome_filter = PROFILES[name]
-    return cover(records, aspects, strength, outcome_filter, accept=ACCEPT)
+    return _build_profile(records, name, ALL_ASPECTS, ALL_ASPECTS, OUTCOME_ASPECT)
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return WithdrawalsMaterializer(spec, MODEL).materialize_reps(
-        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**record) for record in chosen]
+        output_dir or (Path(__file__).parent / "reftests"),
+        [SimpleNamespace(**record) for record in chosen],
     )

@@ -8,19 +8,19 @@ Run:
     uv run python -m ...execution_payload_bid.coverage                 # profile summary
     uv run python -m ...execution_payload_bid.coverage standard --materialize
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import ExecutionPayloadBidMaterializer, _DIMS
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from .materializer import _DIMS, ExecutionPayloadBidMaterializer
 
 # Fine-grained input aspects (realization + the handler-local bid amount).
-#
-# Keep these available for the detailed profile.  The default profiles below
-# use the coarser logical groups, where the dimensions in each group form one
-# composite factor for pairwise coverage.
+# The dimensions remain part of the signature used by `all`. The normal and
+# exceptional profiles use coarser logical groups, where dimensions in each
+# group form one composite factor for coverage.
 FINE_INPUT_ASPECTS = {
     "entity_reference": ["builder_ref"],
     "builder_lifecycle": ["builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set"],
@@ -32,8 +32,11 @@ FINE_INPUT_ASPECTS = {
     "bid_amount": ["amount_positive"],
     "blob_kzg_capacity": ["bid_kzg_to_max"],
     "slot_epoch": ["bid_slot_to_state", "state_slot_past_genesis"],
-    "block_context": ["bid_parent_block_hash_matches", "bid_parent_block_root_matches",
-                      "bid_prev_randao_matches"],
+    "block_context": [
+        "bid_parent_block_hash_matches",
+        "bid_parent_block_root_matches",
+        "bid_prev_randao_matches",
+    ],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 
@@ -92,24 +95,16 @@ def _nfaults(r: dict) -> int:
     return int(f)
 
 
-# name -> (aspects, strength, outcome_filter)
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": ({"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT}, 2, "exceptional"),
-    "detailed": (FINE_ALL_ASPECTS, 2, None),
-}
-
-
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":  # rich within accept, each rejection on each feasible branch
-        _, normal = cover(recs, *PROFILES["normal"])
-        _, exc = cover(recs, *PROFILES["exceptional"])
-        return -1, dedup(normal + exc, ALL_ASPECTS)
-    return cover(recs, *PROFILES[name])
+    return _build_profile(
+        recs,
+        name,
+        ALL_ASPECTS,
+        INPUT_ASPECTS,
+        OUTCOME_ASPECT,
+        exceptional_aspects={"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT},
+        exceptional_t=2,
+    )
 
 
 def _materialize(recs, name: str, output_dir: Path | None = None) -> int:

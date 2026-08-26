@@ -208,17 +208,22 @@ combinations (and effects present vs absent). Across several large aspects, use
 an explicit interaction policy — exhaustive for selected high-risk relations,
 pairwise or three-way otherwise, single- and multi-fault cases.
 
-The same handler relation supports multiple profiles:
+The same handler relation supports multiple profiles. State-transition handler
+profiles classify records by the number of independently applicable failed
+conditions (`nfaults`), not by the first-failing terminal outcome:
 
 ```text
-smoke:      one canonical case per outcome
-standard:   exhaustive within aspects; pairwise across aspects
-extended:   three-way across aspects; pairwise exceptional predicates
-exhaustive: every satisfiable coverage assignment
+smoke:       one canonical case per outcome
+normal:      nfaults == 0
+exceptional: nfaults == 1 (the usual single-fault profile)
+standard:    normal ∪ exceptional
+all:         every unique solution by coverage signature
 ```
 
-One-case-per-outcome frontiers are useful smoke tests — the reference runners
-are smoke-profile — but they are not a substitute for the richer profiles.
+One-case-per-outcome frontiers are useful smoke tests, but they are not a
+substitute for the richer fault-count profiles. A terminal outcome remains a
+derived observation; it must not erase other applicable failures that were not
+reached because of short-circuit evaluation.
 
 Quality is measured by satisfied obligations, not case count: every applicable
 value of every dimension, every requested pair or tuple, every outcome, every
