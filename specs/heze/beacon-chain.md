@@ -44,20 +44,24 @@ from the latest published version of the EIPs.
 ### New `InclusionListBits`
 
 ```python
-class InclusionListBits(BitVector[INCLUSION_LIST_COMMITTEE_SIZE]):
+class InclusionListBits(BitVector):
     """
     A bitfield over the inclusion list committee, one bit per member in
     committee order.
     """
+
+    LENGTH = INCLUSION_LIST_COMMITTEE_SIZE
 ```
 
 ### New `InclusionListCommittee`
 
 ```python
-class InclusionListCommittee(Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]):
+class InclusionListCommittee(Vector[ValidatorIndex]):
     """
     The inclusion list committee of a slot.
     """
+
+    LENGTH = INCLUSION_LIST_COMMITTEE_SIZE
 ```
 
 ## Constants
@@ -103,7 +107,9 @@ class SignedInclusionList(Container):
 #### `ExecutionPayloadBid`
 
 ```python
-class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 13)):
+class ExecutionPayloadBid(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=13)
+
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
@@ -132,7 +138,9 @@ class SignedExecutionPayloadBid(Container):
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=46)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
@@ -220,6 +228,6 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
     return InclusionListCommittee(
-        indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)
+        data=[indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)]
     )
 ```

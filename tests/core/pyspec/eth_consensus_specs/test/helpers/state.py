@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
-from remerkleable.basic import uint64 as Uint64
-from remerkleable.byte_arrays import Bytes32
+from ssz.uint import Uint64
 
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.block import (
@@ -11,6 +10,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_altair
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 from eth_consensus_specs.utils.ssz.ssz_impl import uint_to_bytes
 
 

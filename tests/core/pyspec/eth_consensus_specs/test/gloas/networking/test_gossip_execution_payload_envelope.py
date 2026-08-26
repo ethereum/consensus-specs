@@ -450,7 +450,7 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     # Use execution_requests with a non-empty deposits list so its root differs
     # from the bid's empty execution_requests_root.
     non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(spec.DepositRequest())
+        deposits=spec.DepositRequests.of(spec.DepositRequest())
     )
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, block_root, signed_block, execution_requests=non_empty_requests
@@ -550,7 +550,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     # Set the payload's withdrawals, then re-sign so the withdrawal count is the only
     # check under test.
     envelope = signed_envelope.message
-    envelope.payload.withdrawals = make_progressive_list(spec, spec.Withdrawal, count)
+    envelope.payload.withdrawals = make_progressive_list(spec.Withdrawals, count)
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         privkey = privkeys[signed_block.message.proposer_index]
     else:
@@ -586,9 +586,9 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_withdrawal_requests(spec, state):
     """An envelope with the maximum number of withdrawal requests is valid."""
-    count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)
+    count = spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
     requests = spec.ExecutionRequests(
-        withdrawals=spec.WithdrawalRequests(*([spec.WithdrawalRequest()] * count))
+        withdrawals=spec.WithdrawalRequests(data=([spec.WithdrawalRequest()] * count))
     )
     yield from _assert_envelope_requests(spec, state, requests, "valid")
 
@@ -597,9 +597,9 @@ def test_gossip_execution_payload_envelope__valid_max_withdrawal_requests(spec, 
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_withdrawal_requests(spec, state):
     """An envelope whose execution requests exceed the withdrawal-request limit is rejected."""
-    count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD) + 1
+    count = spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1
     requests = spec.ExecutionRequests(
-        withdrawals=spec.WithdrawalRequests(*([spec.WithdrawalRequest()] * count))
+        withdrawals=spec.WithdrawalRequests(data=([spec.WithdrawalRequest()] * count))
     )
     yield from _assert_envelope_requests(
         spec, state, requests, "reject", "too many withdrawal requests"
@@ -610,9 +610,9 @@ def test_gossip_execution_payload_envelope__reject_too_many_withdrawal_requests(
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_consolidation_requests(spec, state):
     """An envelope with the maximum number of consolidation requests is valid."""
-    count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD)
+    count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
     requests = spec.ExecutionRequests(
-        consolidations=spec.ConsolidationRequests(*([spec.ConsolidationRequest()] * count))
+        consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
     )
     yield from _assert_envelope_requests(spec, state, requests, "valid")
 
@@ -621,9 +621,9 @@ def test_gossip_execution_payload_envelope__valid_max_consolidation_requests(spe
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_consolidation_requests(spec, state):
     """An envelope whose execution requests exceed the consolidation-request limit is rejected."""
-    count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD) + 1
+    count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1
     requests = spec.ExecutionRequests(
-        consolidations=spec.ConsolidationRequests(*([spec.ConsolidationRequest()] * count))
+        consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
     )
     yield from _assert_envelope_requests(
         spec, state, requests, "reject", "too many consolidation requests"
@@ -634,9 +634,9 @@ def test_gossip_execution_payload_envelope__reject_too_many_consolidation_reques
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_builder_deposit_requests(spec, state):
     """An envelope with the maximum number of builder deposit requests is valid."""
-    count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD)
+    count = spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(*([spec.BuilderDepositRequest()] * count))
+        builder_deposits=spec.BuilderDepositRequests(data=([spec.BuilderDepositRequest()] * count))
     )
     yield from _assert_envelope_requests(spec, state, requests, "valid")
 
@@ -645,9 +645,9 @@ def test_gossip_execution_payload_envelope__valid_max_builder_deposit_requests(s
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_builder_deposit_requests(spec, state):
     """An envelope whose execution requests exceed the builder-deposit-request limit is rejected."""
-    count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
+    count = spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(*([spec.BuilderDepositRequest()] * count))
+        builder_deposits=spec.BuilderDepositRequests(data=([spec.BuilderDepositRequest()] * count))
     )
     yield from _assert_envelope_requests(
         spec, state, requests, "reject", "too many builder deposit requests"
@@ -658,9 +658,9 @@ def test_gossip_execution_payload_envelope__reject_too_many_builder_deposit_requ
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_builder_exit_requests(spec, state):
     """An envelope with the maximum number of builder exit requests is valid."""
-    count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD)
+    count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
     requests = spec.ExecutionRequests(
-        builder_exits=spec.BuilderExitRequests(*([spec.BuilderExitRequest()] * count))
+        builder_exits=spec.BuilderExitRequests(data=([spec.BuilderExitRequest()] * count))
     )
     yield from _assert_envelope_requests(spec, state, requests, "valid")
 
@@ -669,9 +669,9 @@ def test_gossip_execution_payload_envelope__valid_max_builder_exit_requests(spec
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_builder_exit_requests(spec, state):
     """An envelope whose execution requests exceed the builder-exit-request limit is rejected."""
-    count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD) + 1
+    count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1
     requests = spec.ExecutionRequests(
-        builder_exits=spec.BuilderExitRequests(*([spec.BuilderExitRequest()] * count))
+        builder_exits=spec.BuilderExitRequests(data=([spec.BuilderExitRequest()] * count))
     )
     yield from _assert_envelope_requests(
         spec, state, requests, "reject", "too many builder exit requests"
@@ -682,7 +682,7 @@ def test_gossip_execution_payload_envelope__reject_too_many_builder_exit_request
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_withdrawals(spec, state):
     """An envelope with the maximum number of payload withdrawals is valid."""
-    count = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+    count = spec.MAX_WITHDRAWALS_PER_PAYLOAD
     yield from _assert_envelope_withdrawals(spec, state, count, "valid")
 
 
@@ -690,5 +690,5 @@ def test_gossip_execution_payload_envelope__valid_max_withdrawals(spec, state):
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, state):
     """An envelope whose payload carries more withdrawals than the limit is rejected."""
-    count = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD) + 1
+    count = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1
     yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")

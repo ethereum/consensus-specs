@@ -40,7 +40,7 @@ def test_basic_pending_consolidation(spec, state):
     # Pending consolidation was successfully processed
     assert state.balances[target_index] == 2 * spec.MIN_ACTIVATION_BALANCE
     assert state.balances[source_index] == 0
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 @with_electra_and_later
@@ -116,10 +116,12 @@ def test_all_consolidation_cases_together(spec, state):
     target_index = [
         spec.get_active_validator_indices(state, current_epoch)[4 + i] for i in range(4)
     ]
-    state.pending_consolidations = [
-        spec.PendingConsolidation(source_index=source_index[i], target_index=target_index[i])
-        for i in range(4)
-    ]
+    state.pending_consolidations = spec.PendingConsolidations(
+        data=[
+            spec.PendingConsolidation(source_index=source_index[i], target_index=target_index[i])
+            for i in range(4)
+        ]
+    )
     # Set withdrawable epoch to current epoch for first and last source validators
     for i in [0, 2]:
         state.validators[source_index[i]].withdrawable_epoch = current_epoch
@@ -144,7 +146,7 @@ def test_all_consolidation_cases_together(spec, state):
         assert state.balances[source_index[i]] == pre_balances[source_index[i]]
         assert state.balances[target_index[i]] == pre_balances[target_index[i]]
     # First consolidation is processed, second is skipped, last two are left in the queue
-    state.pending_consolidations = pre_pending_consolidations[2:]
+    state.pending_consolidations = spec.PendingConsolidations(data=pre_pending_consolidations[2:])
 
 
 @with_electra_and_later
@@ -187,7 +189,7 @@ def test_pending_consolidation_future_epoch(spec, state):
     )
     assert state.balances[source_index] == expected_source_balance
     assert state.balances[target_index] == expected_target_balance
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 @with_electra_and_later
@@ -235,7 +237,7 @@ def test_pending_consolidation_compounding_creds(spec, state):
     assert state.balances[source_index] == (
         state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE
     )
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
     # Pending balance deposit to the target is not created,
     # because the target already has compounding credentials
@@ -293,11 +295,11 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     assert state.balances[source_index] == (
         state_before_consolidation.balances[source_index] - spec.MIN_ACTIVATION_BALANCE
     )
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
     # Pending deposit to the source was not processed.
     # It should only be processed in the next epoch transition
-    assert state.pending_deposits == [pending_deposit]
+    assert list(state.pending_deposits) == [pending_deposit]
 
 
 @with_electra_and_later
@@ -332,7 +334,7 @@ def test_pending_consolidation_source_balance_less_than_max_effective(spec, stat
     # Pending consolidation was successfully processed
     assert state.balances[target_index] == pre_balance_target + pre_balance_source
     assert state.balances[source_index] == 0
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 @with_electra_and_later
@@ -365,7 +367,7 @@ def test_pending_consolidation_source_balance_greater_than_max_effective(spec, s
     # Pending consolidation was successfully processed
     assert state.balances[target_index] == pre_balance_target + source_max_effective_balance
     assert state.balances[source_index] == excess_source_balance
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 @with_electra_and_later
@@ -400,7 +402,7 @@ def test_pending_consolidation_source_balance_less_than_max_effective_compoundin
     # Pending consolidation was successfully processed
     assert state.balances[target_index] == pre_balance_target + pre_balance_source
     assert state.balances[source_index] == 0
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 @with_electra_and_later
@@ -433,7 +435,7 @@ def test_pending_consolidation_source_balance_greater_than_max_effective_compoun
     # Pending consolidation was successfully processed
     assert state.balances[target_index] == pre_balance_target + source_max_effective_balance
     assert state.balances[source_index] == excess_source_balance
-    assert state.pending_consolidations == []
+    assert len(state.pending_consolidations) == 0
 
 
 #  *******************************

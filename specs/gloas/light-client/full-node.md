@@ -27,12 +27,12 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             block.message.body.signed_execution_payload_bid.message.parent_block_hash
         )
         execution_branch = ExecutionBranch(
-            compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_GLOAS)
+            data=compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_GLOAS)
         )
     elif epoch >= DENEB_FORK_EPOCH:
         execution_block_hash = block.message.body.execution_payload.block_hash
         execution_branch = ExecutionBranch(
-            normalize_merkle_branch(
+            data=normalize_merkle_branch(
                 compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_DENEB),
                 EXECUTION_BLOCK_HASH_GINDEX_GLOAS,
             )
@@ -40,7 +40,7 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
     elif epoch >= CAPELLA_FORK_EPOCH:
         execution_block_hash = block.message.body.execution_payload.block_hash
         execution_branch = ExecutionBranch(
-            normalize_merkle_branch(
+            data=normalize_merkle_branch(
                 compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX),
                 EXECUTION_BLOCK_HASH_GINDEX_GLOAS,
             )
@@ -62,6 +62,6 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             body_root=hash_tree_root(block.message.body),
         ),
         execution_block_hash=execution_block_hash,
-        execution_branch=execution_branch,
+        execution_branch=ExecutionBranch(data=execution_branch),
     )
 ```

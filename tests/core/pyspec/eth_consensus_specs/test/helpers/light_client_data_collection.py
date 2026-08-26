@@ -327,7 +327,7 @@ def _create_lc_finality_update_from_lc_data(
         data=attested_header.spec.LightClientFinalityUpdate(
             attested_header=attested_header.data,
             finalized_header=finalized_header.data,
-            finality_branch=finality_branch,
+            finality_branch=attested_header.spec.FinalityBranch(data=finality_branch),
             sync_aggregate=sync_aggregate,
             signature_slot=signature_slot,
         ),
@@ -346,7 +346,9 @@ def _create_lc_update_from_lc_data(
         data=finality_update.spec.LightClientUpdate(
             attested_header=finality_update.data.attested_header,
             next_sync_committee=next_sync_committee,
-            next_sync_committee_branch=attested_data.next_sync_committee_branch,
+            next_sync_committee_branch=finality_update.spec.NextSyncCommitteeBranch(
+                data=attested_data.next_sync_committee_branch
+            ),
             finalized_header=finality_update.data.finalized_header,
             finality_branch=finality_update.data.finality_branch,
             sync_aggregate=finality_update.data.sync_aggregate,
@@ -548,7 +550,9 @@ def get_light_client_bootstrap(test, block_root):  # -> ForkedLightClientBootstr
         data=header.spec.LightClientBootstrap(
             header=header.data,
             current_sync_committee=test.lc_data_store.db.sync_committees[period],
-            current_sync_committee_branch=test.lc_data_store.db.current_branches[slot],
+            current_sync_committee_branch=header.spec.CurrentSyncCommitteeBranch(
+                data=test.lc_data_store.db.current_branches[slot]
+            ),
         ),
     )
 
@@ -713,7 +717,9 @@ def select_new_head(test, spec, head_bid):
             while bid.slot > test.latest_finalized_bid.slot:
                 test.finalized_block_roots[bid.slot] = bid.root
                 finalized_epoch = spec.compute_epoch_at_slot(bid.slot + spec.SLOTS_PER_EPOCH - 1)
-                if finalized_epoch != old_finalized_epoch:
+                # An epoch and a None cannot meet as operands, and the first
+                # time round there is no previous epoch to compare against.
+                if old_finalized_epoch is None or finalized_epoch != old_finalized_epoch:
                     state = test.states[block.data.message.state_root]
                     test.finalized_checkpoint_states[block.data.message.state_root] = state
                     old_finalized_epoch = finalized_epoch
