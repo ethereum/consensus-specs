@@ -522,6 +522,73 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
 
 @with_gloas_and_later
 @spec_state_test
+def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reuse(spec, state):
+    """
+    Two valid deposits for one new pubkey in the same parent request batch
+    reuse a swept builder index, then top it up.
+
+    A pubkey lookup built once for the batch and not updated after replacement
+    would miss the new builder and append a duplicate instead.
+    """
+    reused_index = 0
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    pre_builder_count = len(state.builders)
+    pre_pending_deposits_len = len(state.pending_deposits)
+
+    state.builders[reused_index].withdrawable_epoch = spec.get_current_epoch(state)
+    state.builders[reused_index].balance = spec.Gwei(0)
+    reused_pubkey = state.builders[reused_index].pubkey
+    other_builders = [
+        (i, state.builders[i].copy()) for i in range(pre_builder_count) if i != reused_index
+    ]
+
+    builder_deposit_request_1 = prepare_process_builder_deposit_request(
+        spec,
+        state,
+        amount=amount,
+        signed=True,
+    )
+    new_pubkey = builder_deposit_request_1.pubkey
+    assert new_pubkey != reused_pubkey
+    builder_deposit_request_2 = prepare_process_builder_deposit_request(
+        spec,
+        state,
+        pubkey=new_pubkey,
+        amount=amount,
+        signed=True,
+    )
+
+    requests = spec.ExecutionRequests(
+        builder_deposits=spec.BuilderDepositRequests(
+            [builder_deposit_request_1, builder_deposit_request_2]
+        ),
+    )
+
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert len(state.pending_deposits) == pre_pending_deposits_len
+    assert len(state.builders) == pre_builder_count
+
+    matching_indices = [
+        i for i, builder in enumerate(state.builders) if builder.pubkey == new_pubkey
+    ]
+    assert matching_indices == [reused_index]
+    assert reused_pubkey not in [builder.pubkey for builder in state.builders]
+    assert state.builders[reused_index].balance == amount * 2
+    assert state.builders[reused_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+
+    for i, builder in other_builders:
+        assert state.builders[i] == builder
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__builder_exit_request(spec, state):
     """
     Test that a builder exit request in the parent's execution requests exits an
