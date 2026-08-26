@@ -36,13 +36,14 @@ Warning: this configuration is not definitive.
 ```python
 def initialize_ptc_window(
     state: BeaconState,
-) -> PTCWindow:
+) -> PayloadTimelinessCommitteeWindow:
     """
     Return the cached PTC window starting from the current epoch.
     Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
     """
     empty_previous_epoch = [
-        PTC(data=[ValidatorIndex(0) for _ in range(PTC_SIZE)]) for _ in range(SLOTS_PER_EPOCH)
+        PayloadTimelinessCommittee(data=[ValidatorIndex(0) for _ in range(PTC_SIZE)])
+        for _ in range(SLOTS_PER_EPOCH)
     ]
 
     ptcs = []
@@ -52,7 +53,7 @@ def initialize_ptc_window(
         start_slot = compute_start_slot_at_epoch(epoch)
         ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
 
-    return PTCWindow(data=empty_previous_epoch + ptcs)
+    return PayloadTimelinessCommitteeWindow(data=empty_previous_epoch + ptcs)
 ```
 
 ### New `onboard_builders_from_pending_deposits`
@@ -219,7 +220,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
-        ptc_window=PTCWindow(data=initialize_ptc_window(pre)),
+        ptc_window=PayloadTimelinessCommitteeWindow(data=initialize_ptc_window(pre)),
     )
 
     # [New in Gloas:EIP7732]

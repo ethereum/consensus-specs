@@ -1125,7 +1125,7 @@ def on_payload_attestation_message(
         assert is_valid_indexed_payload_attestation(
             state,
             IndexedPayloadAttestation(
-                attesting_indices=PTCAttestingIndices.of(ptc_message.validator_index),
+                attesting_indices=PayloadTimelinessCommitteeIndices.of(ptc_message.validator_index),
                 data=data,
                 signature=ptc_message.signature,
             ),

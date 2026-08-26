@@ -187,7 +187,7 @@ class BeaconState(ProgressiveContainer):
     # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
 ```
 
 ## Helpers

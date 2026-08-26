@@ -166,7 +166,7 @@ class BeaconState(ProgressiveContainer):
     builder_pending_withdrawals: BuilderPendingWithdrawals
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8205]
     validator_preregistrations: ValidatorPreregistrations
 ```

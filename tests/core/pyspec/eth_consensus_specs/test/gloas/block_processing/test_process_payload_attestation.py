@@ -71,7 +71,7 @@ def prepare_signed_payload_attestation(
     # to deal with duplicates indices in the PTC.
     unset_indices = list(attesting_indices)
 
-    aggregation_bits = spec.PTCBits()
+    aggregation_bits = spec.PayloadTimelinessCommitteeBits()
     for i, validator_index in enumerate(ptc):
         if validator_index in unset_indices:
             aggregation_bits[i] = True
@@ -87,7 +87,7 @@ def prepare_signed_payload_attestation(
 
     # Create payload attestation
     payload_attestation = spec.PayloadAttestation(
-        aggregation_bits=spec.PTCBits(data=aggregation_bits),
+        aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=data,
         signature=spec.BLSSignature(),
     )
@@ -386,7 +386,9 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     for validator in state.validators:
         validator.effective_balance = low_balance
     # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
-    state.ptc_window = spec.PTCWindow(data=initialize_ptc_window(spec, state))
+    state.ptc_window = spec.PayloadTimelinessCommitteeWindow(
+        data=initialize_ptc_window(spec, state)
+    )
 
     chosen_slot = None
     chosen_index = None

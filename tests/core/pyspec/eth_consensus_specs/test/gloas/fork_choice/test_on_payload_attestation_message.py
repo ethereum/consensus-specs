@@ -364,7 +364,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
         )
 
     # Build the PayloadAttestation aggregate
-    aggregation_bits = spec.PTCBits()
+    aggregation_bits = spec.PayloadTimelinessCommitteeBits()
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
             aggregation_bits[i] = True
@@ -373,7 +373,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
     aggregate_sig = spec.bls.Aggregate([sig_by_index[v] for v in ptc_list if v in voter_set])
 
     aggregate = spec.PayloadAttestation(
-        aggregation_bits=spec.PTCBits(data=aggregation_bits),
+        aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=ptc_messages[0].data,
         signature=aggregate_sig,
     )

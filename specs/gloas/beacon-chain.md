@@ -37,10 +37,10 @@
   - [New `Builders`](#new-builders)
   - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
   - [New `PayloadAttestations`](#new-payloadattestations)
-  - [New `PTC`](#new-ptc)
-  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
-  - [New `PTCBits`](#new-ptcbits)
-  - [New `PTCWindow`](#new-ptcwindow)
+  - [New `PayloadTimelinessCommittee`](#new-payloadtimelinesscommittee)
+  - [New `PayloadTimelinessCommitteeIndices`](#new-payloadtimelinesscommitteeindices)
+  - [New `PayloadTimelinessCommitteeBits`](#new-payloadtimelinesscommitteebits)
+  - [New `PayloadTimelinessCommitteeWindow`](#new-payloadtimelinesscommitteewindow)
 - [Constants](#constants)
   - [Index flags](#index-flags)
   - [Domains](#domains)
@@ -495,10 +495,10 @@ class PayloadAttestations(ProgressiveList[PayloadAttestation]):
     """
 ```
 
-### New `PTC`
+### New `PayloadTimelinessCommittee`
 
 ```python
-class PTC(Vector[ValidatorIndex]):
+class PayloadTimelinessCommittee(Vector[ValidatorIndex]):
     """
     The payload timeliness committee of a slot.
     """
@@ -506,10 +506,10 @@ class PTC(Vector[ValidatorIndex]):
     LENGTH = PTC_SIZE
 ```
 
-### New `PTCAttestingIndices`
+### New `PayloadTimelinessCommitteeIndices`
 
 ```python
-class PTCAttestingIndices(List[ValidatorIndex]):
+class PayloadTimelinessCommitteeIndices(List[ValidatorIndex]):
     """
     The indices of payload timeliness committee members, as a list limited
     by the size of the committee.
@@ -518,10 +518,10 @@ class PTCAttestingIndices(List[ValidatorIndex]):
     LIMIT = PTC_SIZE
 ```
 
-### New `PTCBits`
+### New `PayloadTimelinessCommitteeBits`
 
 ```python
-class PTCBits(BitVector):
+class PayloadTimelinessCommitteeBits(BitVector):
     """
     The participation bits of the payload timeliness committee, one bit per
     member in committee order.
@@ -530,10 +530,10 @@ class PTCBits(BitVector):
     LENGTH = PTC_SIZE
 ```
 
-### New `PTCWindow`
+### New `PayloadTimelinessCommitteeWindow`
 
 ```python
-class PTCWindow(Vector[PTC]):
+class PayloadTimelinessCommitteeWindow(Vector[PayloadTimelinessCommittee]):
     """
     A rolling window of payload timeliness committees for the previous,
     current, and lookahead epochs.
@@ -717,7 +717,7 @@ class PayloadAttestationData(Container):
 class PayloadAttestation(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=3)
 
-    aggregation_bits: PTCBits
+    aggregation_bits: PayloadTimelinessCommitteeBits
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -737,7 +737,7 @@ class PayloadAttestationMessage(Container):
 class IndexedPayloadAttestation(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=3)
 
-    attesting_indices: PTCAttestingIndices
+    attesting_indices: PayloadTimelinessCommitteeIndices
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -929,7 +929,7 @@ class BeaconState(ProgressiveContainer):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
 ```
 
 #### `ExecutionPayload`
@@ -1250,7 +1250,7 @@ def compute_proposer_indices(
 #### New `compute_ptc`
 
 ```python
-def compute_ptc(state: BeaconState, slot: Slot) -> PTC:
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
@@ -1262,7 +1262,7 @@ def compute_ptc(state: BeaconState, slot: Slot) -> PTC:
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return PTC(
+    return PayloadTimelinessCommittee(
         data=compute_balance_weighted_selection(
             state, indices, seed, size=PTC_SIZE, shuffle_indices=False
         )
@@ -1376,7 +1376,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_ptc`
 
 ```python
-def get_ptc(state: BeaconState, slot: Slot) -> PTC:
+def get_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
@@ -1405,7 +1405,7 @@ def get_indexed_payload_attestation(
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
-        attesting_indices=PTCAttestingIndices(data=sorted(attesting_indices)),
+        attesting_indices=PayloadTimelinessCommitteeIndices(data=sorted(attesting_indices)),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
     )

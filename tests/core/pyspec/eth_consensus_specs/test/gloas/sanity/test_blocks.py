@@ -401,7 +401,7 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
         slot=parent_slot,
         beacon_block_root=wrong_root,
         payload_present=True,
-        attesting_indices=spec.PTCAttestingIndices(data=ptc),
+        attesting_indices=spec.PayloadTimelinessCommitteeIndices(data=ptc),
     )
     block.body.payload_attestations = spec.PayloadAttestations.of(payload_attestation)
 
@@ -492,7 +492,7 @@ def test_invalid_payload_attestation_too_old_slot(spec, state):
         slot=state.slot - 2,  # Too old - should fail
         beacon_block_root=beacon_block_root,
         payload_present=True,
-        attesting_indices=spec.PTCAttestingIndices(data=ptc),
+        attesting_indices=spec.PayloadTimelinessCommitteeIndices(data=ptc),
     )
     block.body.payload_attestations = spec.PayloadAttestations.of(payload_attestation)
 
@@ -767,7 +767,7 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
         slot=parent_slot,
         beacon_block_root=beacon_block_root,
         payload_present=True,
-        attesting_indices=spec.PTCAttestingIndices(data=ptc),
+        attesting_indices=spec.PayloadTimelinessCommitteeIndices(data=ptc),
         valid_signature=False,
     )
     block.body.payload_attestations = spec.PayloadAttestations.of(payload_attestation)

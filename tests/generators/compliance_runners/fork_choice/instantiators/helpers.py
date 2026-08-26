@@ -209,13 +209,13 @@ def messages_to_payload_attestations(spec, state, messages):
     for data, attesting_indices in groups.values():
         ptc = spec.get_ptc(state, data.slot)
         index_set = set(attesting_indices)
-        aggregation_bits = spec.PTCBits()
+        aggregation_bits = spec.PayloadTimelinessCommitteeBits()
         for i, validator_index in enumerate(ptc):
             if validator_index in index_set:
                 aggregation_bits[i] = True
         result.append(
             spec.PayloadAttestation(
-                aggregation_bits=spec.PTCBits(data=aggregation_bits),
+                aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
                 data=data,
                 signature=spec.BLSSignature(),
             )
