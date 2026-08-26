@@ -18,7 +18,7 @@ from ..aspect_coverage import build_profile as _build_profile, enumerate_signatu
 from .materializer import _DIMS, BuilderDepositRequestMaterializer
 
 INPUT_ASPECTS = {
-    "withdrawal_credential": ["wc_is_builder_prefix"],
+    "withdrawal_credential": ["withdrawal_credentials_profile"],
     "builder_membership": ["builder_pubkey_found"],
     "signed_message": ["builder_signature_valid"],
     "deposit_amount": ["amount_nonzero"],
@@ -30,9 +30,10 @@ MODEL = Path(__file__).parent / "models" / "handler_builder_deposit_request.mzn"
 
 
 def _nfaults(r: dict) -> int:
-    faults = int(not r["wc_is_builder_prefix"])
+    is_builder = r["withdrawal_credentials_profile"] == "BUILDER"
+    faults = int(not is_builder)
     # The signature is checked only for a new builder with the right prefix.
-    if r["wc_is_builder_prefix"] and not r["builder_pubkey_found"]:
+    if is_builder and not r["builder_pubkey_found"]:
         faults += int(r["builder_signature_valid"] != "T")
     return faults
 

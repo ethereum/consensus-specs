@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 
+from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_from_profile
 from ...gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
@@ -47,16 +48,6 @@ def _amount(spec: Any, profile: str) -> int:
     }[profile]
 
 
-def _withdrawal_credentials(spec: Any, profile: str) -> bytes:
-    prefix = {
-        "BLS": spec.BLS_WITHDRAWAL_PREFIX,
-        "ETH1": spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX,
-        "COMPOUNDING": spec.COMPOUNDING_WITHDRAWAL_PREFIX,
-        "BUILDER": spec.BUILDER_WITHDRAWAL_PREFIX,
-    }[profile]
-    return prefix + b"\x00" * 11 + b"\x11" * 20
-
-
 class DepositRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "deposit_request"
@@ -73,7 +64,9 @@ class DepositRequestMaterializer(Materializer):
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
         signature_profile = _s(sol, "signature_profile")
         amount = _amount(spec, amount_profile)
-        withdrawal_credentials = _withdrawal_credentials(spec, credentials_profile)
+        withdrawal_credentials = withdrawal_credentials_from_profile(
+            spec, credentials_profile, b"\x11" * 20
+        )
         deposit_data = build_deposit_data(
             spec,
             pubkey,
