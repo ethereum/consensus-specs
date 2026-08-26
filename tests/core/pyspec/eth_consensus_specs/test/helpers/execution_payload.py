@@ -393,7 +393,7 @@ def build_empty_execution_payload(
         payload.base_fee_per_gas = parent_payload.base_fee_per_gas  # retain same base_fee
 
     if is_post_capella(spec):
-        payload.withdrawals = get_expected_withdrawals(spec, state)
+        payload.withdrawals = spec.Withdrawals(data=get_expected_withdrawals(spec, state))
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
