@@ -7,14 +7,14 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    cover,
+    build_profile as _build_profile,
     enumerate_signatures,
 )
 
 from .materializer import _DIMS, PendingDepositsMaterializer
 
-# Fine-grained aspects. These remain available through the detailed profile;
-# the default profiles use the composite validator_state factor.
+# Fine-grained aspects remain part of the signature used by `all`; the normal
+# profile uses the composite validator_state factor.
 FINE_QUEUE_ASPECT = {
     "queue_layout": ["queue_layout", "secondary_role"],
     "finalization_and_limit": ["primary_reached"],
@@ -64,22 +64,22 @@ MODEL = Path(__file__).parent / "models" / "handler_pending_deposits.mzn"
 
 
 def _recs():
-    return enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS)
+    return enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
+
+
+def _nfaults(_r: dict) -> int:
+    return 0
 
 
 def build_profile(records, name: str):
-    if name == "all":
-        return len(records), records
-    if name not in {"onewise", "pairwise", "standard", "detailed"}:
-        raise ValueError(f"unknown profile: {name}")
-    if name == "detailed":
-        return cover(records, FINE_ALL_ASPECTS, 2)
-    strength = {"onewise": 1, "pairwise": 2, "standard": 3}[name]
-    return cover(records, ALL_ASPECTS, strength)
+    return _build_profile(
+        records, name, ALL_ASPECTS, ALL_ASPECTS, {"outcome": ["outcome"]}, normal_t=3
+    )
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     return PendingDepositsMaterializer(spec).materialize_reps(
-        output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**record) for record in chosen]
+        output_dir or (Path(__file__).parent / "reftests"),
+        [SimpleNamespace(**record) for record in chosen],
     )
