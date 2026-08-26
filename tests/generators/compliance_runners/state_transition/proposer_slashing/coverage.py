@@ -6,8 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
-from ..aspect_coverage import cover, dedup, enumerate_signatures
 
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
 from .materializer import _DIMS, ProposerSlashingMaterializer
 
 INPUT_ASPECTS = {
@@ -23,13 +23,6 @@ INPUT_ASPECTS = {
 }
 OUTCOME_ASPECT = {"outcome": ["outcome", "pending_payment_cleared", "state_effected"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-ACCEPT = {
-    "ACCEPT_CURRENT_PAYMENT_CLEARED",
-    "ACCEPT_CURRENT_PAYMENT_RETAINED",
-    "ACCEPT_PREVIOUS_PAYMENT_CLEARED",
-    "ACCEPT_PREVIOUS_PAYMENT_RETAINED",
-    "ACCEPT_OLD",
-}
 MODEL = Path(__file__).parent / "models" / "handler_proposer_slashing.mzn"
 
 
@@ -46,27 +39,12 @@ def _nfaults(r: dict) -> int:
     )
 
 
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": (OUTCOME_ASPECT, 1, "exceptional"),
-}
-
-
 def _recs():
     return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
 
 
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":
-        _, normal = cover(recs, *PROFILES["normal"], accept=ACCEPT)
-        _, exceptional = cover(recs, *PROFILES["exceptional"], accept=ACCEPT)
-        return -1, dedup(normal + exceptional, ALL_ASPECTS)
-    aspects, t, filt = PROFILES[name]
-    return cover(recs, aspects, t, filt, accept=ACCEPT)
+    return _build_profile(recs, name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
