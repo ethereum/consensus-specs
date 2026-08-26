@@ -143,7 +143,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     for i in range(num_deposits):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
             deposit_data_leaves,
@@ -317,7 +317,7 @@ def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     for _ in range(num_deposits):
         index = rng.randrange(0, num_deposits)
         withdrawal_pubkey = pubkeys[index]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,

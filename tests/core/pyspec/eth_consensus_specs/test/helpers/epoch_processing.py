@@ -38,6 +38,7 @@ def get_process_calls(spec):
         "process_sync_committee_updates",  # altair
         "process_proposer_lookahead",  # fulu
         "process_ptc_window",  # gloas
+        "process_preregistration_expiry",  # eip8205
     ]
 
 

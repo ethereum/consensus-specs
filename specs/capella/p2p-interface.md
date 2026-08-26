@@ -240,7 +240,8 @@ def validate_bls_to_execution_change_gossip(
         raise GossipReject("validator does not have BLS withdrawal credentials")
 
     # [REJECT] The bls_to_execution_change is for the validator's withdrawal pubkey
-    if validator.withdrawal_credentials[1:] != hash(bls_to_execution_change.from_bls_pubkey)[1:]:
+    pubkey = bls_to_execution_change.from_bls_pubkey
+    if validator.withdrawal_credentials[1:] != sha256(pubkey)[1:]:
         raise GossipReject("pubkey does not match validator withdrawal credentials")
 
     # [REJECT] The signature is valid
@@ -248,11 +249,7 @@ def validate_bls_to_execution_change_gossip(
         DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root
     )
     signing_root = compute_signing_root(bls_to_execution_change, domain)
-    if not bls.Verify(
-        bls_to_execution_change.from_bls_pubkey,
-        signing_root,
-        signed_bls_to_execution_change.signature,
-    ):
+    if not bls.Verify(pubkey, signing_root, signed_bls_to_execution_change.signature):
         raise GossipReject("invalid BLS to execution change signature")
 
     # Mark this bls_to_execution_change as seen

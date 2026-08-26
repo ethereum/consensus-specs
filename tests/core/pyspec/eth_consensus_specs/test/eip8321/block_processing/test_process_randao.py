@@ -89,7 +89,7 @@ def test_unregistered_proposer_uses_bls_reveal(spec, state):
     yield from run_process_randao(spec, state, block)
 
     assert spec.get_randao_mix(state, epoch) == spec.xor(
-        pre_mix, spec.hash(block.body.randao_reveal)
+        pre_mix, spec.sha256(block.body.randao_reveal)
     )
     # An unregistered validator stays unregistered
     assert state.randao_commitments[proposer_index] == spec.Bytes32()
