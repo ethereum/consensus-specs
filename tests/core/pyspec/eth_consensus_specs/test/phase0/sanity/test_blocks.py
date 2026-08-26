@@ -511,7 +511,7 @@ def test_invalid_duplicate_proposer_slashings_same_block(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.proposer_slashings = [proposer_slashing, proposer_slashing]
+    block.body.proposer_slashings = spec.ProposerSlashings.of(proposer_slashing, proposer_slashing)
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield "blocks", [signed_block]
@@ -545,7 +545,9 @@ def test_invalid_similar_proposer_slashings_same_block(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.proposer_slashings = [proposer_slashing_1, proposer_slashing_2]
+    block.body.proposer_slashings = spec.ProposerSlashings.of(
+        proposer_slashing_1, proposer_slashing_2
+    )
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield "blocks", [signed_block]
@@ -566,7 +568,7 @@ def test_multiple_different_proposer_slashings_same_block(spec, state):
     # Add to state via block transition
     #
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.proposer_slashings = proposer_slashings
+    block.body.proposer_slashings = spec.ProposerSlashings(data=proposer_slashings)
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
@@ -639,7 +641,7 @@ def test_invalid_duplicate_attester_slashing_same_block(spec, state):
     # Add to state via block transition
     #
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.attester_slashings = attester_slashings
+    block.body.attester_slashings = spec.AttesterSlashings(data=attester_slashings)
 
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
@@ -685,7 +687,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
     # Add to state via block transition
     #
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.attester_slashings = attester_slashings
+    block.body.attester_slashings = spec.AttesterSlashings(data=attester_slashings)
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
@@ -733,7 +735,7 @@ def test_multiple_attester_slashings_partial_overlap(spec, state):
     # Add to state via block transition
     #
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.attester_slashings = attester_slashings
+    block.body.attester_slashings = spec.AttesterSlashings(data=attester_slashings)
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
@@ -1029,7 +1031,7 @@ def test_voluntary_exit(spec, state):
 
     # Add to state via block transition
     initiate_exit_block = build_empty_block_for_next_slot(spec, state)
-    initiate_exit_block.body.voluntary_exits = signed_exits
+    initiate_exit_block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
     signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -1058,7 +1060,7 @@ def test_invalid_duplicate_validator_exit_same_block(spec, state):
 
     # Add to state via block transition
     initiate_exit_block = build_empty_block_for_next_slot(spec, state)
-    initiate_exit_block.body.voluntary_exits = signed_exits
+    initiate_exit_block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
     signed_initiate_exit_block = state_transition_and_sign_block(
         spec, state, initiate_exit_block, expect_fail=True
     )
@@ -1081,7 +1083,7 @@ def test_multiple_different_validator_exits_same_block(spec, state):
 
     # Add to state via block transition
     initiate_exit_block = build_empty_block_for_next_slot(spec, state)
-    initiate_exit_block.body.voluntary_exits = signed_exits
+    initiate_exit_block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
     signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
     for index in validator_indices:
@@ -1157,10 +1159,8 @@ def test_historical_batch(spec, state):
     yield "post", state
 
     assert state.slot == block.slot
-    assert (
-        spec.get_current_epoch(state) % (spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH)
-        == 0
-    )
+    epochs_per_historical_root = spec.Epoch(spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH)
+    assert spec.get_current_epoch(state) % epochs_per_historical_root == 0
 
     # check history update
     if is_post_capella(spec):

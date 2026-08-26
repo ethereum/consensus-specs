@@ -215,7 +215,9 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
     # check is independent of the inclusion proof, so we don't need a
     # consistent block here.
     extra = get_max_blob_count(spec, state) + 1 - len(sidecar.kzg_commitments)
-    sidecar.kzg_commitments = list(sidecar.kzg_commitments) + [spec.KZGCommitment()] * extra
+    sidecar.kzg_commitments = spec.BlobKZGCommitments(
+        data=list(sidecar.kzg_commitments) + [spec.KZGCommitment()] * extra
+    )
 
     yield get_filename(sidecar), sidecar
 
@@ -897,7 +899,7 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     # Corrupt the inclusion proof.
-    sidecar.kzg_commitments_inclusion_proof = spec.compute_merkle_proof(spec.BeaconBlockBody(), 0)
+    sidecar.kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
 
     yield get_filename(sidecar), sidecar
 
@@ -953,7 +955,7 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     # Corrupt every KZG proof to the point at infinity, which won't verify
     # against the real commitments.
     bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
-    sidecar.kzg_proofs = [bad_proof for _ in sidecar.kzg_proofs]
+    sidecar.kzg_proofs = spec.KZGProofs(data=[bad_proof for _ in sidecar.kzg_proofs])
 
     blocks_meta = [{"block": get_filename(signed_anchor)}]
     if is_post_gloas(spec):

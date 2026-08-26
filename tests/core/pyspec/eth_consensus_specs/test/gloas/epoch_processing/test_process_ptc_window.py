@@ -25,8 +25,8 @@ def test_process_ptc_window__shifts_all_epochs(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 
     # After shift: [curr, next, new_next]
-    assert list(state.ptc_window[:SPE]) == curr_epoch_ptc
-    assert list(state.ptc_window[SPE : 2 * SPE]) == next_epoch_ptc
+    assert list(state.ptc_window[:SPE]) == list(curr_epoch_ptc)
+    assert list(state.ptc_window[SPE : 2 * SPE]) == list(next_epoch_ptc)
 
     # run_epoch_processing_with does not increment the slot, so do it manually
     state.slot += 1
