@@ -16,17 +16,12 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 
+from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
+
 _YAML = YAML(typ="safe")
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     amount = int(request.amount)
-    credential_prefix = request.withdrawal_credentials[:1]
-    credential_profiles = {
-        bytes(spec.BLS_WITHDRAWAL_PREFIX): "BLS",
-        bytes(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX): "ETH1",
-        bytes(spec.COMPOUNDING_WITHDRAWAL_PREFIX): "COMPOUNDING",
-        bytes(spec.BUILDER_WITHDRAWAL_PREFIX): "BUILDER",
-    }
     if amount == 0:
         amount_profile = "ZERO"
     elif amount == int(spec.MIN_DEPOSIT_AMOUNT):
@@ -40,8 +35,8 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     return {
         "amount_profile": amount_profile,
         "amount_nonzero": amount > 0,
-        "withdrawal_credentials_profile": credential_profiles.get(
-            bytes(credential_prefix), "UNKNOWN"
+        "withdrawal_credentials_profile": withdrawal_credentials_profile(
+            spec, request.withdrawal_credentials
         ),
         "signature_profile": (
             "VALID"
