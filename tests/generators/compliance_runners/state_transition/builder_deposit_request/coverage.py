@@ -21,7 +21,7 @@ INPUT_ASPECTS = {
     "withdrawal_credential": ["withdrawal_credentials_profile"],
     "builder_membership": ["builder_pubkey_found"],
     "signed_message": ["builder_signature_valid"],
-    "deposit_amount": ["amount_nonzero"],
+    "deposit_amount": ["amount_profile", "amount_nonzero"],
     "builder_reset": ["builder_withdrawable_epoch_set", "builder_balance_zero"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
