@@ -8,16 +8,17 @@ Run:
     uv run python -m ...withdrawal_request.coverage
     uv run python -m ...withdrawal_request.coverage standard --materialize
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import WithdrawalRequestMaterializer, _DIMS
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from .materializer import _DIMS, WithdrawalRequestMaterializer
 
-# Fine-grained input aspects. These remain available through the detailed
-# profile; the default profiles use the composite validator_state factor.
+# Fine-grained input aspects remain part of the signature used by `all`; the
+# normal/exceptional profiles use the composite validator_state factor.
 FINE_INPUT_ASPECTS = {
     "withdrawal_amount": ["is_full_exit_request"],
     "partial_queue_capacity": ["partial_queue_full"],
@@ -46,41 +47,24 @@ INPUT_ASPECTS = {
 }
 FINE_ALL_ASPECTS = {**FINE_INPUT_ASPECTS, **OUTCOME_ASPECT}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}
 MODEL = Path(__file__).parent / "models" / "handler_withdrawal_request.mzn"
 
 
 def _nfaults(r: dict) -> int:
-    if r["partial_queue_full"] and not r["is_full_exit_request"]:
-        return 1
-    if not r["validator_pubkey_found"]:
-        return 1
-    f = 0
-    f += not (r["validator_has_execution_credential"] and r["source_address_matches"] == "T")
-    f += r["validator_active"] != "T"
-    f += r["validator_exiting"] != "F"
-    f += r["validator_old_enough"] != "T"
-    return int(f)
-
-
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": (OUTCOME_ASPECT, 1, "exceptional"),
-    "detailed": (FINE_ALL_ASPECTS, 2, None),
-}
+    faults = int(r["partial_queue_full"] and not r["is_full_exit_request"])
+    faults += int(not r["validator_pubkey_found"])
+    if r["validator_pubkey_found"]:
+        faults += int(
+            not (r["validator_has_execution_credential"] and r["source_address_matches"] == "T")
+        )
+        faults += int(r["validator_active"] != "T")
+        faults += int(r["validator_exiting"] != "F")
+        faults += int(r["validator_old_enough"] != "T")
+    return faults
 
 
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":
-        _, normal = cover(recs, *PROFILES["normal"], accept=ACCEPT)
-        _, exc = cover(recs, *PROFILES["exceptional"], accept=ACCEPT)
-        return -1, dedup(normal + exc, ALL_ASPECTS)
-    aspects, t, filt = PROFILES[name]
-    return cover(recs, aspects, t, filt, accept=ACCEPT)
+    return _build_profile(recs, name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
 
 
 def _recs():
@@ -89,6 +73,7 @@ def _recs():
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     from eth_consensus_specs.gloas import minimal as spec
+
     _, chosen = build_profile(_recs(), name)
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")

@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import PayloadAttestationMaterializer, _DIMS
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from .materializer import _DIMS, PayloadAttestationMaterializer
 
 INPUT_ASPECTS = {
     "block_context": ["parent_root_matches", "slot_is_previous"],
@@ -17,9 +17,6 @@ INPUT_ASPECTS = {
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
 MODEL = Path(__file__).parent / "models" / "handler_payload_attestation.mzn"
-# Keep combinations of independent invalid inputs useful without allowing the
-# generated suite to grow into the full fault cross-product.
-MAX_FAULTS = 2
 
 
 def _nfaults(r: dict) -> int:
@@ -31,40 +28,19 @@ def _nfaults(r: dict) -> int:
     )
 
 
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    # Keep the exceptional profile sensitive to combinations of independent
-    # faults, rather than selecting only the first failure outcome.
-    "exceptional": (ALL_ASPECTS, 1, "exceptional"),
-}
-
-
-def _recs(max_faults: int = MAX_FAULTS):
-    if max_faults < 0:
-        raise ValueError("max_faults must be non-negative")
-    records = enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
-    return [record for record in records if _nfaults(record) <= max_faults]
+def _recs():
+    return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
 
 
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":
-        _, normal = cover(recs, *PROFILES["normal"])
-        _, exceptional = cover(recs, *PROFILES["exceptional"])
-        return -1, dedup(normal + exceptional, ALL_ASPECTS)
-    aspects, t, filt = PROFILES[name]
-    return cover(recs, aspects, t, filt)
+    return _build_profile(recs, name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
 
 
 def materialize_profile(
     name: str,
     output_dir: Path | None = None,
-    max_faults: int = MAX_FAULTS,
 ) -> int:
-    _, chosen = build_profile(_recs(max_faults), name)
+    _, chosen = build_profile(_recs(), name)
     return PayloadAttestationMaterializer(spec, MODEL).materialize_reps(
         output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
