@@ -8,16 +8,17 @@ Run:
     uv run python -m ...consolidation_request.coverage
     uv run python -m ...consolidation_request.coverage standard --materialize
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import ConsolidationRequestMaterializer, _DIMS
+from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from .materializer import _DIMS, ConsolidationRequestMaterializer
 
-# Fine-grained input aspects. These remain available through the detailed
-# profile; the default profiles use the composite validator_state factor.
+# Fine-grained input aspects remain part of the signature used by `all`; the
+# normal/exceptional profiles use the composite validator_state factor.
 FINE_INPUT_ASPECTS = {
     "consolidation_pair": ["same_source_target"],
     "pending_consolidations_capacity": ["pending_consolidations_full"],
@@ -50,32 +51,41 @@ INPUT_ASPECTS = {
 }
 FINE_ALL_ASPECTS = {**FINE_INPUT_ASPECTS, **OUTCOME_ASPECT}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-ACCEPT = {"SWITCHED_TO_COMPOUNDING", "CONSOLIDATED"}
 MODEL = Path(__file__).parent / "models" / "handler_consolidation_request.mzn"
 
 
 def _nfaults(r: dict) -> int:
-    return 0 if r["outcome"] in ACCEPT else 1
+    if r["same_source_target"]:
+        if not r["validator_pubkey_found"]:
+            return 1
+        return sum(
+            (
+                r["source_address_matches"] != "T",
+                r["validator_credential"] != "CRED_ETH1",
+                r["validator_active"] != "T",
+                r["validator_exiting"] == "T",
+            )
+        )
 
-
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": (OUTCOME_ASPECT, 1, "exceptional"),
-    "detailed": (FINE_ALL_ASPECTS, 2, None),
-}
+    faults = int(r["pending_consolidations_full"]) + int(not r["sufficient_consolidation_churn"])
+    faults += int(not r["validator_pubkey_found"])
+    faults += int(r["target_found"] != "T")
+    if r["validator_pubkey_found"]:
+        faults += int(
+            not (r["validator_has_execution_credential"] and r["source_address_matches"] == "T")
+        )
+        faults += int(r["validator_active"] != "T")
+        faults += int(r["validator_exiting"] == "T")
+        faults += int(r["validator_old_enough"] != "T")
+        faults += int(r["has_pending_partial_withdrawal"] == "T")
+    faults += int(r["target_active"] != "T") if r["target_found"] == "T" else 0
+    faults += int(r["target_exiting"] == "T") if r["target_found"] == "T" else 0
+    faults += int(not r["target_has_compounding_credential"]) if r["target_found"] == "T" else 0
+    return faults
 
 
 def build_profile(recs, name):
-    if name == "all":
-        return len(recs), recs
-    if name == "standard":
-        _, normal = cover(recs, *PROFILES["normal"], accept=ACCEPT)
-        _, exc = cover(recs, *PROFILES["exceptional"], accept=ACCEPT)
-        return -1, dedup(normal + exc, ALL_ASPECTS)
-    aspects, t, filt = PROFILES[name]
-    return cover(recs, aspects, t, filt, accept=ACCEPT)
+    return _build_profile(recs, name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
 
 
 def _recs():
@@ -84,6 +94,7 @@ def _recs():
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     from eth_consensus_specs.gloas import minimal as spec
+
     _, chosen = build_profile(_recs(), name)
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
