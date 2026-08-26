@@ -51,7 +51,9 @@ def _commit_full_parent_with_payment(spec, state, value, builder_index, fee_reci
     Commit a FULL parent with a builder payment at slot ``SLOTS_PER_EPOCH - 1``.
     Clear its availability bit.
     """
-    state.latest_execution_payload_bid.slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    parent_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    state.latest_block_header.slot = parent_slot
+    state.latest_execution_payload_bid.slot = parent_slot
     state.latest_execution_payload_bid.fee_recipient = fee_recipient
     _commit_parent_requests(
         spec, state, spec.ExecutionRequests(), value=value, builder_index=builder_index
@@ -94,7 +96,7 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
     assert not is_parent_block_full
 
     pre_latest_block_hash = state.latest_block_hash
-    parent_slot = state.latest_execution_payload_bid.slot
+    parent_slot = state.latest_block_header.slot
     pre_availability = state.execution_payload_availability[
         parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT
     ]

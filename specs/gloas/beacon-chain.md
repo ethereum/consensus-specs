@@ -1698,6 +1698,9 @@ def process_ptc_window(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [New in Gloas:EIP7732]
+    parent_slot = state.latest_block_header.slot
+
+    # [New in Gloas:EIP7732]
     process_parent_execution_payload(state, block)
     process_block_header(state, block)
     # [Modified in Gloas:EIP7732]
@@ -1705,7 +1708,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     # Removed `process_execution_payload`
     # [New in Gloas:EIP7732]
-    parent_slot = process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
+    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     # [Modified in Gloas:EIP7732]
@@ -1728,7 +1731,7 @@ def apply_parent_execution_payload(
     requests: ExecutionRequests,
 ) -> None:
     parent_bid = state.latest_execution_payload_bid
-    parent_slot = parent_bid.slot
+    parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
@@ -2080,14 +2083,10 @@ def verify_execution_payload_bid_signature(
 
 ##### New `process_execution_payload_bid`
 
-*Note*: This function returns the slot of the parent block, read from the bid in
-the state before it is overwritten by the new bid. The slot is later given to
-`process_attestation` to look up the payload availability of the attested block.
-
 ```python
 def process_execution_payload_bid(
     state: BeaconState, signed_bid: SignedExecutionPayloadBid
-) -> Slot:
+) -> None:
     bid = signed_bid.message
     builder_index = bid.builder_index
     amount = bid.value
@@ -2135,13 +2134,8 @@ def process_execution_payload_bid(
             pending_payment
         )
 
-    # Cache the parent block's slot before overwriting the bid
-    parent_slot = state.latest_execution_payload_bid.slot
-
     # Cache the signed execution payload bid
     state.latest_execution_payload_bid = bid
-
-    return parent_slot
 ```
 
 #### Operations

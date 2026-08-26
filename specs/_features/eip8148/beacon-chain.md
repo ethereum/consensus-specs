@@ -498,7 +498,7 @@ def apply_parent_execution_payload(
     requests: ExecutionRequests,
 ) -> None:
     parent_bid = state.latest_execution_payload_bid
-    parent_slot = parent_bid.slot
+    parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
