@@ -114,7 +114,7 @@ def prepare_signed_payload_attestation(
 def _get_ptc_from_indices(spec, state, slot, indices):
     slot = spec.Slot(slot)
     epoch = spec.compute_epoch_at_slot(slot)
-    seed = spec.hash(
+    seed = spec.sha256(
         spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
     )
     return spec.compute_balance_weighted_selection(
@@ -131,7 +131,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
-            random_bytes = spec.hash(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
+            random_bytes = spec.sha256(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
         candidate_index = indices[i % total]
         effective_balance = state.validators[candidate_index].effective_balance
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
@@ -380,7 +380,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     """
     epoch = spec.get_current_epoch(state)
     active_validator_count = len(spec.get_active_validator_indices(state, epoch))
-    limit = active_validator_count // spec.SLOTS_PER_EPOCH
+    limit = active_validator_count // spec.Uint64(spec.SLOTS_PER_EPOCH)
     assert limit > 0
 
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
@@ -401,7 +401,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
         for i in range(committees_per_slot):
             indices.extend(spec.get_beacon_committee(state, slot, spec.CommitteeIndex(i)))
 
-        seed = spec.hash(
+        seed = spec.sha256(
             spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
         )
 

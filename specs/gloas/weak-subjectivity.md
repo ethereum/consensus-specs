@@ -43,6 +43,6 @@ def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
         + get_activation_churn_limit(state) // 3
         + get_consolidation_churn_limit(state)
     )
-    epochs_for_validator_set_churn = SAFETY_DECAY * t // (2 * delta * 100)
+    epochs_for_validator_set_churn = Epoch(SAFETY_DECAY * t // (2 * delta * 100))
     return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
 ```

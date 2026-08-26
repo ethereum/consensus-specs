@@ -31,7 +31,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
     Helper function to run a test that slashes and exits two validators
     """
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     yield "pre", state
 
@@ -143,7 +143,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     for i in range(num_deposits):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
             deposit_data_leaves,
@@ -271,7 +271,7 @@ def run_test_full_random_operations(spec, state, rng=None):
     if rng is None:
         rng = Random(2080)
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     num_deposits = None
     if is_post_fulu(spec):
@@ -317,7 +317,7 @@ def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     for _ in range(num_deposits):
         index = rng.randrange(0, num_deposits)
         withdrawal_pubkey = pubkeys[index]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,

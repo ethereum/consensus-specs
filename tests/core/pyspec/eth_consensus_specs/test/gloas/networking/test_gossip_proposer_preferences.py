@@ -1,11 +1,14 @@
 from eth_consensus_specs.test.context import (
-    spec_state_test,
+    spec_configured_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
+    with_phases,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -56,7 +59,7 @@ def setup_store_with_advanced_state(spec, state, target_slot):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid(spec, state):
     """A well-formed SignedProposerPreferences for an upcoming proposal passes gossip."""
     anchor_state = state.copy()
@@ -72,6 +75,105 @@ def test_gossip_proposer_preferences__valid(spec, state):
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     signed_prefs = build_signed_proposer_preferences(spec, state)
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_phases([GLOAS])
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
+def test_gossip_proposer_preferences__ignore_pre_gloas_epoch(spec, state):
+    """Preferences for a proposal slot before the Gloas fork are ignored."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    # Epoch 0 is before GLOAS_FORK_EPOCH. The dependent root is a placeholder;
+    # this check fires before any dependent_root lookup.
+    proposal_slot = spec.Slot(1)
+    assert spec.compute_epoch_at_slot(proposal_slot) < spec.config.GLOAS_FORK_EPOCH
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=spec.ValidatorIndex(0),
+        dependent_root=spec.Root(),
+    )
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "proposal epoch is pre-gloas"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_phases([GLOAS])
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 2})
+def test_gossip_proposer_preferences__valid_at_gloas_fork_epoch(spec, state):
+    """Preferences for a proposal slot in the Gloas fork epoch are valid."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    fork_epoch = spec.config.GLOAS_FORK_EPOCH
+    target_slot = spec.compute_start_slot_at_epoch(fork_epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+
+    yield "state", anchor_state
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(spec, state)
+    proposal_epoch = spec.compute_epoch_at_slot(signed_prefs.message.proposal_slot)
+    assert proposal_epoch == fork_epoch
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = spec.compute_time_at_slot_ms(store, state.slot)
@@ -116,7 +218,7 @@ def setup_lookahead_window(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_slot_before_lookahead(spec, state):
     """Preferences for the slot just below the lookahead window are ignored.
 
@@ -171,7 +273,7 @@ def test_gossip_proposer_preferences__ignore_slot_before_lookahead(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_at_first_lookahead_slot(spec, state):
     """Preferences for the first slot of the lookahead window are valid.
 
@@ -225,7 +327,7 @@ def test_gossip_proposer_preferences__valid_at_first_lookahead_slot(spec, state)
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_at_last_lookahead_slot(spec, state):
     """Preferences for the last slot of the lookahead window are valid.
 
@@ -279,7 +381,7 @@ def test_gossip_proposer_preferences__valid_at_last_lookahead_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_slot_after_lookahead(spec, state):
     """Preferences for the slot just past the lookahead window are ignored.
 
@@ -366,7 +468,7 @@ def setup_lookahead_boundary_preferences(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, state):
     """Preferences validated 1ms before the lookahead lower bound are ignored.
 
@@ -416,7 +518,7 @@ def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, state):
     """Preferences validated exactly at the lookahead lower bound are valid.
 
@@ -465,7 +567,7 @@ def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, st
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_at_slot_start_disparity_edge(spec, state):
     """Preferences validated exactly at the clock-disparity edge are still valid.
 
@@ -516,7 +618,7 @@ def test_gossip_proposer_preferences__valid_at_slot_start_disparity_edge(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, state):
     """Preferences validated 1ms past the clock-disparity window are ignored as started."""
     anchor_state = state.copy()
@@ -567,7 +669,7 @@ def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, 
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
     """Preferences whose dependent_root has no corresponding block in the store are ignored."""
     anchor_state = state.copy()
@@ -615,7 +717,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     """The second valid preferences for the same dependent_root and proposal slot is ignored."""
     anchor_state = state.copy()
@@ -680,7 +782,7 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
     """Preferences signed by a validator that is not the slot's proposer are rejected."""
     anchor_state = state.copy()
@@ -732,7 +834,7 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     """Preferences with an invalid signature are rejected."""
     anchor_state = state.copy()
@@ -777,7 +879,7 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
     """Preferences whose proposal slot is in a past epoch are ignored as started.
 
@@ -835,7 +937,7 @@ def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(spec, state):
     """Preferences whose dependent_root has no corresponding state are ignored."""
     anchor_state = state.copy()
@@ -896,7 +998,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_start(spec, state):
     """
     Preferences whose dependent_root points to a block at the proposal slot's
@@ -968,7 +1070,7 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, state):
     """Preferences whose dependent_root is superseded on every branch are ignored.
 
@@ -1032,7 +1134,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
     """Preferences whose dependent_root is a non-canonical fork block are valid.
 
@@ -1110,7 +1212,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(spec, state):
     """
     Preferences remain valid when two empty epochs reuse the same dependent
@@ -1147,7 +1249,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     # Pick a slot that distinguishes the advanced lookahead from the stale
     # lookahead in the dependent block's post-state.
     for slot_offset in range(spec.SLOTS_PER_EPOCH):
-        lookahead_index = spec.MIN_SEED_LOOKAHEAD * spec.SLOTS_PER_EPOCH + slot_offset
+        lookahead_index = spec.Uint64(spec.MIN_SEED_LOOKAHEAD) * spec.SLOTS_PER_EPOCH + slot_offset
         validator_index = lookahead_state.proposer_lookahead[lookahead_index]
         stale_validator_index = dependent_state.proposer_lookahead[lookahead_index]
         if validator_index != stale_validator_index:

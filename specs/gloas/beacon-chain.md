@@ -37,10 +37,10 @@
   - [New `Builders`](#new-builders)
   - [New `ExecutionPayloadAvailability`](#new-executionpayloadavailability)
   - [New `PayloadAttestations`](#new-payloadattestations)
-  - [New `PTC`](#new-ptc)
-  - [New `PTCAttestingIndices`](#new-ptcattestingindices)
-  - [New `PTCBits`](#new-ptcbits)
-  - [New `PTCWindow`](#new-ptcwindow)
+  - [New `PayloadTimelinessCommittee`](#new-payloadtimelinesscommittee)
+  - [New `PayloadTimelinessCommitteeIndices`](#new-payloadtimelinesscommitteeindices)
+  - [New `PayloadTimelinessCommitteeBits`](#new-payloadtimelinesscommitteebits)
+  - [New `PayloadTimelinessCommitteeWindow`](#new-payloadtimelinesscommitteewindow)
 - [Constants](#constants)
   - [Index flags](#index-flags)
   - [Domains](#domains)
@@ -491,38 +491,41 @@ class PayloadAttestations(ProgressiveList[PayloadAttestation]):
     """
 ```
 
-### New `PTC`
+### New `PayloadTimelinessCommittee`
 
 ```python
-class PTC(Vector[ValidatorIndex, PTC_SIZE]):
+class PayloadTimelinessCommittee(Vector[ValidatorIndex, PTC_SIZE]):
     """
     The payload timeliness committee of a slot.
     """
 ```
 
-### New `PTCAttestingIndices`
+### New `PayloadTimelinessCommitteeIndices`
 
 ```python
-class PTCAttestingIndices(List[ValidatorIndex, PTC_SIZE]):
+class PayloadTimelinessCommitteeIndices(List[ValidatorIndex, PTC_SIZE]):
     """
-    The indices of the PTC members participating in a payload attestation.
+    The indices of payload timeliness committee members, as a list limited
+    by the size of the committee.
     """
 ```
 
-### New `PTCBits`
+### New `PayloadTimelinessCommitteeBits`
 
 ```python
-class PTCBits(BitVector[PTC_SIZE]):
+class PayloadTimelinessCommitteeBits(BitVector[PTC_SIZE]):
     """
     The participation bits of the payload timeliness committee, one bit per
     member in committee order.
     """
 ```
 
-### New `PTCWindow`
+### New `PayloadTimelinessCommitteeWindow`
 
 ```python
-class PTCWindow(Vector[PTC, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]):
+class PayloadTimelinessCommitteeWindow(
+    Vector[PayloadTimelinessCommittee, (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
+):
     """
     A rolling window of payload timeliness committees for the previous,
     current, and lookahead epochs.
@@ -702,7 +705,7 @@ class PayloadAttestationData(Container):
 
 ```python
 class PayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    aggregation_bits: PTCBits
+    aggregation_bits: PayloadTimelinessCommitteeBits
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -720,7 +723,7 @@ class PayloadAttestationMessage(Container):
 
 ```python
 class IndexedPayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
-    attesting_indices: PTCAttestingIndices
+    attesting_indices: PayloadTimelinessCommitteeIndices
     data: PayloadAttestationData
     signature: BLSSignature
 ```
@@ -900,7 +903,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
-    ptc_window: PTCWindow
+    ptc_window: PayloadTimelinessCommitteeWindow
 ```
 
 #### `ExecutionPayload`
@@ -1171,7 +1174,7 @@ def compute_balance_weighted_selection(
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
-            random_bytes = hash(seed + uint_to_bytes(i // 16))
+            random_bytes = sha256(seed + uint_to_bytes(i // 16))
         next_index = i % total
         if shuffle_indices:
             next_index = compute_shuffled_index(next_index, total, seed)
@@ -1198,7 +1201,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         compute_balance_weighted_selection(state, indices, seed, size=1, shuffle_indices=True)[0]
@@ -1209,19 +1212,19 @@ def compute_proposer_indices(
 #### New `compute_ptc`
 
 ```python
-def compute_ptc(state: BeaconState, slot: Slot) -> PTC:
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
     indices: list[ValidatorIndex] = []
     # Concatenate all committees for this slot in order
     committees_per_slot = get_committee_count_per_slot(state, epoch)
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return PTC(
+    return PayloadTimelinessCommittee(
         compute_balance_weighted_selection(
             state, indices, seed, size=PTC_SIZE, shuffle_indices=False
         )
@@ -1311,7 +1314,7 @@ def get_attestation_participation_flag_indices(
     else:
         slot_index = parent_slot % SLOTS_PER_HISTORICAL_ROOT
         payload_index = state.execution_payload_availability[slot_index]
-        payload_matches = data.index == payload_index
+        payload_matches = Uint64(data.index) == Uint64(payload_index)
 
     # Matching head
     head_root = get_block_root_at_slot(state, data.slot)
@@ -1335,7 +1338,7 @@ def get_attestation_participation_flag_indices(
 #### New `get_ptc`
 
 ```python
-def get_ptc(state: BeaconState, slot: Slot) -> PTC:
+def get_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
@@ -1345,7 +1348,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> PTC:
         assert epoch + 1 == state_epoch
         return state.ptc_window[slot % SLOTS_PER_EPOCH]
     assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
-    offset = (epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
     return state.ptc_window[offset + slot % SLOTS_PER_EPOCH]
 ```
 
@@ -1364,7 +1367,7 @@ def get_indexed_payload_attestation(
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
-        attesting_indices=PTCAttestingIndices(sorted(attesting_indices)),
+        attesting_indices=PayloadTimelinessCommitteeIndices(sorted(attesting_indices)),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
     )
@@ -1377,7 +1380,7 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
-    per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    per_slot_balance = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
@@ -1451,7 +1454,7 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     if exit_balance > exit_balance_to_consume:
         balance_to_process = exit_balance - exit_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
+        earliest_exit_epoch += Epoch(additional_epochs)
         exit_balance_to_consume += additional_epochs * per_epoch_churn
 
     # Consume the balance and update state variables.

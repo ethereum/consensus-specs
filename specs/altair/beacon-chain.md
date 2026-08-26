@@ -326,7 +326,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
             Uint64(i % active_validator_count), active_validator_count, seed
         )
         candidate_index = active_validator_indices[shuffled_index]
-        random_byte = hash(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
+        random_byte = sha256(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             sync_committee_indices.append(candidate_index)
@@ -661,7 +661,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
     max_participant_rewards = Gwei(
-        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // SLOTS_PER_EPOCH
+        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
     )
     participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
     proposer_reward = Gwei(

@@ -90,7 +90,7 @@
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
   - [Crypto](#crypto)
-    - [`hash`](#hash)
+    - [`sha256`](#sha256)
     - [`hash_tree_root`](#hash_tree_root)
     - [BLS signatures](#bls-signatures)
   - [Predicates](#predicates)
@@ -985,9 +985,15 @@ def bytes_to_uint64(data: bytes) -> Uint64:
 
 ### Crypto
 
-#### `hash`
+#### `sha256`
 
-`def hash(data: bytes) -> Bytes32` is SHA256.
+```python
+def sha256(data: bytes) -> Bytes32:
+    """
+    Return the SHA256 hash of ``data``.
+    """
+    return Bytes32(sha256_hash(data).digest())
+```
 
 #### `hash_tree_root`
 
@@ -1111,9 +1117,9 @@ def compute_merkle_branch_root(
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
-            value = hash(branch[i] + value)
+            value = sha256(branch[i] + value)
         else:
-            value = hash(value + branch[i])
+            value = sha256(value + branch[i])
     return Root(value)
 ```
 
@@ -1145,14 +1151,14 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
     indices = [Uint64(i) for i in range(index_count)]
     for current_round in range(SHUFFLE_ROUND_COUNT):
         round_bytes = current_round.to_bytes(1, "little")
-        pivot = int.from_bytes(hash(seed + round_bytes)[0:8], "little") % index_count
+        pivot = int.from_bytes(sha256(seed + round_bytes)[0:8], "little") % index_count
         source_by_bucket: Dict[Uint64, Bytes32] = {}
         for i in range(index_count):
             flip = (pivot + index_count - indices[i]) % index_count
             position = max(indices[i], flip)
             position_bucket = position // 256
             if position_bucket not in source_by_bucket:
-                source_by_bucket[position_bucket] = hash(
+                source_by_bucket[position_bucket] = sha256(
                     seed + round_bytes + position_bucket.to_bytes(4, "little")
                 )
             source = source_by_bucket[position_bucket]
@@ -1188,7 +1194,7 @@ def compute_proposer_index(
     total = Uint64(len(indices))
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        random_byte = hash(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
+        random_byte = sha256(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -1239,7 +1245,7 @@ def compute_start_slot_at_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
-    return Slot(epoch * SLOTS_PER_EPOCH)
+    return Slot(epoch) * SLOTS_PER_EPOCH
 ```
 
 #### `compute_activation_exit_epoch`
@@ -1391,7 +1397,7 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes
     mix = get_randao_mix(
         state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1)
     )  # Avoid underflow
-    return hash(domain_type + uint_to_bytes(epoch) + mix)
+    return sha256(domain_type + uint_to_bytes(epoch) + mix)
 ```
 
 #### `get_committee_count_per_slot`
@@ -1406,7 +1412,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
         min(
             MAX_COMMITTEES_PER_SLOT,
             Uint64(len(get_active_validator_indices(state, epoch)))
-            // SLOTS_PER_EPOCH
+            // Uint64(SLOTS_PER_EPOCH)
             // TARGET_COMMITTEE_SIZE,
         ),
     )
@@ -1426,8 +1432,8 @@ def get_beacon_committee(
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
-        count=committees_per_slot * SLOTS_PER_EPOCH,
+        index=Uint64(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
+        count=committees_per_slot * Uint64(SLOTS_PER_EPOCH),
     )
 ```
 
@@ -1439,7 +1445,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot))
+    seed = sha256(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
 ```
@@ -1891,7 +1897,7 @@ def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> 
 
 ```python
 def get_finality_delay(state: BeaconState) -> Uint64:
-    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
+    return Uint64(get_previous_epoch(state) - state.finalized_checkpoint.epoch)
 ```
 
 ```python
@@ -1988,7 +1994,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
         max_attester_reward = Gwei(
             get_base_reward(state, index) - get_proposer_reward(state, index)
         )
-        rewards[index] += Gwei(max_attester_reward // attestation.inclusion_delay)
+        rewards[index] += Gwei(max_attester_reward // Uint64(attestation.inclusion_delay))
 
     # No penalties associated with inclusion delay
     penalties = [Gwei(0) for _ in range(len(state.validators))]
@@ -2174,7 +2180,7 @@ def process_randao_mixes_reset(state: BeaconState) -> None:
 def process_historical_roots_update(state: BeaconState) -> None:
     # Set historical root accumulator
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+    if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
             block_roots=state.block_roots, state_roots=state.state_roots
         )
@@ -2236,7 +2242,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
     assert bls.Verify(proposer.pubkey, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
-    mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+    mix = xor(get_randao_mix(state, epoch), sha256(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 
@@ -2247,7 +2253,7 @@ def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
     if (
         state.eth1_data_votes.count(body.eth1_data) * 2
-        > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH
+        > Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     ):
         state.eth1_data = body.eth1_data
 ```

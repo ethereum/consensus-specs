@@ -172,7 +172,7 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
 `withdrawal_credentials` field must be such that:
 
 - `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-- `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+- `withdrawal_credentials[1:] == sha256(bls_withdrawal_pubkey)[1:]`
 
 *Note*: The `bls_withdrawal_privkey` is not required for validating and can be
 kept in cold storage.
@@ -461,7 +461,7 @@ An honest block proposer sets
 ```python
 def voting_period_start_time(state: BeaconState) -> Uint64:
     eth1_voting_period_start_slot = Slot(
-        state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
+        state.slot - state.slot % (Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH)
     )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
@@ -735,7 +735,7 @@ def is_aggregator(
 ) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate

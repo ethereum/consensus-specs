@@ -581,7 +581,7 @@ def compute_proposer_index(
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
         # [Modified in Electra]
-        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        random_bytes = sha256(seed + uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance
@@ -815,7 +815,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
         )
         candidate_index = active_validator_indices[shuffled_index]
         # [Modified in Electra]
-        random_bytes = hash(seed + uint_to_bytes(i // 16))
+        random_bytes = sha256(seed + uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         effective_balance = state.validators[candidate_index].effective_balance
@@ -902,7 +902,7 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     if exit_balance > exit_balance_to_consume:
         balance_to_process = exit_balance - exit_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
+        earliest_exit_epoch += Epoch(additional_epochs)
         exit_balance_to_consume += additional_epochs * per_epoch_churn
 
     # Consume the balance and update state variables.
@@ -932,7 +932,7 @@ def compute_consolidation_epoch_and_update_churn(
     if consolidation_balance > consolidation_balance_to_consume:
         balance_to_process = consolidation_balance - consolidation_balance_to_consume
         additional_epochs = (balance_to_process - 1) // per_epoch_consolidation_churn + 1
-        earliest_consolidation_epoch += additional_epochs
+        earliest_consolidation_epoch += Epoch(additional_epochs)
         consolidation_balance_to_consume += additional_epochs * per_epoch_consolidation_churn
 
     # Consume the balance and update state variables.

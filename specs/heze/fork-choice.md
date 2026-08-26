@@ -159,8 +159,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
-        payload_timeliness_vote={},
-        payload_data_availability_vote={},
+        payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
+        payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Heze:EIP7805]
         payload_inclusion_list_satisfaction={},
     )
