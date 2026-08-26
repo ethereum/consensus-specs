@@ -258,7 +258,7 @@ def test_is_sync_committee_aggregator(spec, state):
     sample_count = int(spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT) * 100
     is_aggregator_count = 0
     for i in range(sample_count):
-        signature = spec.hash(i.to_bytes(32, byteorder="little"))
+        signature = spec.sha256(i.to_bytes(32, byteorder="little"))
         if spec.is_sync_committee_aggregator(signature):
             is_aggregator_count += 1
 

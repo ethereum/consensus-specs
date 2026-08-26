@@ -25,6 +25,7 @@ from dataclasses import (
     dataclass,
     field,
 )
+from hashlib import sha256 as sha256_hash
 from typing import (
     Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )
@@ -34,12 +35,11 @@ from ssz.boolean import Boolean
 from ssz.collections import List, Vector
 from ssz.container import Container
 from ssz.ssz_base import SSZType
-from ssz.uint import Byte, Uint8, Uint32, Uint64, Uint256
+from ssz.uint import Byte, Uint8, Uint16, Uint32, Uint64, Uint256
 from eth_consensus_specs.utils.ssz.bytes import (
     Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96)
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.hash_function import hash
 """
 
     @classmethod

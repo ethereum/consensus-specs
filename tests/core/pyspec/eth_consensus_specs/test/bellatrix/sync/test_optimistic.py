@@ -70,7 +70,7 @@ def test_from_syncing_to_invalid(spec, state):
             block_hashes[f"chain_a_{i - 1}"] if i != 0 else block_hashes["block_0"]
         )
         block.body.execution_payload.extra_data = spec.ExtraData(
-            data=spec.hash(bytes(f"chain_a_{i}", "UTF-8"))
+            data=spec.sha256(bytes(f"chain_a_{i}", "UTF-8"))
         )
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
@@ -93,7 +93,7 @@ def test_from_syncing_to_invalid(spec, state):
             block_hashes[f"chain_b_{i - 1}"] if i != 0 else block_hashes["block_0"]
         )
         block.body.execution_payload.extra_data = spec.ExtraData(
-            data=spec.hash(bytes(f"chain_b_{i}", "UTF-8"))
+            data=spec.sha256(bytes(f"chain_b_{i}", "UTF-8"))
         )
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
@@ -115,7 +115,7 @@ def test_from_syncing_to_invalid(spec, state):
         -1
     ].message.body.execution_payload.block_hash
     block.body.execution_payload.extra_data = spec.ExtraData(
-        data=spec.hash(bytes(f"chain_b_{i}", "UTF-8"))
+        data=spec.sha256(bytes(f"chain_b_{i}", "UTF-8"))
     )
     block.body.execution_payload.block_hash = compute_el_block_hash(
         spec, block.body.execution_payload, state

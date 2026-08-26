@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_test,
     with_phases,
     with_state,
@@ -23,7 +24,7 @@ from eth_consensus_specs.test.utils import with_meta_tags
 
 def get_builder_withdrawal_credentials(spec, pubkey):
     """Create builder withdrawal credentials from a pubkey."""
-    return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+    return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256(pubkey)[12:]
 
 
 def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True):
@@ -70,6 +71,36 @@ def create_pending_deposit_for_validator(spec, validator_index, amount):
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount,
         signature=deposit_data.signature,
+        slot=spec.GENESIS_SLOT,
+    )
+
+
+def create_pending_deposit_for_unregistered_validator(spec, pubkey, amount, signed=True):
+    """
+    Create a pending deposit with compounding validator credentials for a pubkey
+    that is not already in the validator registry.
+    """
+    privkey = builder_pubkey_to_privkey[pubkey]
+    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+
+    if signed:
+        deposit_data = build_deposit_data(
+            spec,
+            pubkey,
+            privkey,
+            amount,
+            withdrawal_credentials,
+            signed=True,
+        )
+        signature = deposit_data.signature
+    else:
+        signature = spec.bls.G2_POINT_AT_INFINITY
+
+    return spec.PendingDeposit(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        signature=signature,
         slot=spec.GENESIS_SLOT,
     )
 
@@ -635,3 +666,173 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
 
     # No pending deposits should remain
     assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_valid_then_invalid_validator_then_builder_deposit(spec, phases, state):
+    """
+    Test fork with three deposits for the same unregistered pubkey:
+    - First deposit has validator credentials with a valid signature
+    - Second deposit has validator credentials with an invalid signature
+    - Third deposit has builder credentials with a valid signature
+
+    ``is_pending_validator`` is existential: a later invalid signature must not
+    erase an earlier valid validator deposit. All three deposits stay pending
+    and no builder is created.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+
+    valid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=True
+    )
+    invalid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=False
+    )
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+
+    state.pending_deposits = [
+        valid_validator_deposit,
+        invalid_validator_deposit,
+        builder_deposit,
+    ]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 0
+    assert len(post_state.pending_deposits) == 3
+    assert post_state.pending_deposits[0].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[0].withdrawal_credentials
+        == valid_validator_deposit.withdrawal_credentials
+    )
+    assert post_state.pending_deposits[1].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[1].withdrawal_credentials
+        == invalid_validator_deposit.withdrawal_credentials
+    )
+    assert post_state.pending_deposits[1].signature == post_spec.bls.G2_POINT_AT_INFINITY
+    assert post_state.pending_deposits[2].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[2].withdrawal_credentials
+        == builder_deposit.withdrawal_credentials
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_invalid_then_valid_validator_then_builder_deposit(spec, phases, state):
+    """
+    Test fork with three deposits for the same unregistered pubkey:
+    - First deposit has validator credentials with an invalid signature
+    - Second deposit has validator credentials with a valid signature
+    - Third deposit has builder credentials with a valid signature
+
+    The later valid validator deposit still claims the pubkey, so all three
+    deposits stay pending and no builder is created.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+
+    invalid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=False
+    )
+    valid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=True
+    )
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+
+    state.pending_deposits = [
+        invalid_validator_deposit,
+        valid_validator_deposit,
+        builder_deposit,
+    ]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 0
+    assert len(post_state.pending_deposits) == 3
+    assert post_state.pending_deposits[0].pubkey == pubkey
+    assert post_state.pending_deposits[0].signature == post_spec.bls.G2_POINT_AT_INFINITY
+    assert post_state.pending_deposits[1].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[1].withdrawal_credentials
+        == valid_validator_deposit.withdrawal_credentials
+    )
+    assert post_state.pending_deposits[2].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[2].withdrawal_credentials
+        == builder_deposit.withdrawal_credentials
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_mixed_validity_validator_deposits_surrounding_builder_deposits(spec, phases, state):
+    """
+    Test fork with mixed-validity validator deposits surrounding builder deposits
+    for the same unregistered pubkey:
+    - Valid validator
+    - Invalid validator
+    - Valid builder
+    - Invalid validator
+    - Valid builder
+
+    Any earlier valid validator deposit claims the pubkey for the rest of the
+    queue. No builder is created and every deposit stays pending.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+
+    valid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=True
+    )
+    invalid_validator_deposit_1 = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=False
+    )
+    builder_deposit_1 = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+    invalid_validator_deposit_2 = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=False
+    )
+    builder_deposit_2 = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+
+    state.pending_deposits = [
+        valid_validator_deposit,
+        invalid_validator_deposit_1,
+        builder_deposit_1,
+        invalid_validator_deposit_2,
+        builder_deposit_2,
+    ]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 0
+    assert len(post_state.pending_deposits) == 5
+    assert post_state.pending_deposits[0].pubkey == pubkey
+    assert (
+        post_state.pending_deposits[0].withdrawal_credentials
+        == valid_validator_deposit.withdrawal_credentials
+    )
+    assert post_state.pending_deposits[1].signature == post_spec.bls.G2_POINT_AT_INFINITY
+    assert (
+        post_state.pending_deposits[2].withdrawal_credentials
+        == builder_deposit_1.withdrawal_credentials
+    )
+    assert post_state.pending_deposits[3].signature == post_spec.bls.G2_POINT_AT_INFINITY
+    assert (
+        post_state.pending_deposits[4].withdrawal_credentials
+        == builder_deposit_2.withdrawal_credentials
+    )

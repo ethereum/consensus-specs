@@ -265,12 +265,13 @@ class BeaconState(ProgressiveContainer):
 
 #### New `blake3`
 
-`def blake3(data: bytes) -> Bytes32` is the BLAKE3 hash function in its default
-unkeyed hash mode, with no derive-key context, restricted to its default 32-byte
-output.
-
-All hashing introduced by this upgrade uses `blake3`; the `hash` helper
-continues to serve the legacy reveal path.
+```python
+def blake3(data: bytes) -> Bytes32:
+    """
+    Return the BLAKE3 hash of ``data``.
+    """
+    return Bytes32(blake3_hash(data).digest())
+```
 
 ### Validator registry
 
@@ -415,7 +416,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
         state.randao_commitments[proposer_index] = body.hash_chain_reveal
     else:
         verify_bls_randao_reveal(state, body, proposer_index)
-        mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+        mix = xor(get_randao_mix(state, epoch), sha256(body.randao_reveal))
         state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 

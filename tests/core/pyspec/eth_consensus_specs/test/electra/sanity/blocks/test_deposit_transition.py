@@ -104,7 +104,7 @@ def prepare_state_and_block(
             # use min activation balance
             spec.MIN_ACTIVATION_BALANCE,
             # insecurely use pubkey as withdrawal key
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[keypair_index])[1:],
+            spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkeys[keypair_index])[1:],
             signed=True,
         )
         deposit_data_list.append(deposit_data)
