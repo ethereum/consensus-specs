@@ -220,7 +220,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
-        ptc_window=PayloadTimelinessCommitteeWindow(data=initialize_ptc_window(pre)),
+        ptc_window=initialize_ptc_window(pre),
     )
 
     # [New in Gloas:EIP7732]

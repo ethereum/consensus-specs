@@ -356,9 +356,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     # Append an extra cell so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     cells_type = type(partial.partial_column)
-    partial.partial_column = spec.DataColumn(
-        data=cells_type(data=list(partial.partial_column) + [spec.Cell()])
-    )
+    partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -428,9 +426,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     # Append an extra proof so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
-    partial.kzg_proofs = spec.KZGProofs(
-        data=proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
-    )
+    partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -1580,15 +1576,9 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     bitmap_type = type(partial.cells_present_bitmap)
     cells_type = type(partial.partial_column)
     proofs_type = type(partial.kzg_proofs)
-    partial.cells_present_bitmap = spec.CellsBitList(
-        data=bitmap_type(data=list(partial.cells_present_bitmap) + [True])
-    )
-    partial.partial_column = spec.DataColumn(
-        data=cells_type(data=list(partial.partial_column) + [spec.Cell()])
-    )
-    partial.kzg_proofs = spec.KZGProofs(
-        data=proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
-    )
+    partial.cells_present_bitmap = bitmap_type(data=list(partial.cells_present_bitmap) + [True])
+    partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
+    partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -1660,7 +1650,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
     first, second = partial.kzg_proofs[0], partial.kzg_proofs[1]
-    partial.kzg_proofs = spec.KZGProofs(data=proofs_type(data=[second, first]))
+    partial.kzg_proofs = proofs_type(data=[second, first])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor

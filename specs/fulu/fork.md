@@ -106,7 +106,7 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in Fulu:EIP7917]
-        proposer_lookahead=ProposerLookahead(data=initialize_proposer_lookahead(pre)),
+        proposer_lookahead=initialize_proposer_lookahead(pre),
     )
 
     return post

@@ -222,9 +222,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             data=[spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)]
         )
         state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
-        state.ptc_window = spec.PayloadTimelinessCommitteeWindow(
-            data=initialize_ptc_window(spec, state)
-        )
+        state.ptc_window = initialize_ptc_window(spec, state)
 
     if is_post_eip8148(spec):
         state.validator_sweep_thresholds = spec.SweepThresholds(
@@ -238,9 +236,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
-        state.proposer_lookahead = spec.ProposerLookahead(
-            data=initialize_proposer_lookahead(spec, state)
-        )
+        state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
 
     return state
 

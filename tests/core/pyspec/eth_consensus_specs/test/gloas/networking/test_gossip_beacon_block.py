@@ -459,7 +459,7 @@ def test_gossip_beacon_block__valid_max_parent_withdrawal_requests(spec, state):
     """A block with the maximum number of parent withdrawal requests is valid."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)
+        count = spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
         block.body.parent_execution_requests = spec.ExecutionRequests(
             withdrawals=spec.WithdrawalRequests(data=([spec.WithdrawalRequest()] * count))
         )
@@ -473,7 +473,7 @@ def test_gossip_beacon_block__reject_too_many_parent_withdrawal_requests(spec, s
     """A block whose parent execution requests exceed the withdrawal-request limit is rejected."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD) + 1
+        count = spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1
         block.body.parent_execution_requests = spec.ExecutionRequests(
             withdrawals=spec.WithdrawalRequests(data=([spec.WithdrawalRequest()] * count))
         )
@@ -489,7 +489,7 @@ def test_gossip_beacon_block__valid_max_parent_consolidation_requests(spec, stat
     """A block with the maximum number of parent consolidation requests is valid."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD)
+        count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
         block.body.parent_execution_requests = spec.ExecutionRequests(
             consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
         )
@@ -503,7 +503,7 @@ def test_gossip_beacon_block__reject_too_many_parent_consolidation_requests(spec
     """A block whose parent execution requests exceed the consolidation-request limit is rejected."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD) + 1
+        count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1
         block.body.parent_execution_requests = spec.ExecutionRequests(
             consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
         )
@@ -519,7 +519,7 @@ def test_gossip_beacon_block__valid_max_parent_builder_deposit_requests(spec, st
     """A block with the maximum number of parent builder deposit requests is valid."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD)
+        count = spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
         block.body.parent_execution_requests = spec.ExecutionRequests(
             builder_deposits=spec.BuilderDepositRequests(
                 data=([spec.BuilderDepositRequest()] * count)
@@ -535,7 +535,7 @@ def test_gossip_beacon_block__reject_too_many_parent_builder_deposit_requests(sp
     """A block whose parent execution requests exceed the builder-deposit-request limit is rejected."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
+        count = spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1
         block.body.parent_execution_requests = spec.ExecutionRequests(
             builder_deposits=spec.BuilderDepositRequests(
                 data=([spec.BuilderDepositRequest()] * count)
@@ -553,7 +553,7 @@ def test_gossip_beacon_block__valid_max_parent_builder_exit_requests(spec, state
     """A block with the maximum number of parent builder exit requests is valid."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD)
+        count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
         block.body.parent_execution_requests = spec.ExecutionRequests(
             builder_exits=spec.BuilderExitRequests(data=([spec.BuilderExitRequest()] * count))
         )
@@ -567,7 +567,7 @@ def test_gossip_beacon_block__reject_too_many_parent_builder_exit_requests(spec,
     """A block whose parent execution requests exceed the builder-exit-request limit is rejected."""
 
     def mutate(spec, block):
-        count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD) + 1
+        count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1
         block.body.parent_execution_requests = spec.ExecutionRequests(
             builder_exits=spec.BuilderExitRequests(data=([spec.BuilderExitRequest()] * count))
         )
@@ -583,10 +583,8 @@ def test_gossip_beacon_block__valid_max_proposer_slashings(spec, state):
     """A block with the maximum number of proposer slashings is valid."""
 
     def mutate(spec, block):
-        block.body.proposer_slashings = spec.ProposerSlashings(
-            data=make_progressive_list(
-                spec, spec.ProposerSlashings, int(spec.MAX_PROPOSER_SLASHINGS)
-            )
+        block.body.proposer_slashings = make_progressive_list(
+            spec.ProposerSlashings, spec.MAX_PROPOSER_SLASHINGS
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -598,10 +596,8 @@ def test_gossip_beacon_block__reject_too_many_proposer_slashings(spec, state):
     """A block with more proposer slashings than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.proposer_slashings = spec.ProposerSlashings(
-            data=make_progressive_list(
-                spec, spec.ProposerSlashings, int(spec.MAX_PROPOSER_SLASHINGS) + 1
-            )
+        block.body.proposer_slashings = make_progressive_list(
+            spec.ProposerSlashings, spec.MAX_PROPOSER_SLASHINGS + 1
         )
 
     yield from _assert_beacon_block_gossip(
@@ -615,10 +611,8 @@ def test_gossip_beacon_block__valid_max_attester_slashings(spec, state):
     """A block with the maximum number of attester slashings is valid."""
 
     def mutate(spec, block):
-        block.body.attester_slashings = spec.AttesterSlashings(
-            data=make_progressive_list(
-                spec, spec.AttesterSlashings, int(spec.MAX_ATTESTER_SLASHINGS_ELECTRA)
-            )
+        block.body.attester_slashings = make_progressive_list(
+            spec.AttesterSlashings, spec.MAX_ATTESTER_SLASHINGS_ELECTRA
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -630,10 +624,8 @@ def test_gossip_beacon_block__reject_too_many_attester_slashings(spec, state):
     """A block with more attester slashings than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.attester_slashings = spec.AttesterSlashings(
-            data=make_progressive_list(
-                spec, spec.AttesterSlashings, int(spec.MAX_ATTESTER_SLASHINGS_ELECTRA) + 1
-            )
+        block.body.attester_slashings = make_progressive_list(
+            spec.AttesterSlashings, spec.MAX_ATTESTER_SLASHINGS_ELECTRA + 1
         )
 
     yield from _assert_beacon_block_gossip(
@@ -647,8 +639,8 @@ def test_gossip_beacon_block__valid_max_attestations(spec, state):
     """A block with the maximum number of attestations is valid."""
 
     def mutate(spec, block):
-        block.body.attestations = spec.Attestations(
-            data=make_progressive_list(spec, spec.Attestations, int(spec.MAX_ATTESTATIONS_ELECTRA))
+        block.body.attestations = make_progressive_list(
+            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -660,10 +652,8 @@ def test_gossip_beacon_block__reject_too_many_attestations(spec, state):
     """A block with more attestations than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.attestations = spec.Attestations(
-            data=make_progressive_list(
-                spec, spec.Attestations, int(spec.MAX_ATTESTATIONS_ELECTRA) + 1
-            )
+        block.body.attestations = make_progressive_list(
+            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA + 1
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "reject", "too many attestations")
@@ -675,7 +665,7 @@ def test_gossip_beacon_block__valid_no_deposits(spec, state):
     """A block with no deposits (the maximum allowed) is valid."""
 
     def mutate(spec, block):
-        block.body.deposits = spec.Deposits(data=make_progressive_list(spec, spec.Deposits, 0))
+        block.body.deposits = make_progressive_list(spec.Deposits, 0)
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
@@ -686,7 +676,7 @@ def test_gossip_beacon_block__reject_contains_deposits(spec, state):
     """A block that carries any deposits is rejected."""
 
     def mutate(spec, block):
-        block.body.deposits = spec.Deposits(data=make_progressive_list(spec, spec.Deposits, 1))
+        block.body.deposits = make_progressive_list(spec.Deposits, 1)
 
     yield from _assert_beacon_block_gossip(
         spec, state, mutate, "reject", "block must not contain deposits"
@@ -699,8 +689,8 @@ def test_gossip_beacon_block__valid_max_voluntary_exits(spec, state):
     """A block with the maximum number of voluntary exits is valid."""
 
     def mutate(spec, block):
-        block.body.voluntary_exits = spec.VoluntaryExits(
-            data=make_progressive_list(spec, spec.VoluntaryExits, int(spec.MAX_VOLUNTARY_EXITS))
+        block.body.voluntary_exits = make_progressive_list(
+            spec.VoluntaryExits, spec.MAX_VOLUNTARY_EXITS
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -712,8 +702,8 @@ def test_gossip_beacon_block__reject_too_many_voluntary_exits(spec, state):
     """A block with more voluntary exits than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.voluntary_exits = spec.VoluntaryExits(
-            data=make_progressive_list(spec, spec.VoluntaryExits, int(spec.MAX_VOLUNTARY_EXITS) + 1)
+        block.body.voluntary_exits = make_progressive_list(
+            spec.VoluntaryExits, spec.MAX_VOLUNTARY_EXITS + 1
         )
 
     yield from _assert_beacon_block_gossip(
@@ -727,10 +717,8 @@ def test_gossip_beacon_block__valid_max_bls_to_execution_changes(spec, state):
     """A block with the maximum number of BLS to execution changes is valid."""
 
     def mutate(spec, block):
-        block.body.bls_to_execution_changes = spec.BLSToExecutionChanges(
-            data=make_progressive_list(
-                spec, spec.BLSToExecutionChanges, int(spec.MAX_BLS_TO_EXECUTION_CHANGES)
-            )
+        block.body.bls_to_execution_changes = make_progressive_list(
+            spec.BLSToExecutionChanges, spec.MAX_BLS_TO_EXECUTION_CHANGES
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -742,10 +730,8 @@ def test_gossip_beacon_block__reject_too_many_bls_to_execution_changes(spec, sta
     """A block with more BLS to execution changes than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.bls_to_execution_changes = spec.BLSToExecutionChanges(
-            data=make_progressive_list(
-                spec, spec.BLSToExecutionChanges, int(spec.MAX_BLS_TO_EXECUTION_CHANGES) + 1
-            )
+        block.body.bls_to_execution_changes = make_progressive_list(
+            spec.BLSToExecutionChanges, spec.MAX_BLS_TO_EXECUTION_CHANGES + 1
         )
 
     yield from _assert_beacon_block_gossip(
@@ -759,10 +745,8 @@ def test_gossip_beacon_block__valid_max_payload_attestations(spec, state):
     """A block with the maximum number of payload attestations is valid."""
 
     def mutate(spec, block):
-        block.body.payload_attestations = spec.PayloadAttestations(
-            data=make_progressive_list(
-                spec, spec.PayloadAttestations, int(spec.MAX_PAYLOAD_ATTESTATIONS)
-            )
+        block.body.payload_attestations = make_progressive_list(
+            spec.PayloadAttestations, spec.MAX_PAYLOAD_ATTESTATIONS
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -774,10 +758,8 @@ def test_gossip_beacon_block__reject_too_many_payload_attestations(spec, state):
     """A block with more payload attestations than the limit is rejected."""
 
     def mutate(spec, block):
-        block.body.payload_attestations = spec.PayloadAttestations(
-            data=make_progressive_list(
-                spec, spec.PayloadAttestations, int(spec.MAX_PAYLOAD_ATTESTATIONS) + 1
-            )
+        block.body.payload_attestations = make_progressive_list(
+            spec.PayloadAttestations, spec.MAX_PAYLOAD_ATTESTATIONS + 1
         )
 
     yield from _assert_beacon_block_gossip(
