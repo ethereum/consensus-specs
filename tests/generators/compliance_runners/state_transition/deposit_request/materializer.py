@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 
+from ..aspects_helpers.deposit_amount import deposit_amount_from_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_from_profile
 from ...gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
@@ -39,15 +40,6 @@ def _s(sol: Any, n: str) -> str:
     return str(getattr(sol, n))
 
 
-def _amount(spec: Any, profile: str) -> int:
-    return {
-        "ZERO": 0,
-        "MINIMUM": int(spec.MIN_DEPOSIT_AMOUNT),
-        "ACTIVATION": int(spec.MIN_ACTIVATION_BALANCE),
-        "ABOVE_ACTIVATION": int(spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT),
-    }[profile]
-
-
 class DepositRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "deposit_request"
@@ -63,7 +55,7 @@ class DepositRequestMaterializer(Materializer):
         amount_profile = _s(sol, "amount_profile")
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
         signature_profile = _s(sol, "signature_profile")
-        amount = _amount(spec, amount_profile)
+        amount = deposit_amount_from_profile(spec, amount_profile)
         withdrawal_credentials = withdrawal_credentials_from_profile(
             spec, credentials_profile, b"\x11" * 20
         )

@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
 from eth_consensus_specs.utils import bls
 
+from ..aspects_helpers.deposit_amount import deposit_amount_from_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_from_profile
 from ...gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
@@ -24,7 +25,7 @@ EPOCHS_PAST_GENESIS = 10
 
 _DIMS = [
     "withdrawal_credentials_profile", "wc_is_builder_prefix", "builder_pubkey_found",
-    "builder_signature_valid", "amount_nonzero",
+    "builder_signature_valid", "amount_profile", "amount_nonzero",
     "builder_withdrawable_epoch_set", "builder_balance_zero",
     "reset_applies", "builder_credited", "outcome",
 ]
@@ -85,7 +86,7 @@ class BuilderDepositRequestMaterializer(Materializer):
 
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
         wc = withdrawal_credentials_from_profile(spec, credentials_profile, address_tail)
-        amount = spec.MIN_ACTIVATION_BALANCE if _b(sol, "amount_nonzero") else 0
+        amount = deposit_amount_from_profile(spec, _s(sol, "amount_profile"))
 
         request = spec.BuilderDepositRequest(
             pubkey=spec.BLSPubkey(REQUEST_PUBKEY),
