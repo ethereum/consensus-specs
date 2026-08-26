@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+SUITE_NAME = "main"
+
+
 class Materializer:
     spec: Any
     model_path: Path | None
@@ -44,7 +47,7 @@ class Materializer:
             preset_name=self.preset_name,
             runner_name=self.runner_name,
             handler_name=self.handler_name,
-            suite_name="main",
+            suite_name=SUITE_NAME,
             case_name=f"case_{index:04d}",
         )
         test_case.set_output_dir(str(output_dir))
@@ -64,7 +67,7 @@ class Materializer:
             / self.fork_name
             / self.runner_name
             / self.handler_name
-            / "main"
+            / SUITE_NAME
         )
         if suite_dir.exists():
             shutil.rmtree(suite_dir)
