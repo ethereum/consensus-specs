@@ -26,7 +26,7 @@ def run(
     result = 0
     for current_handler in handlers:
         output_dir = (
-            comptests_output / "tests"
+            comptests_output
             if comptests_output is not None
             else Path(__file__).parent / current_handler / "reftests"
         )
