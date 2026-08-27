@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import shutil
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase, TestCasePart, TestCaseResult
+from tests.generators.compliance_runners.gen_base.gen_typing import (
+    TestCase,
+    TestCasePart,
+    TestCaseResult,
+)
 from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
 
 if TYPE_CHECKING:

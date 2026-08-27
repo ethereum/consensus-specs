@@ -6,8 +6,6 @@ Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
-from ..validation import check_dimensions, decode
-
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +15,7 @@ from eth_consensus_specs.gloas import minimal as spec
 
 from ..aspects_helpers.deposit_amount import deposit_amount_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
+from ..validation import check_dimensions, decode
 
 _YAML = YAML(typ="safe")
 _ACCEPT = {"ADDED_NEW_BUILDER", "TOPPED_UP", "TOPPED_UP_AFTER_RESET"}
