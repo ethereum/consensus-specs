@@ -9,13 +9,14 @@ Spec: specs/electra/beacon-chain.md process_consolidation_request (inherited by 
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from ...gen_base.gen_typing import TestCasePart
+if TYPE_CHECKING:
+    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 N_SUFFICIENT = 64   # get_consolidation_churn_limit > MIN_ACTIVATION_BALANCE
 N_INSUFFICIENT = 32  # get_consolidation_churn_limit == MIN_ACTIVATION_BALANCE
