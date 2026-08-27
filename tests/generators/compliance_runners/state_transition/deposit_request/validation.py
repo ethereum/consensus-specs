@@ -7,16 +7,23 @@ set iff it was unset. Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
+    deposit_amount_profile,
+)
+from generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+    withdrawal_credentials_profile,
+)
+from generators.compliance_runners.state_transition.validation import check_dimensions, decode
 
-from ..aspects_helpers.deposit_amount import deposit_amount_profile
-from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_profile
-from ..validation import check_dimensions, decode
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from generators.compliance_runners.state_transition.validation import Check
 
 _YAML = YAML(typ="safe")
 
