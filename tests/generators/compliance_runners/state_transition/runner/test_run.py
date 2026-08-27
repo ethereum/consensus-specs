@@ -8,6 +8,7 @@ from ruamel.yaml import YAML
 from snappy import uncompress
 
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 
@@ -140,11 +141,15 @@ def run_test(test_info: StateTransitionTestInfo):
 
         if handler in OPERATION_PROCESSORS:
             process_fn = getattr(spec, OPERATION_PROCESSORS[handler])
+            extra_args = ()
+            if handler == "attestation" and is_post_gloas(spec):
+                extra_args = (spec.Slot(test_case["meta"]["parent_slot"]),)
             run_processing_case(
                 process_fn,
                 state,
                 test_case["operation"],
                 expected_post,
+                extra_args,
             )
             return
 
@@ -160,12 +165,12 @@ def run_epoch_processing_case(spec, state, handler, expected_post):
     run_processing_case(process_fn, state, None, expected_post)
 
 
-def run_processing_case(process_fn, state, operation, expected_post):
+def run_processing_case(process_fn, state, operation, expected_post, extra_args=()):
     def run_processing():
         if operation is None:
-            process_fn(state)
+            process_fn(state, *extra_args)
         else:
-            process_fn(state, operation)
+            process_fn(state, operation, *extra_args)
 
     if expected_post is None:
         expect_assertion_error(run_processing)

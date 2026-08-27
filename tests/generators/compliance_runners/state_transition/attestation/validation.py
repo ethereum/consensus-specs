@@ -56,7 +56,10 @@ def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) ->
         return False
     try:
         flag_indices = spec.get_attestation_participation_flag_indices(
-            pre, attestation.data, pre.slot - attestation.data.slot
+            pre,
+            attestation.data,
+            pre.slot - attestation.data.slot,
+            pre.latest_block_header.slot,
         )
         participation = (
             pre.current_epoch_participation
