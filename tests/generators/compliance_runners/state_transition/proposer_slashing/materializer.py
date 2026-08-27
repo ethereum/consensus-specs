@@ -10,7 +10,7 @@ from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
-    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
 PROPOSER_INDEX = 1
