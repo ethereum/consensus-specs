@@ -53,7 +53,7 @@ An honest prover performs the following steps for a received
 `SignedExecutionPayloadEnvelope` and a set of supported proof types:
 
 1. Let `beacon_block_root = signed_payload_envelope.message.beacon_block_root`.
-2. Construct the corresponding `NewPayloadRequest` from the beacon block and
+2. Construct the corresponding `SSZNewPayloadRequest` from the beacon block and
    `signed_payload_envelope`.
 3. Construct `ProofAttributes` containing the desired proof types.
 4. Let

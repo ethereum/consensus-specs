@@ -69,7 +69,7 @@ class ProofAttributes:
 # Only required for clients performing the prover role
 def request_proofs(
     self: ProofEngine,
-    new_payload_request: NewPayloadRequest,
+    new_payload_request: SSZNewPayloadRequest,
     chain_id: Uint64,
     schema_id: Uint16,
     proof_attributes: ProofAttributes,

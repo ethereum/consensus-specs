@@ -1566,11 +1566,9 @@ def process_execution_payload(
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
 
     # Compute list of versioned hashes
-    versioned_hashes = VersionedHashes(
-        data=[
-            kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-        ]
-    )
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+    ]
 
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(

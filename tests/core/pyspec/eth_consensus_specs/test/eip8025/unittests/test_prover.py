@@ -30,7 +30,7 @@ def setup_store_with_block(spec, state):
 
 def make_new_payload_request(spec, state, payload_envelope):
     bid = state.latest_execution_payload_bid
-    return spec.NewPayloadRequest(
+    return spec.SSZNewPayloadRequest(
         execution_payload=payload_envelope.payload,
         versioned_hashes=spec.VersionedHashes(
             data=[

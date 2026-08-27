@@ -687,12 +687,10 @@ def verify_execution_payload_envelope(
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
-            versioned_hashes=VersionedHashes(
-                data=[
-                    kzg_commitment_to_versioned_hash(commitment)
-                    for commitment in bid.blob_kzg_commitments
-                ]
-            ),
+            versioned_hashes=[
+                kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ],
             parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )

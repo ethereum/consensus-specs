@@ -11,11 +11,12 @@
 - [Types](#types)
   - [New `ProofData`](#new-proofdata)
   - [New `ProofType`](#new-prooftype)
+  - [New `VersionedHashes`](#new-versionedhashes)
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
 - [Containers](#containers)
-  - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
+  - [New `SSZNewPayloadRequest`](#new-ssznewpayloadrequest)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
@@ -58,6 +59,13 @@ class ProofType(Uint8):
     """
 ```
 
+### New `VersionedHashes`
+
+```python
+class VersionedHashes(List[VersionedHash]):
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
+```
+
 ## Constants
 
 ### Execution
@@ -85,10 +93,10 @@ schema revision (`0x01`).
 
 ## Containers
 
-### Modified `NewPayloadRequest`
+### New `SSZNewPayloadRequest`
 
 ```python
-class NewPayloadRequest(ProgressiveContainer):
+class SSZNewPayloadRequest(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=4)
 
     execution_payload: ExecutionPayload
@@ -165,7 +173,7 @@ def validate_execution_proof_envelope(
 
     # Construct the proof-system public input from the accepted execution payload
     bid = state.latest_execution_payload_bid
-    new_payload_request = NewPayloadRequest(
+    new_payload_request = SSZNewPayloadRequest(
         execution_payload=payload_envelope.payload,
         versioned_hashes=VersionedHashes(
             data=[

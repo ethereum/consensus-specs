@@ -74,7 +74,7 @@ def get_proof_engine_input(spec, store, signed_proof):
     state = store.block_states[proof_envelope.beacon_block_root]
     payload_envelope = store.payloads[proof_envelope.beacon_block_root]
     bid = state.latest_execution_payload_bid
-    new_payload_request = spec.NewPayloadRequest(
+    new_payload_request = spec.SSZNewPayloadRequest(
         execution_payload=payload_envelope.payload,
         versioned_hashes=spec.VersionedHashes(
             data=[

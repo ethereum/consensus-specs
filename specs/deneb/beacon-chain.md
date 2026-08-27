@@ -10,7 +10,6 @@
   - [New `KZGCommitment`](#new-kzgcommitment)
   - [New `KZGProof`](#new-kzgproof)
   - [New `VersionedHash`](#new-versionedhash)
-  - [New `VersionedHashes`](#new-versionedhashes)
 - [Constants](#constants)
   - [Blob](#blob)
 - [Presets](#presets)
@@ -123,13 +122,6 @@ class VersionedHash(Bytes32):
     """
     A versioned hash of a blob's KZG commitment.
     """
-```
-
-### New `VersionedHashes`
-
-```python
-class VersionedHashes(List[VersionedHash]):
-    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ## Constants
@@ -366,7 +358,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> Uint64:
 @dataclass
 class NewPayloadRequest:
     execution_payload: ExecutionPayload
-    versioned_hashes: VersionedHashes
+    versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
 ```
 
@@ -523,11 +515,9 @@ def process_execution_payload(
 
     # [New in Deneb:EIP4844]
     # Compute list of versioned hashes
-    versioned_hashes = VersionedHashes(
-        data=[
-            kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-        ]
-    )
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+    ]
 
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
