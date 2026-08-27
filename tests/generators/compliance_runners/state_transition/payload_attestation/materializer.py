@@ -84,5 +84,9 @@ class PayloadAttestationMaterializer(Materializer):
         ]
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
-        meta = {"description": f"process_payload_attestation: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        meta = {
+            "description": f"process_payload_attestation: {claimed['outcome']}",
+            "bls_setting": 1,
+            "claimed": claimed,
+        }
         return meta, parts

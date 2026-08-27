@@ -7,6 +7,7 @@ present.
 
 Spec: specs/electra/beacon-chain.md process_consolidation_request (inherited by gloas).
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -18,7 +19,7 @@ from tests.generators.compliance_runners.state_transition.materializer import Ma
 if TYPE_CHECKING:
     from generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-N_SUFFICIENT = 64   # get_consolidation_churn_limit > MIN_ACTIVATION_BALANCE
+N_SUFFICIENT = 64  # get_consolidation_churn_limit > MIN_ACTIVATION_BALANCE
 N_INSUFFICIENT = 32  # get_consolidation_churn_limit == MIN_ACTIVATION_BALANCE
 SOURCE_INDEX = 0
 TARGET_INDEX = 1
@@ -74,7 +75,9 @@ class ConsolidationRequestMaterializer(Materializer):
             activation, exit_epoch = CURRENT_EPOCH + 10, far
         return activation, exit_epoch
 
-    def _set_validator(self, v: Any, prefix: bytes, active: bool, exiting: bool, old_enough: bool) -> None:
+    def _set_validator(
+        self, v: Any, prefix: bytes, active: bool, exiting: bool, old_enough: bool
+    ) -> None:
         spec = self.spec
         v.withdrawal_credentials = spec.Bytes32(prefix + b"\x00" * 11 + ADDRESS)
         activation, exit_epoch = self._epochs(active, exiting, old_enough)

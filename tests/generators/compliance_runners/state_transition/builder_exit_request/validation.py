@@ -5,6 +5,7 @@ BuilderExitRequest via the real spec predicates, compares to the serialized
 solution and recomputes the outcome. Imports neither the materializer nor the
 model.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -21,11 +22,14 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def _tri(x: bool) -> str:
     return "T" if x else "F"
 
+
 def _cmp(a: int, b: int) -> str:
     return "LT" if a < b else ("EQ" if a == b else "GT")
+
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     pubkeys = [b.pubkey for b in pre.builders]
@@ -40,19 +44,28 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         r["builder_deposit_to_finalized_epoch"] = _cmp(int(b.deposit_epoch), finalized)
         r["builder_withdrawable_epoch_set"] = _tri(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH)
         r["builder_has_pending_withdrawal"] = _tri(
-            any(w.builder_index == idx and int(w.amount) > 0 for w in pre.builder_pending_withdrawals)
+            any(
+                w.builder_index == idx and int(w.amount) > 0
+                for w in pre.builder_pending_withdrawals
+            )
         )
         r["builder_has_pending_payment"] = _tri(
-            any(p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
-                for p in pre.builder_pending_payments)
+            any(
+                p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
+                for p in pre.builder_pending_payments
+            )
         )
         r["source_address_matches"] = _tri(b.execution_address == request.source_address)
         r["builder_active"] = bool(spec.is_active_builder(pre, idx))
         r["builder_has_pending_balance"] = pending != 0
     else:
-        for n in ("builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set",
-                  "builder_has_pending_withdrawal", "builder_has_pending_payment",
-                  "source_address_matches"):
+        for n in (
+            "builder_deposit_to_finalized_epoch",
+            "builder_withdrawable_epoch_set",
+            "builder_has_pending_withdrawal",
+            "builder_has_pending_payment",
+            "source_address_matches",
+        ):
             r[n] = "NA"
         r["builder_active"] = False
         r["builder_has_pending_balance"] = False
@@ -70,6 +83,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     r["outcome"] = outcome
     r["exit_initiated"] = outcome == "EXIT_INITIATED"
     return r
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
