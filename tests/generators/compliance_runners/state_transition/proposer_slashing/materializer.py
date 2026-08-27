@@ -7,8 +7,9 @@ from typing import Any
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.utils import bls
-from ...gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+
+from ...gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
 PROPOSER_INDEX = 1
