@@ -12,6 +12,7 @@ Spec: specs/gloas/beacon-chain.md process_execution_payload_bid.
 Usage:
     uv run python -m tests.generators.compliance_runners.state_transition.execution_payload_bid.materializer
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING

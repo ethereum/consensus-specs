@@ -7,6 +7,7 @@ serializes the solution to dimensions.yaml. This operation never raises, so
 
 Spec: specs/gloas/beacon-chain.md process_builder_exit_request.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -26,10 +27,15 @@ EPOCHS_PAST_GENESIS = 10
 
 _DIMS = [
     "builder_pubkey_found",
-    "builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set",
-    "builder_has_pending_withdrawal", "builder_has_pending_payment",
+    "builder_deposit_to_finalized_epoch",
+    "builder_withdrawable_epoch_set",
+    "builder_has_pending_withdrawal",
+    "builder_has_pending_payment",
     "source_address_matches",
-    "builder_active", "builder_has_pending_balance", "exit_initiated", "outcome",
+    "builder_active",
+    "builder_has_pending_balance",
+    "exit_initiated",
+    "outcome",
 ]
 
 
@@ -48,7 +54,8 @@ class BuilderExitRequestMaterializer(Materializer):
     def _base_state(self) -> Any:
         spec = self.spec
         state = create_genesis_state(
-            spec, validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
+            spec,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         state.builders = type(state.builders)()
@@ -66,7 +73,11 @@ class BuilderExitRequestMaterializer(Materializer):
 
         if found:
             dep = _s(sol, "builder_deposit_to_finalized_epoch")
-            deposit_epoch = {"LT": FINALIZED_EPOCH - 1, "EQ": FINALIZED_EPOCH, "GT": FINALIZED_EPOCH + 1}[dep]
+            deposit_epoch = {
+                "LT": FINALIZED_EPOCH - 1,
+                "EQ": FINALIZED_EPOCH,
+                "GT": FINALIZED_EPOCH + 1,
+            }[dep]
             wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
             pre.builders.append(
                 spec.Builder(
@@ -82,7 +93,8 @@ class BuilderExitRequestMaterializer(Materializer):
                 pre.builder_pending_withdrawals.append(
                     spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                        amount=spec.Gwei(1), builder_index=spec.BuilderIndex(0),
+                        amount=spec.Gwei(1),
+                        builder_index=spec.BuilderIndex(0),
                     )
                 )
             if _s(sol, "builder_has_pending_payment") == "T":
@@ -90,7 +102,8 @@ class BuilderExitRequestMaterializer(Materializer):
                     weight=spec.Gwei(1),
                     withdrawal=spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                        amount=spec.Gwei(1), builder_index=spec.BuilderIndex(0),
+                        amount=spec.Gwei(1),
+                        builder_index=spec.BuilderIndex(0),
                     ),
                     proposer_index=spec.ValidatorIndex(0),
                 )
@@ -106,8 +119,13 @@ class BuilderExitRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_builder_exit_request(post, request)  # never raises
 
-        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
-        meta = {"description": f"process_builder_exit_request: {claimed['outcome']}", "claimed": claimed}
+        claimed = {
+            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
+        }
+        meta = {
+            "description": f"process_builder_exit_request: {claimed['outcome']}",
+            "claimed": claimed,
+        }
         parts = [
             ("pre", "ssz", pre.encode_bytes()),
             ("builder_exit_request", "ssz", request.encode_bytes()),

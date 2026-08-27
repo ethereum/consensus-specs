@@ -5,6 +5,7 @@ ConsolidationRequest via the real spec predicates (source + target validators,
 churn, both paths), and recomputes the 19-way outcome. Imports neither the
 materializer nor the model.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -22,8 +23,10 @@ if TYPE_CHECKING:
 _YAML = YAML(typ="safe")
 _ACCEPT = {"SWITCHED_TO_COMPOUNDING", "CONSOLIDATED"}
 
+
 def _tri(x: bool) -> str:
     return "T" if x else "F"
+
 
 def _credential(v: Any) -> str:
     prefix = bytes(v.withdrawal_credentials[:1])
@@ -32,6 +35,7 @@ def _credential(v: Any) -> str:
     if prefix == bytes(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX):
         return "CRED_ETH1"
     return "CRED_BLS"
+
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     cur = spec.get_current_epoch(pre)
@@ -42,10 +46,10 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
 
     r: dict[str, Any] = {
         "same_source_target": bool(same),
-        "pending_consolidations_full":
-            len(pre.pending_consolidations) == int(spec.PENDING_CONSOLIDATIONS_LIMIT),
-        "sufficient_consolidation_churn":
-            int(spec.get_consolidation_churn_limit(pre)) > int(spec.MIN_ACTIVATION_BALANCE),
+        "pending_consolidations_full": len(pre.pending_consolidations)
+        == int(spec.PENDING_CONSOLIDATIONS_LIMIT),
+        "sufficient_consolidation_churn": int(spec.get_consolidation_churn_limit(pre))
+        > int(spec.MIN_ACTIVATION_BALANCE),
         "validator_pubkey_found": bool(source_found),
     }
 
@@ -54,18 +58,27 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         sidx = spec.ValidatorIndex(val_pubkeys.index(request.source_pubkey))
         r["validator_credential"] = _credential(sv)
         r["validator_has_execution_credential"] = bool(spec.has_execution_withdrawal_credential(sv))
-        r["validator_has_compounding_credential"] = bool(spec.has_compounding_withdrawal_credential(sv))
+        r["validator_has_compounding_credential"] = bool(
+            spec.has_compounding_withdrawal_credential(sv)
+        )
         r["source_address_matches"] = _tri(sv.withdrawal_credentials[12:] == request.source_address)
         r["validator_active"] = _tri(bool(spec.is_active_validator(sv, cur)))
         r["validator_exiting"] = _tri(sv.exit_epoch != spec.FAR_FUTURE_EPOCH)
         r["validator_old_enough"] = _tri(int(cur) >= int(sv.activation_epoch) + scp)
-        r["has_pending_partial_withdrawal"] = _tri(int(spec.get_pending_balance_to_withdraw(pre, sidx)) > 0)
+        r["has_pending_partial_withdrawal"] = _tri(
+            int(spec.get_pending_balance_to_withdraw(pre, sidx)) > 0
+        )
     else:
         r["validator_credential"] = "CRED_NA"
         r["validator_has_execution_credential"] = False
         r["validator_has_compounding_credential"] = False
-        for n in ("source_address_matches", "validator_active", "validator_exiting",
-                  "validator_old_enough", "has_pending_partial_withdrawal"):
+        for n in (
+            "source_address_matches",
+            "validator_active",
+            "validator_exiting",
+            "validator_old_enough",
+            "has_pending_partial_withdrawal",
+        ):
             r[n] = "NA"
 
     # target role only on the consolidation path
@@ -79,7 +92,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         tv = pre.validators[val_pubkeys.index(request.target_pubkey)]
         r["target_found"] = "T"
         r["target_credential"] = _credential(tv)
-        r["target_has_compounding_credential"] = bool(spec.has_compounding_withdrawal_credential(tv))
+        r["target_has_compounding_credential"] = bool(
+            spec.has_compounding_withdrawal_credential(tv)
+        )
         r["target_active"] = _tri(bool(spec.is_active_validator(tv, cur)))
         r["target_exiting"] = _tri(tv.exit_epoch != spec.FAR_FUTURE_EPOCH)
     else:
@@ -92,6 +107,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     r["outcome"] = _derive(r)
     r["state_effected"] = r["outcome"] in _ACCEPT
     return r
+
 
 def _derive(r: dict) -> str:
     same = r["same_source_target"]
@@ -141,6 +157,7 @@ def _derive(r: dict) -> str:
     if src_pending:
         return "REJECTED_SOURCE_PENDING_WITHDRAWAL"
     return "CONSOLIDATED"
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

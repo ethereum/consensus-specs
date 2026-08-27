@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def recover(pre: Any) -> dict[str, Any]:
     parent_full = pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash
     current_epoch = spec.get_current_epoch(pre)
@@ -64,6 +65,7 @@ def recover(pre: Any) -> dict[str, Any]:
         "state_effected": parent_full,
         "outcome": outcome,
     }
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

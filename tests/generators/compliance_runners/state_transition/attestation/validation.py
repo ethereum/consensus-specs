@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def _committee_dimensions(pre: Any, attestation: Any) -> tuple[bool, bool, bool]:
     """Recover independent committee-index, nonempty, and length predicates."""
     try:
@@ -40,6 +41,7 @@ def _committee_dimensions(pre: Any, attestation: Any) -> tuple[bool, bool, bool]
     except (AssertionError, IndexError):
         return False, False, False
 
+
 def _signature_valid(pre: Any, attestation: Any) -> bool:
     try:
         return bool(
@@ -48,11 +50,13 @@ def _signature_valid(pre: Any, attestation: Any) -> bool:
     except (AssertionError, IndexError):
         return False
 
+
 def _is_attestation_same_slot(pre: Any, data: Any) -> bool:
     try:
         return bool(spec.is_attestation_same_slot(pre, data))
     except AssertionError:
         return False
+
 
 def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) -> bool:
     if not same_slot:
@@ -75,6 +79,7 @@ def _sets_new_participation_flag(pre: Any, attestation: Any, same_slot: bool) ->
         )
     except (AssertionError, IndexError):
         return False
+
 
 def recover(pre: Any, attestation: Any) -> dict[str, Any]:
     data = attestation.data
@@ -138,6 +143,7 @@ def recover(pre: Any, attestation: Any) -> dict[str, Any]:
         "payment_weight_increased": payment_weight_increased,
         "outcome": handler_outcome,
     }
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

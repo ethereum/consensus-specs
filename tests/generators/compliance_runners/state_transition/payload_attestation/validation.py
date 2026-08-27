@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def recover(pre: Any, operation: Any) -> dict[str, Any]:
     data = operation.data
     indexed = spec.get_indexed_payload_attestation(pre, operation)
@@ -51,6 +52,7 @@ def recover(pre: Any, operation: Any) -> dict[str, Any]:
         outcome = "ACCEPT"
     result["outcome"] = outcome
     return result
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

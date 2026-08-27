@@ -6,6 +6,7 @@ No BLS, no churn gate. The operation never raises, so `post` is always present.
 
 Spec: specs/electra/beacon-chain.md process_withdrawal_request (inherited by gloas).
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
