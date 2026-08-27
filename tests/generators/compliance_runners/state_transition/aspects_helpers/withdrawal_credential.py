@@ -19,5 +19,7 @@ def withdrawal_credentials_from_profile(spec: Any, profile: str, address_tail: b
 
 
 def withdrawal_credentials_profile(spec: Any, credentials: Any) -> str:
-    profiles = {prefix: profile for profile, prefix in _withdrawal_credential_prefixes(spec).items()}
+    profiles = {
+        prefix: profile for profile, prefix in _withdrawal_credential_prefixes(spec).items()
+    }
     return profiles.get(bytes(credentials[:1]), "UNKNOWN")

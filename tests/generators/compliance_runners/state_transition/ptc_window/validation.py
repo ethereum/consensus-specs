@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
