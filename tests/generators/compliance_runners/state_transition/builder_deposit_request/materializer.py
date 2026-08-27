@@ -68,7 +68,7 @@ class BuilderDepositRequestMaterializer(Materializer):
         found = _b(sol, "builder_pubkey_found")
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
-        address_tail = spec.hash(REQUEST_PUBKEY)[12:]
+        address_tail = spec.sha256(REQUEST_PUBKEY)[12:]
 
         if found:
             wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
