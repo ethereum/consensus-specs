@@ -9,13 +9,14 @@ Spec: specs/gloas/beacon-chain.md process_builder_exit_request.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from ...gen_base.gen_typing import TestCasePart
+if TYPE_CHECKING:
+    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 REQUEST_PUBKEY = builder_pubkeys[0]
 BUILDER_ADDRESS = b"\x22" * 20

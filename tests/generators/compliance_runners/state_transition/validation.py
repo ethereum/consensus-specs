@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import snappy
 
 from .materializer import SUITE_NAME
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass

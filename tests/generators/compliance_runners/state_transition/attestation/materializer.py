@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.state import transition_to
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from ...gen_base.gen_typing import TestCasePart
+if TYPE_CHECKING:
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
 _DIMS = [
