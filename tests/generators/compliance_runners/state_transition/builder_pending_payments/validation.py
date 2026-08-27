@@ -24,8 +24,8 @@ def validate_case(case_dir: Path) -> list[Check]:
     withdrawals = list(pre.builder_pending_withdrawals) + appended
 
     expected = pre.copy()
-    expected.builder_pending_payments = payments
-    expected.builder_pending_withdrawals = withdrawals
+    expected.builder_pending_payments = spec.BuilderPendingPayments(data=payments)
+    expected.builder_pending_withdrawals = spec.BuilderPendingWithdrawals(data=withdrawals)
 
     first = list(pre.builder_pending_payments[:spe])
     occupied = [p for p in first if p != spec.BuilderPendingPayment()]
@@ -85,13 +85,9 @@ def validate_case(case_dir: Path) -> list[Check]:
 
     previous_epoch_discarded = all(p == spec.BuilderPendingPayment() for p in payments[spe:])
 
-    next_epoch_shifted_forward = (
-        list(payments[:spe]) == list(pre.builder_pending_payments[spe:])
-    )
+    next_epoch_shifted_forward = list(payments[:spe]) == list(pre.builder_pending_payments[spe:])
 
-    new_tail_defaulted = all(
-        p == spec.BuilderPendingPayment() for p in payments[spe:]
-    )
+    new_tail_defaulted = all(p == spec.BuilderPendingPayment() for p in payments[spe:])
 
     if not occupied and not any(
         p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
