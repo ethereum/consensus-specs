@@ -15,7 +15,12 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from eth_consensus_specs.gloas import minimal as spec
+from generators.compliance_runners.state_transition.aspect_coverage import (
+    build_profile as _build_profile,
+    enumerate_signatures,
+)
+
 from .materializer import _DIMS, BuilderExitRequestMaterializer
 
 INPUT_ASPECTS = {
@@ -48,8 +53,6 @@ def _recs():
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
-    from eth_consensus_specs.gloas import minimal as spec
-
     _, chosen = build_profile(_recs(), name)
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")

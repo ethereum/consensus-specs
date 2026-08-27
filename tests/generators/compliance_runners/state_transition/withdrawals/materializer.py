@@ -7,13 +7,15 @@ that assignment, then records the original solution with the vector.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from eth_consensus_specs.test.helpers.withdrawals import prepare_process_withdrawals
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+
+if TYPE_CHECKING:
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 _DIMS = [
     "parent_payload_revealed",

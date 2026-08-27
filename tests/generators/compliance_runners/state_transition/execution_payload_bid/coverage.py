@@ -14,7 +14,12 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import build_profile as _build_profile, enumerate_signatures
+from eth_consensus_specs.gloas import minimal as spec
+from generators.compliance_runners.state_transition.aspect_coverage import (
+    build_profile as _build_profile,
+    enumerate_signatures,
+)
+
 from .materializer import _DIMS, ExecutionPayloadBidMaterializer
 
 # Fine-grained input aspects (realization + the handler-local bid amount).
@@ -109,8 +114,6 @@ def build_profile(recs, name):
 
 def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(recs, name)
-    from eth_consensus_specs.gloas import minimal as spec
-
     reps = [SimpleNamespace(**rec) for rec in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
     return ExecutionPayloadBidMaterializer(spec, MODEL).materialize_reps(out, reps)
