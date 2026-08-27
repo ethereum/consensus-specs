@@ -18,21 +18,30 @@ from tests.generators.compliance_runners.state_transition.materializer import Ma
 
 NUM_VALIDATORS = 64
 TARGET_INDEX = 0
-ABSENT_PUBKEY = pubkeys[NUM_VALIDATORS]         # not in a NUM_VALIDATORS-validator genesis
-CURRENT_EPOCH = 70                              # > SHARD_COMMITTEE_PERIOD (64), for old-enough headroom
+ABSENT_PUBKEY = pubkeys[NUM_VALIDATORS]  # not in a NUM_VALIDATORS-validator genesis
+CURRENT_EPOCH = 70  # > SHARD_COMMITTEE_PERIOD (64), for old-enough headroom
 ADDRESS = b"\x22" * 20
 OTHER_ADDRESS = b"\x33" * 20
-PARTIAL_AMOUNT = 10 ** 9
+PARTIAL_AMOUNT = 10**9
 
 _PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"\x02"}
 
 _DIMS = [
-    "is_full_exit_request", "partial_queue_full",
-    "validator_pubkey_found", "validator_credential", "source_address_matches",
-    "validator_active", "validator_exiting", "validator_old_enough",
-    "has_pending_partial_withdrawal", "sufficient_effective_balance", "has_excess_balance",
-    "validator_has_execution_credential", "validator_has_compounding_credential",
-    "outcome", "withdrawal_effected",
+    "is_full_exit_request",
+    "partial_queue_full",
+    "validator_pubkey_found",
+    "validator_credential",
+    "source_address_matches",
+    "validator_active",
+    "validator_exiting",
+    "validator_old_enough",
+    "has_pending_partial_withdrawal",
+    "sufficient_effective_balance",
+    "has_excess_balance",
+    "validator_has_execution_credential",
+    "validator_has_compounding_credential",
+    "outcome",
+    "withdrawal_effected",
 ]
 
 
@@ -51,7 +60,8 @@ class WithdrawalRequestMaterializer(Materializer):
     def _base_state(self) -> Any:
         spec = self.spec
         state = create_genesis_state(
-            spec, validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
+            spec,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         state.slot = spec.Slot(CURRENT_EPOCH * spec.SLOTS_PER_EPOCH)
@@ -61,15 +71,14 @@ class WithdrawalRequestMaterializer(Materializer):
         """(activation_epoch, exit_epoch) realizing the lifecycle triple at CURRENT_EPOCH."""
         spec = self.spec
         far = int(spec.FAR_FUTURE_EPOCH)
-        activation = 0 if old_enough else CURRENT_EPOCH - 10   # <= C-64 vs in (C-64, C]
+        activation = 0 if old_enough else CURRENT_EPOCH - 10  # <= C-64 vs in (C-64, C]
         if active:
-            exit_epoch = (CURRENT_EPOCH + 10) if exiting else far   # future exit still active
+            exit_epoch = (CURRENT_EPOCH + 10) if exiting else far  # future exit still active
+        elif exiting:
+            exit_epoch = CURRENT_EPOCH - 1  # exited (epoch >= exit)
         else:
-            if exiting:
-                exit_epoch = CURRENT_EPOCH - 1                        # exited (epoch >= exit)
-            else:
-                activation = CURRENT_EPOCH + 10                       # not yet activated
-                exit_epoch = far
+            activation = CURRENT_EPOCH + 10  # not yet activated
+            exit_epoch = far
         return activation, exit_epoch
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
@@ -93,7 +102,8 @@ class WithdrawalRequestMaterializer(Materializer):
             v.activation_epoch = spec.Epoch(activation)
             v.exit_epoch = spec.Epoch(exit_epoch)
             v.effective_balance = spec.Gwei(
-                spec.MIN_ACTIVATION_BALANCE if _s(sol, "sufficient_effective_balance") == "T"
+                spec.MIN_ACTIVATION_BALANCE
+                if _s(sol, "sufficient_effective_balance") == "T"
                 else spec.MIN_ACTIVATION_BALANCE - 1
             )
 
@@ -102,18 +112,24 @@ class WithdrawalRequestMaterializer(Materializer):
         pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
         entries = []
         if pending_for_target:
-            entries.append(spec.PendingPartialWithdrawal(
-                validator_index=spec.ValidatorIndex(TARGET_INDEX), amount=spec.Gwei(1),
-                withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
-            ))
+            entries.append(
+                spec.PendingPartialWithdrawal(
+                    validator_index=spec.ValidatorIndex(TARGET_INDEX),
+                    amount=spec.Gwei(1),
+                    withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                )
+            )
         if _b(sol, "partial_queue_full"):
             filler_index = spec.ValidatorIndex(1)
             while len(entries) < int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT):
-                entries.append(spec.PendingPartialWithdrawal(
-                    validator_index=filler_index, amount=spec.Gwei(1),
-                    withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
-                ))
-        pre.pending_partial_withdrawals = type(pre.pending_partial_withdrawals)(*entries)
+                entries.append(
+                    spec.PendingPartialWithdrawal(
+                        validator_index=filler_index,
+                        amount=spec.Gwei(1),
+                        withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                    )
+                )
+        pre.pending_partial_withdrawals = spec.PendingPartialWithdrawals(data=entries)
 
         if found:
             pending_amount = 1 if pending_for_target else 0
@@ -125,15 +141,22 @@ class WithdrawalRequestMaterializer(Materializer):
 
         request = spec.WithdrawalRequest(
             source_address=spec.ExecutionAddress(source_address),
-            validator_pubkey=spec.BLSPubkey(pre.validators[TARGET_INDEX].pubkey if found else ABSENT_PUBKEY),
+            validator_pubkey=spec.BLSPubkey(
+                pre.validators[TARGET_INDEX].pubkey if found else ABSENT_PUBKEY
+            ),
             amount=spec.Gwei(0) if is_full else spec.Gwei(PARTIAL_AMOUNT),
         )
 
         post = pre.copy()
         spec.process_withdrawal_request(post, request)  # never raises
 
-        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
-        meta = {"description": f"process_withdrawal_request: {claimed['outcome']}", "claimed": claimed}
+        claimed = {
+            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
+        }
+        meta = {
+            "description": f"process_withdrawal_request: {claimed['outcome']}",
+            "claimed": claimed,
+        }
         parts = [
             ("pre", "ssz", pre.encode_bytes()),
             ("withdrawal_request", "ssz", request.encode_bytes()),
