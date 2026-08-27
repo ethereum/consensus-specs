@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
+from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from ...gen_base.gen_typing import TestCasePart
 from ..aspects_helpers.deposit_amount import deposit_amount_from_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_from_profile
-from ...gen_base.gen_typing import TestCasePart
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 NUM_VALIDATORS = 64
 REQUEST_INDEX = 5
