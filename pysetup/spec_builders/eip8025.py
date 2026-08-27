@@ -10,7 +10,6 @@ class EIP8025SpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.gloas import {preset_name} as gloas
-from eth_consensus_specs.utils.ssz.ssz_typing import Uint16
 """
 
     @classmethod

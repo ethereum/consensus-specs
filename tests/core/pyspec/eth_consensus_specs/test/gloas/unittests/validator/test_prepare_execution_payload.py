@@ -105,7 +105,9 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     # not touch it.
     validator_index = 0
     consolidation_request = prepare_switch_to_compounding_request(spec, state, validator_index)
-    execution_requests = spec.ExecutionRequests(consolidations=[consolidation_request])
+    execution_requests = spec.ExecutionRequests(
+        consolidations=spec.ConsolidationRequests.of(consolidation_request)
+    )
 
     # Build block_1 with a bid that commits to the requests we will deliver
     # in the envelope. The bid's execution_requests_root must match
@@ -175,12 +177,21 @@ def test_prepare_execution_payload__extend_payload(spec, state):
 @with_phases([GLOAS])
 @spec_state_test
 def test_prepare_execution_payload__no_payload_verified(spec, state):
-    # Build and process block without execution requests.
+    carried_withdrawal = spec.Withdrawal(
+        index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
+    )
+    state.payload_expected_withdrawals = spec.Withdrawals(data=[carried_withdrawal])
+
     store, _, block_root = _add_block_to_store(spec, state)
 
     assert not spec.is_payload_verified(store, block_root)
 
     proposal_state = _advance_to_proposal_slot(spec, state, store)
+    carried_withdrawals = proposal_state.payload_expected_withdrawals
+    fresh_withdrawals = spec.get_expected_withdrawals(proposal_state).withdrawals
+
+    assert len(carried_withdrawals) > 0
+    assert list(carried_withdrawals) != list(fresh_withdrawals)
 
     engine = CaptureEngine()
     parent_bid = proposal_state.latest_execution_payload_bid
@@ -197,7 +208,7 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
 
     assert payload_id == SAMPLE_PAYLOAD_ID
     assert engine.head_block_hash == parent_bid.parent_block_hash
-    assert engine.payload_attributes.withdrawals == proposal_state.payload_expected_withdrawals
+    assert engine.payload_attributes.withdrawals == carried_withdrawals
 
 
 @with_phases([GLOAS])
@@ -279,4 +290,4 @@ def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     assert block.slot == proposal_state.slot
     state_transition_and_sign_block(spec, state, block)
 
-    assert list(state.payload_expected_withdrawals) == prepared_withdrawals
+    assert list(state.payload_expected_withdrawals) == list(prepared_withdrawals)

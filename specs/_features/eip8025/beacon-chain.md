@@ -42,7 +42,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ### New `ProofData`
 
 ```python
-class ProofData(ProgressiveByteList):
+class ProofData(ProgressiveList[Byte]):
     """
     The opaque proof bytes of an execution proof.
     """
@@ -88,9 +88,11 @@ schema revision (`0x01`).
 ### Modified `NewPayloadRequest`
 
 ```python
-class NewPayloadRequest(ProgressiveContainer(active_fields=[1] * 4)):
+class NewPayloadRequest(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
     execution_payload: ExecutionPayload
-    versioned_hashes: List[VersionedHash, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    versioned_hashes: VersionedHashes
     parent_beacon_block_root: Root
     execution_requests: ExecutionRequests
 ```
@@ -98,7 +100,9 @@ class NewPayloadRequest(ProgressiveContainer(active_fields=[1] * 4)):
 ### New `PublicInput`
 
 ```python
-class PublicInput(ProgressiveContainer(active_fields=[1] * 4)):
+class PublicInput(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
     new_payload_request_root: Root
     successful_validation: Boolean
     chain_id: Uint64
@@ -163,9 +167,12 @@ def validate_execution_proof_envelope(
     bid = state.latest_execution_payload_bid
     new_payload_request = NewPayloadRequest(
         execution_payload=payload_envelope.payload,
-        versioned_hashes=[
-            kzg_commitment_to_versioned_hash(commitment) for commitment in bid.blob_kzg_commitments
-        ],
+        versioned_hashes=VersionedHashes(
+            data=[
+                kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ]
+        ),
         parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
         execution_requests=payload_envelope.execution_requests,
     )

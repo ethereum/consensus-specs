@@ -307,9 +307,7 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
     # Pad the column with an extra cell so its length no longer matches the
     # bid's blob commitments, causing verify_data_column_sidecar to fail.
-    sidecar.column = spec.List[spec.Cell, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        *sidecar.column, spec.Cell()
-    )
+    sidecar.column = spec.DataColumn(data=[*sidecar.column, spec.Cell()])
     yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block

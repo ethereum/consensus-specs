@@ -144,106 +144,126 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 
 ```python
 # [Modified in Electra:EIP7549]
-class AggregationBits(BitList[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]):
+class AggregationBits(BitList):
     """
     The participation bits of all committees participating in an attestation,
     concatenated in committee order.
     """
+
+    LIMIT = MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
 ```
 
 ### Modified `Attestations`
 
 ```python
 # [Modified in Electra:EIP7549]
-class Attestations(List[Attestation, MAX_ATTESTATIONS_ELECTRA]):
+class Attestations(List[Attestation]):
     """
     The attestations included in a beacon block.
     """
+
+    LIMIT = MAX_ATTESTATIONS_ELECTRA
 ```
 
 ### Modified `AttesterSlashings`
 
 ```python
 # [Modified in Electra:EIP7549]
-class AttesterSlashings(List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]):
+class AttesterSlashings(List[AttesterSlashing]):
     """
     The attester slashings included in a beacon block.
     """
+
+    LIMIT = MAX_ATTESTER_SLASHINGS_ELECTRA
 ```
 
 ### Modified `AttestingIndices`
 
 ```python
 # [Modified in Electra:EIP7549]
-class AttestingIndices(
-    List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
-):
+class AttestingIndices(List[ValidatorIndex]):
     """
     The indices of the validators participating in an attestation.
     """
+
+    LIMIT = MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
 ```
 
 ### New `CommitteeBits`
 
 ```python
-class CommitteeBits(BitVector[MAX_COMMITTEES_PER_SLOT]):
+class CommitteeBits(BitVector):
     """
     Bits marking which committees of a slot participate in an attestation.
     """
+
+    LENGTH = MAX_COMMITTEES_PER_SLOT
 ```
 
 ### New `ConsolidationRequests`
 
 ```python
-class ConsolidationRequests(List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]):
+class ConsolidationRequests(List[ConsolidationRequest]):
     """
     The consolidation requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
 ```
 
 ### New `DepositRequests`
 
 ```python
-class DepositRequests(List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]):
+class DepositRequests(List[DepositRequest]):
     """
     The deposit requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
 ```
 
 ### New `PendingConsolidations`
 
 ```python
-class PendingConsolidations(List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]):
+class PendingConsolidations(List[PendingConsolidation]):
     """
     The queue of consolidations awaiting processing.
     """
+
+    LIMIT = PENDING_CONSOLIDATIONS_LIMIT
 ```
 
 ### New `PendingDeposits`
 
 ```python
-class PendingDeposits(List[PendingDeposit, PENDING_DEPOSITS_LIMIT]):
+class PendingDeposits(List[PendingDeposit]):
     """
     The queue of deposits awaiting processing.
     """
+
+    LIMIT = PENDING_DEPOSITS_LIMIT
 ```
 
 ### New `PendingPartialWithdrawals`
 
 ```python
-class PendingPartialWithdrawals(List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]):
+class PendingPartialWithdrawals(List[PendingPartialWithdrawal]):
     """
     The queue of partial withdrawals awaiting processing.
     """
+
+    LIMIT = PENDING_PARTIAL_WITHDRAWALS_LIMIT
 ```
 
 ### New `WithdrawalRequests`
 
 ```python
-class WithdrawalRequests(List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]):
+class WithdrawalRequests(List[WithdrawalRequest]):
     """
     The withdrawal requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
 ```
 
 ## Constants
@@ -1166,7 +1186,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         next_deposit_index += 1
 
     state.pending_deposits = PendingDeposits(
-        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+        data=state.pending_deposits[next_deposit_index:] + deposits_to_postpone
     )
 
     # Accumulate churn only if the churn limit has been hit.
@@ -1201,7 +1221,7 @@ def process_pending_consolidations(state: BeaconState) -> None:
         next_pending_consolidation += 1
 
     state.pending_consolidations = PendingConsolidations(
-        state.pending_consolidations[next_pending_consolidation:]
+        data=state.pending_consolidations[next_pending_consolidation:]
     )
 ```
 
@@ -1477,7 +1497,7 @@ def update_pending_partial_withdrawals(
     state: BeaconState, processed_partial_withdrawals_count: Uint64
 ) -> None:
     state.pending_partial_withdrawals = PendingPartialWithdrawals(
-        state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
+        data=state.pending_partial_withdrawals[processed_partial_withdrawals_count:]
     )
 ```
 
@@ -1489,7 +1509,7 @@ def update_pending_partial_withdrawals(
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     # Get expected withdrawals
     expected = get_expected_withdrawals(state)
-    assert payload.withdrawals == expected.withdrawals
+    assert list(payload.withdrawals) == expected.withdrawals
 
     # Apply expected withdrawals
     apply_withdrawals(state, expected.withdrawals)
@@ -1546,9 +1566,11 @@ def process_execution_payload(
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
 
     # Compute list of versioned hashes
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-    ]
+    versioned_hashes = VersionedHashes(
+        data=[
+            kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
+        ]
+    )
 
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(

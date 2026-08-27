@@ -32,10 +32,12 @@ def make_new_payload_request(spec, state, payload_envelope):
     bid = state.latest_execution_payload_bid
     return spec.NewPayloadRequest(
         execution_payload=payload_envelope.payload,
-        versioned_hashes=[
-            spec.kzg_commitment_to_versioned_hash(commitment)
-            for commitment in bid.blob_kzg_commitments
-        ],
+        versioned_hashes=spec.VersionedHashes(
+            data=[
+                spec.kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ]
+        ),
         parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
         execution_requests=payload_envelope.execution_requests,
     )
@@ -47,7 +49,7 @@ def make_new_payload_request(spec, state, payload_envelope):
 def test_prover_can_request_retrieve_sign_and_store(spec, state):
     store, beacon_block_root = setup_store_with_block(spec, state)
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
-    proof_data = spec.ProofData(b"\x01")
+    proof_data = spec.ProofData(data=[1])
     new_payload_request = make_new_payload_request(
         spec, store.block_states[beacon_block_root], store.payloads[beacon_block_root]
     )

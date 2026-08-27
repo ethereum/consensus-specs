@@ -51,7 +51,9 @@ def _commit_full_parent_with_payment(spec, state, value, builder_index, fee_reci
     Commit a FULL parent with a builder payment at slot ``SLOTS_PER_EPOCH - 1``.
     Clear its availability bit.
     """
-    state.latest_execution_payload_bid.slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    parent_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    state.latest_block_header.slot = parent_slot
+    state.latest_execution_payload_bid.slot = parent_slot
     state.latest_execution_payload_bid.fee_recipient = fee_recipient
     _commit_parent_requests(
         spec, state, spec.ExecutionRequests(), value=value, builder_index=builder_index
@@ -94,7 +96,7 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
     assert not is_parent_block_full
 
     pre_latest_block_hash = state.latest_block_hash
-    parent_slot = state.latest_execution_payload_bid.slot
+    parent_slot = state.latest_block_header.slot
     pre_availability = state.execution_payload_availability[
         parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT
     ]
@@ -127,7 +129,7 @@ def test_process_parent_execution_payload__full_parent(spec, state):
     yield from run_parent_execution_payload_processing(spec, state, block)
 
     assert state.latest_block_hash == parent_bid.block_hash
-    assert state.execution_payload_availability[parent_slot_index] == 0b1
+    assert state.execution_payload_availability[parent_slot_index]
 
 
 @with_gloas_and_later
@@ -230,7 +232,7 @@ def test_process_parent_execution_payload__full_parent_self_build_zero_value(spe
     # Zero-value self-build produces no new builder pending withdrawal
     assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len
     # Payload was still marked available and latest_block_hash advanced
-    assert state.execution_payload_availability[parent_slot_index] == 0b1
+    assert state.execution_payload_availability[parent_slot_index]
     assert state.latest_block_hash == parent_bid.block_hash
 
 
@@ -244,34 +246,28 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     unknown pubkeys are no-ops.
     """
     requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(
-            [
-                spec.DepositRequest(
-                    pubkey=spec.BLSPubkey(b"\x01" * 48),
-                    withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
-                    amount=spec.Gwei(32_000_000_000),
-                    signature=spec.BLSSignature(b"\x03" * 96),
-                    index=spec.Uint64(0),
-                )
-            ]
+        deposits=spec.DepositRequests.of(
+            spec.DepositRequest(
+                pubkey=spec.BLSPubkey(b"\x01" * 48),
+                withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
+                amount=spec.Gwei(32_000_000_000),
+                signature=spec.BLSSignature(b"\x03" * 96),
+                index=spec.Uint64(0),
+            )
         ),
-        withdrawals=spec.WithdrawalRequests(
-            [
-                spec.WithdrawalRequest(
-                    source_address=spec.ExecutionAddress(b"\x04" * 20),
-                    validator_pubkey=spec.BLSPubkey(b"\x05" * 48),
-                    amount=spec.Gwei(16_000_000_000),
-                )
-            ]
+        withdrawals=spec.WithdrawalRequests.of(
+            spec.WithdrawalRequest(
+                source_address=spec.ExecutionAddress(b"\x04" * 20),
+                validator_pubkey=spec.BLSPubkey(b"\x05" * 48),
+                amount=spec.Gwei(16_000_000_000),
+            )
         ),
-        consolidations=spec.ConsolidationRequests(
-            [
-                spec.ConsolidationRequest(
-                    source_address=spec.ExecutionAddress(b"\x06" * 20),
-                    source_pubkey=spec.BLSPubkey(b"\x07" * 48),
-                    target_pubkey=spec.BLSPubkey(b"\x08" * 48),
-                )
-            ]
+        consolidations=spec.ConsolidationRequests.of(
+            spec.ConsolidationRequest(
+                source_address=spec.ExecutionAddress(b"\x06" * 20),
+                source_pubkey=spec.BLSPubkey(b"\x07" * 48),
+                target_pubkey=spec.BLSPubkey(b"\x08" * 48),
+            )
         ),
     )
 
@@ -346,7 +342,7 @@ def test_process_parent_execution_payload__builder_credential_deposits_queued(sp
     )
 
     requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests([deposit_request_1, deposit_request_2]),
+        deposits=spec.DepositRequests.of(deposit_request_1, deposit_request_2),
         withdrawals=spec.WithdrawalRequests(),
         consolidations=spec.ConsolidationRequests(),
     )
@@ -407,10 +403,7 @@ def test_process_parent_execution_payload__settle_previous_epoch(spec, state):
 
     # Previous epoch slot cleared and availability bit flipped
     assert state.builder_pending_payments[previous_epoch_idx] == spec.BuilderPendingPayment()
-    assert (
-        state.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
-        == 0b1
-    )
+    assert state.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
 
 @with_gloas_and_later
@@ -489,8 +482,8 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     )
 
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(
-            [builder_deposit_request_1, builder_deposit_request_2]
+        builder_deposits=spec.BuilderDepositRequests.of(
+            builder_deposit_request_1, builder_deposit_request_2
         ),
     )
 
@@ -522,6 +515,73 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
 
 @with_gloas_and_later
 @spec_state_test
+def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reuse(spec, state):
+    """
+    Two valid deposits for one new pubkey in the same parent request batch
+    reuse a swept builder index, then top it up.
+
+    A pubkey lookup built once for the batch and not updated after replacement
+    would miss the new builder and append a duplicate instead.
+    """
+    reused_index = 0
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    pre_builder_count = len(state.builders)
+    pre_pending_deposits_len = len(state.pending_deposits)
+
+    state.builders[reused_index].withdrawable_epoch = spec.get_current_epoch(state)
+    state.builders[reused_index].balance = spec.Gwei(0)
+    reused_pubkey = state.builders[reused_index].pubkey
+    other_builders = [
+        (i, state.builders[i].copy()) for i in range(pre_builder_count) if i != reused_index
+    ]
+
+    builder_deposit_request_1 = prepare_process_builder_deposit_request(
+        spec,
+        state,
+        amount=amount,
+        signed=True,
+    )
+    new_pubkey = builder_deposit_request_1.pubkey
+    assert new_pubkey != reused_pubkey
+    builder_deposit_request_2 = prepare_process_builder_deposit_request(
+        spec,
+        state,
+        pubkey=new_pubkey,
+        amount=amount,
+        signed=True,
+    )
+
+    requests = spec.ExecutionRequests(
+        builder_deposits=spec.BuilderDepositRequests(
+            data=[builder_deposit_request_1, builder_deposit_request_2]
+        ),
+    )
+
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert len(state.pending_deposits) == pre_pending_deposits_len
+    assert len(state.builders) == pre_builder_count
+
+    matching_indices = [
+        i for i, builder in enumerate(state.builders) if builder.pubkey == new_pubkey
+    ]
+    assert matching_indices == [reused_index]
+    assert reused_pubkey not in [builder.pubkey for builder in state.builders]
+    assert state.builders[reused_index].balance == amount * 2
+    assert state.builders[reused_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+
+    for i, builder in other_builders:
+        assert state.builders[i] == builder
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__builder_exit_request(spec, state):
     """
     Test that a builder exit request in the parent's execution requests exits an
@@ -536,13 +596,11 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
 
     builder = state.builders[builder_index]
     requests = spec.ExecutionRequests(
-        builder_exits=spec.BuilderExitRequests(
-            [
-                spec.BuilderExitRequest(
-                    source_address=builder.execution_address,
-                    pubkey=builder.pubkey,
-                )
-            ]
+        builder_exits=spec.BuilderExitRequests.of(
+            spec.BuilderExitRequest(
+                source_address=builder.execution_address,
+                pubkey=builder.pubkey,
+            )
         ),
     )
 
@@ -567,7 +625,7 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
 def test_deposit_requests_greater_than_electra_max(spec, state):
     requests = spec.ExecutionRequests(
         deposits=spec.DepositRequests(
-            [spec.DepositRequest()] * (spec.electra.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.DepositRequest()] * (spec.electra.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -584,7 +642,7 @@ def test_deposit_requests_greater_than_electra_max(spec, state):
 def test_max_withdrawal_requests(spec, state):
     requests = spec.ExecutionRequests(
         withdrawals=spec.WithdrawalRequests(
-            [spec.WithdrawalRequest()] * spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
+            data=[spec.WithdrawalRequest()] * spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -601,7 +659,7 @@ def test_max_withdrawal_requests(spec, state):
 def test_invalid_too_many_withdrawal_requests(spec, state):
     requests = spec.ExecutionRequests(
         withdrawals=spec.WithdrawalRequests(
-            [spec.WithdrawalRequest()] * (spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.WithdrawalRequest()] * (spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -618,7 +676,7 @@ def test_invalid_too_many_withdrawal_requests(spec, state):
 def test_max_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(
         consolidations=spec.ConsolidationRequests(
-            [spec.ConsolidationRequest()] * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+            data=[spec.ConsolidationRequest()] * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -635,7 +693,7 @@ def test_max_consolidation_requests(spec, state):
 def test_invalid_too_many_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(
         consolidations=spec.ConsolidationRequests(
-            [spec.ConsolidationRequest()] * (spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.ConsolidationRequest()] * (spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -652,7 +710,7 @@ def test_invalid_too_many_consolidation_requests(spec, state):
 def test_max_builder_deposit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_deposits=spec.BuilderDepositRequests(
-            [spec.BuilderDepositRequest()] * spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
+            data=[spec.BuilderDepositRequest()] * spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -669,7 +727,8 @@ def test_max_builder_deposit_requests(spec, state):
 def test_invalid_too_many_builder_deposit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_deposits=spec.BuilderDepositRequests(
-            [spec.BuilderDepositRequest()] * (spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.BuilderDepositRequest()]
+            * (spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -686,7 +745,7 @@ def test_invalid_too_many_builder_deposit_requests(spec, state):
 def test_max_builder_exit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests(
-            [spec.BuilderExitRequest()] * spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
+            data=[spec.BuilderExitRequest()] * spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -703,7 +762,7 @@ def test_max_builder_exit_requests(spec, state):
 def test_invalid_too_many_builder_exit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests(
-            [spec.BuilderExitRequest()] * (spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.BuilderExitRequest()] * (spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)

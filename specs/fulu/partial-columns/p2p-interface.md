@@ -48,20 +48,24 @@ particular, this document builds on the
 ### New `CellsBitList`
 
 ```python
-class CellsBitList(BitList[MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class CellsBitList(BitList):
     """
     A bitfield over the cells of a column, one bit per blob.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### New `OptionalPartialDataColumnHeader`
 
 ```python
-class OptionalPartialDataColumnHeader(List[PartialDataColumnHeader, 1]):
+class OptionalPartialDataColumnHeader(List[PartialDataColumnHeader]):
     """
     A header that may or may not be present, encoded as a list of length zero
     or one.
     """
+
+    LIMIT = 1
 ```
 
 ## Containers

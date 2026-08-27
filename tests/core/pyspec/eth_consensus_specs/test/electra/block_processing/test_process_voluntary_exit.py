@@ -162,7 +162,7 @@ def test_max_balance_exit(spec, state):
 
     # Check exit epoch and withdrawable epoch
     earliest_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
-    additional_epochs = (to_exit - 1) // churn_limit
+    additional_epochs = spec.Uint64((to_exit - 1) // churn_limit)
     expected_exit_epoch = earliest_exit_epoch + additional_epochs
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
@@ -358,7 +358,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
     # A pending deposit will not prevent an exit
-    state.pending_deposits = [
+    state.pending_deposits = spec.PendingDeposits.of(
         spec.PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
@@ -366,7 +366,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
             signature=spec.bls.G2_POINT_AT_INFINITY,
             slot=spec.GENESIS_SLOT,
         )
-    ]
+    )
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 

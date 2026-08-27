@@ -43,7 +43,7 @@ def make_signed_execution_proof_envelope(
     proof_type=TEST_PROOF_TYPE,
 ):
     proof_envelope = spec.ExecutionProofEnvelope(
-        proof_data=spec.ProofData(proof_data),
+        proof_data=spec.ProofData(data=list(proof_data)),
         proof_type=spec.ProofType(proof_type),
         beacon_block_root=beacon_block_root,
     )
@@ -76,10 +76,12 @@ def get_proof_engine_input(spec, store, signed_proof):
     bid = state.latest_execution_payload_bid
     new_payload_request = spec.NewPayloadRequest(
         execution_payload=payload_envelope.payload,
-        versioned_hashes=[
-            spec.kzg_commitment_to_versioned_hash(commitment)
-            for commitment in bid.blob_kzg_commitments
-        ],
+        versioned_hashes=spec.VersionedHashes(
+            data=[
+                spec.kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ]
+        ),
         parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
         execution_requests=payload_envelope.execution_requests,
     )
