@@ -2,6 +2,8 @@ import hashlib
 from inspect import getmembers, isclass
 from random import Random
 
+from ssz.container import Container, ProgressiveContainer
+
 from eth_consensus_specs.debug import encode, random_value
 from eth_consensus_specs.test.context import (
     only_generator,
@@ -18,7 +20,6 @@ from eth_consensus_specs.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import Container, ProgressiveContainer
 
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10

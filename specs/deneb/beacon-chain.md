@@ -68,10 +68,12 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 ### New `Blob`
 
 ```python
-class Blob(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB]):
+class Blob(ByteVector):
     """
     A blob of data, encoded as a sequence of BLS scalar field elements.
     """
+
+    LENGTH = BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB
 ```
 
 ### New `BlobIndex`
@@ -86,10 +88,12 @@ class BlobIndex(Uint64):
 ### New `BlobKZGCommitments`
 
 ```python
-class BlobKZGCommitments(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class BlobKZGCommitments(List[KZGCommitment]):
     """
     The KZG commitments to the blobs of a beacon block.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### New `KZGCommitment`

@@ -84,10 +84,12 @@ class PayloadStatus(Uint8):
 ### New `CustodyColumnBits`
 
 ```python
-class CustodyColumnBits(BitVector[NUMBER_OF_COLUMNS]):
+class CustodyColumnBits(BitVector):
     """
     Bits marking the data columns custodied by a node, one bit per column.
     """
+
+    LENGTH = NUMBER_OF_COLUMNS
 ```
 
 ## Constants
@@ -333,7 +335,7 @@ def payload_timeliness(store: Store, root: Root, timely: bool) -> bool:
     if not is_payload_verified(store, root):
         return not timely
 
-    votes = store.payload_timeliness_vote[root]
+    votes = [bool(v) for v in store.payload_timeliness_vote[root] if v is not None]
     return sum(vote == timely for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
@@ -354,7 +356,7 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
     if not is_payload_verified(store, root):
         return not available
 
-    votes = store.payload_data_availability_vote[root]
+    votes = [bool(v) for v in store.payload_data_availability_vote[root] if v is not None]
     return sum(vote == available for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
@@ -1123,7 +1125,9 @@ def on_payload_attestation_message(
         assert is_valid_indexed_payload_attestation(
             state,
             IndexedPayloadAttestation(
-                attesting_indices=[ptc_message.validator_index],
+                attesting_indices=PayloadTimelinessCommitteeIndices(
+                    data=[ptc_message.validator_index]
+                ),
                 data=data,
                 signature=ptc_message.signature,
             ),

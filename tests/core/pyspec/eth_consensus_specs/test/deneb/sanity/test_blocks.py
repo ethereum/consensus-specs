@@ -40,15 +40,15 @@ def run_block_with_blobs(
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    txs = []
-    blob_kzg_commitments = []
+    txs = spec.Transactions()
+    blob_kzg_commitments = spec.BlobKZGCommitments()
     for _ in range(tx_count):
         opaque_tx, _, commits, _ = get_sample_blob_tx(spec, blob_count=blob_count)
-        txs.append(opaque_tx)
+        txs.append(spec.Transaction(data=list(opaque_tx)))
         blob_kzg_commitments += commits
 
     for _ in range(non_blob_tx_count):
-        txs.append(get_random_tx(rng))
+        txs.append(get_random_tx(spec, rng))
 
     rng.shuffle(txs)
 

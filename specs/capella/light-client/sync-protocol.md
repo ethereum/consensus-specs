@@ -37,10 +37,12 @@ Additional documents describe the impact of the upgrade on certain roles:
 ### New `ExecutionBranch`
 
 ```python
-class ExecutionBranch(Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]):
+class ExecutionBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``execution_payload`` within ``BeaconBlockBody``.
     """
+
+    LENGTH = floorlog2(EXECUTION_PAYLOAD_GINDEX)
 ```
 
 ## Constants

@@ -77,11 +77,13 @@ and use as a reference throughout.
 ### `SyncSubcommitteeBits`
 
 ```python
-class SyncSubcommitteeBits(BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]):
+class SyncSubcommitteeBits(BitVector):
     """
     The participation bits of a single sync subcommittee, one bit per member
     in subcommittee order.
     """
+
+    LENGTH = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 ```
 
 ## Constants

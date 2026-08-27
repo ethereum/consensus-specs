@@ -1052,7 +1052,7 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
 
     # Setup: Create MAX builder pending withdrawals manually
     withdrawal_amount = spec.Gwei(1_000_000_000)
-    state.builder_pending_withdrawals = []
+    state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
     for builder_index in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
         state.builders[builder_index].balance = withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
         state.builder_pending_withdrawals.append(
@@ -1555,7 +1555,7 @@ def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
     yield from run_gloas_withdrawals_processing(spec, state)
 
     assert_process_withdrawals(spec, state, pre_state, all_state_unchanged=True)
-    assert list(spec.get_expected_withdrawals(state).withdrawals) != populated_withdrawals
+    assert list(spec.get_expected_withdrawals(state).withdrawals) != list(populated_withdrawals)
 
 
 @with_gloas_and_later

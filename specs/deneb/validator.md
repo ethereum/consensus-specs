@@ -45,19 +45,23 @@ specifications before continuing and use them as a reference throughout.
 ### `Blobs`
 
 ```python
-class Blobs(List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class Blobs(List[Blob]):
     """
     The blobs of a single beacon block.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### `KZGProofs`
 
 ```python
-class KZGProofs(List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class KZGProofs(List[KZGProof]):
     """
     A list of KZG proofs, one for each blob or cell being proven.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ## Helpers
@@ -199,9 +203,11 @@ def get_blob_sidecars(
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
             signed_block_header=signed_block_header,
-            kzg_commitment_inclusion_proof=compute_merkle_proof(
-                block.body,
-                get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
+            kzg_commitment_inclusion_proof=KZGCommitmentInclusionProof(
+                data=compute_merkle_proof(
+                    block.body,
+                    get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
+                )
             ),
         )
         for index, blob in enumerate(blobs)

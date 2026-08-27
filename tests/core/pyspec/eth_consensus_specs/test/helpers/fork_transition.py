@@ -72,7 +72,11 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         obj = block.body
         for attr in key.split(".")[:-1]:
             obj = getattr(obj, attr)
-        setattr(obj, key.split(".")[-1], value)
+        field = key.split(".")[-1]
+        # The operations arrive as plain lists, so each takes the type its
+        # field is declared with.
+        declared = type(obj).model_fields[field].annotation
+        setattr(obj, field, declared(data=value))
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
@@ -447,7 +451,7 @@ def run_transition_with_operation(
             validator = state.validators[selected_validator_index]
             assert validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
         elif operation_type == OperationType.DEPOSIT_REQUEST:
-            assert state.pending_deposits == [
+            assert list(state.pending_deposits) == [
                 post_spec.PendingDeposit(
                     pubkey=deposit_request.pubkey,
                     withdrawal_credentials=deposit_request.withdrawal_credentials,
@@ -536,7 +540,9 @@ def _transition_until_active(post_spec, state, post_tag, blocks, validator_index
 
     assert state.validators[validator_index].activation_epoch < post_spec.FAR_FUTURE_EPOCH
 
-    to_slot = state.validators[validator_index].activation_epoch * post_spec.SLOTS_PER_EPOCH
+    to_slot = post_spec.compute_start_slot_at_epoch(
+        state.validators[validator_index].activation_epoch
+    )
     blocks.extend(
         [
             post_tag(block)
