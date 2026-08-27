@@ -17,29 +17,43 @@ from __future__ import annotations
 from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
 
 from ...gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 
-BUILDER_PUBKEY = builder_pubkeys[0]         # the referenced builder
-WRONG_PUBKEY = builder_pubkeys[1]           # a different signer, for invalid signatures
-FINALIZED_EPOCH = 5                         # fabricated, with headroom for LT/EQ/GT deposits
+BUILDER_PUBKEY = builder_pubkeys[0]  # the referenced builder
+WRONG_PUBKEY = builder_pubkeys[1]  # a different signer, for invalid signatures
+FINALIZED_EPOCH = 5  # fabricated, with headroom for LT/EQ/GT deposits
 EPOCHS_PAST_GENESIS = 10
-BIG = 10 ** 10                              # comfortable balance headroom above min_balance
+BIG = 10**10  # comfortable balance headroom above min_balance
 
 # Coverage dimensions serialized to dimensions.yaml (the authoritative solution).
 _DIMS = [
-    "builder_ref", "builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set",
-    "builder_version_valid", "builder_has_pending_withdrawal", "builder_has_pending_payment",
-    "builder_balance_to_min_balance", "builder_available_to_bid",
-    "builder_signature_valid", "self_build_signature_is_infinity", "amount_positive",
-    "bid_kzg_to_max", "bid_slot_to_state", "state_slot_past_genesis",
-    "bid_parent_block_hash_matches", "bid_parent_block_root_matches", "bid_prev_randao_matches",
+    "builder_ref",
+    "builder_deposit_to_finalized_epoch",
+    "builder_withdrawable_epoch_set",
+    "builder_version_valid",
+    "builder_has_pending_withdrawal",
+    "builder_has_pending_payment",
+    "builder_balance_to_min_balance",
+    "builder_available_to_bid",
+    "builder_signature_valid",
+    "self_build_signature_is_infinity",
+    "amount_positive",
+    "bid_kzg_to_max",
+    "bid_slot_to_state",
+    "state_slot_past_genesis",
+    "bid_parent_block_hash_matches",
+    "bid_parent_block_root_matches",
+    "bid_prev_randao_matches",
     # derived, recorded for validation convenience
-    "builder_active", "builder_can_cover_bid", "self_build", "outcome",
+    "builder_active",
+    "builder_can_cover_bid",
+    "self_build",
+    "outcome",
 ]
 
 
@@ -69,7 +83,9 @@ class ExecutionPayloadBidMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         state.builders = type(state.builders)()
-        state.slot = spec.Slot(EPOCHS_PAST_GENESIS * spec.SLOTS_PER_EPOCH) if past_genesis else spec.Slot(0)
+        state.slot = (
+            spec.Slot(EPOCHS_PAST_GENESIS * spec.SLOTS_PER_EPOCH) if past_genesis else spec.Slot(0)
+        )
         # Fabricate a finalized checkpoint with headroom so deposit vs finalized
         # can be LT/EQ/GT (even at the genesis slot, where it is pathological but
         # spec-accepted — is_active_builder reads finalized_checkpoint, not slot).
@@ -95,10 +111,18 @@ class ExecutionPayloadBidMaterializer(Materializer):
             min_balance = int(spec.MIN_DEPOSIT_AMOUNT) + pending_total
 
             dep = _s(sol, "builder_deposit_to_finalized_epoch")
-            deposit_epoch = {"LT": FINALIZED_EPOCH - 1, "EQ": FINALIZED_EPOCH, "GT": FINALIZED_EPOCH + 1}[dep]
+            deposit_epoch = {
+                "LT": FINALIZED_EPOCH - 1,
+                "EQ": FINALIZED_EPOCH,
+                "GT": FINALIZED_EPOCH + 1,
+            }[dep]
             wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
             withdrawable = spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH
-            version = spec.PAYLOAD_BUILDER_VERSION if _s(sol, "builder_version_valid") == "T" else spec.Uint8(1)
+            version = (
+                spec.PAYLOAD_BUILDER_VERSION
+                if _s(sol, "builder_version_valid") == "T"
+                else spec.Uint8(1)
+            )
 
             b2min = _s(sol, "builder_balance_to_min_balance")
             balance = {"LT": min_balance - 1, "EQ": min_balance, "GT": min_balance + BIG}[b2min]
@@ -170,7 +194,9 @@ class ExecutionPayloadBidMaterializer(Materializer):
         pr = _s(sol, "bid_parent_block_root_matches")
         parent_block_hash = pre.latest_block_hash if ph else spec.Hash32(b"\x02" * 32)
         prev_randao = (
-            spec.get_randao_mix(pre, spec.get_current_epoch(pre)) if rr else spec.Bytes32(b"\x06" * 32)
+            spec.get_randao_mix(pre, spec.get_current_epoch(pre))
+            if rr
+            else spec.Bytes32(b"\x06" * 32)
         )
         if pr == "T":
             parent_block_root = spec.get_block_root_at_slot(pre, spec.Slot(int(pre.slot) - 1))
@@ -188,7 +214,7 @@ class ExecutionPayloadBidMaterializer(Materializer):
             slot=spec.Slot(bid_slot),
             value=spec.Gwei(value),
             execution_payment=spec.Gwei(0),
-            blob_kzg_commitments=commitments,
+            blob_kzg_commitments=spec.BlobKZGCommitments(data=commitments),
             execution_requests_root=spec.Root(b"\x08" * 32),
         )
 
@@ -215,17 +241,19 @@ class ExecutionPayloadBidMaterializer(Materializer):
             accepted = False
             post = None
 
-        claimed = {name: (_s(sol, name) if not isinstance(getattr(sol, name), bool) else _b(sol, name))
-                   for name in _DIMS}
+        claimed = {
+            name: (_s(sol, name) if not isinstance(getattr(sol, name), bool) else _b(sol, name))
+            for name in _DIMS
+        }
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("execution_payload_bid", "ssz", signed.encode_bytes()),
         ]
         if accepted:
-            parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore
+            parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore[union-attr]
         meta = {
             "description": f"process_execution_payload_bid: {claimed['outcome']} "
-                           f"(self_build={int(bool(claimed['self_build']))})",
+            f"(self_build={int(bool(claimed['self_build']))})",
             "bls_setting": 1,
             "claimed": claimed,
         }
