@@ -4,6 +4,7 @@ Recovers every applicable coverage dimension from the decoded pre state and
 BuilderDepositRequest via the real spec predicates, recomputes the outcome, and
 Imports neither the materializer nor the model.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -27,8 +28,10 @@ if TYPE_CHECKING:
 _YAML = YAML(typ="safe")
 _ACCEPT = {"ADDED_NEW_BUILDER", "TOPPED_UP", "TOPPED_UP_AFTER_RESET"}
 
+
 def _tri(x: bool) -> str:
     return "T" if x else "F"
+
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     pubkeys = [b.pubkey for b in pre.builders]
@@ -36,7 +39,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     credential_profile = withdrawal_credentials_profile(spec, request.withdrawal_credentials)
     r: dict[str, Any] = {
         "withdrawal_credentials_profile": credential_profile,
-        "wc_is_builder_prefix": bool(spec.is_builder_withdrawal_credential(request.withdrawal_credentials)),
+        "wc_is_builder_prefix": bool(
+            spec.is_builder_withdrawal_credential(request.withdrawal_credentials)
+        ),
         "builder_pubkey_found": found,
         "builder_signature_valid": _tri(bool(spec.is_valid_builder_deposit_signature(request))),
         "amount_profile": deposit_amount_profile(spec, request.amount),
@@ -58,12 +63,15 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     if not r["wc_is_builder_prefix"]:
         outcome = "IGNORED_BAD_PREFIX"
     elif not found:
-        outcome = "ADDED_NEW_BUILDER" if r["builder_signature_valid"] == "T" else "IGNORED_BAD_SIGNATURE"
+        outcome = (
+            "ADDED_NEW_BUILDER" if r["builder_signature_valid"] == "T" else "IGNORED_BAD_SIGNATURE"
+        )
     else:
         outcome = "TOPPED_UP_AFTER_RESET" if r["reset_applies"] else "TOPPED_UP"
     r["outcome"] = outcome
     r["builder_credited"] = outcome in _ACCEPT
     return r
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

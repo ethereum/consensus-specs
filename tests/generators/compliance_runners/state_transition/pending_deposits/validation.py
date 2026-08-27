@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def _role(state: Any, deposit: Any, next_epoch: Any) -> str:
     pubkeys = [validator.pubkey for validator in state.validators]
     if deposit.pubkey not in pubkeys:
@@ -32,6 +33,7 @@ def _role(state: Any, deposit: Any, next_epoch: Any) -> str:
     if validator.exit_epoch < spec.FAR_FUTURE_EPOCH:
         return "EXITING"
     return "ACTIVE"
+
 
 def replay(pre: Any) -> dict[str, Any]:
     """Recover the handler's loop trace without invoking the handler itself."""
@@ -76,6 +78,7 @@ def replay(pre: Any) -> dict[str, Any]:
         "expected_queue": list(pre.pending_deposits[consumed:]) + postponed,
         "expected_churn": available - processed_amount if gate == "CHURN_LIMIT" else 0,
     }
+
 
 def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
     deposits = pre.pending_deposits
@@ -205,6 +208,7 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
         "churn_effect": "CHURN_RETAINED" if trace["gate"] == "CHURN_LIMIT" else "CHURN_CLEARED",
         "outcome": outcome,
     }
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
