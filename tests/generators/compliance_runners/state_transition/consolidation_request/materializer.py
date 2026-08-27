@@ -28,13 +28,25 @@ OTHER_ADDRESS = b"\x33" * 20
 _SRC_PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"\x02"}
 
 _DIMS = [
-    "same_source_target", "pending_consolidations_full", "sufficient_consolidation_churn",
-    "validator_pubkey_found", "validator_credential", "source_address_matches",
-    "validator_active", "validator_exiting", "validator_old_enough", "has_pending_partial_withdrawal",
-    "target_found", "target_credential", "target_active", "target_exiting",
-    "validator_has_execution_credential", "validator_has_compounding_credential",
+    "same_source_target",
+    "pending_consolidations_full",
+    "sufficient_consolidation_churn",
+    "validator_pubkey_found",
+    "validator_credential",
+    "source_address_matches",
+    "validator_active",
+    "validator_exiting",
+    "validator_old_enough",
+    "has_pending_partial_withdrawal",
+    "target_found",
+    "target_credential",
+    "target_active",
+    "target_exiting",
+    "validator_has_execution_credential",
+    "validator_has_compounding_credential",
     "target_has_compounding_credential",
-    "outcome", "state_effected",
+    "outcome",
+    "state_effected",
 ]
 
 
@@ -72,7 +84,8 @@ class ConsolidationRequestMaterializer(Materializer):
         spec = self.spec
         n = N_SUFFICIENT if _b(sol, "sufficient_consolidation_churn") else N_INSUFFICIENT
         pre = create_genesis_state(
-            spec, validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
+            spec,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         pre.slot = spec.Slot(CURRENT_EPOCH * spec.SLOTS_PER_EPOCH)
@@ -85,8 +98,10 @@ class ConsolidationRequestMaterializer(Materializer):
         # ---- source validator --------------------------------------------------
         if source_found:
             self._set_validator(
-                pre.validators[SOURCE_INDEX], _SRC_PREFIX[_s(sol, "validator_credential")],
-                _s(sol, "validator_active") == "T", _s(sol, "validator_exiting") == "T",
+                pre.validators[SOURCE_INDEX],
+                _SRC_PREFIX[_s(sol, "validator_credential")],
+                _s(sol, "validator_active") == "T",
+                _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
             )
             source_pubkey = pre.validators[SOURCE_INDEX].pubkey
@@ -100,8 +115,11 @@ class ConsolidationRequestMaterializer(Materializer):
             target_pubkey = source_pubkey
         elif _s(sol, "target_found") == "T":
             self._set_validator(
-                pre.validators[TARGET_INDEX], _SRC_PREFIX[_s(sol, "target_credential")],
-                _s(sol, "target_active") == "T", _s(sol, "target_exiting") == "T", True,
+                pre.validators[TARGET_INDEX],
+                _SRC_PREFIX[_s(sol, "target_credential")],
+                _s(sol, "target_active") == "T",
+                _s(sol, "target_exiting") == "T",
+                old_enough=True,
             )
             target_pubkey = pre.validators[TARGET_INDEX].pubkey
         else:
@@ -109,18 +127,25 @@ class ConsolidationRequestMaterializer(Materializer):
 
         # ---- source pending partial withdrawal ---------------------------------
         if source_found and _s(sol, "has_pending_partial_withdrawal") == "T":
-            pre.pending_partial_withdrawals.append(spec.PendingPartialWithdrawal(
-                validator_index=spec.ValidatorIndex(SOURCE_INDEX), amount=spec.Gwei(1),
-                withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
-            ))
+            pre.pending_partial_withdrawals.append(
+                spec.PendingPartialWithdrawal(
+                    validator_index=spec.ValidatorIndex(SOURCE_INDEX),
+                    amount=spec.Gwei(1),
+                    withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                )
+            )
 
         # ---- pending consolidations queue --------------------------------------
         if _b(sol, "pending_consolidations_full"):
-            pre.pending_consolidations = type(pre.pending_consolidations)(*[
-                spec.PendingConsolidation(source_index=spec.ValidatorIndex(2),
-                                          target_index=spec.ValidatorIndex(3))
-                for _ in range(int(spec.PENDING_CONSOLIDATIONS_LIMIT))
-            ])
+            pre.pending_consolidations = spec.PendingConsolidations(
+                data=[
+                    spec.PendingConsolidation(
+                        source_index=spec.ValidatorIndex(2),
+                        target_index=spec.ValidatorIndex(3),
+                    )
+                    for _ in range(int(spec.PENDING_CONSOLIDATIONS_LIMIT))
+                ]
+            )
 
         request = spec.ConsolidationRequest(
             source_address=spec.ExecutionAddress(source_address),
@@ -130,8 +155,13 @@ class ConsolidationRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_consolidation_request(post, request)  # never raises
 
-        claimed = {k: (_b(sol, k) if isinstance(getattr(sol, k), bool) else _s(sol, k)) for k in _DIMS}
-        meta = {"description": f"process_consolidation_request: {claimed['outcome']}", "claimed": claimed}
+        claimed = {
+            k: (_b(sol, k) if isinstance(getattr(sol, k), bool) else _s(sol, k)) for k in _DIMS
+        }
+        meta = {
+            "description": f"process_consolidation_request: {claimed['outcome']}",
+            "claimed": claimed,
+        }
         parts = [
             ("pre", "ssz", pre.encode_bytes()),
             ("consolidation_request", "ssz", request.encode_bytes()),
