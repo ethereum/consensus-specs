@@ -11,13 +11,13 @@ from __future__ import annotations
 from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from ...gen_base.gen_typing import TestCasePart
 from ..aspects_helpers.deposit_amount import deposit_amount_from_profile
 from ..aspects_helpers.withdrawal_credential import withdrawal_credentials_from_profile
-from ...gen_base.gen_typing import TestCasePart
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 REQUEST_PUBKEY = builder_pubkeys[0]
 WRONG_PUBKEY = builder_pubkeys[1]

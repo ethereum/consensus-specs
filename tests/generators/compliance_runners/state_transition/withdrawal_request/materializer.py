@@ -12,9 +12,9 @@ from typing import Any
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 from ...gen_base.gen_typing import TestCasePart
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 NUM_VALIDATORS = 64
 TARGET_INDEX = 0

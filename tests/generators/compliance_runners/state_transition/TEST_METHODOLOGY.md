@@ -6,10 +6,11 @@ and validating that each vector realizes its model solution. It is general — t
 same structure applies to state-transition, fork-choice, and execution-spec
 tests. The running example is the `process_execution_payload_bid` handler on the
 `gloas` `BeaconState` (the exploratory model in [`old/models/`](old/models)
-illustrates its solution space). It and [`builder_exit_request/`](builder_exit_request)
-are worked aspect-based instances that **share** realization aspects from a
-common [`aspects/`](aspects) directory; earlier single-model *smoke-profile*
-versions are archived under [`old2/`](old2).
+illustrates its solution space). It and
+[`builder_exit_request/`](builder_exit_request) are worked aspect-based
+instances that **share** realization aspects from a common [`aspects/`](aspects)
+directory; earlier single-model *smoke-profile* versions are archived under
+[`old2/`](old2).
 
 Central design principle:
 
@@ -53,6 +54,7 @@ comparisons extracted from the specification (`builder_found`, `builder_active`,
 
 - Boolean predicates should be exercised both true and false wherever they are
   applicable.
+
 - Comparisons should keep their boundary structure rather than collapsing
   immediately to a boolean. Model the comparison as `{LT, EQ, GT}` and derive
   the boolean by choosing which outcomes count as true:
@@ -116,14 +118,15 @@ an artifact the flattener can eliminate. In MiniZinc, *declare and constrain* it
 (`var T: d; constraint d <-> …;`) rather than *define* it (`var T: d = …;`):
 defined variables may be inlined away and then be absent from the solution — and
 so from the materialized coverage fingerprint. Derived coverage dimensions
-(outcome, effects, "check reached") in particular must be declared-and-constrained.
+(outcome, effects, "check reached") in particular must be
+declared-and-constrained.
 
 ### Handler aspects
 
 A **handler aspect** assembles shared realization aspects, binds their abstract
 roles to concrete state and operation fields, and adds genuinely
-handler-specific dimensions. For `process_execution_payload_bid` it might bind an
-entity-reference aspect to `bid.builder_index` / `state.builders`, a
+handler-specific dimensions. For `process_execution_payload_bid` it might bind
+an entity-reference aspect to `bid.builder_index` / `state.builders`, a
 builder-lifecycle and a funds aspect to the referenced builder, and a
 signed-message aspect to the bid — plus local dimensions for self-build, KZG
 count, slot, and parent fields. It also states inter-aspect applicability
@@ -141,12 +144,13 @@ every handler that uses it.
 
 When a handler binds an aspect to **more than one role** (e.g. the source and
 target validators of a consolidation), the aspect is written as a
-*parameterized* predicate over its dimension vars — `validator_lifecycle_ok(active,
-exiting, applicable)`, `validator_credential_ok(kind, applicable)` — plus
-derived-value functions (`cred_has_execution`, …). The handler declares
-role-prefixed vars (`validator_active` / `target_active`, …) and applies the
-predicate once per role, so both roles reuse the exact same relation. Single-role
-aspects may remain plain flat declarations.
+*parameterized* predicate over its dimension vars —
+`validator_lifecycle_ok(active, exiting, applicable)`,
+`validator_credential_ok(kind, applicable)` — plus derived-value functions
+(`cred_has_execution`, …). The handler declares role-prefixed vars
+(`validator_active` / `target_active`, …) and applies the predicate once per
+role, so both roles reuse the exact same relation. Single-role aspects may
+remain plain flat declarations.
 
 ### Coverage aspects
 
@@ -287,28 +291,30 @@ it; distinguish this from a no-op whose `post` is present but unchanged.
 **Global coverage audit.** After per-case checks, evaluate the whole suite
 against its coverage aspects. The run must fail when a declared value or
 requested combination is missing, an outcome/trace/effect obligation is
-uncovered, duplicates displace a required assignment, or a supposedly satisfiable
-obligation has no solution. Per-case correctness does not imply suite coverage.
+uncovered, duplicates displace a required assignment, or a supposedly
+satisfiable obligation has no solution. Per-case correctness does not imply
+suite coverage.
 
 **Implementation and code coverage.** Execute validated vectors against the
 implementation and any independent oracles. Source and branch coverage are
 diagnostic: gaps feed back into predicate extraction, aspect definitions,
-bindings, or coverage formulas — they are not themselves the selection criterion.
+bindings, or coverage formulas — they are not themselves the selection
+criterion.
 
 ## Pipeline
 
 1. **Predicate extraction** — identify predicates, comparisons, and hidden
    boundary relations in the specification; record stable spec anchors.
-1. **Aspect modelling** — define reusable realization relations between coverage
+2. **Aspect modelling** — define reusable realization relations between coverage
    and materialization dimensions.
-1. **Handler assembly** — bind shared aspects to a handler's state and operation;
-   add handler-local relations.
-1. **Coverage selection** — apply input, outcome, trace, and effect coverage
+3. **Handler assembly** — bind shared aspects to a handler's state and
+   operation; add handler-local relations.
+4. **Coverage selection** — apply input, outcome, trace, and effect coverage
    aspects at the chosen profile.
-1. **Solving** — enumerate satisfying coverage assignments.
-1. **Materialization** — build vectors without changing their assignments.
-1. **Validation** — independently recover dimensions, outcomes, traces, and
+5. **Solving** — enumerate satisfying coverage assignments.
+6. **Materialization** — build vectors without changing their assignments.
+7. **Validation** — independently recover dimensions, outcomes, traces, and
    effects and compare them to the solutions.
-1. **Coverage audit** — prove the suite satisfies its declared obligations.
-1. **Implementation execution** — run the vectors and use code coverage and
+8. **Coverage audit** — prove the suite satisfies its declared obligations.
+9. **Implementation execution** — run the vectors and use code coverage and
    external oracles as feedback.
