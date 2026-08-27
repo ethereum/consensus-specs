@@ -18,6 +18,8 @@ var bool: slots_match;
 var bool: proposers_match;
 var bool: headers_different;
 
+constraint (not slots_match \/ not proposers_match) -> headers_different;
+
 var Dim: signature_1_valid;
 var Dim: signature_2_valid;
 constraint signed_message_ok(signature_1_valid, true);
