@@ -7,14 +7,14 @@ materializer nor the model.
 """
 from __future__ import annotations
 
-from ..validation import check_dimensions, decode
-
 from pathlib import Path
 from typing import Any
 
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+
+from ..validation import check_dimensions, decode
 
 _YAML = YAML(typ="safe")
 _ACCEPT = {"SWITCHED_TO_COMPOUNDING", "CONSOLIDATED"}
