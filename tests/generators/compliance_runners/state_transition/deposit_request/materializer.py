@@ -6,6 +6,7 @@ copied verbatim, so validation's substantive check is output correctness.
 
 Spec: specs/electra/beacon-chain.md process_deposit_request (inherited by gloas).
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -52,7 +53,8 @@ class DepositRequestMaterializer(Materializer):
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = create_genesis_state(
-            spec, validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
+            spec,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         key_index = 0 if _b(sol, "pubkey_is_existing_validator") else NUM_VALIDATORS
@@ -86,7 +88,9 @@ class DepositRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_deposit_request(post, request)  # never raises
 
-        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
+        claimed = {
+            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
+        }
         meta = {"description": "process_deposit_request", "claimed": claimed}
         parts = [
             ("pre", "ssz", pre.encode_bytes()),

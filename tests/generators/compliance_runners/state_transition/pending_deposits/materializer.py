@@ -143,6 +143,10 @@ class PendingDepositsMaterializer(Materializer):
             name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
             for name in _DIMS
         }
-        meta = {"description": f"process_pending_deposits: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        meta = {
+            "description": f"process_pending_deposits: {claimed['outcome']}",
+            "bls_setting": 1,
+            "claimed": claimed,
+        }
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts

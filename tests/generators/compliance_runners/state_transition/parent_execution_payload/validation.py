@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def _payment_dimensions(pre: Any) -> tuple[str, bool]:
     parent_bid = pre.latest_execution_payload_bid
     parent_slot = int(parent_bid.slot)
@@ -33,6 +34,7 @@ def _payment_dimensions(pre: Any) -> tuple[str, bool]:
         settlement = "EVICTED"
         nonzero = int(parent_bid.value) > 0
     return settlement, nonzero
+
 
 def recover(pre: Any, block: Any) -> dict[str, Any]:
     """Recover input, trace, outcome, and effect dimensions from a vector."""
@@ -108,6 +110,7 @@ def recover(pre: Any, block: Any) -> dict[str, Any]:
         "payment_withdrawal_appended": applied and value_nonzero,
         "payment_slot_cleared": applied and settlement in {"CURRENT_EPOCH", "PREVIOUS_EPOCH"},
     }
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

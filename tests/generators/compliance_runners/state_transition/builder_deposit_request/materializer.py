@@ -6,6 +6,7 @@ the solution. The operation never raises, so `post` is always present.
 
 Spec: specs/gloas/beacon-chain.md process_builder_deposit_request.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -29,10 +30,17 @@ WRONG_PUBKEY = builder_pubkeys[1]
 EPOCHS_PAST_GENESIS = 10
 
 _DIMS = [
-    "withdrawal_credentials_profile", "wc_is_builder_prefix", "builder_pubkey_found",
-    "builder_signature_valid", "amount_profile", "amount_nonzero",
-    "builder_withdrawable_epoch_set", "builder_balance_zero",
-    "reset_applies", "builder_credited", "outcome",
+    "withdrawal_credentials_profile",
+    "wc_is_builder_prefix",
+    "builder_pubkey_found",
+    "builder_signature_valid",
+    "amount_profile",
+    "amount_nonzero",
+    "builder_withdrawable_epoch_set",
+    "builder_balance_zero",
+    "reset_applies",
+    "builder_credited",
+    "outcome",
 ]
 
 
@@ -61,7 +69,8 @@ class BuilderDepositRequestMaterializer(Materializer):
     def _base_state(self) -> Any:
         spec = self.spec
         state = create_genesis_state(
-            spec, validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
+            spec,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         state.builders = type(state.builders)()
@@ -109,6 +118,12 @@ class BuilderDepositRequestMaterializer(Materializer):
             ("builder_deposit_request", "ssz", request.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),
         ]
-        claimed = {n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS}
-        meta = {"description": f"process_builder_deposit_request: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        claimed = {
+            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
+        }
+        meta = {
+            "description": f"process_builder_deposit_request: {claimed['outcome']}",
+            "bls_setting": 1,
+            "claimed": claimed,
+        }
         return meta, parts

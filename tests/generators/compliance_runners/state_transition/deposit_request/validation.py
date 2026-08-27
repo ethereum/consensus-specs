@@ -5,6 +5,7 @@ substantive check is OUTPUT correctness: the appended PendingDeposit matches the
 request (with slot = pre.slot), the queue grew by one, and the start index was
 set iff it was unset. Imports neither the materializer nor the model.
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     amount = int(request.amount)
     return {
@@ -47,6 +49,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         ),
         "pubkey_is_existing_validator": request.pubkey in [v.pubkey for v in pre.validators],
     }
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

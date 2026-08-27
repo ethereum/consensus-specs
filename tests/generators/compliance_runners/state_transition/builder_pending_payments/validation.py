@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 Y = YAML(typ="safe")
 
+
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     spe = int(spec.SLOTS_PER_EPOCH)
