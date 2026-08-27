@@ -8,6 +8,7 @@ Imports neither the materializer nor the model.
 Usage:
     uv run python -m tests.generators.compliance_runners.state_transition.execution_payload_bid.validation [REFTESTS_DIR]
 """
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -24,11 +25,14 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def _cmp(a: int, b: int) -> str:
     return "LT" if a < b else ("EQ" if a == b else "GT")
 
+
 def _tri(x: bool) -> str:
     return "T" if x else "F"
+
 
 def recover(pre: Any, signed: Any) -> dict[str, Any]:
     bid = signed.message
@@ -81,24 +85,38 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         r["builder_withdrawable_epoch_set"] = _tri(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH)
         r["builder_version_valid"] = _tri(b.version == spec.PAYLOAD_BUILDER_VERSION)
         r["builder_has_pending_withdrawal"] = _tri(
-            any(w.builder_index == idx and int(w.amount) > 0 for w in pre.builder_pending_withdrawals)
+            any(
+                w.builder_index == idx and int(w.amount) > 0
+                for w in pre.builder_pending_withdrawals
+            )
         )
         r["builder_has_pending_payment"] = _tri(
-            any(p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
-                for p in pre.builder_pending_payments)
+            any(
+                p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
+                for p in pre.builder_pending_payments
+            )
         )
         r["builder_balance_to_min_balance"] = _cmp(int(b.balance), min_balance)
         r["builder_available_to_bid"] = (
-            _cmp(int(b.balance) - min_balance, int(bid.value)) if int(b.balance) >= min_balance else "NA"
+            _cmp(int(b.balance) - min_balance, int(bid.value))
+            if int(b.balance) >= min_balance
+            else "NA"
         )
-        r["builder_signature_valid"] = _tri(spec.verify_execution_payload_bid_signature(pre, signed))
+        r["builder_signature_valid"] = _tri(
+            spec.verify_execution_payload_bid_signature(pre, signed)
+        )
         r["builder_active"] = bool(spec.is_active_builder(pre, idx))
         r["builder_can_cover_bid"] = bool(spec.can_builder_cover_bid(pre, idx, bid.value))
     else:
         for name in (
-            "builder_deposit_to_finalized_epoch", "builder_withdrawable_epoch_set",
-            "builder_version_valid", "builder_has_pending_withdrawal", "builder_has_pending_payment",
-            "builder_balance_to_min_balance", "builder_available_to_bid", "builder_signature_valid",
+            "builder_deposit_to_finalized_epoch",
+            "builder_withdrawable_epoch_set",
+            "builder_version_valid",
+            "builder_has_pending_withdrawal",
+            "builder_has_pending_payment",
+            "builder_balance_to_min_balance",
+            "builder_available_to_bid",
+            "builder_signature_valid",
         ):
             r[name] = "NA"
         r["builder_active"] = False
@@ -106,6 +124,7 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
 
     r["outcome"] = _derive_outcome(r)
     return r
+
 
 def _derive_outcome(r: dict[str, Any]) -> str:
     def common() -> str:
@@ -140,6 +159,7 @@ def _derive_outcome(r: dict[str, Any]) -> str:
     if r["builder_signature_valid"] != "T":
         return "REJECT_BAD_SIGNATURE"
     return common()
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)

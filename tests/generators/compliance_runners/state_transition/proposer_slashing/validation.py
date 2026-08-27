@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 
+
 def recover(pre: Any, slashing: Any) -> dict[str, Any]:
     h1, h2 = slashing.signed_header_1, slashing.signed_header_2
     m1, m2 = h1.message, h2.message
@@ -96,6 +97,7 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         state_effected=outcome.startswith("ACCEPT_"),
     )
     return r
+
 
 def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
