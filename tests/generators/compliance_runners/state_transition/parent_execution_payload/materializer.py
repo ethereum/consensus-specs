@@ -68,6 +68,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
 
     def _request_list(
         self,
+        container_type: Any,
         request_type: Any,
         within_cap: bool,
         cap: int,
@@ -76,35 +77,37 @@ class ParentExecutionPayloadMaterializer(Materializer):
         count = 1 if dispatch_nonempty else 0
         if not within_cap:
             count = cap + 1
-        return self.spec.ProgressiveList[request_type]([request_type()] * count)
+        return container_type(data=[request_type()] * count)
 
     def _requests(self, solution: Any) -> Any:
         spec = self.spec
         deposits_nonempty = _b(solution, "deposits_nonempty")
         deposits_count = DISPATCH_DEPOSITS_COUNT if deposits_nonempty else 0
         return spec.ExecutionRequests(
-            deposits=spec.ProgressiveList[spec.DepositRequest](
-                [spec.DepositRequest()] * deposits_count
-            ),
+            deposits=spec.DepositRequests(data=[spec.DepositRequest()] * deposits_count),
             withdrawals=self._request_list(
+                spec.WithdrawalRequests,
                 spec.WithdrawalRequest,
                 _b(solution, "withdrawals_within_cap"),
                 spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             consolidations=self._request_list(
+                spec.ConsolidationRequests,
                 spec.ConsolidationRequest,
                 _b(solution, "consolidations_within_cap"),
                 spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             builder_deposits=self._request_list(
+                spec.BuilderDepositRequests,
                 spec.BuilderDepositRequest,
                 _b(solution, "builder_deposits_within_cap"),
                 spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             builder_exits=self._request_list(
+                spec.BuilderExitRequests,
                 spec.BuilderExitRequest,
                 _b(solution, "builder_exits_within_cap"),
                 spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD,
@@ -193,5 +196,9 @@ class ParentExecutionPayloadMaterializer(Materializer):
         ]
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
-        meta = {"description": f"process_parent_execution_payload: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
+        meta = {
+            "description": f"process_parent_execution_payload: {claimed['outcome']}",
+            "bls_setting": 1,
+            "claimed": claimed,
+        }
         return meta, parts
