@@ -6,14 +6,17 @@ recomputes the outcome. Imports neither the materializer nor the model.
 """
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.validation import check_dimensions, decode
 
-from ..validation import check_dimensions, decode
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.generators.compliance_runners.state_transition.validation import Check
 
 _YAML = YAML(typ="safe")
 _ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}

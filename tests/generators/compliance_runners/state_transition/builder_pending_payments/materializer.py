@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+
+if TYPE_CHECKING:
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 _DIMS = [
     "previous_epoch_occupancy",

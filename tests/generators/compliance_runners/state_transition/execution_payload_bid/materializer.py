@@ -14,14 +14,15 @@ Usage:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from ...gen_base.gen_typing import TestCasePart
+if TYPE_CHECKING:
+    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 BUILDER_PUBKEY = builder_pubkeys[0]  # the referenced builder
 WRONG_PUBKEY = builder_pubkeys[1]  # a different signer, for invalid signatures
