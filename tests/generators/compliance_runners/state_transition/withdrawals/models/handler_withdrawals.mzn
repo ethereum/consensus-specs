@@ -6,6 +6,8 @@
 %
 % Spec: specs/gloas/beacon-chain.md process_withdrawals.
 
+int: MAX_WITHDRAWALS_PER_PAYLOAD = 4;
+
 enum Outcome = {
   PARENT_EMPTY_NOOP,
   FULL_NO_WITHDRAWALS,
@@ -28,6 +30,8 @@ var int: active_sources = bool2int(builder_pending_nonempty)
                         + bool2int(pending_partial_nonempty)
                         + bool2int(builder_sweep_nonempty)
                         + bool2int(validator_sweep_nonempty);
+
+constraint active_sources >= MAX_WITHDRAWALS_PER_PAYLOAD -> withdrawals_over_limit;
 
 % Builder pending, pending partials, and builder sweep each reserve the final
 % slot; a full payload therefore always contains a validator-sweep withdrawal.
