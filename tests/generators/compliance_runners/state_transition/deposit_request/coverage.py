@@ -14,7 +14,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
-from generators.compliance_runners.state_transition.aspect_coverage import (
+from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
