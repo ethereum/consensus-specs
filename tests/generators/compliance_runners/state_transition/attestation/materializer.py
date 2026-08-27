@@ -116,7 +116,7 @@ class AttestationMaterializer(Materializer):
             # make the preceding committee-attester access fail, changing this
             # intended length-only failure into an earlier failure.
             aggregation_bits = list(attestation.aggregation_bits) + [False]
-            attestation.aggregation_bits = spec.AggregationBits(aggregation_bits)
+            attestation.aggregation_bits = spec.AggregationBits(data=aggregation_bits)
         # These are pre-state properties. Materialize them independently of
         # whether a later gate permits the handler to consume the attestation.
         if same_slot and not _b(sol, "sets_new_participation_flag"):
@@ -142,15 +142,24 @@ class AttestationMaterializer(Materializer):
         ):
             sign_attestation(spec, pre, attestation)
         post = pre.copy()
+        parent_slot = pre.latest_block_header.slot
         try:
-            spec.process_attestation(post, attestation)
+            spec.process_attestation(post, attestation, parent_slot)
         except (AssertionError, IndexError):
             post = None
         claimed = {
             name: (_b(sol, name) if name != "outcome" else str(sol.outcome)) for name in _DIMS
         }
-        meta = {"description": f"process_attestation: {claimed['outcome']}", "bls_setting": 1, "claimed": claimed}
-        parts: list[TestCasePart] = [("pre", "ssz", pre.encode_bytes()), ("attestation", "ssz", attestation.encode_bytes())]
+        meta = {
+            "description": f"process_attestation: {claimed['outcome']}",
+            "bls_setting": 1,
+            "parent_slot": int(parent_slot),
+            "claimed": claimed,
+        }
+        parts: list[TestCasePart] = [
+            ("pre", "ssz", pre.encode_bytes()),
+            ("attestation", "ssz", attestation.encode_bytes()),
+        ]
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
         return meta, parts
