@@ -23,6 +23,8 @@ active validators who voluntarily generate and submit execution proofs without
 direct protocol-level compensation. They provide a public good by producing
 independently verifiable execution proofs during the optional proof phase.
 
+*Note*: The prover role is optional for clients to implement.
+
 *Note*: Provers are a transitional mechanism. In future mandatory proof forks,
 builders will be required to produce and gossip execution proofs as part of
 their block production duties, and the prover role will be deprecated.

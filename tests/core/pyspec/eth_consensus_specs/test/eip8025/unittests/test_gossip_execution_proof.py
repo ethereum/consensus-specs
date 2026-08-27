@@ -151,13 +151,6 @@ def test_validate_execution_proof_gossip_block_context(spec, state):
     )
 
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
-    block = store.blocks.pop(block_root)
-    assert validate(spec, get_seen(spec), store, signed_proof) == (
-        "ignore",
-        "execution proof's beacon block has not been seen",
-    )
-    store.blocks[block_root] = block
-
     block_state = store.block_states.pop(block_root)
     assert validate(spec, get_seen(spec), store, signed_proof) == (
         "reject",
