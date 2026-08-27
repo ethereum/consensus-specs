@@ -462,9 +462,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = PendingDeposits(
-        data=state.pending_deposits[next_deposit_index:] + deposits_to_postpone
-    )
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:

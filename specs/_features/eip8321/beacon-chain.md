@@ -283,7 +283,7 @@ entry per validator.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -379,9 +379,7 @@ def process_pending_randao_commitments(state: BeaconState) -> None:
         state.randao_commitments[index] = pending_commitment.commitment
         next_pending_commitment += 1
 
-    state.pending_randao_commitments = PendingRandaoCommitments(
-        data=state.pending_randao_commitments[next_pending_commitment:]
-    )
+    state.pending_randao_commitments = state.pending_randao_commitments[next_pending_commitment:]
 ```
 
 ### Block processing

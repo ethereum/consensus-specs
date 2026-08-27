@@ -255,14 +255,17 @@ class ExecutionPayloadHeader(Container):
 
 ```python
 def is_merge_transition_complete(state: BeaconState) -> bool:
-    return state.latest_execution_payload_header != ExecutionPayloadHeader()
+    return state.latest_execution_payload_header != ExecutionPayloadHeader.empty()
 ```
 
 #### `is_merge_transition_block`
 
 ```python
 def is_merge_transition_block(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return not is_merge_transition_complete(state) and body.execution_payload != ExecutionPayload()
+    return (
+        not is_merge_transition_complete(state)
+        and body.execution_payload != ExecutionPayload.empty()
+    )
 ```
 
 #### `is_execution_enabled`
@@ -320,7 +323,7 @@ def slash_validator(
     epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
-    validator.slashed = True
+    validator.slashed = Boolean(True)
     validator.withdrawable_epoch = max(
         validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
     )
@@ -480,7 +483,7 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        sum(state.slashings)
+        Gwei(sum(state.slashings))
         # [Modified in Bellatrix]
         * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
         total_balance,

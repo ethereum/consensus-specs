@@ -305,7 +305,7 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
 
 ```python
 def is_next_sync_committee_known(store: LightClientStore) -> bool:
-    return store.next_sync_committee != SyncCommittee()
+    return store.next_sync_committee != SyncCommittee.empty()
 ```
 
 ### `get_safety_threshold`
@@ -376,11 +376,11 @@ def initialize_light_client_store(
     return LightClientStore(
         finalized_header=bootstrap.header,
         current_sync_committee=bootstrap.current_sync_committee,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         best_valid_update=None,
         optimistic_header=bootstrap.header,
-        previous_max_active_participants=0,
-        current_max_active_participants=0,
+        previous_max_active_participants=Uint64(0),
+        current_max_active_participants=Uint64(0),
     )
 ```
 
@@ -438,10 +438,10 @@ def validate_light_client_update(
     # to match the finalized checkpoint root saved in the state of `attested_header`.
     # Note that the genesis finalized checkpoint root is represented as a zero hash.
     if not is_finality_update(update):
-        assert update.finalized_header == LightClientHeader()
+        assert update.finalized_header == LightClientHeader.empty()
     else:
         if update_finalized_slot == GENESIS_SLOT:
-            assert update.finalized_header == LightClientHeader()
+            assert update.finalized_header == LightClientHeader.empty()
             finalized_root = Bytes32()
         else:
             assert is_valid_light_client_header(update.finalized_header)
@@ -456,7 +456,7 @@ def validate_light_client_update(
     # Verify that the `next_sync_committee`, if present, actually is the next sync committee saved in the
     # state of the `attested_header`
     if not is_sync_committee_update(update):
-        assert update.next_sync_committee == SyncCommittee()
+        assert update.next_sync_committee == SyncCommittee.empty()
     else:
         if update_attested_period == store_period and is_next_sync_committee_known(store):
             assert update.next_sync_committee == store.next_sync_committee
@@ -503,7 +503,7 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
         store.previous_max_active_participants = store.current_max_active_participants
-        store.current_max_active_participants = 0
+        store.current_max_active_participants = Uint64(0)
     if update.finalized_header.beacon.slot > store.finalized_header.beacon.slot:
         store.finalized_header = update.finalized_header
         if store.finalized_header.beacon.slot > store.optimistic_header.beacon.slot:
@@ -591,7 +591,7 @@ def process_light_client_finality_update(
 ) -> None:
     update = LightClientUpdate(
         attested_header=finality_update.attested_header,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=finality_update.finalized_header,
         finality_branch=finality_update.finality_branch,
@@ -612,9 +612,9 @@ def process_light_client_optimistic_update(
 ) -> None:
     update = LightClientUpdate(
         attested_header=optimistic_update.attested_header,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         next_sync_committee_branch=NextSyncCommitteeBranch(),
-        finalized_header=LightClientHeader(),
+        finalized_header=LightClientHeader.empty(),
         finality_branch=FinalityBranch(),
         sync_aggregate=optimistic_update.sync_aggregate,
         signature_slot=optimistic_update.signature_slot,

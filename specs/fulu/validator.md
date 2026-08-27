@@ -251,7 +251,7 @@ def get_data_column_sidecars(
             column_proofs.append(proofs[column_index])
         sidecars.append(
             DataColumnSidecar(
-                index=column_index,
+                index=ColumnIndex(column_index),
                 column=column_cells,
                 kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,

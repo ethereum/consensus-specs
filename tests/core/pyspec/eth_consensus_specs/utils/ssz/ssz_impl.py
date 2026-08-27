@@ -12,11 +12,11 @@ def serialize(obj: SSZType) -> bytes:
     return ssz_serialize(obj)
 
 
-def ssz_deserialize(typ: type[SSZType], data: bytes) -> SSZType:
+def ssz_deserialize[V: SSZType](typ: type[V], data: bytes) -> V:
     return typ.decode_bytes(data)
 
 
-def deserialize(typ: type[SSZType], data: bytes) -> SSZType:
+def deserialize[V: SSZType](typ: type[V], data: bytes) -> V:
     return ssz_deserialize(typ, data)
 
 

@@ -237,7 +237,7 @@ def get_signed_inclusion_list(
         slot=slot,
         validator_index=validator_index,
         dependent_root=get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot)),
-        transactions=inclusion_list_transactions,
+        transactions=Transactions(data=inclusion_list_transactions),
     )
     signature = get_inclusion_list_signature(state, inclusion_list, privkey)
     return SignedInclusionList(message=inclusion_list, signature=signature)

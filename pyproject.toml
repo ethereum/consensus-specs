@@ -13,7 +13,7 @@ requires-python = ">=3.12, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "blake3==1.0.9",
-  "eth-ssz-specs==0.0.1.dev2",
+  "eth-ssz-specs @ git+https://github.com/leanEthereum/ssz-specs@3b47ff49c6766c4c0c9002c72e62aa3247c150c0",
   "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
@@ -45,8 +45,8 @@ lint = [
   "mdformat-gfm==1.0.0",
   "mdformat-toc==0.5.0",
   "mdformat==1.0.0",
-  "mypy==2.3.1",
   "ruff-md==0.16.2",
+  "ty==0.0.75",
 ]
 docs = [
   "mdx-truly-sane-lists==1.3",
@@ -75,14 +75,6 @@ specs = ["**/*.md"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-
-[tool.mypy]
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-warn_unused_ignores = true
-warn_unused_configs = true
-warn_redundant_casts = true
-ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
@@ -148,7 +140,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/*.md" = [
-  "F821", # https://docs.astral.sh/ruff/rules/undefined-name/
+  "F821",   # https://docs.astral.sh/ruff/rules/undefined-name/
+  "FBT003", # https://docs.astral.sh/ruff/rules/boolean-positional-value-in-call/
 ]
 "!specs/**" = [
   "ARG", # https://docs.astral.sh/ruff/rules/#flake8-unused-arguments-arg

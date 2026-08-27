@@ -122,7 +122,7 @@ class Store:
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock]
     block_states: Dict[Root, BeaconState]
-    block_timeliness: Dict[Root, list[Boolean]]
+    block_timeliness: Dict[Root, list[bool]]
     checkpoint_states: Dict[Checkpoint, BeaconState]
     latest_messages: Dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: Dict[Root, Checkpoint]
@@ -130,7 +130,7 @@ class Store:
     payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: Dict[Root, Boolean]
+    payload_inclusion_list_satisfaction: Dict[Root, bool]
 ```
 
 ### Modified `get_forkchoice_store`
