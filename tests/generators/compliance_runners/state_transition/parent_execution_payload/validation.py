@@ -7,12 +7,12 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
-from generators.compliance_runners.state_transition.validation import check_dimensions, decode
+from tests.generators.compliance_runners.state_transition.validation import check_dimensions, decode
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from generators.compliance_runners.state_transition.validation import Check
+    from tests.generators.compliance_runners.state_transition.validation import Check
 
 _YAML = YAML(typ="safe")
 

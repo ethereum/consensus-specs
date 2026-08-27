@@ -17,7 +17,7 @@ from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
-    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 REQUEST_PUBKEY = builder_pubkeys[0]
 BUILDER_ADDRESS = b"\x22" * 20

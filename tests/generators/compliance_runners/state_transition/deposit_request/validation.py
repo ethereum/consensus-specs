@@ -13,13 +13,13 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
-from generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
+from tests.generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
     deposit_amount_profile,
 )
-from generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
     withdrawal_credentials_profile,
 )
-from generators.compliance_runners.state_transition.validation import check_dimensions, decode
+from tests.generators.compliance_runners.state_transition.validation import check_dimensions, decode
 
 if TYPE_CHECKING:
     from pathlib import Path
