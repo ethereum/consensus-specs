@@ -250,10 +250,12 @@ def test_process_builder_pending_payments_queue_rotation(spec, state):
 
     # Fill both epochs of the queue with test data
     test_weight = 12345
-    state.builder_pending_payments = [
-        create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
-        for i in range(2 * spec.SLOTS_PER_EPOCH)
-    ]
+    state.builder_pending_payments = spec.BuilderPendingPayments(
+        data=[
+            create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
+            for i in range(2 * spec.SLOTS_PER_EPOCH)
+        ]
+    )
 
     # Store the second epoch data for comparison
     second_epoch_payments = [

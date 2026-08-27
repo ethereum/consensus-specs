@@ -39,7 +39,7 @@ def build_unaggregated_attestation(spec, state, beacon_block_root):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )

@@ -49,7 +49,7 @@ def test_preregistration_admitted_after_epoch_sweep(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
     set_parent_block_full(spec, state)
     state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(requests)

@@ -9,7 +9,9 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitList, ProgressiveByteList, ProgressiveContainer, ProgressiveList
+from ssz.bitfields import ProgressiveBitList
+from ssz.collections import ProgressiveList
+from ssz.container import active_fields, ProgressiveContainer
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
 """

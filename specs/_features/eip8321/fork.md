@@ -91,7 +91,9 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8321]
-        randao_commitments=RandaoCommitments([UNSET_RANDAO_COMMITMENT for _ in pre.validators]),
+        randao_commitments=RandaoCommitments(
+            data=[UNSET_RANDAO_COMMITMENT for _ in pre.validators]
+        ),
         # [New in EIP8321]
         pending_randao_commitments=PendingRandaoCommitments(),
     )

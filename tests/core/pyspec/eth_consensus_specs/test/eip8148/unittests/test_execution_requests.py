@@ -10,14 +10,12 @@ from eth_consensus_specs.test.context import (
 @single_phase
 def test_requests_serialization_round_trip__sweep_thresholds(spec):
     execution_requests = spec.ExecutionRequests(
-        sweep_thresholds=spec.SweepThresholdRequests(
-            [
-                spec.SetSweepThresholdRequest(
-                    source_address=spec.ExecutionAddress(b"\x11" * 20),
-                    validator_pubkey=spec.BLSPubkey(b"\x22" * 48),
-                    threshold=spec.Gwei(64_000_000_000),
-                )
-            ]
+        sweep_thresholds=spec.SweepThresholdRequests.of(
+            spec.SetSweepThresholdRequest(
+                source_address=spec.ExecutionAddress(b"\x11" * 20),
+                validator_pubkey=spec.BLSPubkey(b"\x22" * 48),
+                threshold=spec.Gwei(64_000_000_000),
+            )
         ),
     )
 

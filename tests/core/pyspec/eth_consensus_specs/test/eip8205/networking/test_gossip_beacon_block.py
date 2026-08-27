@@ -40,7 +40,9 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
     # Treat the parent as empty so no parent payload envelope is required for validity
     block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
     block.body.parent_execution_requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests(*([spec.PreregistrationRequest()] * count))
+        preregistrations=spec.PreregistrationRequests(
+            data=([spec.PreregistrationRequest()] * count)
+        )
     )
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
@@ -73,7 +75,7 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
 @spec_state_test
 def test_gossip_beacon_block__valid_max_parent_preregistration_requests(spec, state):
     """A block with the maximum number of parent preregistration requests is valid."""
-    count = int(spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD)
+    count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
     yield from _assert_parent_preregistrations_gossip(spec, state, count, "valid")
 
 
@@ -81,7 +83,7 @@ def test_gossip_beacon_block__valid_max_parent_preregistration_requests(spec, st
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_parent_preregistration_requests(spec, state):
     """A block whose parent execution requests exceed the preregistration limit is rejected."""
-    count = int(spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD) + 1
+    count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1
     yield from _assert_parent_preregistrations_gossip(
         spec, state, count, "reject", "too many validator preregistration requests"
     )

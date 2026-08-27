@@ -504,7 +504,7 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     """
     # fill in historical_roots with non-empty values
     pre_historical_roots = [b"\x56" * 32]
-    state.historical_roots = pre_historical_roots
+    state.historical_roots = spec.HistoricalRoots(data=pre_historical_roots)
 
     transition_until_fork(spec, state, fork_epoch)
     # check pre state
@@ -527,4 +527,4 @@ def test_non_empty_historical_roots(state, fork_epoch, spec, post_spec, pre_tag,
     yield "post", state
 
     assert len(state.historical_roots) > 0
-    assert state.historical_roots == pre_historical_roots
+    assert list(state.historical_roots) == list(pre_historical_roots)

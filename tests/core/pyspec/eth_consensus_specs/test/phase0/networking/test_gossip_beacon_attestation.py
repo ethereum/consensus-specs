@@ -76,7 +76,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -274,7 +274,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -348,7 +348,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -418,7 +418,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -490,7 +490,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -630,7 +630,7 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
         multi_bits = [False] * len(committee)
         multi_bits[0] = True
         multi_bits[1] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*multi_bits)
+        attestation.aggregation_bits = spec.AggregationBits(data=multi_bits)
 
     yield get_filename(attestation), attestation
 
@@ -696,7 +696,7 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     wrong_size = len(committee) + 5
     wrong_bits = [False] * wrong_size
     wrong_bits[0] = True  # Single bit set (unaggregated)
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*wrong_bits)
+    attestation.aggregation_bits = spec.AggregationBits(data=wrong_bits)
 
     yield get_filename(attestation), attestation
 
@@ -766,7 +766,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -863,7 +863,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -951,7 +951,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )
@@ -1024,7 +1024,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     # Invalid signature (zeros)
     attestation.signature = spec.BLSSignature(b"\x00" * 96)
 
@@ -1097,7 +1097,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         # Sign with the modified data
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
@@ -1187,7 +1187,7 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
-        attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
         attestation.signature = spec.get_attestation_signature(
             state, attestation.data, privkeys[committee[0]]
         )

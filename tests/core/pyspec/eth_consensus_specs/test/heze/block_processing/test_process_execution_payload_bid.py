@@ -31,7 +31,7 @@ def test_process_execution_payload_bid_valid_builder_with_non_default_inclusion_
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
     assert spec.is_active_builder(state, builder_index) is True
 
-    inclusion_list_bits = spec.BitVector[spec.INCLUSION_LIST_COMMITTEE_SIZE]()
+    inclusion_list_bits = spec.InclusionListBits()
     inclusion_list_bits[0] = True
 
     signed_bid = prepare_signed_execution_payload_bid(

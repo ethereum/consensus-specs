@@ -231,7 +231,7 @@ def build_signed_bid(
         slot=slot,
         value=value if value is not None else spec.Gwei(0),
         execution_payment=execution_payment if execution_payment is not None else spec.Gwei(0),
-        blob_kzg_commitments=blob_kzg_commitments,
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
     if valid_signature and builder_index < len(builder_privkeys):

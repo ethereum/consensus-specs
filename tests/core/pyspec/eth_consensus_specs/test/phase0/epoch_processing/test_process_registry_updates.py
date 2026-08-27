@@ -1,3 +1,5 @@
+from ssz.exceptions import SSZRangeError
+
 from eth_consensus_specs.test.context import (
     scaled_churn_balances_min_churn_limit,
     single_phase,
@@ -226,7 +228,7 @@ def run_test_ejection_past_churn_limit(spec, state):
 
         def map_index_to_exit_epoch(i):
             balance_so_far = i * spec.config.EJECTION_BALANCE
-            offset_epoch = balance_so_far // per_epoch_churn
+            offset_epoch = spec.Epoch(balance_so_far // per_epoch_churn)
             if per_epoch_churn - (balance_so_far % per_epoch_churn) < spec.config.EJECTION_BALANCE:
                 offset_epoch += 1
             return expected_ejection_epoch + offset_epoch
@@ -425,8 +427,8 @@ def test_invalid_large_withdrawable_epoch(spec, state):
 
     try:
         yield from run_process_registry_updates(spec, state)
-    except ValueError:
+    except SSZRangeError:
         yield "post", None
         return
 
-    raise AssertionError("expected ValueError")
+    raise AssertionError("expected SSZRangeError")

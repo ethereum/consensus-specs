@@ -99,7 +99,7 @@ def create_valid_signed_contribution_and_proof(
         slot=slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=aggregation_bits),
         signature=aggregate_signature,
     )
 
@@ -433,7 +433,9 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
 
     # Clear all aggregation bits
     subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
-    signed_cap.message.contribution.aggregation_bits = [False] * subcommittee_size
+    signed_cap.message.contribution.aggregation_bits = spec.SyncSubcommitteeBits(
+        data=[False] * subcommittee_size
+    )
 
     yield get_filename(signed_cap), signed_cap
 
@@ -713,7 +715,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
         slot=state.slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=superset_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=superset_bits),
         signature=bls.Aggregate([sig1, sig2]),
     )
     selection_proof = spec.get_sync_committee_selection_proof(
@@ -875,7 +877,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
         slot=state.slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=superset_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=superset_bits),
         signature=bls.Aggregate([sig1, sig2]),
     )
     superset_cap = spec.ContributionAndProof(
