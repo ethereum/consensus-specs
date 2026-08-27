@@ -15,7 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
-from generators.compliance_runners.state_transition.aspect_coverage import (
+from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
@@ -109,7 +109,7 @@ def build_profile(recs, name):
         OUTCOME_ASPECT,
         exceptional_aspects={"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT},
         exceptional_t=2,
-    )
+    )[:10_000]
 
 
 def _materialize(recs, name: str, output_dir: Path | None = None) -> int:

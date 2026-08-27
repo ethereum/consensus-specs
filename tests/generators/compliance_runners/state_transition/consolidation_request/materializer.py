@@ -17,7 +17,7 @@ from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
-    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 N_SUFFICIENT = 64  # get_consolidation_churn_limit > MIN_ACTIVATION_BALANCE
 N_INSUFFICIENT = 32  # get_consolidation_churn_limit == MIN_ACTIVATION_BALANCE

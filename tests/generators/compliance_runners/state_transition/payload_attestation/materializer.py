@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.payload_attestation import prepare_signed_
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
-    from generators.compliance_runners.gen_base.gen_typing import TestCasePart
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 _DIMS = [
     "parent_root_matches",
