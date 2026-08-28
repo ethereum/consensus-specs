@@ -1008,8 +1008,6 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 
 #### `uint_to_bytes`
 
-*Note*: SSZ serializes an integer in `ENDIANNESS` byte order.
-
 ```python
 def uint_to_bytes(n: Uint) -> bytes:
     """
@@ -1020,14 +1018,14 @@ def uint_to_bytes(n: Uint) -> bytes:
 
 #### `bytes_to_uint64`
 
-*Note*: SSZ deserializes an integer from `ENDIANNESS` byte order.
+*Note*: `data` may be shorter than eight bytes.
 
 ```python
 def bytes_to_uint64(data: bytes) -> Uint64:
     """
-    Return the SSZ deserialization of ``data`` as a ``Uint64``.
+    Return the integer deserialization of ``data`` as a ``Uint64``.
     """
-    return ssz_deserialize(Uint64, data)
+    return Uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
 ### Crypto
