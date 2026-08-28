@@ -215,7 +215,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
-    proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
+    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
 ```
 
 ### Modified `compute_fork_version`
@@ -980,7 +980,7 @@ def validate_execution_payload_bid_gossip(
 
     # [IGNORE] The matching proposer preferences have been seen
     dependent_root = get_shuffling_dependent_root(store, bid.parent_block_root, proposal_epoch)
-    prefs_key = (dependent_root, bid.slot)
+    prefs_key = (bid.slot, dependent_root)
     if prefs_key not in seen.proposer_preferences:
         raise GossipIgnore("matching proposer preferences have not been seen")
 
@@ -1088,7 +1088,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent block has not been seen")
 
     # [IGNORE] These are the first valid preferences seen for this dependent root and slot
-    prefs_key = (preferences.dependent_root, preferences.proposal_slot)
+    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
     if prefs_key in seen.proposer_preferences:
         raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
