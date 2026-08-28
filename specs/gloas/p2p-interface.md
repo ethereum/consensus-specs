@@ -1066,9 +1066,14 @@ def validate_proposer_preferences_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     preferences = signed_proposer_preferences.message
-    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+
+    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
+    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
+    if prefs_key in seen.proposer_preferences:
+        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
     # [IGNORE] The proposal epoch is after the Gloas upgrade
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
     if proposal_epoch < GLOAS_FORK_EPOCH:
         raise GossipIgnore("proposal epoch is pre-gloas")
 
@@ -1086,11 +1091,6 @@ def validate_proposer_preferences_gossip(
     # (MAY be queued until block is retrieved)
     if preferences.dependent_root not in store.blocks:
         raise GossipIgnore("dependent block has not been seen")
-
-    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
-    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
-    if prefs_key in seen.proposer_preferences:
-        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
     # [IGNORE] The dependent block passes validation
     if preferences.dependent_root not in store.block_states:
