@@ -1070,7 +1070,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator index not in committee"
+    assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",
@@ -1129,7 +1129,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator index not in committee"
+    assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",
