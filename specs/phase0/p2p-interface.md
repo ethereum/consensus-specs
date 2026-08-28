@@ -769,9 +769,9 @@ def validate_beacon_aggregate_and_proof_gossip(
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
 
-    # [REJECT] The aggregator's validator index is within the committee
+    # [REJECT] The aggregator is a member of the committee
     if aggregator_index not in committee:
-        raise GossipReject("aggregator index not in committee")
+        raise GossipReject("aggregator is not a member of the committee")
 
     # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
