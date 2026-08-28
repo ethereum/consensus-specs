@@ -145,9 +145,7 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
      `offset_ms` values are independent and need not be monotonic.
    - Deserialize the message file based on the topic type.
-   - Execute the appropriate validation function, using the store built above
-     and the head state derived from the imported blocks (advanced with empty
-     slots to the current slot where required).
+   - Execute the appropriate validation function using the store built above.
      - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
        and `data_column_sidecar`, pass `message.subnet_id`.
      - For `partial_data_column_sidecar`, pass the `PartialDataColumnGroupID`
