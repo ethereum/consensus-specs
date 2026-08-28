@@ -63,6 +63,10 @@ class ProofType(Uint8):
 
 ```python
 class VersionedHashes(List[VersionedHash]):
+    """
+    The versioned hashes for blobs associated with an execution payload.
+    """
+
     LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
