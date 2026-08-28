@@ -97,14 +97,16 @@ def validate_execution_proof_gossip(
         raise GossipIgnore("execution proof's beacon block has not been seen")
 
     # [REJECT] The proof's beacon block has passed consensus validation
-    state = store.block_states.get(beacon_block_root)
-    if state is None:
+    if beacon_block_root not in store.block_states:
         raise GossipReject("execution proof's beacon block failed validation")
 
+    state = store.block_states[beacon_block_root]
+
     # [IGNORE] The proof's execution payload is available
-    payload_envelope = store.payloads.get(beacon_block_root)
-    if payload_envelope is None:
+    if beacon_block_root not in store.payloads:
         raise GossipIgnore("execution proof's payload is unavailable")
+
+    payload_envelope = store.payloads[beacon_block_root]
 
     # [IGNORE] No valid proof is known for this beacon block and proof type
     if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
