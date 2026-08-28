@@ -2590,7 +2590,6 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_execution_payload_bid=signed_bid,
         current_time_ms=time_ms,
     )
