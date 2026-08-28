@@ -109,7 +109,7 @@ def build_profile(recs, name):
         OUTCOME_ASPECT,
         exceptional_aspects={"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT},
         exceptional_t=2,
-    )[:10_000]
+    )
 
 
 def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
