@@ -30,7 +30,7 @@ def run_execution_payload_processing(
     """
 
     body = spec.BeaconBlockBody(
-        blob_kzg_commitments=blob_kzg_commitments,
+        blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_payload=execution_payload,
     )
     yield "body", body
@@ -89,7 +89,7 @@ def test_incorrect_blob_tx_type(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = b"\x04" + opaque_tx[1:]  # incorrect tx type
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -108,7 +108,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx + b"\x12"  # incorrect tx length, longer
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -127,7 +127,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[:-1]  # incorrect tx length, shorter
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -146,7 +146,7 @@ def test_incorrect_transaction_length_empty(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[0:0]  # incorrect tx length, empty
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -165,7 +165,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx + b"\x12" * 32  # incorrect tx length
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -183,7 +183,7 @@ def test_no_transactions_with_commitments(spec, state):
 
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
-    execution_payload.transactions = []
+    execution_payload.transactions = spec.Transactions()
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -202,7 +202,7 @@ def test_incorrect_commitment(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     blob_kzg_commitments[0] = b"\x12" * 48  # incorrect commitment
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -221,7 +221,7 @@ def test_no_commitments_for_transactions(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
     blob_kzg_commitments = []  # incorrect count
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -240,7 +240,7 @@ def test_incorrect_commitments_order(spec, state):
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
     blob_kzg_commitments = [blob_kzg_commitments[1], blob_kzg_commitments[0]]  # incorrect order
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -261,7 +261,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     opaque_tx, _, _, _ = get_sample_blob_tx(spec, blob_count=0, rng=Random(1111))
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1112))
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     # the transaction doesn't contain any blob, but commitments are provided
@@ -280,7 +280,7 @@ def test_incorrect_block_hash(spec, state):
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = b"\x12" * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
@@ -302,7 +302,7 @@ def test_zeroed_commitment(spec, state):
     )
     assert all(commitment == b"\x00" * 48 for commitment in blob_kzg_commitments)
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(
@@ -320,7 +320,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
 
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
-    execution_payload.transactions = [opaque_tx]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(opaque_tx)))
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(

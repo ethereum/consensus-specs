@@ -77,7 +77,7 @@ def prepare_process_builder_deposit_request(
 
     # Phase 3: Apply state overrides (before creating request)
     if builders is not None:
-        state.builders = builders
+        state.builders = spec.Builders(data=builders)
 
     if builder_modifications is not None:
         current_epoch = spec.get_current_epoch(state)

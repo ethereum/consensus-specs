@@ -1,21 +1,17 @@
-from remerkleable.tree import gindex_bit_iter
+from ssz.proofs import build_proof, get_generalized_index as _get_generalized_index
+from ssz.ssz_base import SSZType
+from ssz.uint import BaseUint
+
+__all__ = ["build_proof", "get_generalized_index"]
 
 
-def build_proof(anchor, leaf_index):
-    if leaf_index <= 1:
-        return []  # Nothing to prove / invalid index
-    node = anchor
-    proof = []
-    # Walk down, top to bottom to the leaf
-    bit_iter, _ = gindex_bit_iter(leaf_index)
-    for bit in bit_iter:
-        # Always take the opposite hand for the proof.
-        # 1 = right as leaf, thus get left
-        if bit:
-            proof.append(node.get_left().merkle_root())
-            node = node.get_right()
-        else:
-            proof.append(node.get_right().merkle_root())
-            node = node.get_left()
+def get_generalized_index(ssz_type: type[SSZType], *path: str | int) -> int:
+    """
+    Position in a Merkle tree of the value a path selects.
 
-    return list(reversed(proof))
+    An element position given as a uint is passed on as a plain number. The
+    library reads a path by weighing each step against the words it reserves
+    for a length or a layout, and a uint refuses to be weighed against a word.
+    """
+    steps = (int(step) if isinstance(step, BaseUint) else step for step in path)
+    return _get_generalized_index(ssz_type, *steps)

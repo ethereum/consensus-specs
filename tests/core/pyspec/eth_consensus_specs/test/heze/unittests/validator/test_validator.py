@@ -31,7 +31,7 @@ def run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True)
     inclusion_assignments = [(None, None, len(state.validators))]
     for slot in some_slots:
         committee = spec.get_inclusion_list_committee(state, slot)
-        for validator_index in rng.sample(committee, 3):
+        for validator_index in rng.sample(list(committee), 3):
             inclusion_assignments.append((slot, committee, validator_index))
 
     for slot, committee, validator_index in inclusion_assignments:

@@ -114,7 +114,7 @@ def test_parent_payload_preregistration_stored(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, withdrawal_credentials
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
     _commit_parent_requests(spec, state, requests)
 
@@ -160,8 +160,8 @@ def test_parent_payload_deposit_first_for_same_pubkey(spec, state):
         preregistration_withdrawal_credentials(spec, b"\x77"),
     )
     requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests([deposit_request]),
-        preregistrations=spec.PreregistrationRequests([preregistration_request]),
+        deposits=spec.DepositRequests(data=[deposit_request]),
+        preregistrations=spec.PreregistrationRequests(data=[preregistration_request]),
     )
     _commit_parent_requests(spec, state, requests)
 
@@ -198,7 +198,7 @@ def test_parent_payload_builder_deposit_does_not_consume_binding(spec, state):
         spec, state, pubkey=builder_pubkey, signed=True
     )
     requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests([builder_deposit_request]),
+        builder_deposits=spec.BuilderDepositRequests(data=[builder_deposit_request]),
     )
     _commit_parent_requests(spec, state, requests)
 
@@ -239,7 +239,7 @@ def test_parent_payload_deposit_protected_up_to_expiry_boundary(spec, state):
         withdrawal_credentials=preregistration_withdrawal_credentials(spec, b"\x77"),
         signed=True,
     )
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     spec.process_slots(state, spec.Slot(expiry_slot - 1))
     _commit_parent_requests(spec, state, requests)
     # The parent payload was created in the final covered slot
@@ -288,7 +288,7 @@ def test_parent_payload_deposit_unprotected_after_expiry_boundary(spec, state):
         withdrawal_credentials=preregistration_withdrawal_credentials(spec, b"\x77"),
         signed=True,
     )
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     spec.process_slots(state, expiry_slot)
     _commit_parent_requests(spec, state, requests)
 
@@ -320,7 +320,7 @@ def test_parent_payload_max_preregistrations(spec, state):
     key_pairs = [(pubkeys[-1 - index], privkeys[-1 - index]) for index in range(count)]
     requests = spec.ExecutionRequests(
         preregistrations=spec.PreregistrationRequests(
-            [
+            data=[
                 build_preregistration_request(
                     spec,
                     state,
@@ -350,7 +350,8 @@ def test_parent_payload_max_preregistrations(spec, state):
 def test_parent_payload_invalid_too_many_preregistrations(spec, state):
     requests = spec.ExecutionRequests(
         preregistrations=spec.PreregistrationRequests(
-            [spec.PreregistrationRequest()] * (spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1)
+            data=[spec.PreregistrationRequest()]
+            * (spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1)
         ),
     )
     _commit_parent_requests(spec, state, requests)
@@ -378,7 +379,7 @@ def test_parent_payload_preregistration_invalid_signature_ignored(spec, state):
         valid_signature=False,
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -399,7 +400,7 @@ def test_parent_payload_preregistration_signature_over_different_credentials_ign
     )
     request.withdrawal_credentials = preregistration_withdrawal_credentials(spec, b"\x77")
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -421,7 +422,7 @@ def test_parent_payload_preregistration_wrong_genesis_validators_root_ignored(sp
         spec, other_state, FRESH_PUBKEY, FRESH_PRIVKEY, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -453,7 +454,9 @@ def test_parent_payload_preregistration_active_binding_ignored(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([conflicting_request, duplicate_request]),
+        preregistrations=spec.PreregistrationRequests(
+            data=[conflicting_request, duplicate_request]
+        ),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -476,7 +479,7 @@ def test_parent_payload_preregistration_replaces_expired_binding(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, new_withdrawal_credentials
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -501,7 +504,7 @@ def test_parent_payload_preregistration_existing_validator_ignored(spec, state):
         preregistration_withdrawal_credentials(spec),
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -522,7 +525,7 @@ def test_parent_payload_preregistration_existing_builder_pubkey_stored(spec, sta
         spec, state, builder_pubkey, builder_privkey, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -553,7 +556,7 @@ def test_parent_payload_preregistration_pending_deposit_ignored(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, withdrawal_credentials
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -585,7 +588,7 @@ def test_parent_payload_preregistration_invalid_pending_deposit_does_not_block(s
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, withdrawal_credentials
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -609,7 +612,7 @@ def test_parent_payload_preregistration_state_full_ignored(spec, state):
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -632,7 +635,7 @@ def test_parent_payload_preregistration_admitted_when_full_of_expired_records(sp
         spec, state, FRESH_PUBKEY, FRESH_PRIVKEY, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -664,7 +667,7 @@ def test_parent_payload_preregistration_replacement_respects_active_limit(spec, 
         spec, state, pubkeys[-2], privkeys[-2], preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request, expired_request]),
+        preregistrations=spec.PreregistrationRequests(data=[request, expired_request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -692,7 +695,7 @@ def test_parent_payload_preregistration_replacement_admitted_when_physically_ful
         spec, state, pubkeys[-2], privkeys[-2], preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests([request]),
+        preregistrations=spec.PreregistrationRequests(data=[request]),
     )
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -716,7 +719,7 @@ def test_parent_payload_deposit_consumes_matching_binding(spec, state):
     )
 
     deposit_request = _deposit_request(spec, state, withdrawal_credentials)
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     pre_pending_deposits_len = len(state.pending_deposits)
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -740,7 +743,7 @@ def test_parent_payload_deposit_mismatched_credentials_discarded(spec, state):
     deposit_request = _deposit_request(
         spec, state, preregistration_withdrawal_credentials(spec, b"\x77")
     )
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     pre_pending_deposits_len = len(state.pending_deposits)
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -765,7 +768,7 @@ def test_parent_payload_deposit_invalid_signature_discarded(spec, state):
     pre_binding = state.validator_preregistrations[0].copy()
 
     deposit_request = _deposit_request(spec, state, withdrawal_credentials, signed=False)
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     pre_pending_deposits_len = len(state.pending_deposits)
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -785,7 +788,7 @@ def test_parent_payload_deposit_without_binding_appended(spec, state):
     deposit_request = _deposit_request(
         spec, state, preregistration_withdrawal_credentials(spec), signed=False
     )
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
     pre_pending_deposits_len = len(state.pending_deposits)
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
@@ -810,7 +813,7 @@ def test_parent_payload_second_deposit_after_binding_consumed(spec, state):
         spec, state, preregistration_withdrawal_credentials(spec, b"\x77")
     )
     requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests([deposit_request, second_deposit_request]),
+        deposits=spec.DepositRequests(data=[deposit_request, second_deposit_request]),
     )
     pre_pending_deposits_len = len(state.pending_deposits)
 
@@ -837,7 +840,7 @@ def test_parent_payload_deposit_removes_binding_preserving_order(spec, state):
     deposit_request = _deposit_request(
         spec, state, withdrawal_credentials, pubkey=pubkey_b, privkey=privkeys[-2]
     )
-    requests = spec.ExecutionRequests(deposits=spec.DepositRequests([deposit_request]))
+    requests = spec.ExecutionRequests(deposits=spec.DepositRequests(data=[deposit_request]))
 
     yield from run_parent_payload_processing_with_requests(spec, state, requests)
 

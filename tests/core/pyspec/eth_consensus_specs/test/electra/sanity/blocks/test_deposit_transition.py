@@ -90,8 +90,8 @@ def prepare_state_and_block(
     deposit_requests_start_index=None,
     eth1_data_deposit_count=None,
 ):
-    deposits = []
-    deposit_requests = []
+    deposits = spec.Deposits()
+    deposit_requests = spec.DepositRequests()
     keypair_index = len(state.validators)
 
     # Prepare deposits

@@ -147,7 +147,9 @@ def get_inclusion_list_bits(
 
         validator_indices.append(validator_index)
 
-    return InclusionListBits(validator_index in validator_indices for validator_index in committee)
+    return InclusionListBits(
+        data=[validator_index in validator_indices for validator_index in committee]
+    )
 ```
 
 ### New `is_inclusion_list_bits_inclusive`

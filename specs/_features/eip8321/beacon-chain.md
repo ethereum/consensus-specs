@@ -179,7 +179,9 @@ commitment. Exactly one of `randao_reveal` and `hash_chain_reveal` is populated;
 the other is empty.
 
 ```python
-class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 15)):
+class BeaconBlockBody(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=15)
+
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
@@ -202,7 +204,9 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 15)):
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 48)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=48)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
@@ -375,7 +379,9 @@ def process_pending_randao_commitments(state: BeaconState) -> None:
         state.randao_commitments[index] = pending_commitment.commitment
         next_pending_commitment += 1
 
-    state.pending_randao_commitments = state.pending_randao_commitments[next_pending_commitment:]
+    state.pending_randao_commitments = PendingRandaoCommitments(
+        data=state.pending_randao_commitments[next_pending_commitment:]
+    )
 ```
 
 ### Block processing
