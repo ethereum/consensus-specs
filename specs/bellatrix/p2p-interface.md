@@ -105,8 +105,7 @@ Bellatrix changes the type of the global beacon block topic.
 ##### Modified `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
-to all nodes on the networks. Signed blocks are sent in their entirety. The
-`state` parameter is the head state.
+to all nodes on the networks. Signed blocks are sent in their entirety.
 
 *Note*: Blocks with execution enabled will be permitted to propagate regardless
 of the validity of the execution payload. This prevents network segregation
@@ -116,7 +115,6 @@ between [optimistic](./optimistic-sync.md) and non-optimistic nodes.
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     # [New in Bellatrix]
@@ -146,6 +144,34 @@ def validate_beacon_block_gossip(
     if proposer_slot_key in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [New in Bellatrix]
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if block.parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[block.parent_root]
+
+    # [New in Bellatrix]
+    if block.parent_root not in store.block_states:
+        # The parent has no post-state, so `is_execution_enabled` uses the
+        # justified checkpoint (always imported). Merge-complete is monotonic.
+        if is_execution_enabled(store.block_states[store.justified_checkpoint.root], block.body):
+            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+                # [REJECT] The block's parent failed validation and its execution payload is optimistic
+                raise GossipReject("block's parent is invalid and its payload is optimistic")
+
+            # [IGNORE] The block's parent failed validation and its execution payload is processed
+            raise GossipIgnore("block's parent is invalid and its payload is processed")
+
+        # [Modified in Bellatrix]
+        # [REJECT] The block's parent passes validation
+        raise GossipReject("block's parent is invalid and execution is not enabled")
+
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
@@ -157,37 +183,15 @@ def validate_beacon_block_gossip(
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
-    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until parent is retrieved)
-    if block.parent_root not in store.blocks:
-        raise GossipIgnore("block's parent has not been seen")
-
     # [New in Bellatrix]
     if is_execution_enabled(state, block.body):
         # [REJECT] The block's execution payload timestamp is correct with respect to the slot
         if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
             raise GossipReject("incorrect execution payload timestamp")
 
-        parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
-        if block.parent_root in block_payload_statuses:
-            parent_payload_status = block_payload_statuses[block.parent_root]
-
-        if block.parent_root not in store.block_states:
-            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-                # [REJECT] The block's parent failed validation and its execution payload is optimistic
-                raise GossipReject("block's parent is invalid and its payload is optimistic")
-
-            # [IGNORE] The block's parent failed validation and its execution payload is processed
-            raise GossipIgnore("block's parent is invalid and its payload is processed")
-
         # [IGNORE] The block's parent passed validation but its execution payload is invalid
         if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
             raise GossipIgnore("block's parent is valid and its payload is invalid")
-
-    # [REJECT] The block's parent passes validation
-    elif block.parent_root not in store.block_states:
-        # [Modified in Bellatrix]
-        raise GossipReject("block's parent is invalid and execution is not enabled")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
