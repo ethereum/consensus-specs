@@ -140,7 +140,7 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -239,7 +239,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -339,7 +339,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
