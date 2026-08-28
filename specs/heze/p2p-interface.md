@@ -39,7 +39,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
 
@@ -128,6 +128,7 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 
 - _[REJECT]_ The size of `message.transactions` is within upperbound
   `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
+- _[REJECT]_ Every transaction in `message.transactions` is non-empty.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
   `message.slot == current_slot`.

@@ -52,14 +52,14 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
             )
         )
 
-        # An IL with empty transactions.
+        # An IL with minimal (one-byte) transactions.
         signed_inclusion_lists.append(
             get_sample_signed_inclusion_list(
                 spec,
                 forkchoice_store,
                 state,
                 validator_index=inclusion_list_committee[1],
-                max_transaction_size=0,
+                max_transaction_size=1,
                 max_transaction_count=5,
             )
         )
