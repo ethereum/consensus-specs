@@ -1009,7 +1009,6 @@ def validate_execution_payload_bid_gossip(
     if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
         raise GossipReject("bid's previous randao is incorrect")
 
-    # Advance state
     state = state.copy()
     process_slots(state, bid.slot)
 
@@ -1017,13 +1016,19 @@ def validate_execution_payload_bid_gossip(
     if bid.builder_index >= len(state.builders):
         raise GossipReject("builder index out of range")
 
-    # [IGNORE] The builder can cover the bid
-    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
-        raise GossipIgnore("builder cannot cover bid value")
+    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+        envelope = store.payloads[bid.parent_block_root]
+        for exit_request in envelope.execution_requests.builder_exits:
+            if exit_request.pubkey == state.builders[bid.builder_index].pubkey:
+                process_builder_exit_request(state, exit_request)
 
     # [REJECT] The builder is active
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
+
+    # [IGNORE] The builder can cover the bid
+    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
+        raise GossipIgnore("builder cannot cover bid value")
 
     # [REJECT] The builder is a payload builder
     if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
