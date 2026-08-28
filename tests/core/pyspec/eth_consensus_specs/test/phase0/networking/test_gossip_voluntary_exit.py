@@ -3,7 +3,12 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    get_store_from_state,
+    run_validate_gossip,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -41,6 +46,10 @@ def test_gossip_voluntary_exit__valid(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Pick a validator to exit
     validator_index = 0
 
@@ -50,7 +59,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "valid"
     assert reason is None
@@ -73,6 +82,10 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Pick a validator to exit
     validator_index = 0
 
@@ -83,7 +96,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
 
     # First validation should pass
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "valid"
     assert reason is None
@@ -91,7 +104,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
 
     # Second validation should be ignored
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "ignore"
     assert reason == "already seen voluntary exit for this validator"
@@ -114,6 +127,10 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Create voluntary exit with invalid validator index
     invalid_index = len(state.validators) + 100
     voluntary_exit = spec.VoluntaryExit(
@@ -126,7 +143,7 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "validator index out of range"
@@ -156,13 +173,17 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     state.validators[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Create voluntary exit
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index)
 
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "validator is not active"
@@ -192,13 +213,17 @@ def test_gossip_voluntary_exit__reject_already_initiated_exit(spec, state):
     state.validators[validator_index].exit_epoch = spec.get_current_epoch(state) + 10
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Create voluntary exit
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index)
 
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "validator has already initiated exit"
@@ -224,6 +249,10 @@ def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Pick a validator
     validator_index = 0
 
@@ -234,7 +263,7 @@ def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "voluntary exit epoch is in the future"
@@ -262,6 +291,10 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     next_epoch_via_block(spec, state)
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Pick a validator
     validator_index = 0
 
@@ -271,7 +304,7 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "validator has not been active long enough"
@@ -298,6 +331,10 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Pick a validator
     validator_index = 0
 
@@ -313,7 +350,7 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "invalid voluntary exit signature"

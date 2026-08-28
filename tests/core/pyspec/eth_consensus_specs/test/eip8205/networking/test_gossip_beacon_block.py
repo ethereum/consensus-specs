@@ -55,7 +55,6 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )

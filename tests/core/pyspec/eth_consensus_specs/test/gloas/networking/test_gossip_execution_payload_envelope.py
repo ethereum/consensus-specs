@@ -56,7 +56,7 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "valid"
     assert reason is None
@@ -100,7 +100,7 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "ignore"
     assert reason == "envelope's block has not been seen"
@@ -139,7 +139,7 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "valid"
     assert reason is None
@@ -153,7 +153,7 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "ignore"
     assert reason == "already seen envelope for this block root from this builder"
@@ -193,7 +193,7 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "block's slot does not match payload's slot number"
@@ -233,7 +233,7 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "payload's block hash does not match the bid's block hash"
@@ -273,7 +273,7 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "invalid envelope signature"
@@ -326,7 +326,7 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "ignore"
     assert reason == "envelope is from a slot before the latest finalized slot"
@@ -373,7 +373,7 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "envelope's block failed validation"
@@ -417,7 +417,7 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "envelope's builder index does not match the bid's builder index"
@@ -463,7 +463,7 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
     assert reason == "envelope's execution requests root does not match the bid's"
@@ -518,7 +518,7 @@ def _assert_envelope_requests(spec, state, execution_requests, expected, reason=
 
     time_ms += 100
     result, reason_out = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason
@@ -566,7 +566,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
 
     time_ms += 100
     result, reason_out = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason

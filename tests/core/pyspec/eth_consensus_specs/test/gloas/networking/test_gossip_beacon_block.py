@@ -54,7 +54,6 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -121,7 +120,6 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -170,7 +168,6 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -229,7 +226,6 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -279,7 +275,6 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -326,7 +321,6 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
@@ -383,7 +377,6 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_child,
         current_time_ms=time_ms,
     )
@@ -435,7 +428,6 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
