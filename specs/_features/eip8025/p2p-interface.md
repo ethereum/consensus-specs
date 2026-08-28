@@ -131,10 +131,8 @@ def validate_execution_proof_gossip(
     seen.execution_proof_roots[beacon_block_root].add(proof_root)
     seen.execution_proof_provers.add(prover_key)
 
-    # Verify before propagation so peers can be scored for invalid proofs
-    is_valid = proof_engine.verify_execution_proof(proof)
-    # Reject completed verification failures to prevent invalid proofs from propagating
-    if not is_valid:
+    # [REJECT] The execution proof is valid
+    if not proof_engine.verify_execution_proof(proof):
         raise GossipReject("execution proof is invalid")
 ```
 
