@@ -737,9 +737,9 @@ def validate_beacon_aggregate_and_proof_gossip(
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
 
-    # [REJECT] The aggregator's validator index is within the committee
+    # [REJECT] The aggregator is a member of the committee
     if aggregator_index not in committee:
-        raise GossipReject("aggregator index not in committee")
+        raise GossipReject("aggregator is not a member of the committee")
 
     # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
@@ -873,9 +873,9 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
-    # [IGNORE] The payload attestation's slot is the current slot
+    # [IGNORE] The payload attestation's slot is for the current slot
     if not is_current_slot(store, data.slot, current_time_ms):
-        raise GossipIgnore("payload attestation's slot is not the current slot")
+        raise GossipIgnore("payload attestation is not for the current slot")
 
     # [IGNORE] This is the first valid payload attestation from this validator index
     payload_attestation_key = (data.slot, validator_index)
@@ -905,7 +905,7 @@ def validate_payload_attestation_message_gossip(
     if validator_index not in get_ptc(state, data.slot):
         raise GossipReject("validator is not in the payload timeliness committee")
 
-    # [REJECT] The signature is valid with respect to the validator's public key
+    # [REJECT] The signature is valid
     validator = state.validators[validator_index]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
@@ -1111,7 +1111,7 @@ def validate_proposer_preferences_gossip(
     if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
-    # [REJECT] The signature is valid with respect to the validator's public key
+    # [REJECT] The signature is valid
     validator = lookahead_state.validators[preferences.validator_index]
     domain = get_domain(lookahead_state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
     signing_root = compute_signing_root(preferences, domain)

@@ -383,8 +383,7 @@ def validate_sync_committee_message_gossip(
     if message_key in seen.sync_message_validator_slots:
         raise GossipIgnore("already seen message from this validator for this slot and subnet")
 
-    # [REJECT] The signature is valid for the message beacon_block_root
-    # for the validator referenced by validator_index
+    # [REJECT] The signature is valid
     validator = state.validators[sync_committee_message.validator_index]
     domain = get_domain(
         state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(sync_committee_message.slot)
