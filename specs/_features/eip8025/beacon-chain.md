@@ -15,6 +15,8 @@
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
+- [Helpers](#helpers)
+  - [New `get_supported_proof_types`](#new-get_supported_proof_types)
 - [Containers](#containers)
   - [New `SSZNewPayloadRequest`](#new-ssznewpayloadrequest)
   - [New `PublicInput`](#new-publicinput)
@@ -22,7 +24,8 @@
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
 - [Execution proof verification](#execution-proof-verification)
-  - [New `validate_execution_proof_envelope`](#new-validate_execution_proof_envelope)
+  - [New `verify_execution_proof_envelope`](#new-verify_execution_proof_envelope)
+  - [New `get_execution_proof`](#new-get_execution_proof)
   - [New `process_execution_proof`](#new-process_execution_proof)
 
 <!-- mdformat-toc end -->
@@ -76,15 +79,10 @@ class VersionedHashes(List[VersionedHash]):
 
 *Note*: The execution values are not definitive.
 
-| Name                        | Value                                                        |
-| --------------------------- | ------------------------------------------------------------ |
-| `MAX_PROOF_SIZE`            | `Uint64(4194304)` (= 4,096 KiB, 4 MiB)                       |
-| `SUPPORTED_PROOF_TYPES`     | `set[ProofType]([ProofType(1), ProofType(2), ProofType(3)])` |
-| `STATELESS_INPUT_SCHEMA_ID` | `Uint16(0x1501)`                                             |
-
-The initial proof type assignments are provisional. A `ProofType` identifies an
-immutable combination of proof system, guest program, and version. Assignments
-MUST NOT be reused. A future fork may change `SUPPORTED_PROOF_TYPES`.
+| Name                        | Value                                  |
+| --------------------------- | -------------------------------------- |
+| `MAX_PROOF_SIZE`            | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
+| `STATELESS_INPUT_SCHEMA_ID` | `Uint16(0x1501)`                       |
 
 `STATELESS_INPUT_SCHEMA_ID` encodes the Amsterdam protocol fork (`0x15`) and
 schema revision (`0x01`).
@@ -94,6 +92,26 @@ schema revision (`0x01`).
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0F000000')` |
+
+## Helpers
+
+### New `get_supported_proof_types`
+
+*Note*: The initial proof type assignments are provisional. A `ProofType`
+identifies an immutable combination of proof system, guest program, and version.
+Assignments MUST NOT be reused.
+
+```python
+def get_supported_proof_types() -> set[ProofType]:
+    """
+    Return the execution proof types supported by this fork.
+    """
+    return {
+        ProofType(1),
+        ProofType(2),
+        ProofType(3),
+    }
+```
 
 ## Containers
 
@@ -150,23 +168,26 @@ class SignedExecutionProofEnvelope(Container):
 
 ## Execution proof verification
 
-### New `validate_execution_proof_envelope`
+### New `verify_execution_proof_envelope`
 
 ```python
-def validate_execution_proof_envelope(
+def verify_execution_proof_envelope(
     state: BeaconState,
     signed_proof_envelope: SignedExecutionProofEnvelope,
     payload_envelope: ExecutionPayloadEnvelope,
-) -> ExecutionProof:
+) -> None:
     """
-    Authenticate the envelope and construct the ``ExecutionProof``.
+    Verify an execution proof envelope against the beacon state and payload.
+
+    Check its payload binding, proof-data bounds and type, prover eligibility,
+    and signature. The execution proof itself is verified separately by the
+    proof engine.
     """
     proof_envelope = signed_proof_envelope.message
     assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
-    assert len(proof_envelope.proof_data) > 0
-    assert len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
-    assert proof_envelope.proof_type in SUPPORTED_PROOF_TYPES
+    assert 0 < len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
+    assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
     validator = state.validators[signed_proof_envelope.validator_index]
@@ -176,7 +197,23 @@ def validate_execution_proof_envelope(
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_envelope, domain)
     assert bls.Verify(validator.pubkey, signing_root, signed_proof_envelope.signature)
+```
 
+### New `get_execution_proof`
+
+```python
+def get_execution_proof(
+    state: BeaconState,
+    proof_envelope: ExecutionProofEnvelope,
+    payload_envelope: ExecutionPayloadEnvelope,
+) -> ExecutionProof:
+    """
+    Construct the ``ExecutionProof`` for submission to the proof engine.
+
+    Derive its ``PublicInput`` from the accepted payload envelope and beacon
+    state, then attach the proof data and type supplied by the execution proof
+    envelope.
+    """
     # Construct the proof-system public input from the accepted execution payload
     bid = state.latest_execution_payload_bid
     new_payload_request = SSZNewPayloadRequest(
@@ -213,10 +250,16 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     """Authenticate and verify an execution proof envelope."""
-    # Verify the execution proof
-    proof = validate_execution_proof_envelope(
+    verify_execution_proof_envelope(
         state,
         signed_proof_envelope,
+        payload_envelope,
+    )
+
+    # Verify the execution proof
+    proof = get_execution_proof(
+        state,
+        signed_proof_envelope.message,
         payload_envelope,
     )
     assert proof_engine.verify_execution_proof(proof)

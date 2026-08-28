@@ -124,9 +124,18 @@ def validate_execution_proof_gossip(
         )
 
     # [REJECT] The execution proof envelope passes validation
-    proof = validate_execution_proof_envelope(
+    try:
+        verify_execution_proof_envelope(
+            state,
+            signed_proof_envelope,
+            payload_envelope,
+        )
+    except AssertionError:
+        raise GossipReject("execution proof envelope is invalid") from None
+
+    proof = get_execution_proof(
         state,
-        signed_proof_envelope,
+        proof_envelope,
         payload_envelope,
     )
 

@@ -52,8 +52,6 @@ class Store:
     execution_proofs: Dict[Root, Dict[ProofType, ExecutionProofEnvelope]]
 ```
 
-`execution_proofs` is keyed by beacon block root and then proof type.
-
 ## Store initialization
 
 ### Modified `get_forkchoice_store`
@@ -104,6 +102,13 @@ def on_execution_proof(
     signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
+    """
+    Verify and store a received execution proof envelope.
+
+    Resolve its beacon state and payload from ``store``, verify the envelope
+    and execution proof, then store it without changing fork choice or payload
+    status.
+    """
     proof_envelope = signed_proof_envelope.message
     beacon_block_root = proof_envelope.beacon_block_root
 

@@ -100,12 +100,16 @@ def get_proof_engine_input(spec, store, signed_proof):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, state):
+def test_gossip_deduplicates_execution_proofs_by_root_and_proof_type(spec, state):
+    """
+    Accept distinct proofs while ignoring duplicate or already verified proofs.
+    """
     store, block_root = setup_store_with_block(spec, state)
     seen = get_seen(spec)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     proof_engine = MockProofEngine()
 
+    # Ignore the same proof, including when it is signed by another prover.
     assert validate(spec, seen, store, signed_proof, proof_engine) == ("valid", None)
     assert validate(spec, seen, store, signed_proof, proof_engine) == (
         "ignore",
@@ -125,6 +129,7 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
     )
     assert validate(spec, seen, store, competing_proof) == ("valid", None)
 
+    # Once a proof is stored, ignore further proofs of the same type for the block.
     spec.on_execution_proof(store, signed_proof, proof_engine)
     later_proof = make_signed_execution_proof_envelope(
         spec, state, block_root, prover_index=2, proof_data=b"\x03"
@@ -134,6 +139,7 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
         "verified proof already known for this beacon block and proof type",
     )
 
+    # Proofs of types not yet stored remain eligible for propagation.
     for proof_type in (ALTERNATE_TEST_PROOF_TYPE, THIRD_TEST_PROOF_TYPE):
         alternate = make_signed_execution_proof_envelope(
             spec, state, block_root, proof_type=proof_type
@@ -143,8 +149,13 @@ def test_validate_execution_proof_gossip_duplicates_and_verified_store(spec, sta
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_block_context(spec, state):
+def test_gossip_handles_missing_execution_proof_block_context(spec, state):
+    """
+    Apply the correct gossip result when required block context is unavailable.
+    """
     store, block_root = setup_store_with_block(spec, state)
+
+    # Ignore proofs for an unknown beacon block until the block arrives.
     unknown_root = spec.Root(b"\xaa" * 32)
     unknown_proof = make_signed_execution_proof_envelope(spec, state, unknown_root)
     assert validate(spec, get_seen(spec), store, unknown_proof) == (
@@ -152,6 +163,7 @@ def test_validate_execution_proof_gossip_block_context(spec, state):
         "execution proof's beacon block has not been seen",
     )
 
+    # Reject proofs for a known block that has no validated state.
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     block_state = store.block_states.pop(block_root)
     assert validate(spec, get_seen(spec), store, signed_proof) == (
@@ -160,6 +172,7 @@ def test_validate_execution_proof_gossip_block_context(spec, state):
     )
     store.block_states[block_root] = block_state
 
+    # Ignore proofs until the execution payload becomes available.
     payload = store.payloads.pop(block_root)
     proof_engine = MockProofEngine()
     assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == (
@@ -173,23 +186,37 @@ def test_validate_execution_proof_gossip_block_context(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(spec, state):
+def test_gossip_rejects_unauthenticated_execution_proofs_without_caching(spec, state):
+    """
+    Reject authentication failures without preventing a later valid proof.
+    """
     store, block_root = setup_store_with_block(spec, state)
 
+    # An out-of-range validator index cannot authenticate an envelope.
     out_of_range = make_signed_execution_proof_envelope(spec, state, block_root)
     out_of_range.validator_index = spec.ValidatorIndex(len(state.validators))
     seen = get_seen(spec)
-    expect_assertion_error(lambda: validate(spec, seen, store, out_of_range))
+    assert validate(spec, seen, store, out_of_range) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
     assert seen.execution_proof_roots == {}
     assert seen.execution_proof_provers == set()
 
+    # A bad signature must not cause the corresponding valid proof to be ignored.
     valid_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     invalid_signature = valid_proof.copy()
     invalid_signature.signature = spec.BLSSignature()
     seen = get_seen(spec)
-    expect_assertion_error(lambda: validate(spec, seen, store, invalid_signature))
+    assert validate(spec, seen, store, invalid_signature) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
     assert validate(spec, seen, store, valid_proof) == ("valid", None)
 
+    # An inactive prover must not prevent a later proof from that active validator.
     original_exit_epoch = store.block_states[block_root].validators[1].exit_epoch
     block_state = store.block_states[block_root]
     block_state.validators[1].exit_epoch = spec.get_current_epoch(block_state)
@@ -197,7 +224,12 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
         spec, block_state, block_root, prover_index=1
     )
     seen = get_seen(spec)
-    expect_assertion_error(lambda: validate(spec, seen, store, inactive_proof))
+    assert validate(spec, seen, store, inactive_proof) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
     block_state.validators[1].exit_epoch = original_exit_epoch
     active_proof = make_signed_execution_proof_envelope(
         spec, block_state, block_root, prover_index=1
@@ -207,8 +239,13 @@ def test_validate_execution_proof_gossip_authentication_does_not_poison_cache(sp
 
 @with_eip8025_and_later
 @spec_state_test
-def test_validate_execution_proof_gossip_structural_checks(spec, state):
+def test_gossip_rejects_malformed_execution_proof_fields_without_caching(spec, state):
+    """
+    Reject invalid proof data and proof types without updating the seen cache.
+    """
     store, block_root = setup_store_with_block(spec, state)
+
+    # Exercise empty and oversized proof data and proof types outside the supported set.
     cases = [
         make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
         make_signed_execution_proof_envelope(
@@ -232,8 +269,9 @@ def test_validate_execution_proof_gossip_structural_checks(spec, state):
 
     for signed_proof in cases:
         seen = get_seen(spec)
-        expect_assertion_error(
-            lambda seen=seen, signed_proof=signed_proof: validate(spec, seen, store, signed_proof)
+        assert validate(spec, seen, store, signed_proof) == (
+            "reject",
+            "execution proof envelope is invalid",
         )
         assert seen.execution_proof_roots == {}
         assert seen.execution_proof_provers == set()
@@ -241,16 +279,68 @@ def test_validate_execution_proof_gossip_structural_checks(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
-def test_gossip_verifies_before_handler_stores(spec, state):
+def test_gossip_rejects_execution_proof_with_mismatched_payload_root(spec, state):
+    """
+    Reject an envelope that is not bound to the retrieved execution payload.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
+
+    # Break the binding between the proof envelope and stored payload envelope.
+    store.payloads[block_root].beacon_block_root = spec.Root(b"\xbb" * 32)
+    seen = get_seen(spec)
+
+    assert validate(spec, seen, store, signed_proof) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
+
+
+@with_eip8025_and_later
+@spec_state_test
+@always_bls
+def test_verify_and_construct_execution_proof_from_envelope(spec, state):
+    """
+    Authenticate an envelope and derive the proof-engine input from block context.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
+    block_state = store.block_states[block_root]
+    payload_envelope = store.payloads[block_root]
+
+    # Verify the execution proof envelope fields and the prover signature.
+    spec.verify_execution_proof_envelope(
+        block_state,
+        signed_proof,
+        payload_envelope,
+    )
+    # Construct the same execution proof expected by the proof engine.
+    assert spec.get_execution_proof(
+        block_state,
+        signed_proof.message,
+        payload_envelope,
+    ) == get_proof_engine_input(spec, store, signed_proof)
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
+    """
+    Verify before propagation, then verify again and store in the handler.
+    """
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     proof_engine = MockProofEngine()
     proof = get_proof_engine_input(spec, store, signed_proof)
 
+    # Gossip validation verifies the proof without mutating the fork-choice store.
     assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == ("valid", None)
     assert proof_engine.verifications == [proof]
     assert block_root not in store.execution_proofs
 
+    # The handler verifies again before storing and rejects duplicate storage.
     spec.on_execution_proof(store, signed_proof, proof_engine)
     assert proof_engine.verifications == [proof, proof]
     assert store.execution_proofs[block_root] == {
@@ -258,6 +348,7 @@ def test_gossip_verifies_before_handler_stores(spec, state):
     }
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
 
+    # Cache a failed gossip verification so the same proof and prover are ignored.
     alternate_proof = make_signed_execution_proof_envelope(
         spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE
     )
@@ -283,6 +374,7 @@ def test_gossip_verifies_before_handler_stores(spec, state):
         "proof already seen from this prover for this beacon block and proof type",
     )
 
+    # A fresh local cache may accept the proof, and the store tracks each proof type.
     assert validate(spec, get_seen(spec), store, alternate_proof) == ("valid", None)
     accepting_engine = MockProofEngine()
     spec.on_execution_proof(store, alternate_proof, accepting_engine)
@@ -302,10 +394,14 @@ def test_gossip_verifies_before_handler_stores(spec, state):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_on_execution_proof_enforces_storage_context(spec, state):
+def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
+    """
+    Store a proof only when its block context exists and verification succeeds.
+    """
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
 
+    # The handler requires the block, its post-state, and its execution payload.
     block = store.blocks.pop(block_root)
     proof_engine = MockProofEngine()
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
@@ -319,17 +415,20 @@ def test_on_execution_proof_enforces_storage_context(spec, state):
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.payloads[block_root] = payload
 
+    # The stored payload must be bound to the proof's beacon block root.
     mismatched_payload = payload.copy()
     mismatched_payload.beacon_block_root = spec.Root(b"\xbb" * 32)
     store.payloads[block_root] = mismatched_payload
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.payloads[block_root] = payload
 
+    # A failed proof-engine verification must not update the store.
     rejecting_engine = MockProofEngine(verification_result=False)
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, rejecting_engine))
     proof = get_proof_engine_input(spec, store, signed_proof)
     assert rejecting_engine.verifications == [proof]
     assert block_root not in store.execution_proofs
 
+    # A valid proof with complete context is verified and stored.
     spec.on_execution_proof(store, signed_proof, proof_engine)
     assert proof_engine.verifications == [proof]

@@ -66,7 +66,6 @@ class ProofAttributes:
 ### New `request_proofs`
 
 ```python
-# Only required for clients performing the prover role
 def request_proofs(
     self: ProofEngine,
     new_payload_request: SSZNewPayloadRequest,
@@ -89,7 +88,6 @@ def request_proofs(
 ### New `get_proof`
 
 ```python
-# Only required for clients performing the prover role
 def get_proof(
     self: ProofEngine,
     new_payload_request_root: Root,

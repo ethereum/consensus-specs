@@ -10,9 +10,8 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [New `get_execution_proof_envelope_signature`](#new-get_execution_proof_envelope_signature)
-- [Execution proof](#execution-proof)
-  - [Requesting proof generation](#requesting-proof-generation)
-  - [Signing and publishing a proof](#signing-and-publishing-a-proof)
+  - [New `request_execution_proofs`](#new-request_execution_proofs)
+  - [New `get_signed_execution_proof_envelope`](#new-get_signed_execution_proof_envelope)
 
 <!-- mdformat-toc end -->
 
@@ -40,40 +39,96 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 def get_execution_proof_envelope_signature(
     state: BeaconState, proof_envelope: ExecutionProofEnvelope, privkey: int
 ) -> BLSSignature:
+    """
+    Return the prover signature for an execution proof envelope.
+
+    Sign the envelope with the EIP-8025 domain for the state's current epoch.
+    """
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_envelope, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
-## Execution proof
+### New `request_execution_proofs`
 
-### Requesting proof generation
+```python
+def request_execution_proofs(
+    block: BeaconBlock,
+    signed_payload_envelope: SignedExecutionPayloadEnvelope,
+    proof_types: Sequence[ProofType],
+    proof_engine: ProofEngine,
+) -> Root:
+    """
+    Request execution proofs for an accepted execution payload.
 
-An honest prover performs the following steps for a received
-`SignedExecutionPayloadEnvelope` and a set of supported proof types:
+    Verify the block and payload binding, construct the SSZ new-payload request,
+    and return the request root provided by the proof engine.
+    """
+    payload_envelope = signed_payload_envelope.message
+    assert payload_envelope.beacon_block_root == hash_tree_root(block)
 
-1. Let `beacon_block_root = signed_payload_envelope.message.beacon_block_root`.
-2. Construct the corresponding `SSZNewPayloadRequest` from the beacon block and
-   `signed_payload_envelope`.
-3. Construct `ProofAttributes` containing the desired proof types.
-4. Let
-   `new_payload_request_root = proof_engine.request_proofs(new_payload_request, DEPOSIT_CHAIN_ID, STATELESS_INPUT_SCHEMA_ID, proof_attributes)`.
-5. For each requested `proof_type`, subsequently call
-   `proof = proof_engine.get_proof(new_payload_request_root, proof_type)`.
-6. Verify that `proof.public_input` has `new_payload_request_root` equal to
-   `new_payload_request_root`, `successful_validation` equal to `True`,
-   `chain_id` equal to `DEPOSIT_CHAIN_ID`, and `schema_id` equal to
-   `STATELESS_INPUT_SCHEMA_ID`. Also verify that `proof.proof_type` equals
-   `proof_type`.
+    bid = block.body.signed_execution_payload_bid.message
+    new_payload_request = SSZNewPayloadRequest(
+        execution_payload=payload_envelope.payload,
+        versioned_hashes=VersionedHashes(
+            data=[
+                kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ]
+        ),
+        parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
+        execution_requests=payload_envelope.execution_requests,
+    )
+    proof_attributes = ProofAttributes(proof_types=proof_types)
+    return proof_engine.request_proofs(
+        new_payload_request,
+        DEPOSIT_CHAIN_ID,
+        STATELESS_INPUT_SCHEMA_ID,
+        proof_attributes,
+    )
+```
 
-### Signing and publishing a proof
+### New `get_signed_execution_proof_envelope`
 
-For each returned `proof`, the prover performs the following steps:
+```python
+def get_signed_execution_proof_envelope(
+    state: BeaconState,
+    beacon_block_root: Root,
+    new_payload_request_root: Root,
+    proof_type: ProofType,
+    validator_index: ValidatorIndex,
+    prover_privkey: int,
+    proof_engine: ProofEngine,
+) -> SignedExecutionProofEnvelope:
+    """
+    Retrieve and validate a generated proof, then sign its execution proof envelope.
 
-1. Construct `ExecutionProofEnvelope` from `proof.proof_data`,
-   `proof.proof_type`, and `beacon_block_root`.
-2. Let `validator_index` be the prover's validator index and let
-   `signature = get_execution_proof_envelope_signature(state, proof_envelope, prover_privkey)`.
-3. Construct
-   `SignedExecutionProofEnvelope(message=proof_envelope, validator_index=validator_index, signature=signature)`
-   and broadcast it on the `execution_proof` topic.
+    Check that the proof matches the requested payload root, proof type, chain,
+    and public-input schema before constructing the signed envelope.
+    """
+    proof = proof_engine.get_proof(new_payload_request_root, proof_type)
+    assert proof.public_input.new_payload_request_root == new_payload_request_root
+    assert proof.public_input.successful_validation
+    assert proof.public_input.chain_id == DEPOSIT_CHAIN_ID
+    assert proof.public_input.schema_id == STATELESS_INPUT_SCHEMA_ID
+    assert proof.proof_type == proof_type
+
+    proof_envelope = ExecutionProofEnvelope(
+        proof_data=proof.proof_data,
+        proof_type=proof.proof_type,
+        beacon_block_root=beacon_block_root,
+    )
+    signature = get_execution_proof_envelope_signature(
+        state,
+        proof_envelope,
+        prover_privkey,
+    )
+    return SignedExecutionProofEnvelope(
+        message=proof_envelope,
+        validator_index=validator_index,
+        signature=signature,
+    )
+```
+
+The prover broadcasts the returned `SignedExecutionProofEnvelope` on the
+`execution_proof` topic.

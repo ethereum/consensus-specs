@@ -46,7 +46,10 @@ def make_new_payload_request(spec, state, payload_envelope):
 @with_eip8025_and_later
 @spec_state_test
 @always_bls
-def test_prover_can_request_retrieve_sign_and_store(spec, state):
+def test_prover_requests_retrieves_signs_and_stores_execution_proof(spec, state):
+    """
+    Exercise the prover workflow from proof request through verified storage.
+    """
     store, beacon_block_root = setup_store_with_block(spec, state)
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
     proof_data = spec.ProofData(data=[1])
@@ -66,12 +69,16 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
     )
     proof_engine = MockProofEngine(proof=proof)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
+    signed_payload_envelope = spec.SignedExecutionPayloadEnvelope(
+        message=store.payloads[beacon_block_root]
+    )
 
-    request_root = proof_engine.request_proofs(
-        new_payload_request,
-        spec.config.DEPOSIT_CHAIN_ID,
-        spec.STATELESS_INPUT_SCHEMA_ID,
-        proof_attributes,
+    # Construct the payload request internally and submit it to the proof engine.
+    request_root = spec.request_execution_proofs(
+        store.blocks[beacon_block_root],
+        signed_payload_envelope,
+        [proof_type],
+        proof_engine,
     )
     assert request_root == new_payload_request_root
     assert proof_engine.requests == [
@@ -83,44 +90,43 @@ def test_prover_can_request_retrieve_sign_and_store(spec, state):
         )
     ]
 
-    returned_proof = proof_engine.get_proof(request_root, proof_type)
-    assert returned_proof.public_input.new_payload_request_root == new_payload_request_root
-    assert returned_proof.public_input.successful_validation
-    assert returned_proof.public_input.chain_id == spec.config.DEPOSIT_CHAIN_ID
-    assert returned_proof.public_input.schema_id == spec.STATELESS_INPUT_SCHEMA_ID
-    assert returned_proof.proof_type == proof_type
-    assert proof_engine.retrievals == [(request_root, proof_type)]
-
+    # Retrieve the generated proof and sign its execution proof envelope.
     validator_index = spec.ValidatorIndex(0)
-    proof_envelope = spec.ExecutionProofEnvelope(
-        proof_data=returned_proof.proof_data,
-        proof_type=returned_proof.proof_type,
-        beacon_block_root=beacon_block_root,
+    signed_proof = spec.get_signed_execution_proof_envelope(
+        state,
+        beacon_block_root,
+        request_root,
+        proof_type,
+        validator_index,
+        privkeys[validator_index],
+        proof_engine,
     )
-    signature = spec.get_execution_proof_envelope_signature(
-        state, proof_envelope, privkeys[validator_index]
-    )
-    signed_proof = spec.SignedExecutionProofEnvelope(
-        message=proof_envelope,
-        validator_index=validator_index,
-        signature=signature,
-    )
+    assert proof_engine.retrievals == [(request_root, proof_type)]
+    assert signed_proof.message.proof_data == proof_data
+    assert signed_proof.message.proof_type == proof_type
+    assert signed_proof.message.beacon_block_root == beacon_block_root
+
+    # Verify during gossip validation and again before storing the envelope.
     spec.validate_execution_proof_gossip(get_seen(spec), store, signed_proof, proof_engine)
     spec.on_execution_proof(store, signed_proof, proof_engine)
 
     assert proof_engine.verifications == [proof, proof]
-    assert store.execution_proofs[beacon_block_root][proof_type] == proof_envelope
+    assert store.execution_proofs[beacon_block_root][proof_type] == signed_proof.message
 
 
 @with_eip8025_and_later
 @spec_state_test
-def test_default_proof_engine_rejects_prover_operations(spec, state):
+def test_default_proof_engine_disables_generation_and_retrieval(spec, state):
+    """
+    Confirm that the default verifier-only engine does not implement the prover role.
+    """
     proof_type = spec.ProofType(TEST_PROOF_TYPE)
     beacon_block_root = spec.Root(b"\x11" * 32)
     payload_envelope = spec.ExecutionPayloadEnvelope(beacon_block_root=beacon_block_root)
     new_payload_request = make_new_payload_request(spec, state, payload_envelope)
     proof_attributes = spec.ProofAttributes(proof_types=[proof_type])
 
+    # Proof generation and retrieval are unavailable without a prover implementation.
     with pytest.raises(NotImplementedError, match="no default proof generation"):
         spec.PROOF_ENGINE.request_proofs(
             new_payload_request,
