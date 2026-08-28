@@ -158,7 +158,9 @@ def validate_execution_proof_envelope(
     signed_proof_envelope: SignedExecutionProofEnvelope,
     payload_envelope: ExecutionPayloadEnvelope,
 ) -> ExecutionProof:
-    """Authenticate the envelope and construct the ``ExecutionProof``."""
+    """
+    Authenticate the envelope and construct the ``ExecutionProof``.
+    """
     proof_envelope = signed_proof_envelope.message
     assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
