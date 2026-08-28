@@ -83,7 +83,10 @@ def validate_execution_proof_gossip(
     signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
-    """Validate a SignedExecutionProofEnvelope for gossip propagation."""
+    """
+    Validate a SignedExecutionProofEnvelope for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
     proof_envelope = signed_proof_envelope.message
     beacon_block_root = proof_envelope.beacon_block_root
     proof_root = hash_tree_root(proof_envelope)
