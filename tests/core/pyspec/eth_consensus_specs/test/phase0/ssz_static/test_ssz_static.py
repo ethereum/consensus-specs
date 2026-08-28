@@ -16,10 +16,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import MAINNET, MINIMAL, TESTGEN_FORKS
 from eth_consensus_specs.test.utils.manifest import Manifest, manifest
 from eth_consensus_specs.test.utils.template_test import template_test
-from eth_consensus_specs.utils.ssz.ssz_impl import (
-    hash_tree_root,
-    serialize,
-)
+from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10
@@ -69,7 +66,7 @@ def _template_ssz_static_tests(
         )
         yield "value", "data", encode.encode(value)
         yield "serialized", "ssz", serialize(value)
-        roots_data = {"root": "0x" + hash_tree_root(value).hex()}
+        roots_data = {"root": "0x" + spec.hash_tree_root(value).hex()}
         yield "roots", "data", roots_data
 
     return (the_test, f"test_{unique_name}")

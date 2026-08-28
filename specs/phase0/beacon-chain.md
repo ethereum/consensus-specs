@@ -1008,18 +1008,26 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 
 #### `uint_to_bytes`
 
-`def uint_to_bytes(n: Uint) -> bytes` is a function for serializing the `Uint`
-type object to bytes in `ENDIANNESS`-endian. The expected length of the output
-is the byte-length of the `Uint` type.
+*Note*: SSZ serializes an integer in `ENDIANNESS` byte order.
+
+```python
+def uint_to_bytes(n: Uint) -> bytes:
+    """
+    Return the SSZ serialization of ``n``, a ``Uint``.
+    """
+    return ssz_serialize(n)
+```
 
 #### `bytes_to_uint64`
+
+*Note*: SSZ deserializes an integer from `ENDIANNESS` byte order.
 
 ```python
 def bytes_to_uint64(data: bytes) -> Uint64:
     """
-    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+    Return the SSZ deserialization of ``data`` as a ``Uint64``.
     """
-    return Uint64(int.from_bytes(data, ENDIANNESS))
+    return ssz_deserialize(Uint64, data)
 ```
 
 ### Crypto
@@ -1196,8 +1204,8 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
     # See the 'generalized domain' algorithm on page 3
     indices = [Uint64(i) for i in range(index_count)]
     for current_round in range(SHUFFLE_ROUND_COUNT):
-        round_bytes = current_round.to_bytes(1, "little")
-        pivot = Uint64(int.from_bytes(sha256(seed + round_bytes)[0:8], "little") % index_count)
+        round_bytes = uint_to_bytes(Uint8(current_round))
+        pivot = bytes_to_uint64(sha256(seed + round_bytes)[0:8]) % index_count
         source_by_bucket: Dict[Uint64, Bytes32] = {}
         for i in range(index_count):
             flip = (pivot + index_count - indices[i]) % index_count
@@ -1205,7 +1213,7 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
             position_bucket = position // 256
             if position_bucket not in source_by_bucket:
                 source_by_bucket[position_bucket] = sha256(
-                    seed + round_bytes + position_bucket.to_bytes(4, "little")
+                    seed + round_bytes + uint_to_bytes(Uint32(position_bucket))
                 )
             source = source_by_bucket[position_bucket]
             byte_val = source[(position % 256) // 8]

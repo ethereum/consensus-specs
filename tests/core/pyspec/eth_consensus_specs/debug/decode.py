@@ -8,7 +8,7 @@ from ssz.container import Container, ProgressiveContainer
 from ssz.uint import BaseUint as Uint, Byte, Uint8
 from ssz.union import CompatibleUnion
 
-from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, hash_tree_root
+from eth_consensus_specs.utils.ssz.ssz_impl import deserialize
 
 
 def decode(data: Any, typ):
@@ -31,11 +31,11 @@ def decode(data: Any, typ):
             if field_name + "_hash_tree_root" in data:
                 assert (
                     data[field_name + "_hash_tree_root"][2:]
-                    == hash_tree_root(temp[field_name]).hex()
+                    == temp[field_name].hash_tree_root().hex()
                 )
         ret = typ(**temp)
         if "hash_tree_root" in data:
-            assert data["hash_tree_root"][2:] == hash_tree_root(ret).hex()
+            assert data["hash_tree_root"][2:] == ret.hash_tree_root().hex()
         return ret
     elif issubclass(typ, CompatibleUnion):
         selector = Uint8(data["selector"])

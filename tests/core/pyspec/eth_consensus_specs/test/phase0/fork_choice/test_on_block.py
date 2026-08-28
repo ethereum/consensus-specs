@@ -44,7 +44,6 @@ from eth_consensus_specs.test.helpers.state import (
     next_slots,
     state_transition_and_sign_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 rng = random.Random(2020)
 
@@ -112,7 +111,7 @@ def test_on_block_checkpoints(spec, state):
     state, store, last_signed_block = yield from apply_next_epoch_with_attestations(
         spec, state, store, fill_cur_epoch=True, fill_prev_epoch=False, test_steps=test_steps
     )
-    last_block_root = hash_tree_root(last_signed_block.message)
+    last_block_root = spec.hash_tree_root(last_signed_block.message)
     check_head_against_root(spec, store, last_block_root)
 
     # Forward 1 epoch
@@ -743,7 +742,7 @@ def test_justification_withholding(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     last_honest_block = honest_signed_blocks[-1].message
-    honest_state = store.block_states[hash_tree_root(last_honest_block)].copy()
+    honest_state = store.block_states[spec.hash_tree_root(last_honest_block)].copy()
 
     assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -759,7 +758,7 @@ def test_justification_withholding(spec, state):
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
-    check_head_against_root(spec, store, hash_tree_root(honest_block))
+    check_head_against_root(spec, store, spec.hash_tree_root(honest_block))
     assert is_ready_to_justify(spec, honest_state)
 
     # ------------
@@ -769,7 +768,7 @@ def test_justification_withholding(spec, state):
     yield from tick_and_add_block(spec, store, attacker_signed_blocks[-1], test_steps)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
-    check_head_against_root(spec, store, hash_tree_root(honest_block))
+    check_head_against_root(spec, store, spec.hash_tree_root(honest_block))
 
     yield "steps", test_steps
 
@@ -816,7 +815,7 @@ def test_justification_withholding_reverse_order(spec, state):
     assert attacker_state.finalized_checkpoint.epoch == 2
     assert attacker_state.current_justified_checkpoint.epoch == 3
     assert spec.get_current_epoch(attacker_state) == 4
-    attackers_head = hash_tree_root(attacker_signed_blocks[-1].message)
+    attackers_head = spec.hash_tree_root(attacker_signed_blocks[-1].message)
     check_head_against_root(spec, store, attackers_head)
 
     # ------------
@@ -826,7 +825,7 @@ def test_justification_withholding_reverse_order(spec, state):
     assert len(honest_signed_blocks) > 0
 
     last_honest_block = honest_signed_blocks[-1].message
-    honest_state = store.block_states[hash_tree_root(last_honest_block)].copy()
+    honest_state = store.block_states[spec.hash_tree_root(last_honest_block)].copy()
 
     assert honest_state.finalized_checkpoint.epoch == store.finalized_checkpoint.epoch == 2
     assert honest_state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -848,7 +847,7 @@ def test_justification_withholding_reverse_order(spec, state):
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert store.finalized_checkpoint.epoch == 3
     assert store.justified_checkpoint.epoch == 4
-    check_head_against_root(spec, store, hash_tree_root(honest_block))
+    check_head_against_root(spec, store, spec.hash_tree_root(honest_block))
 
     yield "steps", test_steps
 
