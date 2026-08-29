@@ -178,10 +178,7 @@ def verify_execution_proof_envelope(
 ) -> None:
     """
     Verify an execution proof envelope against the beacon state and payload.
-
-    Check its payload binding, proof-data bounds and type, prover eligibility,
-    and signature. The execution proof itself is verified separately by the
-    proof engine.
+    The execution proof itself is verified separately by the proof engine.
     """
     proof_envelope = signed_proof_envelope.message
     assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
