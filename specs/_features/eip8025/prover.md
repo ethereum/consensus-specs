@@ -39,11 +39,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 def get_execution_proof_envelope_signature(
     state: BeaconState, proof_envelope: ExecutionProofEnvelope, privkey: int
 ) -> BLSSignature:
-    """
-    Return the prover signature for an execution proof envelope.
-
-    Sign the envelope with the EIP-8025 domain for the state's current epoch.
-    """
+    """Return the prover signature for an execution proof envelope."""
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_envelope, domain)
     return bls.Sign(privkey, signing_root)

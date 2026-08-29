@@ -15,14 +15,14 @@
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
-- [Helpers](#helpers)
-  - [New `get_supported_proof_types`](#new-get_supported_proof_types)
 - [Containers](#containers)
   - [New `SSZNewPayloadRequest`](#new-ssznewpayloadrequest)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
+- [Helpers](#helpers)
+  - [New `get_supported_proof_types`](#new-get_supported_proof_types)
 - [Execution proof verification](#execution-proof-verification)
   - [New `verify_execution_proof_envelope`](#new-verify_execution_proof_envelope)
   - [New `get_execution_proof`](#new-get_execution_proof)
@@ -93,26 +93,6 @@ schema revision (`0x01`).
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0F000000')` |
 
-## Helpers
-
-### New `get_supported_proof_types`
-
-*Note*: The initial proof type assignments are provisional. A `ProofType`
-identifies an immutable combination of proof system, guest program, and version.
-Assignments MUST NOT be reused.
-
-```python
-def get_supported_proof_types() -> set[ProofType]:
-    """
-    Return the execution proof types supported by this fork.
-    """
-    return {
-        ProofType(1),
-        ProofType(2),
-        ProofType(3),
-    }
-```
-
 ## Containers
 
 ### New `SSZNewPayloadRequest`
@@ -166,6 +146,24 @@ class SignedExecutionProofEnvelope(Container):
     signature: BLSSignature
 ```
 
+## Helpers
+
+### New `get_supported_proof_types`
+
+*Note*: The initial proof type assignments are provisional. A `ProofType`
+identifies an immutable combination of proof system, guest program, and version.
+Assignments MUST NOT be reused.
+
+```python
+def get_supported_proof_types() -> set[ProofType]:
+    """Return the supported execution proof types."""
+    return {
+        ProofType(1),
+        ProofType(2),
+        ProofType(3),
+    }
+```
+
 ## Execution proof verification
 
 ### New `verify_execution_proof_envelope`
@@ -204,13 +202,7 @@ def get_execution_proof(
     proof_envelope: ExecutionProofEnvelope,
     payload_envelope: ExecutionPayloadEnvelope,
 ) -> ExecutionProof:
-    """
-    Construct the ``ExecutionProof`` for submission to the proof engine.
-
-    Derive its ``PublicInput`` from the accepted payload envelope and beacon
-    state, then attach the proof data and type supplied by the execution proof
-    envelope.
-    """
+    """Construct the ``ExecutionProof`` for submission to the proof engine."""
     # Construct the proof-system public input from the accepted execution payload
     bid = state.latest_execution_payload_bid
     new_payload_request = SSZNewPayloadRequest(
@@ -253,7 +245,6 @@ def process_execution_proof(
         payload_envelope,
     )
 
-    # Verify the execution proof
     proof = get_execution_proof(
         state,
         signed_proof_envelope.message,
