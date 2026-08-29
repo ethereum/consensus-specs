@@ -33,6 +33,7 @@ def activate_builders(spec, state, store, blocks):
     checkpoint = spec.Checkpoint(epoch=spec.Epoch(1), root=checkpoint_root)
     state.finalized_checkpoint = checkpoint
     store.finalized_checkpoint = checkpoint
+    store.block_states[head_root].finalized_checkpoint = checkpoint
     signed_block = next(b for b in blocks if b.message.hash_tree_root() == checkpoint_root)
     return {"epoch": 1, "block": get_filename(signed_block)}
 

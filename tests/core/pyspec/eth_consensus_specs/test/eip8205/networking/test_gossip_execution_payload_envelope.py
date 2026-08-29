@@ -64,7 +64,7 @@ def _assert_envelope_preregistrations_gossip(spec, state, count, expected, reaso
 
     time_ms += 100
     result, reason_out = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason
