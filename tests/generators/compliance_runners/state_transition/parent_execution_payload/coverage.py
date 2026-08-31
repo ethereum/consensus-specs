@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
 
-from .materializer import _DIMS, ParentExecutionPayloadMaterializer
+from .materializer import _DIMS
 
 INPUT_ASPECTS = {
     "parent_delivery": [
@@ -66,9 +64,9 @@ def _records():
     return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
 
 
-def build_profile(records: list[dict], name: str):
+def build_profile(name: str):
     return _build_profile(
-        records,
+        _records(),
         name,
         ALL_ASPECTS,
         INPUT_ASPECTS,
@@ -76,10 +74,3 @@ def build_profile(records: list[dict], name: str):
         normal_outcome_aspect=OUTCOME_ASPECT,
         exceptional_aspects={**TRACE_ASPECT, **OUTCOME_ASPECT},
     )
-
-
-def materialize_profile(name: str, output_dir: Path | None = None) -> int:
-    _, chosen = build_profile(_records(), name)
-    reps = [SimpleNamespace(**record) for record in chosen]
-    output_dir = output_dir or (Path(__file__).parent / "reftests")
-    return ParentExecutionPayloadMaterializer(spec).materialize_reps(output_dir, reps)
