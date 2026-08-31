@@ -1,22 +1,18 @@
-# Ethereum Proof-of-Stake Consensus Specifications
+# Ethereum Consensus Specifications
 
 [![tests](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
 [![image](https://img.shields.io/pypi/v/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
 [![image](https://img.shields.io/pypi/l/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.gg/qGpsxSA)
 
-This repository hosts the current Ethereum
+This repository hosts the Ethereum
 [proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
-specifications. Discussions about design rationale and proposed changes can be
-brought up and discussed as issues. Solidified, agreed-upon changes to the
-specifications can be made through pull requests.
-
-## Specifications
-
-Core specifications for Ethereum proof-of-stake clients can be found in
-[specs](specs). These are divided into [features](specs/_features). Features are
-researched and developed in parallel, and then consolidated into sequential
-upgrades when ready.
+specifications for consensus-layer clients. Design rationale and proposed
+changes are discussed in issues. Agreed-upon changes are made through pull
+requests. Specifications can be found in [specs](specs), arranged by upgrade.
+Each upgrade builds on the previous, specifying only what it changes. Individual
+[features](specs/_features) are developed in parallel and are folded into an
+upgrade when ready.
 
 ### Stable specifications
 
@@ -37,72 +33,38 @@ upgrades when ready.
 | 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
 | 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
-### External specifications
+### Rendered viewers
 
-- [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)
-- [Beacon APIs](https://github.com/ethereum/beacon-apis)
-- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
-- [Builder Specs](https://github.com/ethereum/builder-specs)
-- [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
-- [SimpleSerialize (SSZ) Specs](https://github.com/ethereum/ssz-specs)
+- https://ethereum.github.io/spec-viewer/
+- https://ethereum.github.io/consensus-specs/
 
 ### Reference tests
 
-- Stable reference tests are available as
-  [release assets](https://github.com/ethereum/consensus-specs/releases).
-- Unstable reference tests are available as
-  [nightly builds](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml).
-
-## Contributors
-
-### Prerequisites
-
-Install [`uv`](https://docs.astral.sh/uv/) with:
-
-```
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### Installation and usage
-
-Clone the repository with:
-
-```
-git clone git@github.com:ethereum/consensus-specs.git
-```
-
-Switch to the directory:
-
-```
-cd consensus-specs
-```
-
-View the help output:
-
-```
-make help
-```
+- [Release assets](https://github.com/ethereum/consensus-specs/releases)
+- [Nightly artifacts](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
 
 ### Design goals
 
-The following are the broad design goals for the Ethereum proof-of-stake
-consensus specifications:
-
 - Minimize complexity, even at the cost of some losses in efficiency.
-- Remain live through major network partitions and when very large portions of
-  nodes go offline.
-- Select components that are quantum secure or easily swappable for
-  quantum-secure alternatives.
-- Utilize crypto and design techniques that allow for a large participation of
-  validators.
+- Remain live through major network partitions and mass node outages.
+- Select components that are quantum-secure or easy to swap out.
+- Use crypto and design techniques that support a large validator set.
 - Minimize hardware requirements such that a consumer laptop can participate.
+
+### External specifications
+
+- [Beacon APIs](https://github.com/ethereum/beacon-apis)
+- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
+- [Builder Specs](https://github.com/ethereum/builder-specs)
+- [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
+- [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)
+- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
+- [SimpleSerialize Specs](https://github.com/ethereum/ssz-specs)
 
 ### Useful resources
 
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
-- [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-- [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-- [Specifications viewer (zensical)](https://ethereum.github.io/consensus-specs/)
-- [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
-- [The Eth2 Book](https://eth2book.info)
+- [Phase0 for Humans](https://notes.ethereum.org/s/Bkn3zpwxB)
+- [Combining GHOST and Casper](https://arxiv.org/abs/2003.03052)
+- [Vitalik's annotated spec](https://github.com/ethereum/annotated-spec)
+- [Upgrading Ethereum](https://eth2book.info)
