@@ -11,10 +11,29 @@ from __future__ import annotations
 import argparse
 from importlib import import_module
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, TYPE_CHECKING
+
+from eth_consensus_specs.gloas import minimal as spec
 
 from .validation import HANDLERS, main as validate
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 PROFILES = ("all", "smoke", "normal", "exceptional", "standard")
+
+
+def materialize_profile(
+    name: str,
+    build_profile: Callable[[str], tuple[int, list[dict]]],
+    materializer: Any,
+    output_dir: Path | None = None,
+):
+    """Materialize a named handler coverage profile."""
+    _, chosen = build_profile(name)
+    reps = [SimpleNamespace(**record) for record in chosen]
+    return materializer.materialize_reps(output_dir, reps)
 
 
 def run(
@@ -30,9 +49,11 @@ def run(
             if comptests_output is not None
             else Path(__file__).parent / current_handler / "reftests"
         )
-        coverage = import_module(f".{current_handler}.coverage", __package__)
+        handler_module = import_module(f".{current_handler}", __package__)
+        build_profile = handler_module.build_profile
+        materializer = handler_module.MATERIALIZER(spec)
         print(f"Materializing '{profile}' test vectors for '{current_handler}'")
-        coverage.materialize_profile(profile, output_dir=output_dir)
+        materialize_profile(profile, build_profile, materializer, output_dir)
         print("Validating test vectors")
         # The output directory is shared when generating all handlers. Limit
         # validation to the handler just materialized; otherwise each pass
