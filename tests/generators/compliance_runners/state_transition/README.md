@@ -77,8 +77,8 @@ directory.
 
 A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
-the provider directory is an implementation detail, while the generated
-manifest continues to use the protocol handler name.
+the provider directory is an implementation detail, while the generated manifest
+continues to use the protocol handler name.
 
 ## Running generated tests
 
