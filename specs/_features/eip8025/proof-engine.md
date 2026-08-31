@@ -48,10 +48,11 @@ def verify_execution_proof(
 ) -> bool:
     """
     Verify an execution proof.
-    Return ``True`` if the proof is valid.
 
     Use ``hash_tree_root(execution_proof.public_input)`` as the proof-system
     public input.
+
+    Return ``True`` if ``execution_proof`` is valid.
     """
 ```
 

@@ -156,7 +156,9 @@ Assignments MUST NOT be reused.
 
 ```python
 def get_supported_proof_types() -> set[ProofType]:
-    """Return the supported execution proof types."""
+    """
+    Return the supported execution proof types.
+    """
     return {
         ProofType(1),
         ProofType(2),
@@ -202,7 +204,9 @@ def get_execution_proof(
     proof_envelope: ExecutionProofEnvelope,
     payload_envelope: ExecutionPayloadEnvelope,
 ) -> ExecutionProof:
-    """Construct the ``ExecutionProof`` for submission to the proof engine."""
+    """
+    Construct the ``ExecutionProof`` for submission to the proof engine.
+    """
     # Construct the proof-system public input from the accepted execution payload
     bid = state.latest_execution_payload_bid
     new_payload_request = SSZNewPayloadRequest(
@@ -238,7 +242,9 @@ def process_execution_proof(
     payload_envelope: ExecutionPayloadEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
-    """Authenticate and verify an execution proof envelope."""
+    """
+    Authenticate and verify an execution proof envelope.
+    """
     verify_execution_proof_envelope(
         state,
         signed_proof_envelope,

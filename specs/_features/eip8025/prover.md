@@ -39,7 +39,9 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 def get_execution_proof_envelope_signature(
     state: BeaconState, proof_envelope: ExecutionProofEnvelope, privkey: int
 ) -> BLSSignature:
-    """Return the prover signature for an execution proof envelope."""
+    """
+    Return the prover signature for an execution proof envelope.
+    """
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_envelope, domain)
     return bls.Sign(privkey, signing_root)
@@ -56,9 +58,6 @@ def request_execution_proofs(
 ) -> Root:
     """
     Request execution proofs for an accepted execution payload.
-
-    Verify the block and payload binding, construct the SSZ new-payload request,
-    and return the request root provided by the proof engine.
     """
     payload_envelope = signed_payload_envelope.message
     assert payload_envelope.beacon_block_root == hash_tree_root(block)
@@ -98,9 +97,6 @@ def get_signed_execution_proof_envelope(
 ) -> SignedExecutionProofEnvelope:
     """
     Retrieve and validate a generated proof, then sign its execution proof envelope.
-
-    Check that the proof matches the requested payload root, proof type, chain,
-    and public-input schema before constructing the signed envelope.
     """
     proof = proof_engine.get_proof(new_payload_request_root, proof_type)
     assert proof.public_input.new_payload_request_root == new_payload_request_root

@@ -102,7 +102,9 @@ def on_execution_proof(
     signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
-    """Verify and store a received execution proof envelope."""
+    """
+    Verify and store a received execution proof envelope.
+    """
     proof_envelope = signed_proof_envelope.message
     beacon_block_root = proof_envelope.beacon_block_root
 
