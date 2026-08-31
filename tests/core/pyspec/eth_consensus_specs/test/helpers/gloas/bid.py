@@ -51,7 +51,7 @@ def record_block_in_store(spec, store, signed_block, post_state):
     return block_root
 
 
-def record_head_payload(spec, state, store, blocks):
+def record_head_payload(spec, state, store, blocks, execution_requests=None):
     """
     Build the head block's payload envelope and record it in ``store`` as
     ``on_execution_payload_envelope`` does, so that fork choice sees the head as
@@ -64,7 +64,7 @@ def record_head_payload(spec, state, store, blocks):
     head_signed_block = blocks[-1]
     head_root = head_signed_block.message.hash_tree_root()
     signed_envelope = build_signed_execution_payload_envelope(
-        spec, state, head_root, head_signed_block
+        spec, state, head_root, head_signed_block, execution_requests=execution_requests
     )
     store.payloads[head_root] = signed_envelope.message
     return signed_envelope
@@ -193,6 +193,87 @@ def setup_store_finalized_with_pending_payment(spec, state):
     store.finalized_checkpoint = state.finalized_checkpoint
 
     return store, blocks, blocks[-1].message.hash_tree_root(), builder_index, pending_value
+
+
+def append_head_with_requests(spec, state, store, blocks, execution_requests, signed_bid=None):
+    """
+    Append a block whose bid commits to ``execution_requests`` and record it in
+    ``store``, so that a bid for the next slot builds on a full parent whose
+    payload carries those requests. ``signed_bid`` replaces the block's default
+    self-build bid, in which case it must already commit to the same requests.
+
+    Returns the new parent block root.
+    """
+    block = build_empty_block_for_next_slot(spec, state)
+    if signed_bid is None:
+        # A self-build bid is signed with the infinity signature, so the
+        # commitment can be set after the fact.
+        bid = block.body.signed_execution_payload_bid.message
+        bid.execution_requests_root = spec.hash_tree_root(execution_requests)
+    else:
+        assert signed_bid.message.execution_requests_root == spec.hash_tree_root(execution_requests)
+        block.body.signed_execution_payload_bid = signed_bid
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    record_block_in_store(spec, store, signed_block, state.copy())
+    blocks.append(signed_block)
+    return signed_block.message.hash_tree_root()
+
+
+def setup_store_finalized_with_head_payment(spec, state, execution_requests):
+    """
+    Build a chain in which epoch 1 finalizes organically (so builders are active
+    without a finalized checkpoint override), then append a head block whose bid
+    pays builder 0 and commits to ``execution_requests``.
+
+    Only a descendant block settles a payment, so the head block's own payment
+    is still queued at the head. The head is kept away from the end of an epoch
+    so that advancing to the next slot does not cross the epoch transition that
+    would drop the payment.
+
+    Returns (store, blocks, parent_block_root, builder_index, pending_value).
+    """
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    blocks = [signed_anchor]
+
+    def record(signed_block):
+        record_block_in_store(spec, store, signed_block, state.copy())
+        blocks.append(signed_block)
+
+    # Finalize organically: builders activate once their deposit epoch (0)
+    # is strictly before the finalized epoch.
+    while state.finalized_checkpoint.epoch < 1:
+        record(
+            state_transition_with_full_block(spec, state, fill_cur_epoch=True, fill_prev_epoch=True)
+        )
+    builder_index = spec.BuilderIndex(0)
+    assert spec.is_active_builder(state, builder_index)
+
+    while (state.slot + 1) % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1:
+        record(
+            state_transition_and_sign_block(
+                spec, state, build_empty_block_for_next_slot(spec, state)
+            )
+        )
+
+    pending_value = spec.Gwei(1)
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state.copy(),
+        builder_index=builder_index,
+        value=pending_value,
+        slot=spec.Slot(state.slot + 1),
+        execution_requests_root=spec.hash_tree_root(execution_requests),
+    )
+    parent_root = append_head_with_requests(
+        spec, state, store, blocks, execution_requests, signed_bid=signed_bid
+    )
+
+    assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == pending_value
+    # Mirror what importing the blocks does to the store's finalized checkpoint.
+    store.finalized_checkpoint = state.finalized_checkpoint
+
+    return store, blocks, parent_root, builder_index, pending_value
 
 
 def build_signed_bid(
