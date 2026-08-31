@@ -1327,13 +1327,13 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__reject_builder_exited_by_parent_payload(spec, state):
-    """A bid from a builder that the full parent's payload exits is rejected.
+def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spec, state):
+    """A bid from a builder that the full parent's payload exits is ignored.
 
     The parent's execution requests are applied by its descendant block, so the
     parent block's post-state still shows the builder as active. Block
-    processing applies the exit before validating the bid, so validation must
-    apply it too or the bid is accepted and then sinks the proposal.
+    processing applies the exit before validating the bid, so a bid that
+    validation accepts here sinks the proposal that includes it.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1387,8 +1387,8 @@ def test_gossip_execution_payload_bid__reject_builder_exited_by_parent_payload(s
         signed_execution_payload_bid=signed_bid,
         current_time_ms=time_ms,
     )
-    assert result == "reject"
-    assert reason == "builder is not active"
+    assert result == "ignore"
+    assert reason == "builder may exit"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -1406,7 +1406,7 @@ def test_gossip_execution_payload_bid__reject_builder_exited_by_parent_payload(s
 def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, state):
     """A bid is valid when the full parent's exit request names no known builder.
 
-    The request cannot exit any builder, so the bid's builder stays active.
+    The request's pubkey does not match the bid's builder, so it cannot exit it.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1480,8 +1480,8 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
 def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(spec, state):
     """A bid is valid when the full parent's exit request is not authorized.
 
-    The request's source address is not the builder's execution address, so the
-    exit is not initiated and the bid's builder stays active.
+    The request's source address is not the builder's execution address, so it
+    cannot exit the builder.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1552,12 +1552,14 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_parent_exit_with_pending_balance(spec, state):
-    """A bid is valid when the exiting builder still has a pending balance.
+def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(spec, state):
+    """A bid is ignored when a pending balance would block the requested exit.
 
     The full parent's bid pays builder 0, and only a descendant block settles a
     payment, so the builder has a pending balance when the parent's authorized
-    exit request is applied. That blocks the exit, so the builder stays active.
+    exit request is applied. That blocks the exit, so block processing keeps the
+    builder active and accepts the bid. Validation does not model the pending
+    balance, so it ignores the bid regardless.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1590,7 +1592,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_with_pending_balance(sp
         _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
     )
     # The pending payment survives the advance to the bid's slot, which is what
-    # blocks the exit.
+    # blocks the exit that validation assumes.
     advanced_state = store.block_states[parent_root].copy()
     spec.process_slots(advanced_state, proposal_slot)
     assert (
@@ -1619,13 +1621,14 @@ def test_gossip_execution_payload_bid__valid_parent_exit_with_pending_balance(sp
         signed_execution_payload_bid=signed_bid,
         current_time_ms=time_ms,
     )
-    assert result == "valid"
-    assert reason is None
+    assert result == "ignore"
+    assert reason == "builder may exit"
     messages.append(
         {
             "current_time_ms": int(time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
+            "reason": reason,
         }
     )
 
