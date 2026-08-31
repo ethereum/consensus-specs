@@ -41,8 +41,6 @@ retrieval requests.
 
 ### New `verify_execution_proof`
 
-<!-- eth_consensus_specs: skip -->
-
 ```python
 def verify_execution_proof(
     self: ProofEngine,
@@ -60,8 +58,6 @@ def verify_execution_proof(
 
 ### New `ProofAttributes`
 
-<!-- eth_consensus_specs: skip -->
-
 ```python
 @dataclass
 class ProofAttributes:
@@ -69,8 +65,6 @@ class ProofAttributes:
 ```
 
 ### New `request_proofs`
-
-<!-- eth_consensus_specs: skip -->
 
 ```python
 def request_proofs(
@@ -93,8 +87,6 @@ def request_proofs(
 ```
 
 ### New `get_proof`
-
-<!-- eth_consensus_specs: skip -->
 
 ```python
 def get_proof(
