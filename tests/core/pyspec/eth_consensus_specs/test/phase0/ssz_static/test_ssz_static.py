@@ -14,6 +14,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MAINNET, MINIMAL, TESTGEN_FORKS
+from eth_consensus_specs.test.helpers.ssz import get_soft_list_length_limits
 from eth_consensus_specs.test.utils.manifest import Manifest, manifest
 from eth_consensus_specs.test.utils.template_test import template_test
 from eth_consensus_specs.utils.ssz.ssz_impl import (
@@ -65,7 +66,13 @@ def _template_ssz_static_tests(
 
         rng = Random(seed)
         value = random_value.get_random_ssz_object(
-            rng, ssz_type, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos
+            rng,
+            ssz_type,
+            MAX_BYTES_LENGTH,
+            MAX_LIST_LENGTH,
+            mode,
+            chaos,
+            list_length_limits=get_soft_list_length_limits(spec),
         )
         yield "value", "data", encode.encode(value)
         yield "serialized", "ssz", serialize(value)
