@@ -128,7 +128,7 @@ def main(
     handlers = handlers if handlers is not None else tuple(discover_handlers(test_dir))
     result = 0
     for handler in handlers:
-        module = import_module(f".{handler}.validation", __package__)
+        module = import_module(f".{handler}", __package__)
         result |= validate_cases(test_dir, handler, module.validate_case, selected_cases)
     return result
 
