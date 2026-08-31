@@ -118,7 +118,8 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
         next_slots(spec, branch_state, branch_slot - branch_state.slot - 1)
         branch_block = build_empty_block_for_next_slot(spec, branch_state)
         assert branch_block.slot == branch_slot
-        branch_block.body.attestations = attestations
+        for attestation in attestations:
+            branch_block.body.attestations.append(attestation)
         signed_branch_block = state_transition_and_sign_block(spec, branch_state, branch_block)
         yield from tick_and_add_block(spec, store, signed_branch_block, test_steps)
         branch_root = signed_branch_block.message.hash_tree_root()
@@ -260,7 +261,8 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
         next_slots(spec, branch_state, branch_slot - branch_state.slot - 1)
         branch_block = build_empty_block_for_next_slot(spec, branch_state)
         assert branch_block.slot == branch_slot
-        branch_block.body.attestations = attestations
+        for attestation in attestations:
+            branch_block.body.attestations.append(attestation)
         if branch_root == b_root:
             branch_block.body.signed_execution_payload_bid.message.parent_block_hash = (
                 signed_b.message.body.signed_execution_payload_bid.message.block_hash
