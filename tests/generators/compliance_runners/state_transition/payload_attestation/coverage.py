@@ -44,6 +44,6 @@ def materialize_profile(
     output_dir: Path | None = None,
 ) -> int:
     _, chosen = build_profile(_recs(), name)
-    return PayloadAttestationMaterializer(spec, MODEL).materialize_reps(
+    return PayloadAttestationMaterializer(spec).materialize_reps(
         output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
