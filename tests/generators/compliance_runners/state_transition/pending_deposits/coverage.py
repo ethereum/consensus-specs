@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
 
-from .materializer import _DIMS, PendingDepositsMaterializer
+from .materializer import _DIMS
 
 # Fine-grained aspects remain part of the signature used by `all`; the normal
 # profile uses the composite validator_state factor.
@@ -71,15 +69,7 @@ def _nfaults(_r: dict) -> int:
     return 0
 
 
-def build_profile(records, name: str):
+def build_profile(name: str):
     return _build_profile(
-        records, name, ALL_ASPECTS, ALL_ASPECTS, {"outcome": ["outcome"]}, normal_t=3
-    )
-
-
-def materialize_profile(name: str, output_dir: Path | None = None) -> int:
-    _, chosen = build_profile(_recs(), name)
-    return PendingDepositsMaterializer(spec).materialize_reps(
-        output_dir or (Path(__file__).parent / "reftests"),
-        [SimpleNamespace(**record) for record in chosen],
+        _recs(), name, ALL_ASPECTS, ALL_ASPECTS, {"outcome": ["outcome"]}, normal_t=3
     )
