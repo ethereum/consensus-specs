@@ -42,42 +42,50 @@ Additional documents describe the impact of the upgrade on certain roles:
 
 ```python
 # [Modified in Gloas:EIP7688]
-class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS)]):
+class CurrentSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS)
 ```
 
 ### Modified `ExecutionBranch`
 
 ```python
 # [Modified in Gloas:EIP7732]
-class ExecutionBranch(Vector[Bytes32, floorlog2(EXECUTION_BLOCK_HASH_GINDEX_GLOAS)]):
+class ExecutionBranch(Vector[Bytes32]):
     """
     A Merkle branch proving the execution block hash within
     ``BeaconBlockBody``.
     """
+
+    LENGTH = floorlog2(EXECUTION_BLOCK_HASH_GINDEX_GLOAS)
 ```
 
 ### Modified `FinalityBranch`
 
 ```python
 # [Modified in Gloas:EIP7688]
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_GLOAS)]):
+class FinalityBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``finalized_checkpoint.root`` within
     ``BeaconState``.
     """
+
+    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX_GLOAS)
 ```
 
 ### Modified `NextSyncCommitteeBranch`
 
 ```python
 # [Modified in Gloas:EIP7688]
-class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_GLOAS)]):
+class NextSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_GLOAS)
 ```
 
 ## Constants

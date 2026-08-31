@@ -1,6 +1,6 @@
 def initialize_ptc_window(spec, state):
     empty_previous_epoch = [
-        spec.PayloadTimelinessCommittee([spec.ValidatorIndex(0) for _ in range(spec.PTC_SIZE)])
+        spec.PayloadTimelinessCommittee(data=[spec.ValidatorIndex(0) for _ in range(spec.PTC_SIZE)])
         for _ in range(spec.SLOTS_PER_EPOCH)
     ]
     ptcs = []
@@ -11,4 +11,4 @@ def initialize_ptc_window(spec, state):
         ptcs += [
             spec.compute_ptc(state, spec.Slot(start_slot + i)) for i in range(spec.SLOTS_PER_EPOCH)
         ]
-    return empty_previous_epoch + ptcs
+    return spec.PayloadTimelinessCommitteeWindow(data=empty_previous_epoch + ptcs)

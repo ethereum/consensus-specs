@@ -31,7 +31,7 @@ from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
         pubkey=builder_pubkeys[i],
-        execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
+        execution_address=spec.ExecutionAddress(spec.sha256(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
@@ -47,15 +47,15 @@ def build_mock_validator(spec, i: int, balance: int):
             withdrawal_credentials = (
                 spec.COMPOUNDING_WITHDRAWAL_PREFIX
                 + b"\x00" * 11
-                + spec.hash(withdrawal_pubkey)[12:]
+                + spec.sha256(withdrawal_pubkey)[12:]
             )
         else:
             # insecurely use pubkey as withdrawal key as well
-            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     else:
         # insecurely use pubkey as withdrawal key as well
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     validator = spec.Validator(
@@ -135,15 +135,17 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         latest_block_header=spec.BeaconBlockHeader(
             body_root=spec.hash_tree_root(spec.BeaconBlockBody())
         ),
-        randao_mixes=spec.RandaoMixes([eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR),
+        randao_mixes=spec.RandaoMixes(data=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR),
     )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = spec.Balances(validator_balances)
+    state.balances = spec.Balances(data=validator_balances)
 
     state.validators = spec.Validators(
-        [build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))]
+        data=[
+            build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))
+        ]
     )
 
     # Process genesis activations
@@ -210,31 +212,31 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # TODO(jtraglia): make it so that the builder count is not hardcoded.
         builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
         state.builders = spec.Builders(
-            [build_mock_builder(spec, i, builder_balance) for i in range(8)]
+            data=[build_mock_builder(spec, i, builder_balance) for i in range(8)]
         )
         state.execution_payload_availability = spec.ExecutionPayloadAvailability(
-            [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
+            data=[0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
         )
         state.payload_expected_withdrawals = spec.Withdrawals()
         state.builder_pending_payments = spec.BuilderPendingPayments(
-            [spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)]
+            data=[spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)]
         )
         state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
-        state.ptc_window = spec.PayloadTimelinessCommitteeWindow(initialize_ptc_window(spec, state))
+        state.ptc_window = initialize_ptc_window(spec, state)
 
     if is_post_eip8148(spec):
         state.validator_sweep_thresholds = spec.SweepThresholds(
-            [spec.Gwei(0)] * len(validator_balances)
+            data=[spec.Gwei(0)] * len(validator_balances)
         )
 
     if is_post_eip8321(spec):
-        state.randao_commitments = [spec.Bytes32()] * len(validator_balances)
+        state.randao_commitments = spec.RandaoCommitments(
+            data=[spec.Bytes32()] * len(validator_balances)
+        )
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
-        state.proposer_lookahead = spec.ProposerLookahead(
-            initialize_proposer_lookahead(spec, state)
-        )
+        state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
 
     return state
 

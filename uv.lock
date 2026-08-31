@@ -551,20 +551,20 @@ wheels = [
 
 [[package]]
 name = "deepmerge"
-version = "2.1.0"
+version = "3.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2a/78/6e9e20106224083cfb817d2d3c26e80e72258d617b616721a169b87081e0/deepmerge-2.1.0.tar.gz", hash = "sha256:07ca7a7b8935df596c512fa8161877c0487ac61f691c07766e7d71d2b23bdd2f", size = 21449, upload-time = "2026-06-22T05:46:07.669Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/6c/9f4577a36d5f463a3a3f8322bd65d33e1a1a6b6ba1d692a5ebc3cba19015/deepmerge-3.0.tar.gz", hash = "sha256:14ed69f063de64b7743985c732ccff5d6c34ff4560946e7fbfd99086b853b9ce", size = 22279, upload-time = "2026-08-17T05:50:53.161Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/25/2a75b47cb057b1e164c604fb81ab690a6cdb5e2260ce651194eae90f64a3/deepmerge-2.1.0-py3-none-any.whl", hash = "sha256:8f148339a91d680a75ecb74ade235d9e759a93df373a0b04e9d31c8666cfeb75", size = 14345, upload-time = "2026-06-22T05:46:06.742Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/d7/7f19bedd30b90b72865aeec3a29127bed6dee6c9ef0324bb5b4d424bb0e3/deepmerge-3.0-py3-none-any.whl", hash = "sha256:c8541c3e186dc88d19a5513ad3a0b2d0b22beaa780969fc0c13b995a64265365", size = 14855, upload-time = "2026-08-17T05:50:52.218Z" },
 ]
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a14"
+version = "1.7.0b0"
 source = { editable = "." }
 dependencies = [
     { name = "blake3" },
-    { name = "eth-remerkleable" },
+    { name = "eth-ssz-specs" },
     { name = "eth-utils" },
     { name = "frozendict" },
     { name = "lru-dict" },
@@ -611,7 +611,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.3" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.1.0" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
-    { name = "eth-remerkleable", specifier = "==0.1.31" },
+    { name = "eth-ssz-specs", specifier = "==0.0.1.dev2" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
@@ -655,12 +655,16 @@ pycryptodome = [
 ]
 
 [[package]]
-name = "eth-remerkleable"
-version = "0.1.31"
+name = "eth-ssz-specs"
+version = "0.0.1.dev2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/51/ac/40fde655f67fd02f07b28e3fe4b9bb4af521388ca8aa48462d622ce4fa03/eth_remerkleable-0.1.31.tar.gz", hash = "sha256:94df4b18a50dfc46f55b2e790cfece384e64032e9cb82d185cff09224682ad1d", size = 49525, upload-time = "2026-06-11T13:23:38.552Z" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c7/9a/9d998d8338451de7b9e253226fd065402edd886c1b6008b91208b5d1ed41/eth_ssz_specs-0.0.1.dev2.tar.gz", hash = "sha256:40295668266021aa4bd08eaabb0f5096bc1578932652602be63257a0546286fe", size = 92653, upload-time = "2026-08-07T17:57:23.081Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b6/a1/87f7c996f344c5f213c2bca657e579c3696bb99737238c0cf9f04867386a/eth_remerkleable-0.1.31-py3-none-any.whl", hash = "sha256:7e48ea1b80935977effc02300f3f9b1db19153ab87ffbcea14a6e6429bbdc56b", size = 57192, upload-time = "2026-06-11T13:23:37.208Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/e8/de3bc9e3e250be1579dce92191d32fdb26a776e1a89a7c796071e2c5b89a/eth_ssz_specs-0.0.1.dev2-py3-none-any.whl", hash = "sha256:dfde269b365c255028f0010308944aca1cccca5171a19e73679ee66303a726e1", size = 72777, upload-time = "2026-08-07T17:57:21.757Z" },
 ]
 
 [[package]]
@@ -1372,11 +1376,11 @@ wheels = [
 
 [[package]]
 name = "pygments"
-version = "2.20.0"
+version = "2.21.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f", size = 4955991, upload-time = "2026-03-29T13:29:33.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:29:30.038Z" },
+    { url = "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
 ]
 
 [[package]]

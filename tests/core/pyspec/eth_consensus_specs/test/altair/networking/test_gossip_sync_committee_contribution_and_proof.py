@@ -99,7 +99,7 @@ def create_valid_signed_contribution_and_proof(
         slot=slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=aggregation_bits),
         signature=aggregate_signature,
     )
 
@@ -163,7 +163,6 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -219,7 +218,6 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -269,7 +267,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms,
     )
@@ -331,7 +328,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms,
     )
@@ -391,7 +387,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -438,7 +433,9 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
 
     # Clear all aggregation bits
     subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
-    signed_cap.message.contribution.aggregation_bits = [False] * subcommittee_size
+    signed_cap.message.contribution.aggregation_bits = spec.SyncSubcommitteeBits(
+        data=[False] * subcommittee_size
+    )
 
     yield get_filename(signed_cap), signed_cap
 
@@ -450,7 +447,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -526,7 +522,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -589,7 +584,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -648,7 +642,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -722,7 +715,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
         slot=state.slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=superset_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=superset_bits),
         signature=bls.Aggregate([sig1, sig2]),
     )
     selection_proof = spec.get_sync_committee_selection_proof(
@@ -755,7 +748,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_superset,
         current_time_ms=current_time_ms + 500,
     )
@@ -781,7 +773,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_subset,
         current_time_ms=current_time_ms + 600,
     )
@@ -858,7 +849,6 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_subset,
         current_time_ms=current_time_ms + 500,
     )
@@ -887,7 +877,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
         slot=state.slot,
         beacon_block_root=block_root,
         subcommittee_index=subcommittee_index,
-        aggregation_bits=superset_bits,
+        aggregation_bits=spec.SyncSubcommitteeBits(data=superset_bits),
         signature=bls.Aggregate([sig1, sig2]),
     )
     superset_cap = spec.ContributionAndProof(
@@ -911,7 +901,6 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_superset,
         current_time_ms=current_time_ms + 600,
     )
@@ -963,7 +952,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap1,
         current_time_ms=current_time_ms + 500,
     )
@@ -989,7 +977,6 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap2,
         current_time_ms=current_time_ms + 600,
     )
@@ -1052,7 +1039,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -1117,7 +1103,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )
@@ -1189,7 +1174,6 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_contribution_and_proof=signed_cap,
         current_time_ms=current_time_ms + 500,
     )

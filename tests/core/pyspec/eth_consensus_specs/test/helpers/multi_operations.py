@@ -143,7 +143,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     for i in range(num_deposits):
         index = len(state.validators) + i
         withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
             deposit_data_leaves,
@@ -217,9 +217,9 @@ def get_random_sync_aggregate(
         block_root=block_root,
     )
     return spec.SyncAggregate(
-        sync_committee_bits=[
-            index in participant_indices for index in range(len(committee_indices))
-        ],
+        sync_committee_bits=spec.SyncCommitteeBits(
+            data=[index in participant_indices for index in range(len(committee_indices))]
+        ),
         sync_committee_signature=signature,
     )
 
@@ -245,14 +245,16 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
         rng = Random(2188)
     block = build_empty_block_for_next_slot(spec, state)
     proposer_slashings = get_random_proposer_slashings(spec, state, rng)
-    block.body.proposer_slashings = proposer_slashings
+    block.body.proposer_slashings = spec.ProposerSlashings(data=proposer_slashings)
     slashed_indices = [
         slashing.signed_header_1.message.proposer_index for slashing in proposer_slashings
     ]
-    block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
-    block.body.attestations = get_random_attestations(spec, state, rng)
+    block.body.attester_slashings = spec.AttesterSlashings(
+        data=get_random_attester_slashings(spec, state, rng, slashed_indices)
+    )
+    block.body.attestations = spec.Attestations(data=get_random_attestations(spec, state, rng))
     if deposits:
-        block.body.deposits = deposits
+        block.body.deposits = spec.Deposits(data=deposits)
 
     # cannot include to be slashed indices as exits
     slashed_indices = {
@@ -262,7 +264,9 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
     for attester_slashing in block.body.attester_slashings:
         slashed_indices = slashed_indices.union(attester_slashing.attestation_1.attesting_indices)
         slashed_indices = slashed_indices.union(attester_slashing.attestation_2.attesting_indices)
-    block.body.voluntary_exits = get_random_voluntary_exits(spec, state, slashed_indices, rng)
+    block.body.voluntary_exits = spec.VoluntaryExits(
+        data=get_random_voluntary_exits(spec, state, slashed_indices, rng)
+    )
 
     return block
 
@@ -295,7 +299,9 @@ def get_random_execution_requests(spec, state, rng):
     consolidations = get_random_consolidation_requests(spec, state, rng)
 
     execution_requests = spec.ExecutionRequests(
-        deposits=deposits, withdrawals=withdrawals, consolidations=consolidations
+        deposits=spec.DepositRequests(data=deposits),
+        withdrawals=spec.WithdrawalRequests(data=withdrawals),
+        consolidations=spec.ConsolidationRequests(data=consolidations),
     )
 
     return execution_requests
@@ -317,7 +323,7 @@ def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     for _ in range(num_deposits):
         index = rng.randrange(0, num_deposits)
         withdrawal_pubkey = pubkeys[index]
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(withdrawal_pubkey)[1:]
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,

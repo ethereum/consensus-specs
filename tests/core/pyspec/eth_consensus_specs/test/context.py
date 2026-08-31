@@ -1,8 +1,8 @@
-import importlib
 from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
+from types import FunctionType, ModuleType
 from typing import Any
 
 import pytest
@@ -22,6 +22,7 @@ from .helpers.constants import (
     DENEB,
     EIP8025,
     EIP8148,
+    EIP8205,
     EIP8321,
     ELECTRA,
     FULU,
@@ -85,11 +86,11 @@ def with_custom_state(
             key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
             if key not in _custom_state_cache_dict:
                 state = _prepare_state(balances_fn, threshold_fn, spec, phases)
-                _custom_state_cache_dict[key] = state.get_backing()
+                _custom_state_cache_dict[key] = state
 
-            # Take an entry out of the LRU.
-            # No copy is necessary, as we wrap the immutable backing with a new view.
-            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
+            # Take an entry out of the LRU. A state is mutable here, so the test
+            # gets a copy and the cached one stays as it was prepared.
+            state = _custom_state_cache_dict[key].copy()
             kw["state"] = state
             return fn(*args, spec=spec, phases=phases, **kw)
 
@@ -301,7 +302,7 @@ def large_validator_set(spec: Spec):
     Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = (
+    num_validators = spec.Uint64(
         2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
@@ -733,6 +734,7 @@ with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNE
 with_heze_and_later = with_all_phases_from(HEZE, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])
@@ -760,12 +762,30 @@ def _get_basic_value(v: Any) -> Any:
 
 
 def get_copy_of_spec(spec):
-    fork = spec.fork
-    preset = spec.config.PRESET_BASE
-    module_path = f"eth_consensus_specs.{fork}.{preset}"
-    module_spec = importlib.util.find_spec(module_path)
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
+    """
+    A spec whose config can be overridden without disturbing the original.
+
+    The types are the original's, not copies of them. Re-executing the module
+    would define a second set of classes, and a `Slot` from one set does not
+    meet a `Slot` from the other -- so a state prepared before the override
+    could not be handed to a function after it.
+
+    Only the functions are remade, over a namespace of their own, which is what
+    lets them read the overridden config. Everything else is shared, so a value
+    made under either spec is at home in both.
+    """
+    module = ModuleType(spec.__name__)
+    namespace = module.__dict__
+    namespace.update(vars(spec))
+    for name, value in list(namespace.items()):
+        if isinstance(value, FunctionType) and value.__globals__ is vars(spec):
+            namespace[name] = FunctionType(
+                value.__code__,
+                namespace,
+                value.__name__,
+                value.__defaults__,
+                value.__closure__,
+            )
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)

@@ -3,7 +3,12 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_deneb_and_later,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    get_store_from_state,
+    run_validate_gossip,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     sign_voluntary_exit,
@@ -32,11 +37,15 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0)
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "valid"
     assert reason is None
@@ -58,6 +67,10 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Sign with DENEB fork version (the wrong domain under EIP-7044).
     signed_exit = create_signed_voluntary_exit(
         spec, state, validator_index=0, fork_version=spec.config.DENEB_FORK_VERSION
@@ -65,7 +78,7 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec, seen=seen, store=store, signed_voluntary_exit=signed_exit
     )
     assert result == "reject"
     assert reason == "invalid voluntary exit signature"

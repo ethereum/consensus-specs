@@ -696,7 +696,7 @@ def assert_process_withdrawals(
     withdrawals = list(state.payload_expected_withdrawals)
 
     # INVARIANT: Verify payload_expected_withdrawals matches expected
-    expected_list = spec.Withdrawals(expected_withdrawals)
+    expected_list = spec.Withdrawals(data=expected_withdrawals)
     assert list(withdrawals) == list(expected_list), (
         "state.payload_expected_withdrawals must match spec.get_expected_withdrawals()"
     )

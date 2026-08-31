@@ -75,20 +75,24 @@ We define the following Python custom types for type hinting and readability:
 ### New `BLSToExecutionChanges`
 
 ```python
-class BLSToExecutionChanges(List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]):
+class BLSToExecutionChanges(List[SignedBLSToExecutionChange]):
     """
     The signed BLS-to-execution credential changes included in a beacon
     block.
     """
+
+    LIMIT = MAX_BLS_TO_EXECUTION_CHANGES
 ```
 
 ### New `HistoricalSummaries`
 
 ```python
-class HistoricalSummaries(List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]):
+class HistoricalSummaries(List[HistoricalSummary]):
     """
     Summaries of the chain's block and state root history.
     """
+
+    LIMIT = HISTORICAL_ROOTS_LIMIT
 ```
 
 ### New `WithdrawalIndex`
@@ -103,10 +107,12 @@ class WithdrawalIndex(Uint64):
 ### New `Withdrawals`
 
 ```python
-class Withdrawals(List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]):
+class Withdrawals(List[Withdrawal]):
     """
     A list of withdrawals.
     """
+
+    LIMIT = MAX_WITHDRAWALS_PER_PAYLOAD
 ```
 
 ## Constants
@@ -530,7 +536,7 @@ def update_next_withdrawal_validator_index(
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     # Get expected withdrawals
     expected = get_expected_withdrawals(state)
-    assert payload.withdrawals == expected.withdrawals
+    assert list(payload.withdrawals) == expected.withdrawals
 
     # Apply expected withdrawals
     apply_withdrawals(state, expected.withdrawals)
@@ -622,7 +628,7 @@ def process_bls_to_execution_change(
     validator = state.validators[address_change.validator_index]
 
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
-    assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
+    assert validator.withdrawal_credentials[1:] == sha256(address_change.from_bls_pubkey)[1:]
 
     # Fork-agnostic domain since address changes are valid across forks
     domain = compute_domain(

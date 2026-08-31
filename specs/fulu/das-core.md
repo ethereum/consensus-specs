@@ -47,10 +47,12 @@
 ### `Cell`
 
 ```python
-class Cell(ByteVector[BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL]):
+class Cell(ByteVector):
     """
     The unit of extended blob data that has its own ``KZGProof``.
     """
+
+    LENGTH = BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_CELL
 ```
 
 ### `CellIndex`
@@ -65,10 +67,12 @@ class CellIndex(Uint64):
 ### `Cells`
 
 ```python
-class Cells(Vector[Cell, CELLS_PER_EXT_BLOB]):
+class Cells(Vector[Cell]):
     """
     The cells of a single extended blob.
     """
+
+    LENGTH = CELLS_PER_EXT_BLOB
 ```
 
 ### `ColumnIndex`
@@ -92,29 +96,35 @@ class CustodyIndex(Uint64):
 ### `DataColumn`
 
 ```python
-class DataColumn(List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class DataColumn(List[Cell]):
     """
     A column of the extended blob data matrix, with at most one cell per blob.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### `KZGCommitmentsInclusionProof`
 
 ```python
-class KZGCommitmentsInclusionProof(Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]):
+class KZGCommitmentsInclusionProof(Vector[Bytes32]):
     """
     A Merkle branch proving a block's blob KZG commitments within
     ``BeaconBlockBody``.
     """
+
+    LENGTH = KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH
 ```
 
 ### `Proofs`
 
 ```python
-class Proofs(Vector[KZGProof, CELLS_PER_EXT_BLOB]):
+class Proofs(Vector[KZGProof]):
     """
     The KZG proofs for the cells of a single extended blob.
     """
+
+    LENGTH = CELLS_PER_EXT_BLOB
 ```
 
 ### `RowIndex`
@@ -203,7 +213,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
     custody_groups: list[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
-            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
+            bytes_to_uint64(sha256(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
         )
         if custody_group not in custody_groups:
             custody_groups.append(custody_group)

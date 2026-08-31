@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 PAYLOAD_STATUS_VALID = "VALID"
@@ -21,6 +22,28 @@ PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
 def wrap_genesis_block(spec, block):
     """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
     return spec.SignedBeaconBlock(message=block)
+
+
+def get_store_from_state(spec, state):
+    """
+    Build a fork-choice store whose head is ``state``.
+
+    Genesis states use ``get_genesis_forkchoice_store_and_block``. States that
+    have been mutated or advanced without recording blocks (e.g. slot bumps in
+    voluntary-exit tests) get a synthetic anchor block so ``get_head(store)``
+    still returns this state.
+    Returns ``(store, signed_anchor)``.
+    """
+    if state.slot == spec.GENESIS_SLOT:
+        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    else:
+        anchor_block = spec.BeaconBlock(slot=state.slot, state_root=state.hash_tree_root())
+        if is_post_gloas(spec):
+            anchor_block.body.signed_execution_payload_bid.message = (
+                state.latest_execution_payload_bid
+            )
+        store = spec.get_forkchoice_store(state, anchor_block)
+    return store, wrap_genesis_block(spec, anchor_block)
 
 
 def add_pending_block_to_store(store, signed_block):
@@ -171,6 +194,13 @@ _MESSAGE_INFO = {
         "validation_fn": "validate_proposer_preferences_gossip",
     },
     ###########################################################################
+    # eip8025
+    ###########################################################################
+    "SignedExecutionProofEnvelope": {
+        "file_prefix": "execution_proof",
+        "validation_fn": "validate_execution_proof_gossip",
+    },
+    ###########################################################################
     # eip8321
     ###########################################################################
     "SignedRandaoCommitmentRegistration": {
@@ -216,6 +246,6 @@ def get_seen(spec):
     return spec.Seen(**{name: get_origin(t)() for name, t in get_type_hints(spec.Seen).items()})
 
 
-def make_progressive_list(spec, element_type, count):
-    """A progressive list of ``count`` default ``element_type`` values."""
-    return spec.ProgressiveList[element_type](*([element_type()] * count))
+def make_progressive_list(list_type, count):
+    """A ``list_type`` holding ``count`` default values."""
+    return list_type(data=[list_type.ELEMENT_TYPE()] * count)

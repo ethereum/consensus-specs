@@ -51,20 +51,24 @@ Fulu is a consensus-layer upgrade containing a number of features. Including:
 ### New `ProposerIndices`
 
 ```python
-class ProposerIndices(Vector[ValidatorIndex, SLOTS_PER_EPOCH]):
+class ProposerIndices(Vector[ValidatorIndex]):
     """
     The proposer indices for every slot of a single epoch.
     """
+
+    LENGTH = SLOTS_PER_EPOCH
 ```
 
 ### New `ProposerLookahead`
 
 ```python
-class ProposerLookahead(Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]):
+class ProposerLookahead(Vector[ValidatorIndex]):
     """
     The precomputed proposer indices for the current and next
     ``MIN_SEED_LOOKAHEAD`` epochs.
     """
+
+    LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 1) * Uint64(SLOTS_PER_EPOCH)
 ```
 
 ## Configs
@@ -326,7 +330,7 @@ def compute_fork_digest(
         bytes(
             xor(
                 base_digest,
-                hash(
+                sha256(
                     uint_to_bytes(Uint64(blob_parameters.epoch))
                     + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
                 ),
@@ -345,8 +349,8 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
-    return ProposerIndices(compute_proposer_index(state, indices, seed) for seed in seeds)
+    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    return ProposerIndices(data=[compute_proposer_index(state, indices, seed) for seed in seeds])
 ```
 
 ### Beacon state accessors
@@ -459,7 +463,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         next_deposit_index += 1
 
     state.pending_deposits = PendingDeposits(
-        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+        data=state.pending_deposits[next_deposit_index:] + deposits_to_postpone
     )
 
     # Accumulate churn only if the churn limit has been hit.

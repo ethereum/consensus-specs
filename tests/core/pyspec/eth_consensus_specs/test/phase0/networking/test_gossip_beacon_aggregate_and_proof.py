@@ -114,7 +114,6 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -160,8 +159,8 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
         # at the smallest position that is both out-of-range and inside the bitvector.
         assert committee_count < spec.MAX_COMMITTEES_PER_SLOT
         oob_index = committee_count
-        signed_agg.message.aggregate.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT](
-            *[i == oob_index for i in range(spec.MAX_COMMITTEES_PER_SLOT)]
+        signed_agg.message.aggregate.committee_bits = spec.CommitteeBits(
+            data=[i == oob_index for i in range(spec.MAX_COMMITTEES_PER_SLOT)]
         )
     else:
         signed_agg.message.aggregate.data.index = committee_count + 10
@@ -179,7 +178,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -239,7 +237,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
         **kwargs,
@@ -299,7 +296,6 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
         **kwargs,
@@ -359,7 +355,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -419,7 +414,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -435,7 +429,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 600,
         **kwargs,
@@ -499,7 +492,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_1,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -538,7 +530,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_2,
         current_time_ms=block_time_ms + 600,
         **kwargs,
@@ -631,7 +622,6 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_1,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -648,7 +638,6 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_2,
         current_time_ms=block_time_ms + 600,
         **kwargs,
@@ -702,7 +691,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -752,9 +740,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
     wrong_size = len(committee) + 5
     wrong_bits = [False] * wrong_size
     wrong_bits[0] = True
-    signed_agg.message.aggregate.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](
-        *wrong_bits
-    )
+    signed_agg.message.aggregate.aggregation_bits = spec.AggregationBits(data=wrong_bits)
 
     yield get_filename(signed_agg), signed_agg
 
@@ -769,7 +755,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -817,9 +802,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     # Set all aggregation bits to False (no participants)
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     empty_bits = [False] * len(committee)
-    signed_agg.message.aggregate.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](
-        *empty_bits
-    )
+    signed_agg.message.aggregate.aggregation_bits = spec.AggregationBits(data=empty_bits)
 
     yield get_filename(signed_agg), signed_agg
 
@@ -834,7 +817,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -894,7 +876,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg1,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -903,10 +884,10 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     messages.append({"offset_ms": 500, "message": get_filename(signed_agg1), "expected": "valid"})
 
     # Create a second attestation with different data but the same aggregator.
-    # Build it already targeting the different block root so its inner signature
-    # stays valid over the final data and the result is order-independent.
+    # A different committee index changes the attestation data without voting
+    # for an unseen block, so the result is independent of check order.
     attestation2 = get_valid_attestation(
-        spec, state, signed=True, beacon_block_root=spec.Root(b"\xab" * 32)
+        spec, state, signed=True, index=1, beacon_block_root=anchor_root
     )
     aggregator_index = signed_agg1.message.aggregator_index
     signed_agg2 = create_signed_aggregate_and_proof(spec, state, attestation2, aggregator_index)
@@ -921,7 +902,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg2,
         current_time_ms=block_time_ms + 600,
         **kwargs,
@@ -1017,7 +997,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1086,13 +1065,12 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator index not in committee"
+    assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",
@@ -1146,13 +1124,12 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator index not in committee"
+    assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",
@@ -1208,7 +1185,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1270,7 +1246,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1332,7 +1307,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1406,7 +1380,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1468,7 +1441,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, sta
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -1534,7 +1506,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_finalized_not_ancestor(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,

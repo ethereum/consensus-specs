@@ -111,9 +111,6 @@ def test_gossip_data_column_sidecar__valid(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
-    kwargs = {}
-    if not is_post_gloas(spec):
-        kwargs["state"] = state
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -121,7 +118,6 @@ def test_gossip_data_column_sidecar__valid(spec, state):
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -170,7 +166,6 @@ def test_gossip_data_column_sidecar__reject_index_out_of_range(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -215,7 +210,9 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
     # check is independent of the inclusion proof, so we don't need a
     # consistent block here.
     extra = get_max_blob_count(spec, state) + 1 - len(sidecar.kzg_commitments)
-    sidecar.kzg_commitments = list(sidecar.kzg_commitments) + [spec.KZGCommitment()] * extra
+    sidecar.kzg_commitments = spec.BlobKZGCommitments(
+        data=list(sidecar.kzg_commitments) + [spec.KZGCommitment()] * extra
+    )
 
     yield get_filename(sidecar), sidecar
 
@@ -227,7 +224,6 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -288,9 +284,6 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
     wrong_subnet = spec.SubnetID(
         (int(expected_subnet) + 1) % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     )
-    kwargs = {}
-    if not is_post_gloas(spec):
-        kwargs["state"] = state
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -298,7 +291,6 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=wrong_subnet,
-        **kwargs,
     )
     assert result == "reject"
     assert reason == "sidecar is for wrong subnet"
@@ -346,9 +338,6 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
-    kwargs = {}
-    if not is_post_gloas(spec):
-        kwargs["state"] = state
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -356,7 +345,6 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
         sidecar=sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **kwargs,
     )
     assert result == "ignore"
     assert reason == "sidecar is from a future slot"
@@ -413,9 +401,6 @@ def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, sta
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
-    kwargs = {}
-    if not is_post_gloas(spec):
-        kwargs["state"] = state
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -423,7 +408,6 @@ def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, sta
         sidecar=sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -487,7 +471,6 @@ def test_gossip_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, 
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -540,7 +523,6 @@ def test_gossip_data_column_sidecar__reject_proposer_index_out_of_range(spec, st
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -594,7 +576,6 @@ def test_gossip_data_column_sidecar__reject_invalid_proposer_signature(spec, sta
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -650,7 +631,6 @@ def test_gossip_data_column_sidecar__ignore_parent_not_seen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -723,7 +703,6 @@ def test_gossip_data_column_sidecar__reject_parent_failed_validation(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -796,7 +775,6 @@ def test_gossip_data_column_sidecar__reject_slot_not_higher_than_parent(spec, st
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -855,7 +833,6 @@ def test_gossip_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(sp
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -897,7 +874,7 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     # Corrupt the inclusion proof.
-    sidecar.kzg_commitments_inclusion_proof = spec.compute_merkle_proof(spec.BeaconBlockBody(), 0)
+    sidecar.kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
 
     yield get_filename(sidecar), sidecar
 
@@ -909,7 +886,6 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -953,7 +929,7 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     # Corrupt every KZG proof to the point at infinity, which won't verify
     # against the real commitments.
     bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
-    sidecar.kzg_proofs = [bad_proof for _ in sidecar.kzg_proofs]
+    sidecar.kzg_proofs = spec.KZGProofs(data=[bad_proof for _ in sidecar.kzg_proofs])
 
     blocks_meta = [{"block": get_filename(signed_anchor)}]
     if is_post_gloas(spec):
@@ -972,9 +948,6 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
-    kwargs = {}
-    if not is_post_gloas(spec):
-        kwargs["state"] = state
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -982,7 +955,6 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **kwargs,
     )
     assert result == "reject"
     assert reason == "invalid sidecar kzg proofs"
@@ -1037,7 +1009,6 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
@@ -1057,7 +1028,6 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 600,
         subnet_id=subnet_id,
@@ -1111,7 +1081,6 @@ def test_gossip_data_column_sidecar__reject_wrong_proposer_index(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=sidecar,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,

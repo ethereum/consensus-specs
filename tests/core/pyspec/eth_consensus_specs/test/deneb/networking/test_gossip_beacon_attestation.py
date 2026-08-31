@@ -39,7 +39,7 @@ def build_unaggregated_attestation(spec, state, beacon_block_root):
     committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     single_bit = [False] * len(committee)
     single_bit[0] = True
-    attestation.aggregation_bits = spec.BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     attestation.signature = spec.get_attestation_signature(
         state, attestation.data, privkeys[committee[0]]
     )
@@ -108,7 +108,6 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -145,7 +144,6 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -188,7 +186,6 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -232,7 +229,6 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -272,7 +268,6 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -312,7 +307,6 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -362,7 +356,6 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -403,7 +396,6 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -444,7 +436,6 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
@@ -485,7 +476,6 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,

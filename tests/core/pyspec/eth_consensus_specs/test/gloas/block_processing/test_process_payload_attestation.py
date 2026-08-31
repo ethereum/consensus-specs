@@ -14,7 +14,6 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
-from eth_consensus_specs.utils.ssz.ssz_typing import BitVector
 
 
 def run_payload_attestation_processing(spec, state, payload_attestation, valid=True):
@@ -72,7 +71,7 @@ def prepare_signed_payload_attestation(
     # to deal with duplicates indices in the PTC.
     unset_indices = list(attesting_indices)
 
-    aggregation_bits = BitVector[spec.PTC_SIZE]()
+    aggregation_bits = spec.PayloadTimelinessCommitteeBits()
     for i, validator_index in enumerate(ptc):
         if validator_index in unset_indices:
             aggregation_bits[i] = True
@@ -88,7 +87,7 @@ def prepare_signed_payload_attestation(
 
     # Create payload attestation
     payload_attestation = spec.PayloadAttestation(
-        aggregation_bits=aggregation_bits,
+        aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=data,
         signature=spec.BLSSignature(),
     )
@@ -114,7 +113,7 @@ def prepare_signed_payload_attestation(
 def _get_ptc_from_indices(spec, state, slot, indices):
     slot = spec.Slot(slot)
     epoch = spec.compute_epoch_at_slot(slot)
-    seed = spec.hash(
+    seed = spec.sha256(
         spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
     )
     return spec.compute_balance_weighted_selection(
@@ -131,7 +130,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
     while len(selected) < size:
         offset = i % 16 * 2
         if offset == 0:
-            random_bytes = spec.hash(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
+            random_bytes = spec.sha256(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
         candidate_index = indices[i % total]
         effective_balance = state.validators[candidate_index].effective_balance
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
@@ -401,7 +400,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
         for i in range(committees_per_slot):
             indices.extend(spec.get_beacon_committee(state, slot, spec.CommitteeIndex(i)))
 
-        seed = spec.hash(
+        seed = spec.sha256(
             spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
         )
 

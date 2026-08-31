@@ -95,7 +95,6 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -161,7 +160,6 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -224,7 +222,6 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=header_msg,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -245,7 +242,6 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=cells_msg,
         current_time_ms=block_time_ms + 600,
         group_id=group_id,
@@ -304,7 +300,6 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["seen"] = get_seen(spec)
-        kwargs["state"] = state
         kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
@@ -356,7 +351,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     # Append an extra cell so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     cells_type = type(partial.partial_column)
-    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
+    partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -374,7 +369,6 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["seen"] = get_seen(spec)
-        kwargs["state"] = state
         kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
@@ -426,7 +420,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     # Append an extra proof so the count no longer matches the set bits.
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
-    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
+    partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -444,7 +438,6 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["seen"] = get_seen(spec)
-        kwargs["state"] = state
         kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
@@ -499,9 +492,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     # Build a second partial message whose header has a different inclusion
     # proof, with the cache populated by `good` so the equality check fires.
     diverging = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    diverging.header[0].kzg_commitments_inclusion_proof = spec.compute_merkle_proof(
-        spec.BeaconBlockBody(), 0
-    )
+    diverging.header[0].kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
 
     yield get_filename(good), good
     yield get_filename(diverging), diverging
@@ -516,7 +507,6 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=good,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -537,7 +527,6 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=diverging,
         current_time_ms=block_time_ms + 600,
         group_id=group_id,
@@ -592,7 +581,6 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -636,7 +624,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    partial.header[0].kzg_commitments = []
+    partial.header[0].kzg_commitments = spec.BlobKZGCommitments()
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
@@ -650,7 +638,6 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -708,7 +695,6 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=current_time_ms,
         group_id=group_id,
@@ -778,7 +764,6 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -839,7 +824,6 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -898,7 +882,6 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -958,7 +941,6 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1031,7 +1013,6 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1109,7 +1090,6 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1173,7 +1153,6 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1217,9 +1196,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    partial.header[0].kzg_commitments_inclusion_proof = spec.compute_merkle_proof(
-        spec.BeaconBlockBody(), 0
-    )
+    partial.header[0].kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
@@ -1233,7 +1210,6 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1296,7 +1272,6 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1353,7 +1328,6 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1417,7 +1391,6 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=header_msg,
         current_time_ms=current_time_ms + 1,
         group_id=group_id,
@@ -1430,7 +1403,6 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=cells_msg,
         current_time_ms=current_time_ms,
         group_id=group_id,
@@ -1527,7 +1499,6 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
         spec,
         seen=seen,
         store=store,
-        state=state,
         sidecar=cells_msg,
         current_time_ms=block_time_ms + 500,
         group_id=group_id,
@@ -1580,9 +1551,9 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     bitmap_type = type(partial.cells_present_bitmap)
     cells_type = type(partial.partial_column)
     proofs_type = type(partial.kzg_proofs)
-    partial.cells_present_bitmap = bitmap_type(list(partial.cells_present_bitmap) + [True])
-    partial.partial_column = cells_type(list(partial.partial_column) + [spec.Cell()])
-    partial.kzg_proofs = proofs_type(list(partial.kzg_proofs) + [spec.KZGProof()])
+    partial.cells_present_bitmap = bitmap_type(data=list(partial.cells_present_bitmap) + [True])
+    partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
+    partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -1600,7 +1571,6 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["seen"] = get_seen(spec)
-        kwargs["state"] = state
         kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,
@@ -1654,7 +1624,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     partial = make_partial_sidecar(spec, sidecar)
     proofs_type = type(partial.kzg_proofs)
     first, second = partial.kzg_proofs[0], partial.kzg_proofs[1]
-    partial.kzg_proofs = proofs_type([second, first])
+    partial.kzg_proofs = proofs_type(data=[second, first])
     yield get_filename(partial), partial
 
     yield get_filename(signed_anchor), signed_anchor
@@ -1672,7 +1642,6 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["seen"] = get_seen(spec)
-        kwargs["state"] = state
         kwargs["current_time_ms"] = block_time_ms + 500
     result, reason = run_validate_gossip(
         spec,

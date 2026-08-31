@@ -77,11 +77,13 @@ and use as a reference throughout.
 ### `SyncSubcommitteeBits`
 
 ```python
-class SyncSubcommitteeBits(BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]):
+class SyncSubcommitteeBits(BitVector):
     """
     The participation bits of a single sync subcommittee, one bit per member
     in subcommittee order.
     """
+
+    LENGTH = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 ```
 
 ## Constants
@@ -454,7 +456,7 @@ def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
         // SYNC_COMMITTEE_SUBNET_COUNT
         // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE,
     )
-    return bytes_to_uint64(hash(signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(sha256(signature)[0:8]) % modulo == 0
 ```
 
 *Note*: The set of aggregators generally changes every slot; however, the
