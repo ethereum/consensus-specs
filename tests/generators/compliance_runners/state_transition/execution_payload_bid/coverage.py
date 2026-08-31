@@ -116,7 +116,7 @@ def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(recs, name)
     reps = [SimpleNamespace(**rec) for rec in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
-    return ExecutionPayloadBidMaterializer(spec, MODEL).materialize_reps(out, reps)
+    return ExecutionPayloadBidMaterializer(spec).materialize_reps(out, reps)
 
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
