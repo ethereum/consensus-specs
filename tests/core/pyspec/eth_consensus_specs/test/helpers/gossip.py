@@ -194,6 +194,13 @@ _MESSAGE_INFO = {
         "validation_fn": "validate_proposer_preferences_gossip",
     },
     ###########################################################################
+    # eip8025
+    ###########################################################################
+    "SignedExecutionProofEnvelope": {
+        "file_prefix": "execution_proof",
+        "validation_fn": "validate_execution_proof_gossip",
+    },
+    ###########################################################################
     # eip8321
     ###########################################################################
     "SignedRandaoCommitmentRegistration": {
