@@ -60,8 +60,15 @@ class Materializer:
             {"case": result.test_case.case_name, "claimed": claimed},
         )
 
-    def materialize_reps(self, output_dir: Path, representatives: list[Any]) -> int:
-        """Write all model representatives into a fresh reference-test directory."""
+    def materialize_reps(
+        self,
+        output_dir: Path,
+        representatives: list[Any],
+        *,
+        case_offset: int = 0,
+        clean: bool = True,
+    ) -> int:
+        """Write representatives into a reference-test directory."""
         suite_dir = (
             output_dir
             / self.preset_name
@@ -70,10 +77,10 @@ class Materializer:
             / self.handler_name
             / SUITE_NAME
         )
-        if suite_dir.exists():
+        if clean and suite_dir.exists():
             shutil.rmtree(suite_dir)
         dumper = Dumper()
         for index, solution in enumerate(representatives):
-            self.write_case(dumper, output_dir, index, solution)
+            self.write_case(dumper, output_dir, case_offset + index, solution)
         print(f"Generated {len(representatives)} test cases in {output_dir}")
         return len(representatives)
