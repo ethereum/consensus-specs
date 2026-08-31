@@ -13,15 +13,13 @@ Run:
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
 
-from .materializer import _DIMS, BuilderExitRequestMaterializer
+from .materializer import _DIMS
 
 INPUT_ASPECTS = {
     "builder_membership": ["builder_pubkey_found"],
@@ -44,16 +42,9 @@ def _nfaults(r: dict) -> int:
     return int(f)
 
 
-def build_profile(recs, name):
-    return _build_profile(recs, name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
+def build_profile(name):
+    return _build_profile(_recs(), name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
 
 
 def _recs():
     return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
-
-
-def materialize_profile(name: str, output_dir: Path | None = None) -> int:
-    _, chosen = build_profile(_recs(), name)
-    reps = [SimpleNamespace(**r) for r in chosen]
-    out = output_dir or (Path(__file__).parent / "reftests")
-    return BuilderExitRequestMaterializer(spec).materialize_reps(out, reps)

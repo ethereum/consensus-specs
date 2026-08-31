@@ -12,15 +12,13 @@ Run:
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
 
-from .materializer import _DIMS, ExecutionPayloadBidMaterializer
+from .materializer import _DIMS
 
 # Fine-grained input aspects (realization + the handler-local bid amount).
 # The dimensions remain part of the signature used by `all`. The normal and
@@ -78,6 +76,10 @@ ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
 MODEL = Path(__file__).parent / "models" / "handler_execution_payload_bid.mzn"
 
 
+def _recs():
+    return enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
+
+
 def _nfaults(r: dict) -> int:
     """Failing applicable gates (mirrors the handler), for clean-rep tie-breaking."""
     f = 0
@@ -100,9 +102,9 @@ def _nfaults(r: dict) -> int:
     return int(f)
 
 
-def build_profile(recs, name):
+def build_profile(name):
     return _build_profile(
-        recs,
+        _recs(),
         name,
         ALL_ASPECTS,
         INPUT_ASPECTS,
@@ -110,15 +112,3 @@ def build_profile(recs, name):
         exceptional_aspects={"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT},
         exceptional_t=2,
     )
-
-
-def _materialize(recs, name: str, output_dir: Path | None = None) -> int:
-    _, chosen = build_profile(recs, name)
-    reps = [SimpleNamespace(**rec) for rec in chosen]
-    out = output_dir or (Path(__file__).parent / "reftests")
-    return ExecutionPayloadBidMaterializer(spec).materialize_reps(out, reps)
-
-
-def materialize_profile(name: str, output_dir: Path | None = None) -> int:
-    recs = enumerate_signatures(MODEL, _DIMS, FINE_ALL_ASPECTS, _nfaults)
-    return _materialize(recs, name, output_dir)
