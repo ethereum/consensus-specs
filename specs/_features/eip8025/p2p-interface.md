@@ -138,6 +138,9 @@ The following validations MUST pass before forwarding the
   `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
   -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
   `signed_execution_proof.validator_index`.
+- _[IGNORE]_ The validator has not previously signed an invalid execution proof
+  -- i.e. `signed_execution_proof.validator_index` is not in the local set of
+  invalid execution proof signers.
 - _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
   is an active validator -- i.e.
   `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
@@ -151,6 +154,28 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ No *valid* proof has already been received for the tuple
   `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
   *valid* proof for `proof.proof_type` from any prover has been received.
+
+Clients MUST add `signed_execution_proof.validator_index` to the local set of
+invalid execution proof signers when its signature is valid and a subsequent
+_[REJECT]_ condition fails. A failure before signature validation MUST NOT mark
+the claimed validator because the message is not yet authenticated. Clients MUST
+retain entries across restarts while the corresponding validator remains active.
+
+The invalid-signer suppression applies only to unsolicited `execution_proof`
+gossip. It MUST NOT be applied to execution proofs returned in direct response
+to a locally initiated `ExecutionProofsByRange` or `ExecutionProofsByRoot`
+request. Requested proofs are bounded by the request limits and MUST be
+validated normally. A valid requested proof remains eligible for local use and
+for serving through req/resp regardless of whether its signer is suppressed from
+gossip. Invalid responses MAY cause the responding peer to be descored or
+disconnected.
+
+*Note*: Gossip _[REJECT]_ still penalizes the peer that forwarded an invalid
+proof. Tracking the authenticated validator additionally prevents peer identity
+rotation from repeatedly imposing expensive proof verification. This bounds such
+verification to one authenticated invalid proof per validator for each client.
+Restricting that tracking to gossip preserves proof recovery through the bounded
+req/resp protocols without requiring validators to re-sign proofs.
 
 ## The Req/Resp domain
 
