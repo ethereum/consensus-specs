@@ -8,11 +8,13 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 )
 from eth_consensus_specs.test.helpers.gloas.bid import (
     activate_builders,
+    append_head_with_requests,
     build_signed_bid,
     get_blocks_meta,
     record_block_in_store,
     record_head_payload,
     setup_store_advanced_for_bid,
+    setup_store_finalized_with_head_payment,
     setup_store_finalized_with_pending_payment,
 )
 from eth_consensus_specs.test.helpers.gloas.proposer_preferences import (
@@ -1311,6 +1313,317 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     )
     assert result == "reject"
     assert reason == "builder is not a payload builder"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spec, state):
+    """A bid from a builder that the full parent's payload exits is ignored.
+
+    The parent's execution requests are applied by its descendant block, so the
+    parent block's post-state still shows the builder as active. Block
+    processing applies the exit before validating the bid, so a bid that
+    validation accepts here sinks the proposal that includes it.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    builder_index = spec.BuilderIndex(0)
+    store, blocks, _ = setup_store_advanced_for_bid(spec, state)
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests.of(
+            spec.BuilderExitRequest(
+                source_address=builder.execution_address,
+                pubkey=builder.pubkey,
+            )
+        ),
+    )
+    parent_root = append_head_with_requests(spec, state, store, blocks, requests)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    assert spec.is_active_builder(state, builder_index)
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "builder may exit"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, state):
+    """A bid is valid when the full parent's exit request names no known builder.
+
+    The request's pubkey does not match the bid's builder, so the exit check
+    does not flag the bid.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    builder_index = spec.BuilderIndex(0)
+    store, blocks, _ = setup_store_advanced_for_bid(spec, state)
+    builder = state.builders[builder_index]
+    unknown_pubkey = spec.BLSPubkey(b"\xab" * 48)
+    assert unknown_pubkey not in [b.pubkey for b in state.builders]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests.of(
+            spec.BuilderExitRequest(
+                source_address=builder.execution_address,
+                pubkey=unknown_pubkey,
+            )
+        ),
+    )
+    parent_root = append_head_with_requests(spec, state, store, blocks, requests)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    assert spec.is_active_builder(state, builder_index)
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(spec, state):
+    """A bid is valid when the full parent's exit request is not authorized.
+
+    The request's source address is not the builder's execution address, so the
+    exit check does not flag the bid.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    builder_index = spec.BuilderIndex(0)
+    store, blocks, _ = setup_store_advanced_for_bid(spec, state)
+    builder = state.builders[builder_index]
+    wrong_address = spec.ExecutionAddress(b"\xff" * 20)
+    assert builder.execution_address != wrong_address
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests.of(
+            spec.BuilderExitRequest(
+                source_address=wrong_address,
+                pubkey=builder.pubkey,
+            )
+        ),
+    )
+    parent_root = append_head_with_requests(spec, state, store, blocks, requests)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    assert spec.is_active_builder(state, builder_index)
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(spec, state):
+    """A bid is ignored when a pending balance would block the requested exit.
+
+    The full parent's bid pays builder 0, and only a descendant block settles a
+    payment, so the builder has a pending balance when the parent's authorized
+    exit request is applied. That blocks the exit, so block processing keeps the
+    builder active and accepts the bid. Validation does not model the pending
+    balance, so it ignores the bid regardless.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    builder_index = spec.BuilderIndex(0)
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests.of(
+            spec.BuilderExitRequest(
+                source_address=builder.execution_address,
+                pubkey=builder.pubkey,
+            )
+        ),
+    )
+    store, blocks, parent_root, builder_index, pending_value = (
+        setup_store_finalized_with_head_payment(spec, state, requests)
+    )
+    assert pending_value > 0
+    assert spec.is_active_builder(state, builder_index)
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
+    )
+    # The pending payment survives the advance to the bid's slot, which is what
+    # blocks the exit that validation assumes.
+    advanced_state = store.block_states[parent_root].copy()
+    spec.process_slots(advanced_state, proposal_slot)
+    assert (
+        spec.get_pending_balance_to_withdraw_for_builder(advanced_state, builder_index)
+        == pending_value
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "builder may exit"
     messages.append(
         {
             "current_time_ms": int(time_ms),
