@@ -52,6 +52,6 @@ def build_profile(recs, name):
 
 def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
-    return ProposerSlashingMaterializer(spec, MODEL).materialize_reps(
+    return ProposerSlashingMaterializer(spec).materialize_reps(
         output_dir or (Path(__file__).parent / "reftests"), [SimpleNamespace(**r) for r in chosen]
     )
