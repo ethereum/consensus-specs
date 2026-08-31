@@ -1406,7 +1406,8 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
 def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, state):
     """A bid is valid when the full parent's exit request names no known builder.
 
-    The request's pubkey does not match the bid's builder, so it cannot exit it.
+    The request's pubkey does not match the bid's builder, so the exit check
+    does not flag the bid.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -1480,8 +1481,8 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
 def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(spec, state):
     """A bid is valid when the full parent's exit request is not authorized.
 
-    The request's source address is not the builder's execution address, so it
-    cannot exit the builder.
+    The request's source address is not the builder's execution address, so the
+    exit check does not flag the bid.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
