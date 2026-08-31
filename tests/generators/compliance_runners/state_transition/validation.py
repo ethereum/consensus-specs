@@ -10,6 +10,7 @@ from typing import Any, TYPE_CHECKING
 
 import snappy
 
+from .catalog import HANDLERS, RUNNERS
 from .materializer import SUITE_NAME
 
 if TYPE_CHECKING:
@@ -40,23 +41,9 @@ def decode(path: Path, sedes: Any) -> Any:
     return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 
 
-HANDLERS = (
-    "attestation",
-    "builder_deposit_request",
-    "builder_exit_request",
-    "builder_pending_payments",
-    "consolidation_request",
-    "deposit_request",
-    "execution_payload_bid",
-    "parent_execution_payload",
-    "payload_attestation",
-    "pending_deposits",
-    "proposer_slashing",
-    "ptc_window",
-    "withdrawal_request",
-    "withdrawals",
-)
-EPOCH_HANDLERS = {"builder_pending_payments", "pending_deposits", "ptc_window"}
+RUNNER_BY_HANDLER = {
+    handler: runner for runner, handlers in RUNNERS.items() for handler in handlers
+}
 
 
 def validate_cases(
@@ -66,7 +53,7 @@ def validate_cases(
     selected_cases: set[str] | None = None,
 ) -> int:
     """Run a handler validator over its materialized reference-test cases."""
-    phase = "epoch_processing" if handler in EPOCH_HANDLERS else "operations"
+    phase = RUNNER_BY_HANDLER[handler]
     case_dirs = sorted(test_dir.glob(f"**/{phase}/{handler}/{SUITE_NAME}/case_*"))
     if selected_cases is not None:
         case_dirs = [case_dir for case_dir in case_dirs if case_dir.name in selected_cases]
@@ -75,20 +62,27 @@ def validate_cases(
         print(f"No cases found under {test_dir}{suffix}")
         return 1
 
-    total_mm = 0
+    total_mm = total_err = 0
     for case_dir in case_dirs:
-        checks = validate_case(case_dir)
+        result = validate_case(case_dir)
+        if isinstance(result, tuple):
+            checks, errors = result
+        else:
+            checks, errors = result, []
         mismatches = [check for check in checks if check.status == "mismatch"]
         total_mm += len(mismatches)
-        status = "OK" if not mismatches else "FAIL"
+        total_err += len(errors)
+        status = "OK" if not mismatches and not errors else "FAIL"
         outcome = next((check.claimed for check in checks if check.dimension == "outcome"), "?")
         print(f"{case_dir.name}: {status}  [{outcome}]")
         for check in mismatches:
             print(f"    dim {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
+        for error in errors:
+            print(f"    oracle: {error}")
 
     print()
-    if total_mm:
-        print(f"FAILED: {total_mm} dimension mismatch(es)")
+    if total_mm or total_err:
+        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
         return 1
     print(f"PASSED: {len(case_dirs)} cases, all dimensions consistent")
     return 0
