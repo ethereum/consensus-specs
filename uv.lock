@@ -560,7 +560,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a14"
+version = "1.7.0b0"
 source = { editable = "." }
 dependencies = [
     { name = "blake3" },
