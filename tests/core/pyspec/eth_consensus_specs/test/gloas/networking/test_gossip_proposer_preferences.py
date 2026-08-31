@@ -1056,7 +1056,7 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
         current_time_ms=time_ms,
     )
     assert result == "reject"
-    assert reason == "dependent root is not before the proposer lookahead epoch"
+    assert reason == "dependent block is after the shuffling dependent slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -1120,7 +1120,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "dependent root is not a possible dependent block"
+    assert reason == "dependent block is not a possible dependent block"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -1295,3 +1295,235 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
             }
         ],
     )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_proposer_preferences__valid_genesis_dependent_root_in_genesis_epoch(spec, state):
+    """
+    Preferences for a proposal in GENESIS_EPOCH are valid with the genesis
+    block as dependent_root. compute_shuffling_dependent_slot returns
+    GENESIS_SLOT for this epoch, and genesis's own slot never exceeds it.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    genesis_root = anchor_block.hash_tree_root()
+
+    proposal_slot = spec.Slot(state.slot + 1)
+    validator_index = state.proposer_lookahead[proposal_slot]
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=genesis_root,
+    )
+
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_proposer_preferences__reject_non_genesis_dependent_root_in_genesis_epoch(
+    spec, state
+):
+    """
+    Preferences for the same proposal as above are rejected when dependent_root
+    points to the slot 1 block instead of genesis: compute_shuffling_dependent_slot
+    returns GENESIS_SLOT for this epoch, so only genesis qualifies.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks = setup_store_with_advanced_state(spec, state, spec.Slot(1))
+    genesis_state = store.block_states[blocks[0].message.hash_tree_root()]
+    later_root = blocks[1].message.hash_tree_root()
+
+    proposal_slot = spec.Slot(state.slot + 1)
+    validator_index = genesis_state.proposer_lookahead[proposal_slot]
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=later_root,
+    )
+
+    yield "state", anchor_state
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "dependent block is after the shuffling dependent slot"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_proposer_preferences__valid_genesis_dependent_root_at_lookahead_epoch(spec, state):
+    """
+    Preferences for a proposal at MIN_SEED_LOOKAHEAD, the last epoch whose
+    shuffling dependent slot is GENESIS_SLOT, are valid with the genesis block
+    as dependent_root.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    genesis_root = anchor_block.hash_tree_root()
+
+    proposal_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD)
+    proposal_slot = spec.compute_start_slot_at_epoch(proposal_epoch)
+    validator_index = state.proposer_lookahead[proposal_slot]
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=genesis_root,
+    )
+
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=get_seen(spec),
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_proposer_preferences__reject_non_genesis_dependent_root_at_lookahead_epoch(
+    spec, state
+):
+    """
+    Preferences for the same proposal as above are rejected when dependent_root
+    points to the slot 1 block instead of genesis, pinning the shuffling
+    dependent slot boundary from the reject side too.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    store, blocks = setup_store_with_advanced_state(spec, state, spec.Slot(1))
+    genesis_state = store.block_states[blocks[0].message.hash_tree_root()]
+    later_root = blocks[1].message.hash_tree_root()
+
+    proposal_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD)
+    proposal_slot = spec.compute_start_slot_at_epoch(proposal_epoch)
+    validator_index = genesis_state.proposer_lookahead[proposal_slot]
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=later_root,
+    )
+
+    yield "state", anchor_state
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "dependent block is after the shuffling dependent slot"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages

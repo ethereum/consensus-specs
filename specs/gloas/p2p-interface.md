@@ -27,6 +27,7 @@
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
   - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
+  - [New `compute_shuffling_dependent_epoch`](#new-compute_shuffling_dependent_epoch)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -397,6 +398,19 @@ def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
     if root == get_head(store).root:
         return True
     return False
+```
+
+### New `compute_shuffling_dependent_epoch`
+
+```python
+def compute_shuffling_dependent_epoch(epoch: Epoch) -> Epoch:
+    """
+    Return the epoch that determines the shuffling for the given ``epoch``.
+    For the first ``MIN_SEED_LOOKAHEAD`` epochs, this is ``GENESIS_EPOCH``.
+    """
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_EPOCH
+    return Epoch(epoch - MIN_SEED_LOOKAHEAD)
 ```
 
 ### New `verify_attestation_payload_status`
@@ -1077,7 +1091,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
+    lookahead_epoch = compute_shuffling_dependent_epoch(proposal_epoch)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     if is_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
@@ -1096,17 +1110,19 @@ def validate_proposer_preferences_gossip(
     if preferences.dependent_root not in store.block_states:
         raise GossipIgnore("dependent block failed validation")
 
-    # [REJECT] The dependent root is a valid dependent block for the proposal slot
-    if store.blocks[preferences.dependent_root].slot >= lookahead_epoch_start_slot:
-        raise GossipReject("dependent root is not before the proposer lookahead epoch")
+    # [REJECT] The dependent block's slot is not after the shuffling dependent slot
+    dependent_slot = compute_shuffling_dependent_slot(proposal_epoch)
+    if store.blocks[preferences.dependent_root].slot > dependent_slot:
+        raise GossipReject("dependent block is after the shuffling dependent slot")
 
-    # [IGNORE] The dependent root is a possible dependent block for the lookahead epoch
+    # [IGNORE] The dependent block is a possible dependent block for the lookahead epoch
     if not is_valid_dependent_root(store, preferences.dependent_root, lookahead_epoch):
-        raise GossipIgnore("dependent root is not a possible dependent block")
+        raise GossipIgnore("dependent block is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     lookahead_state = store.block_states[preferences.dependent_root].copy()
-    process_slots(lookahead_state, lookahead_epoch_start_slot)
+    if lookahead_state.slot < lookahead_epoch_start_slot:
+        process_slots(lookahead_state, lookahead_epoch_start_slot)
     lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
     if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
