@@ -72,8 +72,13 @@ uv run python -m tests.generators.compliance_runners.state_transition.run \
 The direct command writes to each handler's local `reftests/` directory unless
 `--comptests-output` is provided. It validates each handler immediately after
 materialization. Handler-specific MiniZinc models, coverage definitions,
-materializers, and validators are located in the corresponding handler
+materializers, and validators are located in the corresponding provider
 directory.
+
+A handler may have multiple provider directories. Their cases are appended to
+the same handler output with distinct case numbers and validated independently;
+the provider directory is an implementation detail, while the generated
+manifest continues to use the protocol handler name.
 
 ## Running generated tests
 

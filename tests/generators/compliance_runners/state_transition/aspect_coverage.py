@@ -7,7 +7,7 @@ covering-set selection over any subset of aspects. Enumerated records also
 retain the handler's fault count, allowing profiles to classify cases
 independently of the terminal outcome.
 
-A handler's own `coverage.py` supplies:
+A provider's own `coverage.py` supplies:
   - `model_path`  : the handler MiniZinc model,
   - `dims`        : the solution variables to read (its coverage dimensions),
   - `aspects`     : {aspect_name: [dim, ...]} (include an `outcome` dimension),
