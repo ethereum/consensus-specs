@@ -22,7 +22,6 @@ SUITE_NAME = "main"
 
 class Materializer:
     spec: Any
-    model_path: Path | None
     fork_name: str
     preset_name: str
     runner_name: str
@@ -31,12 +30,10 @@ class Materializer:
     def __init__(
         self,
         spec: Any,
-        model_path: Path | None = None,
         fork_name: str = "gloas",
         preset_name: str = "minimal",
     ) -> None:
         self.spec = spec
-        self.model_path = model_path
         self.fork_name = fork_name
         self.preset_name = preset_name
 
