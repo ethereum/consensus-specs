@@ -80,4 +80,4 @@ def materialize_profile(name: str, output_dir: Path | None = None) -> int:
     _, chosen = build_profile(_recs(), name)
     reps = [SimpleNamespace(**r) for r in chosen]
     out = output_dir or (Path(__file__).parent / "reftests")
-    return WithdrawalRequestMaterializer(spec, MODEL).materialize_reps(out, reps)
+    return WithdrawalRequestMaterializer(spec).materialize_reps(out, reps)
