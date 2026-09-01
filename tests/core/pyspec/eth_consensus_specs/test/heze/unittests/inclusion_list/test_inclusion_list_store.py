@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     run_on_block,
 )
 from eth_consensus_specs.test.helpers.inclusion_list import (
-    get_empty_signed_inclusion_list,
     get_sample_inclusion_list,
     get_sample_signed_inclusion_list,
     get_sample_transactions,
@@ -45,21 +44,14 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
 
         signed_inclusion_lists = []
 
-        # An empty IL.
-        signed_inclusion_lists.append(
-            get_empty_signed_inclusion_list(
-                spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
-            )
-        )
-
-        # An IL with empty transactions.
+        # An IL with minimal (one-byte) transactions.
         signed_inclusion_lists.append(
             get_sample_signed_inclusion_list(
                 spec,
                 forkchoice_store,
                 state,
                 validator_index=inclusion_list_committee[1],
-                max_transaction_size=0,
+                max_transaction_size=1,
                 max_transaction_count=5,
             )
         )

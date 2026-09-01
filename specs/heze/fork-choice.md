@@ -268,9 +268,13 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
-    # The transactions must not exceed the maximum size
+    # The transactions must be non-empty and not exceed the maximum size
     transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+    assert transactions_size > 0
     assert transactions_size <= MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+
+    # Every transaction must be non-empty
+    assert all(len(transaction) > 0 for transaction in inclusion_list.transactions)
 
     # The slot must be within the retention window
     assert inclusion_list.slot <= current_slot
