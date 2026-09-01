@@ -27,6 +27,12 @@ def pytest_addoption(parser):
         default="standard",
         help="State-transition coverage profile",
     )
+    parser.addoption(
+        "--preset",
+        choices=("minimal", "mainnet"),
+        default="minimal",
+        help="Preset to generate compliance tests for",
+    )
 
 
 @pytest.fixture
@@ -46,3 +52,8 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture
 def profile(request) -> str:
     return request.config.getoption("--profile")
+
+
+@pytest.fixture
+def preset(request) -> str:
+    return request.config.getoption("--preset")
