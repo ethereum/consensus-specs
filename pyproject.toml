@@ -13,7 +13,7 @@ requires-python = ">=3.12, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "blake3==1.0.9",
-  "eth-ssz-specs @ git+https://github.com/leanEthereum/ssz-specs@3b47ff49c6766c4c0c9002c72e62aa3247c150c0",
+  "eth-ssz-specs==0.1.0",
   "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",

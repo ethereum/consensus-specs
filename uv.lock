@@ -548,7 +548,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.3" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.1.0" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
-    { name = "eth-ssz-specs", git = "https://github.com/leanEthereum/ssz-specs?rev=3b47ff49c6766c4c0c9002c72e62aa3247c150c0" },
+    { name = "eth-ssz-specs", specifier = "==0.1.0" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
@@ -593,11 +593,14 @@ pycryptodome = [
 
 [[package]]
 name = "eth-ssz-specs"
-version = "0.0.1.dev2"
-source = { git = "https://github.com/leanEthereum/ssz-specs?rev=3b47ff49c6766c4c0c9002c72e62aa3247c150c0#3b47ff49c6766c4c0c9002c72e62aa3247c150c0" }
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
-    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/17/63/f548c058bdfacb79a7b587514fedc7c2baa0140a1168fa2849d477805d21/eth_ssz_specs-0.1.0.tar.gz", hash = "sha256:0aa753a48e3c4779cebbe5fe21735b7e54956058f5a18f3cb0368ada105554ef", size = 99924, upload-time = "2026-09-01T21:51:43.613Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/14/945d4e800c4d4f1158ef352bb291c17ef9c925b61fd8551c156784a76a0f/eth_ssz_specs-0.1.0-py3-none-any.whl", hash = "sha256:466c6cef854cca45022a7cdc3922dd636e30b1a1dd5385845819e3d45ddddf41", size = 75538, upload-time = "2026-09-01T21:51:42.232Z" },
 ]
 
 [[package]]
