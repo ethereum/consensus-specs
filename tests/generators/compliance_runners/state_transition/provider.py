@@ -10,8 +10,6 @@ from typing import Any, TYPE_CHECKING
 
 import snappy
 
-from eth_consensus_specs.gloas import minimal as spec
-
 from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
 
@@ -51,6 +49,14 @@ RUNNER_BY_HANDLER = {
 }
 
 
+def _spec_for_case(case_dir: Path) -> Any:
+    """Load the preset encoded by a generated case's directory layout."""
+    for parent in case_dir.parents:
+        if parent.name in ("minimal", "mainnet"):
+            return import_module(f"eth_consensus_specs.gloas.{parent.name}")
+    raise ValueError(f"could not determine preset for case: {case_dir}")
+
+
 def validate_cases(
     test_dir: Path,
     handler: str,
@@ -69,6 +75,10 @@ def validate_cases(
 
     total_mm = total_err = 0
     for case_dir in case_dirs:
+        case_spec = _spec_for_case(case_dir)
+        # Validators historically imported the minimal spec at module scope.
+        # Replace that binding so validation follows each case's preset.
+        validate_case.__globals__["spec"] = case_spec
         result = validate_case(case_dir)
         if isinstance(result, tuple):
             checks, errors = result
@@ -123,11 +133,13 @@ def _materialize_provider(
     output_dir: Path,
     case_offset: int,
     clean: bool,
+    spec: Any,
+    preset_name: str,
 ) -> tuple[Any, int]:
     module = import_module(f".{provider.module}", __package__)
     _, chosen = module.build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
-    materializer = module.MATERIALIZER(spec)
+    materializer = module.MATERIALIZER(spec, preset_name=preset_name)
     if materializer.runner_name != provider.runner or materializer.handler_name != provider.handler:
         raise ValueError(f"provider metadata does not match materializer: {provider.name}")
     generated = materializer.materialize_reps(
@@ -136,8 +148,16 @@ def _materialize_provider(
     return module.validate_case, _generated_count(generated)
 
 
-def materialize_handler(handler: str, profile: str, output_dir: Path) -> int:
+def materialize_handler(
+    handler: str,
+    profile: str,
+    output_dir: Path,
+    spec: Any | None = None,
+    preset_name: str = "minimal",
+) -> int:
     """Materialize and validate all providers registered for ``handler``."""
+    if spec is None:
+        spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     providers = providers_for(handler)
     case_offset = 0
     for provider_index, provider in enumerate(providers):
@@ -148,6 +168,8 @@ def materialize_handler(handler: str, profile: str, output_dir: Path) -> int:
             output_dir,
             case_offset,
             clean=provider_index == 0,
+            spec=spec,
+            preset_name=preset_name,
         )
         selected_cases = {
             f"case_{index:04d}" for index in range(case_offset, case_offset + generated)
@@ -176,7 +198,9 @@ def run(
     handler: str,
     comptests_output: Path | None = None,
     profile: str = "standard",
+    preset_name: str = "minimal",
 ) -> int:
+    spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     handlers = HANDLERS if handler == "all" else (handler,)
     for current_handler in handlers:
         output_dir = (
@@ -184,5 +208,5 @@ def run(
             if comptests_output is not None
             else Path(__file__).parent / current_handler / "reftests"
         )
-        materialize_handler(current_handler, profile, output_dir)
+        materialize_handler(current_handler, profile, output_dir, spec, preset_name)
     return 0

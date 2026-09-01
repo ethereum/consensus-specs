@@ -5,8 +5,8 @@ for individual state-transition handlers. Each handler models semantic coverage
 conditions, materializes concrete SSZ test vectors, and validates the generated
 vectors against the executable specification.
 
-The generator currently targets the `gloas` fork with the `minimal` preset. Its
-test cases follow the standard
+The generator currently targets the `gloas` fork. It supports both the
+`minimal` and `mainnet` presets. Its test cases follow the standard
 [operations test format](../../../formats/operations/README.md) or
 [epoch processing test format](../../../formats/epoch_processing/README.md),
 depending on the handler.
@@ -46,6 +46,7 @@ handler, profile, or output directory with Make variables:
 
 ```bash
 make comptests kind=state_transition handler=withdrawals profile=smoke
+make comptests kind=state_transition preset=mainnet
 make comptests kind=state_transition profile=all
 make comptests kind=state_transition comptests_dir=../compliance-spec-tests/tests
 ```
@@ -65,6 +66,8 @@ also be run directly:
 uv run python -m tests.generators.compliance_runners.state_transition.run
 uv run python -m tests.generators.compliance_runners.state_transition.run \
   --handler withdrawals --profile smoke
+uv run python -m tests.generators.compliance_runners.state_transition.run \
+  --preset mainnet
 uv run python -m tests.generators.compliance_runners.state_transition.run \
   --comptests-output /path/to/output
 ```
