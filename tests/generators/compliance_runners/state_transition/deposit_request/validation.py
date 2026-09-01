@@ -19,12 +19,12 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.deposi
 from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
     withdrawal_credentials_profile,
 )
-from tests.generators.compliance_runners.state_transition.validation import check_dimensions, decode
+from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from generators.compliance_runners.state_transition.validation import Check
+    from tests.generators.compliance_runners.state_transition.provider import Check
 
 _YAML = YAML(typ="safe")
 
