@@ -19,9 +19,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--handler", choices=(*HANDLERS, "all"), default="all")
     parser.add_argument("--profile", choices=PROFILES, default="standard")
+    parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
     parser.add_argument("--comptests-output", type=Path)
     args = parser.parse_args()
-    return run(args.handler, args.comptests_output, args.profile)
+    return run(args.handler, args.comptests_output, args.profile, args.preset)
 
 
 if __name__ == "__main__":
