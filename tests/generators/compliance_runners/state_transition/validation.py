@@ -19,9 +19,7 @@ def main() -> int:
     args = parser.parse_args()
     test_dir = args.test_dir
     selected_cases = (
-        {case.strip() for case in args.cases.split(",") if case.strip()}
-        if args.cases
-        else None
+        {case.strip() for case in args.cases.split(",") if case.strip()} if args.cases else None
     )
 
     handlers = tuple(discover_handlers(test_dir))
