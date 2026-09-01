@@ -15,7 +15,7 @@ def decode(data: Any, typ):
     if issubclass(typ, Uint | Boolean):
         return typ(data)
     elif issubclass(typ, BitList | ProgressiveBitList | BitVector) or (
-        issubclass(typ, ProgressiveList) and issubclass(typ.ELEMENT_TYPE, Byte)
+        issubclass(typ, ProgressiveList) and typ.ELEMENT_TYPE is Byte
     ):
         return deserialize(typ, bytes.fromhex(data[2:]))
     elif issubclass(typ, List | ProgressiveList | Vector):
