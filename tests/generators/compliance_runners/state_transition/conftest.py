@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from tests.generators.compliance_runners.state_transition.catalog import HANDLERS
 
-from tests.generators.compliance_runners.state_transition.run import PROFILES
+from tests.generators.compliance_runners.state_transition.catalog import HANDLERS
+from tests.generators.compliance_runners.state_transition.provider import PROFILES
 
 
 def pytest_addoption(parser):
