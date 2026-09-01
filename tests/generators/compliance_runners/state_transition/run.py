@@ -12,25 +12,7 @@ import argparse
 from pathlib import Path
 
 from .catalog import HANDLERS
-from .provider import materialize_handler
-
-PROFILES = ("all", "smoke", "normal", "exceptional", "standard")
-
-
-def run(
-    handler: str,
-    comptests_output: Path | None = None,
-    profile: str = "standard",
-) -> int:
-    handlers = HANDLERS if handler == "all" else (handler,)
-    for current_handler in handlers:
-        output_dir = (
-            comptests_output
-            if comptests_output is not None
-            else Path(__file__).parent / current_handler / "reftests"
-        )
-        materialize_handler(current_handler, profile, output_dir)
-    return 0
+from .provider import PROFILES, run
 
 
 def main() -> int:
