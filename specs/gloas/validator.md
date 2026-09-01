@@ -247,12 +247,12 @@ The `parent_execution_requests` field contains the execution requests from the
 parent's execution payload. The proposer constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
-  `parent_execution_requests` to an empty `ExecutionRequests()`.
+  `parent_execution_requests` to `ExecutionRequests.empty()`.
 - If `should_build_on_full(store, head, get_current_slot(store))` returns `True`
   (the proposer is building on the parent's full payload), set
   `parent_execution_requests` to `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
-  `parent_execution_requests` to an empty `ExecutionRequests()`.
+  `parent_execution_requests` to `ExecutionRequests.empty()`.
 
 ##### Execution requests
 

@@ -307,7 +307,7 @@ class MarkdownToSpec:
             # It is a constant variable or a preset_dep_constant_vars
             else:
                 if name == "ENDIANNESS":
-                    # Deal with mypy Literal typing check
+                    # Deal with Literal typing check
                     value_def = _parse_value(name, value, type_hint="Final")
                 if any(k in value for k in self.preset) or any(
                     k in value for k in self.spec["preset_dep_constant_vars"]

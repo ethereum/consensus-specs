@@ -135,7 +135,7 @@ def create_light_client_update(
     )
     update_attested_period = compute_sync_committee_period_at_slot(attested_block.message.slot)
 
-    update = LightClientUpdate()
+    update = LightClientUpdate.empty()
 
     update.attested_header = block_to_light_client_header(attested_block)
 

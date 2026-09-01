@@ -287,7 +287,7 @@ proposer processes them as follows:
 def process_sync_committee_contributions(
     block: BeaconBlock, contributions: Set[SyncCommitteeContribution]
 ) -> None:
-    sync_aggregate = SyncAggregate()
+    sync_aggregate = SyncAggregate.empty()
     signatures = []
     sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 
@@ -296,7 +296,7 @@ def process_sync_committee_contributions(
         for index, participated in enumerate(contribution.aggregation_bits):
             if participated:
                 participant_index = sync_subcommittee_size * subcommittee_index + index
-                sync_aggregate.sync_committee_bits[participant_index] = True
+                sync_aggregate.sync_committee_bits[participant_index] = Boolean(True)
         signatures.append(contribution.signature)
 
     sync_aggregate.sync_committee_signature = bls.Aggregate(signatures)

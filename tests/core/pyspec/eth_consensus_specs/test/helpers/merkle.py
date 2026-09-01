@@ -1,4 +1,5 @@
-from ssz.proofs import build_proof, get_generalized_index as _get_generalized_index
+from ssz.paths import get_generalized_index as _get_generalized_index
+from ssz.proofs import build_proof
 from ssz.ssz_base import SSZType
 from ssz.uint import BaseUint
 

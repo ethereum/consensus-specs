@@ -180,7 +180,7 @@ class PayloadAttributes:
 class LatestMessage:
     slot: Slot
     root: Root
-    payload_present: Boolean
+    payload_present: bool
 ```
 
 ### Modified `Store`
@@ -199,7 +199,7 @@ class Store:
     blocks: Dict[Root, BeaconBlock]
     block_states: Dict[Root, BeaconState]
     # [Modified in Gloas:EIP7732]
-    block_timeliness: Dict[Root, list[Boolean]]
+    block_timeliness: Dict[Root, list[bool]]
     checkpoint_states: Dict[Checkpoint, BeaconState]
     latest_messages: Dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: Dict[Root, Checkpoint]
@@ -256,7 +256,7 @@ def get_custody_column_bits(node_id: NodeID, custody_group_count: Uint64) -> Cus
     bits = CustodyColumnBits()
     for custody_group in get_custody_groups(node_id, custody_group_count):
         for column in compute_columns_for_custody_group(custody_group):
-            bits[column] = True
+            bits[column] = Boolean(True)
     return bits
 ```
 
@@ -515,10 +515,10 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
         # To decide on a payload from the previous slot, choose
         # between FULL and EMPTY based on `should_extend_payload`
         if node.payload_status == PAYLOAD_STATUS_EMPTY:
-            return 1
+            return Uint8(1)
         if should_extend_payload(store, node.root):
-            return 2
-        return 0
+            return Uint8(2)
+        return Uint8(0)
     else:
         return node.payload_status
 ```

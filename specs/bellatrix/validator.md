@@ -195,7 +195,7 @@ def get_execution_payload(
 ) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
-        return ExecutionPayload()
+        return ExecutionPayload.empty()
     else:
         return execution_engine.get_payload(payload_id).execution_payload
 ```

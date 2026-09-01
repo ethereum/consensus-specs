@@ -169,13 +169,13 @@ class BlobIdentifier(Container):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [New in Deneb]
@@ -255,7 +255,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
         get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", blob_sidecar.index)
     )
     return is_valid_merkle_branch(
-        leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
+        leaf=hash_tree_root(blob_sidecar.kzg_commitment),
         branch=blob_sidecar.kzg_commitment_inclusion_proof,
         depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH,
         index=gindex,

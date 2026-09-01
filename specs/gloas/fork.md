@@ -215,13 +215,16 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             value=Gwei(0),
             execution_payment=Gwei(0),
             blob_kzg_commitments=BlobKZGCommitments(),
-            execution_requests_root=hash_tree_root(ExecutionRequests()),
+            execution_requests_root=hash_tree_root(ExecutionRequests.empty()),
         ),
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
-        ptc_window=initialize_ptc_window(pre),
+        ptc_window=PayloadTimelinessCommitteeWindow(),
     )
+
+    # [New in Gloas:EIP7732]
+    post.ptc_window = initialize_ptc_window(post)
 
     # [New in Gloas:EIP7732]
     onboard_builders_from_pending_deposits(post)

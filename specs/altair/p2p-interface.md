@@ -67,7 +67,7 @@ class Syncnets(BitVector):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -75,7 +75,7 @@ class Seen:
     # [New in Altair]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     # [New in Altair]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
 ```
@@ -104,7 +104,7 @@ def is_current_slot(
     Check if the given slot is the current slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(store, slot, 0, current_time_ms)
+    return is_within_slot_range(store, slot, Uint64(0), current_time_ms)
 ```
 
 ### New `get_sync_subcommittee_pubkeys`

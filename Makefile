@@ -93,7 +93,7 @@ help-verbose:
 	@echo "    - mdformat: Formats markdown files"
 	@echo "    - codespell: Checks for spelling mistakes"
 	@echo "    - ruff: Python linter and formatter"
-	@echo "    - mypy: Static type checker for Python"
+	@echo "    - ty: Static type checker for Python"
 	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
 	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
 	@echo "    - Markdown note style fix (scripts/fix_note_style.py)"
@@ -257,8 +257,6 @@ serve_docs: _pyspec _copy_docs
 LINT_DIFF_BEFORE := .lint_diff_before
 LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
-MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth_consensus_specs.$S)
 
 # Check for mistakes.
 lint: _pyspec
@@ -275,8 +273,9 @@ lint: _pyspec
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
 	@$(UV_RUN) ruff format --preview --quiet $(CURDIR)/specs
-	@output="$$($(UV_RUN) mypy $(MYPY_SCOPE) 2>&1)" || \
-		{ echo "$$output"; exit 1; }
+	@$(UV_RUN) ty check --no-progress \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
 	@git diff > $(LINT_DIFF_AFTER)
 	@diff -q $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER) >/dev/null 2>&1 || \
 		echo "$(BOLD)Note: make lint modified tracked files$(NORM)"

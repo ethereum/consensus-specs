@@ -32,7 +32,7 @@ These are the inclusion list specifications to implement Heze.
 @dataclass(eq=True, frozen=True)
 class InclusionListEntry:
     signed_inclusion_list: SignedInclusionList
-    timely: Boolean
+    timely: bool
 ```
 
 #### `InclusionListStore`

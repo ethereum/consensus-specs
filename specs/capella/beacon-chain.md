@@ -435,7 +435,7 @@ def get_validators_sweep_withdrawals(
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: Uint64 = 0
+    processed_count = Uint64(0)
     withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
@@ -637,7 +637,7 @@ def process_bls_to_execution_change(
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 
-    validator.withdrawal_credentials = (
+    validator.withdrawal_credentials = Bytes32(
         ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + address_change.to_execution_address
     )
 ```
