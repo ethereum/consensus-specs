@@ -33,6 +33,10 @@ def get_whistleblower_reward_quotient(spec):
         return spec.WHISTLEBLOWER_REWARD_QUOTIENT
 
 
+def get_max_proposer_slashings(spec):
+    return spec.MAX_PROPOSER_SLASHINGS
+
+
 def check_proposer_slashing_effect(
     spec, pre_state, state, slashed_index, block=None, proposer_slashing=None
 ):

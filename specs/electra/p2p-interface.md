@@ -139,6 +139,11 @@ def validate_beacon_block_gossip(
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
 
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
     if is_future_slot(store, block.slot, current_time_ms):
@@ -150,11 +155,6 @@ def validate_beacon_block_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
@@ -390,6 +390,12 @@ def validate_beacon_attestation_gossip(
     attester_index = attestation.attester_index
     target_epoch = data.target.epoch
 
+    # [Modified in Electra:EIP7549]
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
+
     # [New in Electra:EIP7549]
     # [REJECT] The attestation's data index is zero
     if data.index != 0:
@@ -440,12 +446,6 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attester is not a member of the committee")
 
     # [Modified in Electra:EIP7549]
-    # [IGNORE] No other valid attestation seen for this target epoch and validator
-    attestation_epoch_key = (target_epoch, attester_index)
-    if attestation_epoch_key in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation for this epoch and validator")
-
-    # [Modified in Electra:EIP7549]
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
@@ -488,6 +488,12 @@ def validate_blob_sidecar_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     block_header = blob_sidecar.signed_block_header.message
+
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    if sidecar_tuple in seen.blob_sidecar_tuples:
+        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
 
     # [Modified in Electra:EIP7691]
     # [REJECT] The sidecar's index is consistent with MAX_BLOBS_PER_BLOCK_ELECTRA
@@ -550,12 +556,6 @@ def validate_blob_sidecar_gossip(
         blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
     ):
         raise GossipReject("invalid blob kzg proof")
-
-    # [IGNORE] The sidecar is the first sidecar for the tuple
-    # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
-    sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
-    if sidecar_tuple in seen.blob_sidecar_tuples:
-        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
 
     # [REJECT] The sidecar is proposed by the expected proposer_index
     # (if shuffling is not available, IGNORE instead and MAY be queued for later)

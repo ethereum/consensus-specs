@@ -27,6 +27,7 @@
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
   - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
+  - [New `compute_shuffling_dependent_epoch`](#new-compute_shuffling_dependent_epoch)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -399,6 +400,19 @@ def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
     return False
 ```
 
+### New `compute_shuffling_dependent_epoch`
+
+```python
+def compute_shuffling_dependent_epoch(epoch: Epoch) -> Epoch:
+    """
+    Return the epoch that determines the shuffling for the given ``epoch``.
+    For the first ``MIN_SEED_LOOKAHEAD`` epochs, this is ``GENESIS_EPOCH``.
+    """
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_EPOCH
+    return Epoch(epoch - MIN_SEED_LOOKAHEAD)
+```
+
 ### New `verify_attestation_payload_status`
 
 ```python
@@ -440,6 +454,8 @@ def verify_attestation_payload_status(
 
 ### New `verify_block_body_operation_limits`
 
+*Note*: These checks MAY be performed when deserializing `BeaconBlockBody`.
+
 ```python
 def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
     """
@@ -476,6 +492,8 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
 ```
 
 ### New `verify_execution_requests_limits`
+
+*Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
 
 ```python
 def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
@@ -549,6 +567,11 @@ def validate_beacon_block_gossip(
     block = signed_beacon_block.message
     bid = block.body.signed_execution_payload_bid.message
 
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
     if is_future_slot(store, block.slot, current_time_ms):
@@ -560,11 +583,6 @@ def validate_beacon_block_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [New in Gloas:EIP7688]
     # [REJECT] The block body operation counts are within their limits
@@ -799,6 +817,11 @@ def validate_execution_payload_envelope_gossip(
     payload = envelope.payload
     block_root = envelope.beacon_block_root
 
+    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
+    envelope_key = (block_root, envelope.builder_index)
+    if envelope_key in seen.execution_payload_envelopes:
+        raise GossipIgnore("already seen envelope for this block root from this builder")
+
     # [IGNORE] The envelope's block root has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     if block_root not in store.blocks:
@@ -809,11 +832,6 @@ def validate_execution_payload_envelope_gossip(
         raise GossipReject("envelope's block failed validation")
 
     state = store.block_states[block_root]
-
-    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
-    envelope_key = (block_root, envelope.builder_index)
-    if envelope_key in seen.execution_payload_envelopes:
-        raise GossipIgnore("already seen envelope for this block root from this builder")
 
     # [IGNORE] The envelope is from a slot greater than or equal to the latest finalized slot
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
@@ -873,14 +891,14 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
-    # [IGNORE] The payload attestation's slot is for the current slot
-    if not is_current_slot(store, data.slot, current_time_ms):
-        raise GossipIgnore("payload attestation is not for the current slot")
-
     # [IGNORE] This is the first valid payload attestation from this validator index
     payload_attestation_key = (data.slot, validator_index)
     if payload_attestation_key in seen.payload_attestation_validators:
         raise GossipIgnore("already seen payload attestation from this validator")
+
+    # [IGNORE] The payload attestation's slot is for the current slot
+    if not is_current_slot(store, data.slot, current_time_ms):
+        raise GossipIgnore("payload attestation is not for the current slot")
 
     # [IGNORE] The payload attestation's block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
@@ -933,10 +951,6 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] The bid's slot is the current slot or the next slot
-    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
-        raise GossipIgnore("bid's slot is not the current or next slot")
-
     # [IGNORE] This is the first bid for this slot, parent, and builder
     bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
     if bid_key in seen.execution_payload_bids:
@@ -947,6 +961,10 @@ def validate_execution_payload_bid_gossip(
     if best_bid_key in seen.best_execution_payload_bid:
         if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
             raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
+
+    # [IGNORE] The bid's slot is the current slot or the next slot
+    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
+        raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
@@ -1009,7 +1027,6 @@ def validate_execution_payload_bid_gossip(
     if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
         raise GossipReject("bid's previous randao is incorrect")
 
-    # Advance state
     state = state.copy()
     process_slots(state, bid.slot)
 
@@ -1017,17 +1034,27 @@ def validate_execution_payload_bid_gossip(
     if bid.builder_index >= len(state.builders):
         raise GossipReject("builder index out of range")
 
-    # [IGNORE] The builder can cover the bid
-    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
-        raise GossipIgnore("builder cannot cover bid value")
+    builder = state.builders[bid.builder_index]
+
+    # [REJECT] The builder is a payload builder
+    if builder.version != PAYLOAD_BUILDER_VERSION:
+        raise GossipReject("builder is not a payload builder")
 
     # [REJECT] The builder is active
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
-    # [REJECT] The builder is a payload builder
-    if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
-        raise GossipReject("builder is not a payload builder")
+    # [IGNORE] The builder can cover the bid
+    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
+        raise GossipIgnore("builder cannot cover bid value")
+
+    # [IGNORE] The parent's payload does not try to exit the builder
+    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+        envelope = store.payloads[bid.parent_block_root]
+        for request in envelope.execution_requests.builder_exits:
+            if request.pubkey == builder.pubkey:
+                if request.source_address == builder.execution_address:
+                    raise GossipIgnore("builder may exit")
 
     # [REJECT] The bid signature is valid
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
@@ -1066,9 +1093,14 @@ def validate_proposer_preferences_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     preferences = signed_proposer_preferences.message
-    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+
+    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
+    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
+    if prefs_key in seen.proposer_preferences:
+        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
     # [IGNORE] The proposal epoch is after the Gloas upgrade
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
     if proposal_epoch < GLOAS_FORK_EPOCH:
         raise GossipIgnore("proposal epoch is pre-gloas")
 
@@ -1077,7 +1109,7 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
+    lookahead_epoch = compute_shuffling_dependent_epoch(proposal_epoch)
     lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
     if is_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
@@ -1087,26 +1119,23 @@ def validate_proposer_preferences_gossip(
     if preferences.dependent_root not in store.blocks:
         raise GossipIgnore("dependent block has not been seen")
 
-    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
-    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
-    if prefs_key in seen.proposer_preferences:
-        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
-
     # [IGNORE] The dependent block passes validation
     if preferences.dependent_root not in store.block_states:
         raise GossipIgnore("dependent block failed validation")
 
-    # [REJECT] The dependent root is a valid dependent block for the proposal slot
-    if store.blocks[preferences.dependent_root].slot >= lookahead_epoch_start_slot:
-        raise GossipReject("dependent root is not before the proposer lookahead epoch")
+    # [REJECT] The dependent block's slot is not after the shuffling dependent slot
+    dependent_slot = compute_shuffling_dependent_slot(proposal_epoch)
+    if store.blocks[preferences.dependent_root].slot > dependent_slot:
+        raise GossipReject("dependent block is after the shuffling dependent slot")
 
-    # [IGNORE] The dependent root is a possible dependent block for the lookahead epoch
+    # [IGNORE] The dependent block is a possible dependent block for the lookahead epoch
     if not is_valid_dependent_root(store, preferences.dependent_root, lookahead_epoch):
-        raise GossipIgnore("dependent root is not a possible dependent block")
+        raise GossipIgnore("dependent block is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     lookahead_state = store.block_states[preferences.dependent_root].copy()
-    process_slots(lookahead_state, lookahead_epoch_start_slot)
+    if lookahead_state.slot < lookahead_epoch_start_slot:
+        process_slots(lookahead_state, lookahead_epoch_start_slot)
     lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
     if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
@@ -1150,6 +1179,11 @@ def validate_beacon_attestation_gossip(
     committee_index = attestation.committee_index
     attester_index = attestation.attester_index
     target_epoch = data.target.epoch
+
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [New in Gloas:EIP7732]
     # [REJECT] The attestation's data index is 0 or 1
@@ -1198,11 +1232,6 @@ def validate_beacon_attestation_gossip(
     committee = get_beacon_committee(state, data.slot, committee_index)
     if attester_index not in committee:
         raise GossipReject("attester is not a member of the committee")
-
-    # [IGNORE] No other valid attestation seen for this target epoch and validator
-    attestation_epoch_key = (target_epoch, attester_index)
-    if attestation_epoch_key in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]

@@ -18,7 +18,7 @@ def encode(value, include_hash_tree_roots=False):
     elif isinstance(value, Boolean):
         return bool(value)
     elif isinstance(value, BitList | ProgressiveBitList | BitVector) or (
-        isinstance(value, ProgressiveList) and issubclass(type(value).ELEMENT_TYPE, Byte)
+        isinstance(value, ProgressiveList) and type(value).ELEMENT_TYPE is Byte
     ):
         return "0x" + serialize(value).hex()
     elif isinstance(value, (list, List | ProgressiveList | Vector)):  # normal python lists
