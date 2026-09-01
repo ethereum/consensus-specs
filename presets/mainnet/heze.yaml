@@ -9,7 +9,5 @@ INCLUSION_LIST_COMMITTEE_SIZE: 16
 # ---------------------------------------------------------------
 # 196,934 bytes, ~192 KiB
 MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE: 196934
-# 152 + 5 * MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST = 41,112 bytes, ~40 KiB:
-# a list of MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST one-byte transactions,
-# each costing its byte plus a 4-byte SSZ offset
+# 41,112 bytes, ~40 KiB
 MAX_SIGNED_INCLUSION_LIST_SIZE: 41112
