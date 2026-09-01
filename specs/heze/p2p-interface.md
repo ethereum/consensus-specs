@@ -126,6 +126,7 @@ This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on
 the network, assuming the alias `message = signed_inclusion_list.message`:
 
+- _[IGNORE]_ The size of `message.transactions` is greater than 0.
 - _[REJECT]_ The size of `message.transactions` is within upperbound
   `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
 - _[REJECT]_ Every transaction in `message.transactions` is non-empty.
