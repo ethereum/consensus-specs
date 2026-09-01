@@ -5,8 +5,8 @@ for individual state-transition handlers. Each handler models semantic coverage
 conditions, materializes concrete SSZ test vectors, and validates the generated
 vectors against the executable specification.
 
-The generator currently targets the `gloas` fork. It supports both the
-`minimal` and `mainnet` presets. Its test cases follow the standard
+The generator currently targets the `gloas` fork. It supports both the `minimal`
+and `mainnet` presets. Its test cases follow the standard
 [operations test format](../../../formats/operations/README.md) or
 [epoch processing test format](../../../formats/epoch_processing/README.md),
 depending on the handler.
