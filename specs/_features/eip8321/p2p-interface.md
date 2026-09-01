@@ -130,6 +130,11 @@ def validate_randao_commitment_registration_gossip(
     """
     registration = signed_registration.message
     index = registration.validator_index
+
+    # [IGNORE] This is the first valid registration received for the validator
+    if index in seen.randao_commitment_registration_indices:
+        raise GossipIgnore("already seen RANDAO commitment registration for this validator")
+
     state = store.block_states[get_head(store).root]
 
     # [IGNORE] The head state has upgraded to EIP-8321
@@ -139,10 +144,6 @@ def validate_randao_commitment_registration_gossip(
     # [REJECT] The validator index is valid
     if index >= len(state.validators):
         raise GossipReject("validator index out of range")
-
-    # [IGNORE] This is the first valid registration received for the validator
-    if index in seen.randao_commitment_registration_indices:
-        raise GossipIgnore("already seen RANDAO commitment registration for this validator")
 
     # [REJECT] The commitment is non-zero
     if registration.commitment == UNSET_RANDAO_COMMITMENT:

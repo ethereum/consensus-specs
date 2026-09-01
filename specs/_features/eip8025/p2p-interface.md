@@ -95,6 +95,14 @@ def validate_execution_proof_gossip(
     if proof_root in seen.execution_proof_roots.get(beacon_block_root, set()):
         raise GossipIgnore("execution proof has already been processed")
 
+    # [IGNORE] This is the prover's first valid or invalid proof for this key
+    validator_index = signed_proof_envelope.validator_index
+    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
+    if prover_key in seen.execution_proof_provers:
+        raise GossipIgnore(
+            "proof already seen from this prover for this beacon block and proof type"
+        )
+
     # [IGNORE] The proof's beacon block has been seen
     if beacon_block_root not in store.blocks:
         raise GossipIgnore("execution proof's beacon block has not been seen")
@@ -114,14 +122,6 @@ def validate_execution_proof_gossip(
     # [IGNORE] No valid proof is known for this beacon block and proof type
     if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
         raise GossipIgnore("verified proof already known for this beacon block and proof type")
-
-    # [IGNORE] This is the prover's first valid or invalid proof for this key
-    validator_index = signed_proof_envelope.validator_index
-    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
-    if prover_key in seen.execution_proof_provers:
-        raise GossipIgnore(
-            "proof already seen from this prover for this beacon block and proof type"
-        )
 
     # [REJECT] The execution proof envelope passes validation
     try:
