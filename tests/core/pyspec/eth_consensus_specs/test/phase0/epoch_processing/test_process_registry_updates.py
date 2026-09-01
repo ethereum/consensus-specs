@@ -1,4 +1,4 @@
-from ssz.exceptions import SSZRangeError
+from ssz.exceptions import SSZValueError
 
 from eth_consensus_specs.test.context import (
     scaled_churn_balances_min_churn_limit,
@@ -427,8 +427,8 @@ def test_invalid_large_withdrawable_epoch(spec, state):
 
     try:
         yield from run_process_registry_updates(spec, state)
-    except SSZRangeError:
+    except SSZValueError:
         yield "post", None
         return
 
-    raise AssertionError("expected SSZRangeError")
+    raise AssertionError("expected SSZValueError")
