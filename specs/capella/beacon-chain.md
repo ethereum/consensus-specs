@@ -378,7 +378,7 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_historical_summaries_update(state: BeaconState) -> None:
     # Set historical block root accumulator.
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_summary = HistoricalSummary(
             block_summary_root=hash_tree_root(state.block_roots),
@@ -455,7 +455,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
         elif is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(
                 Withdrawal(
@@ -465,9 +465,9 @@ def get_validators_sweep_withdrawals(
                     amount=balance - MAX_EFFECTIVE_BALANCE,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -507,7 +507,7 @@ def update_next_withdrawal_index(state: BeaconState, withdrawals: Sequence[Withd
     # Update the next withdrawal index if this block contained withdrawals
     if len(withdrawals) != 0:
         latest_withdrawal = withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
+        state.next_withdrawal_index = latest_withdrawal.index + 1
 ```
 
 #### New `update_next_withdrawal_validator_index`
@@ -519,14 +519,12 @@ def update_next_withdrawal_validator_index(
     # Update the next validator index to start the next withdrawal sweep
     if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
         # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex(
-            (withdrawals[-1].validator_index + 1) % len(state.validators)
-        )
+        next_validator_index = (withdrawals[-1].validator_index + 1) % len(state.validators)
         state.next_withdrawal_validator_index = next_validator_index
     else:
         # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
         next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
+        next_validator_index = next_index % len(state.validators)
         state.next_withdrawal_validator_index = next_validator_index
 ```
 

@@ -67,7 +67,7 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    max_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD)
+    max_epoch = get_current_epoch(state) + MIN_SEED_LOOKAHEAD
     assert epoch <= max_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -144,7 +144,7 @@ def get_upcoming_proposal_slots(
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
     upcoming_proposal_slots = []
     for offset, proposer_index in enumerate(state.proposer_lookahead):
-        slot = Slot(current_epoch_start_slot + offset)
+        slot = current_epoch_start_slot + offset
         if slot <= state.slot:
             continue
         if validator_index == proposer_index:
