@@ -10,3 +10,6 @@ Handlers:
 - [`get_custody_groups`](./get_custody_groups.md): `get_custody_groups` helper
   tests
 - [`gossip_validation`](./gossip_validation.md): Gossip topic validation tests
+- [`reqresp_execution_payload_envelopes_by_root`](./reqresp_execution_payload_envelopes_by_root.md):
+  Gloas `ExecutionPayloadEnvelopesByRoot v1` request and response-trace
+  conformance tests
