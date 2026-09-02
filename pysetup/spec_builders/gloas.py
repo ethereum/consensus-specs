@@ -10,7 +10,6 @@ class GloasSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from ssz.bitfields import ProgressiveBitList
-from ssz.collections import ProgressiveList
 from ssz.container import active_fields, ProgressiveContainer
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
@@ -58,7 +57,14 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
             "initialize_proposer_lookahead",
             "process_execution_payload",
             "retrieve_column_sidecars",
+            "upgrade_lc_bootstrap_to_electra",
+            "upgrade_lc_finality_update_to_electra",
+            "upgrade_lc_header_to_electra",
+            "upgrade_lc_optimistic_update_to_electra",
+            "upgrade_lc_store_to_electra",
+            "upgrade_lc_update_to_electra",
             "upgrade_to_fulu",
+            "verify_data_column_sidecar_inclusion_proof",
             "verify_partial_data_column_header_inclusion_proof",
         }
 

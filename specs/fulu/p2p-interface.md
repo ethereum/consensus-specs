@@ -125,13 +125,13 @@ class DataColumnsByRootIdentifier(Container):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
@@ -316,6 +316,11 @@ def validate_beacon_block_gossip(
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
 
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
     if is_future_slot(store, block.slot, current_time_ms):
@@ -327,11 +332,6 @@ def validate_beacon_block_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)

@@ -6,6 +6,9 @@ from eth_utils import encode_hex
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_block,
 )
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_capella,
+)
 from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
@@ -140,7 +143,7 @@ def add_optimistic_block(
     )
 
     # Update stores
-    is_optimistic_candidate = spec.is_optimistic_candidate_block(
+    is_optimistic_candidate = is_post_capella(spec) or spec.is_optimistic_candidate_block(
         mega_store.opt_store,
         current_slot=spec.get_current_slot(mega_store.fc_store),
         block=signed_block.message,

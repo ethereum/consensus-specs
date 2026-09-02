@@ -31,7 +31,7 @@ Warning: this configuration is not definitive.
 
 ```python
 def initialize_proposer_lookahead(
-    state: electra.BeaconState,
+    state: BeaconState,
 ) -> ProposerLookahead:
     """
     Return the proposer indices for the full available lookahead starting from current epoch.
@@ -106,8 +106,11 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in Fulu:EIP7917]
-        proposer_lookahead=initialize_proposer_lookahead(pre),
+        proposer_lookahead=ProposerLookahead(),
     )
+
+    # [New in Fulu:EIP7917]
+    post.proposer_lookahead = initialize_proposer_lookahead(post)
 
     return post
 ```

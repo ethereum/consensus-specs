@@ -305,7 +305,11 @@ def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
 #### `set_or_append_list`
 
 ```python
-def set_or_append_list(list: List, index: ValidatorIndex, value: Any) -> None:
+def set_or_append_list(
+    list: List | ProgressiveList,
+    index: Uint64,
+    value: SSZObject,
+) -> None:
     if index == len(list):
         list.append(value)
     else:
@@ -522,7 +526,7 @@ def slash_validator(
     epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
-    validator.slashed = True
+    validator.slashed = Boolean(True)
     validator.withdrawable_epoch = max(
         validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
     )
@@ -609,7 +613,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -799,7 +803,7 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance
+        Gwei(sum(state.slashings)) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance
     )
     for index, validator in enumerate(state.validators):
         if (

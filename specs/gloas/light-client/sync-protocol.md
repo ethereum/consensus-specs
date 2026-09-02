@@ -184,11 +184,11 @@ def get_lc_execution_root(header: LightClientHeader) -> Root:
     # [Modified in Gloas:EIP7732]
     if epoch >= DENEB_FORK_EPOCH:
         if header.beacon.slot == GENESIS_SLOT:
-            return hash_tree_root(deneb.ExecutionPayloadHeader())
+            return hash_tree_root(deneb.ExecutionPayloadHeader.empty())
         BLOCK_HASH_GINDEX = get_generalized_index(deneb.ExecutionPayloadHeader, "block_hash")
     elif epoch >= CAPELLA_FORK_EPOCH:
         if header.beacon.slot == GENESIS_SLOT:
-            return hash_tree_root(capella.ExecutionPayloadHeader())
+            return hash_tree_root(capella.ExecutionPayloadHeader.empty())
         BLOCK_HASH_GINDEX = get_generalized_index(capella.ExecutionPayloadHeader, "block_hash")
     else:
         return Root()

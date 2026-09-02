@@ -105,7 +105,7 @@ def latest_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock) -> 
 
 ```python
 def is_execution_block(block: BeaconBlock) -> bool:
-    return block.body.execution_payload != ExecutionPayload()
+    return block.body.execution_payload != ExecutionPayload.empty()
 ```
 
 ```python
@@ -223,7 +223,7 @@ parameter. The general approach is as follows:
 | `latestValidHash`       | `invalidBlock`                                                                                                                                |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Execution block hash    | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing the block with payload in question |
-| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question                  |
+| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload.empty()` in the chain containing a block with payload in question            |
 | `null`                  | Block with payload in question                                                                                                                |
 
 When `latestValidHash` is a meaningful execution block hash but consensus engine

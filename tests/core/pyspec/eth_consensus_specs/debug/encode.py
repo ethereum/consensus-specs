@@ -6,7 +6,7 @@ from ssz.container import Container, ProgressiveContainer
 from ssz.uint import BaseUint as Uint, Byte
 from ssz.union import CompatibleUnion
 
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, serialize
+from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 
 
 def encode(value, include_hash_tree_roots=False):
@@ -18,7 +18,7 @@ def encode(value, include_hash_tree_roots=False):
     elif isinstance(value, Boolean):
         return bool(value)
     elif isinstance(value, BitList | ProgressiveBitList | BitVector) or (
-        isinstance(value, ProgressiveList) and issubclass(type(value).ELEMENT_TYPE, Byte)
+        isinstance(value, ProgressiveList) and type(value).ELEMENT_TYPE is Byte
     ):
         return "0x" + serialize(value).hex()
     elif isinstance(value, (list, List | ProgressiveList | Vector)):  # normal python lists
@@ -31,9 +31,9 @@ def encode(value, include_hash_tree_roots=False):
             field_value = getattr(value, field_name)
             ret[field_name] = encode(field_value, include_hash_tree_roots)
             if include_hash_tree_roots:
-                ret[field_name + "_hash_tree_root"] = "0x" + hash_tree_root(field_value).hex()
+                ret[field_name + "_hash_tree_root"] = "0x" + field_value.hash_tree_root().hex()
         if include_hash_tree_roots:
-            ret["hash_tree_root"] = "0x" + hash_tree_root(value).hex()
+            ret["hash_tree_root"] = "0x" + value.hash_tree_root().hex()
         return ret
     elif isinstance(value, CompatibleUnion):
         return {

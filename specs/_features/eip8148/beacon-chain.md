@@ -296,7 +296,7 @@ item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -317,7 +317,7 @@ def add_validator_to_registry(
 ```python
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
-    validator.withdrawal_credentials = (
+    validator.withdrawal_credentials = Bytes32(
         COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     )
     queue_excess_active_balance(state, index)
@@ -400,7 +400,7 @@ def get_validators_sweep_withdrawals(
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: Uint64 = 0
+    processed_count = Uint64(0)
     withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
@@ -541,6 +541,6 @@ def apply_parent_execution_payload(
         )
 
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

@@ -10,7 +10,10 @@ from eth_consensus_specs.test.context import (
     with_heze_and_later,
 )
 from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
-from eth_consensus_specs.test.helpers.inclusion_list import get_empty_inclusion_list
+from eth_consensus_specs.test.helpers.inclusion_list import (
+    get_sample_inclusion_list,
+    get_sample_transactions,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.phase0.unittests.validator.test_validator_unittest import (
     run_get_signature_test,
@@ -87,7 +90,12 @@ def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
 @always_bls
 def test_get_inclusion_list_signature(spec, state):
     forkchoice_store = get_genesis_forkchoice_store(spec, state)
-    inclusion_list = get_empty_inclusion_list(spec, forkchoice_store, state)
+    inclusion_list = get_sample_inclusion_list(
+        spec,
+        forkchoice_store,
+        state,
+        transactions=get_sample_transactions(spec, max_transaction_count=3),
+    )
     domain = spec.get_domain(
         state, spec.DOMAIN_INCLUSION_LIST_COMMITTEE, spec.compute_epoch_at_slot(inclusion_list.slot)
     )

@@ -67,7 +67,7 @@ class Syncnets(BitVector):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -75,7 +75,7 @@ class Seen:
     # [New in Altair]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     # [New in Altair]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
 ```
@@ -104,7 +104,7 @@ def is_current_slot(
     Check if the given slot is the current slot
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    return is_within_slot_range(store, slot, 0, current_time_ms)
+    return is_within_slot_range(store, slot, Uint64(0), current_time_ms)
 ```
 
 ### New `get_sync_subcommittee_pubkeys`
@@ -240,6 +240,30 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution_and_proof = signed_contribution_and_proof.message
     contribution = contribution_and_proof.contribution
 
+    # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
+    # and subcommittee_index whose aggregation_bits is non-strict superset
+    # has not already been seen
+    contribution_key = (
+        contribution.slot,
+        contribution.beacon_block_root,
+        contribution.subcommittee_index,
+    )
+    contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
+    seen_bits = seen.sync_contribution_data.get(contribution_key, set())
+    if is_non_strict_superset(seen_bits, contribution_bits):
+        raise GossipIgnore("already seen contribution for this data")
+
+    # [IGNORE] The sync committee contribution is the first valid contribution received
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
+    aggregator_key = (
+        contribution.slot,
+        contribution_and_proof.aggregator_index,
+        contribution.subcommittee_index,
+    )
+    if aggregator_key in seen.sync_contribution_aggregator_slots:
+        raise GossipIgnore("already seen contribution from this aggregator")
+
     # [IGNORE] The contribution's slot is for the current slot
     if not is_current_slot(store, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
@@ -268,30 +292,6 @@ def validate_sync_committee_contribution_and_proof_gossip(
     subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
     if aggregator_pubkey not in subcommittee_pubkeys:
         raise GossipReject("aggregator not in subcommittee")
-
-    # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
-    # and subcommittee_index whose aggregation_bits is non-strict superset
-    # has not already been seen
-    contribution_key = (
-        contribution.slot,
-        contribution.beacon_block_root,
-        contribution.subcommittee_index,
-    )
-    contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
-    seen_bits = seen.sync_contribution_data.get(contribution_key, set())
-    if is_non_strict_superset(seen_bits, contribution_bits):
-        raise GossipIgnore("already seen contribution for this data")
-
-    # [IGNORE] The sync committee contribution is the first valid contribution received
-    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
-    # and subcommittee index contribution.subcommittee_index
-    aggregator_key = (
-        contribution.slot,
-        contribution_and_proof.aggregator_index,
-        contribution.subcommittee_index,
-    )
-    if aggregator_key in seen.sync_contribution_aggregator_slots:
-        raise GossipIgnore("already seen contribution from this aggregator")
 
     # [REJECT] The contribution_and_proof.selection_proof is a valid signature
     # of the SyncAggregatorSelectionData derived from the contribution
@@ -356,6 +356,14 @@ def validate_sync_committee_message_gossip(
     Validate a SyncCommitteeMessage for gossip propagation on a subnet.
     Raises GossipIgnore or GossipReject on validation failure.
     """
+    # [IGNORE] There has been no other valid sync committee message for the declared slot
+    # for the validator referenced by sync_committee_message.validator_index
+    # (this validation is per topic so that for a given slot, multiple messages could be
+    # forwarded with the same validator_index as long as the subnet_ids are distinct)
+    message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
+    if message_key in seen.sync_message_validator_slots:
+        raise GossipIgnore("already seen message from this validator for this slot and subnet")
+
     # [IGNORE] The message's slot is for the current slot
     if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
@@ -374,14 +382,6 @@ def validate_sync_committee_message_gossip(
     )
     if subnet_id not in valid_subnets:
         raise GossipReject("subnet_id is not valid for the validator")
-
-    # [IGNORE] There has been no other valid sync committee message for the declared slot
-    # for the validator referenced by sync_committee_message.validator_index
-    # (this validation is per topic so that for a given slot, multiple messages could be
-    # forwarded with the same validator_index as long as the subnet_ids are distinct)
-    message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
-    if message_key in seen.sync_message_validator_slots:
-        raise GossipIgnore("already seen message from this validator for this slot and subnet")
 
     # [REJECT] The signature is valid
     validator = state.validators[sync_committee_message.validator_index]

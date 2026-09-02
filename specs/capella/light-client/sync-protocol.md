@@ -151,7 +151,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
-            header.execution == ExecutionPayloadHeader()
+            header.execution == ExecutionPayloadHeader.empty()
             and header.execution_branch == ExecutionBranch()
         )
 

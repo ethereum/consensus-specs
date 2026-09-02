@@ -49,13 +49,13 @@ Req/Resp protocol is defined.
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
@@ -64,7 +64,7 @@ class Seen:
     payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
     execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
-    proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
+    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
     # [New in EIP8025]
     execution_proof_roots: Dict[Root, Set[Root]]
     # [New in EIP8025]
@@ -100,6 +100,14 @@ def validate_execution_proof_gossip(
     if proof_root in seen.execution_proof_roots.get(beacon_block_root, set()):
         raise GossipIgnore("execution proof has already been processed")
 
+    # [IGNORE] This is the prover's first valid or invalid proof for this key
+    validator_index = signed_proof_envelope.validator_index
+    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
+    if prover_key in seen.execution_proof_provers:
+        raise GossipIgnore(
+            "proof already seen from this prover for this beacon block and proof type"
+        )
+
     # [IGNORE] The proof's beacon block has been seen
     if beacon_block_root not in store.blocks:
         raise GossipIgnore("execution proof's beacon block has not been seen")
@@ -113,14 +121,6 @@ def validate_execution_proof_gossip(
     # [IGNORE] No valid proof is known for this beacon block and proof type
     if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
         raise GossipIgnore("verified proof already known for this beacon block and proof type")
-
-    # [IGNORE] This is the prover's first valid or invalid proof for this key
-    validator_index = signed_proof_envelope.validator_index
-    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
-    if prover_key in seen.execution_proof_provers:
-        raise GossipIgnore(
-            "proof already seen from this prover for this beacon block and proof type"
-        )
 
     # [REJECT] The execution proof envelope passes validation
     state = store.block_states[beacon_block_root]

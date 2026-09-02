@@ -222,7 +222,7 @@ def get_execution_proof(
     )
     public_input = PublicInput(
         new_payload_request_root=hash_tree_root(new_payload_request),
-        successful_validation=True,
+        successful_validation=Boolean(True),
         chain_id=DEPOSIT_CHAIN_ID,
         schema_id=STATELESS_INPUT_SCHEMA_ID,
     )

@@ -198,7 +198,7 @@ def get_blob_sidecars(
     signed_block_header = compute_signed_block_header(signed_block)
     return [
         BlobSidecar(
-            index=index,
+            index=BlobIndex(index),
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],

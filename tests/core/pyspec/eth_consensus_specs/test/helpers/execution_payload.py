@@ -14,7 +14,6 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -48,7 +47,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
     if not is_post_gloas(spec):
         raise ValueError("get_execution_payload_bid only available for gloas and later")
 
-    parent_block_root = hash_tree_root(state.latest_block_header)
+    parent_block_root = spec.hash_tree_root(state.latest_block_header)
     kzg_list = spec.BlobKZGCommitments()
     builder_index = spec.get_beacon_proposer_index(state)
 
@@ -296,7 +295,7 @@ def compute_el_block_hash_for_block(spec, block):
 def build_empty_post_gloas_execution_payload_bid(spec, state):
     assert is_post_gloas(spec)
 
-    parent_block_root = hash_tree_root(state.latest_block_header)
+    parent_block_root = spec.hash_tree_root(state.latest_block_header)
     kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
@@ -533,7 +532,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
 
-    parent_block_root = hash_tree_root(state.latest_block_header)
+    parent_block_root = spec.hash_tree_root(state.latest_block_header)
     kzg_list = spec.BlobKZGCommitments()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD

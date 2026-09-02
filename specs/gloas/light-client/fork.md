@@ -24,8 +24,8 @@ processing.
 
 ```python
 def upgrade_lc_header_to_gloas(pre: electra.LightClientHeader) -> LightClientHeader:
-    if pre == electra.LightClientHeader():
-        return LightClientHeader()
+    if pre == electra.LightClientHeader.empty():
+        return LightClientHeader.empty()
 
     epoch = compute_epoch_at_slot(pre.beacon.slot)
 
@@ -74,7 +74,11 @@ def upgrade_lc_header_to_gloas(pre: electra.LightClientHeader) -> LightClientHea
             ),
         )
 
-    return LightClientHeader(beacon=pre.beacon)
+    return LightClientHeader(
+        beacon=pre.beacon,
+        execution_block_hash=Hash32(),
+        execution_branch=ExecutionBranch(),
+    )
 ```
 
 ```python
