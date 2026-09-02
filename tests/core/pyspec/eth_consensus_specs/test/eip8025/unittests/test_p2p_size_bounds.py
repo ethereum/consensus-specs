@@ -1,5 +1,6 @@
 import pytest
-from ssz.exceptions import SSZLimitError
+from pydantic import ValidationError
+from ssz.exceptions import SSZValueError
 
 from eth_consensus_specs.test.context import (
     single_phase,
@@ -27,10 +28,10 @@ def test_max_signed_execution_proof_envelope_size(spec):
 def test_execution_proof_data_rejects_oversize(spec):
     proof_data = bytes(int(spec.MAX_PROOF_SIZE) + 1)
 
-    with pytest.raises(SSZLimitError):
+    with pytest.raises(ValidationError):
         spec.ProofData(data=proof_data)
 
-    with pytest.raises(SSZLimitError):
+    with pytest.raises(SSZValueError):
         spec.ProofData.decode_bytes(proof_data)
 
 
@@ -42,5 +43,5 @@ def test_signed_execution_proof_envelope_rejects_oversize_proof_data(spec):
     oversized = encoded + b"\x00"
     assert len(oversized) == get_max_signed_execution_proof_envelope_size(spec) + 1
 
-    with pytest.raises(SSZLimitError):
+    with pytest.raises(SSZValueError):
         spec.SignedExecutionProofEnvelope.decode_bytes(oversized)
