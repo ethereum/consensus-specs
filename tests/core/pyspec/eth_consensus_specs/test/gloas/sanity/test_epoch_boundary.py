@@ -156,19 +156,18 @@ def _build_block_with_execution_requests(spec, state, slot, execution_requests, 
     Build a self-build block at slot whose bid commits to execution_requests
     via its execution_requests_root.
 
-    When parent_full is True, the bid's block_hash is set to
-    state.latest_block_hash so that after this block is processed, the
-    parent-full check in the next block's process_parent_execution_payload
-    holds. This avoids calling set_parent_block_full between blocks, which
-    would change the state root so it no longer matches what a consumer
-    replaying the fixture computes.
+    When parent_full is True, the bid commits to a distinct block_hash. The
+    child built by _build_child_block_with_parent_requests points its
+    parent_block_hash at that hash, so the parent-full check in the child's
+    process_parent_execution_payload holds and latest_block_hash is updated
+    in-band by the child's block processing, keeping fixture replay consistent.
     """
     block = build_empty_block(spec, state, slot=slot)
 
     bid = block.body.signed_execution_payload_bid.message
     bid.execution_requests_root = spec.hash_tree_root(execution_requests)
     if parent_full:
-        bid.block_hash = state.latest_block_hash
+        bid.block_hash = spec.Hash32(b"\x42" * 32)
 
     # Self-build uses G2_POINT_AT_INFINITY as the bid signature.
     if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
@@ -186,6 +185,10 @@ def _build_child_block_with_parent_requests(spec, state, slot, parent_execution_
     for a parent payload that was delivered.
     """
     block = build_empty_block(spec, state, slot=slot)
+    # Point the bid at the parent's committed block_hash so the parent is FULL
+    block.body.signed_execution_payload_bid.message.parent_block_hash = (
+        state.latest_execution_payload_bid.block_hash
+    )
     block.body.parent_execution_requests = parent_execution_requests
     return block
 

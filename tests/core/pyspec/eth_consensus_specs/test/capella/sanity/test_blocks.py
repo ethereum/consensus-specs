@@ -38,6 +38,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
     set_eth1_withdrawal_credential_with_balance,
+    set_parent_block_full,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
 )
@@ -247,7 +248,7 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     if is_post_gloas(spec):
         # For Gloas, we need the parent block to be full to process withdrawals
         # Set latest_block_hash to match latest_execution_payload_bid.block_hash
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
 
     yield "pre", state
 
@@ -284,7 +285,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
         )
         assert len(get_expected_withdrawals(spec, state)) == expected_count
         # Make parent block full in Gloas so withdrawals are processed
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
     else:
         assert len(get_expected_withdrawals(spec, state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
@@ -339,7 +340,7 @@ def _perform_valid_withdrawal(spec, state):
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
 
     pre_state = state.copy()
 
@@ -490,7 +491,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0
