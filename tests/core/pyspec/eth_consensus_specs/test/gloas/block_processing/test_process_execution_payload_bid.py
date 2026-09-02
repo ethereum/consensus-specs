@@ -684,7 +684,7 @@ def test_process_execution_payload_bid_block_hash_equals_parent_block_hash(spec,
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
-    # Create a bid, then set its block hash equal to its parent block hash
+    # Create bid with block hash equal to parent block hash
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
