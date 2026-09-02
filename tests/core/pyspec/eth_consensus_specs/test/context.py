@@ -34,7 +34,7 @@ from .helpers.constants import (
     PHASE0,
     POST_FORK_OF,
 )
-from .helpers.forks import is_post_eip8198, is_post_electra, is_post_fork, is_post_gloas
+from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,

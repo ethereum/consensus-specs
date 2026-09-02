@@ -234,27 +234,28 @@ def test_get_forkchoice_store_post_fork_anchor(spec, state):
     store = spec.get_forkchoice_store(state, anchor_block)
 
     assert store.time_ms == fork_time_ms + (state.slot - fork_slot) * post_ms
-    assert store.time_ms == spec.compute_time_at_slot_ms(state, state.slot)
+    assert store.time_ms == spec.compute_time_at_slot_ms(store, state.slot)
     assert spec.get_current_slot(store) == state.slot
 
 
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
 def test_compute_time_at_slot_ms_across_fork(spec, state):
+    store = get_genesis_forkchoice_store(spec, state)
     fork_slot, pre_ms, post_ms, _, fork_time_ms = _fork_params(spec, state.genesis_time)
 
     for s in range(fork_slot + 1):
-        assert spec.compute_time_at_slot_ms(state, spec.Slot(s)) == (
+        assert spec.compute_time_at_slot_ms(store, spec.Slot(s)) == (
             state.genesis_time * 1000 + s * pre_ms
         )
     for k in range(1, 3 * spec.SLOTS_PER_EPOCH):
-        assert spec.compute_time_at_slot_ms(state, spec.Slot(fork_slot + k)) == (
+        assert spec.compute_time_at_slot_ms(store, spec.Slot(fork_slot + k)) == (
             fork_time_ms + k * post_ms
         )
 
     # Consistency with the second-granularity mapping
     for s in range(3 * spec.SLOTS_PER_EPOCH):
-        assert spec.compute_time_at_slot_ms(state, spec.Slot(s)) == (
+        assert spec.compute_time_at_slot_ms(store, spec.Slot(s)) == (
             spec.compute_time_at_slot(state, spec.Slot(s)) * 1000
         )
 
@@ -262,6 +263,7 @@ def test_compute_time_at_slot_ms_across_fork(spec, state):
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
 def test_gossip_slot_gates_across_fork(spec, state):
+    store = get_genesis_forkchoice_store(spec, state)
     fork_slot, pre_ms, post_ms, _, _ = _fork_params(spec, state.genesis_time)
     disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
@@ -277,13 +279,13 @@ def test_gossip_slot_gates_across_fork(spec, state):
     # 3 * (pre_ms - post_ms) later than the actual one, exceeding the clock
     # disparity allowance and wrongly rejecting the message.
     assert 3 * (pre_ms - post_ms) > disparity
-    assert spec.is_not_from_future_slot(state, current_slot, now_ms)
+    assert not spec.is_future_slot(store, current_slot, now_ms)
     # A message one slot ahead is from the future
-    assert not spec.is_not_from_future_slot(state, spec.Slot(current_slot + 1), now_ms)
+    assert spec.is_future_slot(store, spec.Slot(current_slot + 1), now_ms)
 
     # A slot range straddling the fork boundary: [fork_slot - 2, fork_slot + 2]
     for slot in range(fork_slot - 2, fork_slot + 3):
-        assert spec.is_within_slot_range(state, spec.Slot(slot), spec.Uint64(4), now_ms) == (
+        assert spec.is_within_slot_range(store, spec.Slot(slot), spec.Uint64(4), now_ms) == (
             slot + 4 >= current_slot
         )
 
@@ -323,7 +325,7 @@ def test_forkchoice_timeliness_uses_post_fork_slot_start(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
     fork_slot, _, _, _, _ = _fork_params(spec, store.genesis_time)
     block_slot = spec.Slot(fork_slot + 3)
-    block_time_ms = spec.compute_time_at_slot_ms(state, block_slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store, block_slot)
     block_root = spec.Root(b"\x12" * 32)
     store.blocks[block_root] = spec.BeaconBlock(slot=block_slot)
 
@@ -363,7 +365,7 @@ def test_boundary_slot_timeliness_uses_new_duration(spec, state):
     # new duration. The probe times below fall between the new and the old
     # deadlines, so using the wrong slot's duration flips every assertion.
     store = get_genesis_forkchoice_store(spec, state)
-    fork_slot, pre_ms, post_ms, _, fork_time_ms = _fork_params(spec, store.genesis_time)
+    fork_slot, pre_ms, _post_ms, _, fork_time_ms = _fork_params(spec, store.genesis_time)
 
     new_attestation_due_ms = spec.get_attestation_due_ms(spec.Slot(fork_slot))
     old_attestation_due_ms = spec.get_attestation_due_ms(spec.Slot(fork_slot - 1))
@@ -465,7 +467,7 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
     fork_epoch = int(spec.config.EIP8198_FORK_EPOCH)
     start_of = spec.get_data_column_sidecars_retention_start
     window_epochs = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    window_ms = window_epochs * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
+    window_ms = spec.Uint64(window_epochs) * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
 
     # Early epochs clamp at genesis
     assert start_of(spec.GENESIS_EPOCH) == spec.GENESIS_EPOCH

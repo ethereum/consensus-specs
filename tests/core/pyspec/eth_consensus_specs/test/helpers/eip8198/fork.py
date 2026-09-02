@@ -10,11 +10,14 @@ EIP8198_FORK_TEST_META_TAGS = {
 def run_fork_test(post_spec, pre_state):
     yield "pre", pre_state
 
-    post_state = post_spec.upgrade_to_eip8198(pre_state)
+    # The upgrade keeps the collections it is handed rather than copying
+    # them, so it is given a copy: the pre-state is the test's own, and is
+    # still yielded above as what the fork started from.
+    post_state = post_spec.upgrade_to_eip8198(pre_state.copy())
 
     # EIP-8198 does not change the BeaconState container: every field except
     # ``fork`` must carry over unchanged.
-    stable_fields = [name for name in pre_state.fields() if name != "fork"]
+    stable_fields = [name for name in type(pre_state).model_fields if name != "fork"]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)
 

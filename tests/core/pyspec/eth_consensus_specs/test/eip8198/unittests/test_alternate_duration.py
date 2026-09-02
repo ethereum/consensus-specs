@@ -46,7 +46,7 @@ def run_alternate_duration_checks(spec, state):
         start_ms = spec.compute_slot_start_time_ms(state.genesis_time, slot)
         assert start_ms % 1000 == 0
         assert spec.compute_time_at_slot(state, slot) * 1000 == (
-            spec.compute_time_at_slot_ms(state, slot)
+            spec.compute_slot_start_time_ms(state.genesis_time, slot)
         )
 
     # Intra-slot deadlines
@@ -72,7 +72,7 @@ def run_alternate_duration_checks(spec, state):
 
     # Retention window preserves its wall-clock length after the change
     window_epochs = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    window_ms = window_epochs * spec.SLOTS_PER_EPOCH * pre_ms
+    window_ms = spec.Uint64(window_epochs) * spec.SLOTS_PER_EPOCH * pre_ms
     current_epoch = spec.Epoch(FORK_EPOCH + window_epochs)
     start_epoch = spec.get_data_column_sidecars_retention_start(current_epoch)
     coverage_ms = spec.compute_slot_range_duration_ms(

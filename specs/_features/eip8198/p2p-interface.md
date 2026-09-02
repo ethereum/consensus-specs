@@ -62,17 +62,17 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 #### Modified `compute_time_at_slot_ms`
 
-*Note*: The gossip slot gates `is_not_from_future_slot` and
-`is_within_slot_range` are defined in terms of this function and inherit the
-piecewise timeline without further changes.
+*Note*: The gossip slot gates `is_future_slot` and `is_within_slot_range` are
+defined in terms of this function and inherit the piecewise timeline without
+further changes.
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     # [Modified in EIP8198]
-    return compute_slot_start_time_ms(state.genesis_time, slot)
+    return compute_slot_start_time_ms(store.genesis_time, slot)
 ```
 
 #### New `get_data_column_sidecars_retention_start`
@@ -84,7 +84,9 @@ def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
     ``current_epoch``, preserving the window's pre-schedule wall-clock
     length across slot duration changes.
     """
-    window_ms = MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS * SLOTS_PER_EPOCH * SLOT_DURATION_MS
+    window_ms = (
+        Uint64(MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS) * SLOTS_PER_EPOCH * SLOT_DURATION_MS
+    )
     current_start_ms = compute_slot_start_time_ms(
         Uint64(0), compute_start_slot_at_epoch(current_epoch)
     )
