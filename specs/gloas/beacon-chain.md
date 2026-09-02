@@ -2116,6 +2116,8 @@ def process_execution_payload_bid(
     assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
+    # Verify that the bid's block hash differs from its parent block hash
+    assert bid.block_hash != bid.parent_block_hash
     assert bid.parent_block_root == get_block_root_at_slot(state, Slot(state.slot - 1))
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 

@@ -985,6 +985,10 @@ def validate_execution_payload_bid_gossip(
     if bid.slot <= store.blocks[bid.parent_block_root].slot:
         raise GossipReject("bid's slot is not higher than its parent's slot")
 
+    # [REJECT] The bid's block hash is not equal to its parent block hash
+    if bid.block_hash == bid.parent_block_hash:
+        raise GossipReject("bid's block hash equals its parent block hash")
+
     # [IGNORE] The bid's parent block has been imported
     # (MAY be queued until parent is imported)
     if bid.parent_block_root not in store.block_states:
