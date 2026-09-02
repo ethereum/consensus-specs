@@ -477,7 +477,7 @@ def get_flag_index_deltas(
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
-                rewards[index] += reward_numerator // active_increments * WEIGHT_DENOMINATOR
+                rewards[index] += reward_numerator // (active_increments * WEIGHT_DENOMINATOR)
         elif flag_index != TIMELY_HEAD_FLAG_INDEX:
             penalties[index] += base_reward * weight // WEIGHT_DENOMINATOR
     return rewards, penalties
