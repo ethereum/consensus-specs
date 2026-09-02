@@ -399,7 +399,7 @@ def is_within_slot_range(
     start_time_ms = compute_time_at_slot_ms(store, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(store, Slot(slot + slot_range + 1))
+    end_time_ms = compute_time_at_slot_ms(store, slot + slot_range + 1)
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -412,7 +412,7 @@ def compute_attestation_subnet_prefix_bits() -> Uint64:
     """
     Return the number of NodeId bits to use when mapping to a subscribed subnet.
     """
-    return Uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+    return ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS
 ```
 
 #### `compute_min_epochs_for_block_requests`
@@ -481,7 +481,7 @@ can carry according to the following functions:
 def max_compressed_len(n: Uint64) -> Uint64:
     # Worst-case compressed length for a given payload of size n when using snappy:
     # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-    return Uint64(32 + n + n / 6)
+    return 32 + n + n // 6
 ```
 
 #### `max_message_size`

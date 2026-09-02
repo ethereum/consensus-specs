@@ -436,7 +436,7 @@ def get_validators_sweep_withdrawals(
             )
             withdrawal_index += WithdrawalIndex(1)
 
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count

@@ -249,7 +249,7 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+    return GENESIS_SLOT + get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -289,7 +289,7 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
     committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
-    return Gwei((committee_weight * committee_percent) // 100)
+    return (committee_weight * committee_percent) // 100
 ```
 
 #### `get_checkpoint_block`

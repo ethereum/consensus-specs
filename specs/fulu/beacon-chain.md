@@ -327,14 +327,12 @@ def compute_fork_digest(
     # Bitmask digest with hash of blob parameters
     blob_parameters = get_blob_parameters(epoch)
     return ForkDigest(
-        bytes(
-            xor(
-                base_digest,
-                sha256(
-                    uint_to_bytes(Uint64(blob_parameters.epoch))
-                    + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
-                ),
-            )
+        xor(
+            base_digest,
+            sha256(
+                uint_to_bytes(Uint64(blob_parameters.epoch))
+                + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
+            ),
         )[:4]
     )
 ```
@@ -349,7 +347,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
     return ProposerIndices(data=[compute_proposer_index(state, indices, seed) for seed in seeds])
 ```
 
@@ -415,7 +413,7 @@ for the former deposit mechanism.
 
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(
         state
     )
@@ -486,7 +484,7 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
     last_epoch_proposers = get_beacon_proposer_indices(
-        state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
+        state, get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1
     )
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```

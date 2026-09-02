@@ -325,7 +325,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
-    epoch = Epoch(get_current_epoch(state) + 1)
+    epoch = get_current_epoch(state) + 1
 
     MAX_RANDOM_BYTE = 2**8 - 1
     active_validator_indices = get_active_validator_indices(state, epoch)
@@ -388,7 +388,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
-    return Gwei(increments * get_base_reward_per_increment(state))
+    return increments * get_base_reward_per_increment(state)
 ```
 
 #### `get_unslashed_participating_indices`
@@ -477,9 +477,9 @@ def get_flag_index_deltas(
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
-                rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
+                rewards[index] += reward_numerator // active_increments * WEIGHT_DENOMINATOR
         elif flag_index != TIMELY_HEAD_FLAG_INDEX:
-            penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
+            penalties[index] += base_reward * weight // WEIGHT_DENOMINATOR
     return rewards, penalties
 ```
 
@@ -502,7 +502,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_ALTAIR
-            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+            penalties[index] += penalty_numerator // penalty_denominator
     return rewards, penalties
 ```
 
@@ -528,7 +528,7 @@ def slash_validator(
     validator = state.validators[slashed_index]
     validator.slashed = Boolean(True)
     validator.withdrawable_epoch = max(
-        validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
+        validator.withdrawable_epoch, epoch + EPOCHS_PER_SLASHINGS_VECTOR
     )
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
     decrease_balance(
@@ -539,10 +539,10 @@ def slash_validator(
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
-    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
+    whistleblower_reward = validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT
+    proposer_reward = whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
 ```
 
 ### Block processing
@@ -671,14 +671,12 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
 
     # Compute participant and proposer rewards
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
-    total_base_rewards = Gwei(get_base_reward_per_increment(state) * total_active_increments)
-    max_participant_rewards = Gwei(
+    total_base_rewards = get_base_reward_per_increment(state) * total_active_increments
+    max_participant_rewards = (
         total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
     )
-    participant_reward = Gwei(max_participant_rewards // SYNC_COMMITTEE_SIZE)
-    proposer_reward = Gwei(
-        participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
-    )
+    participant_reward = max_participant_rewards // SYNC_COMMITTEE_SIZE
+    proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
 
     # Apply participant and proposer rewards
     all_pubkeys = [v.pubkey for v in state.validators]

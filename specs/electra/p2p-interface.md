@@ -93,7 +93,7 @@ def compute_max_request_blob_sidecars() -> Uint64:
     Return the maximum number of blob sidecars in a single request.
     """
     # [Modified in Electra:EIP7691]
-    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
+    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA
 ```
 
 ## The gossip domain: gossipsub

@@ -87,7 +87,7 @@ def get_inclusion_list_committee_assignment(
     index ``validator_index`` is a member of the inclusion list committee.
     Returns None if no assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)

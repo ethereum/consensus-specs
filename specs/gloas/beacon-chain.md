@@ -1069,7 +1069,7 @@ def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
 
     blockroot = data.beacon_block_root
     slot_blockroot = get_block_root_at_slot(state, data.slot)
-    prev_blockroot = get_block_root_at_slot(state, Slot(data.slot - 1))
+    prev_blockroot = get_block_root_at_slot(state, data.slot - 1)
 
     return blockroot == slot_blockroot and blockroot != prev_blockroot
 ```
@@ -1230,7 +1230,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         data=[
@@ -1302,7 +1302,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
-    epoch = Epoch(get_current_epoch(state) + 1)
+    epoch = get_current_epoch(state) + 1
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     indices = get_active_validator_indices(state, epoch)
     return compute_balance_weighted_selection(
@@ -1602,7 +1602,7 @@ def process_epoch(state: BeaconState) -> None:
 
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     # [Modified in Gloas:EIP8061]
     # Deposits still consume the activation-only churn budget in Gloas.
     available_for_processing = state.deposit_balance_to_consume + get_activation_churn_limit(state)
@@ -1686,7 +1686,7 @@ def process_ptc_window(state: BeaconState) -> None:
     # Shift all epochs forward by one
     state.ptc_window[: len(state.ptc_window) - SLOTS_PER_EPOCH] = state.ptc_window[SLOTS_PER_EPOCH:]
     # Fill in the last epoch
-    next_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
+    next_epoch = get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1
     start_slot = compute_start_slot_at_epoch(next_epoch)
     state.ptc_window[len(state.ptc_window) - SLOTS_PER_EPOCH :] = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
@@ -1867,7 +1867,7 @@ def get_builders_sweep_withdrawals(
             )
             withdrawal_index += WithdrawalIndex(1)
 
-        builder_index = BuilderIndex((builder_index + 1) % len(state.builders))
+        builder_index = (builder_index + 1) % len(state.builders)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -1960,7 +1960,7 @@ def update_next_withdrawal_builder_index(
     if len(state.builders) > 0:
         # Update the next builder index to start the next withdrawal sweep
         next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
-        next_builder_index = BuilderIndex(next_index % len(state.builders))
+        next_builder_index = next_index % len(state.builders)
         state.next_withdrawal_builder_index = next_builder_index
 ```
 
@@ -2116,7 +2116,7 @@ def process_execution_payload_bid(
     assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
-    assert bid.parent_block_root == get_block_root_at_slot(state, Slot(state.slot - 1))
+    assert bid.parent_block_root == get_block_root_at_slot(state, state.slot - 1)
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment

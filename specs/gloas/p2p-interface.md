@@ -312,7 +312,7 @@ def is_current_or_next_slot(
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
     is_current = is_current_slot(store, slot, current_time_ms)
-    is_next = is_current_slot(store, Slot(slot - 1), current_time_ms)
+    is_next = is_current_slot(store, slot - 1, current_time_ms)
     return is_current or is_next
 ```
 
@@ -410,7 +410,7 @@ def compute_shuffling_dependent_epoch(epoch: Epoch) -> Epoch:
     """
     if epoch <= MIN_SEED_LOOKAHEAD:
         return GENESIS_EPOCH
-    return Epoch(epoch - MIN_SEED_LOOKAHEAD)
+    return epoch - MIN_SEED_LOOKAHEAD
 ```
 
 ### New `verify_attestation_payload_status`
@@ -993,7 +993,7 @@ def validate_execution_payload_bid_gossip(
     state = store.block_states[bid.parent_block_root]
 
     # [IGNORE] The bid's slot is within the parent's proposer lookahead
-    if proposal_epoch > get_current_epoch(state) + Epoch(MIN_SEED_LOOKAHEAD):
+    if proposal_epoch > get_current_epoch(state) + MIN_SEED_LOOKAHEAD:
         raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
 
     # [IGNORE] The matching proposer preferences have been seen
