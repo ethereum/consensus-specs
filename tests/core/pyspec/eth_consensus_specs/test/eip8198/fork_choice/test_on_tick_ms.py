@@ -23,9 +23,8 @@ FORK_CONFIG = {
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_CONFIG, activate_at_genesis=True)
 def test_on_tick_ms_fork_boundary_and_deadlines(spec, state):
-    # The generic state factory initializes the module's own fork version.
-    # This vector starts before EIP-8198, so make the anchor an internally
-    # consistent post-Heze, pre-EIP-8198 state.
+    # This vector starts before EIP-8198, so give the anchor a pre-EIP-8198
+    # fork version
     state.fork = spec.Fork(
         previous_version=spec.config.GLOAS_FORK_VERSION,
         current_version=spec.config.HEZE_FORK_VERSION,

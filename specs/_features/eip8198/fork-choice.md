@@ -39,13 +39,11 @@
 EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
 deadlines are measured against the duration in effect at the current slot, so
 the deadline helpers gain a `slot` parameter; the basis-point values themselves
-are unchanged (a future upgrade MAY introduce new basis-point values, as Gloas
-did). The mapping between wall-clock time and slot number becomes piecewise over
-the schedule's eras, and every timeliness check is rebased on the new
-`get_time_into_slot_ms` helper, because slot boundaries after a duration change
-are not aligned to genesis at a fixed duration. The store clock gains
-millisecond precision: implementations MUST drive the store with `on_tick_ms`;
-the whole-second `on_tick` remains only as a compatibility adapter.
+are unchanged. The mapping between wall-clock time and slot number becomes
+piecewise over the schedule's eras, and every timeliness check is rebased on the
+new `get_time_into_slot_ms` helper. The store clock gains millisecond precision:
+implementations MUST drive the store with `on_tick_ms`; the whole-second
+`on_tick` remains only as a compatibility adapter.
 
 *Note*: This specification is built upon [Heze](../../heze/fork-choice.md).
 
@@ -136,7 +134,7 @@ def get_slot_from_time_ms(store: Store, time_ms: Uint64) -> int:
 ```python
 def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
     """
-    Return the absolute Unix time in milliseconds at the end of ``slot``.
+    Return the Unix time in milliseconds at the end of ``slot``.
     """
     return compute_slot_start_time_ms(store.genesis_time, Slot(slot + 1))
 ```
@@ -146,8 +144,7 @@ def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
 ```python
 def get_time_into_slot_ms(store: Store) -> Uint64:
     """
-    Return the time elapsed since the start of the current slot in
-    milliseconds, accounting for slot duration changes.
+    Return the milliseconds elapsed since the start of the current slot.
     """
     current_slot = Slot(GENESIS_SLOT + get_slot_from_time_ms(store, store.time_ms))
     slot_start_time_ms = compute_slot_start_time_ms(store.genesis_time, current_slot)

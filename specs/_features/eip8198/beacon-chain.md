@@ -33,12 +33,11 @@ parameters are rescaled by the ratio
 `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their wall-clock
 behavior constant: issuance and churn are per-epoch rates and scale by `r`,
 while the inactivity penalty scales by `r**2` so that the cumulative leak over a
-fixed wall-clock duration is unchanged. Rather than pre-computing rounded
-constants, each formula applies the ratio inline, keeping the slot duration
-schedule the single source of truth for the slot duration. Epoch- and
-slot-denominated quantities — withdrawability and slashing windows, sync
-committee periods, per-payload and per-epoch processing limits — keep their
-counts, so their wall-clock spans scale with the slot duration.
+fixed wall-clock duration is unchanged. Each formula applies the ratio inline
+rather than pre-computing rounded constants. Epoch- and slot-denominated
+quantities — withdrawability and slashing windows, sync committee periods,
+per-payload and per-epoch processing limits — keep their counts, so their
+wall-clock spans scale with the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -79,9 +78,7 @@ epoch.
 ```python
 def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     """
-    Return the slot duration in effect at ``epoch``, per
-    ``SLOT_DURATION_SCHEDULE``. Epochs before the first schedule entry use
-    ``SLOT_DURATION_MS``.
+    Return the slot duration in effect at ``epoch``.
     """
     duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
@@ -96,8 +93,7 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
 ```python
 def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
-    Return the absolute Unix time in milliseconds at the start of ``slot``,
-    accumulating the eras of ``SLOT_DURATION_SCHEDULE``.
+    Return the Unix time in milliseconds at the start of ``slot``.
     """
     time_ms = genesis_time * 1000
     era_start_slot = GENESIS_SLOT
@@ -119,8 +115,7 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
 ```python
 def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     """
-    Return the slot corresponding to absolute Unix time ``time_ms``. Inverse
-    of ``compute_slot_start_time_ms``.
+    Return the slot at Unix time ``time_ms``.
     """
     assert time_ms >= genesis_time * 1000
     remaining_ms = time_ms - genesis_time * 1000
@@ -154,9 +149,9 @@ def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
 
 #### Modified `compute_time_at_slot`
 
-*Note*: Without this override the execution payload timestamp, validated against
-`compute_time_at_slot` in `process_execution_payload`, would drift away from
-wall-clock time without bound after a slot duration change.
+*Note*: Without this override, the execution payload timestamp validated in
+`process_execution_payload` would drift from wall-clock time after a slot
+duration change.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
@@ -187,8 +182,7 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
 #### Modified `get_inactivity_penalty_deltas`
 
 *Note*: The inactivity penalty scales with the square of the epoch duration, so
-that the cumulative penalty over a fixed wall-clock leak duration is unchanged;
-the squared ratio is folded into the penalty denominator.
+the cumulative penalty over a fixed wall-clock leak duration is unchanged.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -243,9 +237,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
 #### Modified `get_exit_churn_limit`
 
 *Note*: Exit and consolidation epochs assigned before a duration change keep
-their assigned epochs and consumed quota, so around a change the inherited queue
-allocation transiently deviates from the new per-epoch rate by at most the
-backlog queued at the change.
+their assigned epochs and consumed quota.
 
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:

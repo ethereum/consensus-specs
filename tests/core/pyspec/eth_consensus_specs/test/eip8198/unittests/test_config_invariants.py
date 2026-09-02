@@ -20,8 +20,7 @@ def test_invariants(spec):
         if previous_epoch is not None:
             assert entry["EPOCH"] > previous_epoch
         previous_epoch = entry["EPOCH"]
-        # A scheduled entry that changes the slot duration must come with a
-        # blob schedule entry scaling the maximum blobs per block
+        # A duration change must come with a blob schedule entry
         if entry["EPOCH"] != spec.FAR_FUTURE_EPOCH:
             if entry["SLOT_DURATION_MS"] != previous_duration_ms:
                 blob_entries = [

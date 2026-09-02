@@ -80,9 +80,8 @@ def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
 ```python
 def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
     """
-    Return the earliest epoch of the data column sidecar retention window at
-    ``current_epoch``, preserving the window's pre-schedule wall-clock
-    length across slot duration changes.
+    Return the earliest epoch of the data column sidecar retention window,
+    preserving its wall-clock length across slot duration changes.
     """
     window_ms = (
         Uint64(MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS) * SLOTS_PER_EPOCH * SLOT_DURATION_MS
@@ -120,9 +119,8 @@ All other slot-derived durations — schedulers, expiry windows, gossip-scoring
 windows, and the light-client local-clock `current_slot` — MUST be derived from
 the piecewise timeline (`compute_slot_start_time_ms` /
 `compute_slot_at_time_ms`) rather than from a fixed slot duration anchored at
-genesis. The inherited `bls_to_execution_change` epoch gate keeps its
-pre-schedule slot computation; it is provably unaffected, since schedule entries
-lie far beyond `CAPELLA_FORK_EPOCH`.
+genesis. The inherited `bls_to_execution_change` epoch gate is unaffected, since
+schedule entries lie far beyond `CAPELLA_FORK_EPOCH`.
 
 #### Topics and messages
 
@@ -142,9 +140,7 @@ the known execution payload identified by `bid.parent_block_hash`:
 
 *Note*: The transition condition is keyed to the slot of the parent execution
 payload, not the parent beacon block, so the one-time scaling cannot be bypassed
-by missed slots or withheld payloads around a duration change. This mirrors the
-execution-layer gas-limit rule of EIP-8198; if the execution layer adopts a
-different policy at the transition, this check changes accordingly.
+by missed slots or withheld payloads around a duration change.
 
 ```python
 def is_gas_limit_transition_compatible(
@@ -171,11 +167,8 @@ Request and response message types are unchanged from Heze. In the inherited
 data-column sidecar request validations and pruning guidance,
 `get_data_column_sidecars_retention_start(current_epoch)` replaces the rolling
 `current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` term; the
-inherited `FULU_FORK_EPOCH` floor is unchanged. This preserves the window's
-wall-clock length across slot duration changes, so a node retaining the
-inherited window when a change activates never serves a shorter wall-clock
-history, without pre-change over-retention or backfill. The blob sidecar
-Req/Resp messages are already deprecated as of
+inherited `FULU_FORK_EPOCH` floor is unchanged. The blob sidecar Req/Resp
+messages are already deprecated as of
 `FULU_FORK_EPOCH + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`, so their retention
 window needs no treatment.
 

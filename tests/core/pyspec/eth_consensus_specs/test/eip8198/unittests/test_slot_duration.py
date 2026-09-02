@@ -1,10 +1,6 @@
 """
 Unit tests for the EIP-8198 slot duration schedule and piecewise time
-functions, run with config overrides that activate a schedule entry (with the
-default empty schedule the new branches are unreachable).
-
-All assertions are written in terms of the config values so the scheduled
-durations can be changed without rewriting derived expectations.
+functions, using config overrides that activate a schedule entry.
 """
 
 from frozendict import frozendict
@@ -184,8 +180,7 @@ def test_get_time_into_slot_ms_across_fork(spec, state):
     store.time_ms = (fork_time - 1) * 1000
     assert spec.get_time_into_slot_ms(store) == pre_ms - 1000
 
-    # Post-fork: offsets are taken modulo the new duration, rebased on the
-    # fork time (the old genesis-anchored modulo would give a different value)
+    # Post-fork offsets are rebased on the fork time, not genesis
     seconds_into_slot = post_ms // 1000 - 1
     store.time_ms = fork_time_ms + seconds_into_slot * 1000
     assert spec.get_time_into_slot_ms(store) == seconds_into_slot * 1000
@@ -267,17 +262,13 @@ def test_gossip_slot_gates_across_fork(spec, state):
     fork_slot, pre_ms, post_ms, _, _ = _fork_params(spec, state.genesis_time)
     disparity = spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
-    # Wall-clock "now": one second into the third post-fork slot (strictly
-    # inside the slot, beyond the disparity allowance, so no boundary case is
-    # ambiguous)
+    # One second into the third post-fork slot, beyond the disparity allowance
     assert disparity < 1000
     now_ms = state.genesis_time * 1000 + fork_slot * pre_ms + 3 * post_ms + 1000
     current_slot = spec.Slot(fork_slot + 3)
 
-    # A message for the current slot is not from the future. With the
-    # genesis-anchored formula the computed slot start would be
-    # 3 * (pre_ms - post_ms) later than the actual one, exceeding the clock
-    # disparity allowance and wrongly rejecting the message.
+    # A genesis-anchored slot start would be off by more than the disparity
+    # allowance, wrongly rejecting a current-slot message
     assert 3 * (pre_ms - post_ms) > disparity
     assert not spec.is_future_slot(store, current_slot, now_ms)
     # A message one slot ahead is from the future
@@ -361,9 +352,8 @@ def test_forkchoice_timeliness_uses_post_fork_slot_start(spec, state):
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
 def test_boundary_slot_timeliness_uses_new_duration(spec, state):
-    # At the first new-duration slot, timeliness must be judged against the
-    # new duration. The probe times below fall between the new and the old
-    # deadlines, so using the wrong slot's duration flips every assertion.
+    # Probe times fall between the new and the old deadlines, so using the
+    # wrong slot's duration flips every assertion
     store = get_genesis_forkchoice_store(spec, state)
     fork_slot, pre_ms, _post_ms, _, fork_time_ms = _fork_params(spec, store.genesis_time)
 
@@ -477,9 +467,8 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
     assert start_of(spec.Epoch(fork_epoch - 1)) == fork_epoch - 1 - window_epochs
     assert start_of(spec.Epoch(fork_epoch)) == fork_epoch - window_epochs
 
-    # After the fork, the wall-clock length of the window is preserved:
-    # coverage never drops below window_ms and exceeds it by less than one
-    # pre-fork epoch
+    # After the fork, the window's wall-clock length is preserved, with less
+    # than one pre-fork epoch of overshoot
     pre_epoch_ms = spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
     for k in (1, 7, int(window_epochs // 2), int(window_epochs), int(window_epochs) + 100):
         current_epoch = spec.Epoch(fork_epoch + k)

@@ -1,7 +1,6 @@
 """
-Spot-check that derived EIP-8198 values follow the slot duration schedule for
-a range of alternate durations, so no rule hard-codes a particular ratio.
-Slot boundary times must stay exact integer seconds for every duration.
+Check that derived EIP-8198 values follow the slot duration schedule for a
+range of alternate durations, so no rule hard-codes a particular ratio.
 """
 
 from frozendict import frozendict
