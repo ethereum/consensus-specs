@@ -369,7 +369,7 @@ from the front.
 
 ```python
 def process_pending_randao_commitments(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     next_pending_commitment = 0
     for pending_commitment in state.pending_randao_commitments:
         if pending_commitment.activation_epoch > next_epoch:
@@ -503,7 +503,7 @@ def process_randao_commitment_registration(
         PendingRandaoCommitment(
             validator_index=index,
             commitment=registration.commitment,
-            activation_epoch=Epoch(get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY),
+            activation_epoch=get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY,
         )
     )
 ```

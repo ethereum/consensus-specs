@@ -416,7 +416,7 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
     preregistration = StoredPreregistration(
         pubkey=pubkey,
         withdrawal_credentials=request.withdrawal_credentials,
-        expiry_slot=Slot(state.slot + PREREGISTRATION_EXPIRY_SLOTS),
+        expiry_slot=state.slot + PREREGISTRATION_EXPIRY_SLOTS,
     )
     index = get_stored_preregistration_index(state, pubkey)
     if index is not None:

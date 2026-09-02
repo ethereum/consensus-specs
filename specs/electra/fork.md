@@ -46,7 +46,7 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     for validator in pre.validators:
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             earliest_exit_epoch = max(earliest_exit_epoch, validator.exit_epoch)
-    earliest_exit_epoch += Epoch(1)
+    earliest_exit_epoch += 1
 
     post = BeaconState(
         genesis_time=pre.genesis_time,

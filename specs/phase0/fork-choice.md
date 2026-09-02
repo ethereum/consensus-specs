@@ -249,7 +249,7 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+    return GENESIS_SLOT + get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -289,7 +289,7 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
     committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
-    return Gwei((committee_weight * committee_percent) // 100)
+    return (committee_weight * committee_percent) // 100
 ```
 
 #### `get_checkpoint_block`
@@ -888,7 +888,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
     if epoch <= MIN_SEED_LOOKAHEAD:
         return GENESIS_SLOT
-    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - Slot(1)
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1
 ```
 
 ##### `get_shuffling_dependent_root`

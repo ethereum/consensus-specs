@@ -233,7 +233,7 @@ def is_current_or_previous_epoch(
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
     is_current = is_within_epoch(store, epoch, current_time_ms)
-    is_previous = is_within_epoch(store, Epoch(epoch + 1), current_time_ms)
+    is_previous = is_within_epoch(store, epoch + 1, current_time_ms)
     return is_current or is_previous
 ```
 
@@ -244,7 +244,7 @@ def compute_max_request_blob_sidecars() -> Uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
-    return Uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
+    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
 ```
 
 ### New `verify_blob_sidecar_inclusion_proof`

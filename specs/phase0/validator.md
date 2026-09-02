@@ -291,7 +291,7 @@ def get_committee_assignment(
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -460,8 +460,8 @@ An honest block proposer sets
 
 ```python
 def voting_period_start_time(state: BeaconState) -> Uint64:
-    eth1_voting_period_start_slot = Slot(
-        state.slot - state.slot % (Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH)
+    eth1_voting_period_start_slot = state.slot - state.slot % (
+        Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```

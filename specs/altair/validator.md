@@ -394,7 +394,7 @@ subcommittees.
 def compute_subnets_for_sync_committee(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Set[SubnetID]:
-    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
         next_slot_epoch
     ):
