@@ -190,7 +190,7 @@ def record_payload_inclusion_list_satisfaction(
     payload: ExecutionPayload,
     execution_engine: ExecutionEngine,
 ) -> None:
-    slot = store.blocks[root].slot - Slot(1)
+    slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
     inclusion_list_transactions = get_inclusion_list_transactions(
         get_inclusion_list_store(), slot, dependent_root, only_timely=True

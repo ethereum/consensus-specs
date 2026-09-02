@@ -455,7 +455,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
         elif is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(
                 Withdrawal(
@@ -465,7 +465,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance - MAX_EFFECTIVE_BALANCE,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
         validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1

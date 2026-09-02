@@ -661,7 +661,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
             )
             if bit
         ]
-    previous_slot = max(state.slot, Slot(1)) - Slot(1)
+    previous_slot = max(state.slot, Slot(1)) - 1
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
@@ -834,7 +834,7 @@ def process_participation_flag_updates(state: BeaconState) -> None:
 
 ```python
 def process_sync_committee_updates(state: BeaconState) -> None:
-    next_epoch = get_current_epoch(state) + Epoch(1)
+    next_epoch = get_current_epoch(state) + 1
     if next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0:
         state.current_sync_committee = state.next_sync_committee
         state.next_sync_committee = get_next_sync_committee(state)

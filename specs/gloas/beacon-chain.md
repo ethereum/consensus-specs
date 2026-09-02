@@ -1827,7 +1827,7 @@ def get_builder_withdrawals(
                 amount=withdrawal.amount,
             )
         )
-        withdrawal_index += WithdrawalIndex(1)
+        withdrawal_index += 1
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -1865,7 +1865,7 @@ def get_builders_sweep_withdrawals(
                     amount=builder.balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
         builder_index = (builder_index + 1) % len(state.builders)
         processed_count += 1
@@ -2365,7 +2365,7 @@ def process_attestation(
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in Gloas:EIP7732]
-        had_no_participation = epoch_participation[index] == ParticipationFlags(0b0000_0000)
+        had_no_participation = epoch_participation[index] == 0b0000_0000
         will_set_new_flag = False
 
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
