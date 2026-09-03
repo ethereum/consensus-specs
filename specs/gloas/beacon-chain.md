@@ -2116,6 +2116,16 @@ def process_execution_payload_bid(
     assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
+    # Verify that the bid's gas limit is within the EIP-1559 adjustment bound of the
+    # parent execution payload's gas limit. This is only checkable when the state knows
+    # that gas limit, i.e. when the parent payload was revealed and
+    # `latest_execution_payload_bid` therefore describes the payload at
+    # `latest_block_hash`.
+    if state.latest_block_hash == state.latest_execution_payload_bid.block_hash:
+        parent_gas_limit = state.latest_execution_payload_bid.gas_limit
+        max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+        assert bid.gas_limit >= parent_gas_limit - max_gas_limit_difference
+        assert bid.gas_limit <= parent_gas_limit + max_gas_limit_difference
     assert bid.parent_block_root == get_block_root_at_slot(state, state.slot - 1)
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 

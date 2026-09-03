@@ -310,7 +310,9 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         block_hash=empty_payload_hash,
         prev_randao=prev_randao,
         fee_recipient=spec.ExecutionAddress(),
-        gas_limit=spec.Uint64(0),
+        # Keep the parent payload's gas limit: an unchanged gas limit is always within the
+        # EIP-1559 adjustment bound that `process_execution_payload_bid` enforces.
+        gas_limit=state.latest_execution_payload_bid.gas_limit,
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),

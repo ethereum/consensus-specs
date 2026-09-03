@@ -749,3 +749,116 @@ def test_process_execution_payload_bid_blob_kzg_commitments_over_limit(spec, sta
     block.body.signed_execution_payload_bid = signed_bid
 
     yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+
+def set_parent_payload_revealed(spec, state, parent_gas_limit=30000000):
+    """
+    Make the state describe a *revealed* parent payload, so that
+    ``latest_execution_payload_bid`` refers to the payload at ``latest_block_hash``.
+    This is the condition under which the gas limit bound is checkable.
+    Returns ``(parent_gas_limit, max_gas_limit_difference)``.
+    """
+    state.latest_execution_payload_bid.block_hash = state.latest_block_hash
+    state.latest_execution_payload_bid.gas_limit = spec.Uint64(parent_gas_limit)
+    max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+    return parent_gas_limit, max_gas_limit_difference
+
+
+def run_gas_limit_test(spec, state, gas_limit, valid):
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+        gas_limit=spec.Uint64(gas_limit),
+    )
+    block.body.signed_execution_payload_bid = signed_bid
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=valid)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_equal_to_parent(spec, state):
+    """
+    Test a gas limit equal to the revealed parent payload's is accepted
+    """
+    parent_gas_limit, _ = set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, parent_gas_limit, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_at_upper_bound(spec, state):
+    """
+    Test a gas limit at the maximum permitted increase is accepted
+    """
+    parent_gas_limit, max_difference = set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, parent_gas_limit + max_difference, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_at_lower_bound(spec, state):
+    """
+    Test a gas limit at the maximum permitted decrease is accepted
+    """
+    parent_gas_limit, max_difference = set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, parent_gas_limit - max_difference, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_above_upper_bound(spec, state):
+    """
+    Test a gas limit one above the maximum permitted increase fails
+    """
+    parent_gas_limit, max_difference = set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, parent_gas_limit + max_difference + 1, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_below_lower_bound(spec, state):
+    """
+    Test a gas limit one below the maximum permitted decrease fails
+    """
+    parent_gas_limit, max_difference = set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, parent_gas_limit - max_difference - 1, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_max_uint64(spec, state):
+    """
+    Test the maximum uint64 gas limit fails
+
+    Such a bid is unfulfillable: the envelope must carry the same gas limit, which the
+    execution layer rejects, so the slot is forced empty while the proposer has already
+    committed to the bid.
+    """
+    set_parent_payload_revealed(spec, state)
+
+    yield from run_gas_limit_test(spec, state, 2**64 - 1, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_gas_limit_unchecked_when_parent_empty(spec, state):
+    """
+    Test the gas limit is not bounded when the parent payload was not revealed
+
+    When the parent payload is empty, ``latest_execution_payload_bid`` describes a payload
+    that never executed, so the state does not know the gas limit of the payload at
+    ``latest_block_hash`` and no bound can be applied.
+    """
+    # Leave `latest_execution_payload_bid.block_hash` differing from `latest_block_hash`
+    assert state.latest_execution_payload_bid.block_hash != state.latest_block_hash
+
+    yield from run_gas_limit_test(spec, state, 2**64 - 1, valid=True)
