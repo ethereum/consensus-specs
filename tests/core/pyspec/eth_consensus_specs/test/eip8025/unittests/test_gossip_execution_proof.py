@@ -187,6 +187,67 @@ def test_gossip_handles_missing_execution_proof_block_context(spec, state):
 
 @with_eip8025_and_later
 @spec_state_test
+def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
+    """
+    Apply message-local and deduplication checks before requiring the payload.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
+    store.payloads.pop(block_root)
+
+    # Reject message-local structural failures without block or payload context.
+    unknown_root = spec.Root(b"\xaa" * 32)
+    empty_proof = make_signed_execution_proof_envelope(spec, state, unknown_root, proof_data=b"")
+    assert validate(spec, get_seen(spec), store, empty_proof) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
+    unsupported_proof = make_signed_execution_proof_envelope(
+        spec, state, unknown_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
+    )
+    assert validate(spec, get_seen(spec), store, unsupported_proof) == (
+        "reject",
+        "execution proof envelope is invalid",
+    )
+
+    # Ignore known duplicates without requiring the payload.
+    proof_root = signed_proof.message.hash_tree_root()
+    seen = get_seen(spec)
+    seen.execution_proof_roots[block_root] = {proof_root}
+    assert validate(spec, seen, store, signed_proof) == (
+        "ignore",
+        "execution proof has already been processed",
+    )
+
+    store.execution_proofs[block_root] = {signed_proof.message.proof_type: signed_proof.message}
+    assert validate(spec, get_seen(spec), store, signed_proof) == (
+        "ignore",
+        "verified proof already known for this beacon block and proof type",
+    )
+    store.execution_proofs.pop(block_root)
+
+    seen = get_seen(spec)
+    seen.execution_proof_provers.add(
+        (
+            block_root,
+            signed_proof.message.proof_type,
+            signed_proof.validator_index,
+        )
+    )
+    assert validate(spec, seen, store, signed_proof) == (
+        "ignore",
+        "proof already seen from this prover for this beacon block and proof type",
+    )
+
+    # A supported, unseen proof still requires the payload.
+    assert validate(spec, get_seen(spec), store, signed_proof) == (
+        "ignore",
+        "execution proof's payload is unavailable",
+    )
+
+
+@with_eip8025_and_later
+@spec_state_test
 @always_bls
 def test_gossip_rejects_unauthenticated_execution_proofs_without_caching(spec, state):
     """
