@@ -17,7 +17,10 @@
     - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
     - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [New `get_base_reward_per_increment_at_epoch`](#new-get_base_reward_per_increment_at_epoch)
+    - [New `get_base_reward_at_epoch`](#new-get_base_reward_at_epoch)
     - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
+    - [Modified `get_flag_index_deltas`](#modified-get_flag_index_deltas)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
     - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
     - [Modified `get_exit_churn_limit`](#modified-get_exit_churn_limit)
@@ -207,28 +210,89 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
 
 ### Beacon state accessors
 
-#### Modified `get_base_reward_per_increment`
+#### New `get_base_reward_per_increment_at_epoch`
 
 *Note*: The division is deferred so that the exact
 `get_slot_duration_ms(epoch) / SLOT_DURATION_MS` ratio applies, rather than
 rounding `BASE_REWARD_FACTOR` to a new integer constant.
 
 ```python
-def get_base_reward_per_increment(state: BeaconState) -> Gwei:
+def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> Gwei:
+    """
+    Return the base reward per increment, priced at the slot duration in
+    effect at ``epoch``.
+    """
     return Gwei(
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
-        # [Modified in EIP8198]
-        * get_slot_duration_ms(get_current_epoch(state))
+        * get_slot_duration_ms(epoch)
         // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
 
+#### New `get_base_reward_at_epoch`
+
+```python
+def get_base_reward_at_epoch(state: BeaconState, index: ValidatorIndex, epoch: Epoch) -> Gwei:
+    """
+    Return the base reward for ``index``, priced at the slot duration in
+    effect at ``epoch``.
+    """
+    increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    return increments * get_base_reward_per_increment_at_epoch(state, epoch)
+```
+
+#### Modified `get_base_reward_per_increment`
+
+```python
+def get_base_reward_per_increment(state: BeaconState) -> Gwei:
+    # [Modified in EIP8198]
+    return get_base_reward_per_increment_at_epoch(state, get_current_epoch(state))
+```
+
+#### Modified `get_flag_index_deltas`
+
+*Note*: Participation deltas pay for the previous epoch, so they are priced at
+the slot duration in effect at that epoch, which differs from the current one in
+the first epoch after a slot duration change.
+
+```python
+def get_flag_index_deltas(
+    state: BeaconState, flag_index: int
+) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return the deltas for a given ``flag_index`` by scanning through the participation flags.
+    """
+    rewards = [Gwei(0)] * len(state.validators)
+    penalties = [Gwei(0)] * len(state.validators)
+    previous_epoch = get_previous_epoch(state)
+    unslashed_participating_indices = get_unslashed_participating_indices(
+        state, flag_index, previous_epoch
+    )
+    weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
+    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
+    unslashed_participating_increments = (
+        unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    )
+    active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    for index in get_eligible_validator_indices(state):
+        # [Modified in EIP8198]
+        base_reward = get_base_reward_at_epoch(state, index, previous_epoch)
+        if index in unslashed_participating_indices:
+            if not is_in_inactivity_leak(state):
+                reward_numerator = base_reward * weight * unslashed_participating_increments
+                rewards[index] += reward_numerator // (active_increments * WEIGHT_DENOMINATOR)
+        elif flag_index != TIMELY_HEAD_FLAG_INDEX:
+            penalties[index] += base_reward * weight // WEIGHT_DENOMINATOR
+    return rewards, penalties
+```
+
 #### Modified `get_inactivity_penalty_deltas`
 
 *Note*: The inactivity penalty scales with the square of the epoch duration, so
-the cumulative penalty over a fixed wall-clock leak duration is unchanged.
+the cumulative penalty over a fixed wall-clock leak duration is unchanged. The
+penalty pays for the previous epoch and is priced at its slot duration.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -247,7 +311,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             # [Modified in EIP8198]
-            slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
+            slot_duration_ms = get_slot_duration_ms(get_previous_epoch(state))
             duration_squared = slot_duration_ms * slot_duration_ms
             base_duration_squared = SLOT_DURATION_MS * SLOT_DURATION_MS
             penalty_quotient = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX

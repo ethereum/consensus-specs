@@ -409,6 +409,70 @@ def test_deadlines_are_independent_parameters(spec, state):
 
 
 @with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
+def test_epoch_processing_prices_previous_epoch(spec, state):
+    # Advance into the first epoch of the new era: the previous epoch still
+    # ran at the old duration
+    for _ in range(FORK_EPOCH):
+        next_epoch(spec, state)
+    assert spec.get_current_epoch(state) == FORK_EPOCH
+    previous_epoch = spec.get_previous_epoch(state)
+    pre_ms = spec.config.SLOT_DURATION_MS
+    assert spec.get_slot_duration_ms(previous_epoch) == pre_ms
+
+    # In-block pricing follows the current (new) duration, epoch-processing
+    # pricing the previous (old) one
+    current_per_increment = spec.get_base_reward_per_increment(state)
+    previous_per_increment = spec.get_base_reward_per_increment_at_epoch(state, previous_epoch)
+    sqrt_balance = spec.integer_squareroot(spec.get_total_active_balance(state))
+    assert previous_per_increment == (
+        spec.EFFECTIVE_BALANCE_INCREMENT * spec.BASE_REWARD_FACTOR // sqrt_balance
+    )
+    assert current_per_increment == (
+        spec.EFFECTIVE_BALANCE_INCREMENT
+        * spec.BASE_REWARD_FACTOR
+        * POST_DURATION_MS
+        // pre_ms
+        // sqrt_balance
+    )
+    assert current_per_increment < previous_per_increment
+
+    # Flag deltas pay the previous epoch at the old duration
+    index = spec.ValidatorIndex(0)
+    state.previous_epoch_participation[index] = spec.add_flag(
+        spec.ParticipationFlags(0), spec.TIMELY_TARGET_FLAG_INDEX
+    )
+    rewards, penalties = spec.get_flag_index_deltas(state, spec.TIMELY_TARGET_FLAG_INDEX)
+    base_reward = spec.get_base_reward_at_epoch(state, index, previous_epoch)
+    weight = spec.PARTICIPATION_FLAG_WEIGHTS[spec.TIMELY_TARGET_FLAG_INDEX]
+    unslashed_increments = spec.get_total_balance(state, {index}) // (
+        spec.EFFECTIVE_BALANCE_INCREMENT
+    )
+    active_increments = spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
+    assert rewards[index] == (base_reward * weight * unslashed_increments) // (
+        active_increments * spec.WEIGHT_DENOMINATOR
+    )
+
+    # Non-participants are penalized at the old duration too
+    other = spec.ValidatorIndex(1)
+    assert penalties[other] == (
+        spec.get_base_reward_at_epoch(state, other, previous_epoch)
+        * weight
+        // spec.WEIGHT_DENOMINATOR
+    )
+
+    # Inactivity penalties price the previous epoch at the old duration, so
+    # at the boundary the squared ratio is exactly one
+    state.inactivity_scores[other] = 4
+    _, inactivity_penalties = spec.get_inactivity_penalty_deltas(state)
+    penalty_numerator = state.validators[other].effective_balance * state.inactivity_scores[other]
+    penalty_denominator = (
+        spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+    )
+    assert inactivity_penalties[other] == penalty_numerator // penalty_denominator
+
+
+@with_phases([EIP8198])
 @spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_base_reward_uses_scheduled_slot_ratio(spec, state):
     duration_ms = spec.get_slot_duration_ms(spec.get_current_epoch(state))
