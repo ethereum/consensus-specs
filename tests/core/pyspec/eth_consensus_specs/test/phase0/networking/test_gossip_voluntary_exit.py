@@ -521,6 +521,53 @@ def test_gossip_voluntary_exit__valid_at_clock_disparity(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_gossip_voluntary_exit__valid_previous_epoch(spec, state):
+    """
+    Test that a voluntary exit with an epoch in the past is valid.
+    """
+    yield "topic", "meta", "voluntary_exit"
+
+    seen = get_seen(spec)
+
+    # Advance state past SHARD_COMMITTEE_PERIOD
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+    current_time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    exit_epoch = spec.get_current_epoch(state) - 1
+    signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0, epoch=exit_epoch)
+    yield get_filename(signed_exit), signed_exit
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_voluntary_exit=signed_exit,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_exit),
+                "expected": "valid",
+            }
+        ],
+    )
+
+
+@with_all_phases
+@spec_state_test
 def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     """
     Test that a voluntary exit for a validator not active long enough is rejected.
