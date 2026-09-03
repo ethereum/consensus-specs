@@ -11,6 +11,11 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.attestations import (
+    get_parent_slot,
+    get_valid_attestation,
+    process_attestation,
+)
 from eth_consensus_specs.test.helpers.constants import EIP8198, MINIMAL
 from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
@@ -470,6 +475,49 @@ def test_epoch_processing_prices_previous_epoch(spec, state):
         spec.config.INACTIVITY_SCORE_BIAS * spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
     )
     assert inactivity_penalties[other] == penalty_numerator // penalty_denominator
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
+def test_proposer_reward_prices_attestation_target_epoch(spec, state):
+    # Advance to the first slot of the new era
+    for _ in range(FORK_EPOCH):
+        next_epoch(spec, state)
+    assert spec.get_current_epoch(state) == FORK_EPOCH
+
+    # A valid attestation for the last old-era slot, included in the new era
+    attestation = get_valid_attestation(spec, state, slot=spec.Slot(state.slot - 1), signed=True)
+    data = attestation.data
+    assert data.target.epoch == FORK_EPOCH - 1
+
+    # The proposer's cut is priced at the attestation's (old-era) epoch. All
+    # flags are newly set, since the state has no prior participation.
+    participation_flag_indices = spec.get_attestation_participation_flag_indices(
+        state, data, state.slot - data.slot, get_parent_slot(state)
+    )
+    expected_numerator = 0
+    wrong_numerator = 0
+    for index in spec.get_attesting_indices(state, attestation):
+        for flag_index, weight in enumerate(spec.PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices:
+                expected_numerator += (
+                    spec.get_base_reward_at_epoch(state, index, data.target.epoch) * weight
+                )
+                wrong_numerator += (
+                    spec.get_base_reward_at_epoch(state, index, spec.get_current_epoch(state))
+                    * weight
+                )
+    denominator = (
+        (spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT)
+        * spec.WEIGHT_DENOMINATOR
+        // spec.PROPOSER_WEIGHT
+    )
+    assert expected_numerator // denominator != wrong_numerator // denominator
+
+    proposer_index = spec.get_beacon_proposer_index(state)
+    pre_balance = state.balances[proposer_index]
+    process_attestation(spec, state, attestation)
+    assert state.balances[proposer_index] - pre_balance == expected_numerator // denominator
 
 
 @with_phases([EIP8198])

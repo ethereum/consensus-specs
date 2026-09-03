@@ -25,6 +25,11 @@
     - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
     - [Modified `get_exit_churn_limit`](#modified-get_exit_churn_limit)
     - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Block processing](#block-processing)
+    - [Operations](#operations)
+      - [Attestations](#attestations)
+        - [Modified `process_attestation`](#modified-process_attestation)
 
 <!-- mdformat-toc end -->
 
@@ -374,4 +379,101 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     # [Modified in EIP8198]
     churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
+```
+
+## Beacon chain state transition function
+
+### Block processing
+
+#### Operations
+
+##### Attestations
+
+###### Modified `process_attestation`
+
+*Note*: The proposer reward for a newly included attestation is priced at the
+attestation's target epoch, so around a slot duration change the proposer's
+share matches the attesters' rewards for the same epoch.
+
+```python
+def process_attestation(
+    state: BeaconState,
+    attestation: Attestation,
+    parent_slot: Slot,
+) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+
+    assert data.index < 2
+    committee_indices = get_committee_indices(attestation.committee_bits)
+    committee_offset = 0
+    for committee_index in committee_indices:
+        assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
+        committee = get_beacon_committee(state, data.slot, committee_index)
+        committee_attesters = {
+            attester_index
+            for i, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        }
+        assert len(committee_attesters) > 0
+        committee_offset += len(committee)
+
+    # Bitfield length matches total number of participants
+    assert len(attestation.aggregation_bits) == committee_offset
+
+    # Participation flag indices
+    participation_flag_indices = get_attestation_participation_flag_indices(
+        state, data, state.slot - data.slot, parent_slot
+    )
+
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
+    if data.target.epoch == get_current_epoch(state):
+        current_epoch_target = True
+        epoch_participation = state.current_epoch_participation
+        payment = state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH]
+    else:
+        current_epoch_target = False
+        epoch_participation = state.previous_epoch_participation
+        payment = state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH]
+
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, attestation):
+        had_no_participation = epoch_participation[index] == 0b0000_0000
+        will_set_new_flag = False
+
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices and not has_flag(
+                epoch_participation[index], flag_index
+            ):
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+                # [Modified in EIP8198]
+                proposer_reward_numerator += (
+                    get_base_reward_at_epoch(state, index, data.target.epoch) * weight
+                )
+                will_set_new_flag = True
+
+        if (
+            will_set_new_flag
+            and had_no_participation
+            and is_attestation_same_slot(state, data)
+            and payment.withdrawal.amount > 0
+        ):
+            payment.weight += state.validators[index].effective_balance
+
+    # Reward proposer
+    proposer_reward_denominator = (
+        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    )
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+
+    # Update builder payment weight
+    if current_epoch_target:
+        state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH] = payment
+    else:
+        state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
 ```
