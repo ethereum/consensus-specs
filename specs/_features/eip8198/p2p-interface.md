@@ -168,9 +168,3 @@ data-column sidecar request validations and pruning guidance,
 `get_data_column_sidecars_retention_start(current_epoch)` replaces the rolling
 `current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` term; the
 inherited `FULU_FORK_EPOCH` floor is unchanged.
-
-Epoch-denominated retention windows without a wall-clock target — in particular
-the block retention window `compute_min_epochs_for_block_requests()` — keep
-their epoch counts, and their wall-clock spans scale with the slot duration. The
-Req/Resp timeouts (`TTFB_TIMEOUT`, `RESP_TIMEOUT`) are absolute wall-clock
-allowances and are not rescaled.
