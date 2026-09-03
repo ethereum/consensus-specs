@@ -641,7 +641,7 @@ def get_head(store: Store) -> ForkChoiceNode:
         # to ensure that head is never a pending node
         return ForkChoiceNode(
             root=store.justified_checkpoint.root,
-            payload_status=PAYLOAD_STATUS_EMPTY
+            payload_status=PAYLOAD_STATUS_EMPTY,
         )
 
     # Execute the LMD-GHOST fork-choice
