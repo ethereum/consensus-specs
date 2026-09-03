@@ -26,7 +26,6 @@
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
-  - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
   - [New `compute_shuffling_dependent_epoch`](#new-compute_shuffling_dependent_epoch)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
@@ -379,25 +378,6 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
-```
-
-### New `is_valid_dependent_root`
-
-```python
-def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
-    """
-    Check if the block with the given ``root`` is a possible dependent block
-    for the given ``epoch``, meaning that on some branch it is, or could
-    become, the latest block prior to the start of the epoch.
-    """
-    epoch_start_slot = compute_start_slot_at_epoch(epoch)
-    for block in store.blocks.values():
-        if block.parent_root == root:
-            if block.slot >= epoch_start_slot:
-                return True
-    if root == get_head(store).root:
-        return True
-    return False
 ```
 
 ### New `compute_shuffling_dependent_epoch`
@@ -1132,8 +1112,8 @@ def validate_proposer_preferences_gossip(
     if store.blocks[preferences.dependent_root].slot > dependent_slot:
         raise GossipReject("dependent block is after the shuffling dependent slot")
 
-    # [IGNORE] The dependent block is a possible dependent block for the lookahead epoch
-    if not is_valid_dependent_root(store, preferences.dependent_root, lookahead_epoch):
+    # [IGNORE] The dependent block is a possible dependent block for the proposer lookahead
+    if not is_valid_dependent_root(store, preferences.dependent_root, dependent_slot):
         raise GossipIgnore("dependent block is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead

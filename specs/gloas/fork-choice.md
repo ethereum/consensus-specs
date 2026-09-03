@@ -40,6 +40,7 @@
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
+  - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -695,6 +696,19 @@ def verify_execution_payload_envelope(
             execution_requests=envelope.execution_requests,
         )
     )
+```
+
+### New `is_valid_dependent_root`
+
+```python
+def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> bool:
+    for block in store.blocks.values():
+        if block.parent_root == root:
+            if block.slot > dependent_slot:
+                return True
+    if root == get_head(store).root:
+        return True
+    return False
 ```
 
 ### Modified `get_attestation_due_ms`
