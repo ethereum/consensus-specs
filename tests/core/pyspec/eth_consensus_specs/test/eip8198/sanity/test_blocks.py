@@ -1,5 +1,3 @@
-from frozendict import frozendict
-
 from eth_consensus_specs.test.context import (
     spec_configured_state_test,
     with_phases,
@@ -9,6 +7,7 @@ from eth_consensus_specs.test.helpers.attestations import state_transition_with_
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import EIP8198, MINIMAL
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
+from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 from eth_consensus_specs.test.helpers.rewards import transition_state_to_leak
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
@@ -19,9 +18,9 @@ from eth_consensus_specs.test.helpers.state import state_transition_and_sign_blo
     {
         "EIP8198_FORK_EPOCH": 0,
         "SLOT_DURATION_SCHEDULE": (
-            frozendict({"EPOCH": 0, "SLOT_DURATION_MS": 6000}),
-            frozendict({"EPOCH": 1, "SLOT_DURATION_MS": 5000}),
-            frozendict({"EPOCH": 2, "SLOT_DURATION_MS": 4000}),
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(1, 5000),
+            slot_duration_schedule_entry(2, 4000),
         ),
     },
     activate_at_genesis=True,
@@ -58,9 +57,9 @@ def test_slot_duration_changes_with_attestations(spec, state):
     {
         "EIP8198_FORK_EPOCH": 0,
         "SLOT_DURATION_SCHEDULE": (
-            frozendict({"EPOCH": 0, "SLOT_DURATION_MS": 6000}),
-            frozendict({"EPOCH": 7, "SLOT_DURATION_MS": 5000}),
-            frozendict({"EPOCH": 8, "SLOT_DURATION_MS": 4000}),
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(7, 5000),
+            slot_duration_schedule_entry(8, 4000),
         ),
     },
     activate_at_genesis=True,
@@ -95,9 +94,9 @@ def test_slot_duration_changes_in_inactivity_leak(spec, state):
     {
         "EIP8198_FORK_EPOCH": 0,
         "SLOT_DURATION_SCHEDULE": (
-            frozendict({"EPOCH": 0, "SLOT_DURATION_MS": 6000}),
-            frozendict({"EPOCH": 1, "SLOT_DURATION_MS": 5000}),
-            frozendict({"EPOCH": 2, "SLOT_DURATION_MS": 4000}),
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(1, 5000),
+            slot_duration_schedule_entry(2, 4000),
         ),
     },
     activate_at_genesis=True,
@@ -137,9 +136,9 @@ def test_slot_duration_changes_with_pending_deposits(spec, state):
     {
         "EIP8198_FORK_EPOCH": 0,
         "SLOT_DURATION_SCHEDULE": (
-            frozendict({"EPOCH": 0, "SLOT_DURATION_MS": 6000}),
-            frozendict({"EPOCH": 1, "SLOT_DURATION_MS": 5000}),
-            frozendict({"EPOCH": 2, "SLOT_DURATION_MS": 4000}),
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(1, 5000),
+            slot_duration_schedule_entry(2, 4000),
         ),
     },
     activate_at_genesis=True,

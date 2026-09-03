@@ -3,14 +3,13 @@ Check that derived EIP-8198 values follow the slot duration schedule for a
 range of alternate durations, so no rule hard-codes a particular ratio.
 """
 
-from frozendict import frozendict
-
 from eth_consensus_specs.test.context import (
     spec_configured_state_test,
     with_phases,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import EIP8198, MINIMAL
+from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 
 FORK_EPOCH = 4096
 
@@ -18,9 +17,7 @@ FORK_EPOCH = 4096
 def _alternate_config(duration_ms):
     return {
         "EIP8198_FORK_EPOCH": FORK_EPOCH,
-        "SLOT_DURATION_SCHEDULE": (
-            frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": duration_ms}),
-        ),
+        "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, duration_ms),),
     }
 
 
@@ -48,9 +45,10 @@ def run_alternate_duration_checks(spec, state):
             spec.compute_slot_start_time_ms(state.genesis_time, slot)
         )
 
-    # Intra-slot deadlines
-    assert spec.get_attestation_due_ms(fork_slot) == (
-        spec.config.ATTESTATION_DUE_BPS_GLOAS * post_ms // spec.BASIS_POINTS
+    # Intra-slot deadlines come from the schedule entry
+    assert (
+        spec.get_attestation_due_ms(fork_slot)
+        == (spec.config.SLOT_DURATION_SCHEDULE[0]["ATTESTATION_DUE_MS"])
     )
 
     # Issuance and churn

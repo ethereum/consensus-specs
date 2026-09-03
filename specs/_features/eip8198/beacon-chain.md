@@ -9,6 +9,8 @@
   - [Slot duration schedule](#slot-duration-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
+    - [New `SlotTimingParameters`](#new-slottimingparameters)
+    - [New `get_slot_timing_parameters`](#new-get_slot_timing_parameters)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
     - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
     - [New `compute_slot_at_time_ms`](#new-compute_slot_at_time_ms)
@@ -27,17 +29,17 @@
 
 EIP-8198 ("Quick Slots") makes the slot duration schedulable, with a first
 reduction from 12 to 10 seconds intended at the fork epoch. The slot structure
-is unchanged, and all intra-slot deadlines are expressed in basis points of the
-slot duration, so they rescale automatically. The remaining duration-dependent
-parameters are rescaled by the ratio
-`r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their wall-clock
-behavior constant: issuance and churn are per-epoch rates and scale by `r`,
-while the inactivity penalty scales by `r**2` so that the cumulative leak over a
-fixed wall-clock duration is unchanged. Each formula applies the ratio inline
-rather than pre-computing rounded constants. Epoch- and slot-denominated
-quantities — withdrawability and slashing windows, sync committee periods,
-per-payload and per-epoch processing limits — keep their counts, so their
-wall-clock spans scale with the slot duration.
+is unchanged, and each schedule entry carries the intra-slot deadlines of its
+era as explicit millisecond values, so they can be adjusted whenever the slot
+duration changes. The remaining duration-dependent parameters are rescaled by
+the ratio `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their
+wall-clock behavior constant: issuance and churn are per-epoch rates and scale
+by `r`, while the inactivity penalty scales by `r**2` so that the cumulative
+leak over a fixed wall-clock duration is unchanged. Each formula applies the
+ratio inline rather than pre-computing rounded constants. Epoch- and
+slot-denominated quantities — withdrawability and slashing windows, sync
+committee periods, per-payload and per-epoch processing limits — keep their
+counts, so their wall-clock spans scale with the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -45,33 +47,87 @@ wall-clock spans scale with the slot duration.
 
 ### Slot duration schedule
 
-*[New in EIP8198]* This schedule defines the slot duration for a given epoch.
-Epochs before the first entry use `SLOT_DURATION_MS`.
+*[New in EIP8198]* This schedule defines the slot duration and the intra-slot
+deadlines for a given epoch. Epochs before the first entry use
+`SLOT_DURATION_MS` and the inherited basis-point deadlines.
 
 There MUST NOT exist multiple slot duration schedule entries with the same epoch
 value. The epoch value in each entry MUST be greater than or equal to
 `EIP8198_FORK_EPOCH`; an entry with an epoch of `FAR_FUTURE_EPOCH` is not
 scheduled and has no effect. The slot duration in each entry MUST be a positive
 multiple of `1000`, so that every slot boundary has an exact integer-second
-timestamp. The slot duration schedule entries SHOULD be sorted by epoch in
-ascending order. The slot duration schedule MAY be empty. Once scheduled, an
-entry that changes the slot duration MUST be accompanied by a `BLOB_SCHEDULE`
-entry at the same epoch that scales the maximum blobs per block by the
-slot-duration ratio (rounding down), keeping blob throughput per unit time
-constant.
+timestamp. Every deadline in an entry MUST be positive and less than the entry's
+slot duration, and the deadlines MUST preserve the inherited ordering: the
+proposer reorg cutoff before the attestation deadline before the aggregate
+deadline, the sync message deadline before the contribution deadline, and the
+payload deadline before the payload attestation deadline. The slot duration
+schedule entries SHOULD be sorted by epoch in ascending order. The slot duration
+schedule MAY be empty. Once scheduled, an entry that changes the slot duration
+MUST be accompanied by a `BLOB_SCHEDULE` entry at the same epoch that scales the
+maximum blobs per block by the slot-duration ratio (rounding down), keeping blob
+throughput per unit time constant.
 
 The epoch of the mainnet entry below is **TBD** and is intended to be the fork
 epoch.
 
 <!-- list-of-records:slot_duration_schedule -->
 
-|                Epoch | Slot Duration Ms | Description |
-| -------------------: | ---------------: | ----------- |
-| 18446744073709551615 |            10000 | 10 seconds  |
+|                Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description |
+| -------------------: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | ----------- |
+| 18446744073709551615 |            10000 |                     1667 |               2500 |             5000 |                2500 |                5000 |           5000 |                       7500 |                  6667 | 10 seconds  |
 
 ## Helpers
 
 ### Misc
+
+#### New `SlotTimingParameters`
+
+```python
+@dataclass
+class SlotTimingParameters:
+    slot_duration_ms: Uint64
+    proposer_reorg_cutoff_ms: Uint64
+    attestation_due_ms: Uint64
+    aggregate_due_ms: Uint64
+    sync_message_due_ms: Uint64
+    contribution_due_ms: Uint64
+    payload_due_ms: Uint64
+    payload_attestation_due_ms: Uint64
+    inclusion_list_due_ms: Uint64
+```
+
+#### New `get_slot_timing_parameters`
+
+```python
+def get_slot_timing_parameters(epoch: Epoch) -> SlotTimingParameters:
+    """
+    Return the slot timing parameters in effect at ``epoch``.
+    """
+    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"], reverse=True):
+        if entry["EPOCH"] != FAR_FUTURE_EPOCH and epoch >= entry["EPOCH"]:
+            return SlotTimingParameters(
+                slot_duration_ms=entry["SLOT_DURATION_MS"],
+                proposer_reorg_cutoff_ms=entry["PROPOSER_REORG_CUTOFF_MS"],
+                attestation_due_ms=entry["ATTESTATION_DUE_MS"],
+                aggregate_due_ms=entry["AGGREGATE_DUE_MS"],
+                sync_message_due_ms=entry["SYNC_MESSAGE_DUE_MS"],
+                contribution_due_ms=entry["CONTRIBUTION_DUE_MS"],
+                payload_due_ms=entry["PAYLOAD_DUE_MS"],
+                payload_attestation_due_ms=entry["PAYLOAD_ATTESTATION_DUE_MS"],
+                inclusion_list_due_ms=entry["INCLUSION_LIST_DUE_MS"],
+            )
+    return SlotTimingParameters(
+        slot_duration_ms=SLOT_DURATION_MS,
+        proposer_reorg_cutoff_ms=get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS),
+        attestation_due_ms=get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS),
+        aggregate_due_ms=get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS),
+        sync_message_due_ms=get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS),
+        contribution_due_ms=get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS),
+        payload_due_ms=get_slot_component_duration_ms(PAYLOAD_DUE_BPS),
+        payload_attestation_due_ms=get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS),
+        inclusion_list_due_ms=get_slot_component_duration_ms(INCLUSION_LIST_DUE_BPS),
+    )
+```
 
 #### New `get_slot_duration_ms`
 
@@ -80,12 +136,7 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     """
     Return the slot duration in effect at ``epoch``.
     """
-    duration_ms = SLOT_DURATION_MS
-    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
-        if entry["EPOCH"] == FAR_FUTURE_EPOCH or epoch < entry["EPOCH"]:
-            break
-        duration_ms = entry["SLOT_DURATION_MS"]
-    return duration_ms
+    return get_slot_timing_parameters(epoch).slot_duration_ms
 ```
 
 #### New `compute_slot_start_time_ms`

@@ -1,10 +1,9 @@
-from frozendict import frozendict
-
 from eth_consensus_specs.test.context import (
     spec_configured_state_test,
     with_phases,
 )
 from eth_consensus_specs.test.helpers.constants import EIP8198
+from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     on_tick_ms_and_append_step,
@@ -14,9 +13,7 @@ FORK_EPOCH = 2
 POST_DURATION_MS = 5000
 FORK_CONFIG = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
-    "SLOT_DURATION_SCHEDULE": (
-        frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": POST_DURATION_MS}),
-    ),
+    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),),
 }
 
 

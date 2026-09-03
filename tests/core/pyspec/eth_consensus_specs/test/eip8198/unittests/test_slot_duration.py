@@ -3,8 +3,6 @@ Unit tests for the EIP-8198 slot duration schedule and piecewise time
 functions, using config overrides that activate a schedule entry.
 """
 
-from frozendict import frozendict
-
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_configured_state_test,
@@ -14,6 +12,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import EIP8198, MINIMAL
+from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth_consensus_specs.test.helpers.state import next_epoch
 
@@ -21,21 +20,19 @@ FORK_EPOCH = 2
 POST_DURATION_MS = 5000
 FORK_EPOCH_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
-    "SLOT_DURATION_SCHEDULE": (
-        frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": POST_DURATION_MS}),
-    ),
+    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),),
 }
 GENESIS_SCHEDULE_OVERRIDE = {
     "EIP8198_FORK_EPOCH": 0,
-    "SLOT_DURATION_SCHEDULE": (frozendict({"EPOCH": 0, "SLOT_DURATION_MS": POST_DURATION_MS}),),
+    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(0, POST_DURATION_MS),),
 }
 SECOND_FORK_EPOCH = 4
 SECOND_POST_DURATION_MS = 3000
 TWO_ERA_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
     "SLOT_DURATION_SCHEDULE": (
-        frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": POST_DURATION_MS}),
-        frozendict({"EPOCH": SECOND_FORK_EPOCH, "SLOT_DURATION_MS": SECOND_POST_DURATION_MS}),
+        slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),
+        slot_duration_schedule_entry(SECOND_FORK_EPOCH, SECOND_POST_DURATION_MS),
     ),
 }
 
@@ -127,15 +124,16 @@ def test_timeline_across_two_eras(spec, state):
         spec.Slot(second_slot + 1),
     )
 
-    # Deadlines follow the era of the given slot
-    for slot, duration_ms in [
-        (spec.Slot(first_slot - 1), pre_ms),
-        (spec.Slot(first_slot), POST_DURATION_MS),
-        (spec.Slot(second_slot), SECOND_POST_DURATION_MS),
-    ]:
-        assert spec.get_attestation_due_ms(slot) == (
-            spec.config.ATTESTATION_DUE_BPS_GLOAS * duration_ms // spec.BASIS_POINTS
-        )
+    # Deadlines follow the schedule entry of the given slot; pre-schedule
+    # slots keep the inherited basis-point deadline
+    first_entry, second_entry = spec.config.SLOT_DURATION_SCHEDULE
+    assert spec.get_attestation_due_ms(spec.Slot(first_slot - 1)) == (
+        spec.config.ATTESTATION_DUE_BPS_GLOAS * pre_ms // spec.BASIS_POINTS
+    )
+    assert spec.get_attestation_due_ms(spec.Slot(first_slot)) == first_entry["ATTESTATION_DUE_MS"]
+    assert (
+        spec.get_attestation_due_ms(spec.Slot(second_slot)) == (second_entry["ATTESTATION_DUE_MS"])
+    )
 
 
 @with_phases([EIP8198])
@@ -384,6 +382,32 @@ def test_boundary_slot_timeliness_uses_new_duration(spec, state):
     assert spec.is_proposing_on_time(store) == (cutoff_probe_ms <= new_cutoff_ms)
 
 
+INDEPENDENT_DEADLINE_OVERRIDE = {
+    "EIP8198_FORK_EPOCH": FORK_EPOCH,
+    "SLOT_DURATION_SCHEDULE": (
+        slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS, ATTESTATION_DUE_MS=2000),
+    ),
+}
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(INDEPENDENT_DEADLINE_OVERRIDE, activate_at_genesis=True)
+def test_deadlines_are_independent_parameters(spec, state):
+    fork_slot = spec.Slot(FORK_EPOCH * spec.SLOTS_PER_EPOCH)
+    entry = spec.config.SLOT_DURATION_SCHEDULE[0]
+
+    # The configured deadline differs from the inherited fraction and wins
+    assert entry["ATTESTATION_DUE_MS"] != (
+        spec.config.ATTESTATION_DUE_BPS_GLOAS * POST_DURATION_MS // spec.BASIS_POINTS
+    )
+    assert spec.get_attestation_due_ms(fork_slot) == entry["ATTESTATION_DUE_MS"]
+
+    # Pre-schedule slots keep the inherited basis-point deadline
+    assert spec.get_attestation_due_ms(spec.Slot(fork_slot - 1)) == (
+        spec.config.ATTESTATION_DUE_BPS_GLOAS * spec.config.SLOT_DURATION_MS // spec.BASIS_POINTS
+    )
+
+
 @with_phases([EIP8198])
 @spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_base_reward_uses_scheduled_slot_ratio(spec, state):
@@ -449,7 +473,7 @@ def test_churn_scales_before_increment_rounding(spec, state):
 @spec_configured_state_test(
     {
         "EIP8198_FORK_EPOCH": 8192,
-        "SLOT_DURATION_SCHEDULE": (frozendict({"EPOCH": 8192, "SLOT_DURATION_MS": 5000}),),
+        "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(8192, 5000),),
     },
     activate_at_genesis=True,
 )

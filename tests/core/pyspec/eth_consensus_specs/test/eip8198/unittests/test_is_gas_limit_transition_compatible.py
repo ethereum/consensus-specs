@@ -1,5 +1,3 @@
-from frozendict import frozendict
-
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_test,
@@ -7,14 +5,13 @@ from eth_consensus_specs.test.context import (
     with_phases,
 )
 from eth_consensus_specs.test.helpers.constants import EIP8198
+from eth_consensus_specs.test.helpers.eip8198.schedule import slot_duration_schedule_entry
 
 FORK_EPOCH = 2
 POST_DURATION_MS = 5000
 SCHEDULE_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
-    "SLOT_DURATION_SCHEDULE": (
-        frozendict({"EPOCH": FORK_EPOCH, "SLOT_DURATION_MS": POST_DURATION_MS}),
-    ),
+    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),),
 }
 
 
