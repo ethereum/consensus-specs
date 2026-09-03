@@ -634,6 +634,16 @@ between *full* and *empty* nodes.
 def get_head(store: Store) -> ForkChoiceNode:
     # Get filtered node tree that only includes viable branches
     filtered_node_tree = get_filtered_node_tree(store)
+
+    # [New in Gloas:EIP7732]
+    if not any(filtered_node_tree):
+        # Return empty node if there are no viable nodes
+        # to ensure that head is never a pending node
+        return ForkChoiceNode(
+            root=store.justified_checkpoint.root,
+            payload_status=PAYLOAD_STATUS_EMPTY
+        )
+
     # Execute the LMD-GHOST fork-choice
     head = ForkChoiceNode(
         root=store.justified_checkpoint.root,
