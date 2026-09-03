@@ -52,6 +52,9 @@ predicate is_active_builder(var Builder: b) =
     b.cmp_finalized_epoch_deposit_epoch == GT
     /\ b.withdrawable_epoch_set == F;
 
+predicate is_withdrawable_builder(var Builder: b) =
+    b.cmp_state_epoch_withdrawal_epoch in {EQ, GT};
+
 predicate has_pending_withdrawals(var Builder: b) =
     b.has_pending_payments == T
     \/ b.has_pending_withdrawals == T;

@@ -9,32 +9,39 @@ Spec: specs/gloas/beacon-chain.md process_execution_payload_bid.
 Usage:
     uv run python -m tests.generators.compliance_runners.state_transition.bid_processing.materializer
 """
+
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from typing import Any
 
-import minizinc
-
-from eth_consensus_specs.test.utils.dumper import Dumper
-from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys, builder_pubkey_to_privkey
+from eth_consensus_specs.gloas import minimal as spec
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
-
-from ...gen_base.gen_typing import TestCase, TestCaseResult, TestCasePart
-from ...gen_base.output import dump_test_case_result
-
-from ..aspects.base import Bool, BuilderType, Cmp, OpBool, OpCmp, SignatureType
-from ..aspects.bid_processing.bid_processing import ExecutionPayloadBidProcessing
-from ..aspects.bid_processing.bid_processing_validator import bid_processing_validator
-from ..aspects.builder.builder import Builder as BuilderSolution
-from ..materializer.state_preprocessor import common_state_preprocessor
+from tests.generators.compliance_runners.state_transition.aspects.base import (
+    BuilderType,
+    SignatureType,
+)
+from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing import (
+    ExecutionPayloadBidProcessing,
+)
+from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing_validator import (
+    bid_processing_validator,
+)
+from tests.generators.compliance_runners.state_transition.materializer.common import (
+    BaseMaterializer,
+    BOOL,
+    CMP,
+    make_base_state,
+    to_builder_solution,
+)
 
 BUILDER_PUBKEY = builder_pubkeys[0]
 WRONG_PUBKEY = builder_pubkeys[1]
 BUILDER_ADDRESS = b"\x22" * 20
-BIG = 10 ** 10
+
+_BT = {"EXTERNAL": BuilderType.EXTERNAL, "SELF": BuilderType.SELF}
+_ST = {"INF": SignatureType.INF, "VALID": SignatureType.VALID, "INVALID": SignatureType.INVALID}
 
 DIMS = [
     "builder_type",
@@ -86,35 +93,19 @@ def _normalize(sol: Any) -> dict[str, Any]:
 
 
 def _to_solution(rec: dict[str, Any]) -> ExecutionPayloadBidProcessing:
-    _ob = {"F": OpBool.F, "T": OpBool.T, "NA_BOOL": OpBool.NA}
-    _oc = {"LT": OpCmp.LT, "EQ": OpCmp.EQ, "GT": OpCmp.GT, "NA_CMP": OpCmp.NA}
-
-    builder = BuilderSolution(
-        payload_builder_version=_ob[rec["payload_builder_version"]],
-        cmp_state_epoch_deposit_epoch=_oc[rec["cmp_state_epoch_deposit_epoch"]],
-        cmp_state_epoch_withdrawal_epoch=_oc[rec["cmp_state_epoch_withdrawal_epoch"]],
-        cmp_finalized_epoch_deposit_epoch=_oc[rec["cmp_finalized_epoch_deposit_epoch"]],
-        withdrawable_epoch_set=_ob[rec["withdrawable_epoch_set"]],
-        cmp_balance_zero=_oc[rec["cmp_balance_zero"]],
-        cmp_balance_min_deposit=_oc[rec["cmp_balance_min_deposit"]],
-        has_pending_payments=_ob[rec["has_pending_payments"]],
-        has_pending_withdrawals=_ob[rec["has_pending_withdrawals"]],
-    )
-    _bt = {"EXTERNAL": BuilderType.EXTERNAL, "SELF": BuilderType.SELF}
-    _st = {"INF": SignatureType.INF, "VALID": SignatureType.VALID, "INVALID": SignatureType.INVALID}
-    _cmp = {"LT": Cmp.LT, "EQ": Cmp.EQ, "GT": Cmp.GT}
-    _bool = {"F": Bool.F, "T": Bool.T}
     return ExecutionPayloadBidProcessing(
-        builder_type=_bt[rec["builder_type"]],
-        builder=builder,
-        cmp_bid_value_zero=_cmp[rec["cmp_bid_value_zero"]],
-        bid_signature=_st[rec["bid_signature"]],
-        cmp_builder_balance_to_bid_value_plus_min_balance=_cmp[rec["cmp_builder_balance_to_bid_value_plus_min_balance"]],
-        cmp_len_kzg_commitments_max_blobs=_cmp[rec["cmp_len_kzg_commitments_max_blobs"]],
-        cmp_state_slot_bid_slot=_cmp[rec["cmp_state_slot_bid_slot"]],
-        parent_block_hash_match=_bool[rec["parent_block_hash_match"]],
-        parent_block_root_match=_bool[rec["parent_block_root_match"]],
-        prev_randao_match=_bool[rec["prev_randao_match"]],
+        builder_type=_BT[rec["builder_type"]],
+        builder=to_builder_solution(rec),
+        cmp_bid_value_zero=CMP[rec["cmp_bid_value_zero"]],
+        bid_signature=_ST[rec["bid_signature"]],
+        cmp_builder_balance_to_bid_value_plus_min_balance=CMP[
+            rec["cmp_builder_balance_to_bid_value_plus_min_balance"]
+        ],
+        cmp_len_kzg_commitments_max_blobs=CMP[rec["cmp_len_kzg_commitments_max_blobs"]],
+        cmp_state_slot_bid_slot=CMP[rec["cmp_state_slot_bid_slot"]],
+        parent_block_hash_match=BOOL[rec["parent_block_hash_match"]],
+        parent_block_root_match=BOOL[rec["parent_block_root_match"]],
+        prev_randao_match=BOOL[rec["prev_randao_match"]],
     )
 
 
@@ -155,8 +146,12 @@ def _pick_withdrawable_epoch(w_cmp: str, state_epoch: int):
 
 
 def _pick_balance_and_bid_value(
-    b_zero: str, b_min: str, v_zero: str, v_funds: str,
-    min_deposit: int, pending_total: int,
+    b_zero: str,
+    b_min: str,
+    v_zero: str,
+    v_funds: str,
+    min_deposit: int,
+    pending_total: int,
 ) -> tuple[int, int]:
     """Pick (balance, bid_value) satisfying all four comparisons:
     - cmp(balance, 0) = b_zero
@@ -225,12 +220,14 @@ def _pick_balance_and_bid_value(
     return balance, bid_value
 
 
-class BidProcessingMaterializer:
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        self.spec = spec
-        self.model_path = model_path
-        self.fork_name = fork_name
-        self.preset_name = preset_name
+class BidProcessingMaterializer(BaseMaterializer):
+    handler_name = "execution_payload_bid"
+    description = "process_execution_payload_bid"
+    validator_name = "bid_processing_validator"
+    bls_setting = 1
+
+    def describe(self, claimed: dict) -> str:
+        return f"process_execution_payload_bid: {claimed.get('outcome')}"
 
     def _sign(self, state: Any, bid: Any, privkey: int) -> Any:
         spec = self.spec
@@ -238,21 +235,16 @@ class BidProcessingMaterializer:
         root = spec.compute_signing_root(bid, domain)
         return bls.Sign(privkey, root)
 
-    def _base_state(self, past_genesis: bool) -> Any:
-        spec = self.spec
-        state = create_genesis_state(
-            spec,
-            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 256,
-            activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
-        )
-        state.builders = type(state.builders)()
-        state.builder_pending_payments = type(state.builder_pending_payments)()
-        state.builder_pending_withdrawals = type(state.builder_pending_withdrawals)()
-        if past_genesis:
-            state = common_state_preprocessor(spec, state)
-        return state
+    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
+        super().__init__(spec, model_path, fork_name, preset_name)
+        # Precompute both base-state variants once; each solution starts from a copy.
+        self._base_genesis = make_base_state(spec, num_validators=256, preprocess=False)
+        self._base = make_base_state(spec, num_validators=256, preprocess=True)
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any, Any | None, bool, dict]:
+    def _base_state(self, past_genesis: bool) -> Any:
+        return (self._base if past_genesis else self._base_genesis).copy()
+
+    def materialize_solution(self, sol: Any) -> tuple[Any, Any | None, bool, dict, list]:
         spec = self.spec
         rec = _normalize(sol)
         is_self = rec["builder_type"] == "SELF"
@@ -260,9 +252,9 @@ class BidProcessingMaterializer:
 
         # State at genesis is a no-op — skip materialization entirely.
         if not past_genesis:
-            pre = self._base_state(False)
+            pre = self._base_state(past_genesis=False)
             claimed = {n: rec.get(n) for n in DIMS}
-            return pre, None, None, True, claimed
+            return pre, None, True, claimed, []
 
         pre = self._base_state(past_genesis)
         current_epoch = int(spec.get_current_epoch(pre))
@@ -338,9 +330,7 @@ class BidProcessingMaterializer:
                     )
                 )
 
-            builder_balance = balance
         else:
-            builder_balance = 0
             bid_value = 0 if rec["cmp_bid_value_zero"] == "EQ" else 1
 
         # ---- builder_index for the bid ----------------------------------------
@@ -366,7 +356,9 @@ class BidProcessingMaterializer:
         pr = rec["parent_block_root_match"] == "T"
         parent_block_hash = pre.latest_block_hash if ph else spec.Hash32(b"\x02" * 32)
         prev_randao = (
-            spec.get_randao_mix(pre, spec.get_current_epoch(pre)) if rr else spec.Bytes32(b"\x06" * 32)
+            spec.get_randao_mix(pre, spec.get_current_epoch(pre))
+            if rr
+            else spec.Bytes32(b"\x06" * 32)
         )
         if past_genesis and pr:
             parent_block_root = spec.get_block_root_at_slot(pre, spec.Slot(int(pre.slot) - 1))
@@ -406,66 +398,16 @@ class BidProcessingMaterializer:
 
         # ---- derive post (accepted) or omit (rejected) ----------------------
         post = pre.copy()
-        accepted = True
         try:
             spec.process_execution_payload_bid(post, signed)
         except (AssertionError, IndexError):
-            accepted = False
             post = None
 
         claimed = {n: rec.get(n) for n in DIMS}
-        return pre, signed, post, verified, claimed
-
-    def write_case(self, dumper: Dumper, output_dir: Path, index: int, sol: Any) -> bool:
-        pre, signed, post, verified, claimed = self.materialize_solution(sol)
-        case_name = f"case_{index:04d}"
-        test_case = TestCase(
-            fork_name=self.fork_name, preset_name=self.preset_name,
-            runner_name="operations", handler_name="execution_payload_bid",
-            suite_name="main", case_name=case_name,
-        )
-        test_case.set_output_dir(str(output_dir))
-        case_parts: list[TestCasePart] = [
-            ("pre", "ssz", pre.encode_bytes()),  # type: ignore
-            ("execution_payload_bid", "ssz", signed.encode_bytes()),  # type: ignore
-        ]
-        if post is not None:
-            case_parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore
-        meta = {
-            "description": f"process_execution_payload_bid: {claimed.get('outcome')}",
-            "bls_setting": 1,
-            "verified": verified,
-        }
-        dump_test_case_result(TestCaseResult(test_case=test_case, meta=meta, case_parts=case_parts), dumper)
-        dumper.dump_data(test_case.dir, "dimensions", {"case": case_name, "claimed": claimed})
-        return verified
-
-    def materialize_reps(self, output_dir: Path, reps: list) -> tuple[int, int]:
-        if output_dir.exists():
-            shutil.rmtree(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        dumper = Dumper()
-        verified_count = 0
-        for i, sol in enumerate(reps):
-            if self.write_case(dumper, output_dir, i, sol):
-                verified_count += 1
-        print(f"Generated {len(reps)} test cases in {output_dir} "
-              f"({verified_count}/{len(reps)} verified by bid_processing_validator)")
-        return len(reps), verified_count
-
-    def materialize_all(self, output_dir: Path, timeout_s: int = 300) -> tuple[int, int]:
-        from datetime import timedelta
-        model = minizinc.Model(str(self.model_path))
-        result = minizinc.Instance(
-            minizinc.Solver.lookup("gecode"), model
-        ).solve(all_solutions=True, timeout=timedelta(seconds=timeout_s))
-        reps = list(result)
-        return self.materialize_reps(output_dir, reps)
+        return pre, post, verified, claimed, [("execution_payload_bid", signed)]
 
 
 def main() -> int:
-    from eth_consensus_specs.gloas import minimal as spec
-
     model_path = Path(__file__).parent / "models" / "handler_bid_processing.mzn"
     output_dir = Path(__file__).parent / "reftests"
     materializer = BidProcessingMaterializer(spec, model_path)

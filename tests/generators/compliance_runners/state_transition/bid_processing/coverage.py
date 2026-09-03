@@ -8,14 +8,23 @@ Run:
     uv run python -m ...bid_processing.coverage                 # profile summary
     uv run python -m ...bid_processing.coverage standard --materialize
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..aspect_coverage import cover, dedup, enumerate_signatures
-from .materializer import BidProcessingMaterializer, DIMS
+from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspect_coverage import (
+    cover,
+    dedup,
+    enumerate_signatures,
+)
+from tests.generators.compliance_runners.state_transition.bid_processing.materializer import (
+    BidProcessingMaterializer,
+    DIMS,
+)
 
 # Input aspects (the bid_processing aggregate record dimensions).
 INPUT_ASPECTS = {
@@ -25,12 +34,15 @@ INPUT_ASPECTS = {
     "builder_funds": ["cmp_builder_balance_to_bid_value_plus_min_balance"],
     "blob_kzg_capacity": ["cmp_len_kzg_commitments_max_blobs"],
     "slot_epoch": ["cmp_state_slot_bid_slot"],
-    "block_context": ["parent_block_hash_match", "parent_block_root_match",
-                      "prev_randao_match"],
+    "block_context": ["parent_block_hash_match", "parent_block_root_match", "prev_randao_match"],
     # builder sub-aspect (from the aggregate record's builder field)
     "builder_version": ["payload_builder_version"],
-    "builder_lifecycle": ["cmp_state_epoch_deposit_epoch", "cmp_state_epoch_withdrawal_epoch",
-                           "cmp_finalized_epoch_deposit_epoch", "withdrawable_epoch_set"],
+    "builder_lifecycle": [
+        "cmp_state_epoch_deposit_epoch",
+        "cmp_state_epoch_withdrawal_epoch",
+        "cmp_finalized_epoch_deposit_epoch",
+        "withdrawable_epoch_set",
+    ],
     "builder_balance": ["cmp_balance_zero", "cmp_balance_min_deposit"],
     "builder_pending_balance": ["has_pending_payments", "has_pending_withdrawals"],
 }
@@ -53,9 +65,9 @@ def _nfaults(r: dict) -> int:
         f += r["bid_signature"] != "VALID"
     f += r["cmp_len_kzg_commitments_max_blobs"] not in ("LT", "EQ")
     f += r["cmp_state_slot_bid_slot"] != "EQ"
-    f += not r["parent_block_hash_match"] == "T"
+    f += r["parent_block_hash_match"] != "T"
     f += r["parent_block_root_match"] != "T"
-    f += not r["prev_randao_match"] == "T"
+    f += r["prev_randao_match"] != "T"
     return int(f)
 
 
@@ -95,10 +107,11 @@ def main() -> int:
         return 0
 
     n_obl, chosen = build_profile(recs, args[0])
-    print(f"profile '{args[0]}': {len(chosen)} cases"
-          + (f" covering {n_obl} obligations" if n_obl >= 0 else ""))
+    print(
+        f"profile '{args[0]}': {len(chosen)} cases"
+        + (f" covering {n_obl} obligations" if n_obl >= 0 else "")
+    )
     if materialize:
-        from eth_consensus_specs.gloas import minimal as spec
         reps = [SimpleNamespace(**rec) for rec in chosen]
         out = Path(__file__).parent / "reftests"
         print()

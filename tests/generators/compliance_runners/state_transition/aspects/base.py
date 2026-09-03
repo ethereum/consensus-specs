@@ -35,6 +35,13 @@ class SignatureType(Enum):
     VALID = auto()
     INVALID = auto()
 
+
+class ValidatorCredentialKind(Enum):
+    BLS = auto()
+    ETH1 = auto()
+    COMPOUNDING = auto()
+
+
 class Record:
     """
     Record is a Record in Minizinc.
@@ -63,7 +70,14 @@ def constraint(fn):
     - ```if expression:
             return``` implies that constraints defined below this statement are not applicable
         if `expression` satisfied.
-    - if constraint function is called inside of `fn` body apply constraints defined by that function to its parameter.
+    - if constraint function is called inside of `fn` body apply constraints defined by that function to its parameter
+    - if constraint function has an assert on the length of the list from the Record,
+      this list must be translated to a minizinc array with the corresponding length constraints,
+      if there is no upper boundary constraint then use 0 as the placeholder,
+      note that upper bound constraint can come from some other place when the Record is imported into some other place.
+    - asserts in a loop should be applied to items of the corresponding minizinc array
+    - `fn` may have parameters like `int` arguments constraining a size of an array,
+      this parameters should be replaced with array lengths in Minizinc models.
     """
     return fn
 

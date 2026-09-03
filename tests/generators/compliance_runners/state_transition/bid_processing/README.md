@@ -2,8 +2,9 @@
 
 Aspect-based coverage generation for the `gloas` `process_execution_payload_bid`
 handler, following [`../TEST_METHODOLOGY.md`](../TEST_METHODOLOGY.md). Uses the
-aggregate `bid_processing` aspect model (aspects/bid_processing/) rather than the
-flat-aspect sibling in [`../execution_payload_bid/`](../execution_payload_bid/).
+aggregate `bid_processing` aspect model (aspects/bid_processing/) rather than
+the flat-aspect sibling in
+[`../execution_payload_bid/`](../execution_payload_bid/).
 
 ## Pipeline
 
@@ -27,18 +28,18 @@ validation.py                  independently recover every dimension via spec pr
 
 ## Coverage: combinatorial over aspects
 
-Coverage is **t-wise over a configurable set of aspects**, with `outcome` treated
-as just another aspect (`coverage.py`). MiniZinc enumerates the feasible space
-once; Python computes the t-wise obligations and greedily covers them (preferring
-fewer faults, so representatives stay clean).
+Coverage is **t-wise over a configurable set of aspects**, with `outcome`
+treated as just another aspect (`coverage.py`). MiniZinc enumerates the feasible
+space once; Python computes the t-wise obligations and greedily covers them
+(preferring fewer faults, so representatives stay clean).
 
-| profile | request | cases |
-|---|---|---|
-| `onewise` | 1-wise over all aspects (incl. `outcome`) | 34 |
-| `normal` | 2-wise over input aspects, `outcome == ACCEPT` | 13 |
-| `exceptional` | 2-wise over `builder_type × outcome`, rejections only | 16 |
-| `standard` | `normal ∪ exceptional` | 29 |
-| `pairwise` | 2-wise over all aspects | — |
+| profile       | request                                               | cases |
+| ------------- | ----------------------------------------------------- | ----- |
+| `onewise`     | 1-wise over all aspects (incl. `outcome`)             | 34    |
+| `normal`      | 2-wise over input aspects, `outcome == ACCEPT`        | 13    |
+| `exceptional` | 2-wise over `builder_type × outcome`, rejections only | 16    |
+| `standard`    | `normal ∪ exceptional`                                | 29    |
+| `pairwise`    | 2-wise over all aspects                               | —     |
 
 ## Usage
 
@@ -54,8 +55,8 @@ uv run python -m ...bid_processing.coverage standard --materialize  # or: onewis
 ## Output
 
 Standard [operations format](../../../../formats/operations/README.md) under
-`reftests/minimal/gloas/operations/execution_payload_bid/main/case_XXXX/`:
-`pre` / `execution_payload_bid` / `post` (omitted on rejection) `.ssz_snappy`,
+`reftests/minimal/gloas/operations/execution_payload_bid/main/case_XXXX/`: `pre`
+/ `execution_payload_bid` / `post` (omitted on rejection) `.ssz_snappy`,
 `meta.yaml`, `manifest.yaml`, and `dimensions.yaml` (the serialized solution).
 
 ## Notes
