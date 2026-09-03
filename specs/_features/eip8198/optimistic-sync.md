@@ -16,7 +16,7 @@ This document represents the changes to be made to optimistic sync to implement
 EIP-8198.
 
 *Note*: This specification is built upon
-[Optimistic Sync](../../../sync/optimistic.md).
+[Optimistic Sync](../../heze/optimistic-sync.md).
 
 ## Helpers
 
