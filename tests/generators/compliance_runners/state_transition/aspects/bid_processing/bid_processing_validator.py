@@ -1,12 +1,16 @@
-from ..base import (
+from tests.generators.compliance_runners.state_transition.aspects.base import (
     _to_bool,
     _to_cmp,
     BuilderType,
     SignatureType,
     validator,
 )
-from ..builder.builder_validator import builder_validator
-from .bid_processing import ExecutionPayloadBidProcessing
+from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing import (
+    ExecutionPayloadBidProcessing,
+)
+from tests.generators.compliance_runners.state_transition.aspects.builder.builder_validator import (
+    builder_validator,
+)
 
 
 @validator
@@ -48,7 +52,9 @@ def bid_processing_validator(
             if payment.withdrawal.builder_index == builder_index
         )
         min_balance = spec.MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
-        cmp_builder_balance_to_bid_value_plus_min_balance = _to_cmp(int(builder_balance), int(bid.value + min_balance))
+        cmp_builder_balance_to_bid_value_plus_min_balance = _to_cmp(
+            int(builder_balance), int(bid.value + min_balance)
+        )
 
     cmp_len_kzg_commitments_max_blobs = _to_cmp(
         len(bid.blob_kzg_commitments),
@@ -57,7 +63,8 @@ def bid_processing_validator(
     cmp_state_slot_bid_slot = _to_cmp(int(beacon_state.slot), int(bid.slot))
     parent_block_hash_match = _to_bool(bid.parent_block_hash == beacon_state.latest_block_hash)
     parent_block_root_match = _to_bool(
-        bid.parent_block_root == spec.get_block_root_at_slot(beacon_state, spec.Slot(int(beacon_state.slot) - 1))
+        bid.parent_block_root
+        == spec.get_block_root_at_slot(beacon_state, spec.Slot(int(beacon_state.slot) - 1))
     )
     prev_randao_match = _to_bool(
         bid.prev_randao == spec.get_randao_mix(beacon_state, spec.get_current_epoch(beacon_state))

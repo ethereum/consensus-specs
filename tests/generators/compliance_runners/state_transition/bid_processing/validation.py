@@ -9,6 +9,7 @@ materializer nor the model.
 Usage:
     uv run python -m tests.generators.compliance_runners.state_transition.bid_processing.validation [REFTESTS_DIR]
 """
+
 from __future__ import annotations
 
 import sys
@@ -104,21 +105,31 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         r["cmp_balance_zero"] = _cmp(int(b.balance), 0)
         r["cmp_balance_min_deposit"] = _cmp(int(b.balance), int(spec.MIN_DEPOSIT_AMOUNT))
         r["has_pending_payments"] = _tri(
-            any(p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
-                for p in pre.builder_pending_payments)
+            any(
+                p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
+                for p in pre.builder_pending_payments
+            )
         )
         r["has_pending_withdrawals"] = _tri(
-            any(w.builder_index == idx and int(w.amount) > 0 for w in pre.builder_pending_withdrawals)
+            any(
+                w.builder_index == idx and int(w.amount) > 0
+                for w in pre.builder_pending_withdrawals
+            )
         )
         r["cmp_builder_balance_to_bid_value_plus_min_balance"] = _cmp(
             int(b.balance), int(bid.value) + min_balance
         )
     else:
         for name in (
-            "cmp_state_epoch_deposit_epoch", "cmp_state_epoch_withdrawal_epoch",
-            "cmp_finalized_epoch_deposit_epoch", "withdrawable_epoch_set",
-            "payload_builder_version", "cmp_balance_zero", "cmp_balance_min_deposit",
-            "has_pending_payments", "has_pending_withdrawals",
+            "cmp_state_epoch_deposit_epoch",
+            "cmp_state_epoch_withdrawal_epoch",
+            "cmp_finalized_epoch_deposit_epoch",
+            "withdrawable_epoch_set",
+            "payload_builder_version",
+            "cmp_balance_zero",
+            "cmp_balance_min_deposit",
+            "has_pending_payments",
+            "has_pending_withdrawals",
         ):
             r[name] = "NA"
         # For SELF/NON_EXISTING: min_balance = 0, so cmp(0, bid.value)
@@ -180,8 +191,12 @@ def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
     actual = recover(pre, signed)
 
     checks = [
-        Check(dim, claim, actual.get(dim, "<none>"),
-              "ok" if actual.get(dim, "<none>") == claim else "mismatch")
+        Check(
+            dim,
+            claim,
+            actual.get(dim, "<none>"),
+            "ok" if actual.get(dim, "<none>") == claim else "mismatch",
+        )
         for dim, claim in claimed.items()
     ]
 
