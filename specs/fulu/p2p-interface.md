@@ -171,7 +171,7 @@ def compute_max_request_data_column_sidecars() -> Uint64:
     """
     Return the maximum number of data column sidecars in a single request.
     """
-    return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
+    return MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS
 ```
 
 ### New `verify_data_column_sidecar`
