@@ -167,10 +167,7 @@ Request and response message types are unchanged from Heze. In the inherited
 data-column sidecar request validations and pruning guidance,
 `get_data_column_sidecars_retention_start(current_epoch)` replaces the rolling
 `current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` term; the
-inherited `FULU_FORK_EPOCH` floor is unchanged. The blob sidecar Req/Resp
-messages are already deprecated as of
-`FULU_FORK_EPOCH + MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`, so their retention
-window needs no treatment.
+inherited `FULU_FORK_EPOCH` floor is unchanged.
 
 Epoch-denominated retention windows without a wall-clock target — in particular
 the block retention window `compute_min_epochs_for_block_requests()` — keep

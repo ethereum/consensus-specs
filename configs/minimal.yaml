@@ -60,7 +60,7 @@ HEZE_FORK_EPOCH: 18446744073709551615
 # [customized] EIP8321
 EIP8321_FORK_VERSION: 0xe8321001
 EIP8321_FORK_EPOCH: 18446744073709551615
-# EIP8198 (experimental)
+# EIP8198
 EIP8198_FORK_VERSION: 0xe8198001
 EIP8198_FORK_EPOCH: 18446744073709551615
 
@@ -108,7 +108,6 @@ PAYLOAD_ATTESTATION_DUE_BPS: 7500
 # Heze
 # 6667 basis points, ~67% of SLOT_DURATION_MS
 INCLUSION_LIST_DUE_BPS: 6667
-
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -233,20 +232,7 @@ BLOB_SCHEDULE: []
 
 GAS_LIMIT_SCHEDULE: []
 
-# Slot duration schedule (EIP8198)
-# ---------------------------------------------------------------
-
-SLOT_DURATION_SCHEDULE:
-  - EPOCH: 18446744073709551615  # TBD
-    SLOT_DURATION_MS: 5000  # [customized]
-    PROPOSER_REORG_CUTOFF_MS: 833
-    ATTESTATION_DUE_MS: 1250
-    AGGREGATE_DUE_MS: 2500
-    SYNC_MESSAGE_DUE_MS: 1250
-    CONTRIBUTION_DUE_MS: 2500
-    PAYLOAD_DUE_MS: 2500
-    PAYLOAD_ATTESTATION_DUE_MS: 3750
-    INCLUSION_LIST_DUE_MS: 3333
+SLOT_DURATION_SCHEDULE: []
 
 # Fast Confirmation Rule
 # ---------------------------------------------------------------

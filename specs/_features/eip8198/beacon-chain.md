@@ -30,13 +30,13 @@
 EIP-8198 ("Quick Slots") makes the slot duration schedulable, with a first
 reduction from 12 to 10 seconds intended at the fork epoch. The slot structure
 is unchanged, and each schedule entry carries the intra-slot deadlines of its
-era as explicit millisecond values, so they can be adjusted whenever the slot
-duration changes. The remaining duration-dependent parameters are rescaled by
-the ratio `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their
-wall-clock behavior constant: issuance and churn are per-epoch rates and scale
-by `r`, while the inactivity penalty scales by `r**2` so that the cumulative
-leak over a fixed wall-clock duration is unchanged. Each formula applies the
-ratio inline rather than pre-computing rounded constants. Epoch- and
+slot duration era as explicit millisecond values, so they can be adjusted
+whenever the slot duration changes. The remaining duration-dependent parameters
+are rescaled by the ratio `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS`
+to keep their wall-clock behavior constant: issuance and churn are per-epoch
+rates and scale by `r`, while the inactivity penalty scales by `r**2` so that
+the cumulative leak over a fixed wall-clock duration is unchanged. Each formula
+applies the ratio inline rather than pre-computing rounded constants. Epoch- and
 slot-denominated quantities — withdrawability and slashing windows, sync
 committee periods, per-payload and per-epoch processing limits — keep their
 counts, so their wall-clock spans scale with the slot duration.
@@ -53,8 +53,7 @@ deadlines for a given epoch. Epochs before the first entry use
 
 There MUST NOT exist multiple slot duration schedule entries with the same epoch
 value. The epoch value in each entry MUST be greater than or equal to
-`EIP8198_FORK_EPOCH`; an entry with an epoch of `FAR_FUTURE_EPOCH` is not
-scheduled and has no effect. The slot duration in each entry MUST be a positive
+`EIP8198_FORK_EPOCH`. The slot duration in each entry MUST be a positive
 multiple of `1000`, so that every slot boundary has an exact integer-second
 timestamp. Every deadline in an entry MUST be positive and less than the entry's
 slot duration, and the deadlines MUST preserve the inherited ordering: the
@@ -67,14 +66,14 @@ MUST be accompanied by a `BLOB_SCHEDULE` entry at the same epoch that scales the
 maximum blobs per block by the slot-duration ratio (rounding down), keeping blob
 throughput per unit time constant.
 
-The epoch of the mainnet entry below is **TBD** and is intended to be the fork
+The schedule is empty until the epoch of the first slot duration change is
+decided; the intended mainnet entry is a 10-second slot duration at the fork
 epoch.
 
 <!-- list-of-records:slot_duration_schedule -->
 
-|                Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description |
-| -------------------: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | ----------- |
-| 18446744073709551615 |            10000 |                     1667 |               2500 |             5000 |                2500 |                5000 |           5000 |                       7500 |                  6667 | 10 seconds  |
+| Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description |
+| ----: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | ----------- |
 
 ## Helpers
 
@@ -104,7 +103,7 @@ def get_slot_timing_parameters(epoch: Epoch) -> SlotTimingParameters:
     Return the slot timing parameters in effect at ``epoch``.
     """
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"], reverse=True):
-        if entry["EPOCH"] != FAR_FUTURE_EPOCH and epoch >= entry["EPOCH"]:
+        if epoch >= entry["EPOCH"]:
             return SlotTimingParameters(
                 slot_duration_ms=entry["SLOT_DURATION_MS"],
                 proposer_reorg_cutoff_ms=entry["PROPOSER_REORG_CUTOFF_MS"],
@@ -150,8 +149,6 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     era_start_slot = GENESIS_SLOT
     era_duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
-        if entry["EPOCH"] == FAR_FUTURE_EPOCH:
-            break
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         if slot < entry_slot:
             break
@@ -173,8 +170,6 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     era_start_slot = GENESIS_SLOT
     era_duration_ms = SLOT_DURATION_MS
     for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
-        if entry["EPOCH"] == FAR_FUTURE_EPOCH:
-            break
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         era_length_ms = (entry_slot - era_start_slot) * era_duration_ms
         if remaining_ms < era_length_ms:
@@ -253,13 +248,10 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
             )
             # [Modified in EIP8198]
             slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
-            penalty_denominator = (
-                INACTIVITY_SCORE_BIAS
-                * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
-                * SLOT_DURATION_MS
-                * SLOT_DURATION_MS
-                // (slot_duration_ms * slot_duration_ms)
-            )
+            duration_squared = slot_duration_ms * slot_duration_ms
+            base_duration_squared = SLOT_DURATION_MS * SLOT_DURATION_MS
+            penalty_quotient = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+            penalty_denominator = penalty_quotient * base_duration_squared // duration_squared
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
     return rewards, penalties
 ```

@@ -39,7 +39,7 @@ EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
 deadlines are read from the schedule entry in effect at a duty's slot, so the
 deadline helpers gain a `slot` parameter; the inherited basis-point deadlines
 apply before the first schedule entry. The mapping between wall-clock time and
-slot number becomes piecewise over the schedule's eras, and every timeliness
+slot number becomes piecewise over the slot duration eras, and every timeliness
 check is rebased on the new `get_time_into_slot_ms` helper. The store clock
 gains millisecond precision: implementations MUST drive the store with
 `on_tick_ms`; the whole-second `on_tick` remains only as a compatibility
@@ -67,18 +67,16 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, list[bool]] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]] = field(default_factory=dict)
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]] = field(
-        default_factory=dict
-    )
-    payload_inclusion_list_satisfaction: Dict[Root, bool] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
+    block_timeliness: Dict[Root, list[bool]]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
+    payloads: Dict[Root, ExecutionPayloadEnvelope]
+    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
+    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
+    payload_inclusion_list_satisfaction: Dict[Root, bool]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -111,6 +109,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
@@ -166,72 +165,80 @@ since the deadline of a duty is read from the schedule entry in effect at its
 slot.
 
 ```python
-def get_attestation_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_attestation_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).attestation_due_ms
 ```
 
 ### Modified `get_proposer_reorg_cutoff_ms`
 
 ```python
-def get_proposer_reorg_cutoff_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_proposer_reorg_cutoff_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).proposer_reorg_cutoff_ms
 ```
 
 ### Modified `get_aggregate_due_ms`
 
 ```python
-def get_aggregate_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_aggregate_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).aggregate_due_ms
 ```
 
 ### Modified `get_sync_message_due_ms`
 
 ```python
-def get_sync_message_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_sync_message_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).sync_message_due_ms
 ```
 
 ### Modified `get_contribution_due_ms`
 
 ```python
-def get_contribution_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_contribution_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).contribution_due_ms
 ```
 
 ### Modified `get_payload_due_ms`
 
 ```python
-def get_payload_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_payload_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).payload_due_ms
 ```
 
 ### Modified `get_payload_attestation_due_ms`
 
 ```python
-def get_payload_attestation_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_payload_attestation_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).payload_attestation_due_ms
 ```
 
 ### Modified `get_inclusion_list_due_ms`
 
 ```python
-def get_inclusion_list_due_ms(slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    # Added `slot`
+def get_inclusion_list_due_ms(
+    # [New in EIP8198]
+    slot: Slot,
+) -> Uint64:
     return get_slot_timing_parameters(compute_epoch_at_slot(slot)).inclusion_list_due_ms
 ```
 

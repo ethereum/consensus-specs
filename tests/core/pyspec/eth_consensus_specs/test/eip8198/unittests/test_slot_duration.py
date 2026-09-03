@@ -507,12 +507,8 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
 @with_phases([EIP8198])
 @spec_test
 @single_phase
-def test_unscheduled_entry_has_no_effect(spec):
-    # The default schedule only contains the placeholder entry at
-    # FAR_FUTURE_EPOCH, which must behave as if the schedule were empty.
-    for entry in spec.config.SLOT_DURATION_SCHEDULE:
-        assert entry["EPOCH"] == spec.FAR_FUTURE_EPOCH
-    assert spec.get_slot_duration_ms(spec.FAR_FUTURE_EPOCH) == spec.config.SLOT_DURATION_MS
+def test_empty_schedule_keeps_base_duration(spec):
+    assert spec.config.SLOT_DURATION_SCHEDULE == ()
     for epoch in (spec.GENESIS_EPOCH, spec.Epoch(8192), spec.Epoch(100_000)):
         assert spec.get_slot_duration_ms(epoch) == spec.config.SLOT_DURATION_MS
         slot = spec.compute_start_slot_at_epoch(epoch)
