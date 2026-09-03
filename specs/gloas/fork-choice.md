@@ -702,6 +702,11 @@ def verify_execution_payload_envelope(
 
 ```python
 def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> bool:
+    """
+    Check if the block with the given ``root`` is a possible dependent block
+    for the given ``dependent_slot``, meaning that on some branch it is, or
+    could become, the latest block at or before ``dependent_slot``.
+    """
     if root == get_head(store).root:
         return True
     for block in store.blocks.values():
