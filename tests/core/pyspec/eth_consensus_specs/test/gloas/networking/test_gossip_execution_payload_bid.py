@@ -2558,6 +2558,111 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_hash(spec, state):
+    """A bid whose block_hash equals its parent_block_hash is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    seen = get_seen(spec)
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    common_fee = spec.ExecutionAddress(b"\x11" * 20)
+    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
+    time_ms += 50
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        fee_recipient=common_fee,
+        target_gas_limit=parent_gas_limit,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    time_ms += 10
+    yield get_filename(head_payload), head_payload
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(head_payload),
+            "expected": result,
+        }
+    )
+
+    # All other checks pass and only block_hash is wrong: it equals the
+    # parent_block_hash, which a real execution payload can never produce.
+    parent_block_hash = head_payload.message.payload.block_hash
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        block_hash=parent_block_hash,
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's block hash equals its parent block hash"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     """A bid with an invalid signature is rejected once all other checks pass."""
     anchor_state = state.copy()

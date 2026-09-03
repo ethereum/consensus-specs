@@ -970,6 +970,10 @@ def validate_execution_payload_bid_gossip(
     if bid.execution_payment != 0:
         raise GossipReject("bid's execution payment must be zero")
 
+    # [REJECT] The bid's block hash is not equal to its parent block hash
+    if bid.block_hash == bid.parent_block_hash:
+        raise GossipReject("bid's block hash equals its parent block hash")
+
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
     max_blobs = get_blob_parameters(proposal_epoch).max_blobs_per_block
