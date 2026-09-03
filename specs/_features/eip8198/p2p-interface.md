@@ -14,7 +14,6 @@
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
         - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
-  - [The Req/Resp domain](#the-reqresp-domain)
 
 <!-- mdformat-toc end -->
 
@@ -160,11 +159,3 @@ def is_gas_limit_transition_compatible(
         return gas_limit == parent_gas_limit * bid_duration_ms // parent_duration_ms
     return is_gas_limit_target_compatible(parent_gas_limit, gas_limit, target_gas_limit)
 ```
-
-### The Req/Resp domain
-
-Request and response message types are unchanged from Heze. In the inherited
-data-column sidecar request validations and pruning guidance,
-`get_data_column_sidecars_retention_start(current_epoch)` replaces the rolling
-`current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` term; the
-inherited `FULU_FORK_EPOCH` floor is unchanged.
