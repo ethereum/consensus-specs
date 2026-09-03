@@ -1,13 +1,11 @@
 from dataclasses import dataclass
-from ..base import (
-    _to_op_bool,
-    _to_op_cmp,
+
+from tests.generators.compliance_runners.state_transition.aspects.base import (
     constraint,
     OpBool,
     OpCmp,
     predicate,
     Record,
-    validator,
 )
 
 
@@ -55,6 +53,11 @@ def is_external_builder(b: Builder) -> bool:
 
 
 @predicate
+def is_withdrawable_builder(b: Builder) -> bool:
+    return b.cmp_state_epoch_withdrawal_epoch in {OpCmp.EQ, OpCmp.GT}
+
+
+@predicate
 def is_active_builder(b: Builder) -> bool:
     return b.cmp_finalized_epoch_deposit_epoch == OpCmp.GT and b.withdrawable_epoch_set == OpBool.F
 
@@ -64,9 +67,14 @@ def has_pending_withdrawals(b: Builder) -> bool:
     return b.has_pending_payments == OpBool.T or b.has_pending_withdrawals == OpBool.T
 
 
+@predicate
+def is_sweep_eligible(b: Builder) -> bool:
+    return is_withdrawable_builder(b) and b.cmp_balance_zero == OpCmp.GT
+
+
 @constraint
 def builder_constraints(b: Builder) -> None:
-    assert not is_self_builder(b) == is_external_builder(b)
+    assert is_self_builder(b) != is_external_builder(b)
 
     if is_self_builder(b):
         return
