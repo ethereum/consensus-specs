@@ -153,8 +153,11 @@ class MutationOps:
             choices = ["shift", "late_arrival", "multi_route"]
             weights = [5, 1, 3]
             if self.genesis_time is not None:
+                # equivocation_delay is a targeted shift, so its weight is carved
+                # out of shift's share rather than added on top. Vectors without
+                # equivocations fall back to shift, restoring the original [5, 1, 3].
                 choices.append("equivocation_delay")
-                weights.append(3)
+                weights = [2, 1, 3, 3]
         elif event_kind in ("attestation", "payload_attestation"):
             choices = ["shift", "late_arrival", "multi_route"]
             weights = [2, 3, 4]
