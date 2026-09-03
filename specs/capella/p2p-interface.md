@@ -220,11 +220,7 @@ def validate_bls_to_execution_change_gossip(
         raise GossipIgnore("already seen BLS to execution change for this validator")
 
     # [IGNORE] The current epoch is at or after the Capella fork epoch
-    # (where current_epoch is defined by the current wall-clock time)
-    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
-    current_epoch = compute_epoch_at_slot(current_slot)
-    if current_epoch < CAPELLA_FORK_EPOCH:
+    if is_future_epoch(store, CAPELLA_FORK_EPOCH, current_time_ms):
         raise GossipIgnore("current epoch is pre-capella")
 
     state = store.block_states[get_head(store).root]
