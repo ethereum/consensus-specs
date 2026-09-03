@@ -46,7 +46,7 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     # Ensure that the given inputs are valid pubkeys
     assert all(bls.KeyValidate(pubkey) for pubkey in pubkeys)
 
-    result = copy(pubkeys[0])
+    result = pubkeys[0].copy()
     for pubkey in pubkeys[1:]:
         result += pubkey
     return result
