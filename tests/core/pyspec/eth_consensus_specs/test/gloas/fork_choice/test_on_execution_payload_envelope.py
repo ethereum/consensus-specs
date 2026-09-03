@@ -448,6 +448,7 @@ def test_on_execution_payload_envelope_invalid_full_child(spec, state):
     child.body.signed_execution_payload_bid.message.parent_block_hash = (
         signed_block.message.body.signed_execution_payload_bid.message.block_hash
     )
+    child.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_child = state_transition_and_sign_block(spec, child_state, child)
 
     # The FULL child must fail because the parent's invalid envelope did not verify its payload

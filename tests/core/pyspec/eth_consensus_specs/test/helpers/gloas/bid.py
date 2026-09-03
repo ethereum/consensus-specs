@@ -290,6 +290,7 @@ def build_signed_bid(
     prev_randao=None,
     blob_kzg_commitments=None,
     valid_signature=True,
+    block_hash=None,
 ):
     """Construct a SignedExecutionPayloadBid."""
     if blob_kzg_commitments is None:
@@ -300,7 +301,7 @@ def build_signed_bid(
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=parent_block_hash,
         parent_block_root=parent_block_root,
-        block_hash=spec.Hash32(b"\x02" + b"\x00" * 31),
+        block_hash=block_hash if block_hash is not None else spec.Hash32(b"\x02" + b"\x00" * 31),
         prev_randao=prev_randao
         if prev_randao is not None
         else spec.get_randao_mix(state, spec.get_current_epoch(state)),
