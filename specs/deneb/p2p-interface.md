@@ -530,6 +530,7 @@ def validate_voluntary_exit_gossip(
     seen: Seen,
     store: Store,
     signed_voluntary_exit: SignedVoluntaryExit,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedVoluntaryExit for gossip propagation.
@@ -542,6 +543,10 @@ def validate_voluntary_exit_gossip(
     if validator_index in seen.voluntary_exit_indices:
         raise GossipIgnore("already seen voluntary exit for this validator")
 
+    # [IGNORE] The voluntary exit epoch is not in the future
+    if is_future_epoch(store, voluntary_exit.epoch, current_time_ms):
+        raise GossipIgnore("voluntary exit epoch is in the future")
+
     state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
@@ -551,17 +556,13 @@ def validate_voluntary_exit_gossip(
     validator = state.validators[validator_index]
     current_epoch = get_current_epoch(state)
 
+    # [IGNORE] The validator has not already initiated exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        raise GossipIgnore("validator has already initiated exit")
+
     # [REJECT] The validator is active
     if not is_active_validator(validator, current_epoch):
         raise GossipReject("validator is not active")
-
-    # [REJECT] The validator has not already initiated exit
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        raise GossipReject("validator has already initiated exit")
-
-    # [REJECT] The voluntary exit epoch is not in the future
-    if current_epoch < voluntary_exit.epoch:
-        raise GossipReject("voluntary exit epoch is in the future")
 
     # [REJECT] The validator has been active long enough
     if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
