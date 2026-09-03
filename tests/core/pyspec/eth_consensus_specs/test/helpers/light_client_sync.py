@@ -20,9 +20,9 @@ from eth_consensus_specs.test.helpers.forks import (
 from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     get_sync_aggregate,
-    upgrade_lc_bootstrap_to_new_spec,
-    upgrade_lc_store_to_new_spec,
-    upgrade_lc_update_to_new_spec,
+    upgrade_light_client_bootstrap_to_new_spec,
+    upgrade_light_client_store_to_new_spec,
+    upgrade_light_client_update_to_new_spec,
 )
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
@@ -49,7 +49,7 @@ def _get_store_fork_version(s_spec):
     return s_spec.config.ALTAIR_FORK_VERSION
 
 
-def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
+def setup_light_client_sync_test(spec, state, s_spec=None, phases=None):
     test = LightClientSyncTest()
     test.steps = []
 
@@ -79,7 +79,7 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     yield "bootstrap_fork_digest", "meta", encode_hex(data_fork_digest)
     yield "bootstrap", data
 
-    upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
+    upgraded = upgrade_light_client_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
     test.store = test.s_spec.initialize_light_client_store(trusted_block_root, upgraded)
     store_fork_version = _get_store_fork_version(test.s_spec)
     yield "store_fork_version", "meta", encode_hex(store_fork_version)
@@ -87,7 +87,7 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     return test
 
 
-def finish_lc_sync_test(test):
+def finish_light_client_sync_test(test):
     yield "steps", test.steps
 
 
@@ -109,12 +109,16 @@ def _get_checks(s_spec, store):
             "finalized_header": {
                 "slot": int(store.finalized_header.beacon.slot),
                 "beacon_root": encode_hex(store.finalized_header.beacon.hash_tree_root()),
-                "execution_root": encode_hex(s_spec.get_lc_execution_root(store.finalized_header)),
+                "execution_root": encode_hex(
+                    s_spec.get_light_client_execution_root(store.finalized_header)
+                ),
             },
             "optimistic_header": {
                 "slot": int(store.optimistic_header.beacon.slot),
                 "beacon_root": encode_hex(store.optimistic_header.beacon.hash_tree_root()),
-                "execution_root": encode_hex(s_spec.get_lc_execution_root(store.optimistic_header)),
+                "execution_root": encode_hex(
+                    s_spec.get_light_client_execution_root(store.optimistic_header)
+                ),
             },
         }
 
@@ -167,7 +171,7 @@ def emit_update(
         data.next_sync_committee_branch = spec.NextSyncCommitteeBranch()
     current_slot = state.slot
 
-    upgraded = upgrade_lc_update_to_new_spec(d_spec, test.s_spec, data, phases)
+    upgraded = upgrade_light_client_update_to_new_spec(d_spec, test.s_spec, data, phases)
     test.s_spec.process_light_client_update(
         test.store, upgraded, current_slot, test.genesis_validators_root
     )
@@ -188,7 +192,7 @@ def emit_update(
 
 def _emit_upgrade_store(test, new_s_spec, phases=None):
     old_fork_version = _get_store_fork_version(test.s_spec)
-    test.store = upgrade_lc_store_to_new_spec(test.s_spec, new_s_spec, test.store, phases)
+    test.store = upgrade_light_client_store_to_new_spec(test.s_spec, new_s_spec, test.store, phases)
     test.s_spec = new_s_spec
     store_fork_version = _get_store_fork_version(test.s_spec)
     assert store_fork_version != old_fork_version
@@ -204,9 +208,9 @@ def _emit_upgrade_store(test, new_s_spec, phases=None):
     )
 
 
-def run_lc_sync_test_single_fork(spec, phases, state, fork):
+def run_light_client_sync_test_single_fork(spec, phases, state, fork):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state, phases=phases)
+    test = yield from setup_light_client_sync_test(spec, state, phases=phases)
 
     # Initial `LightClientUpdate`
     finalized_block = create_signed_genesis_block(spec, state)
@@ -335,12 +339,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
-def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
+def run_light_client_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state, phases[fork_2], phases)
+    test = yield from setup_light_client_sync_test(spec, state, phases[fork_2], phases)
 
     # Set up so that finalized is from `spec`, ...
     finalized_block = create_signed_genesis_block(spec, state)
@@ -382,4 +386,4 @@ def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
     assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
