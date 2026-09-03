@@ -20,6 +20,20 @@ UNSUPPORTED_LOW_PROOF_TYPE = 0
 UNSUPPORTED_HIGH_PROOF_TYPE = 4
 
 
+class CacheInspectingProofEngine(MockProofEngine):
+    def __init__(self, seen, proof_root, prover_key, *, verification_result=True):
+        super().__init__(verification_result=verification_result)
+        self.seen = seen
+        self.proof_root = proof_root
+        self.prover_key = prover_key
+
+    def verify_execution_proof(self, proof):
+        block_root = self.prover_key[0]
+        assert self.proof_root not in self.seen.execution_proof_roots.get(block_root, set())
+        assert self.prover_key not in self.seen.execution_proof_provers
+        return super().verify_execution_proof(proof)
+
+
 def setup_store_with_block(spec, state):
     """Build one accepted block and return its fork-choice store and root."""
     store, _anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -368,34 +382,53 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
     """
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
-    proof_engine = MockProofEngine()
+    seen = get_seen(spec)
+    proof_root = spec.hash_tree_root(signed_proof.message)
+    prover_key = (block_root, signed_proof.message.proof_type, signed_proof.validator_index)
+    proof_engine = CacheInspectingProofEngine(seen, proof_root, prover_key)
     proof = get_proof_engine_input(spec, store, signed_proof)
 
     # Gossip validation verifies the proof without mutating the fork-choice store.
-    assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == ("valid", None)
+    assert validate(spec, seen, store, signed_proof, proof_engine) == ("valid", None)
     assert proof_engine.verifications == [proof]
+    assert proof_root in seen.execution_proof_roots[block_root]
+    assert prover_key in seen.execution_proof_provers
     assert block_root not in store.execution_proofs
 
     # The handler verifies again before storing and rejects duplicate storage.
-    spec.on_execution_proof(store, signed_proof, proof_engine)
-    assert proof_engine.verifications == [proof, proof]
+    handler_engine = MockProofEngine()
+    spec.on_execution_proof(store, signed_proof, handler_engine)
+    assert handler_engine.verifications == [proof]
     assert store.execution_proofs[block_root] == {
         signed_proof.message.proof_type: signed_proof.message
     }
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
+    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, handler_engine))
 
     # Cache a failed gossip verification so the same proof and prover are ignored.
     alternate_proof = make_signed_execution_proof_envelope(
         spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE
     )
-    rejecting_engine = MockProofEngine(verification_result=False)
     seen = get_seen(spec)
+    alternate_proof_root = spec.hash_tree_root(alternate_proof.message)
+    alternate_prover_key = (
+        block_root,
+        alternate_proof.message.proof_type,
+        alternate_proof.validator_index,
+    )
+    rejecting_engine = CacheInspectingProofEngine(
+        seen,
+        alternate_proof_root,
+        alternate_prover_key,
+        verification_result=False,
+    )
     assert validate(spec, seen, store, alternate_proof, rejecting_engine) == (
         "reject",
         "execution proof is invalid",
     )
     expected_alternate_proof = get_proof_engine_input(spec, store, alternate_proof)
     assert rejecting_engine.verifications == [expected_alternate_proof]
+    assert alternate_proof_root in seen.execution_proof_roots[block_root]
+    assert alternate_prover_key in seen.execution_proof_provers
     assert alternate_proof.message.proof_type not in store.execution_proofs[block_root]
     assert validate(spec, seen, store, alternate_proof) == (
         "ignore",
