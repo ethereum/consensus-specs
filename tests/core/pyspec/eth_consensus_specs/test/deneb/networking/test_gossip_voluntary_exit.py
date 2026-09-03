@@ -59,7 +59,13 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 0, "message": get_filename(signed_exit), "expected": "valid"}],
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_exit),
+                "expected": "valid",
+            }
+        ],
     )
 
 

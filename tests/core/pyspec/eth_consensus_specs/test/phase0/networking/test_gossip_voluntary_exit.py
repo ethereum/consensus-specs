@@ -73,7 +73,13 @@ def test_gossip_voluntary_exit__valid(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 0, "message": get_filename(signed_exit), "expected": "valid"}],
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_exit),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -116,7 +122,13 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     )
     assert result == "valid"
     assert reason is None
-    messages.append({"offset_ms": 0, "message": get_filename(signed_exit), "expected": "valid"})
+    messages.append(
+        {
+            "offset_ms": 0,
+            "message": get_filename(signed_exit),
+            "expected": "valid",
+        }
+    )
 
     # Second validation should be ignored
     current_time_ms += 50
