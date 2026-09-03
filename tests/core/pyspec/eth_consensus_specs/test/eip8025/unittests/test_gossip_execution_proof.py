@@ -220,7 +220,9 @@ def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
     )
 
     store.execution_proofs[block_root] = {signed_proof.message.proof_type: signed_proof.message}
-    assert validate(spec, get_seen(spec), store, signed_proof) == (
+    seen = get_seen(spec)
+    seen.execution_proof_roots[block_root] = {proof_root}
+    assert validate(spec, seen, store, signed_proof) == (
         "ignore",
         "verified proof already known for this beacon block and proof type",
     )

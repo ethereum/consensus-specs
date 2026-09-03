@@ -108,15 +108,15 @@ def validate_execution_proof_gossip(
     if beacon_block_root not in store.blocks:
         raise GossipIgnore("execution proof's beacon block has not been seen")
 
+    # [IGNORE] No valid proof is known for this beacon block and proof type
+    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
+        raise GossipIgnore("verified proof already known for this beacon block and proof type")
+
     proof_root = hash_tree_root(proof_envelope)
 
     # [IGNORE] The proof has not already been processed
     if proof_root in seen.execution_proof_roots.get(beacon_block_root, set()):
         raise GossipIgnore("execution proof has already been processed")
-
-    # [IGNORE] No valid proof is known for this beacon block and proof type
-    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
-        raise GossipIgnore("verified proof already known for this beacon block and proof type")
 
     # [IGNORE] This is the prover's first valid or invalid proof for this key
     validator_index = signed_proof_envelope.validator_index
