@@ -38,7 +38,10 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     found = request.pubkey in pubkeys
     credential_profile = withdrawal_credentials_profile(spec, request.withdrawal_credentials)
     r: dict[str, Any] = {
+<<<<<<< HEAD
         "withdrawal_credentials_profile": credential_profile,
+=======
+>>>>>>> a547eeb89 (Add withdrawal processing aspect and hanlder)
         "wc_is_builder_prefix": bool(
             spec.is_builder_withdrawal_credential(request.withdrawal_credentials)
         ),
@@ -78,4 +81,56 @@ def validate_case(case_dir: Path) -> list[Check]:
     request = decode(case_dir / "builder_deposit_request.ssz_snappy", spec.BuilderDepositRequest)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, request)
+<<<<<<< HEAD
     return check_dimensions(claimed, actual)
+=======
+
+    checks = [
+        Check(d, c, actual.get(d, "<none>"), "ok" if actual.get(d, "<none>") == c else "mismatch")
+        for d, c in claimed.items()
+    ]
+
+    # Oracle: post must equal spec re-execution. (Note: `builder_credited` means
+    # the credit branch was reached, not that state changed — a zero-amount
+    # top-up credits nothing — so it is not a state-change predicate.)
+    errors: list[str] = []
+    oracle = pre.copy()
+    spec.process_builder_deposit_request(oracle, request)
+    if oracle.hash_tree_root() != post.hash_tree_root():
+        errors.append("post does not match spec re-execution")
+    return checks, errors
+
+
+def main() -> int:
+    default = Path(__file__).parent / "reftests"
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else default
+    case_dirs = sorted(root.glob("**/operations/builder_deposit_request/**/case_*"))
+    if not case_dirs:
+        print(f"No cases found under {root}")
+        return 1
+
+    total_mm = total_err = 0
+    for case_dir in case_dirs:
+        checks, errors = validate_case(case_dir)
+        mism = [c for c in checks if c.status == "mismatch"]
+        total_mm += len(mism)
+        total_err += len(errors)
+        status = "OK" if not mism and not errors else "FAIL"
+        outcome = next((c.claimed for c in checks if c.dimension == "outcome"), "?")
+        print(f"{case_dir.name}: {status}  [{outcome}]")
+        for c in mism:
+            print(f"    dim {c.dimension}: claimed={c.claimed!r} actual={c.actual!r}")
+        for e in errors:
+            print(f"    oracle: {e}")
+
+    print()
+    if total_mm or total_err:
+        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
+        return 1
+    print(f"PASSED: {len(case_dirs)} cases, all dimensions and oracle checks consistent")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+>>>>>>> a547eeb89 (Add withdrawal processing aspect and hanlder)
