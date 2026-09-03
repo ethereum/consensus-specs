@@ -152,10 +152,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         block_timeliness={anchor_root: [True, True]},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
@@ -293,7 +293,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
 
     # Verify the validator is in the inclusion list committee
-    dependent_state = copy(store.block_states[inclusion_list.dependent_root])
+    dependent_state = store.block_states[inclusion_list.dependent_root].copy()
     if dependent_state.slot < inclusion_list.slot:
         process_slots(dependent_state, inclusion_list.slot)
     committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)

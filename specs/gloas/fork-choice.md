@@ -231,11 +231,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         # [New in Gloas:EIP7732]
         block_timeliness={anchor_root: [True, True]},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
@@ -667,7 +667,7 @@ def verify_execution_payload_envelope(
     assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Verify consistency with the beacon block
-    header = copy(state.latest_block_header)
+    header = state.latest_block_header.copy()
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
     assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
@@ -1049,7 +1049,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
+    state = store.block_states[block.parent_root].copy()
 
     # Check the block is valid and compute the post-state
     state_transition(state, signed_block, validate_result=True)
