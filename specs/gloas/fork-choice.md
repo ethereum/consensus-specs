@@ -702,12 +702,12 @@ def verify_execution_payload_envelope(
 
 ```python
 def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> bool:
+    if root == get_head(store).root:
+        return True
     for block in store.blocks.values():
         if block.parent_root == root:
             if block.slot > dependent_slot:
                 return True
-    if root == get_head(store).root:
-        return True
     return False
 ```
 
