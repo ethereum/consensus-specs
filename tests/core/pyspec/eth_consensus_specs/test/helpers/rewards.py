@@ -65,8 +65,8 @@ def get_expected_inactivity_penalty(spec, state, index):
         get_inactivity_penalty_quotient(spec)
     )
     if is_post_eip8198(spec):
-        duration_ms = int(spec.get_slot_duration_ms(spec.get_current_epoch(state)))
-        base_duration_ms = int(spec.config.SLOT_DURATION_MS)
+        duration_ms = int(spec.get_slot_duration_ms(spec.get_previous_epoch(state)))
+        base_duration_ms = int(spec.get_slot_duration_ms(spec.GENESIS_EPOCH))
         penalty_denominator = (
             penalty_denominator * base_duration_ms * base_duration_ms // (duration_ms * duration_ms)
         )
@@ -81,7 +81,7 @@ def has_enough_for_reward(spec, state, index):
     but a zero base reward.
     """
     if is_post_eip8198(spec):
-        return spec.get_base_reward(state, index) > 0
+        return spec.get_base_reward_at_epoch(state, index, spec.get_previous_epoch(state)) > 0
     return (
         state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
         > spec.integer_squareroot(spec.get_total_active_balance(state))

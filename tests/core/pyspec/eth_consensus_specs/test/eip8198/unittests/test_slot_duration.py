@@ -25,17 +25,24 @@ FORK_EPOCH = 2
 POST_DURATION_MS = 5000
 FORK_EPOCH_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
-    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),),
+    "SLOT_DURATION_SCHEDULE": (
+        slot_duration_schedule_entry(0, 6000),
+        slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),
+    ),
 }
-GENESIS_SCHEDULE_OVERRIDE = {
+EARLY_SCHEDULE_OVERRIDE = {
     "EIP8198_FORK_EPOCH": 0,
-    "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(0, POST_DURATION_MS),),
+    "SLOT_DURATION_SCHEDULE": (
+        slot_duration_schedule_entry(0, 6000),
+        slot_duration_schedule_entry(1, POST_DURATION_MS),
+    ),
 }
 SECOND_FORK_EPOCH = 4
 SECOND_POST_DURATION_MS = 3000
 TWO_ERA_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
     "SLOT_DURATION_SCHEDULE": (
+        slot_duration_schedule_entry(0, 6000),
         slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS),
         slot_duration_schedule_entry(SECOND_FORK_EPOCH, SECOND_POST_DURATION_MS),
     ),
@@ -44,7 +51,7 @@ TWO_ERA_OVERRIDE = {
 
 def _fork_params(spec, genesis_time):
     fork_slot = FORK_EPOCH * spec.SLOTS_PER_EPOCH
-    pre_ms = spec.config.SLOT_DURATION_MS
+    pre_ms = spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     post_ms = spec.get_slot_duration_ms(spec.Epoch(FORK_EPOCH))
     fork_time = genesis_time + fork_slot * pre_ms // 1000
     fork_time_ms = genesis_time * 1000 + fork_slot * pre_ms
@@ -54,7 +61,7 @@ def _fork_params(spec, genesis_time):
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
 def test_get_slot_duration_ms(spec, state):
-    pre_ms = spec.config.SLOT_DURATION_MS
+    pre_ms = spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     assert spec.get_slot_duration_ms(spec.Epoch(0)) == pre_ms
     assert spec.get_slot_duration_ms(spec.Epoch(FORK_EPOCH - 1)) == pre_ms
     assert spec.get_slot_duration_ms(spec.Epoch(FORK_EPOCH)) == POST_DURATION_MS
@@ -83,7 +90,7 @@ def test_get_slot_from_time_ms_across_fork(spec, state):
 @with_phases([EIP8198])
 @spec_configured_state_test(TWO_ERA_OVERRIDE, activate_at_genesis=True)
 def test_timeline_across_two_eras(spec, state):
-    pre_ms = spec.config.SLOT_DURATION_MS
+    pre_ms = spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     first_slot = FORK_EPOCH * spec.SLOTS_PER_EPOCH
     second_slot = SECOND_FORK_EPOCH * spec.SLOTS_PER_EPOCH
     genesis_time_ms = state.genesis_time * 1000
@@ -119,19 +126,9 @@ def test_timeline_across_two_eras(spec, state):
     assert spec.get_current_slot(store) == second_slot + 3
     assert spec.get_time_into_slot_ms(store) == 0
 
-    # A payload gap spanning both duration changes compounds the gas ratio
-    parent_gas_limit = spec.Uint64(60_000_000)
-    assert spec.is_gas_limit_transition_compatible(
-        parent_gas_limit,
-        spec.Uint64(parent_gas_limit * SECOND_POST_DURATION_MS // pre_ms),
-        parent_gas_limit,
-        spec.Slot(first_slot - 1),
-        spec.Slot(second_slot + 1),
-    )
-
     # Deadlines follow the schedule entry of the given slot; pre-schedule
     # slots keep the inherited basis-point deadline
-    first_entry, second_entry = spec.config.SLOT_DURATION_SCHEDULE
+    _, first_entry, second_entry = spec.config.SLOT_DURATION_SCHEDULE
     assert spec.get_attestation_due_ms(spec.Slot(first_slot - 1)) == (
         spec.config.ATTESTATION_DUE_BPS_GLOAS * pre_ms // spec.BASIS_POINTS
     )
@@ -390,6 +387,7 @@ def test_boundary_slot_timeliness_uses_new_duration(spec, state):
 INDEPENDENT_DEADLINE_OVERRIDE = {
     "EIP8198_FORK_EPOCH": FORK_EPOCH,
     "SLOT_DURATION_SCHEDULE": (
+        slot_duration_schedule_entry(0, 6000),
         slot_duration_schedule_entry(FORK_EPOCH, POST_DURATION_MS, ATTESTATION_DUE_MS=2000),
     ),
 }
@@ -399,7 +397,7 @@ INDEPENDENT_DEADLINE_OVERRIDE = {
 @spec_configured_state_test(INDEPENDENT_DEADLINE_OVERRIDE, activate_at_genesis=True)
 def test_deadlines_are_independent_parameters(spec, state):
     fork_slot = spec.Slot(FORK_EPOCH * spec.SLOTS_PER_EPOCH)
-    entry = spec.config.SLOT_DURATION_SCHEDULE[0]
+    entry = spec.config.SLOT_DURATION_SCHEDULE[1]
 
     # The configured deadline differs from the inherited fraction and wins
     assert entry["ATTESTATION_DUE_MS"] != (
@@ -409,7 +407,9 @@ def test_deadlines_are_independent_parameters(spec, state):
 
     # Pre-schedule slots keep the inherited basis-point deadline
     assert spec.get_attestation_due_ms(spec.Slot(fork_slot - 1)) == (
-        spec.config.ATTESTATION_DUE_BPS_GLOAS * spec.config.SLOT_DURATION_MS // spec.BASIS_POINTS
+        spec.config.ATTESTATION_DUE_BPS_GLOAS
+        * spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
+        // spec.BASIS_POINTS
     )
 
 
@@ -422,7 +422,7 @@ def test_epoch_processing_prices_previous_epoch(spec, state):
         next_epoch(spec, state)
     assert spec.get_current_epoch(state) == FORK_EPOCH
     previous_epoch = spec.get_previous_epoch(state)
-    pre_ms = spec.config.SLOT_DURATION_MS
+    pre_ms = spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     assert spec.get_slot_duration_ms(previous_epoch) == pre_ms
 
     # In-block pricing follows the current (new) duration, epoch-processing
@@ -521,23 +521,27 @@ def test_proposer_reward_prices_attestation_target_epoch(spec, state):
 
 
 @with_phases([EIP8198])
-@spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
+@spec_configured_state_test(EARLY_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_base_reward_uses_scheduled_slot_ratio(spec, state):
+    next_epoch(spec, state)
+    next_epoch(spec, state)
     duration_ms = spec.get_slot_duration_ms(spec.get_current_epoch(state))
     assert duration_ms == POST_DURATION_MS
     expected = (
         spec.EFFECTIVE_BALANCE_INCREMENT
         * spec.BASE_REWARD_FACTOR
         * duration_ms
-        // spec.config.SLOT_DURATION_MS
+        // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         // spec.integer_squareroot(spec.get_total_active_balance(state))
     )
     assert spec.get_base_reward_per_increment(state) == expected
 
 
 @with_phases([EIP8198])
-@spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
+@spec_configured_state_test(EARLY_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_inactivity_penalty_uses_scheduled_slot_ratio(spec, state):
+    next_epoch(spec, state)
+    next_epoch(spec, state)
     index = 0
     state.inactivity_scores[index] = 1
     _, penalties = spec.get_inactivity_penalty_deltas(state)
@@ -547,8 +551,8 @@ def test_inactivity_penalty_uses_scheduled_slot_ratio(spec, state):
     penalty_denominator = (
         int(spec.config.INACTIVITY_SCORE_BIAS)
         * int(spec.INACTIVITY_PENALTY_QUOTIENT_BELLATRIX)
-        * int(spec.config.SLOT_DURATION_MS)
-        * int(spec.config.SLOT_DURATION_MS)
+        * int(spec.get_slot_duration_ms(spec.GENESIS_EPOCH))
+        * int(spec.get_slot_duration_ms(spec.GENESIS_EPOCH))
         // (duration_ms * duration_ms)
     )
     assert penalties[index] == int(penalty_numerator) // penalty_denominator
@@ -556,8 +560,10 @@ def test_inactivity_penalty_uses_scheduled_slot_ratio(spec, state):
 
 @with_phases([EIP8198])
 @with_presets([MINIMAL], reason="uses minimal churn quotients for a compact boundary state")
-@spec_configured_state_test(GENESIS_SCHEDULE_OVERRIDE, activate_at_genesis=True)
+@spec_configured_state_test(EARLY_SCHEDULE_OVERRIDE, activate_at_genesis=True)
 def test_churn_scales_before_increment_rounding(spec, state):
+    next_epoch(spec, state)
+    next_epoch(spec, state)
     for validator in state.validators:
         validator.effective_balance = 0
     target_total = spec.Gwei(1_959_000_000_000)
@@ -570,13 +576,17 @@ def test_churn_scales_before_increment_rounding(spec, state):
         spec.config.MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
         target_total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS,
     )
-    expected_activation_exit = raw_activation_exit * duration_ms // spec.config.SLOT_DURATION_MS
+    expected_activation_exit = (
+        raw_activation_exit * duration_ms // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
+    )
     expected_activation_exit -= expected_activation_exit % spec.EFFECTIVE_BALANCE_INCREMENT
     assert spec.get_activation_churn_limit(state) == expected_activation_exit
     assert spec.get_exit_churn_limit(state) == expected_activation_exit
 
     raw_consolidation = target_total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
-    expected_consolidation = raw_consolidation * duration_ms // spec.config.SLOT_DURATION_MS
+    expected_consolidation = (
+        raw_consolidation * duration_ms // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
+    )
     expected_consolidation -= expected_consolidation % spec.EFFECTIVE_BALANCE_INCREMENT
     assert spec.get_consolidation_churn_limit(state) == expected_consolidation
 
@@ -585,7 +595,10 @@ def test_churn_scales_before_increment_rounding(spec, state):
 @spec_configured_state_test(
     {
         "EIP8198_FORK_EPOCH": 8192,
-        "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(8192, 5000),),
+        "SLOT_DURATION_SCHEDULE": (
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(8192, 5000),
+        ),
     },
     activate_at_genesis=True,
 )
@@ -593,7 +606,11 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
     fork_epoch = int(spec.config.EIP8198_FORK_EPOCH)
     start_of = spec.get_data_column_sidecars_retention_start
     window_epochs = spec.config.MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS
-    window_ms = spec.Uint64(window_epochs) * spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
+    window_ms = (
+        spec.Uint64(window_epochs)
+        * spec.SLOTS_PER_EPOCH
+        * spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
+    )
 
     # Early epochs clamp at genesis
     assert start_of(spec.GENESIS_EPOCH) == spec.GENESIS_EPOCH
@@ -605,7 +622,7 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
 
     # After the fork, the window's wall-clock length is preserved, with less
     # than one pre-fork epoch of overshoot
-    pre_epoch_ms = spec.SLOTS_PER_EPOCH * spec.config.SLOT_DURATION_MS
+    pre_epoch_ms = spec.SLOTS_PER_EPOCH * spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     for k in (1, 7, int(window_epochs // 2), int(window_epochs), int(window_epochs) + 100):
         current_epoch = spec.Epoch(fork_epoch + k)
         start_epoch = start_of(current_epoch)
@@ -619,13 +636,14 @@ def test_retention_window_preserves_wall_clock_length(spec, state):
 @with_phases([EIP8198])
 @spec_test
 @single_phase
-def test_empty_schedule_keeps_base_duration(spec):
-    assert spec.config.SLOT_DURATION_SCHEDULE == ()
+def test_genesis_schedule_keeps_base_duration(spec):
+    assert len(spec.config.SLOT_DURATION_SCHEDULE) == 1
+    assert spec.config.SLOT_DURATION_SCHEDULE[0]["EPOCH"] == spec.GENESIS_EPOCH
     for epoch in (spec.GENESIS_EPOCH, spec.Epoch(8192), spec.Epoch(100_000)):
-        assert spec.get_slot_duration_ms(epoch) == spec.config.SLOT_DURATION_MS
+        assert spec.get_slot_duration_ms(epoch) == spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         slot = spec.compute_start_slot_at_epoch(epoch)
         start_ms = spec.compute_slot_start_time_ms(spec.Uint64(0), slot)
-        assert start_ms == slot * spec.config.SLOT_DURATION_MS
+        assert start_ms == slot * spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         assert spec.compute_slot_at_time_ms(spec.Uint64(0), start_ms) == slot
     for epoch in (spec.Epoch(8192), spec.Epoch(100_000)):
         assert spec.get_data_column_sidecars_retention_start(epoch) == (
@@ -639,7 +657,9 @@ def test_slot_range_duration_cross_fork(spec, state):
     fork_slot = spec.Slot(FORK_EPOCH * spec.SLOTS_PER_EPOCH)
     start_slot = spec.Slot(fork_slot - spec.SLOTS_PER_EPOCH)
     end_slot = spec.Slot(fork_slot + spec.SLOTS_PER_EPOCH)
-    expected_ms = spec.SLOTS_PER_EPOCH * (spec.config.SLOT_DURATION_MS + POST_DURATION_MS)
+    expected_ms = spec.SLOTS_PER_EPOCH * (
+        spec.get_slot_duration_ms(spec.GENESIS_EPOCH) + POST_DURATION_MS
+    )
 
     assert spec.compute_slot_range_duration_ms(start_slot, end_slot) == expected_ms
 
@@ -652,7 +672,7 @@ def test_intra_slot_deadlines_use_scheduled_duration(spec):
     pre_slot = spec.Slot(0)
     post_slot = spec.Slot(FORK_EPOCH * spec.SLOTS_PER_EPOCH)
     for slot, duration_ms in [
-        (pre_slot, spec.config.SLOT_DURATION_MS),
+        (pre_slot, spec.get_slot_duration_ms(spec.GENESIS_EPOCH)),
         (post_slot, POST_DURATION_MS),
     ]:
         assert spec.get_proposer_reorg_cutoff_ms(slot) == (
@@ -679,3 +699,13 @@ def test_intra_slot_deadlines_use_scheduled_duration(spec):
         assert spec.get_inclusion_list_due_ms(slot) == (
             spec.config.INCLUSION_LIST_DUE_BPS * duration_ms // spec.BASIS_POINTS
         )
+
+
+@with_phases([EIP8198])
+@spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
+def test_timing_from_genesis_schedule(spec, state):
+    fork_slot = spec.compute_start_slot_at_epoch(spec.Epoch(FORK_EPOCH))
+    expected_ms = state.genesis_time * 1000 + fork_slot * 6000 + 5000
+    assert spec.compute_time_at_slot(state, spec.Slot(fork_slot + 1)) * 1000 == expected_ms
+    assert spec.compute_slot_at_time_ms(state.genesis_time, expected_ms) == fork_slot + 1
+    assert spec.get_slot_duration_ms(spec.GENESIS_EPOCH) == 6000

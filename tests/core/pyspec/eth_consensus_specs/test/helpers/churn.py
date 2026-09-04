@@ -31,7 +31,7 @@ def get_activation_churn_cap(spec, state):
         cap = (
             spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
             * spec.get_slot_duration_ms(spec.get_current_epoch(state))
-            // spec.config.SLOT_DURATION_MS
+            // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         )
         return cap - cap % spec.EFFECTIVE_BALANCE_INCREMENT
     return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS

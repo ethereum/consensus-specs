@@ -16,4 +16,5 @@ from eth_consensus_specs.heze import {preset_name} as heze
     def deprecate_functions(cls) -> set[str]:
         return {
             "on_tick_per_slot",
+            "get_slot_component_duration_ms",
         }

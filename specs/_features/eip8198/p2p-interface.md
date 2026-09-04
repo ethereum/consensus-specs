@@ -11,9 +11,9 @@
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
     - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
+  - [The Req/Resp domain](#the-reqresp-domain)
+    - [Modified `DataColumnSidecarsByRange`](#modified-datacolumnsidecarsbyrange)
+    - [Modified `DataColumnSidecarsByRoot`](#modified-datacolumnsidecarsbyroot)
 
 <!-- mdformat-toc end -->
 
@@ -83,7 +83,9 @@ def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
     preserving its wall-clock length across slot duration changes.
     """
     window_ms = (
-        Uint64(MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS) * SLOTS_PER_EPOCH * SLOT_DURATION_MS
+        Uint64(MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS)
+        * SLOTS_PER_EPOCH
+        * get_slot_duration_ms(GENESIS_EPOCH)
     )
     current_start_ms = compute_slot_start_time_ms(
         Uint64(0), compute_start_slot_at_epoch(current_epoch)
@@ -96,12 +98,9 @@ def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
 
 ### The gossip domain: gossipsub
 
-EIP-8198 adds no message types and modifies no gossip validation conditions
-beyond those noted below. All topics carry over from Heze, re-keyed under the
-EIP-8198 fork digest (derived from `EIP8198_FORK_VERSION` via the modified
-`compute_fork_version`). As with previous upgrades, clients SHOULD subscribe to
-the new-digest topics ahead of the fork epoch and unsubscribe from the
-old-digest topics after it.
+Slot timing changes coincide with network upgrades. Clients SHOULD subscribe to
+the new fork-digest topics ahead of the upgrade epoch and unsubscribe from the
+old topics after it.
 
 The interpretation of time-sensitive networking parameters under a slot duration
 change is as follows:
@@ -118,44 +117,19 @@ All other slot-derived durations — schedulers, expiry windows, gossip-scoring
 windows, and the light-client local-clock `current_slot` — MUST be derived from
 the piecewise timeline (`compute_slot_start_time_ms` /
 `compute_slot_at_time_ms`) rather than from a fixed slot duration anchored at
-genesis. The inherited `bls_to_execution_change` epoch gate is unaffected, since
-schedule entries lie far beyond `CAPELLA_FORK_EPOCH`.
+genesis.
 
-#### Topics and messages
+### The Req/Resp domain
 
-##### Global topics
+#### Modified `DataColumnSidecarsByRange`
 
-###### Modified `execution_payload_bid`
+The lower bound of `data_column_serve_range` is replaced by
+`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`.
+Clients MUST keep and serve sidecars throughout this range.
 
-The gas-limit _[IGNORE]_ condition is replaced with the following, where
-`parent_execution_payload_slot` is the slot of the beacon block associated with
-the known execution payload identified by `bid.parent_block_hash`:
+#### Modified `DataColumnSidecarsByRoot`
 
-- _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
-  payload in fork choice and
-  `is_gas_limit_transition_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit, parent_execution_payload_slot, bid.slot)`
-  is `True` where `parent_gas_limit` is the `gas_limit` of that execution
-  payload.
-
-*Note*: The transition condition is keyed to the slot of the parent execution
-payload, not the parent beacon block, so the one-time scaling cannot be bypassed
-by missed slots or withheld payloads around a duration change.
-
-```python
-def is_gas_limit_transition_compatible(
-    parent_gas_limit: Uint64,
-    gas_limit: Uint64,
-    target_gas_limit: Uint64,
-    parent_execution_payload_slot: Slot,
-    bid_slot: Slot,
-) -> bool:
-    """
-    Check the bid gas limit, including the one-time scaling at a slot
-    duration change.
-    """
-    parent_duration_ms = get_slot_duration_ms(compute_epoch_at_slot(parent_execution_payload_slot))
-    bid_duration_ms = get_slot_duration_ms(compute_epoch_at_slot(bid_slot))
-    if parent_duration_ms != bid_duration_ms:
-        return gas_limit == parent_gas_limit * bid_duration_ms // parent_duration_ms
-    return is_gas_limit_target_compatible(parent_gas_limit, gas_limit, target_gas_limit)
-```
+`minimum_request_epoch` is replaced by
+`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`.
+The permission to return `ResourceUnavailable` for older blocks applies to this
+lower bound.

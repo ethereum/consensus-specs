@@ -32,5 +32,6 @@ millisecond precision, since deadlines are not generally whole seconds.
 ### Data availability retention
 
 The lower bound of the data-column sidecar retention window in the inherited
-retention guidance is `get_data_column_sidecars_retention_start(current_epoch)`
+retention guidance is
+`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`
 (see the EIP-8198 networking document).

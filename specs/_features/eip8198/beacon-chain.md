@@ -13,7 +13,7 @@
     - [New `get_slot_timing_parameters`](#new-get_slot_timing_parameters)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
     - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
-    - [New `compute_slot_at_time_ms`](#new-compute_slot_at_time_ms)
+    - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
     - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
     - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -40,10 +40,11 @@ reduction from 12 to 10 seconds intended at the fork epoch. The slot structure
 is unchanged, and each schedule entry carries the intra-slot deadlines of its
 slot duration era as explicit millisecond values, so they can be adjusted
 whenever the slot duration changes. The remaining duration-dependent parameters
-are rescaled by the ratio `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS`
-to keep their wall-clock behavior constant: issuance and churn are per-epoch
-rates and scale by `r`, while the inactivity penalty scales by `r**2` so that
-the cumulative leak over a fixed wall-clock duration is unchanged. Each formula
+are rescaled by the ratio
+`r = get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` to keep
+their wall-clock behavior constant: issuance and churn are per-epoch rates and
+scale by `r`, while the inactivity penalty scales by `r**2` so that the
+cumulative leak over a fixed wall-clock duration is unchanged. Each formula
 applies the ratio inline rather than pre-computing rounded constants. Epoch- and
 slot-denominated quantities — withdrawability and slashing windows, sync
 committee periods, per-payload and per-epoch processing limits — keep their
@@ -55,33 +56,41 @@ counts, so their wall-clock spans scale with the slot duration.
 
 ### Slot duration schedule
 
-*[New in EIP8198]* This schedule defines the slot duration and the intra-slot
-deadlines for a given epoch. Epochs before the first entry use
-`SLOT_DURATION_MS` and the inherited basis-point deadlines.
+The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favour
+of `SLOT_DURATION_SCHEDULE`.
 
-There MUST NOT exist multiple slot duration schedule entries with the same epoch
-value. The epoch value in each entry MUST be greater than or equal to
-`EIP8198_FORK_EPOCH`. The slot duration in each entry MUST be a positive
-multiple of `1000`, so that every slot boundary has an exact integer-second
-timestamp. Every deadline in an entry MUST be positive and less than the entry's
-slot duration, and the deadlines MUST preserve the inherited ordering: the
-proposer reorg cutoff before the attestation deadline before the aggregate
-deadline, the sync message deadline before the contribution deadline, and the
-payload deadline before the payload attestation deadline. The slot duration
-schedule entries SHOULD be sorted by epoch in ascending order. The slot duration
-schedule MAY be empty. Once scheduled, an entry that changes the slot duration
-MUST be accompanied by a `BLOB_SCHEDULE` entry at the same epoch that scales the
-maximum blobs per block by the slot-duration ratio (rounding down), keeping blob
-throughput per unit time constant.
+*[New in EIP8198]* This schedule defines the slot duration and intra-slot
+deadlines. It MUST begin at `GENESIS_EPOCH`, with the historical slot duration
+and the inherited Heze deadlines. This entry supplies the baseline for issuance,
+penalty, churn, and retention calculations.
 
-The schedule is empty until the epoch of the first slot duration change is
-decided; the intended mainnet entry is a 10-second slot duration at the fork
-epoch.
+Entries MUST be sorted by epoch in strictly ascending order. Every subsequent
+entry MUST coincide with a network upgrade at or after `EIP8198_FORK_EPOCH`.
+Slot timing changes between upgrades are not supported; the upgrade's fork
+version separates the networking domains.
+
+The slot duration MUST be a positive multiple of `1000`, so that every slot
+boundary has an integer-second timestamp. Every deadline MUST be positive and
+less than the slot duration. The proposer reorg cutoff MUST precede the
+attestation deadline, which MUST precede the aggregate deadline. The sync
+message deadline MUST precede the contribution deadline, and the payload
+deadline MUST precede the payload attestation deadline.
+
+The intended first reduction is to 10 seconds on mainnet. Its epoch and
+accompanying blob parameters are not yet scheduled. Blob targets and limits must
+be chosen jointly with the execution layer; integer rounding does not in general
+preserve throughput per unit time exactly.
+
+Gas targets should be coordinated ahead of the upgrade, or as part of the
+upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
+proposer preferences. The usual gas-limit adjustment rule applies at the
+transition, so reaching a lower target requires advance coordination.
 
 <!-- list-of-records:slot_duration_schedule -->
 
-| Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description |
-| ----: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | ----------- |
+| Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description                            |
+| ----: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | -------------------------------------- |
+|     0 |            12000 |                     2000 |               3000 |             6000 |                3000 |                6000 |           6000 |                       9000 |                  8000 | Historical duration and Heze deadlines |
 
 ## Helpers
 
@@ -110,29 +119,21 @@ def get_slot_timing_parameters(epoch: Epoch) -> SlotTimingParameters:
     """
     Return the slot timing parameters in effect at ``epoch``.
     """
-    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return SlotTimingParameters(
-                slot_duration_ms=entry["SLOT_DURATION_MS"],
-                proposer_reorg_cutoff_ms=entry["PROPOSER_REORG_CUTOFF_MS"],
-                attestation_due_ms=entry["ATTESTATION_DUE_MS"],
-                aggregate_due_ms=entry["AGGREGATE_DUE_MS"],
-                sync_message_due_ms=entry["SYNC_MESSAGE_DUE_MS"],
-                contribution_due_ms=entry["CONTRIBUTION_DUE_MS"],
-                payload_due_ms=entry["PAYLOAD_DUE_MS"],
-                payload_attestation_due_ms=entry["PAYLOAD_ATTESTATION_DUE_MS"],
-                inclusion_list_due_ms=entry["INCLUSION_LIST_DUE_MS"],
-            )
+    entry = SLOT_DURATION_SCHEDULE[0]
+    for candidate in SLOT_DURATION_SCHEDULE[1:]:
+        if candidate["EPOCH"] > epoch:
+            break
+        entry = candidate
     return SlotTimingParameters(
-        slot_duration_ms=SLOT_DURATION_MS,
-        proposer_reorg_cutoff_ms=get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS),
-        attestation_due_ms=get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS),
-        aggregate_due_ms=get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS),
-        sync_message_due_ms=get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS),
-        contribution_due_ms=get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS),
-        payload_due_ms=get_slot_component_duration_ms(PAYLOAD_DUE_BPS),
-        payload_attestation_due_ms=get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS),
-        inclusion_list_due_ms=get_slot_component_duration_ms(INCLUSION_LIST_DUE_BPS),
+        slot_duration_ms=entry["SLOT_DURATION_MS"],
+        proposer_reorg_cutoff_ms=entry["PROPOSER_REORG_CUTOFF_MS"],
+        attestation_due_ms=entry["ATTESTATION_DUE_MS"],
+        aggregate_due_ms=entry["AGGREGATE_DUE_MS"],
+        sync_message_due_ms=entry["SYNC_MESSAGE_DUE_MS"],
+        contribution_due_ms=entry["CONTRIBUTION_DUE_MS"],
+        payload_due_ms=entry["PAYLOAD_DUE_MS"],
+        payload_attestation_due_ms=entry["PAYLOAD_ATTESTATION_DUE_MS"],
+        inclusion_list_due_ms=entry["INCLUSION_LIST_DUE_MS"],
     )
 ```
 
@@ -155,8 +156,8 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
     time_ms = genesis_time * 1000
     era_start_slot = GENESIS_SLOT
-    era_duration_ms = SLOT_DURATION_MS
-    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+    era_duration_ms = get_slot_duration_ms(GENESIS_EPOCH)
+    for entry in SLOT_DURATION_SCHEDULE[1:]:
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         if slot < entry_slot:
             break
@@ -166,7 +167,7 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     return Uint64(time_ms + (slot - era_start_slot) * era_duration_ms)
 ```
 
-#### New `compute_slot_at_time_ms`
+#### Modified `compute_slot_at_time_ms`
 
 ```python
 def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
@@ -174,10 +175,11 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     assert time_ms >= genesis_time * 1000
+    # [Modified in EIP8198]
     remaining_ms = time_ms - genesis_time * 1000
     era_start_slot = GENESIS_SLOT
-    era_duration_ms = SLOT_DURATION_MS
-    for entry in sorted(SLOT_DURATION_SCHEDULE, key=lambda entry: entry["EPOCH"]):
+    era_duration_ms = get_slot_duration_ms(GENESIS_EPOCH)
+    for entry in SLOT_DURATION_SCHEDULE[1:]:
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         era_length_ms = (entry_slot - era_start_slot) * era_duration_ms
         if remaining_ms < era_length_ms:
@@ -218,8 +220,8 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
 #### New `get_base_reward_per_increment_at_epoch`
 
 *Note*: The division is deferred so that the exact
-`get_slot_duration_ms(epoch) / SLOT_DURATION_MS` ratio applies, rather than
-rounding `BASE_REWARD_FACTOR` to a new integer constant.
+`get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` ratio
+applies, rather than rounding `BASE_REWARD_FACTOR` to a new integer constant.
 
 ```python
 def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> Gwei:
@@ -231,7 +233,7 @@ def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> 
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
         * get_slot_duration_ms(epoch)
-        // SLOT_DURATION_MS
+        // get_slot_duration_ms(GENESIS_EPOCH)
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
@@ -316,9 +318,10 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
                 state.validators[index].effective_balance * state.inactivity_scores[index]
             )
             # [Modified in EIP8198]
-            slot_duration_ms = get_slot_duration_ms(get_previous_epoch(state))
+            slot_duration_ms = get_slot_duration_ms(previous_epoch)
             duration_squared = slot_duration_ms * slot_duration_ms
-            base_duration_squared = SLOT_DURATION_MS * SLOT_DURATION_MS
+            base_duration_ms = get_slot_duration_ms(GENESIS_EPOCH)
+            base_duration_squared = base_duration_ms * base_duration_ms
             penalty_quotient = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
             penalty_denominator = penalty_quotient * base_duration_squared // duration_squared
             penalties[index] += Gwei(penalty_numerator // penalty_denominator)
@@ -342,7 +345,8 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
     )
     # [Modified in EIP8198]
     churn = min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
-    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
+    slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
+    churn = churn * slot_duration_ms // get_slot_duration_ms(GENESIS_EPOCH)
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
@@ -362,7 +366,8 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     # [Modified in EIP8198]
-    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
+    slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
+    churn = churn * slot_duration_ms // get_slot_duration_ms(GENESIS_EPOCH)
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 
@@ -377,7 +382,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
     churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     # [Modified in EIP8198]
-    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
+    slot_duration_ms = get_slot_duration_ms(get_current_epoch(state))
+    churn = churn * slot_duration_ms // get_slot_duration_ms(GENESIS_EPOCH)
     return Gwei(churn - churn % EFFECTIVE_BALANCE_INCREMENT)
 ```
 

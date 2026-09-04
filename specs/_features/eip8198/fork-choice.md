@@ -37,13 +37,12 @@
 
 EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
 deadlines are read from the schedule entry in effect at a duty's slot, so the
-deadline helpers gain a `slot` parameter; the inherited basis-point deadlines
-apply before the first schedule entry. The mapping between wall-clock time and
-slot number becomes piecewise over the slot duration eras, and every timeliness
-check is rebased on the new `get_time_into_slot_ms` helper. The store clock
-gains millisecond precision: implementations MUST drive the store with
-`on_tick_ms`; the whole-second `on_tick` remains only as a compatibility
-adapter.
+deadline helpers gain a `slot` parameter; the genesis entry supplies the
+baseline deadlines. The mapping between wall-clock time and slot number becomes
+piecewise over the slot duration eras, and every timeliness check is rebased on
+the new `get_time_into_slot_ms` helper. The store clock gains millisecond
+precision: implementations MUST drive the store with `on_tick_ms`; the
+whole-second `on_tick` remains only as a compatibility adapter.
 
 *Note*: This specification is built upon [Heze](../../heze/fork-choice.md).
 
@@ -105,10 +104,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         block_timeliness={anchor_root: [True, True]},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
@@ -342,17 +341,28 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
     # The dependent block must be known
+    assert inclusion_list.dependent_root in store.blocks
     assert inclusion_list.dependent_root in store.block_states
 
+    # The dependent block's slot must not be after the shuffling dependent slot
+    epoch = compute_epoch_at_slot(inclusion_list.slot)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
+    assert store.blocks[inclusion_list.dependent_root].slot <= dependent_slot
+
+    # The dependent block must be a possible dependent block for the
+    # inclusion list committee lookahead
+    assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
+
     # Verify the validator is in the inclusion list committee
-    dependent_state = copy(store.block_states[inclusion_list.dependent_root])
-    if dependent_state.slot < inclusion_list.slot:
-        process_slots(dependent_state, inclusion_list.slot)
-    committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
+    state = store.block_states[inclusion_list.dependent_root].copy()
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
+    committee = get_inclusion_list_committee(state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 
     # Verify the signature
-    assert is_valid_inclusion_list_signature(dependent_state, signed_inclusion_list)
+    assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
     # [Modified in EIP8198]

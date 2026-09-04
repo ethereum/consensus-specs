@@ -17,12 +17,15 @@ FORK_EPOCH = 4096
 def _alternate_config(duration_ms):
     return {
         "EIP8198_FORK_EPOCH": FORK_EPOCH,
-        "SLOT_DURATION_SCHEDULE": (slot_duration_schedule_entry(FORK_EPOCH, duration_ms),),
+        "SLOT_DURATION_SCHEDULE": (
+            slot_duration_schedule_entry(0, 6000),
+            slot_duration_schedule_entry(FORK_EPOCH, duration_ms),
+        ),
     }
 
 
 def run_alternate_duration_checks(spec, state):
-    pre_ms = spec.config.SLOT_DURATION_MS
+    pre_ms = spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
     post_ms = spec.get_slot_duration_ms(spec.Epoch(FORK_EPOCH))
     assert post_ms != pre_ms
 
@@ -48,7 +51,7 @@ def run_alternate_duration_checks(spec, state):
     # Intra-slot deadlines come from the schedule entry
     assert (
         spec.get_attestation_due_ms(fork_slot)
-        == (spec.config.SLOT_DURATION_SCHEDULE[0]["ATTESTATION_DUE_MS"])
+        == (spec.config.SLOT_DURATION_SCHEDULE[1]["ATTESTATION_DUE_MS"])
     )
 
     # Issuance and churn
@@ -77,16 +80,6 @@ def run_alternate_duration_checks(spec, state):
         spec.compute_start_slot_at_epoch(current_epoch),
     )
     assert window_ms <= coverage_ms < window_ms + spec.SLOTS_PER_EPOCH * max(pre_ms, post_ms)
-
-    # One-time gas limit transition
-    parent_gas_limit = spec.Uint64(60_000_000)
-    assert spec.is_gas_limit_transition_compatible(
-        parent_gas_limit,
-        spec.Uint64(parent_gas_limit * post_ms // pre_ms),
-        parent_gas_limit,
-        spec.Slot(fork_slot - 1),
-        fork_slot,
-    )
 
 
 @with_phases([EIP8198])
