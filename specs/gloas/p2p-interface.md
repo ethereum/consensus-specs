@@ -26,7 +26,6 @@
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
-  - [New `compute_shuffling_dependent_epoch`](#new-compute_shuffling_dependent_epoch)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -378,19 +377,6 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
-```
-
-### New `compute_shuffling_dependent_epoch`
-
-```python
-def compute_shuffling_dependent_epoch(epoch: Epoch) -> Epoch:
-    """
-    Return the epoch that determines the shuffling for the given ``epoch``.
-    For the first ``MIN_SEED_LOOKAHEAD`` epochs, this is ``GENESIS_EPOCH``.
-    """
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        return GENESIS_EPOCH
-    return epoch - MIN_SEED_LOOKAHEAD
 ```
 
 ### New `verify_attestation_payload_status`
@@ -1093,9 +1079,8 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    lookahead_epoch = compute_shuffling_dependent_epoch(proposal_epoch)
-    lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
-    if is_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
+    shuffling_decision_slot = compute_shuffling_decision_slot(proposal_epoch)
+    if is_future_slot(store, shuffling_decision_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1117,16 +1102,16 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("dependent block is not a possible dependent block")
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
-    lookahead_state = store.block_states[preferences.dependent_root].copy()
-    if lookahead_state.slot < lookahead_epoch_start_slot:
-        process_slots(lookahead_state, lookahead_epoch_start_slot)
-    lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
-    if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
+    state = store.block_states[preferences.dependent_root].copy()
+    if state.slot < shuffling_decision_slot:
+        process_slots(state, shuffling_decision_slot)
+    lookahead_index = preferences.proposal_slot - shuffling_decision_slot
+    if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid
-    validator = lookahead_state.validators[preferences.validator_index]
-    domain = get_domain(lookahead_state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    validator = state.validators[preferences.validator_index]
+    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
     signing_root = compute_signing_root(preferences, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")

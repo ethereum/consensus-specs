@@ -293,14 +293,15 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
 
     # Verify the validator is in the inclusion list committee
-    dependent_state = store.block_states[inclusion_list.dependent_root].copy()
-    if dependent_state.slot < inclusion_list.slot:
-        process_slots(dependent_state, inclusion_list.slot)
-    committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
+    state = store.block_states[inclusion_list.dependent_root].copy()
+    shuffling_decision_slot = compute_shuffling_decision_slot(epoch)
+    if state.slot < shuffling_decision_slot:
+        process_slots(state, shuffling_decision_slot)
+    committee = get_inclusion_list_committee(state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 
     # Verify the signature
-    assert is_valid_inclusion_list_signature(dependent_state, signed_inclusion_list)
+    assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
     seconds_since_genesis = store.time - store.genesis_time
