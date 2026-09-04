@@ -36,6 +36,7 @@
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_weight`](#modified-get_weight)
+  - [Modified `get_filtered_node_tree`](#modified-get_filtered_node_tree)
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
@@ -589,15 +590,29 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     return attestation_score + proposer_score
 ```
 
+### Modified `get_filtered_node_tree`
+
+```python
+def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
+    """
+    Retrieve a filtered node tree from ``store``, only returning branches
+    whose leaf state's justified/finalized info agrees with that in ``store``.
+    """
+    # [Modified in Gloas:EIP7732]
+    base = ForkChoiceNode(
+        root=store.justified_checkpoint.root,
+        payload_status=PAYLOAD_STATUS_PENDING,
+    )
+    return filter_node_tree(store, base)
+```
+
 ### Modified `get_node_children`
 
 *Note*: This function is modified to introduce new type of children nodes
 representing *full* and *empty* blocks.
 
 ```python
-def get_node_children(
-    store: Store, blocks: Dict[Root, BeaconBlock], node: ForkChoiceNode
-) -> Sequence[ForkChoiceNode]:
+def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
         if is_payload_verified(store, node.root):
@@ -606,10 +621,10 @@ def get_node_children(
     else:
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for root in blocks
+            for root in store.blocks
             if (
-                blocks[root].parent_root == node.root
-                and node.payload_status == get_parent_payload_status(store, blocks[root])
+                store.blocks[root].parent_root == node.root
+                and node.payload_status == get_parent_payload_status(store, store.blocks[root])
             )
         ]
 ```
@@ -621,8 +636,18 @@ between *full* and *empty* nodes.
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_block_tree(store)
+    # Get filtered node tree that only includes viable branches
+    filtered_node_tree = get_filtered_node_tree(store)
+
+    # [New in Gloas:EIP7732]
+    if not any(filtered_node_tree):
+        # Return empty node if there are no viable nodes
+        # to ensure that head is never a pending node
+        return ForkChoiceNode(
+            root=store.justified_checkpoint.root,
+            payload_status=PAYLOAD_STATUS_EMPTY,
+        )
+
     # Execute the LMD-GHOST fork-choice
     head = ForkChoiceNode(
         root=store.justified_checkpoint.root,
@@ -631,7 +656,9 @@ def get_head(store: Store) -> ForkChoiceNode:
     )
 
     while True:
-        children = get_node_children(store, blocks, head)
+        children = [
+            child for child in get_node_children(store, head) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
