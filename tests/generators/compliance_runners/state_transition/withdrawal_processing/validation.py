@@ -16,22 +16,20 @@ Handles both aspect models:
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.builder_sweep_validator import (
     get_builder_sweep_solution,
 )
+from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _YAML = YAML(typ="safe")
-
-
-def _decode(path: Path, sedes):
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 
 
 def _cmp(a, b) -> str:
@@ -139,8 +137,7 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
 
 
 def validate_case(case_dir: Path) -> tuple[list, list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    post = _decode(case_dir / "post.ssz_snappy", spec.BeaconState)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
 
     if "cmp_pending_amount_zero" in claimed:
@@ -148,39 +145,4 @@ def validate_case(case_dir: Path) -> tuple[list, list[str]]:
     else:
         actual = recover_withdrawal_processing(pre)
 
-    mismatches = [
-        (name, claimed.get(name), actual.get(name))
-        for name in claimed
-        if claimed.get(name) != actual.get(name)
-    ]
-
-    errors: list[str] = []
-    oracle = pre.copy()
-    spec.process_withdrawals(oracle)
-    if oracle.hash_tree_root() != post.hash_tree_root():
-        errors.append("post state does not match spec re-execution")
-
-    return mismatches, errors
-
-
-def main() -> int:
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "reftests"
-    case_dirs = sorted(root.glob("**/operations/withdrawals/**/case_*"))
-    if not case_dirs:
-        print(f"No cases found under {root}")
-        return 1
-    failures = 0
-    for case_dir in case_dirs:
-        mismatches, errors = validate_case(case_dir)
-        failures += len(mismatches) + len(errors)
-        print(f"{case_dir.name}: {'OK' if not mismatches and not errors else 'FAIL'}")
-        for name, claimed, actual in mismatches:
-            print(f"    {name}: claimed={claimed!r} actual={actual!r}")
-        for error in errors:
-            print(f"    {error}")
-    print(f"{'PASSED' if not failures else 'FAILED'}: {len(case_dirs)} cases")
-    return int(bool(failures))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    return check_dimensions(claimed, actual)
