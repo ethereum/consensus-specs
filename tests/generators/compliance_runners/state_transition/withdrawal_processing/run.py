@@ -11,7 +11,7 @@ from tests.generators.compliance_runners.state_transition.withdrawal_processing.
 
 
 def main() -> int:
-    materialize_profile("standard")
+    materialize_profile("exhaustive")
     print()
     return validate()
 
