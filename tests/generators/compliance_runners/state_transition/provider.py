@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any, TYPE_CHECKING
 
 import snappy
+from ruamel.yaml import YAML
 
 from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 
 PROFILES = ("all", "smoke", "normal", "exceptional", "standard")
+_YAML = YAML(typ="safe")
 
 
 @dataclass
@@ -60,7 +62,7 @@ def _spec_for_case(case_dir: Path) -> Any:
 def validate_cases(
     test_dir: Path,
     handler: str,
-    validate_case: Callable[..., Any],
+    validate_case: Callable[..., Any] | dict[str, Callable[..., Any]],
     selected_cases: set[str] | None = None,
 ) -> int:
     """Run a handler validator over its materialized reference-test cases."""
@@ -76,10 +78,20 @@ def validate_cases(
     total_mm = total_err = 0
     for case_dir in case_dirs:
         case_spec = _spec_for_case(case_dir)
+        dimensions = _YAML.load((case_dir / "dimensions.yaml").read_text())
+        test_provider = dimensions.get("test_provider")
+        if isinstance(validate_case, dict):
+            if test_provider not in validate_case:
+                print(f"{case_dir.name}: FAIL  [unknown test provider {test_provider!r}]")
+                total_err += 1
+                continue
+            case_validate = validate_case[test_provider]
+        else:
+            case_validate = validate_case
         # Validators historically imported the minimal spec at module scope.
         # Replace that binding so validation follows each case's preset.
-        validate_case.__globals__["spec"] = case_spec
-        result = validate_case(case_dir)
+        case_validate.__globals__["spec"] = case_spec
+        result = case_validate(case_dir)
         if isinstance(result, tuple):
             checks, errors = result
         else:
@@ -140,6 +152,7 @@ def _materialize_provider(
     _, chosen = module.build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name)
+    materializer.test_provider = provider.name
     if materializer.runner_name != provider.runner or materializer.handler_name != provider.handler:
         raise ValueError(f"provider metadata does not match materializer: {provider.name}")
     generated = materializer.materialize_reps(
@@ -187,11 +200,11 @@ def validate_handler(
     selected_cases: set[str] | None = None,
 ) -> int:
     """Validate all providers registered for ``handler``."""
-    result = 0
+    validators = {}
     for provider in providers_for(handler):
         module = import_module(f".{provider.module}", __package__)
-        result |= validate_cases(test_dir, handler, module.validate_case, selected_cases)
-    return result
+        validators[provider.name] = module.validate_case
+    return validate_cases(test_dir, handler, validators, selected_cases)
 
 
 def run(
