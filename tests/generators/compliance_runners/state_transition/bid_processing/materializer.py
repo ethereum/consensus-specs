@@ -12,10 +12,8 @@ Usage:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-from eth_consensus_specs.gloas import minimal as spec
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects.base import (
@@ -28,13 +26,17 @@ from tests.generators.compliance_runners.state_transition.aspects.bid_processing
 from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing_validator import (
     bid_processing_validator,
 )
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
-    BaseMaterializer,
     BOOL,
     CMP,
     make_base_state,
     to_builder_solution,
 )
+
+if TYPE_CHECKING:
+    from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
+
 
 BUILDER_PUBKEY = builder_pubkeys[0]
 WRONG_PUBKEY = builder_pubkeys[1]
@@ -220,7 +222,8 @@ def _pick_balance_and_bid_value(
     return balance, bid_value
 
 
-class BidProcessingMaterializer(BaseMaterializer):
+class BidProcessingMaterializer(Materializer):
+    runner_name = "operations"
     handler_name = "execution_payload_bid"
     description = "process_execution_payload_bid"
     validator_name = "bid_processing_validator"
@@ -235,8 +238,8 @@ class BidProcessingMaterializer(BaseMaterializer):
         root = spec.compute_signing_root(bid, domain)
         return bls.Sign(privkey, root)
 
-    def __init__(self, spec: Any, model_path: Path, fork_name="gloas", preset_name="minimal"):
-        super().__init__(spec, model_path, fork_name, preset_name)
+    def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal"):
+        super().__init__(spec, fork_name, preset_name)
         # Precompute both base-state variants once; each solution starts from a copy.
         self._base_genesis = make_base_state(spec, num_validators=256, preprocess=False)
         self._base = make_base_state(spec, num_validators=256, preprocess=True)
@@ -244,7 +247,7 @@ class BidProcessingMaterializer(BaseMaterializer):
     def _base_state(self, past_genesis: bool) -> Any:
         return (self._base if past_genesis else self._base_genesis).copy()
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any | None, bool, dict, list]:
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         rec = _normalize(sol)
         is_self = rec["builder_type"] == "SELF"
@@ -252,6 +255,7 @@ class BidProcessingMaterializer(BaseMaterializer):
 
         # State at genesis is a no-op — skip materialization entirely.
         if not past_genesis:
+            assert False
             pre = self._base_state(past_genesis=False)
             claimed = {n: rec.get(n) for n in DIMS}
             return pre, None, True, claimed, []
@@ -376,7 +380,7 @@ class BidProcessingMaterializer(BaseMaterializer):
             slot=spec.Slot(bid_slot),
             value=spec.Gwei(bid_value),
             execution_payment=spec.Gwei(0),
-            blob_kzg_commitments=commitments,
+            blob_kzg_commitments=spec.BlobKZGCommitments(data=commitments),
             execution_requests_root=spec.Root(b"\x08" * 32),
         )
 
@@ -404,20 +408,16 @@ class BidProcessingMaterializer(BaseMaterializer):
             post = None
 
         claimed = {n: rec.get(n) for n in DIMS}
-        return pre, post, verified, claimed, [("execution_payload_bid", signed)]
-
-
-def main() -> int:
-    model_path = Path(__file__).parent / "models" / "handler_bid_processing.mzn"
-    output_dir = Path(__file__).parent / "reftests"
-    materializer = BidProcessingMaterializer(spec, model_path)
-    total, verified = materializer.materialize_all(output_dir, timeout_s=600)
-    if verified != total:
-        print(f"FAILED: {total - verified} cases did not pass bid_processing_validator")
-        return 1
-    print(f"PASSED: {total} cases, all verified by bid_processing_validator")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+        parts: list[TestCasePart] = [
+            ("pre", "ssz", pre.encode_bytes()),
+            ("execution_payload_bid", "ssz", signed.encode_bytes()),
+        ]
+        if post is not None:
+            parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore[union-attr]
+        meta = {
+            "description": f"process_execution_payload_bid: {claimed['outcome']}",
+            "verified": True,
+            "bls_setting": 1,
+            "claimed": claimed,
+        }
+        return meta, parts
