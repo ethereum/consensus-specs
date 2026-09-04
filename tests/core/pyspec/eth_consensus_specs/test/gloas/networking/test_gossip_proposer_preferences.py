@@ -670,7 +670,7 @@ def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_unseen(spec, state):
     """Preferences whose dependent_root has no corresponding block in the store are ignored."""
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
@@ -938,7 +938,7 @@ def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_state_unavailable(spec, state):
     """Preferences whose dependent_root has no corresponding state are ignored."""
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
@@ -999,7 +999,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_start(spec, state):
+def test_gossip_proposer_preferences__reject_dependent_block_at_lookahead_epoch_start(spec, state):
     """
     Preferences whose dependent_root points to a block at the proposal slot's
     proposer lookahead epoch are rejected. Such a dependent_root cannot be the
@@ -1068,7 +1068,7 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_not_possible(spec, state):
     """Preferences whose dependent_root is superseded on every branch are ignored.
 
     The dependent block is old enough, but its only child is also before the
@@ -1132,7 +1132,67 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
+def test_gossip_proposer_preferences__valid_dependent_block_is_head(spec, state):
+    """Preferences are valid when the dependent block is the head and has no children."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "proposer_preferences"
+
+    proposal_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1)
+    proposal_slot = spec.compute_start_slot_at_epoch(proposal_epoch)
+    dependent_slot = spec.compute_shuffling_dependent_slot(proposal_epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, dependent_slot)
+    dependent_root = blocks[-1].message.hash_tree_root()
+    assert spec.get_head(store).root == dependent_root
+    assert not any(block.parent_root == dependent_root for block in store.blocks.values())
+
+    # Advance to the shuffling decision without importing a child of the head.
+    lookahead_start_slot = spec.compute_shuffling_lookahead_start_slot(proposal_epoch)
+    spec.process_slots(state, lookahead_start_slot)
+    validator_index = state.proposer_lookahead[proposal_slot - lookahead_start_slot]
+
+    yield "state", anchor_state
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=dependent_root,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_proposer_preferences__valid_dependent_block_on_fork(spec, state):
     """Preferences whose dependent_root is a non-canonical fork block are valid.
 
     On the fork branch, the dependent block's child crosses the lookahead
@@ -1209,7 +1269,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(spec, state):
+def test_gossip_proposer_preferences__valid_dependent_block_across_empty_epochs(spec, state):
     """
     Preferences remain valid when two empty epochs reuse the same dependent
     root. Validation must advance that root's post-state to the lookahead epoch.
