@@ -41,7 +41,7 @@
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
   - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
-  - [New `compute_shuffling_decision_slot`](#new-compute_shuffling_decision_slot)
+  - [New `compute_shuffling_lookahead_start_slot`](#new-compute_shuffling_lookahead_start_slot)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -717,10 +717,10 @@ def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> b
     return False
 ```
 
-### New `compute_shuffling_decision_slot`
+### New `compute_shuffling_lookahead_start_slot`
 
 ```python
-def compute_shuffling_decision_slot(epoch: Epoch) -> Slot:
+def compute_shuffling_lookahead_start_slot(epoch: Epoch) -> Slot:
     if epoch <= MIN_SEED_LOOKAHEAD:
         return GENESIS_SLOT
     return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD)

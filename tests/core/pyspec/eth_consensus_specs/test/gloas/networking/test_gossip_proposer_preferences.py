@@ -442,21 +442,21 @@ def setup_lookahead_boundary_preferences(spec, state):
     blocks, the preferences, and the epoch's start slot, whose start time is the
     lookahead lower bound for the proposal slot.
     """
-    shuffling_decision_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 3)
-    shuffling_decision_slot = spec.compute_start_slot_at_epoch(shuffling_decision_epoch)
-    store, blocks = setup_store_with_advanced_state(spec, state, shuffling_decision_slot)
+    lookahead_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 3)
+    lookahead_start_slot = spec.compute_start_slot_at_epoch(lookahead_epoch)
+    store, blocks = setup_store_with_advanced_state(spec, state, lookahead_start_slot)
 
     # The dependent block is the last one before the epoch transition.
     dependent_root = blocks[-2].message.hash_tree_root()
     dependent_state = store.block_states[dependent_root]
-    assert spec.get_current_epoch(dependent_state) == spec.Epoch(shuffling_decision_epoch - 1)
+    assert spec.get_current_epoch(dependent_state) == spec.Epoch(lookahead_epoch - 1)
 
     lookahead_state = dependent_state.copy()
-    spec.process_slots(lookahead_state, shuffling_decision_slot)
+    spec.process_slots(lookahead_state, lookahead_start_slot)
     proposal_slot = spec.compute_start_slot_at_epoch(
-        spec.Epoch(shuffling_decision_epoch + spec.MIN_SEED_LOOKAHEAD)
+        spec.Epoch(lookahead_epoch + spec.MIN_SEED_LOOKAHEAD)
     )
-    lookahead_index = proposal_slot - shuffling_decision_slot
+    lookahead_index = proposal_slot - lookahead_start_slot
     signed_prefs = build_signed_proposer_preferences(
         spec,
         lookahead_state,
@@ -464,7 +464,7 @@ def setup_lookahead_boundary_preferences(spec, state):
         validator_index=lookahead_state.proposer_lookahead[lookahead_index],
         dependent_root=dependent_root,
     )
-    return store, blocks, signed_prefs, shuffling_decision_slot
+    return store, blocks, signed_prefs, lookahead_start_slot
 
 
 @with_gloas_and_later
@@ -478,7 +478,7 @@ def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, s
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
-    store, blocks, signed_prefs, shuffling_decision_slot = setup_lookahead_boundary_preferences(
+    store, blocks, signed_prefs, lookahead_start_slot = setup_lookahead_boundary_preferences(
         spec, state
     )
 
@@ -489,7 +489,7 @@ def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, s
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store, shuffling_decision_slot)
+        spec.compute_time_at_slot_ms(store, lookahead_start_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
@@ -529,7 +529,7 @@ def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, st
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
 
-    store, blocks, signed_prefs, shuffling_decision_slot = setup_lookahead_boundary_preferences(
+    store, blocks, signed_prefs, lookahead_start_slot = setup_lookahead_boundary_preferences(
         spec, state
     )
 
@@ -540,7 +540,7 @@ def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, st
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store, shuffling_decision_slot)
+        spec.compute_time_at_slot_ms(store, lookahead_start_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -1020,15 +1020,13 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
 
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
-    shuffling_decision_slot = spec.compute_shuffling_decision_slot(proposal_epoch)
+    lookahead_start_slot = spec.compute_shuffling_lookahead_start_slot(proposal_epoch)
 
     boundary_block = next(
-        signed_block
-        for signed_block in blocks
-        if signed_block.message.slot == shuffling_decision_slot
+        signed_block for signed_block in blocks if signed_block.message.slot == lookahead_start_slot
     )
     dependent_root = boundary_block.message.hash_tree_root()
-    assert store.block_states[dependent_root].slot == shuffling_decision_slot
+    assert store.block_states[dependent_root].slot == lookahead_start_slot
 
     # Sign valid preferences for the upcoming slot's true proposer, but point
     # dependent_root at the first block whose stored state is exactly at the
@@ -1095,8 +1093,8 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
     # superseded on the only branch.
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
-    shuffling_decision_slot = spec.compute_shuffling_decision_slot(proposal_epoch)
-    superseded_slot = spec.Slot(shuffling_decision_slot - 2)
+    lookahead_start_slot = spec.compute_shuffling_lookahead_start_slot(proposal_epoch)
+    superseded_slot = spec.Slot(lookahead_start_slot - 2)
     signed_prefs = build_signed_proposer_preferences(
         spec,
         state,
@@ -1149,12 +1147,12 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
 
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
-    shuffling_decision_slot = spec.compute_shuffling_decision_slot(proposal_epoch)
+    lookahead_start_slot = spec.compute_shuffling_lookahead_start_slot(proposal_epoch)
 
     # Fork off two slots before the lookahead epoch start and build a branch
     # whose first block stays before the epoch start and whose second block
     # crosses it.
-    fork_parent_root = spec.get_block_root_at_slot(state, spec.Slot(shuffling_decision_slot - 2))
+    fork_parent_root = spec.get_block_root_at_slot(state, spec.Slot(lookahead_start_slot - 2))
     fork_state = store.block_states[fork_parent_root].copy()
     fork_blocks = []
     for _ in range(2):
@@ -1166,8 +1164,8 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
         store.block_states[block_root] = fork_state.copy()
         fork_blocks.append(signed_fork_block)
     dependent_root = fork_blocks[0].message.hash_tree_root()
-    assert store.blocks[dependent_root].slot == shuffling_decision_slot - 1
-    assert fork_blocks[1].message.slot == shuffling_decision_slot
+    assert store.blocks[dependent_root].slot == lookahead_start_slot - 1
+    assert fork_blocks[1].message.slot == lookahead_start_slot
 
     yield "state", anchor_state
     seen = get_seen(spec)
@@ -1220,7 +1218,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     yield "topic", "meta", "proposer_preferences"
 
     current_epoch = spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 2)
-    shuffling_decision_slot = spec.compute_start_slot_at_epoch(current_epoch)
+    lookahead_start_slot = spec.compute_start_slot_at_epoch(current_epoch)
 
     # Build the canonical chain to the slot before two fully empty epochs.
     first_empty_epoch = spec.Epoch(current_epoch - 2)
@@ -1230,7 +1228,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     dependent_state = state.copy()
 
     # Skip both epochs, then import the first block at the lookahead boundary.
-    boundary_block = build_empty_block(spec, state, slot=shuffling_decision_slot)
+    boundary_block = build_empty_block(spec, state, slot=lookahead_start_slot)
     signed_boundary_block = state_transition_and_sign_block(spec, state, boundary_block)
     boundary_root = signed_boundary_block.message.hash_tree_root()
     store.blocks[boundary_root] = signed_boundary_block.message
@@ -1243,7 +1241,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(s
     assert spec.get_shuffling_dependent_root(store, boundary_root, proposal_epoch) == dependent_root
 
     lookahead_state = dependent_state.copy()
-    spec.process_slots(lookahead_state, shuffling_decision_slot)
+    spec.process_slots(lookahead_state, lookahead_start_slot)
     # Pick a slot that distinguishes the advanced lookahead from the stale
     # lookahead in the dependent block's post-state.
     for slot_offset in range(spec.SLOTS_PER_EPOCH):

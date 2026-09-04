@@ -294,9 +294,9 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     # Verify the validator is in the inclusion list committee
     state = store.block_states[inclusion_list.dependent_root].copy()
-    shuffling_decision_slot = compute_shuffling_decision_slot(epoch)
-    if state.slot < shuffling_decision_slot:
-        process_slots(state, shuffling_decision_slot)
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
     committee = get_inclusion_list_committee(state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 

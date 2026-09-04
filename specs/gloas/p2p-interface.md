@@ -1079,8 +1079,8 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    shuffling_decision_slot = compute_shuffling_decision_slot(proposal_epoch)
-    if is_future_slot(store, shuffling_decision_slot, current_time_ms):
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(proposal_epoch)
+    if is_future_slot(store, lookahead_start_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1103,9 +1103,9 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     state = store.block_states[preferences.dependent_root].copy()
-    if state.slot < shuffling_decision_slot:
-        process_slots(state, shuffling_decision_slot)
-    lookahead_index = preferences.proposal_slot - shuffling_decision_slot
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
+    lookahead_index = preferences.proposal_slot - lookahead_start_slot
     if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
