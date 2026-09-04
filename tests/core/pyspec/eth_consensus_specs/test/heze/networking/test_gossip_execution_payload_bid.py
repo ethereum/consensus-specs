@@ -137,7 +137,11 @@ def _run_bid_inclusion_list_bits_scenario(
 def test_gossip_execution_payload_bid__valid_inclusion_list_bits_inclusive(spec, state):
     """A bid whose inclusion_list_bits marks the observed timely inclusion list is valid."""
     yield from _run_bid_inclusion_list_bits_scenario(
-        spec, state, mark_includer=True, expected_result="valid", expected_reason=None
+        spec,
+        state,
+        mark_includer=True,
+        expected_result="valid",
+        expected_reason=None,
     )
 
 

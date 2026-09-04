@@ -289,7 +289,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     dependent_slot = compute_shuffling_dependent_slot(epoch)
     assert store.blocks[inclusion_list.dependent_root].slot <= dependent_slot
 
-    # The dependent block must be a possible dependent block for the inclusion list committee lookahead
+    # The dependent block must be a possible dependent block for the committee lookahead
     assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
 
     # Verify the validator is in the inclusion list committee

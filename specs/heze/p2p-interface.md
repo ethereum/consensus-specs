@@ -258,11 +258,13 @@ def validate_execution_payload_bid_gossip(
                 if request.source_address == builder.execution_address:
                     raise GossipIgnore("builder may exit")
 
+    # [New in Heze:EIP7805]
     # [IGNORE] The bid's inclusion list bits is inclusive
-    inclusion_list_slot = bid.slot - Slot(1)
+    inclusion_list_slot = bid.slot - 1
     inclusion_list_committee = get_inclusion_list_committee(state, inclusion_list_slot)
+    inclusion_list_epoch = compute_epoch_at_slot(inclusion_list_slot)
     inclusion_list_dependent_root = get_shuffling_dependent_root(
-        store, bid.parent_block_root, compute_epoch_at_slot(inclusion_list_slot)
+        store, bid.parent_block_root, inclusion_list_epoch
     )
     if not is_inclusion_list_bits_inclusive(
         get_inclusion_list_store(),
@@ -282,12 +284,6 @@ def validate_execution_payload_bid_gossip(
     seen.execution_payload_bids.add(bid_key)
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
-
-*Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
-from malicious builders submitting numerous bids with minimal value increments.
-Possible strategies include: (1) only forwarding bids that exceed the current
-highest bid by a minimum threshold, or (2) forwarding only the highest observed
-bid at regular time intervals.
 
 ##### New `inclusion_list`
 
@@ -316,8 +312,9 @@ def validate_inclusion_list_gossip(
     if not is_current_slot(store, inclusion_list.slot, current_time_ms):
         raise GossipIgnore("inclusion list is not for the current slot")
 
-    # [IGNORE] The size of inclusion list transactions must be non-empty
     transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+
+    # [IGNORE] The size of inclusion list transactions must be non-empty
     if transactions_size == 0:
         raise GossipIgnore("inclusion list contains no transactions")
 
@@ -326,7 +323,7 @@ def validate_inclusion_list_gossip(
         raise GossipReject("inclusion list transactions exceed the maximum size")
 
     # [REJECT] Every transaction must be non-empty
-    if not all(len(transaction) > 0 for transaction in inclusion_list.transactions):
+    if any(len(transaction) == 0 for transaction in inclusion_list.transactions):
         raise GossipReject("inclusion list contains an empty transaction")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -344,17 +341,17 @@ def validate_inclusion_list_gossip(
     if store.blocks[inclusion_list.dependent_root].slot > dependent_slot:
         raise GossipReject("dependent block is after the shuffling dependent slot")
 
-    # [IGNORE] The dependent block is a possible dependent block for the inclusion list committee lookahead
+    # [IGNORE] The dependent block is a possible dependent block for the committee lookahead
     if not is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot):
         raise GossipIgnore("dependent block is not a possible dependent block")
 
-    # [REJECT] The includer is a member of the committee
     state = store.block_states[inclusion_list.dependent_root].copy()
     lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
     if state.slot < lookahead_start_slot:
         process_slots(state, lookahead_start_slot)
-    committee = get_inclusion_list_committee(state, inclusion_list.slot)
-    if includer_index not in committee:
+
+    # [REJECT] The includer is a member of the committee
+    if includer_index not in get_inclusion_list_committee(state, inclusion_list.slot):
         raise GossipReject("includer is not a member of the committee")
 
     # [REJECT] The signature is valid
