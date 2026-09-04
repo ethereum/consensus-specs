@@ -1047,6 +1047,106 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
+@with_fulu_and_later
+@spec_state_test
+def test_gossip_data_column_sidecar__reject_already_seen_with_invalid_kzg_proofs(spec, state):
+    """
+    Test that a sidecar whose tuple has already been seen but whose KZG proofs
+    are invalid is rejected rather than ignored.
+
+    The duplicate check is defined over sidecars that already carry a valid
+    inclusion proof and KZG proof, so it must not preempt the KZG check: an
+    invalid sidecar is REJECT (descoring the peer) whether or not its tuple
+    was seen before. This matches `validate_blob_sidecar_gossip`.
+    """
+    yield "topic", "meta", "data_column_sidecar"
+
+    if not is_post_gloas(spec):
+        state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    messages = []
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+
+    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    sidecar = sidecars[0]
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        # gloas's validator requires the sidecar's referenced block to be in store.
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
+    yield get_filename(sidecar), sidecar
+
+    sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
+    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar_slot)
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    subnet_id = correct_subnet(spec, sidecar)
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["state"] = state
+
+    # First delivery passes and marks the sidecar as seen.
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
+        **kwargs,
+    )
+    assert result == "valid"
+    messages.append(
+        {
+            "subnet_id": int(subnet_id),
+            "offset_ms": 500,
+            "message": get_filename(sidecar),
+            "expected": "valid",
+        }
+    )
+
+    # Same tuple, but the KZG proofs no longer verify. Corrupting the proofs
+    # leaves the dedup key untouched, so both checks match this sidecar.
+    bad_sidecar = sidecar.copy()
+    bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
+    bad_sidecar.kzg_proofs = [bad_proof for _ in bad_sidecar.kzg_proofs]
+    yield get_filename(bad_sidecar), bad_sidecar
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=bad_sidecar,
+        current_time_ms=block_time_ms + 600,
+        subnet_id=subnet_id,
+        **kwargs,
+    )
+    assert result == "reject"
+    assert reason == "invalid sidecar kzg proofs"
+    messages.append(
+        {
+            "subnet_id": int(subnet_id),
+            "offset_ms": 600,
+            "message": get_filename(bad_sidecar),
+            "expected": "reject",
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
 @with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_wrong_proposer_index(spec, state):
