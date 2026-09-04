@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_pow_block,
     get_genesis_forkchoice_store_and_block,
+    get_slot_start_time,
     get_store_time,
     on_tick_and_append_step,
     tick_and_add_block,
@@ -61,7 +62,7 @@ def test_all_valid(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
+    current_time = get_slot_start_time(spec, store.genesis_time, state.slot)
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert get_store_time(spec, store) == current_time
 
@@ -98,7 +99,7 @@ def test_block_lookup_failed(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
+    current_time = get_slot_start_time(spec, store.genesis_time, state.slot)
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert get_store_time(spec, store) == current_time
 
@@ -138,7 +139,7 @@ def test_too_early_for_merge(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
+    current_time = get_slot_start_time(spec, store.genesis_time, state.slot)
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert get_store_time(spec, store) == current_time
 
@@ -175,7 +176,7 @@ def test_too_late_for_merge(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
+    current_time = get_slot_start_time(spec, store.genesis_time, state.slot)
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert get_store_time(spec, store) == current_time
 

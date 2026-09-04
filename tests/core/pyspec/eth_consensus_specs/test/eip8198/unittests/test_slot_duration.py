@@ -703,7 +703,8 @@ def test_intra_slot_deadlines_use_scheduled_duration(spec):
 
 @with_phases([EIP8198])
 @spec_configured_state_test(FORK_EPOCH_OVERRIDE, activate_at_genesis=True)
-def test_timing_from_genesis_schedule(spec, state):
+def test_timing_without_legacy_slot_duration(spec, state):
+    assert not hasattr(spec.config, "SLOT_DURATION_MS")
     fork_slot = spec.compute_start_slot_at_epoch(spec.Epoch(FORK_EPOCH))
     expected_ms = state.genesis_time * 1000 + fork_slot * 6000 + 5000
     assert spec.compute_time_at_slot(state, spec.Slot(fork_slot + 1)) * 1000 == expected_ms

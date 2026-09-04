@@ -24,7 +24,7 @@ def test_get_consolidation_churn_limit_independent(spec, state):
         expected = (
             expected
             * spec.get_slot_duration_ms(spec.get_current_epoch(state))
-            // spec.config.SLOT_DURATION_MS
+            // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         )
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert churn == expected

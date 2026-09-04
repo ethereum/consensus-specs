@@ -15,6 +15,8 @@ def test_invariants(spec):
     schedule = spec.config.SLOT_DURATION_SCHEDULE
     assert len(schedule) > 0
     assert schedule[0]["EPOCH"] == spec.GENESIS_EPOCH
+    assert "SLOT_DURATION_MS" not in spec.Configuration._fields
+    assert "SLOT_DURATION_MS" not in spec.config._asdict()
     previous_epoch = None
     for entry in schedule:
         assert entry["SLOT_DURATION_MS"] > 0

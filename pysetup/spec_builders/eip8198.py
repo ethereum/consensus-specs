@@ -18,3 +18,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
             "on_tick_per_slot",
             "get_slot_component_duration_ms",
         }
+
+    @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {"SLOT_DURATION_MS"}

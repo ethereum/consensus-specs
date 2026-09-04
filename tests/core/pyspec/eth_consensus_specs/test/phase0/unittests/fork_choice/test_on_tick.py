@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store,
+    get_slot_start_time,
     get_store_time,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -64,7 +65,7 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        get_slot_start_time(spec, store.genesis_time, state.slot),
         new_justified_checkpoint=True
     )
 """
@@ -116,5 +117,5 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        get_slot_start_time(spec, store.genesis_time, state.slot),
     )

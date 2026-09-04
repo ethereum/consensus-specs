@@ -109,7 +109,7 @@ def test_exit_churn__greater_than_activation_cap(spec, state):
         expected = (
             expected
             * spec.get_slot_duration_ms(spec.get_current_epoch(state))
-            // spec.config.SLOT_DURATION_MS
+            // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
         )
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert exit_churn == expected

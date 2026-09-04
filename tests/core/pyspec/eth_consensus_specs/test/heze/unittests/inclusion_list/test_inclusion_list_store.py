@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store,
+    get_slot_start_time,
     run_on_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_eip8198
@@ -30,7 +31,7 @@ def advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store):
     """
     slot = spec.compute_start_slot_at_epoch(spec.MIN_SEED_LOOKAHEAD + 1)
     spec.process_slots(state, slot)
-    time = state.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    time = get_slot_start_time(spec, state.genesis_time, slot)
     spec.on_tick(forkchoice_store, time)
 
 
@@ -345,7 +346,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         assert found_later_assignment
 
         # Advance the fork choice store clock to the new slot.
-        time = state.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000
+        time = get_slot_start_time(spec, state.genesis_time, state.slot)
         spec.on_tick(forkchoice_store, time)
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.
