@@ -14,13 +14,11 @@ Usage:
 from __future__ import annotations
 
 import random
-from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import minizinc
 
-from eth_consensus_specs.gloas import minimal as spec
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from tests.generators.compliance_runners.state_transition.aspects.base import (
     Bool,
@@ -58,8 +56,8 @@ from tests.generators.compliance_runners.state_transition.aspects.withdrawal_pro
 from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.withdrawal_processing_validator import (
     withdrawal_processing_validator,
 )
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
-    BaseMaterializer,
     BIG,
     BOOL,
     CMP,
@@ -237,6 +235,22 @@ def _to_sweep(bs: dict[str, str]) -> BuilderSweep:
 
 
 def _to_withdrawal_processing_solution(rec: dict[str, Any]) -> WithdrawalProcessing:
+    builder_sweep_dims = rec.get(
+        "builder_sweep",
+        {
+            name: rec[name]
+            for name in (
+                "cmp_builder_count_withdrawals_limit",
+                "cmp_builder_count_max_per_sweep",
+                "cmp_eligible_builder_count_zero",
+                "cmp_swept_count_zero",
+                "cmp_swept_count_max_per_sweep",
+                "cmp_next_index_zero",
+                "cmp_next_index_last_builder_index",
+                "swept_builders_hit_withdrawals_limit",
+            )
+        },
+    )
     return WithdrawalProcessing(
         state_latest_block_hash_match=BOOL[rec["state_latest_block_hash_match"]],
         builder_pending_withdrawals_exist=BOOL[rec["builder_pending_withdrawals_exist"]],
@@ -250,7 +264,7 @@ def _to_withdrawal_processing_solution(rec: dict[str, Any]) -> WithdrawalProcess
         ],
         validators_eligible_for_sweep_exist=BOOL[rec["validators_eligible_for_sweep_exist"]],
         swept_validators_hit_limit=BOOL[rec["swept_validators_hit_limit"]],
-        builder_sweep=_to_sweep(rec["builder_sweep"]),
+        builder_sweep=_to_sweep(builder_sweep_dims),
     )
 
 
@@ -365,7 +379,7 @@ def _pick_sweep(
     queue_len: int,
 ) -> tuple[int, int, list[int]]:
     """Pick (builders_count, next_index, eligible_positions) realizing the sweep dims."""
-    bs = rec["builder_sweep"]
+    bs = rec.get("builder_sweep", rec)
     bc = {
         "LT": limit + 1,
         "EQ": max_per_sweep,
@@ -427,11 +441,11 @@ def _builder_params(
     }
 
 
-class WithdrawalProcessingMaterializer(BaseMaterializer):
+class WithdrawalProcessingMaterializer(Materializer):
     """Materializes each solution of both withdrawal-processing aspect models."""
 
-    description = "withdrawal_processing"
-    validator_name = "withdrawal_processing_validator"
+    runner_name = "operations"
+    handler_name = "withdrawals"
 
     def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal"):
         aspects = Path(__file__).parent.parent / "aspects"
@@ -441,7 +455,7 @@ class WithdrawalProcessingMaterializer(BaseMaterializer):
         self.withdrawal_processing_model_path = (
             aspects / "withdrawal_processing" / "withdrawal_processing.mzn"
         )
-        super().__init__(spec, self.withdrawal_processing_model_path, fork_name, preset_name)
+        super().__init__(spec, fork_name, preset_name)
         # Precompute the preprocessed base state once; each solution starts from a copy.
         self._base = make_base_state(spec)
 
@@ -573,14 +587,44 @@ class WithdrawalProcessingMaterializer(BaseMaterializer):
         )
         pre.balances[idx] = spec.Gwei(1_000_000)
 
-    def materialize_solution(self, sol: Any) -> tuple[Any, Any | None, bool, dict, list]:
-        if "pending_withdrawal" in sol.p:
-            return self._materialize_pending_withdrawal(sol)
-        return self._materialize_withdrawal_processing(sol)
+    def _record(self, sol: Any) -> dict[str, Any]:
+        """Normalize a MiniZinc solution or a catalog representative."""
+        if hasattr(sol, "p"):
+            if "pending_withdrawal" in sol.p:
+                return _normalize_pending_withdrawal(sol)
+            rec = _normalize_withdrawal_processing(sol)
+            rec.update(rec.pop("builder_sweep"))
+            return rec
+        return vars(sol).copy() if not isinstance(sol, dict) else sol.copy()
+
+    def materialize_solution(self, sol: Any) -> tuple[dict, list]:
+        random.seed(0)
+        rec = self._record(sol)
+        if "cmp_pending_amount_zero" in rec:
+            pre, post, _verified, claimed, extra_parts = self._materialize_pending_withdrawal(rec)
+        else:
+            pre, post, _verified, claimed, extra_parts = self._materialize_withdrawal_processing(
+                rec
+            )
+
+        parts = [("pre", "ssz", pre.encode_bytes())]
+        parts.extend((name, "ssz", value.encode_bytes()) for name, value in extra_parts)
+        if post is not None:
+            parts.append(("post", "ssz", post.encode_bytes()))
+        description = (
+            "builder_pending_withdrawal_processing"
+            if "cmp_pending_amount_zero" in claimed
+            else "withdrawal_processing"
+        )
+        return {
+            "description": f"{description}: {claimed}",
+            "claimed": claimed,
+            "verified": _verified,
+        }, parts
 
     def _materialize_pending_withdrawal(self, sol: Any) -> tuple[Any, Any | None, bool, dict, list]:
         spec = self.spec
-        rec = _normalize_pending_withdrawal(sol)
+        rec = sol if isinstance(sol, dict) else self._record(sol)
 
         pre = self._base.copy()
         state_epoch = int(spec.get_current_epoch(pre))
@@ -653,7 +697,7 @@ class WithdrawalProcessingMaterializer(BaseMaterializer):
         self, sol: Any
     ) -> tuple[Any, Any | None, bool, dict, list]:
         spec = self.spec
-        rec = _normalize_withdrawal_processing(sol)
+        rec = sol if isinstance(sol, dict) else self._record(sol)
 
         limit = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD) - 1
         max_per_sweep = int(spec.MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
@@ -784,7 +828,7 @@ class WithdrawalProcessingMaterializer(BaseMaterializer):
             "validators_eligible_for_sweep_exist": rec["validators_eligible_for_sweep_exist"],
             "swept_validators_hit_limit": rec["swept_validators_hit_limit"],
         }
-        claimed_dims.update(rec["builder_sweep"])
+        claimed_dims.update({name: rec[name] for name in WITHDRAWAL_PROCESSING_DIMS if name in rec})
         claimed = {n: claimed_dims.get(n) for n in WITHDRAWAL_PROCESSING_DIMS}
         return pre, post, verified, claimed, []
 
@@ -792,32 +836,3 @@ class WithdrawalProcessingMaterializer(BaseMaterializer):
         if "cmp_builder_balance_amount" in claimed:
             return f"builder_pending_withdrawal_processing: {claimed}"
         return f"withdrawal_processing: {claimed}"
-
-    def materialize_all(self, output_dir: Path, timeout_s: int = 600) -> tuple[int, int]:
-        reps: list[Any] = []
-        for model_path in (
-            self.pending_withdrawal_model_path,
-            self.withdrawal_processing_model_path,
-        ):
-            model = minizinc.Model(str(model_path))
-            result = minizinc.Instance(
-                minizinc.Solver.lookup("gecode"),
-                model,
-            ).solve(all_solutions=True, timeout=timedelta(seconds=timeout_s))
-            reps.extend(list(result))
-        return self.materialize_reps(output_dir, reps)
-
-
-def main() -> int:
-    output_dir = Path(__file__).parent / "reftests"
-    materializer = WithdrawalProcessingMaterializer(spec)
-    total, verified = materializer.materialize_all(output_dir, timeout_s=600)
-    if verified != total:
-        print(f"FAILED: {total - verified} cases did not pass validation")
-        return 1
-    print(f"PASSED: {total} cases, all verified")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

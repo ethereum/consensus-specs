@@ -17,8 +17,7 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    cover,
-    dedup,
+    build_profile as _build_profile,
     enumerate_signatures,
 )
 from tests.generators.compliance_runners.state_transition.bid_processing.materializer import (
@@ -71,54 +70,17 @@ def _nfaults(r: dict) -> int:
     return int(f)
 
 
-# name -> (aspects, strength, outcome_filter)
-PROFILES = {
-    "onewise": (ALL_ASPECTS, 1, None),
-    "pairwise": (ALL_ASPECTS, 2, None),
-    "normal": (INPUT_ASPECTS, 2, "normal"),
-    "exceptional": ({"builder_type": ["builder_type"], **OUTCOME_ASPECT}, 2, "exceptional"),
-}
+def _recs():
+    return enumerate_signatures(MODEL, DIMS, INPUT_ASPECTS, _nfaults)
 
 
-def build_profile(recs, name):
-    if name == "standard":  # rich within accept, each rejection on each feasible branch
-        _, normal = cover(recs, *PROFILES["normal"])
-        _, exc = cover(recs, *PROFILES["exceptional"])
-        return -1, dedup(normal + exc, ALL_ASPECTS)
-    return cover(recs, *PROFILES[name])
-
-
-def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    materialize = "--materialize" in sys.argv
-
-    print("Enumerating feasible space (~20s)...")
-    recs = enumerate_signatures(MODEL, DIMS, ALL_ASPECTS, _nfaults)
-    print(f"distinct aspect-state signatures: {len(recs)}\n")
-
-    if not args:
-        print(f"{'profile':14} {'obligations':>12} {'cases':>7}")
-        for name in ("onewise", "normal", "exceptional"):
-            n_obl, chosen = build_profile(recs, name)
-            print(f"{name:14} {n_obl:>12} {len(chosen):>7}")
-        _, std = build_profile(recs, "standard")
-        print(f"{'standard':14} {'(union)':>12} {len(std):>7}")
-        print("\n(also: coverage pairwise --materialize)")
-        return 0
-
-    n_obl, chosen = build_profile(recs, args[0])
-    print(
-        f"profile '{args[0]}': {len(chosen)} cases"
-        + (f" covering {n_obl} obligations" if n_obl >= 0 else "")
+def build_profile(name):
+    return _build_profile(
+        _recs(),
+        name,
+        ALL_ASPECTS,
+        INPUT_ASPECTS,
+        OUTCOME_ASPECT,
+        # exceptional_aspects={"builder_state": INPUT_ASPECTS["builder_state"], **OUTCOME_ASPECT},
+        # exceptional_t=2,
     )
-    if materialize:
-        reps = [SimpleNamespace(**rec) for rec in chosen]
-        out = Path(__file__).parent / "reftests"
-        print()
-        BidProcessingMaterializer(spec, MODEL).materialize_reps(out, reps)
-        print("Validate with: python -m ...bid_processing.validation")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

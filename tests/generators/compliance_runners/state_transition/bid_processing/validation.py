@@ -12,29 +12,20 @@ Usage:
 
 from __future__ import annotations
 
-import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-import snappy
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests.generators.compliance_runners.state_transition.provider import Check
 
 _YAML = YAML(typ="safe")
-
-
-@dataclass
-class Check:
-    dimension: str
-    claimed: Any
-    actual: Any
-    status: str  # ok | mismatch
-
-
-def _decode(path: Path, sedes: Any) -> Any:
-    return sedes.decode_bytes(snappy.decompress(path.read_bytes()))
 
 
 def _cmp(a: int, b: int) -> str:
@@ -181,77 +172,12 @@ def _derive_outcome(r: dict[str, Any]) -> str:
     return common()
 
 
-def validate_case(case_dir: Path) -> tuple[list[Check], list[str]]:
-    pre = _decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    signed = _decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
+def validate_case(case_dir: Path) -> list[Check]:
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    signed = decode(case_dir / "execution_payload_bid.ssz_snappy", spec.SignedExecutionPayloadBid)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     # Normalize NA variants: mzn uses NA_CMP/NA_BOOL, recovery uses NA.
     _NA_MAP = {"NA_CMP": "NA", "NA_BOOL": "NA"}
     claimed = {k: _NA_MAP.get(v, v) for k, v in claimed.items()}
     actual = recover(pre, signed)
-
-    checks = [
-        Check(
-            dim,
-            claim,
-            actual.get(dim, "<none>"),
-            "ok" if actual.get(dim, "<none>") == claim else "mismatch",
-        )
-        for dim, claim in claimed.items()
-    ]
-
-    # Oracle: run the handler; accepted iff it does not raise.
-    errors: list[str] = []
-    post_path = case_dir / "post.ssz_snappy"
-    oracle = pre.copy()
-    accepted = True
-    try:
-        spec.process_execution_payload_bid(oracle, signed)
-    except (AssertionError, IndexError):
-        accepted = False
-
-    if accepted and not post_path.exists():
-        errors.append("handler accepted but no post recorded")
-    if not accepted and post_path.exists():
-        errors.append("handler rejected but post present")
-    if accepted and post_path.exists():
-        post = _decode(post_path, spec.BeaconState)
-        if oracle.hash_tree_root() != post.hash_tree_root():
-            errors.append("post does not match spec re-execution")
-    if accepted != (claimed.get("outcome") == "ACCEPT"):
-        errors.append(f"accepted={accepted} but outcome={claimed.get('outcome')}")
-    return checks, errors
-
-
-def main() -> int:
-    default = Path(__file__).parent / "reftests"
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else default
-    case_dirs = sorted(root.glob("**/operations/execution_payload_bid/**/case_*"))
-    if not case_dirs:
-        print(f"No cases found under {root}")
-        return 1
-
-    total_mm = total_err = 0
-    for case_dir in case_dirs:
-        checks, errors = validate_case(case_dir)
-        mism = [c for c in checks if c.status == "mismatch"]
-        total_mm += len(mism)
-        total_err += len(errors)
-        status = "OK" if not mism and not errors else "FAIL"
-        outcome = next((c.claimed for c in checks if c.dimension == "outcome"), "?")
-        print(f"{case_dir.name}: {status}  [{outcome}]")
-        for c in mism:
-            print(f"    dim {c.dimension}: claimed={c.claimed!r} actual={c.actual!r}")
-        for e in errors:
-            print(f"    oracle: {e}")
-
-    print()
-    if total_mm or total_err:
-        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
-        return 1
-    print(f"PASSED: {len(case_dirs)} cases, all dimensions and oracle checks consistent")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    return check_dimensions(claimed, actual)

@@ -16,7 +16,6 @@ merged materializer.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import minizinc
@@ -81,7 +80,13 @@ WITHDRAWAL_PROCESSING_ASPECTS = {
     ],
 }
 
-PROFILES = {"standard": 2, "exhaustive": None}
+PROFILES = {
+    "smoke": 1,
+    "normal": 2,
+    "standard": 2,
+    "exceptional": 1,
+    "all": None,
+}
 
 
 def _flatten_withdrawal_processing(sol) -> dict:
@@ -123,12 +128,13 @@ def _build_profile(model_path: Path, normalize, aspects: dict, name: str) -> lis
     return chosen
 
 
-def build_profile(name: str) -> list[dict]:
-    return [
+def build_profile(name: str) -> tuple[int, list[dict]]:
+    records = [
         rec
         for model_path, normalize, aspects in _MODELS
         for rec in _build_profile(model_path, normalize, aspects, name)
     ]
+    return len(records), records
 
 
 def materialize_profile(name: str) -> int:
@@ -142,28 +148,4 @@ def materialize_profile(name: str) -> int:
             solutions.append(sol_by_sig[signature(rec, aspects)])
 
     output_dir = Path(__file__).parent / "reftests"
-    return materializer.materialize_reps(output_dir, solutions)[0]
-
-
-def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    materialize = "--materialize" in sys.argv
-    counts = [len(_records(m, n, a)) for m, n, a in _MODELS]
-    print(
-        "distinct aspect-state signatures: "
-        f"{counts[0]} builder-pending, {counts[1]} withdrawal-processing\n"
-    )
-    if not args:
-        print(f"{'profile':14} {'cases':>7}")
-        for name in PROFILES:
-            print(f"{name:14} {len(build_profile(name)):>7}")
-        return 0
-    name = args[0]
-    print(f"profile '{name}': {len(build_profile(name))} cases")
-    if materialize:
-        materialize_profile(name)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    return materializer.materialize_reps(output_dir, solutions)
