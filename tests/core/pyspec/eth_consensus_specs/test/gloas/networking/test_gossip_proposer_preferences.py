@@ -670,7 +670,7 @@ def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_unseen(spec, state):
     """Preferences whose dependent_root has no corresponding block in the store are ignored."""
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
@@ -938,7 +938,7 @@ def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_state_unavailable(spec, state):
     """Preferences whose dependent_root has no corresponding state are ignored."""
     anchor_state = state.copy()
     yield "topic", "meta", "proposer_preferences"
@@ -999,7 +999,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_start(spec, state):
+def test_gossip_proposer_preferences__reject_dependent_block_at_lookahead_epoch_start(spec, state):
     """
     Preferences whose dependent_root points to a block at the proposal slot's
     proposer lookahead epoch are rejected. Such a dependent_root cannot be the
@@ -1071,7 +1071,7 @@ def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_s
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, state):
+def test_gossip_proposer_preferences__ignore_dependent_block_not_possible(spec, state):
     """Preferences whose dependent_root is superseded on every branch are ignored.
 
     The dependent block is old enough, but its only child is also before the
@@ -1135,7 +1135,7 @@ def test_gossip_proposer_preferences__ignore_dependent_root_not_possible(spec, s
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
+def test_gossip_proposer_preferences__valid_dependent_block_on_fork(spec, state):
     """Preferences whose dependent_root is a non-canonical fork block are valid.
 
     On the fork branch, the dependent block's child crosses the lookahead
@@ -1213,7 +1213,7 @@ def test_gossip_proposer_preferences__valid_dependent_root_on_fork(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_proposer_preferences__valid_dependent_root_across_empty_epochs(spec, state):
+def test_gossip_proposer_preferences__valid_dependent_block_across_empty_epochs(spec, state):
     """
     Preferences remain valid when two empty epochs reuse the same dependent
     root. Validation must advance that root's post-state to the lookahead epoch.
