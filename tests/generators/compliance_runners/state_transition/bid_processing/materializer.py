@@ -255,10 +255,7 @@ class BidProcessingMaterializer(Materializer):
 
         # State at genesis is a no-op — skip materialization entirely.
         if not past_genesis:
-            assert False
-            pre = self._base_state(past_genesis=False)
-            claimed = {n: rec.get(n) for n in DIMS}
-            return pre, None, True, claimed, []
+            raise AssertionError("State slot should be past genesis")
 
         pre = self._base_state(past_genesis)
         current_epoch = int(spec.get_current_epoch(pre))
@@ -416,7 +413,7 @@ class BidProcessingMaterializer(Materializer):
             parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore[union-attr]
         meta = {
             "description": f"process_execution_payload_bid: {claimed['outcome']}",
-            "verified": True,
+            "verified": verified,
             "bls_setting": 1,
             "claimed": claimed,
         }
