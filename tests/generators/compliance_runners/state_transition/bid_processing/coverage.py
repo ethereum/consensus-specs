@@ -11,17 +11,13 @@ Run:
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import (
     build_profile as _build_profile,
     enumerate_signatures,
 )
 from tests.generators.compliance_runners.state_transition.bid_processing.materializer import (
-    BidProcessingMaterializer,
     DIMS,
 )
 
