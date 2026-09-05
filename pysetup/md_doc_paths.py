@@ -8,6 +8,7 @@ from .constants import (
     DENEB,
     EIP8025,
     EIP8148,
+    EIP8198,
     EIP8205,
     EIP8321,
     ELECTRA,
@@ -29,6 +30,7 @@ PREVIOUS_FORK_OF = {
     HEZE: GLOAS,
     EIP8025: GLOAS,
     EIP8148: HEZE,
+    EIP8198: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
 }

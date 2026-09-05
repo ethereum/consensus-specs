@@ -142,16 +142,23 @@ def objects_to_spec(
         elif isinstance(value, VariableDefinition):
             return value.type_name if value.type_name is not None else "int"
 
+    deprecate_config_vars = reduce(
+        lambda names, builder: names.union(builder.deprecate_config_vars()), builders, set()
+    )
+    config_vars = {
+        name: value
+        for name, value in spec_object.config_vars.items()
+        if name not in deprecate_config_vars
+    }
+
     config_spec = "class Configuration(NamedTuple):\n"
     config_spec += "    PRESET_BASE: str\n"
     config_spec += "\n".join(
-        f"    {k}: {format_config_var_param(v)}" for k, v in spec_object.config_vars.items()
+        f"    {k}: {format_config_var_param(v)}" for k, v in config_vars.items()
     )
     config_spec += "\n\n\nconfig = Configuration(\n"
     config_spec += f'    PRESET_BASE="{preset_name}",\n'
-    config_spec += "\n".join(
-        "    " + format_config_var(k, v) for k, v in spec_object.config_vars.items()
-    )
+    config_spec += "\n".join("    " + format_config_var(k, v) for k, v in config_vars.items())
     config_spec += "\n)\n"
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:

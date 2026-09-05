@@ -13,12 +13,14 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_block,
+    get_slot_start_time,
     on_tick_and_append_step,
     output_store_checks,
     setup_finalized_store,
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
@@ -82,12 +84,13 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
         else:
             # Added past the PTC deadline -> block_timeliness[PTC] False -> NOT an
             # equivocation, but still a viable head competitor
-            ptc_due_s = spec.get_payload_attestation_due_ms() // 1000
+            if is_post_eip8198(spec):
+                ptc_due_ms = spec.get_payload_attestation_due_ms(parent_block.slot)
+            else:
+                ptc_due_ms = spec.get_payload_attestation_due_ms()
+            ptc_due_s = ptc_due_ms // 1000
             late_time = (
-                parent_block.slot * spec.config.SLOT_DURATION_MS // 1000
-                + store.genesis_time
-                + ptc_due_s
-                + 1
+                get_slot_start_time(spec, store.genesis_time, parent_block.slot) + ptc_due_s + 1
             )
             on_tick_and_append_step(spec, store, late_time, test_steps)
             yield from add_block(spec, store, signed_sibling, test_steps)

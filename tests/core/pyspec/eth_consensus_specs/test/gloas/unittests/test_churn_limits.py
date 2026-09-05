@@ -8,7 +8,9 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_activation_churn_cap
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 
 
 @with_gloas_and_later
@@ -18,6 +20,12 @@ def test_get_consolidation_churn_limit_independent(spec, state):
     churn = spec.get_consolidation_churn_limit(state)
     total = spec.get_total_active_balance(state)
     expected = total // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    if is_post_eip8198(spec):
+        expected = (
+            expected
+            * spec.get_slot_duration_ms(spec.get_current_epoch(state))
+            // spec.get_slot_duration_ms(spec.GENESIS_EPOCH)
+        )
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert churn == expected
 
@@ -97,6 +105,9 @@ def test_compute_weak_subjectivity_period_scaled(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn > activation_churn
+    if is_post_eip8198(spec):
+        assert activation_churn == get_activation_churn_cap(spec, state)
+        assert activation_churn % spec.EFFECTIVE_BALANCE_INCREMENT == 0
 
     t = spec.get_total_active_balance(state)
     consolidation_churn = spec.get_consolidation_churn_limit(state)
