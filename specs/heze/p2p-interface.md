@@ -261,16 +261,12 @@ def validate_execution_payload_bid_gossip(
     # [New in Heze:EIP7805]
     # [IGNORE] The bid's inclusion list bits is inclusive
     inclusion_list_slot = bid.slot - 1
-    inclusion_list_committee = get_inclusion_list_committee(state, inclusion_list_slot)
     inclusion_list_epoch = compute_epoch_at_slot(inclusion_list_slot)
-    inclusion_list_dependent_root = get_shuffling_dependent_root(
-        store, bid.parent_block_root, inclusion_list_epoch
-    )
     if not is_inclusion_list_bits_inclusive(
         get_inclusion_list_store(),
-        inclusion_list_committee,
+        get_inclusion_list_committee(state, inclusion_list_slot),
         inclusion_list_slot,
-        inclusion_list_dependent_root,
+        get_shuffling_dependent_root(store, bid.parent_block_root, inclusion_list_epoch),
         bid.inclusion_list_bits,
         only_timely=True,
     ):
