@@ -367,7 +367,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
 
 ```python
 def get_base_reward_per_increment(state: BeaconState) -> Gwei:
-    return Gwei(
+    return (
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
         // integer_squareroot(get_total_active_balance(state))
@@ -661,7 +661,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
             )
             if bit
         ]
-    previous_slot = max(state.slot, Slot(1)) - 1
+    previous_slot = state.slot - min(state.slot, 1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
@@ -801,7 +801,7 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        Gwei(sum(state.slashings)) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR, total_balance
     )
     for index, validator in enumerate(state.validators):
         if (
