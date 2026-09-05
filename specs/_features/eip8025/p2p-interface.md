@@ -31,9 +31,14 @@ Req/Resp protocol is defined.
 
 ### Type-specific SSZ bounds
 
-| Name                                       | Value                        |
-| ------------------------------------------ | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
+*Note*: `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` is derived from
+`MAX_PROOF_SIZE` plus 145 bytes of fixed SSZ overhead: two 4-byte offsets, a
+1-byte `ProofType`, a 32-byte `Root`, an 8-byte `ValidatorIndex`, and a 96-byte
+`BLSSignature`.
+
+| Name                                       | Value                                              |
+| ------------------------------------------ | -------------------------------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(MAX_PROOF_SIZE + 145)` (= 4,194,449 bytes) |
 
 ## Helpers
 
@@ -88,7 +93,25 @@ def validate_execution_proof_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     proof_envelope = signed_proof_envelope.message
+
+    # [REJECT] The proof data is non-empty
+    if len(proof_envelope.proof_data) == 0:
+        raise GossipReject("execution proof envelope is invalid")
+
+    # [REJECT] The proof type is supported
+    if proof_envelope.proof_type not in get_supported_proof_types():
+        raise GossipReject("execution proof envelope is invalid")
+
     beacon_block_root = proof_envelope.beacon_block_root
+
+    # [IGNORE] The proof's beacon block has been seen
+    if beacon_block_root not in store.blocks:
+        raise GossipIgnore("execution proof's beacon block has not been seen")
+
+    # [IGNORE] No valid proof is known for this beacon block and proof type
+    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
+        raise GossipIgnore("verified proof already known for this beacon block and proof type")
+
     proof_root = hash_tree_root(proof_envelope)
 
     # [IGNORE] The proof has not already been processed
@@ -103,32 +126,18 @@ def validate_execution_proof_gossip(
             "proof already seen from this prover for this beacon block and proof type"
         )
 
-    # [IGNORE] The proof's beacon block has been seen
-    if beacon_block_root not in store.blocks:
-        raise GossipIgnore("execution proof's beacon block has not been seen")
-
-    # [REJECT] The proof's beacon block has passed consensus validation
-    if beacon_block_root not in store.block_states:
-        raise GossipReject("execution proof's beacon block failed validation")
-
-    state = store.block_states[beacon_block_root]
-
     # [IGNORE] The proof's execution payload is available
     if beacon_block_root not in store.payloads:
         raise GossipIgnore("execution proof's payload is unavailable")
 
     payload_envelope = store.payloads[beacon_block_root]
 
-    # [IGNORE] No valid proof is known for this beacon block and proof type
-    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
-        raise GossipIgnore("verified proof already known for this beacon block and proof type")
-
     # [REJECT] The execution proof envelope passes validation
+    state = store.block_states[beacon_block_root]
     try:
         verify_execution_proof_envelope(
             state,
             signed_proof_envelope,
-            payload_envelope,
         )
     except AssertionError:
         raise GossipReject("execution proof envelope is invalid") from None
@@ -139,14 +148,16 @@ def validate_execution_proof_gossip(
         payload_envelope,
     )
 
-    # Mark the authenticated proof and prover attempt as seen
+    # [REJECT] The execution proof is valid
+    proof_is_valid = proof_engine.verify_execution_proof(proof)
+
+    # Mark the authenticated proof and prover attempt as seen after a definitive result
     if beacon_block_root not in seen.execution_proof_roots:
         seen.execution_proof_roots[beacon_block_root] = set()
     seen.execution_proof_roots[beacon_block_root].add(proof_root)
     seen.execution_proof_provers.add(prover_key)
 
-    # [REJECT] The execution proof is valid
-    if not proof_engine.verify_execution_proof(proof):
+    if not proof_is_valid:
         raise GossipReject("execution proof is invalid")
 ```
 

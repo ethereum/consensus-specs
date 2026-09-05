@@ -46,10 +46,12 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 ### New `ProofData`
 
 ```python
-class ProofData(ProgressiveList[Byte]):
+class ProofData(ByteList):
     """
     The opaque proof bytes of an execution proof.
     """
+
+    LIMIT = MAX_PROOF_SIZE
 ```
 
 ### New `ProofType`
@@ -174,16 +176,14 @@ def get_supported_proof_types() -> set[ProofType]:
 def verify_execution_proof_envelope(
     state: BeaconState,
     signed_proof_envelope: SignedExecutionProofEnvelope,
-    payload_envelope: ExecutionPayloadEnvelope,
 ) -> None:
     """
-    Verify an execution proof envelope against the beacon state and payload.
+    Verify an execution proof envelope against the beacon state.
     The execution proof itself is verified separately by the proof engine.
     """
     proof_envelope = signed_proof_envelope.message
-    assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
-    assert 0 < len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
+    assert len(proof_envelope.proof_data) > 0
     assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
@@ -248,7 +248,6 @@ def process_execution_proof(
     verify_execution_proof_envelope(
         state,
         signed_proof_envelope,
-        payload_envelope,
     )
 
     proof = get_execution_proof(
