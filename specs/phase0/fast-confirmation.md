@@ -40,6 +40,8 @@
       - [`compute_honest_ffg_support_for_current_target`](#compute_honest_ffg_support_for_current_target)
       - [`will_no_conflicting_checkpoint_be_justified`](#will_no_conflicting_checkpoint_be_justified)
       - [`will_current_target_be_justified`](#will_current_target_be_justified)
+    - [`is_epoch_start_update`](#is_epoch_start_update)
+    - [`get_previous_epoch_greatest_unrealized_checkpoint`](#get_previous_epoch_greatest_unrealized_checkpoint)
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
@@ -99,6 +101,10 @@ the fast confirmation rule. The fields being tracked are described below:
   according to a local view.
 - `previous_slot_head`: the head at the start of the previous slot.
 - `current_slot_head`: the head at the start of the current slot.
+- `previous_update_slot`: the slot of the previous
+  `update_fast_confirmation_variables` call.
+- `current_update_slot`: the slot of the current
+  `update_fast_confirmation_variables` call.
 
 ```python
 @dataclass
@@ -110,6 +116,8 @@ class FastConfirmationStore:
     previous_epoch_greatest_unrealized_checkpoint: Checkpoint
     previous_slot_head: Root
     current_slot_head: Root
+    previous_update_slot: Slot
+    current_update_slot: Slot
 ```
 
 #### `get_fast_confirmation_store`
@@ -132,6 +140,8 @@ def get_fast_confirmation_store(store: Store) -> FastConfirmationStore:
         previous_epoch_greatest_unrealized_checkpoint=store.finalized_checkpoint,
         previous_slot_head=store.finalized_checkpoint.root,
         current_slot_head=store.finalized_checkpoint.root,
+        previous_update_slot=get_current_slot(store),
+        current_update_slot=get_current_slot(store),
     )
 ```
 
@@ -800,14 +810,55 @@ def will_current_target_be_justified(store: Store) -> bool:
     return 3 * honest_ffg_support >= 2 * total_active_balance
 ```
 
+#### `is_epoch_start_update`
+
+*Note*: Whether the current `update_fast_confirmation_variables` call is the
+first one of an epoch: it happens at the start of an epoch, or an epoch start
+was skipped since the previous call, for instance because the implementation was
+restarted.
+
+```python
+def is_epoch_start_update(fcr_store: FastConfirmationStore) -> bool:
+    return is_start_slot_at_epoch(fcr_store.current_update_slot) or compute_epoch_at_slot(
+        fcr_store.current_update_slot
+    ) > compute_epoch_at_slot(fcr_store.previous_update_slot)
+```
+
+#### `get_previous_epoch_greatest_unrealized_checkpoint`
+
+*Note*: The snapshot taken at the last slot of the previous epoch, or the best
+estimate of it if that slot was skipped since the previous update, for instance
+because the implementation was restarted.
+
+```python
+def get_previous_epoch_greatest_unrealized_checkpoint(
+    fcr_store: FastConfirmationStore,
+) -> Checkpoint:
+    store = fcr_store.store
+    current_epoch = get_current_store_epoch(store)
+    if fcr_store.previous_update_slot + 1 >= compute_start_slot_at_epoch(current_epoch):
+        return fcr_store.previous_epoch_greatest_unrealized_checkpoint
+    if store.unrealized_justified_checkpoint.epoch < current_epoch:
+        return store.unrealized_justified_checkpoint
+    return store.justified_checkpoint
+```
+
 #### `update_fast_confirmation_variables`
 
 *Note*: This function updates variables used by the fast confirmation rule.
+Calls after the first one in a slot are no-ops.
 
 ```python
 def update_fast_confirmation_variables(fcr_store: FastConfirmationStore) -> None:
-    # Update prev and curr slot head
     store = fcr_store.store
+
+    # At most once per slot
+    if get_current_slot(store) == fcr_store.current_update_slot:
+        return
+    fcr_store.previous_update_slot = fcr_store.current_update_slot
+    fcr_store.current_update_slot = get_current_slot(store)
+
+    # Update prev and curr slot head
     fcr_store.previous_slot_head = fcr_store.current_slot_head
     fcr_store.current_slot_head = get_head(store).root
 
@@ -817,13 +868,13 @@ def update_fast_confirmation_variables(fcr_store: FastConfirmationStore) -> None
             store.unrealized_justified_checkpoint
         )
 
-    # Update observed justified checkpoints at the start of an epoch
-    if is_start_slot_at_epoch(get_current_slot(store)):
+    # Update observed justified checkpoints at the start of an epoch, or now if it was skipped
+    if is_epoch_start_update(fcr_store):
         fcr_store.previous_epoch_observed_justified_checkpoint = (
             fcr_store.current_epoch_observed_justified_checkpoint
         )
         fcr_store.current_epoch_observed_justified_checkpoint = (
-            fcr_store.previous_epoch_greatest_unrealized_checkpoint
+            get_previous_epoch_greatest_unrealized_checkpoint(fcr_store)
         )
 ```
 
@@ -975,6 +1026,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
     store = fcr_store.store
     confirmed_root = fcr_store.confirmed_root
     current_epoch = get_current_store_epoch(store)
+    is_epoch_start = is_epoch_start_update(fcr_store)
 
     # Revert to finalized block if either of the following is true:
     # 1) the latest confirmed block's epoch is older than the previous epoch,
@@ -985,10 +1037,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
     if (
         get_block_epoch(store, confirmed_root) + 1 < current_epoch
         or not is_ancestor(store, get_node_for_root(head), get_node_for_root(confirmed_root))
-        or (
-            is_start_slot_at_epoch(get_current_slot(store))
-            and not is_confirmed_chain_safe(fcr_store, confirmed_root)
-        )
+        or (is_epoch_start and not is_confirmed_chain_safe(fcr_store, confirmed_root))
     ):
         confirmed_root = store.finalized_checkpoint.root
 
@@ -997,7 +1046,6 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
     # 2) epoch of fcr_store.current_epoch_observed_justified_checkpoint.root equals to the previous epoch,
     # 3) fcr_store.current_epoch_observed_justified_checkpoint equals to unrealized justification of the head,
     # 4) confirmed block is older than the block of fcr_store.current_epoch_observed_justified_checkpoint.
-    is_epoch_start = is_start_slot_at_epoch(get_current_slot(store))
     observed_justified_block_slot = get_block_slot(
         store, fcr_store.current_epoch_observed_justified_checkpoint.root
     )
@@ -1048,8 +1096,15 @@ Implementations MAY call `update_fast_confirmation_variables` after a valid
 block from the expected block proposer for the assigned `slot` has been received
 and processed if this happens before `get_attestation_due_ms(epoch)`
 milliseconds has transpired since the start of the `slot`. Regardless of the
-time of the call, `update_fast_confirmation_variables` MUST be called only once
-per slot.
+time of the call, `update_fast_confirmation_variables` MUST be called once per
+slot; further calls in the same slot are no-ops.
+
+An implementation that made no call for some slots, for instance because it was
+restarted, catches up on a skipped epoch start in its next call, which counts as
+the first call of the epoch (`is_epoch_start_update`). Implementations SHOULD
+make that call only after processing the blocks and attestations of the skipped
+slots, so that the checks of an epoch start see the votes an uninterrupted
+implementation would have had.
 
 Implementations MAY call `get_latest_confirmed` at any point in time throughout
 a slot.
