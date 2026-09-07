@@ -135,10 +135,7 @@ def validate_execution_proof_gossip(
     # [REJECT] The execution proof envelope passes validation
     state = store.block_states[beacon_block_root]
     try:
-        verify_execution_proof_envelope(
-            state,
-            signed_proof_envelope,
-        )
+        verify_execution_proof_envelope(state, signed_proof_envelope)
     except AssertionError:
         raise GossipReject("execution proof envelope is invalid") from None
 
