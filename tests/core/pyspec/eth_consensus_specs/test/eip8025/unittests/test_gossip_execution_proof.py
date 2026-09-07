@@ -371,8 +371,8 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
     seen = get_seen(spec)
     proof_root = spec.hash_tree_root(signed_proof.message)
     prover_key = (block_root, signed_proof.message.proof_type, signed_proof.validator_index)
-    proof_engine = MockProofEngine()
     proof = get_proof_engine_input(spec, store, signed_proof)
+    proof_engine = MockProofEngine(valid_proof_data=[proof.proof_data])
 
     # Gossip validation verifies the proof without mutating the fork-choice store.
     assert validate(spec, seen, store, signed_proof, proof_engine) == ("valid", None)
@@ -392,7 +392,11 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
 
     # Cache a failed gossip verification so the same proof and prover are ignored.
     alternate_proof = make_signed_execution_proof_envelope(
-        spec, state, block_root, proof_type=ALTERNATE_TEST_PROOF_TYPE
+        spec,
+        state,
+        block_root,
+        proof_data=b"\x02",
+        proof_type=ALTERNATE_TEST_PROOF_TYPE,
     )
     seen = get_seen(spec)
     alternate_proof_root = spec.hash_tree_root(alternate_proof.message)
@@ -401,13 +405,12 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
         alternate_proof.message.proof_type,
         alternate_proof.validator_index,
     )
-    rejecting_engine = MockProofEngine(verification_result=False)
-    assert validate(spec, seen, store, alternate_proof, rejecting_engine) == (
+    assert validate(spec, seen, store, alternate_proof, proof_engine) == (
         "reject",
         "execution proof is invalid",
     )
     expected_alternate_proof = get_proof_engine_input(spec, store, alternate_proof)
-    assert rejecting_engine.verifications == [expected_alternate_proof]
+    assert proof_engine.verifications == [proof, expected_alternate_proof]
     assert alternate_proof_root in seen.execution_proof_roots[block_root]
     assert alternate_prover_key in seen.execution_proof_provers
     assert alternate_proof.message.proof_type not in store.execution_proofs[block_root]
@@ -466,7 +469,7 @@ def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
     store.payloads[block_root] = payload
 
     # A failed proof-engine verification must not update the store.
-    rejecting_engine = MockProofEngine(verification_result=False)
+    rejecting_engine = MockProofEngine(valid_proof_data=[])
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, rejecting_engine))
     proof = get_proof_engine_input(spec, store, signed_proof)
     assert rejecting_engine.verifications == [proof]
