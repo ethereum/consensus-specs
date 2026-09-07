@@ -391,9 +391,9 @@ Some validators are selected to submit payload timeliness attestations.
 Validators should call `get_ptc_assignment` at the beginning of an epoch to be
 prepared to submit their PTC attestations during the next epoch.
 
-A validator should create and broadcast the `payload_attestation_message` to the
-global execution attestation subnet within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+A validator should create and broadcast the `payload_attestation_message` as
+soon as it has seen the execution payload envelope and blob data for the block,
+and no later than `get_payload_attestation_due_ms()` milliseconds into the slot.
 
 #### Constructing the `PayloadAttestationMessage`
 
@@ -422,6 +422,14 @@ The validator creates `payload_attestation_message` as follows:
   timeliness attestation.
 - Sign the `payload_attestation_message.data` using the helper
   `get_payload_attestation_message_signature`.
+
+The message should be broadcast as soon as both fields are final.
+`payload_present` is final once an envelope for the block has been seen or
+`get_payload_due_ms()` has elapsed. `blob_data_available` is final once
+`is_data_available()` returns `True` or the payload attestation deadline is
+reached. A validator that has not seen the envelope by `get_payload_due_ms()`
+should therefore wait until the deadline before broadcasting
+`blob_data_available = False`, since the blob data may still arrive.
 
 Notice that the attester only signs the `PayloadAttestationData` and not the
 `validator_index` field in the message. Proposers need to aggregate these
