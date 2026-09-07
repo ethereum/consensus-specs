@@ -145,16 +145,14 @@ def validate_execution_proof_gossip(
         payload_envelope,
     )
 
-    # [REJECT] The execution proof is valid
-    proof_is_valid = proof_engine.verify_execution_proof(proof)
-
-    # Mark the authenticated proof and prover attempt as seen after a definitive result
+    # Mark the authenticated proof and prover attempt as seen before proof verification
     if beacon_block_root not in seen.execution_proof_roots:
         seen.execution_proof_roots[beacon_block_root] = set()
     seen.execution_proof_roots[beacon_block_root].add(proof_root)
     seen.execution_proof_provers.add(prover_key)
 
-    if not proof_is_valid:
+    # [REJECT] The execution proof is valid
+    if not proof_engine.verify_execution_proof(proof):
         raise GossipReject("execution proof is invalid")
 ```
 
