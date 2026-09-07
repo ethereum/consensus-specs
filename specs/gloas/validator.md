@@ -344,7 +344,7 @@ def prepare_execution_payload(
     if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
-        state = copy(state)
+        state = state.copy()
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals

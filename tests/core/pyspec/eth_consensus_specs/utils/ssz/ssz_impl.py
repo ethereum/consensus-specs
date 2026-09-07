@@ -15,8 +15,3 @@ def ssz_deserialize[V: SSZType](typ: type[V], data: bytes) -> V:
 
 def deserialize[V: SSZType](typ: type[V], data: bytes) -> V:
     return ssz_deserialize(typ, data)
-
-
-# Helper method for typing copies, and avoiding a example_input.copy() method call, instead of copy(example_input)
-def copy[V: SSZType](obj: V) -> V:
-    return obj.copy()
