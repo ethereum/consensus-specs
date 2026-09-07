@@ -50,7 +50,7 @@ lint = [
 ]
 docs = [
   "mdx-truly-sane-lists==1.3",
-  "zensical==0.0.58",
+  "zensical==0.0.59",
 ]
 
 [tool.setuptools]
