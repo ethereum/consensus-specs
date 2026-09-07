@@ -415,7 +415,10 @@ The validator creates `payload_attestation_message` as follows:
   with root `data.beacon_block_root`, and it was seen before
   `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
   to `True`; otherwise, set `data.payload_present` to `False`.
-- Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
+- If `is_data_available(data.beacon_block_root)` holds before
+  `get_payload_attestation_due_ms()` milliseconds into the slot, set
+  `data.blob_data_available` to `True`; otherwise, set
+  `data.blob_data_available` to `False`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
