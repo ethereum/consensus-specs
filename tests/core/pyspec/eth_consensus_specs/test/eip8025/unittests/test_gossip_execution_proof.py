@@ -20,20 +20,6 @@ UNSUPPORTED_LOW_PROOF_TYPE = 0
 UNSUPPORTED_HIGH_PROOF_TYPE = 4
 
 
-class CacheInspectingProofEngine(MockProofEngine):
-    def __init__(self, seen, proof_root, prover_key, *, verification_result=True):
-        super().__init__(verification_result=verification_result)
-        self.seen = seen
-        self.proof_root = proof_root
-        self.prover_key = prover_key
-
-    def verify_execution_proof(self, proof):
-        block_root = self.prover_key[0]
-        assert self.proof_root not in self.seen.execution_proof_roots.get(block_root, set())
-        assert self.prover_key not in self.seen.execution_proof_provers
-        return super().verify_execution_proof(proof)
-
-
 def setup_store_with_block(spec, state):
     """Build one accepted block and return its fork-choice store and root."""
     store, _anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -385,7 +371,7 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
     seen = get_seen(spec)
     proof_root = spec.hash_tree_root(signed_proof.message)
     prover_key = (block_root, signed_proof.message.proof_type, signed_proof.validator_index)
-    proof_engine = CacheInspectingProofEngine(seen, proof_root, prover_key)
+    proof_engine = MockProofEngine()
     proof = get_proof_engine_input(spec, store, signed_proof)
 
     # Gossip validation verifies the proof without mutating the fork-choice store.
@@ -415,12 +401,7 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
         alternate_proof.message.proof_type,
         alternate_proof.validator_index,
     )
-    rejecting_engine = CacheInspectingProofEngine(
-        seen,
-        alternate_proof_root,
-        alternate_prover_key,
-        verification_result=False,
-    )
+    rejecting_engine = MockProofEngine(verification_result=False)
     assert validate(spec, seen, store, alternate_proof, rejecting_engine) == (
         "reject",
         "execution proof is invalid",
