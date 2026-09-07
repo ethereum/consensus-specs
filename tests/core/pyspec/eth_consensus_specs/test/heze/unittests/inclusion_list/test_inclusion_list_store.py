@@ -192,6 +192,7 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
             transactions=transactions,
         )
         signed_inclusion_list_0 = sign_inclusion_list(spec, state, inclusion_list_0)
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
 
         # Make a fork branch off the head.
         head_root = spec.get_head(forkchoice_store).root
@@ -219,7 +220,6 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
 
         # Both inclusion lists are valid, with different dependent roots.
         assert inclusion_list_0.dependent_root != inclusion_list_1.dependent_root
-        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
         # Only the inclusion list stored under the given dependent root is returned.

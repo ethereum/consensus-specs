@@ -216,6 +216,7 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
     )
+    block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
 
     yield "pre", pre_state
@@ -272,6 +273,7 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
     )
+    block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
 
     yield "pre", pre_state

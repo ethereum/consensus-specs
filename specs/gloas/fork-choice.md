@@ -40,6 +40,8 @@
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
+  - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
+  - [New `compute_shuffling_lookahead_start_slot`](#new-compute_shuffling_lookahead_start_slot)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -230,11 +232,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         # [New in Gloas:EIP7732]
         block_timeliness={anchor_root: [True, True]},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
@@ -666,7 +668,7 @@ def verify_execution_payload_envelope(
     assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Verify consistency with the beacon block
-    header = copy(state.latest_block_header)
+    header = state.latest_block_header.copy()
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
     assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
@@ -695,6 +697,33 @@ def verify_execution_payload_envelope(
             execution_requests=envelope.execution_requests,
         )
     )
+```
+
+### New `is_valid_dependent_root`
+
+```python
+def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> bool:
+    """
+    Check if the block with the given ``root`` is a possible dependent block
+    for the given ``dependent_slot``, meaning that on some branch it is, or
+    could become, the latest block at or before ``dependent_slot``.
+    """
+    if root == get_head(store).root:
+        return True
+    for block in store.blocks.values():
+        if block.parent_root == root:
+            if block.slot > dependent_slot:
+                return True
+    return False
+```
+
+### New `compute_shuffling_lookahead_start_slot`
+
+```python
+def compute_shuffling_lookahead_start_slot(epoch: Epoch) -> Slot:
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_SLOT
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD)
 ```
 
 ### Modified `get_attestation_due_ms`
@@ -1030,7 +1059,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
+    state = store.block_states[block.parent_root].copy()
 
     # Check the block is valid and compute the post-state
     state_transition(state, signed_block, validate_result=True)

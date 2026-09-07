@@ -213,6 +213,45 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
 
 @with_phases([GLOAS])
 @spec_state_test
+def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
+    store, block_root, _ = _setup_full_parent(spec, state)
+
+    # Model a PTC majority that observed the payload but not its blob data.
+    # The locally verified payload remains in the store.
+    store.payload_timeliness_vote[block_root] = [True] * spec.PTC_SIZE
+    unavailable_votes = spec.DATA_AVAILABILITY_TIMELY_THRESHOLD + 1
+    store.payload_data_availability_vote[block_root] = [False] * unavailable_votes + [None] * (
+        spec.PTC_SIZE - unavailable_votes
+    )
+
+    proposal_state = _advance_to_proposal_slot(spec, state, store)
+    head = spec.get_head(store)
+    assert head.root == block_root
+    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
+    assert spec.payload_data_availability(store, block_root, available=False)
+    assert not spec.should_build_on_full(store, head, proposal_state.slot)
+
+    engine = CaptureEngine()
+    parent_bid = proposal_state.latest_execution_payload_bid
+    assert parent_bid.block_hash != parent_bid.parent_block_hash
+
+    payload_id = spec.prepare_execution_payload(
+        store=store,
+        head=head,
+        state=proposal_state,
+        safe_block_hash=spec.Hash32(),
+        finalized_block_hash=spec.Hash32(),
+        suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.Uint64(60_000_000),
+        execution_engine=engine,
+    )
+
+    assert payload_id == SAMPLE_PAYLOAD_ID
+    assert engine.head_block_hash == parent_bid.parent_block_hash
+
+
+@with_phases([GLOAS])
+@spec_state_test
 def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
     proposal_state = _advance_to_proposal_slot(spec, state, store)
