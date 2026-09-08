@@ -599,7 +599,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Gloas:EIP7732]
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 

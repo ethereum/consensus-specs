@@ -1,12 +1,14 @@
-import random
-
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
     with_all_phases_from_to,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
-from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs,
+    build_block_with_blobs_for_next_slot,
+    get_max_blob_count,
+)
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth_consensus_specs.test.helpers.constants import DENEB, FULU
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
@@ -23,22 +25,7 @@ from eth_consensus_specs.test.helpers.gossip import (
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
-    transition_to,
 )
-
-
-def build_signed_block_and_sidecars(spec, state, rng=None, blob_count=1):
-    """
-    Build a signed block carrying ``blob_count`` blobs, applying the state
-    transition. Returns (signed_block, blob_sidecars).
-    """
-    rng = rng or random.Random(1234)
-    block, blobs, _, blob_kzg_proofs = get_block_with_blob(
-        spec, state, rng=rng, blob_count=blob_count
-    )
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
-    return signed_block, list(sidecars)
 
 
 def setup_store_with_anchor(spec, state):
@@ -80,7 +67,9 @@ def test_gossip_blob_sidecar__valid(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -132,15 +121,16 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
-    blob_sidecar.index = spec.BlobIndex(get_max_blob_count(spec, state))
+    blob_sidecar_slot = blob_sidecar.signed_block_header.message.slot
+    blob_sidecar.index = spec.BlobIndex(get_max_blob_count(spec, blob_sidecar_slot))
 
     yield get_filename(blob_sidecar), blob_sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
-        store, blob_sidecar.signed_block_header.message.slot
-    )
+    block_time_ms = spec.compute_time_at_slot_ms(store, blob_sidecar_slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.SubnetID(0)
@@ -186,7 +176,9 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -241,7 +233,9 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
     # Corrupt the signature
     blob_sidecar.signed_block_header.signature = spec.BLSSignature(b"\x00" * 96)
@@ -296,7 +290,9 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
     # Corrupt the inclusion proof
     blob_sidecar.kzg_commitment_inclusion_proof = spec.KZGCommitmentInclusionProof()
@@ -351,7 +347,9 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
     # Corrupt the KZG proof to a zero point (invalid relative to the real commitment)
     blob_sidecar.kzg_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
@@ -406,7 +404,9 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -460,7 +460,9 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -511,10 +513,13 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
     yield "state", anchor_state
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs(
+        spec, state, slot=spec.SLOTS_PER_EPOCH
+    )
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     block_header = blob_sidecar.signed_block_header.message
@@ -580,7 +585,9 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
     blob_sidecar.signed_block_header.message.proposer_index = spec.ValidatorIndex(
         len(state.validators)
@@ -636,7 +643,9 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     # Modify parent_root to something unknown to the store
@@ -714,7 +723,9 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -771,7 +782,9 @@ def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
@@ -863,7 +876,9 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
     blob_sidecar.signed_block_header.message.slot = signed_parent.message.slot
     resign_blob_sidecar_header(spec, parent_state, blob_sidecar)
@@ -918,7 +933,9 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     fake_finalized_root = spec.Root(b"\xab" * 32)
@@ -978,7 +995,9 @@ def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
     blob_sidecar = sidecars[0]
 
     correct_proposer = blob_sidecar.signed_block_header.message.proposer_index

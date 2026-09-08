@@ -6,7 +6,12 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases_from_to,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob_and_sidecars
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs,
+    build_block_with_blobs_for_next_slot,
+    get_data_column_sidecars,
+)
+from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.constants import (
     FULU,
     GLOAS,
@@ -17,6 +22,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block_with_data,
 )
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def flip_one_bit_in_bytes(data: bytes, index: int = 0) -> bytes:
@@ -37,11 +43,9 @@ def get_alt_sidecars(spec, state):
     Get alternative sidecars for negative test cases.
     """
     rng = Random(4321)
-    state_copy = state.copy()
-    _, _, _, _, alt_sidecars, _ = get_block_with_blob_and_sidecars(
-        spec, state_copy, rng=rng, blob_count=2
-    )
-    return alt_sidecars
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
+    signed_block = sign_block(spec, state, block)
+    return get_data_column_sidecars(spec, signed_block, blobs)
 
 
 @with_all_phases_from_to(FULU, GLOAS)
@@ -64,19 +68,23 @@ def test_on_block_peerdas__ok(spec, state):
     assert store.time == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
-    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    block, blobs, kzg_commitments, _ = build_block_with_blobs_for_next_slot(
         spec, state, rng=rng, blob_count=2
     )
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
     assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
-    # On receiving a block of next epoch
-    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    # On receiving a block that extends the block for `GENESIS_SLOT + 1`
+    block, blobs, kzg_commitments, _ = build_block_with_blobs_for_next_slot(
         spec, state, rng=rng, blob_count=2
     )
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
@@ -102,9 +110,11 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    block, blobs, kzg_commitments, _ = build_block_with_blobs_for_next_slot(
         spec, state, rng=rng, blob_count=2
     )
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecars = fn(sidecars)
     blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
