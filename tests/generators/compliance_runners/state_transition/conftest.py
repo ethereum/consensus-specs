@@ -42,8 +42,11 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture
-def comptests_output(request) -> Path | None:
-    return request.config.getoption("--comptests-output")
+def comptests_output(request) -> Path:
+    output = request.config.getoption("--comptests-output")
+    if output is None:
+        raise pytest.UsageError("--comptests-output is required")
+    return output
 
 
 def pytest_generate_tests(metafunc):

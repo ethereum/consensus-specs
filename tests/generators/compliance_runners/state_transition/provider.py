@@ -212,7 +212,7 @@ def validate_handler(
 
 def run(
     handler: str,
-    comptests_output: Path | None = None,
+    comptests_output: Path,
     profile: str = "standard",
     preset_name: str = "minimal",
     seed: int | None = None,
@@ -220,10 +220,5 @@ def run(
     spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     handlers = HANDLERS if handler == "all" else (handler,)
     for current_handler in handlers:
-        output_dir = (
-            comptests_output
-            if comptests_output is not None
-            else Path(__file__).parent / current_handler / "reftests"
-        )
-        materialize_handler(current_handler, profile, output_dir, spec, preset_name, seed)
+        materialize_handler(current_handler, profile, comptests_output, spec, preset_name, seed)
     return 0

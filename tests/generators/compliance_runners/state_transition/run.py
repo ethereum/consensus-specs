@@ -1,9 +1,10 @@
 """Generate and validate state-transition compliance cases.
 
 Usage:
-    uv run python -m tests.generators.compliance_runners.state_transition.run
-    uv run python -m tests.generators.compliance_runners.state_transition.run --handler withdrawals
-    uv run python -m tests.generators.compliance_runners.state_transition.run --profile smoke
+    uv run python -m tests.generators.compliance_runners.state_transition.run \
+        --comptests-output /path/to/output
+    uv run python -m tests.generators.compliance_runners.state_transition.run \
+        --handler withdrawals --comptests-output /path/to/output
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ def main() -> int:
     parser.add_argument("--profile", choices=PROFILES, default="standard")
     parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
     parser.add_argument("--seed", type=int, help="Seed for deterministic materialization variation")
-    parser.add_argument("--comptests-output", type=Path)
+    parser.add_argument("--comptests-output", type=Path, required=True)
     args = parser.parse_args()
     return run(args.handler, args.comptests_output, args.profile, args.preset, args.seed)
 
