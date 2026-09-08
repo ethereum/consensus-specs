@@ -9,9 +9,11 @@ from eth_consensus_specs.test.context import (
     with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
-    get_block_with_blob_and_sidecars,
+    build_block_with_blobs,
+    get_data_column_sidecars,
     get_sample_blob,
 )
+from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.fork_choice import BlobData, with_blob_data
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
@@ -85,9 +87,11 @@ def run_is_data_available_peerdas_test(spec, blob_data):
 @spec_state_test
 def test_is_data_available_peerdas(spec, state):
     rng = random.Random(1234)
-    _, blobs, blob_kzg_proofs, _, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    block, blobs, kzg_commitments, blob_kzg_proofs = build_block_with_blobs(
         spec, state, rng=rng, blob_count=2
     )
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars, kzg_commitments)
 
     result = run_is_data_available_peerdas_test(spec, blob_data)
@@ -99,9 +103,9 @@ def test_is_data_available_peerdas(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, signed_block, sidecars, _kzg_commitments = get_block_with_blob_and_sidecars(
-        spec, state, rng=rng, blob_count=2
-    )
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     if is_post_gloas(spec):
         sidecars_result = spec.get_data_column_sidecars_from_block(
@@ -126,9 +130,9 @@ def test_get_data_column_sidecars(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, _, sidecars, _ = get_block_with_blob_and_sidecars(
-        spec, state, rng=rng, blob_count=2
-    )
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
         sidecar=sidecars[0],
