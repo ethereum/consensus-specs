@@ -414,20 +414,14 @@ The validator creates `payload_attestation_message` as follows:
   `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
   to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
+  Since the blob data may still arrive, only set it to `False` once
+  `get_payload_attestation_due_ms()` milliseconds have elapsed.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
   timeliness attestation.
 - Sign the `payload_attestation_message.data` using the helper
   `get_payload_attestation_message_signature`.
-
-The message should be broadcast as soon as both fields are final.
-`payload_present` is final once an envelope for the block has been seen or
-`get_payload_due_ms()` has elapsed. `blob_data_available` is final once
-`is_data_available()` returns `True` or the payload attestation deadline is
-reached. A validator that has not seen the envelope by `get_payload_due_ms()`
-should therefore wait until the deadline before broadcasting
-`blob_data_available = False`, since the blob data may still arrive.
 
 Notice that the attester only signs the `PayloadAttestationData` and not the
 `validator_index` field in the message. Proposers need to aggregate these
