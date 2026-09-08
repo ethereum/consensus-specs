@@ -74,10 +74,10 @@ uv run python -m tests.generators.compliance_runners.state_transition.run \
   --handler withdrawals --seed 12345 --comptests-output /path/to/output
 ```
 
-`--comptests-output` is required. The command validates each handler
-immediately after materialization. Handler-specific MiniZinc models, coverage
-definitions, materializers, and validators are located in the corresponding
-provider directory.
+`--comptests-output` is required. The command validates each handler immediately
+after materialization. Handler-specific MiniZinc models, coverage definitions,
+materializers, and validators are located in the corresponding provider
+directory.
 
 A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
