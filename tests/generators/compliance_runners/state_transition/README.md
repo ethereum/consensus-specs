@@ -38,7 +38,7 @@ Epoch-processing handlers:
 From the repository root:
 
 ```bash
-make comptests kind=state_transition
+make comptests kind=state_transition comptests_dir=/path/to/output
 ```
 
 The default profile is `standard`, and all handlers are generated. Select a
@@ -64,22 +64,20 @@ The supported profiles are:
 also be run directly:
 
 ```bash
-uv run python -m tests.generators.compliance_runners.state_transition.run
-uv run python -m tests.generators.compliance_runners.state_transition.run \
-  --handler withdrawals --profile smoke
-uv run python -m tests.generators.compliance_runners.state_transition.run \
-  --preset mainnet
-uv run python -m tests.generators.compliance_runners.state_transition.run \
-  --handler withdrawals --seed 12345
 uv run python -m tests.generators.compliance_runners.state_transition.run \
   --comptests-output /path/to/output
+uv run python -m tests.generators.compliance_runners.state_transition.run \
+  --handler withdrawals --profile smoke --comptests-output /path/to/output
+uv run python -m tests.generators.compliance_runners.state_transition.run \
+  --preset mainnet --comptests-output /path/to/output
+uv run python -m tests.generators.compliance_runners.state_transition.run \
+  --handler withdrawals --seed 12345 --comptests-output /path/to/output
 ```
 
-The direct command writes to each handler's local `reftests/` directory unless
-`--comptests-output` is provided. It validates each handler immediately after
-materialization. Handler-specific MiniZinc models, coverage definitions,
-materializers, and validators are located in the corresponding provider
-directory.
+`--comptests-output` is required. The command validates each handler
+immediately after materialization. Handler-specific MiniZinc models, coverage
+definitions, materializers, and validators are located in the corresponding
+provider directory.
 
 A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
