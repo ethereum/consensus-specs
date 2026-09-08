@@ -4,7 +4,8 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
-    get_block_with_blob_and_sidecars,
+    build_block_with_blobs_for_next_slot,
+    get_data_column_sidecars,
     make_partial_data_column_group_id,
     make_partial_sidecar,
 )
@@ -17,6 +18,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def setup_gloas_partial_sidecar(spec, state, blob_indices=None):
@@ -27,7 +29,9 @@ def setup_gloas_partial_sidecar(spec, state, blob_indices=None):
     """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
@@ -49,7 +53,9 @@ def setup_gloas_partial_failed_block_sidecar(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     pre_state = state.copy()
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     # Corrupt the block so it genuinely fails state transition.
     failed_block = signed_block.message.copy()
