@@ -286,12 +286,11 @@ def validate_sync_committee_contribution_and_proof_gossip(
     if contribution_and_proof.aggregator_index >= len(state.validators):
         raise GossipReject("aggregator index out of range")
 
-    # [REJECT] The aggregator's validator index is in the declared subcommittee
-    # of the current sync committee
+    # [REJECT] The aggregator is a member of the committee
     aggregator_pubkey = state.validators[contribution_and_proof.aggregator_index].pubkey
     subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
     if aggregator_pubkey not in subcommittee_pubkeys:
-        raise GossipReject("aggregator not in subcommittee")
+        raise GossipReject("aggregator is not a member of the committee")
 
     # [REJECT] The contribution_and_proof.selection_proof is a valid signature
     # of the SyncAggregatorSelectionData derived from the contribution
