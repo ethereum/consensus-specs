@@ -147,11 +147,12 @@ def _materialize_provider(
     clean: bool,
     spec: Any,
     preset_name: str,
+    seed: int | None,
 ) -> tuple[Any, int]:
     module = import_module(f".{provider.module}", __package__)
     _, chosen = module.build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
-    materializer = module.MATERIALIZER(spec, preset_name=preset_name)
+    materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
     materializer.test_provider = provider.name
     if materializer.runner_name != provider.runner or materializer.handler_name != provider.handler:
         raise ValueError(f"provider metadata does not match materializer: {provider.name}")
@@ -167,6 +168,7 @@ def materialize_handler(
     output_dir: Path,
     spec: Any | None = None,
     preset_name: str = "minimal",
+    seed: int | None = None,
 ) -> int:
     """Materialize and validate all providers registered for ``handler``."""
     if spec is None:
@@ -183,6 +185,7 @@ def materialize_handler(
             clean=provider_index == 0,
             spec=spec,
             preset_name=preset_name,
+            seed=seed,
         )
         selected_cases = {
             f"case_{index:04d}" for index in range(case_offset, case_offset + generated)
@@ -212,6 +215,7 @@ def run(
     comptests_output: Path | None = None,
     profile: str = "standard",
     preset_name: str = "minimal",
+    seed: int | None = None,
 ) -> int:
     spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     handlers = HANDLERS if handler == "all" else (handler,)
@@ -221,5 +225,5 @@ def run(
             if comptests_output is not None
             else Path(__file__).parent / current_handler / "reftests"
         )
-        materialize_handler(current_handler, profile, output_dir, spec, preset_name)
+        materialize_handler(current_handler, profile, output_dir, spec, preset_name, seed)
     return 0

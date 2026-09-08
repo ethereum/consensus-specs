@@ -258,6 +258,7 @@ else ifeq ($(COMPTESTS_KIND),state_transition)
 # Generate compliance tests (state transition).
 comptests: MAYBE_HANDLER := $(if $(handler),--handler $(handler))
 comptests: MAYBE_PROFILE := $(if $(profile),--profile $(profile))
+comptests: MAYBE_SEED := $(if $(seed),--seed $(seed))
 comptests: PRESET := $(if $(preset),$(preset),minimal)
 comptests: MAYBE_PARALLEL := $(if $(filter 1,$(threads)),,$(if $(threads),-n $(threads) --dist=worksteal,-n logical --dist=worksteal))
 comptests: _pyspec
@@ -267,6 +268,7 @@ comptests: _pyspec
 		--comptests-output=$(COMPTESTS_DIR) \
 		$(MAYBE_HANDLER) \
 		$(MAYBE_PROFILE) \
+		$(MAYBE_SEED) \
 		--preset $(PRESET) \
 		$(CURDIR)/tests/generators/compliance_runners/state_transition/generate_comptests.py
 

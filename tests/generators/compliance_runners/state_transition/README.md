@@ -47,6 +47,7 @@ handler, profile, or output directory with Make variables:
 ```bash
 make comptests kind=state_transition handler=withdrawals profile=smoke
 make comptests kind=state_transition preset=mainnet
+make comptests kind=state_transition handler=withdrawals seed=12345
 make comptests kind=state_transition profile=all
 make comptests kind=state_transition comptests_dir=../compliance-spec-tests/tests
 ```
@@ -69,6 +70,8 @@ uv run python -m tests.generators.compliance_runners.state_transition.run \
 uv run python -m tests.generators.compliance_runners.state_transition.run \
   --preset mainnet
 uv run python -m tests.generators.compliance_runners.state_transition.run \
+  --handler withdrawals --seed 12345
+uv run python -m tests.generators.compliance_runners.state_transition.run \
   --comptests-output /path/to/output
 ```
 
@@ -82,6 +85,11 @@ A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
 the provider directory is an implementation detail, while the generated manifest
 continues to use the protocol handler name.
+
+`--seed` changes only materialization choices, never the model solutions or
+coverage profile. The same seed produces the same vectors; omitting it retains
+the canonical materialization. The seed is recorded in each generated case's
+`dimensions.yaml`.
 
 ## Running generated tests
 

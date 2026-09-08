@@ -33,6 +33,12 @@ def pytest_addoption(parser):
         default="minimal",
         help="Preset to generate compliance tests for",
     )
+    parser.addoption(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for deterministic materialization variation",
+    )
 
 
 @pytest.fixture
@@ -57,3 +63,8 @@ def profile(request) -> str:
 @pytest.fixture
 def preset(request) -> str:
     return request.config.getoption("--preset")
+
+
+@pytest.fixture
+def seed(request) -> int | None:
+    return request.config.getoption("--seed")
