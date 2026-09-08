@@ -20,9 +20,12 @@ def main() -> int:
     parser.add_argument("--handler", choices=(*HANDLERS, "all"), default="all")
     parser.add_argument("--profile", choices=PROFILES, default="standard")
     parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
+    parser.add_argument(
+        "--seed", type=int, help="Seed for deterministic materialization variation"
+    )
     parser.add_argument("--comptests-output", type=Path)
     args = parser.parse_args()
-    return run(args.handler, args.comptests_output, args.profile, args.preset)
+    return run(args.handler, args.comptests_output, args.profile, args.preset, args.seed)
 
 
 if __name__ == "__main__":
