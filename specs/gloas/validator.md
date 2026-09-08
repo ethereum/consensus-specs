@@ -399,10 +399,8 @@ and no later than `get_payload_attestation_due_ms()` milliseconds into the slot.
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot. Follow the logic below to
-create the `payload_attestation_message` and broadcast to the global
-`payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+`PayloadAttestationMessage` for the current slot and broadcast it to the global
+`payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
