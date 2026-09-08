@@ -3,11 +3,11 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_phases,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 @single_phase
 def test_process_ptc_window__shifts_all_epochs(spec, state):

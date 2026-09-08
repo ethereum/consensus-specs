@@ -5,7 +5,7 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_state,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -44,7 +44,7 @@ def _assert_get_ptc_assignments(spec, state, epoch, assignments):
         assert spec.get_ptc_assignment(state, epoch, unassigned_validator) is None
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_test
 @with_state
 @single_phase
@@ -56,7 +56,7 @@ def test_get_ptc_assignment__current_epoch_minus_2(spec, state):
     _run_get_ptc_assignments(spec, state, epoch, valid=False)
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_test
 @with_state
 @single_phase
@@ -75,7 +75,7 @@ def test_get_ptc_assignment__current_epoch_minus_1(spec, state):
     )
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_test
 @with_state
 @single_phase
@@ -84,7 +84,7 @@ def test_get_ptc_assignment__current_epoch(spec, state):
     _run_get_ptc_assignments(spec, state, epoch, valid=True)
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_test
 @with_state
 @single_phase
@@ -93,7 +93,7 @@ def test_get_ptc_assignment__current_epoch_plus_1(spec, state):
     _run_get_ptc_assignments(spec, state, epoch, valid=True)
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_test
 @with_state
 @single_phase

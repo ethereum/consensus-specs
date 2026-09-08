@@ -8,7 +8,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -96,7 +96,7 @@ def _advance_to_proposal_slot(spec, state, store):
     return proposal_state
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__extend_payload(spec, state):
     # Give validator[0] 0x01 credentials so the envelope can carry a valid
@@ -174,7 +174,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     assert list(skip_apply_withdrawals) != list(expected_withdrawals)
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__no_payload_verified(spec, state):
     carried_withdrawal = spec.Withdrawal(
@@ -211,7 +211,7 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     assert engine.payload_attributes.withdrawals == carried_withdrawals
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
     store, block_root, _ = _setup_full_parent(spec, state)
@@ -250,7 +250,7 @@ def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
     assert engine.head_block_hash == parent_bid.parent_block_hash
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -273,7 +273,7 @@ def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, s
     assert proposal_state.hash_tree_root() == state_root_before
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__payload_attributes(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -302,7 +302,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     assert attrs.target_gas_limit == spec.Uint64(60_000_000)
 
 
-@with_phases([GLOAS])
+@with_phases([GLOAS, HEZE])
 @spec_state_test
 def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)

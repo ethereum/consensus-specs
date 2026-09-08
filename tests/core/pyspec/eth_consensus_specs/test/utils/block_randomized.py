@@ -41,6 +41,7 @@ from eth_consensus_specs.test.helpers.constants import (
     ELECTRA,
     FULU,
     GLOAS,
+    HEZE,
     PHASE0,
 )
 from eth_consensus_specs.test.utils.randomized_block_tests import (
@@ -335,6 +336,11 @@ class RandomizedTestGenerator:
         ),
         GLOAS: ForkConfig(
             name=GLOAS,
+            state_randomizer=randomize_state_gloas,
+            block_randomizer=random_block_gloas,
+        ),
+        HEZE: ForkConfig(
+            name=HEZE,
             state_randomizer=randomize_state_gloas,
             block_randomizer=random_block_gloas,
         ),
