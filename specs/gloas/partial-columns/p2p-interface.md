@@ -91,7 +91,7 @@ def compute_max_partial_data_column_sidecar_size() -> Uint64:
         max_blobs = max(max_blobs, entry["MAX_BLOBS_PER_BLOCK"])
 
     sidecar = PartialDataColumnSidecar(
-        cells_present_bitmap=CellsBitList(data=[True] * max_blobs),
+        cells_present_bitmap=CellsBitList(data=[Boolean()] * max_blobs),
         partial_column=DataColumn(data=[Cell()] * max_blobs),
         kzg_proofs=KZGProofs(data=[KZGProof()] * max_blobs),
     )

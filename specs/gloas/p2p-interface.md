@@ -311,9 +311,14 @@ def compute_max_data_column_sidecar_size() -> Uint64:
     for entry in BLOB_SCHEDULE:
         max_blobs = max(max_blobs, entry["MAX_BLOBS_PER_BLOCK"])
 
-    empty_size = Uint64(len(ssz_serialize(DataColumnSidecar.empty())))
-    bytes_per_blob = Cell.get_byte_length() + KZGProof.get_byte_length()
-    return empty_size + max_blobs * bytes_per_blob
+    sidecar = DataColumnSidecar(
+        index=ColumnIndex(),
+        column=DataColumn(data=[Cell()] * max_blobs),
+        kzg_proofs=KZGProofs(data=[KZGProof()] * max_blobs),
+        slot=Slot(),
+        beacon_block_root=Root(),
+    )
+    return Uint64(len(ssz_serialize(sidecar)))
 ```
 
 ### New `is_current_or_next_slot`
