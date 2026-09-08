@@ -58,6 +58,7 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
     random_block_electra,
     random_block_fulu,
     random_block_gloas,
+    random_block_heze,
     random_slot_in_epoch,
     randomize_state,
     randomize_state_altair,
@@ -67,6 +68,7 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
     randomize_state_electra,
     randomize_state_fulu,
     randomize_state_gloas,
+    randomize_state_heze,
     slot_transition,
     transition_to_leaking,
     transition_with_random_block,
@@ -341,8 +343,8 @@ class RandomizedTestGenerator:
         ),
         HEZE: ForkConfig(
             name=HEZE,
-            state_randomizer=randomize_state_gloas,
-            block_randomizer=random_block_gloas,
+            state_randomizer=randomize_state_heze,
+            block_randomizer=random_block_heze,
         ),
     }
 
