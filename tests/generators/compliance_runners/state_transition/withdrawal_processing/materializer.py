@@ -13,7 +13,6 @@ Usage:
 
 from __future__ import annotations
 
-import random
 from pathlib import Path
 from typing import Any
 
@@ -447,7 +446,9 @@ class WithdrawalProcessingMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "withdrawals"
 
-    def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal"):
+    def __init__(
+        self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int | None = None
+    ):
         aspects = Path(__file__).parent.parent / "aspects"
         self.pending_withdrawal_model_path = (
             aspects / "withdrawal_processing" / "builder_pending_withdrawal_processing.mzn"
@@ -455,7 +456,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         self.withdrawal_processing_model_path = (
             aspects / "withdrawal_processing" / "withdrawal_processing.mzn"
         )
-        super().__init__(spec, fork_name, preset_name)
+        super().__init__(spec, fork_name, preset_name, seed)
         # Precompute the preprocessed base state once; each solution starts from a copy.
         self._base = make_base_state(spec)
 
@@ -598,7 +599,6 @@ class WithdrawalProcessingMaterializer(Materializer):
         return vars(sol).copy() if not isinstance(sol, dict) else sol.copy()
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list]:
-        random.seed(0)
         rec = self._record(sol)
         if "cmp_pending_amount_zero" in rec:
             pre, post, _verified, claimed, extra_parts = self._materialize_pending_withdrawal(rec)
@@ -727,8 +727,8 @@ class WithdrawalProcessingMaterializer(Materializer):
             root=spec.Root(b"\x01" * 32),
         )
 
-        ref_bs = random.choice(self._ref_candidates)
-        active_bs = random.choice(self._active_candidates)
+        ref_bs = self.rng.choice(self._ref_candidates)
+        active_bs = self.rng.choice(self._active_candidates)
         eligible_set = set(positions)
         active_indices = [i for i in range(bc) if i not in eligible_set][:builder_queue_len]
         active_set = set(active_indices)
@@ -751,7 +751,7 @@ class WithdrawalProcessingMaterializer(Materializer):
 
         # Builder pending withdrawal queue entries.
         balance = int(spec.MIN_DEPOSIT_AMOUNT) + BIG
-        amount_cmp = random.choice(["LT", "EQ", "GT"])
+        amount_cmp = self.rng.choice(["LT", "EQ", "GT"])
         if amount_cmp == "LT":
             amount = balance + 1
         elif amount_cmp == "EQ":
@@ -769,7 +769,7 @@ class WithdrawalProcessingMaterializer(Materializer):
 
         # Validator pending partial withdrawal queue entries.
         if validator_queue_len > 0:
-            template = random.choice(
+            template = self.rng.choice(
                 [
                     s
                     for s in self.all_validator_pending_withdrawal_solutions
