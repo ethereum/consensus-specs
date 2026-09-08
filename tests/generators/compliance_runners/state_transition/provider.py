@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib import import_module
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TYPE_CHECKING
 
@@ -16,6 +15,7 @@ from .materializer import SUITE_NAME
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 
 PROFILES = ("all", "smoke", "normal", "exceptional", "standard")
