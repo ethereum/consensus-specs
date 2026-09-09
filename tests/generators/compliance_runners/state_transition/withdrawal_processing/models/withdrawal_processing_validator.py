@@ -24,7 +24,7 @@ from tests.generators.compliance_runners.state_transition.aspects.validator_with
 from tests.generators.compliance_runners.state_transition.aspects.validator_withdrawals.pending_partial_withdrawal_validator import (
     get_pending_partial_withdrawal_solution,
 )
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.withdrawal_processing import (
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.withdrawal_processing import (
     WithdrawalProcessing,
 )
 

@@ -28,18 +28,6 @@ from tests.generators.compliance_runners.state_transition.aspects.builder_withdr
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.pending_withdrawal import (
     BuilderPendingWithdrawal,
 )
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.builder_pending_withdrawal_processing import (
-    BuilderPendingWithdrawalProcessing,
-)
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.builder_pending_withdrawal_processing_validator import (
-    builder_pending_withdrawal_processing_validator,
-)
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.withdrawal_processing import (
-    WithdrawalProcessing,
-)
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.withdrawal_processing_validator import (
-    withdrawal_processing_validator,
-)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
     BIG,
@@ -49,6 +37,18 @@ from tests.generators.compliance_runners.state_transition.materializer.common im
     OP_CMP,
     set_parent_block,
     to_builder_solution,
+)
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing import (
+    BuilderPendingWithdrawalProcessing,
+)
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing_validator import (
+    builder_pending_withdrawal_processing_validator,
+)
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.withdrawal_processing import (
+    WithdrawalProcessing,
+)
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.withdrawal_processing_validator import (
+    withdrawal_processing_validator,
 )
 
 if TYPE_CHECKING:
