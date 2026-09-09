@@ -244,16 +244,14 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
 
     # Build envelope with non-empty requests but bid commits to empty requests
     non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(
-            [
-                spec.DepositRequest(
-                    pubkey=spec.BLSPubkey(b"\x01" * 48),
-                    withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
-                    amount=spec.Gwei(32000000000),
-                    signature=spec.BLSSignature(b"\x03" * 96),
-                    index=spec.Uint64(0),
-                )
-            ]
+        deposits=spec.DepositRequests.of(
+            spec.DepositRequest(
+                pubkey=spec.BLSPubkey(b"\x01" * 48),
+                withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
+                amount=spec.Gwei(32000000000),
+                signature=spec.BLSSignature(b"\x03" * 96),
+                index=spec.Uint64(0),
+            )
         ),
         withdrawals=spec.WithdrawalRequests(),
         consolidations=spec.ConsolidationRequests(),
@@ -289,7 +287,7 @@ def test_on_execution_payload_envelope_wrong_withdrawals(spec, state):
         state,
         block_root,
         signed_block,
-        withdrawals=spec.Withdrawals([wrong_withdrawal]),
+        withdrawals=spec.Withdrawals.of(wrong_withdrawal),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -310,7 +308,7 @@ def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
     expected_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
-    state.payload_expected_withdrawals = spec.Withdrawals([expected_withdrawal])
+    state.payload_expected_withdrawals = spec.Withdrawals.of(expected_withdrawal)
 
     store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
 
@@ -450,6 +448,7 @@ def test_on_execution_payload_envelope_invalid_full_child(spec, state):
     child.body.signed_execution_payload_bid.message.parent_block_hash = (
         signed_block.message.body.signed_execution_payload_bid.message.block_hash
     )
+    child.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_child = state_transition_and_sign_block(spec, child_state, child)
 
     # The FULL child must fail because the parent's invalid envelope did not verify its payload

@@ -179,7 +179,9 @@ commitment. Exactly one of `randao_reveal` and `hash_chain_reveal` is populated;
 the other is empty.
 
 ```python
-class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 15)):
+class BeaconBlockBody(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=15)
+
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
@@ -202,7 +204,9 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 15)):
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 48)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=48)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
@@ -279,7 +283,7 @@ entry per validator.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -365,7 +369,7 @@ from the front.
 
 ```python
 def process_pending_randao_commitments(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     next_pending_commitment = 0
     for pending_commitment in state.pending_randao_commitments:
         if pending_commitment.activation_epoch > next_epoch:
@@ -499,7 +503,7 @@ def process_randao_commitment_registration(
         PendingRandaoCommitment(
             validator_index=index,
             commitment=registration.commitment,
-            activation_epoch=Epoch(get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY),
+            activation_epoch=get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY,
         )
     )
 ```

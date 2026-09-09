@@ -502,7 +502,7 @@ def test_old_attested_block_gets_head_flag(spec, state):
         state, attestation_slot
     )
     # The genesis payload was never revealed, which matches data.index == 0
-    parent_slot = state.latest_execution_payload_bid.slot
+    parent_slot = state.latest_block_header.slot
     assert parent_slot == 0
     assert not state.execution_payload_availability[parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
@@ -545,7 +545,7 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
         state,
         attestation.data,
         state.slot - attestation.data.slot,
-        state.latest_execution_payload_bid.slot,
+        state.latest_block_header.slot,
     )
     pre_prev_flags = state.previous_epoch_participation[attester]
     pre_curr_flags = state.current_epoch_participation[attester]

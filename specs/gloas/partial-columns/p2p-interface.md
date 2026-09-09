@@ -107,8 +107,6 @@ def validate_partial_data_column_sidecar_gossip(
     # [Modified in Gloas:EIP7732]
     # Removed `seen`
     store: Store,
-    # [Modified in Gloas:EIP7732]
-    # Removed `state`
     sidecar: PartialDataColumnSidecar,
     # [Modified in Gloas:EIP7732]
     # Removed `current_time_ms`

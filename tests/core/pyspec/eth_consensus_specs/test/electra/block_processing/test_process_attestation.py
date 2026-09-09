@@ -49,7 +49,7 @@ def test_invalid_committee_index(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # flip the bits of the attestation to make it invalid
-    assert attestation.committee_bits[committee_index] == 1
+    assert attestation.committee_bits[committee_index]
     attestation.committee_bits[committee_index] = 0
     attestation.committee_bits[committee_index + 1] = 1
 
@@ -101,8 +101,10 @@ def test_invalid_nonset_multiple_committee_bits(spec, state):
     for index in range(committees_per_slot):
         attestation.committee_bits[index] = True
 
-    attestation.aggregation_bits = get_empty_eip7549_aggregation_bits(
-        spec, state, attestation.committee_bits, attestation.data.slot
+    attestation.aggregation_bits = spec.AggregationBits(
+        data=get_empty_eip7549_aggregation_bits(
+            spec, state, attestation.committee_bits, attestation.data.slot
+        )
     )
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -163,8 +165,10 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     aggregate = spec.Attestation(data=attestation_1.data, signature=attestation_1.signature)
     aggregate.committee_bits[0] = True
     aggregate.committee_bits[1] = True
-    aggregate.aggregation_bits = get_empty_eip7549_aggregation_bits(
-        spec, state, aggregate.committee_bits, aggregate.data.slot
+    aggregate.aggregation_bits = spec.AggregationBits(
+        data=get_empty_eip7549_aggregation_bits(
+            spec, state, aggregate.committee_bits, aggregate.data.slot
+        )
     )
     committee_offset = len(committee_0)
     for i in range(len(attestation_1.aggregation_bits)):

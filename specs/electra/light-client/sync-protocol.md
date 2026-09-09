@@ -35,31 +35,37 @@ Additional documents describe the impact of the upgrade on certain roles:
 
 ```python
 # [Modified in Electra]
-class CurrentSyncCommitteeBranch(Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)]):
+class CurrentSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA)
 ```
 
 ### Modified `FinalityBranch`
 
 ```python
 # [Modified in Electra]
-class FinalityBranch(Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)]):
+class FinalityBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``finalized_checkpoint.root`` within
     ``BeaconState``.
     """
+
+    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX_ELECTRA)
 ```
 
 ### Modified `NextSyncCommitteeBranch`
 
 ```python
 # [Modified in Electra]
-class NextSyncCommitteeBranch(Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)]):
+class NextSyncCommitteeBranch(Vector[Bytes32]):
     """
     A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
     """
+
+    LENGTH = floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA)
 ```
 
 ## Constants

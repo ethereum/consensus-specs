@@ -21,7 +21,7 @@ def test_requests_serialization_round_trip__empty(spec):
 @single_phase
 def test_requests_serialization_round_trip__one_request(spec):
     execution_requests = spec.ExecutionRequests(
-        deposits=[spec.DepositRequest()],
+        deposits=spec.DepositRequests.of(spec.DepositRequest()),
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
     deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
@@ -33,9 +33,9 @@ def test_requests_serialization_round_trip__one_request(spec):
 @single_phase
 def test_requests_serialization_round_trip__multiple_requests(spec):
     execution_requests = spec.ExecutionRequests(
-        deposits=[spec.DepositRequest()],
-        withdrawals=[spec.WithdrawalRequest()],
-        consolidations=[spec.ConsolidationRequest()],
+        deposits=spec.DepositRequests.of(spec.DepositRequest()),
+        withdrawals=spec.WithdrawalRequests.of(spec.WithdrawalRequest()),
+        consolidations=spec.ConsolidationRequests.of(spec.ConsolidationRequest()),
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
     deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)
@@ -47,15 +47,15 @@ def test_requests_serialization_round_trip__multiple_requests(spec):
 @single_phase
 def test_requests_serialization_round_trip__one_request_with_real_data(spec):
     execution_requests = spec.ExecutionRequests(
-        deposits=[
+        deposits=spec.DepositRequests.of(
             spec.DepositRequest(
                 pubkey=spec.BLSPubkey(48 * "aa"),
                 withdrawal_credentials=spec.Bytes32(32 * "bb"),
                 amount=spec.Gwei(11111111),
                 signature=spec.BLSSignature(96 * "cc"),
                 index=spec.Uint64(22222222),
-            ),
-        ]
+            )
+        )
     )
     serialized_execution_requests = spec.get_execution_requests_list(execution_requests)
     deserialized_execution_requests = spec.get_execution_requests(serialized_execution_requests)

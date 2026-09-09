@@ -38,6 +38,10 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             block_hash=payload.block_hash,
             transactions_root=hash_tree_root(payload.transactions),
             withdrawals_root=hash_tree_root(payload.withdrawals),
+            # [New in Deneb:EIP4844]
+            blob_gas_used=Uint64(0),
+            # [New in Deneb:EIP4844]
+            excess_blob_gas=Uint64(0),
         )
 
         # [New in Deneb:EIP4844]
@@ -46,14 +50,14 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             execution_header.excess_blob_gas = payload.excess_blob_gas
 
         execution_branch = ExecutionBranch(
-            compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX)
+            data=compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX)
         )
     else:
         # Note that during fork transitions, `finalized_header` may still point to earlier forks.
         # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),
         # it was not included in the corresponding light client data. To ensure compatibility
         # with legacy data going through `upgrade_lc_header_to_capella`, leave out execution data.
-        execution_header = ExecutionPayloadHeader()
+        execution_header = ExecutionPayloadHeader.empty()
         execution_branch = ExecutionBranch()
 
     return LightClientHeader(
@@ -65,6 +69,6 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             body_root=hash_tree_root(block.message.body),
         ),
         execution=execution_header,
-        execution_branch=execution_branch,
+        execution_branch=ExecutionBranch(data=execution_branch),
     )
 ```

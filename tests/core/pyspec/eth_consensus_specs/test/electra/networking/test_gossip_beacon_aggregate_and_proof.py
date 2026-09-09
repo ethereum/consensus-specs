@@ -117,7 +117,6 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_1,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -133,7 +132,6 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg_2,
         current_time_ms=block_time_ms + 600,
         **kwargs,
@@ -176,7 +174,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -215,7 +212,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     # Clear all committee bits.
-    signed_agg.message.aggregate.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT]()
+    signed_agg.message.aggregate.committee_bits = spec.CommitteeBits()
 
     yield get_filename(signed_agg), signed_agg
 
@@ -229,7 +226,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,
@@ -272,9 +268,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     bits = [False] * spec.MAX_COMMITTEES_PER_SLOT
     bits[0] = True
     bits[1] = True
-    signed_agg.message.aggregate.committee_bits = spec.BitVector[spec.MAX_COMMITTEES_PER_SLOT](
-        *bits
-    )
+    signed_agg.message.aggregate.committee_bits = spec.CommitteeBits(data=bits)
 
     yield get_filename(signed_agg), signed_agg
 
@@ -288,7 +282,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
         **kwargs,

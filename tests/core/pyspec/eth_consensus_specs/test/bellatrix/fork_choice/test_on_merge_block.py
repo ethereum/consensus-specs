@@ -1,5 +1,7 @@
 from random import Random
 
+from ssz.uint import Uint256
+
 from eth_consensus_specs.test.context import BELLATRIX, spec_state_test, with_phases
 from eth_consensus_specs.test.exceptions import BlockNotFoundException
 from eth_consensus_specs.test.helpers.block import (
@@ -21,7 +23,6 @@ from eth_consensus_specs.test.helpers.pow_block import (
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import Uint256
 
 
 def with_pow_block_patch(spec, blocks, func):

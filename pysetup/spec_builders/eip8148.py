@@ -10,5 +10,10 @@ class EIP8148SpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.heze import {preset_name} as heze
-from eth_consensus_specs.utils.ssz.ssz_typing import Uint16
 """
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "upgrade_to_heze",
+        }

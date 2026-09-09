@@ -20,7 +20,6 @@ from eth_consensus_specs.test.helpers.state import (
     next_slots,
     transition_to_slot_via_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import BitList
 
 
 @with_all_phases
@@ -161,8 +160,8 @@ def reduce_state_committee_count_from_max(spec, state):
         spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
         >= spec.MAX_COMMITTEES_PER_SLOT
     ):
-        state.validators = state.validators[: len(state.validators) // 2]
-        state.balances = state.balances[: len(state.balances) // 2]
+        state.validators = spec.Validators(data=state.validators[: len(state.validators) // 2])
+        state.balances = spec.Balances(data=state.balances[: len(state.balances) // 2])
 
 
 @with_all_phases
@@ -367,14 +366,14 @@ def test_invalid_too_few_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    attestation.aggregation_bits = BitList[spec.MAX_VALIDATORS_PER_COMMITTEE](
-        *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1))
+    attestation.aggregation_bits = spec.AggregationBits(
+        data=[0b1] + [0b0] * (len(attestation.aggregation_bits) - 1)
     )
 
     sign_attestation(spec, state, attestation)
 
     # one too few bits
-    attestation.aggregation_bits = attestation.aggregation_bits[:-1]
+    attestation.aggregation_bits = spec.AggregationBits(data=attestation.aggregation_bits[:-1])
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 

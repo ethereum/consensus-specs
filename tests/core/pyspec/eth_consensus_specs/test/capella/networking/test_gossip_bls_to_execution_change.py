@@ -8,16 +8,19 @@ from eth_consensus_specs.test.helpers.bls_to_execution_changes import (
     get_signed_address_change as get_signed_bls_to_execution_change,
 )
 from eth_consensus_specs.test.helpers.constants import CAPELLA
-from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    get_store_from_state,
+    run_validate_gossip,
+)
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
 
-def get_capella_fork_time_ms(spec, state):
+def get_capella_fork_time_ms(spec, store):
     """
     Return the current time in milliseconds at the Capella fork epoch.
     """
-    store = get_genesis_forkchoice_store(spec, state)
     capella_slot = spec.compute_start_slot_at_epoch(spec.config.CAPELLA_FORK_EPOCH)
     return spec.compute_time_at_slot_ms(store, capella_slot)
 
@@ -31,9 +34,13 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -41,7 +48,7 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -70,9 +77,12 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    store = get_genesis_forkchoice_store(spec, state)
     current_time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
@@ -81,7 +91,7 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -102,6 +112,97 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     )
 
 
+@with_phases([CAPELLA])
+@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
+def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, state):
+    """
+    Test that a `bls_to_execution_change` is ignored immediately before the
+    Capella fork epoch's clock-disparity window opens.
+    """
+    yield "topic", "meta", "bls_to_execution_change"
+    yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
+    capella_fork_time_ms = get_capella_fork_time_ms(spec, store)
+    current_time_ms = capella_fork_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
+
+    yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "current epoch is pre-capella"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_bls_to_execution_change),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_phases([CAPELLA])
+@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
+def test_gossip_bls_to_execution_change__valid_at_clock_disparity(spec, state):
+    """
+    Test that a `bls_to_execution_change` is valid when the Capella fork epoch's
+    clock-disparity window opens while the head state is still in the previous epoch.
+    """
+    yield "topic", "meta", "bls_to_execution_change"
+    yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
+    capella_fork_time_ms = get_capella_fork_time_ms(spec, store)
+    current_time_ms = capella_fork_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+
+    yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_bls_to_execution_change),
+                "expected": "valid",
+            }
+        ],
+    )
+
+
 @with_capella_and_later
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
@@ -111,10 +212,14 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     messages = []
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -122,7 +227,7 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -139,7 +244,7 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -166,11 +271,15 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(
         spec, state, validator_index=len(state.validators)
     )
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -178,7 +287,7 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -212,10 +321,14 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     state.validators[validator_index].withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x23" * 20
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(
         spec, state, validator_index=validator_index
     )
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -223,7 +336,7 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -253,6 +366,10 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     seen = get_seen(spec)
     validator_index = 2
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(
@@ -261,7 +378,7 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
         validator_index=validator_index,
         withdrawal_pubkey=pubkeys[0],
     )
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -269,7 +386,7 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )
@@ -300,10 +417,14 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
     signed_bls_to_execution_change.signature = spec.BLSSignature(b"\x42" * 96)
-    current_time_ms = get_capella_fork_time_ms(spec, state)
+    current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -311,7 +432,7 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
-        state=state,
+        store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
         current_time_ms=current_time_ms,
     )

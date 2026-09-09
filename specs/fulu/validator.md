@@ -57,10 +57,12 @@ document and used throughout.
 ### `CellKZGProofs`
 
 ```python
-class CellKZGProofs(List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]):
+class CellKZGProofs(List[KZGProof]):
     """
     The KZG cell proofs for every blob in a block, one proof per cell.
     """
+
+    LIMIT = FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ## Helpers
@@ -249,7 +251,7 @@ def get_data_column_sidecars(
             column_proofs.append(proofs[column_index])
         sidecars.append(
             DataColumnSidecar(
-                index=column_index,
+                index=ColumnIndex(column_index),
                 column=column_cells,
                 kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
@@ -274,7 +276,7 @@ def get_data_column_sidecars_from_block(
     blob_kzg_commitments = signed_block.message.body.blob_kzg_commitments
     signed_block_header = compute_signed_block_header(signed_block)
     kzg_commitments_inclusion_proof = KZGCommitmentsInclusionProof(
-        compute_merkle_proof(
+        data=compute_merkle_proof(
             signed_block.message.body,
             get_generalized_index(BeaconBlockBody, "blob_kzg_commitments"),
         )

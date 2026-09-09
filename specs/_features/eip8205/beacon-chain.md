@@ -118,7 +118,9 @@ cross-network replay.
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=47)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
@@ -172,7 +174,9 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
 #### `ExecutionRequests`
 
 ```python
-class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 6)):
+class ExecutionRequests(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=6)
+
     deposits: DepositRequests
     withdrawals: WithdrawalRequests
     consolidations: ConsolidationRequests
@@ -290,11 +294,13 @@ def get_active_preregistration(
 
 ```python
 def remove_stored_preregistration(state: BeaconState, pubkey: BLSPubkey) -> None:
-    state.validator_preregistrations = ValidatorPreregistrations([
-        preregistration
-        for preregistration in state.validator_preregistrations
-        if preregistration.pubkey != pubkey
-    ])
+    state.validator_preregistrations = ValidatorPreregistrations(
+        data=[
+            preregistration
+            for preregistration in state.validator_preregistrations
+            if preregistration.pubkey != pubkey
+        ]
+    )
 ```
 
 ## Beacon chain state transition function
@@ -338,11 +344,13 @@ remains outstanding.
 
 ```python
 def process_preregistration_expiry(state: BeaconState) -> None:
-    state.validator_preregistrations = ValidatorPreregistrations([
-        preregistration
-        for preregistration in state.validator_preregistrations
-        if is_active_preregistration(state, preregistration)
-    ])
+    state.validator_preregistrations = ValidatorPreregistrations(
+        data=[
+            preregistration
+            for preregistration in state.validator_preregistrations
+            if is_active_preregistration(state, preregistration)
+        ]
+    )
 ```
 
 ### Block processing
@@ -408,7 +416,7 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
     preregistration = StoredPreregistration(
         pubkey=pubkey,
         withdrawal_credentials=request.withdrawal_credentials,
-        expiry_slot=Slot(state.slot + PREREGISTRATION_EXPIRY_SLOTS),
+        expiry_slot=state.slot + PREREGISTRATION_EXPIRY_SLOTS,
     )
     index = get_stored_preregistration_index(state, pubkey)
     if index is not None:
@@ -509,6 +517,6 @@ def apply_parent_execution_payload(
         )
 
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

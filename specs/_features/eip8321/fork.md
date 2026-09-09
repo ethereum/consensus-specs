@@ -37,7 +37,7 @@ by broadcasting a `SignedRandaoCommitmentRegistration`.
 
 ```python
 def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = heze.get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
@@ -91,7 +91,9 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8321]
-        randao_commitments=RandaoCommitments([UNSET_RANDAO_COMMITMENT for _ in pre.validators]),
+        randao_commitments=RandaoCommitments(
+            data=[UNSET_RANDAO_COMMITMENT for _ in pre.validators]
+        ),
         # [New in EIP8321]
         pending_randao_commitments=PendingRandaoCommitments(),
     )

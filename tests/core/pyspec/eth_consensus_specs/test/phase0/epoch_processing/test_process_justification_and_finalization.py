@@ -73,7 +73,7 @@ def add_mock_attestations(
             if not is_post_altair(spec):
                 attestations.append(
                     spec.PendingAttestation(
-                        aggregation_bits=aggregation_bits,
+                        aggregation_bits=spec.AggregationBits(data=aggregation_bits),
                         data=spec.AttestationData(
                             slot=slot,
                             beacon_block_root=b"\xff" * 32,  # irrelevant to testing
@@ -131,7 +131,7 @@ def finalize_on_234(spec, state, epoch, sufficient_support):
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c4
     state.current_justified_checkpoint = c3
-    state.justification_bits = spec.BitVector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits = spec.JustificationBits()
     state.justification_bits[1:3] = [
         1,
         1,
@@ -168,7 +168,7 @@ def finalize_on_23(spec, state, epoch, sufficient_support):
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c3
     state.current_justified_checkpoint = c3
-    state.justification_bits = spec.BitVector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits = spec.JustificationBits()
     state.justification_bits[1] = 1  # mock 3rd latest epoch as justified (index is pre-shift)
     # mock the 2nd latest epoch as justifiable, with 3rd as source
     add_mock_attestations(
@@ -202,7 +202,7 @@ def finalize_on_123(spec, state, epoch, sufficient_support):
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c5
     state.current_justified_checkpoint = c3
-    state.justification_bits = spec.BitVector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits = spec.JustificationBits()
     state.justification_bits[1] = 1  # mock 3rd latest epochs as justified (index is pre-shift)
     # mock the 2nd latest epoch as justifiable, with 5th as source
     add_mock_attestations(
@@ -240,7 +240,7 @@ def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c2
     state.current_justified_checkpoint = c2
-    state.justification_bits = spec.BitVector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits = spec.JustificationBits()
     state.justification_bits[0] = 1  # mock 2nd latest epoch as justified (this is pre-shift)
     # mock the 1st latest epoch as justifiable, with 2nd as source
     add_mock_attestations(

@@ -32,7 +32,7 @@ def run_exit_at_churn_boundary(spec, state):
     to_exit = state.validators[validator_index].effective_balance
 
     earliest_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
-    additional_epochs = (to_exit - 1) // exit_churn
+    additional_epochs = spec.Epoch((to_exit - 1) // exit_churn)
     expected_exit_epoch = earliest_exit_epoch + additional_epochs
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
@@ -50,7 +50,7 @@ def run_exit_at_churn_boundary(spec, state):
 
     assert state.validators[validator_index].exit_epoch == expected_exit_epoch
     assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
-    assert state.exit_balance_to_consume == (additional_epochs + 1) * exit_churn - to_exit
+    assert state.exit_balance_to_consume == spec.Gwei(additional_epochs + 1) * exit_churn - to_exit
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 

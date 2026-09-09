@@ -21,20 +21,8 @@ def collect_prev_forks(fork: str) -> list[str]:
         forks.append(fork)
 
 
-def requires_mypy_type_ignore(value: str) -> bool:
-    return (
-        value.startswith(("BitList", "ByteVector"))
-        or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
-        or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
-    )
-
-
 def gen_new_type_definition(name: str, value: str) -> str:
-    return (
-        f"class {name}({value}):\n    pass"
-        if not requires_mypy_type_ignore(value)
-        else f"class {name}(\n    {value}  # type: ignore\n):\n    pass"
-    )
+    return f"class {name}({value}):\n    pass"
 
 
 def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
@@ -43,15 +31,31 @@ def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
 
 
 def objects_to_spec(
-    preset_name: str, spec_object: SpecObject, fork: str, ordered_class_objects: dict[str, str]
+    preset_name: str,
+    spec_object: SpecObject,
+    fork: str,
+    ordered_class_objects: dict[str, str],
+    shared_types: dict[str, str] | None = None,
 ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
+
+    ``shared_types`` maps the name of a type this fork inherits unchanged to the
+    module it is inherited from. Such a type is bound to the previous fork's class
+    instead of being declared again, so that ``phase0.Slot`` and ``bellatrix.Slot``
+    are one class. The SSZ type system compares by exact type, so a value built
+    under one fork has to stay usable under the next.
     """
+    shared_types = shared_types or {}
 
     def gen_new_type_definitions(custom_types: dict[str, str]) -> str:
         return "\n\n\n".join(
-            [gen_new_type_definition(key, value) for key, value in custom_types.items()]
+            [
+                f"{key}: TypeAlias = {shared_types[key]}.{key}"
+                if key in shared_types
+                else gen_new_type_definition(key, value)
+                for key, value in custom_types.items()
+            ]
         )
 
     new_type_definitions = gen_new_type_definitions(spec_object.custom_types)
@@ -97,7 +101,10 @@ def objects_to_spec(
     ordered_class_objects = {
         k: v for k, v in ordered_class_objects.items() if k not in deprecate_containers
     }
-    ordered_class_objects_spec = "\n\n\n".join(ordered_class_objects.values())
+    ordered_class_objects_spec = "\n\n\n".join(
+        f"{k}: TypeAlias = {shared_types[k]}.{k}" if k in shared_types else v
+        for k, v in ordered_class_objects.items()
+    )
 
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
@@ -185,6 +192,8 @@ def objects_to_spec(
     execution_engine_cls = reduce(
         lambda txt, builder: builder.execution_engine_cls() or txt, builders, ""
     )
+    # Keep proof engine from the most recent fork
+    proof_engine_cls = reduce(lambda txt, builder: builder.proof_engine_cls() or txt, builders, "")
 
     # Remove deprecated constants
     deprecate_constants = reduce(
@@ -243,6 +252,7 @@ def objects_to_spec(
         functions_spec,
         sundry_functions,
         execution_engine_cls,
+        proof_engine_cls,
         ssz_dep_constants_verification,
         func_dep_presets_verification,
     ]

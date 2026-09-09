@@ -1,6 +1,6 @@
 from random import Random
 
-from eth_consensus_specs.utils.ssz.ssz_typing import Uint256
+from ssz.uint import Uint256
 
 
 class PowChain:

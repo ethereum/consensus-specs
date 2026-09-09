@@ -1,6 +1,10 @@
 from eth_consensus_specs.test.helpers.withdrawals import set_eth1_withdrawal_credential_with_balance
 
 
+def get_max_consolidation_requests(spec):
+    return spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+
+
 def prepare_switch_to_compounding_request(spec, state, validator_index, address=None):
     validator = state.validators[validator_index]
     if not spec.has_execution_withdrawal_credential(validator):

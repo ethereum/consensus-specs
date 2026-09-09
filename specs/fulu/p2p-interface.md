@@ -74,30 +74,36 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ### New `DataColumnIndices`
 
 ```python
-class DataColumnIndices(List[ColumnIndex, NUMBER_OF_COLUMNS]):
+class DataColumnIndices(List[ColumnIndex]):
     """
     The indices of the data columns being requested.
     """
+
+    LIMIT = NUMBER_OF_COLUMNS
 ```
 
 ### New `DataColumnsByRootIdentifiers`
 
 ```python
-class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]):
+class DataColumnsByRootIdentifiers(List[DataColumnsByRootIdentifier]):
     """
     The identifiers of the data column sidecars requested in a
     ``DataColumnSidecarsByRoot`` request.
     """
+
+    LIMIT = MAX_REQUEST_BLOCKS_DENEB
 ```
 
 ### New `DataColumnSidecars`
 
 ```python
-class DataColumnSidecars(List[DataColumnSidecar, compute_max_request_data_column_sidecars()]):
+class DataColumnSidecars(List[DataColumnSidecar]):
     """
     Data column sidecars returned in a ``DataColumnSidecarsByRange`` or
     ``DataColumnSidecarsByRoot`` response.
     """
+
+    LIMIT = compute_max_request_data_column_sidecars()
 ```
 
 ## Containers
@@ -119,13 +125,13 @@ class DataColumnsByRootIdentifier(Container):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
@@ -165,7 +171,7 @@ def compute_max_request_data_column_sidecars() -> Uint64:
     """
     Return the maximum number of data column sidecars in a single request.
     """
-    return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
+    return MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS
 ```
 
 ### New `verify_data_column_sidecar`
@@ -293,13 +299,12 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
-`get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
+`get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block`.
 
 ```python
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
@@ -310,6 +315,11 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
@@ -323,30 +333,10 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
-
-    # [REJECT] The proposer index is a valid validator index
-    if block.proposer_index >= len(state.validators):
-        raise GossipReject("proposer index out of range")
-
-    # [REJECT] The proposer signature is valid
-    proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
-    signing_root = compute_signing_root(block, domain)
-    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
-        raise GossipReject("invalid proposer signature")
-
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
-
-    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
-        raise GossipReject("incorrect execution payload timestamp")
 
     parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
     if block.parent_root in block_payload_statuses:
@@ -364,6 +354,23 @@ def validate_beacon_block_gossip(
     if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
         raise GossipIgnore("block's parent is valid and its payload is invalid")
 
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
@@ -376,7 +383,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Fulu:EIP7892]
     # [REJECT] The length of KZG commitments is less than or equal to the limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(block.body.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
@@ -408,7 +415,6 @@ network. Sidecars are sent in their entirety.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     sidecar: DataColumnSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -443,6 +449,18 @@ def validate_data_column_sidecar_gossip(
     if block_header.slot <= finalized_slot:
         raise GossipIgnore("sidecar is not from a slot greater than the latest finalized slot")
 
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    parent_root = block_header.parent_root
+    if parent_root not in store.blocks:
+        raise GossipIgnore("sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if parent_root not in store.block_states:
+        raise GossipReject("sidecar's parent failed validation")
+
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The proposer index is a valid validator index
     if block_header.proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
@@ -453,16 +471,6 @@ def validate_data_column_sidecar_gossip(
     signing_root = compute_signing_root(block_header, domain)
     if not bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature):
         raise GossipReject("invalid proposer signature on sidecar block header")
-
-    # [IGNORE] The sidecar's block's parent has been seen
-    # (MAY be queued for processing once the parent block is retrieved)
-    parent_root = block_header.parent_root
-    if parent_root not in store.blocks:
-        raise GossipIgnore("sidecar's parent has not been seen")
-
-    # [REJECT] The sidecar's block's parent passes validation
-    if parent_root not in store.block_states:
-        raise GossipReject("sidecar's parent failed validation")
 
     # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
     if block_header.slot <= store.blocks[parent_root].slot:

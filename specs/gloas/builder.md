@@ -205,7 +205,7 @@ def get_data_column_sidecars(
         sidecars.append(
             # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
-                index=column_index,
+                index=ColumnIndex(column_index),
                 column=column_cells,
                 kzg_proofs=column_proofs,
                 slot=slot,

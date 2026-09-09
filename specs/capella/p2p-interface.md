@@ -36,13 +36,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Capella]
     bls_to_execution_change_indices: Set[ValidatorIndex]
@@ -107,7 +107,6 @@ unconditionally enabled after The Merge, which happens before Capella.
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     block_payload_statuses: Dict[Root, PayloadValidationStatus],
@@ -118,6 +117,11 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
@@ -131,30 +135,10 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
-
-    # [REJECT] The proposer index is a valid validator index
-    if block.proposer_index >= len(state.validators):
-        raise GossipReject("proposer index out of range")
-
-    # [REJECT] The proposer signature is valid
-    proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
-    signing_root = compute_signing_root(block, domain)
-    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
-        raise GossipReject("invalid proposer signature")
-
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
-
-    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
-        raise GossipReject("incorrect execution payload timestamp")
 
     parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
     if block.parent_root in block_payload_statuses:
@@ -171,6 +155,23 @@ def validate_beacon_block_gossip(
     # [IGNORE] The block's parent passed validation but its execution payload is invalid
     if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
         raise GossipIgnore("block's parent is valid and its payload is invalid")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
@@ -198,12 +199,12 @@ def validate_beacon_block_gossip(
 
 The `bls_to_execution_change` topic is used solely for propagating signed BLS to
 execution change messages on the network. Signed messages are sent in their
-entirety. The `state` parameter is the head state.
+entirety.
 
 ```python
 def validate_bls_to_execution_change_gossip(
     seen: Seen,
-    state: BeaconState,
+    store: Store,
     signed_bls_to_execution_change: SignedBLSToExecutionChange,
     current_time_ms: Uint64,
 ) -> None:
@@ -214,17 +215,15 @@ def validate_bls_to_execution_change_gossip(
     bls_to_execution_change = signed_bls_to_execution_change.message
     validator_index = bls_to_execution_change.validator_index
 
-    # [IGNORE] The current epoch is at or after the Capella fork epoch
-    # (where current_epoch is defined by the current wall-clock time)
-    time_since_genesis_ms = current_time_ms - state.genesis_time * 1000
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
-    current_epoch = compute_epoch_at_slot(current_slot)
-    if current_epoch < CAPELLA_FORK_EPOCH:
-        raise GossipIgnore("current epoch is pre-capella")
-
     # [IGNORE] This is the first valid bls_to_execution_change received for the validator
     if validator_index in seen.bls_to_execution_change_indices:
         raise GossipIgnore("already seen BLS to execution change for this validator")
+
+    # [IGNORE] The current epoch is at or after the Capella fork epoch
+    if is_future_epoch(store, CAPELLA_FORK_EPOCH, current_time_ms):
+        raise GossipIgnore("current epoch is pre-capella")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):

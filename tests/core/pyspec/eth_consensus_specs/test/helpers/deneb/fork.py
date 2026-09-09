@@ -10,7 +10,10 @@ DENEB_FORK_TEST_META_TAGS = {
 def run_fork_test(post_spec, pre_state):
     yield "pre", pre_state
 
-    post_state = post_spec.upgrade_to_deneb(pre_state)
+    # The upgrade keeps the collections it is handed rather than copying
+    # them, so it is given a copy: the pre-state is the test's own, and is
+    # still yielded above as what the fork started from.
+    post_state = post_spec.upgrade_to_deneb(pre_state.copy())
 
     # Stable fields
     stable_fields = [

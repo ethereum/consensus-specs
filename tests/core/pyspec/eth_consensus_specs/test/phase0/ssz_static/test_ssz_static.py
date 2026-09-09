@@ -2,6 +2,8 @@ import hashlib
 from inspect import getmembers, isclass
 from random import Random
 
+from ssz.container import Container, ProgressiveContainer
+
 from eth_consensus_specs.debug import encode, random_value
 from eth_consensus_specs.test.context import (
     only_generator,
@@ -12,13 +14,10 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MAINNET, MINIMAL, TESTGEN_FORKS
+from eth_consensus_specs.test.helpers.ssz import get_soft_list_length_limits
 from eth_consensus_specs.test.utils.manifest import Manifest, manifest
 from eth_consensus_specs.test.utils.template_test import template_test
-from eth_consensus_specs.utils.ssz.ssz_impl import (
-    hash_tree_root,
-    serialize,
-)
-from eth_consensus_specs.utils.ssz.ssz_typing import Container, ProgressiveContainer
+from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10
@@ -64,11 +63,17 @@ def _template_ssz_static_tests(
 
         rng = Random(seed)
         value = random_value.get_random_ssz_object(
-            rng, ssz_type, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos
+            rng,
+            ssz_type,
+            MAX_BYTES_LENGTH,
+            MAX_LIST_LENGTH,
+            mode,
+            chaos,
+            list_length_limits=get_soft_list_length_limits(spec),
         )
         yield "value", "data", encode.encode(value)
         yield "serialized", "ssz", serialize(value)
-        roots_data = {"root": "0x" + hash_tree_root(value).hex()}
+        roots_data = {"root": "0x" + spec.hash_tree_root(value).hex()}
         yield "roots", "data", roots_data
 
     return (the_test, f"test_{unique_name}")

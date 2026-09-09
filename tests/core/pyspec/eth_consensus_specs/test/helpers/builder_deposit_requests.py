@@ -3,6 +3,10 @@ from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, bui
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
+def get_max_builder_deposit_requests(spec):
+    return spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
+
+
 def run_builder_deposit_request_processing(spec, state, builder_deposit_request):
     """
     Run process_builder_deposit_request, yielding pre/post states for test vectors.
@@ -77,7 +81,7 @@ def prepare_process_builder_deposit_request(
 
     # Phase 3: Apply state overrides (before creating request)
     if builders is not None:
-        state.builders = builders
+        state.builders = spec.Builders(data=builders)
 
     if builder_modifications is not None:
         current_epoch = spec.get_current_epoch(state)

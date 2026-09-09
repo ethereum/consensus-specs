@@ -84,7 +84,7 @@ def upgrade_to_bellatrix(pre: altair.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [New in Bellatrix]
-        latest_execution_payload_header=ExecutionPayloadHeader(),
+        latest_execution_payload_header=ExecutionPayloadHeader.empty(),
     )
 
     return post

@@ -61,7 +61,11 @@ def translate_participation(
 
         # Apply flags to all attesting validators
         epoch_participation = state.previous_epoch_participation
-        for index in get_attesting_indices(state, attestation):
+        committee = get_beacon_committee(state, data.slot, data.index)
+        attesting_indices = {
+            index for i, index in enumerate(committee) if attestation.aggregation_bits[i]
+        }
+        for index in attesting_indices:
             for flag_index in participation_flag_indices:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
 
@@ -82,6 +86,10 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
+        # [New in Altair]
+        current_sync_committee=SyncCommittee.empty(),
+        # [New in Altair]
+        next_sync_committee=SyncCommittee.empty(),
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
@@ -89,17 +97,17 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
         slashings=pre.slashings,
-        previous_epoch_participation=EpochParticipation([
-            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ]),
-        current_epoch_participation=EpochParticipation([
-            ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))
-        ]),
+        previous_epoch_participation=EpochParticipation(
+            data=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))]
+        ),
+        current_epoch_participation=EpochParticipation(
+            data=[ParticipationFlags(0b0000_0000) for _ in range(len(pre.validators))]
+        ),
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=InactivityScores([Uint64(0) for _ in range(len(pre.validators))]),
+        inactivity_scores=InactivityScores(data=[Uint64(0) for _ in range(len(pre.validators))]),
     )
     # Fill in previous epoch participation from the pre state's pending attestations
     translate_participation(post, pre.previous_epoch_attestations)

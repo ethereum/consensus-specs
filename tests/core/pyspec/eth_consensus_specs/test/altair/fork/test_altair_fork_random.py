@@ -69,8 +69,8 @@ def test_altair_fork_random_3(spec, phases, state):
 def test_altair_fork_random_duplicate_attestations(spec, phases, state):
     randomize_state(spec, state, rng=Random(1111))
     # Note: `run_fork_test` empties `current_epoch_attestations`
-    state.previous_epoch_attestations = (
-        state.previous_epoch_attestations + state.previous_epoch_attestations
+    state.previous_epoch_attestations = spec.PendingAttestations(
+        data=state.previous_epoch_attestations + state.previous_epoch_attestations
     )
     yield from run_fork_test(phases[ALTAIR], state)
 
@@ -93,8 +93,8 @@ def test_altair_fork_random_mismatched_attestations(spec, phases, state):
 
     # Note: `run_fork_test` empties `current_epoch_attestations`
     # Use pending attestations from both random states in a single state for testing
-    state_0.previous_epoch_attestations = (
-        state_0.previous_epoch_attestations + state_1.previous_epoch_attestations
+    state_0.previous_epoch_attestations = spec.PendingAttestations(
+        data=state_0.previous_epoch_attestations + state_1.previous_epoch_attestations
     )
     yield from run_fork_test(phases[ALTAIR], state_0)
 

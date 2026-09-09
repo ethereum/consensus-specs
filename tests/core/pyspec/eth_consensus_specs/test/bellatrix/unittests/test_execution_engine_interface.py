@@ -10,7 +10,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import next_slot
-from eth_consensus_specs.utils.ssz.ssz_typing import Bytes32
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
 @with_bellatrix_and_later

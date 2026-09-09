@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     run_on_block,
 )
 from eth_consensus_specs.test.helpers.inclusion_list import (
-    get_empty_signed_inclusion_list,
     get_sample_inclusion_list,
     get_sample_signed_inclusion_list,
     get_sample_transactions,
@@ -45,21 +44,14 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
 
         signed_inclusion_lists = []
 
-        # An empty IL.
-        signed_inclusion_lists.append(
-            get_empty_signed_inclusion_list(
-                spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
-            )
-        )
-
-        # An IL with empty transactions.
+        # An IL with minimal (one-byte) transactions.
         signed_inclusion_lists.append(
             get_sample_signed_inclusion_list(
                 spec,
                 forkchoice_store,
                 state,
                 validator_index=inclusion_list_committee[1],
-                max_transaction_size=0,
+                max_transaction_size=1,
                 max_transaction_count=5,
             )
         )
@@ -200,6 +192,7 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
             transactions=transactions,
         )
         signed_inclusion_list_0 = sign_inclusion_list(spec, state, inclusion_list_0)
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
 
         # Make a fork branch off the head.
         head_root = spec.get_head(forkchoice_store).root
@@ -219,15 +212,14 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
             fork_state,
             validator_index=fork_inclusion_list_committee[0],
             # Reverse transaction bytes to ensure IL0 and IL1 have different transactions.
-            transactions=[
-                spec.Transaction(transaction.encode_bytes()[::-1]) for transaction in transactions
-            ],
+            transactions=spec.Transactions(
+                data=[spec.Transaction(data=transaction[::-1]) for transaction in transactions]
+            ),
         )
         signed_inclusion_list_1 = sign_inclusion_list(spec, fork_state, inclusion_list_1)
 
         # Both inclusion lists are valid, with different dependent roots.
         assert inclusion_list_0.dependent_root != inclusion_list_1.dependent_root
-        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
         # Only the inclusion list stored under the given dependent root is returned.

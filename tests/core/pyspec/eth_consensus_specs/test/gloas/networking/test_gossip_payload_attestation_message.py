@@ -90,7 +90,6 @@ def test_gossip_payload_attestation_message__valid(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -137,12 +136,11 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -188,7 +186,6 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -238,12 +235,11 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -290,7 +286,6 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -340,12 +335,11 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
     assert result == "ignore"
-    assert reason == "payload attestation's slot is not the current slot"
+    assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -388,7 +382,6 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -407,7 +400,6 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -456,7 +448,6 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -502,7 +493,6 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -550,7 +540,6 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -606,7 +595,6 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -663,7 +651,6 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )
@@ -716,7 +703,6 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
         spec,
         seen=seen,
         store=store,
-        state=state,
         payload_attestation_message=message,
         current_time_ms=time_ms,
     )

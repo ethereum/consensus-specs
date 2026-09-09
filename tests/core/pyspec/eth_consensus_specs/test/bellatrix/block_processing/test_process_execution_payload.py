@@ -265,7 +265,7 @@ def run_non_empty_extra_data_test(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.extra_data = b"\x45" * 12
+    execution_payload.extra_data = spec.ExtraData(data=b"\x45" * 12)
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
@@ -291,9 +291,9 @@ def run_non_empty_transactions_test(spec, state):
 
     execution_payload = build_empty_execution_payload(spec, state)
     num_transactions = 2
-    execution_payload.transactions = [
-        spec.Transaction(b"\x99" * 128) for _ in range(num_transactions)
-    ]
+    execution_payload.transactions = spec.Transactions(
+        data=[spec.Transaction(data=list(b"\x99" * 128)) for _ in range(num_transactions)]
+    )
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
@@ -322,7 +322,7 @@ def run_zero_length_transaction_test(spec, state):
     next_slot(spec, state)
 
     execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.transactions = [spec.Transaction(b"")]
+    execution_payload.transactions = spec.Transactions.of(spec.Transaction(data=list(b"")))
     assert len(execution_payload.transactions[0]) == 0
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 

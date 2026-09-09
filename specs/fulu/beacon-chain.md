@@ -51,20 +51,24 @@ Fulu is a consensus-layer upgrade containing a number of features. Including:
 ### New `ProposerIndices`
 
 ```python
-class ProposerIndices(Vector[ValidatorIndex, SLOTS_PER_EPOCH]):
+class ProposerIndices(Vector[ValidatorIndex]):
     """
     The proposer indices for every slot of a single epoch.
     """
+
+    LENGTH = SLOTS_PER_EPOCH
 ```
 
 ### New `ProposerLookahead`
 
 ```python
-class ProposerLookahead(Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]):
+class ProposerLookahead(Vector[ValidatorIndex]):
     """
     The precomputed proposer indices for the current and next
     ``MIN_SEED_LOOKAHEAD`` epochs.
     """
+
+    LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 1) * Uint64(SLOTS_PER_EPOCH)
 ```
 
 ## Configs
@@ -323,14 +327,12 @@ def compute_fork_digest(
     # Bitmask digest with hash of blob parameters
     blob_parameters = get_blob_parameters(epoch)
     return ForkDigest(
-        bytes(
-            xor(
-                base_digest,
-                sha256(
-                    uint_to_bytes(Uint64(blob_parameters.epoch))
-                    + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
-                ),
-            )
+        xor(
+            base_digest,
+            sha256(
+                uint_to_bytes(Uint64(blob_parameters.epoch))
+                + uint_to_bytes(Uint64(blob_parameters.max_blobs_per_block))
+            ),
         )[:4]
     )
 ```
@@ -345,8 +347,8 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
-    return ProposerIndices(compute_proposer_index(state, indices, seed) for seed in seeds)
+    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+    return ProposerIndices(data=[compute_proposer_index(state, indices, seed) for seed in seeds])
 ```
 
 ### Beacon state accessors
@@ -411,7 +413,7 @@ for the former deposit mechanism.
 
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(
         state
     )
@@ -458,9 +460,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Regardless of how the deposit was handled, we move on in the queue.
         next_deposit_index += 1
 
-    state.pending_deposits = PendingDeposits(
-        state.pending_deposits[next_deposit_index:] + deposits_to_postpone
-    )
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
 
     # Accumulate churn only if the churn limit has been hit.
     if is_churn_limit_reached:
@@ -484,7 +484,7 @@ def process_proposer_lookahead(state: BeaconState) -> None:
     state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
     last_epoch_proposers = get_beacon_proposer_indices(
-        state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
+        state, get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1
     )
     state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
 ```

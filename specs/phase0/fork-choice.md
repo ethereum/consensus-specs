@@ -195,7 +195,7 @@ class Store:
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock]
     block_states: Dict[Root, BeaconState]
-    block_timeliness: Dict[Root, Boolean]
+    block_timeliness: Dict[Root, bool]
     checkpoint_states: Dict[Checkpoint, BeaconState]
     latest_messages: Dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: Dict[Root, Checkpoint]
@@ -229,10 +229,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         block_timeliness={},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
     )
@@ -249,7 +249,7 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+    return GENESIS_SLOT + get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -289,7 +289,7 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
     committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
-    return Gwei((committee_weight * committee_percent) // 100)
+    return (committee_weight * committee_percent) // 100
 ```
 
 #### `get_checkpoint_block`
@@ -843,7 +843,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
-        base_state = copy(store.block_states[target.root])
+        base_state = store.block_states[target.root].copy()
         if base_state.slot < compute_start_slot_at_epoch(target.epoch):
             process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
         store.checkpoint_states[target] = base_state
@@ -886,7 +886,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
     if epoch <= MIN_SEED_LOOKAHEAD:
         return GENESIS_SLOT
-    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - Slot(1)
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1
 ```
 
 ##### `get_shuffling_dependent_root`
@@ -949,7 +949,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
+    pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 

@@ -3,7 +3,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob_and_sidecars
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs_for_next_slot,
+    get_data_column_sidecars,
+)
 from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -14,6 +17,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def setup_gloas_sidecar(spec, state, block_in_store=True):
@@ -24,7 +28,9 @@ def setup_gloas_sidecar(spec, state, block_in_store=True):
     """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     if block_in_store:
         block_root = signed_block.message.hash_tree_root()
         store.blocks[block_root] = signed_block.message
@@ -43,7 +49,9 @@ def setup_gloas_failed_block_sidecar(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     pre_state = state.copy()
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     # Corrupt the block so it genuinely fails state transition, mirroring
     # setup_store_with_failed_block but for a blob-carrying block.
@@ -307,9 +315,7 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
     # Pad the column with an extra cell so its length no longer matches the
     # bid's blob commitments, causing verify_data_column_sidecar to fail.
-    sidecar.column = spec.List[spec.Cell, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        *sidecar.column, spec.Cell()
-    )
+    sidecar.column = spec.DataColumn(data=[*sidecar.column, spec.Cell()])
     yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_block), signed_block

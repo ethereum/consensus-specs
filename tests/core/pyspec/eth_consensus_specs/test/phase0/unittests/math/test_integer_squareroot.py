@@ -1,6 +1,8 @@
 import random
 from math import isqrt
 
+from ssz.exceptions import SSZValueError
+
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_test,
@@ -27,6 +29,6 @@ def test_integer_squareroot(spec):
     try:
         spec.integer_squareroot(spec.Uint64(2**64))
         bad = True
-    except ValueError:
+    except SSZValueError:
         pass
     assert not bad

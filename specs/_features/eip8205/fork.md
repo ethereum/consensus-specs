@@ -44,7 +44,7 @@ post-fork block validates a full pre-fork parent.
 
 ```python
 def upgrade_to_eip8205(pre: heze.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = heze.get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,

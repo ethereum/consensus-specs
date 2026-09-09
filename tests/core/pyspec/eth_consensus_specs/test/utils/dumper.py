@@ -3,9 +3,10 @@ from pathlib import Path
 from eth_utils import encode_hex
 from ruamel.yaml import YAML
 from snappy import compress
+from ssz.boolean import Boolean
+from ssz.uint import BaseUint as Uint
 
 from eth_consensus_specs.test import context
-from eth_consensus_specs.utils.ssz.ssz_typing import Boolean, Uint
 
 
 def _add_basic_type_representers(yaml: YAML) -> None:

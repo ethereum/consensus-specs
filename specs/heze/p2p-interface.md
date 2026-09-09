@@ -39,7 +39,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(8348)` (= ~8 KiB)     |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
 
@@ -54,11 +54,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ### New `SignedInclusionLists`
 
 ```python
-class SignedInclusionLists(List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]):
+class SignedInclusionLists(List[SignedInclusionList]):
     """
     Signed inclusion lists returned in an ``InclusionListsByIndices``
     response.
     """
+
+    LIMIT = MAX_REQUEST_INCLUSION_LIST
 ```
 
 ## Helpers
@@ -113,7 +115,7 @@ The following validations are added, assuming the alias
   inclusion lists for the slot preceding the bid's slot -- i.e.
   `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`
   returns `True`, where `inclusion_list_committee` is
-  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - Slot(1)`,
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
   `dependent_root` is
   `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
   and `store` is the fork choice store.
@@ -124,8 +126,10 @@ This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on
 the network, assuming the alias `message = signed_inclusion_list.message`:
 
+- _[IGNORE]_ The size of `message.transactions` is greater than 0.
 - _[REJECT]_ The size of `message.transactions` is within upperbound
   `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
+- _[REJECT]_ Every transaction in `message.transactions` is non-empty.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
   `message.slot == current_slot`.

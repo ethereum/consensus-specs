@@ -77,11 +77,13 @@ and use as a reference throughout.
 ### `SyncSubcommitteeBits`
 
 ```python
-class SyncSubcommitteeBits(BitVector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]):
+class SyncSubcommitteeBits(BitVector):
     """
     The participation bits of a single sync subcommittee, one bit per member
     in subcommittee order.
     """
+
+    LENGTH = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 ```
 
 ## Constants
@@ -285,7 +287,7 @@ proposer processes them as follows:
 def process_sync_committee_contributions(
     block: BeaconBlock, contributions: Set[SyncCommitteeContribution]
 ) -> None:
-    sync_aggregate = SyncAggregate()
+    sync_aggregate = SyncAggregate.empty()
     signatures = []
     sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
 
@@ -294,7 +296,7 @@ def process_sync_committee_contributions(
         for index, participated in enumerate(contribution.aggregation_bits):
             if participated:
                 participant_index = sync_subcommittee_size * subcommittee_index + index
-                sync_aggregate.sync_committee_bits[participant_index] = True
+                sync_aggregate.sync_committee_bits[participant_index] = Boolean(True)
         signatures.append(contribution.signature)
 
     sync_aggregate.sync_committee_signature = bls.Aggregate(signatures)
@@ -392,7 +394,7 @@ subcommittees.
 def compute_subnets_for_sync_committee(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Set[SubnetID]:
-    next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
+    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
         next_slot_epoch
     ):

@@ -33,7 +33,9 @@ def test_random_inactivity_scores_1(spec, state):
 def test_half_zero_half_random_inactivity_scores(spec, state):
     randomize_inactivity_scores(spec, state, rng=Random(10101))
     half_val_point = len(state.validators) // 2
-    state.inactivity_scores = [0] * half_val_point + state.inactivity_scores[half_val_point:]
+    state.inactivity_scores = spec.InactivityScores(
+        data=[0] * half_val_point + list(state.inactivity_scores[half_val_point:])
+    )
 
     yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(10101))
 
@@ -101,7 +103,9 @@ def test_random_inactivity_scores_leaking_1(spec, state):
 def test_half_zero_half_random_inactivity_scores_leaking(spec, state):
     randomize_inactivity_scores(spec, state, rng=Random(10101))
     half_val_point = len(state.validators) // 2
-    state.inactivity_scores = [0] * half_val_point + state.inactivity_scores[half_val_point:]
+    state.inactivity_scores = spec.InactivityScores(
+        data=[0] * half_val_point + list(state.inactivity_scores[half_val_point:])
+    )
 
     yield from rewards_helpers.run_test_full_random(spec, state, rng=Random(10101))
 

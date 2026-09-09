@@ -26,8 +26,12 @@ def _get_sample_sidecars(spec, state, rng):
         spec, blob_count=blob_count, rng=rng
     )
     assert opaque_tx_1 != opaque_tx_2
-    block.body.blob_kzg_commitments = blob_kzg_commitments_1 + blob_kzg_commitments_2
-    block.body.execution_payload.transactions = [opaque_tx_1, opaque_tx_2]
+    block.body.blob_kzg_commitments = spec.BlobKZGCommitments(
+        data=blob_kzg_commitments_1 + blob_kzg_commitments_2
+    )
+    block.body.execution_payload.transactions = spec.Transactions.of(
+        spec.Transaction(data=list(opaque_tx_1)), spec.Transaction(data=list(opaque_tx_2))
+    )
     block.body.execution_payload.block_hash = compute_el_block_hash(
         spec, block.body.execution_payload, state
     )
@@ -68,7 +72,5 @@ def test_blob_sidecar_inclusion_proof_incorrect_wrong_proof(spec, state):
 
     for blob_sidecar in blob_sidecars:
         # wrong proof
-        blob_sidecar.kzg_commitment_inclusion_proof = spec.compute_merkle_proof(
-            spec.BeaconBlockBody(), 0
-        )
+        blob_sidecar.kzg_commitment_inclusion_proof = spec.KZGCommitmentInclusionProof()
         assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
