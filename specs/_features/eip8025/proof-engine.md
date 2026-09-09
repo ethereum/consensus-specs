@@ -69,7 +69,7 @@ class ProofAttributes:
 ```python
 def request_proofs(
     self: ProofEngine,
-    new_payload_request: SSZNewPayloadRequest,
+    new_payload_request: NewPayloadRequest,
     chain_id: Uint64,
     schema_id: Uint16,
     proof_attributes: ProofAttributes,
