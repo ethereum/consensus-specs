@@ -13,6 +13,9 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
+    queue_length_from_profile,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -30,7 +33,7 @@ _PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"\x02
 
 _DIMS = [
     "is_full_exit_request",
-    "partial_queue_full",
+    "partial_queue_capacity",
     "validator_pubkey_found",
     "validator_credential",
     "source_address_matches",
@@ -109,9 +112,13 @@ class WithdrawalRequestMaterializer(Materializer):
                 else spec.MIN_ACTIVATION_BALANCE - 1
             )
 
-        # Pending-partial-withdrawals queue: target entry (for has_pending) + padding
-        # for partial_queue_full, keeping the queue length exactly at the limit.
+        # Pending-partial-withdrawals queue: target entry (for has_pending) +
+        # filler realizes the requested capacity profile.
         pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
+        queue_capacity = _s(sol, "partial_queue_capacity")
+        queue_length = queue_length_from_profile(
+            queue_capacity, int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
+        )
         entries = []
         if pending_for_target:
             entries.append(
@@ -121,9 +128,9 @@ class WithdrawalRequestMaterializer(Materializer):
                     withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
                 )
             )
-        if _b(sol, "partial_queue_full"):
+        if queue_length:
             filler_index = spec.ValidatorIndex(1)
-            while len(entries) < int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT):
+            while len(entries) < queue_length:
                 entries.append(
                     spec.PendingPartialWithdrawal(
                         validator_index=filler_index,

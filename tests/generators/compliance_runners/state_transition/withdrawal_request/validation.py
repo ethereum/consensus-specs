@@ -12,6 +12,9 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
+    queue_capacity_profile,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -43,8 +46,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
 
     r: dict[str, Any] = {
         "is_full_exit_request": int(request.amount) == int(spec.FULL_EXIT_REQUEST_AMOUNT),
-        "partial_queue_full": len(pre.pending_partial_withdrawals)
-        == int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT),
+        "partial_queue_capacity": queue_capacity_profile(
+            len(pre.pending_partial_withdrawals), int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
+        ),
         "validator_pubkey_found": found,
     }
 
@@ -91,7 +95,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
 
 
 def _derive(r: dict) -> str:
-    if r["partial_queue_full"] and not r["is_full_exit_request"]:
+    if r["partial_queue_capacity"] == "FULL" and not r["is_full_exit_request"]:
         return "REJECTED_QUEUE_FULL"
     if not r["validator_pubkey_found"]:
         return "REJECTED_NOT_FOUND"
