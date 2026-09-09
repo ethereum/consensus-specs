@@ -12,6 +12,12 @@ include "../../aspects/signed_message.mzn";        % shared with execution_paylo
 include "../../aspects/deposit_amount.mzn";
 include "../../aspects/builder_reset.mzn";
 
+% ---- Request withdrawal credentials -----------------------------------------
+var WithdrawalCredentialProfile: withdrawal_credentials_profile;
+constraint withdrawal_credential_ok(withdrawal_credentials_profile, true);
+var bool: wc_is_builder_prefix;
+constraint wc_is_builder_prefix <-> cred_is_builder(withdrawal_credentials_profile);
+
 % ---- Signature instance (parameterized signed_message aspect) ---------------
 % The deposit signature is a pure function of the request, so it is recoverable
 % (applicable) regardless of path — reached only on the new-builder path.

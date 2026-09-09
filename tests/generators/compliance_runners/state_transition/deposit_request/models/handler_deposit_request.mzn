@@ -15,4 +15,7 @@ include "../../aspects/withdrawal_credential.mzn";
 
 enum SignatureProfile = { VALID, INVALID };
 
+var WithdrawalCredentialProfile: withdrawal_credentials_profile;
+constraint withdrawal_credential_ok(withdrawal_credentials_profile, true);
+
 var SignatureProfile: signature_profile;
