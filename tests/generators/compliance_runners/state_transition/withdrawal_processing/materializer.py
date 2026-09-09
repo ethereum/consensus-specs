@@ -13,10 +13,7 @@ Usage:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
-import minizinc
+from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from tests.generators.compliance_runners.state_transition.aspects.base import (
@@ -24,24 +21,12 @@ from tests.generators.compliance_runners.state_transition.aspects.base import (
     Cmp,
     OpBool,
     OpCmp,
-    ValidatorCredentialKind,
-)
-from tests.generators.compliance_runners.state_transition.aspects.builder.builder import (
-    Builder as BuilderSolution,
-    is_self_builder,
-    is_sweep_eligible,
 )
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.builder_sweep import (
     BuilderSweep,
 )
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.pending_withdrawal import (
     BuilderPendingWithdrawal,
-)
-from tests.generators.compliance_runners.state_transition.aspects.validator.validator import (
-    Validator,
-)
-from tests.generators.compliance_runners.state_transition.aspects.validator_withdrawals.pending_partial_withdrawal import (
-    ValidatorPendingPartialWithdrawal,
 )
 from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.builder_pending_withdrawal_processing import (
     BuilderPendingWithdrawalProcessing,
@@ -61,20 +46,27 @@ from tests.generators.compliance_runners.state_transition.materializer.common im
     BOOL,
     CMP,
     make_base_state,
-    OP_BOOL,
     OP_CMP,
     set_parent_block,
     to_builder_solution,
 )
 
+if TYPE_CHECKING:
+    from tests.generators.compliance_runners.state_transition.aspects.builder.builder import (
+        Builder as BuilderSolution,
+    )
+    from tests.generators.compliance_runners.state_transition.aspects.validator.validator import (
+        Validator,
+    )
+    from tests.generators.compliance_runners.state_transition.aspects.validator_withdrawals.pending_partial_withdrawal import (
+        ValidatorPendingPartialWithdrawal,
+    )
+    from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.solutions import (
+        SolutionCatalog,
+    )
+
 BUILDER_ADDRESS = b"\x42" * 20
 VALIDATOR_ADDRESS = b"\x43" * 20
-
-_cred = {
-    "BLS": ValidatorCredentialKind.BLS,
-    "ETH1": ValidatorCredentialKind.ETH1,
-    "COMPOUNDING": ValidatorCredentialKind.COMPOUNDING,
-}
 
 PENDING_WITHDRAWAL_DIMS = [
     "state_latest_block_hash_match",
@@ -267,89 +259,6 @@ def _to_withdrawal_processing_solution(rec: dict[str, Any]) -> WithdrawalProcess
     )
 
 
-def _to_validator_solution(rec: dict[str, str]) -> Validator:
-    return Validator(
-        withdrawal_credential=_cred[rec["withdrawal_credential"]],
-        cmp_state_epoch_activation_epoch=CMP[rec["cmp_state_epoch_activation_epoch"]],
-        cmp_state_epoch_exit_epoch=CMP[rec["cmp_state_epoch_exit_epoch"]],
-        cmp_state_epoch_withdrawal_epoch=CMP[rec["cmp_state_epoch_withdrawal_epoch"]],
-        cmp_finalized_epoch_activation_eligibility_epoch=CMP[
-            rec["cmp_finalized_epoch_activation_eligibility_epoch"]
-        ],
-        withdrawable_epoch_set=BOOL[rec["withdrawable_epoch_set"]],
-        exit_epoch_set=BOOL[rec["exit_epoch_set"]],
-        cmp_balance_zero=CMP[rec["cmp_balance_zero"]],
-        cmp_effective_balance_min_activation_balance=CMP[
-            rec["cmp_effective_balance_min_activation_balance"]
-        ],
-        has_pending_withdrawal=BOOL[rec["has_pending_withdrawal"]],
-    )
-
-
-def _enumerate_all_builder_solutions(model_path: Path) -> list[BuilderSolution]:
-    model = minizinc.Model(str(model_path))
-    inst = minizinc.Instance(minizinc.Solver.lookup("gecode"), model)
-    result = inst.solve(all_solutions=True)
-    solutions = []
-    for sol in result:
-        b = sol.b
-        solutions.append(
-            BuilderSolution(
-                payload_builder_version=OP_BOOL[str(b["payload_builder_version"])],
-                cmp_state_epoch_deposit_epoch=OP_CMP[str(b["cmp_state_epoch_deposit_epoch"])],
-                cmp_state_epoch_withdrawal_epoch=OP_CMP[str(b["cmp_state_epoch_withdrawal_epoch"])],
-                cmp_finalized_epoch_deposit_epoch=OP_CMP[
-                    str(b["cmp_finalized_epoch_deposit_epoch"])
-                ],
-                withdrawable_epoch_set=OP_BOOL[str(b["withdrawable_epoch_set"])],
-                cmp_balance_zero=OP_CMP[str(b["cmp_balance_zero"])],
-                cmp_balance_min_deposit=OP_CMP[str(b["cmp_balance_min_deposit"])],
-                has_pending_payments=OP_BOOL[str(b["has_pending_payments"])],
-                has_pending_withdrawals=OP_BOOL[str(b["has_pending_withdrawals"])],
-            )
-        )
-    return solutions
-
-
-def _enumerate_all_pending_withdrawal_solutions(model_path: Path) -> list[BuilderPendingWithdrawal]:
-    model = minizinc.Model(str(model_path))
-    inst = minizinc.Instance(minizinc.Solver.lookup("gecode"), model)
-    result = inst.solve(all_solutions=True)
-    solutions = []
-    for sol in result:
-        w = sol.p["pending_withdrawal"]
-        builder = to_builder_solution({k: str(v) for k, v in w["builder"].items()})
-        solutions.append(
-            BuilderPendingWithdrawal(
-                builder=builder,
-                cmp_pending_amount_zero=OP_CMP[str(w["cmp_pending_amount_zero"])],
-                cmp_builder_balance_amount=OP_CMP[str(w["cmp_builder_balance_amount"])],
-            )
-        )
-    return solutions
-
-
-def _enumerate_all_validator_pending_withdrawal_solutions(
-    model_path: Path,
-) -> list[ValidatorPendingPartialWithdrawal]:
-    model = minizinc.Model(str(model_path))
-    inst = minizinc.Instance(minizinc.Solver.lookup("gecode"), model)
-    result = inst.solve(all_solutions=True)
-    solutions = []
-    for sol in result:
-        w = sol.w
-        validator = _to_validator_solution({k: str(v) for k, v in w["validator"].items()})
-        solutions.append(
-            ValidatorPendingPartialWithdrawal(
-                validator=validator,
-                withdrawable=BOOL[str(w["withdrawable"])],
-                cmp_pending_amount_zero=CMP[str(w["cmp_pending_amount_zero"])],
-                cmp_balance_amount=CMP[str(w["cmp_balance_amount"])],
-            )
-        )
-    return solutions
-
-
 def _pick_builder_queue_len(rec: dict[str, Any], limit: int) -> int:
     """Pick a concrete builder pending-withdrawal queue length from the bool dims."""
     if rec["builder_pending_withdrawals_exist"] == "F":
@@ -447,58 +356,17 @@ class WithdrawalProcessingMaterializer(Materializer):
     handler_name = "withdrawals"
 
     def __init__(
-        self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int | None = None
+        self,
+        spec: Any,
+        solutions: SolutionCatalog,
+        fork_name="gloas",
+        preset_name="minimal",
+        seed: int | None = None,
     ):
-        aspects = Path(__file__).parent.parent / "aspects"
-        self.pending_withdrawal_model_path = (
-            aspects / "withdrawal_processing" / "builder_pending_withdrawal_processing.mzn"
-        )
-        self.withdrawal_processing_model_path = (
-            aspects / "withdrawal_processing" / "withdrawal_processing.mzn"
-        )
         super().__init__(spec, fork_name, preset_name, seed)
+        self.solutions = solutions
         # Precompute the preprocessed base state once; each solution starts from a copy.
         self._base = make_base_state(spec)
-
-        builder_enum_path = aspects / "builder" / "builder_enumerate.mzn"
-        self.all_builder_solutions = _enumerate_all_builder_solutions(builder_enum_path)
-
-        bpw_enum_path = (
-            aspects / "withdrawal_processing" / "builder_pending_withdrawal_processing.mzn"
-        )
-        self.all_builder_pending_withdrawal_solutions = _enumerate_all_pending_withdrawal_solutions(
-            bpw_enum_path
-        )
-
-        vpw_enum_path = (
-            aspects / "validator_withdrawals" / "pending_partial_withdrawal_enumerate.mzn"
-        )
-        self.all_validator_pending_withdrawal_solutions = (
-            _enumerate_all_validator_pending_withdrawal_solutions(vpw_enum_path)
-        )
-
-        # Eligible builder candidates: sweep-eligible with a uniform
-        # finalized>deposit comparison, so a single global finalized epoch is
-        # consistent for every builder.
-        self._ref_candidates = [
-            bs
-            for bs in self.all_builder_solutions
-            if not is_self_builder(bs)
-            and is_sweep_eligible(bs)
-            and bs.has_pending_payments == OpBool.F
-            and bs.has_pending_withdrawals == OpBool.F
-            and bs.cmp_finalized_epoch_deposit_epoch == OpCmp.GT
-        ]
-
-        # Active (pending-withdrawal) builder candidates with no pending payment.
-        self._active_candidates = [
-            bs
-            for bs in self.all_builder_solutions
-            if not is_self_builder(bs)
-            and bs.has_pending_withdrawals == OpBool.T
-            and bs.has_pending_payments == OpBool.F
-            and bs.payload_builder_version == OpBool.T
-        ]
 
     def _materialize_validator_partial(
         self,
@@ -727,8 +595,8 @@ class WithdrawalProcessingMaterializer(Materializer):
             root=spec.Root(b"\x01" * 32),
         )
 
-        ref_bs = self.rng.choice(self._ref_candidates)
-        active_bs = self.rng.choice(self._active_candidates)
+        ref_bs = self.rng.choice(self.solutions.ref_candidates)
+        active_bs = self.rng.choice(self.solutions.active_candidates)
         eligible_set = set(positions)
         active_indices = [i for i in range(bc) if i not in eligible_set][:builder_queue_len]
         active_set = set(active_indices)
@@ -772,7 +640,7 @@ class WithdrawalProcessingMaterializer(Materializer):
             template = self.rng.choice(
                 [
                     s
-                    for s in self.all_validator_pending_withdrawal_solutions
+                    for s in self.solutions.all_validator_pending_withdrawal_solutions
                     if (s.withdrawable == Bool.T) == eligible
                 ]
             )
@@ -803,9 +671,9 @@ class WithdrawalProcessingMaterializer(Materializer):
             spec,
             pre,
             solution,
-            self.all_builder_solutions,
-            self.all_builder_pending_withdrawal_solutions,
-            self.all_validator_pending_withdrawal_solutions,
+            self.solutions.all_builder_solutions,
+            self.solutions.all_builder_pending_withdrawal_solutions,
+            self.solutions.all_validator_pending_withdrawal_solutions,
         )
 
         post = pre.copy()
