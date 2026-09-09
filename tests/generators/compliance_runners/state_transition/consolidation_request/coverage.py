@@ -24,7 +24,7 @@ from .materializer import _DIMS
 # normal/exceptional profiles use the composite validator_state factor.
 FINE_INPUT_ASPECTS = {
     "consolidation_pair": ["same_source_target"],
-    "pending_consolidations_capacity": ["pending_consolidations_full"],
+    "pending_consolidations_capacity": ["pending_consolidations_capacity"],
     "consolidation_churn": ["sufficient_consolidation_churn"],
     "validator_membership": ["validator_pubkey_found"],
     "validator_credential": ["validator_credential"],
@@ -36,7 +36,7 @@ FINE_INPUT_ASPECTS = {
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 INPUT_ASPECTS = {
     "consolidation_pair": ["same_source_target"],
-    "pending_consolidations_capacity": ["pending_consolidations_full"],
+    "pending_consolidations_capacity": ["pending_consolidations_capacity"],
     "consolidation_churn": ["sufficient_consolidation_churn"],
     "validator_state": [
         "validator_pubkey_found",
@@ -70,7 +70,8 @@ def _nfaults(r: dict) -> int:
             )
         )
 
-    faults = int(r["pending_consolidations_full"]) + int(not r["sufficient_consolidation_churn"])
+    faults = int(r["pending_consolidations_capacity"] == "FULL")
+    faults += int(not r["sufficient_consolidation_churn"])
     faults += int(not r["validator_pubkey_found"])
     faults += int(r["target_found"] != "T")
     if r["validator_pubkey_found"]:

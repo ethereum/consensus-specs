@@ -13,6 +13,9 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
+    queue_capacity_profile,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -46,8 +49,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
 
     r: dict[str, Any] = {
         "same_source_target": bool(same),
-        "pending_consolidations_full": len(pre.pending_consolidations)
-        == int(spec.PENDING_CONSOLIDATIONS_LIMIT),
+        "pending_consolidations_capacity": queue_capacity_profile(
+            len(pre.pending_consolidations), int(spec.PENDING_CONSOLIDATIONS_LIMIT)
+        ),
         "sufficient_consolidation_churn": int(spec.get_consolidation_churn_limit(pre))
         > int(spec.MIN_ACTIVATION_BALANCE),
         "validator_pubkey_found": bool(source_found),
@@ -132,7 +136,7 @@ def _derive(r: dict) -> str:
         if not src_active:
             return "SWITCH_REJECTED_INACTIVE"
         return "SWITCH_REJECTED_EXITING"
-    if r["pending_consolidations_full"]:
+    if r["pending_consolidations_capacity"] == "FULL":
         return "REJECTED_QUEUE_FULL"
     if not r["sufficient_consolidation_churn"]:
         return "REJECTED_INSUFFICIENT_CHURN"
