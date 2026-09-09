@@ -61,7 +61,7 @@ class DepositRequestMaterializer(Materializer):
         amount_profile = _s(sol, "amount_profile")
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
         signature_profile = _s(sol, "signature_profile")
-        amount = deposit_amount_from_profile(spec, amount_profile)
+        amount = deposit_amount_from_profile(spec, amount_profile, self.rng)
         withdrawal_credentials = withdrawal_credentials_from_profile(
             spec, credentials_profile, b"\x11" * 20
         )
