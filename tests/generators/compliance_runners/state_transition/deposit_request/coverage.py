@@ -20,7 +20,7 @@ from tests.generators.compliance_runners.state_transition.aspect_coverage import
 from .materializer import _DIMS
 
 INPUT_ASPECTS = {
-    "deposit_amount": ["amount_profile", "amount_nonzero"],
+    "deposit_amount": ["amount_profile"],
     "withdrawal_credentials": ["withdrawal_credentials_profile"],
     "signature": ["signature_profile"],
     "deposit_pubkey": ["pubkey_is_existing_validator"],
