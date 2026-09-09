@@ -145,7 +145,7 @@ def validate_execution_proof_gossip(
         payload_envelope,
     )
 
-    # Mark the authenticated proof and prover attempt as seen before proof verification
+    # Mark the authenticated proof and prover attempt as seen
     if beacon_block_root not in seen.execution_proof_roots:
         seen.execution_proof_roots[beacon_block_root] = set()
     seen.execution_proof_roots[beacon_block_root].add(proof_root)
