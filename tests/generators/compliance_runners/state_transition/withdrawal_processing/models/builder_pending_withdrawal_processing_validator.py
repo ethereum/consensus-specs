@@ -5,7 +5,7 @@ from tests.generators.compliance_runners.state_transition.aspects.base import (
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.pending_withdrawal_validator import (
     pending_withdrawal_validator,
 )
-from tests.generators.compliance_runners.state_transition.aspects.withdrawal_processing.builder_pending_withdrawal_processing import (
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing import (
     BuilderPendingWithdrawalProcessing,
 )
 
