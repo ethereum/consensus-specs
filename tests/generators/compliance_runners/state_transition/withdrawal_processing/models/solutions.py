@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-import minizinc
-
 from tests.generators.compliance_runners.state_transition.aspects.base import (
     OpBool,
     OpCmp,
@@ -30,6 +28,7 @@ from tests.generators.compliance_runners.state_transition.materializer.common im
     CMP,
     OP_BOOL,
     OP_CMP,
+    solve_all_solutions,
     to_builder_solution,
 )
 from tests.generators.compliance_runners.state_transition.withdrawal_processing.models import (
@@ -106,8 +105,7 @@ def _to_validator_solution(rec: dict[str, str]) -> Validator:
 
 
 def enumerate_all_builder_solutions(model_path: Path) -> list[BuilderSolution]:
-    model = minizinc.Model(str(model_path))
-    result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
+    result = solve_all_solutions(model_path)
     return [
         BuilderSolution(
             payload_builder_version=OP_BOOL[str(sol.b["payload_builder_version"])],
@@ -129,8 +127,7 @@ def enumerate_all_builder_solutions(model_path: Path) -> list[BuilderSolution]:
 def enumerate_all_pending_withdrawal_solutions(
     model_path: Path,
 ) -> list[BuilderPendingWithdrawal]:
-    model = minizinc.Model(str(model_path))
-    result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
+    result = solve_all_solutions(model_path)
     return [
         BuilderPendingWithdrawal(
             builder=to_builder_solution(
@@ -150,8 +147,7 @@ def enumerate_all_pending_withdrawal_solutions(
 def enumerate_all_validator_pending_withdrawal_solutions(
     model_path: Path,
 ) -> list[ValidatorPendingPartialWithdrawal]:
-    model = minizinc.Model(str(model_path))
-    result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
+    result = solve_all_solutions(model_path)
     return [
         ValidatorPendingPartialWithdrawal(
             validator=_to_validator_solution({k: str(v) for k, v in sol.w["validator"].items()}),
