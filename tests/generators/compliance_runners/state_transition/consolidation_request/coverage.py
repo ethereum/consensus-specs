@@ -64,7 +64,7 @@ def _nfaults(r: dict) -> int:
         return sum(
             (
                 r["source_address_matches"] != "T",
-                r["validator_credential"] != "CRED_ETH1",
+                r["validator_credential"] != "ETH1",
                 r["validator_active"] != "T",
                 r["validator_exiting"] == "T",
             )

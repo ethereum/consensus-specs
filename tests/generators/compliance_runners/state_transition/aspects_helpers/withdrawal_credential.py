@@ -15,11 +15,16 @@ def _withdrawal_credential_prefixes(spec: Any) -> dict[str, bytes]:
 
 
 def withdrawal_credentials_from_profile(spec: Any, profile: str, address_tail: bytes) -> bytes:
-    return _withdrawal_credential_prefixes(spec)[profile] + b"\x00" * 11 + address_tail
+    prefix = _withdrawal_credential_prefixes(spec).get(profile)
+    if profile == "OTHER":
+        prefix = b"\xff"
+    if prefix is None:
+        raise ValueError(f"Cannot materialize withdrawal credential profile: {profile}")
+    return prefix + b"\x00" * 11 + address_tail
 
 
 def withdrawal_credentials_profile(spec: Any, credentials: Any) -> str:
     profiles = {
         prefix: profile for profile, prefix in _withdrawal_credential_prefixes(spec).items()
     }
-    return profiles.get(bytes(credentials[:1]), "UNKNOWN")
+    return profiles.get(bytes(credentials[:1]), "OTHER")
