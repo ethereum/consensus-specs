@@ -27,11 +27,13 @@ from tests.generators.compliance_runners.state_transition.withdrawal_processing.
     _normalize_withdrawal_processing,
     WithdrawalProcessingMaterializer,
 )
-
-ASPECTS_DIR = Path(__file__).parent.parent / "aspects" / "withdrawal_processing"
-
-PENDING_MODEL = ASPECTS_DIR / "builder_pending_withdrawal_processing.mzn"
-WITHDRAWAL_PROCESSING_MODEL = ASPECTS_DIR / "withdrawal_processing.mzn"
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models import (
+    PENDING_MODEL,
+    WITHDRAWAL_PROCESSING_MODEL,
+)
+from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.solutions import (
+    get_solution_catalog,
+)
 
 # --- builder_pending_withdrawal_processing ---
 
@@ -138,7 +140,7 @@ def build_profile(name: str) -> tuple[int, list[dict]]:
 
 
 def materialize_profile(name: str) -> int:
-    materializer = WithdrawalProcessingMaterializer(spec)
+    materializer = WithdrawalProcessingMaterializer(spec, get_solution_catalog())
     solutions = []
     for model_path, normalize, aspects in _MODELS:
         sol_by_sig = {

@@ -4,12 +4,17 @@ from . import validation
 from .coverage import (
     _build_profile,
     _normalize_pending_withdrawal,
+    get_solution_catalog,
     PENDING_ASPECTS,
     PENDING_MODEL,
 )
 from .materializer import WithdrawalProcessingMaterializer
 
-MATERIALIZER = WithdrawalProcessingMaterializer
+
+def MATERIALIZER(spec, **kwargs):
+    return WithdrawalProcessingMaterializer(spec, get_solution_catalog(), **kwargs)
+
+
 validate_case = validation.validate_case
 
 
