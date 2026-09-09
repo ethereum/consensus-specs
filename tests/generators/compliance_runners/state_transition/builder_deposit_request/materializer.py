@@ -35,7 +35,6 @@ _DIMS = [
     "builder_pubkey_found",
     "builder_signature_valid",
     "amount_profile",
-    "amount_nonzero",
     "builder_withdrawable_epoch_set",
     "builder_balance_zero",
     "reset_applies",
