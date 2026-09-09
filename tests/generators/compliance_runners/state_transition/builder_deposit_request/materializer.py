@@ -98,7 +98,7 @@ class BuilderDepositRequestMaterializer(Materializer):
             )
 
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
-        wc = withdrawal_credentials_from_profile(spec, credentials_profile, address_tail)
+        wc = withdrawal_credentials_from_profile(spec, credentials_profile, address_tail, self.rng)
         amount = deposit_amount_from_profile(spec, _s(sol, "amount_profile"), self.rng)
 
         request = spec.BuilderDepositRequest(
