@@ -599,7 +599,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Gloas:EIP7732]
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
@@ -1365,6 +1365,17 @@ Response Content:
 Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
+
+Clients MUST respond with execution payload envelopes from their view of the
+current fork choice -- that is, envelopes of payloads that are part of the
+single chain defined by the current head. A payload is part of that chain if the
+next block in the chain builds on it, i.e. the `parent_block_hash` of that
+block's execution payload bid equals the `block_hash` of the payload. For the
+head block, the payload is part of the chain if the head `ForkChoiceNode` has
+`payload_status` equal to `PAYLOAD_STATUS_FULL`. Clients MUST NOT include
+envelopes for blocks whose `ForkChoiceNode` in that chain has `payload_status`
+equal to `PAYLOAD_STATUS_EMPTY`. For slots before the finalization, that chain
+leads to the finalized block reported in the `Status` handshake.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
