@@ -14,6 +14,9 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
+    queue_length_from_profile,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -31,7 +34,7 @@ _SRC_PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"
 
 _DIMS = [
     "same_source_target",
-    "pending_consolidations_full",
+    "pending_consolidations_capacity",
     "sufficient_consolidation_churn",
     "validator_pubkey_found",
     "validator_credential",
@@ -140,14 +143,18 @@ class ConsolidationRequestMaterializer(Materializer):
             )
 
         # ---- pending consolidations queue --------------------------------------
-        if _b(sol, "pending_consolidations_full"):
+        queue_capacity = _s(sol, "pending_consolidations_capacity")
+        queue_length = queue_length_from_profile(
+            queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT)
+        )
+        if queue_length:
             pre.pending_consolidations = spec.PendingConsolidations(
                 data=[
                     spec.PendingConsolidation(
                         source_index=spec.ValidatorIndex(2),
                         target_index=spec.ValidatorIndex(3),
                     )
-                    for _ in range(int(spec.PENDING_CONSOLIDATIONS_LIMIT))
+                    for _ in range(queue_length)
                 ]
             )
 
