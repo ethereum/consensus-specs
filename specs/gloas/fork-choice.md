@@ -628,7 +628,8 @@ def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoice
 ### Modified `get_head`
 
 *Note*: Modified to use `get_payload_status_tiebreaker` to break the ties
-between *full* and *empty* nodes.
+between *full* and *empty* nodes including a guard that ensures that *pending*
+node is never returned.
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
@@ -636,9 +637,8 @@ def get_head(store: Store) -> ForkChoiceNode:
     filtered_node_tree = get_filtered_node_tree(store)
 
     # [New in Gloas:EIP7732]
+    # Return empty node if there are no viable nodes
     if not any(filtered_node_tree):
-        # Return empty node if there are no viable nodes
-        # to ensure that head is never a pending node
         return ForkChoiceNode(
             root=store.justified_checkpoint.root,
             payload_status=PAYLOAD_STATUS_EMPTY,
