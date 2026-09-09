@@ -45,7 +45,6 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "builder_pubkey_found": found,
         "builder_signature_valid": _tri(bool(spec.is_valid_builder_deposit_signature(request))),
         "amount_profile": deposit_amount_profile(spec, request.amount),
-        "amount_nonzero": int(request.amount) > 0,
     }
 
     if found:
