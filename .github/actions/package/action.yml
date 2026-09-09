@@ -1,12 +1,16 @@
 name: Package tests
 description: >-
-  Download intermediate test artifacts, archive them into a tarball, and delete
-  the intermediates. The caller is responsible for uploading the tarball.
+  Download intermediate test artifacts, archive them into a tarball, persist
+  the tarball as a workflow artifact, and delete the intermediates.
 
 inputs:
   name:
-    description: Tarball name (without .tar.gz) and key used in artifact filtering.
+    description: Key used in artifact filtering.
     required: true
+  tarball:
+    description: Tarball name without .tar.gz. Defaults to name.
+    required: false
+    default: ''
   artifact-prefix:
     description: Prefix for intermediate artifact names.
     required: true
@@ -41,8 +45,14 @@ runs:
             --format=gnu \
             --use-compress-program='gzip --no-name' \
             --create \
-            --file=${{ inputs.name }}.tar.gz \
+            --file=${{ inputs.tarball || inputs.name }}.tar.gz \
             ${{ inputs.source-path }}
+
+    - name: Upload packaged tarball
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        path: ${{ inputs.tarball || inputs.name }}.tar.gz
+        archive: false
 
     - name: Delete intermediate artifacts
       shell: bash
