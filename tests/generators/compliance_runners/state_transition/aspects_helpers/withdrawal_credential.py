@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from random import Random
 
 
 def _withdrawal_credential_prefixes(spec: Any) -> dict[str, bytes]:
@@ -14,13 +17,20 @@ def _withdrawal_credential_prefixes(spec: Any) -> dict[str, bytes]:
     }
 
 
-def withdrawal_credentials_from_profile(spec: Any, profile: str, address_tail: bytes) -> bytes:
-    prefix = _withdrawal_credential_prefixes(spec).get(profile)
+def withdrawal_credentials_from_profile(
+    spec: Any, profile: str, address_tail: bytes, rng: Random
+) -> bytes:
+    prefixes = _withdrawal_credential_prefixes(spec)
+    prefix = prefixes.get(profile)
     if profile == "OTHER":
-        prefix = b"\xff"
+        known_prefixes = set(prefixes.values())
+        prefix = bytes([rng.randrange(256)])
+        while prefix in known_prefixes:
+            prefix = bytes([rng.randrange(256)])
     if prefix is None:
         raise ValueError(f"Cannot materialize withdrawal credential profile: {profile}")
-    return prefix + b"\x00" * 11 + address_tail
+    padding = rng.getrandbits(88).to_bytes(11, "big")
+    return prefix + padding + address_tail
 
 
 def withdrawal_credentials_profile(spec: Any, credentials: Any) -> str:

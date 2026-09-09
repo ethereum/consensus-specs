@@ -84,7 +84,7 @@ class ConsolidationRequestMaterializer(Materializer):
     ) -> None:
         spec = self.spec
         v.withdrawal_credentials = spec.Bytes32(
-            withdrawal_credentials_from_profile(spec, credential_profile, ADDRESS)
+            withdrawal_credentials_from_profile(spec, credential_profile, ADDRESS, self.rng)
         )
         activation, exit_epoch = self._epochs(active, exiting, old_enough)
         v.activation_epoch = spec.Epoch(activation)
@@ -148,7 +148,7 @@ class ConsolidationRequestMaterializer(Materializer):
         # ---- pending consolidations queue --------------------------------------
         queue_capacity = _s(sol, "pending_consolidations_capacity")
         queue_length = queue_length_from_profile(
-            queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT)
+            queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT), self.rng
         )
         if queue_length:
             pre.pending_consolidations = spec.PendingConsolidations(

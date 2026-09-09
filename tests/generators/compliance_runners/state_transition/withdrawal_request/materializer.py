@@ -98,7 +98,7 @@ class WithdrawalRequestMaterializer(Materializer):
             v = pre.validators[TARGET_INDEX]
             cred = _s(sol, "validator_credential")
             v.withdrawal_credentials = spec.Bytes32(
-                withdrawal_credentials_from_profile(spec, cred, ADDRESS)
+                withdrawal_credentials_from_profile(spec, cred, ADDRESS, self.rng)
             )
             source_address = ADDRESS if _s(sol, "source_address_matches") == "T" else OTHER_ADDRESS
 
@@ -120,7 +120,7 @@ class WithdrawalRequestMaterializer(Materializer):
         pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
         queue_capacity = _s(sol, "partial_queue_capacity")
         queue_length = queue_length_from_profile(
-            queue_capacity, int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
+            queue_capacity, int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT), self.rng
         )
         entries = []
         if pending_for_target:
