@@ -36,6 +36,13 @@ OP_CMP = {"LT": OpCmp.LT, "EQ": OpCmp.EQ, "GT": OpCmp.GT, "NA_CMP": OpCmp.NA}
 OP_BOOL = {"F": OpBool.F, "T": OpBool.T, "NA_BOOL": OpBool.NA}
 
 
+def solve_all_solutions(model_path: Path, **kwargs: Any) -> Any:
+    """Solve a MiniZinc model with the standard Gecode all-solutions setup."""
+    model = minizinc.Model(str(model_path))
+    instance = minizinc.Instance(minizinc.Solver.lookup("gecode"), model)
+    return instance.solve(all_solutions=True, **kwargs)
+
+
 def to_builder_solution(rec: dict[str, Any]) -> BuilderSolution:
     """Build a Builder solution from a flat {dim: string} record."""
     return BuilderSolution(
@@ -156,10 +163,6 @@ class BaseMaterializer:
         return len(reps), verified_count
 
     def materialize_all(self, output_dir: Path, timeout_s: int = 300) -> tuple[int, int]:
-        model = minizinc.Model(str(self.model_path))
-        result = minizinc.Instance(
-            minizinc.Solver.lookup("gecode"),
-            model,
-        ).solve(all_solutions=True, timeout=timedelta(seconds=timeout_s))
+        result = solve_all_solutions(self.model_path, timeout=timedelta(seconds=timeout_s))
         reps = list(result)
         return self.materialize_reps(output_dir, reps)

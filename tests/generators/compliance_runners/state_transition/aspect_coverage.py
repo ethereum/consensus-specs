@@ -23,7 +23,9 @@ from collections.abc import Callable
 from itertools import combinations
 from typing import TYPE_CHECKING
 
-import minizinc
+from tests.generators.compliance_runners.state_transition.materializer.common import (
+    solve_all_solutions,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,8 +50,7 @@ def enumerate_signatures(
     Dedups by the full aspect signature, keeping the lowest-`rank` representative.
     """
     rank = rank or (lambda _r: 0)
-    model = minizinc.Model(str(model_path))
-    result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
+    result = solve_all_solutions(model_path)
     reps: dict[tuple, dict] = {}
     for sol in result:
         rec = {n: (bool(v) if isinstance(v := getattr(sol, n), bool) else str(v)) for n in dims}
