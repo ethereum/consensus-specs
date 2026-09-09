@@ -8,7 +8,7 @@
 % Spec: specs/electra/beacon-chain.md process_withdrawal_request (inherited by gloas).
 
 include "../../aspects/withdrawal_amount.mzn";
-include "../../aspects/partial_queue_capacity.mzn";
+include "../../aspects/queue_capacity.mzn";
 include "../../aspects/validator_membership.mzn";
 include "../../aspects/validator_credential.mzn";     % parameterized
 include "../../aspects/validator_lifecycle.mzn";      % parameterized
@@ -16,6 +16,11 @@ include "../../aspects/validator_seasoning.mzn";      % parameterized
 include "../../aspects/source_authorization.mzn";     % shared with builder_exit_request
 include "../../aspects/validator_pending_withdrawal.mzn";
 include "../../aspects/validator_balance.mzn";
+
+% ---- Pending-partial-withdrawals queue --------------------------------------
+var QueueCapacity: partial_queue_capacity;
+var bool: partial_queue_full;
+constraint queue_capacity_ok(partial_queue_capacity, partial_queue_full);
 
 % ---- Validator instance (single role) ---------------------------------------
 var ValidatorCredentialKind: validator_credential;
@@ -38,6 +43,8 @@ constraint validator_has_compounding_credential <-> cred_has_compounding(validat
 constraint source_authorization_applicable <-> validator_pubkey_found;
 constraint validator_pending_applicable    <-> validator_pubkey_found;
 constraint validator_balance_applicable    <-> validator_pubkey_found;
+% An empty queue cannot contain a pending withdrawal for the resolved target.
+constraint partial_queue_capacity == EMPTY -> has_pending_partial_withdrawal != T;
 
 % ---- Gate passes (spec order) -----------------------------------------------
 var bool: g_cred        = validator_has_execution_credential /\ source_address_matches == T;

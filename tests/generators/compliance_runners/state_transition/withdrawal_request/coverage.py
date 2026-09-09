@@ -24,7 +24,7 @@ from .materializer import _DIMS
 # normal/exceptional profiles use the composite validator_state factor.
 FINE_INPUT_ASPECTS = {
     "withdrawal_amount": ["is_full_exit_request"],
-    "partial_queue_capacity": ["partial_queue_full"],
+    "partial_queue_capacity": ["partial_queue_capacity"],
     "validator_membership": ["validator_pubkey_found"],
     "validator_credential": ["validator_credential"],
     "source_authorization": ["source_address_matches"],
@@ -35,7 +35,7 @@ FINE_INPUT_ASPECTS = {
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 INPUT_ASPECTS = {
     "withdrawal_amount": ["is_full_exit_request"],
-    "partial_queue_capacity": ["partial_queue_full"],
+    "partial_queue_capacity": ["partial_queue_capacity"],
     "validator_state": [
         "validator_pubkey_found",
         "validator_credential",
@@ -54,7 +54,7 @@ MODEL = Path(__file__).parent / "models" / "handler_withdrawal_request.mzn"
 
 
 def _nfaults(r: dict) -> int:
-    faults = int(r["partial_queue_full"] and not r["is_full_exit_request"])
+    faults = int(r["partial_queue_capacity"] == "FULL" and not r["is_full_exit_request"])
     faults += int(not r["validator_pubkey_found"])
     if r["validator_pubkey_found"]:
         faults += int(
