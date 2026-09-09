@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from random import Random
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from random import Random
 
 
 def deposit_amount_from_profile(spec: Any, profile: str, rng: Random) -> int:
