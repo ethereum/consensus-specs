@@ -22,6 +22,7 @@
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
+  - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
@@ -66,13 +67,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 These constants supersede
 [type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
-for the corresponding variable-size libp2p messages.
+for the corresponding variable-size libp2p messages. The bound for
+`DataColumnSidecar` is given by `compute_max_data_column_sidecar_size()`.
 
 | Name                                    | Value                         |
 | --------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
 ## Configs
@@ -295,6 +296,29 @@ def verify_data_column_sidecar(
         return False
 
     return True
+```
+
+### New `compute_max_data_column_sidecar_size`
+
+```python
+def compute_max_data_column_sidecar_size() -> Uint64:
+    """
+    Return the maximum size of a serialized ``DataColumnSidecar`` computed
+    using the largest ``max_blobs_per_block`` value from the blob schedule,
+    regardless of whether or not that is the current ``max_blobs_per_block``.
+    """
+    max_blobs = MAX_BLOBS_PER_BLOCK_ELECTRA
+    for entry in BLOB_SCHEDULE:
+        max_blobs = max(max_blobs, entry["MAX_BLOBS_PER_BLOCK"])
+
+    sidecar = DataColumnSidecar(
+        index=ColumnIndex(),
+        column=DataColumn(data=[Cell()] * max_blobs),
+        kzg_proofs=KZGProofs(data=[KZGProof()] * max_blobs),
+        slot=Slot(),
+        beacon_block_root=Root(),
+    )
+    return Uint64(len(ssz_serialize(sidecar)))
 ```
 
 ### New `is_current_or_next_slot`
