@@ -15,6 +15,9 @@ from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+    withdrawal_credentials_profile,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -28,15 +31,6 @@ _ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}
 
 def _tri(x: bool) -> str:
     return "T" if x else "F"
-
-
-def _credential(v: Any) -> str:
-    prefix = bytes(v.withdrawal_credentials[:1])
-    if prefix == bytes(spec.COMPOUNDING_WITHDRAWAL_PREFIX):
-        return "CRED_COMPOUNDING"
-    if prefix == bytes(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX):
-        return "CRED_ETH1"
-    return "CRED_BLS"
 
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
@@ -56,7 +50,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         idx = spec.ValidatorIndex(pubkeys.index(request.validator_pubkey))
         v = pre.validators[idx]
         pending = int(spec.get_pending_balance_to_withdraw(pre, idx))
-        r["validator_credential"] = _credential(v)
+        r["validator_credential"] = withdrawal_credentials_profile(spec, v.withdrawal_credentials)
         r["validator_has_execution_credential"] = bool(spec.has_execution_withdrawal_credential(v))
         r["validator_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(v)

@@ -16,6 +16,9 @@ from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+    withdrawal_credentials_profile,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -29,15 +32,6 @@ _ACCEPT = {"SWITCHED_TO_COMPOUNDING", "CONSOLIDATED"}
 
 def _tri(x: bool) -> str:
     return "T" if x else "F"
-
-
-def _credential(v: Any) -> str:
-    prefix = bytes(v.withdrawal_credentials[:1])
-    if prefix == bytes(spec.COMPOUNDING_WITHDRAWAL_PREFIX):
-        return "CRED_COMPOUNDING"
-    if prefix == bytes(spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX):
-        return "CRED_ETH1"
-    return "CRED_BLS"
 
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
@@ -60,7 +54,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     if source_found:
         sv = pre.validators[val_pubkeys.index(request.source_pubkey)]
         sidx = spec.ValidatorIndex(val_pubkeys.index(request.source_pubkey))
-        r["validator_credential"] = _credential(sv)
+        r["validator_credential"] = withdrawal_credentials_profile(spec, sv.withdrawal_credentials)
         r["validator_has_execution_credential"] = bool(spec.has_execution_withdrawal_credential(sv))
         r["validator_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(sv)
@@ -95,7 +89,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     elif request.target_pubkey in val_pubkeys:
         tv = pre.validators[val_pubkeys.index(request.target_pubkey)]
         r["target_found"] = "T"
-        r["target_credential"] = _credential(tv)
+        r["target_credential"] = withdrawal_credentials_profile(spec, tv.withdrawal_credentials)
         r["target_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(tv)
         )
@@ -117,7 +111,7 @@ def _derive(r: dict) -> str:
     same = r["same_source_target"]
     src_found = r["validator_pubkey_found"]
     src_auth = r["source_address_matches"] == "T"
-    src_eth1 = r["validator_credential"] == "CRED_ETH1"
+    src_eth1 = r["validator_credential"] == "ETH1"
     src_exec = r["validator_has_execution_credential"]
     src_active = r["validator_active"] == "T"
     src_exiting = r["validator_exiting"] == "T"

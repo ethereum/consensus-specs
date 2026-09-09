@@ -11,18 +11,18 @@ include "../../aspects/consolidation_pair.mzn";
 include "../../aspects/pending_consolidations_capacity.mzn";
 include "../../aspects/consolidation_churn.mzn";
 include "../../aspects/validator_membership.mzn";     % source membership (validator_pubkey_found)
-include "../../aspects/validator_credential.mzn";     % parameterized (source + target)
+include "../../aspects/withdrawal_credential.mzn";    % parameterized (source + target)
 include "../../aspects/validator_lifecycle.mzn";      % parameterized (source + target)
 include "../../aspects/validator_seasoning.mzn";      % parameterized (source only)
 include "../../aspects/source_authorization.mzn";     % shared with builder_exit / withdrawal
 include "../../aspects/validator_pending_withdrawal.mzn";  % source
 
 % ---- Source validator instance ----------------------------------------------
-var ValidatorCredentialKind: validator_credential;
+var WithdrawalCredentialProfile: validator_credential;
 var BOOLV_NA: validator_active;
 var BOOLV_NA: validator_exiting;
 var BOOLV_NA: validator_old_enough;
-constraint validator_credential_ok(validator_credential, validator_pubkey_found);
+constraint withdrawal_credential_ok(validator_credential, validator_pubkey_found);
 constraint validator_lifecycle_ok(validator_active, validator_exiting, validator_pubkey_found);
 constraint validator_seasoning_ok(validator_old_enough, validator_pubkey_found);
 constraint (validator_old_enough == T /\ validator_exiting == F) -> (validator_active == T);
@@ -41,10 +41,10 @@ var BOOLV_NA: target_found;
 constraint (target_found == NA) <-> same_source_target;
 var bool: target_role_found = (not same_source_target) /\ target_found == T;
 
-var ValidatorCredentialKind: target_credential;
+var WithdrawalCredentialProfile: target_credential;
 var BOOLV_NA: target_active;
 var BOOLV_NA: target_exiting;
-constraint validator_credential_ok(target_credential, target_role_found);
+constraint withdrawal_credential_ok(target_credential, target_role_found);
 constraint validator_lifecycle_ok(target_active, target_exiting, target_role_found);
 
 var bool: target_has_compounding_credential;
@@ -53,7 +53,7 @@ constraint target_has_compounding_credential <-> cred_has_compounding(target_cre
 % ---- Source predicates ------------------------------------------------------
 var bool: source_found      = validator_pubkey_found;
 var bool: source_authorized = source_address_matches == T;
-var bool: source_is_eth1    = validator_credential == CRED_ETH1;
+var bool: source_is_eth1    = cred_is_eth1(validator_credential);
 var bool: source_active     = validator_active == T;
 var bool: source_exiting    = validator_exiting == T;
 var bool: source_old_enough = validator_old_enough == T;

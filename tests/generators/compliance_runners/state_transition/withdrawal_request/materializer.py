@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_length_from_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+    withdrawal_credentials_from_profile,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -28,8 +31,6 @@ CURRENT_EPOCH = 70  # > SHARD_COMMITTEE_PERIOD (64), for old-enough headroom
 ADDRESS = b"\x22" * 20
 OTHER_ADDRESS = b"\x33" * 20
 PARTIAL_AMOUNT = 10**9
-
-_PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"\x02"}
 
 _DIMS = [
     "is_full_exit_request",
@@ -96,7 +97,9 @@ class WithdrawalRequestMaterializer(Materializer):
         if found:
             v = pre.validators[TARGET_INDEX]
             cred = _s(sol, "validator_credential")
-            v.withdrawal_credentials = spec.Bytes32(_PREFIX[cred] + b"\x00" * 11 + ADDRESS)
+            v.withdrawal_credentials = spec.Bytes32(
+                withdrawal_credentials_from_profile(spec, cred, ADDRESS)
+            )
             source_address = ADDRESS if _s(sol, "source_address_matches") == "T" else OTHER_ADDRESS
 
             activation, exit_epoch = self._epochs(

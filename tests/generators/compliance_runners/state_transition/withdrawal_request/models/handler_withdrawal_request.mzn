@@ -10,7 +10,7 @@
 include "../../aspects/withdrawal_amount.mzn";
 include "../../aspects/queue_capacity.mzn";
 include "../../aspects/validator_membership.mzn";
-include "../../aspects/validator_credential.mzn";     % parameterized
+include "../../aspects/withdrawal_credential.mzn";    % parameterized
 include "../../aspects/validator_lifecycle.mzn";      % parameterized
 include "../../aspects/validator_seasoning.mzn";      % parameterized
 include "../../aspects/source_authorization.mzn";     % shared with builder_exit_request
@@ -23,11 +23,11 @@ var bool: partial_queue_full;
 constraint queue_capacity_ok(partial_queue_capacity, partial_queue_full);
 
 % ---- Validator instance (single role) ---------------------------------------
-var ValidatorCredentialKind: validator_credential;
+var WithdrawalCredentialProfile: validator_credential;
 var BOOLV_NA: validator_active;
 var BOOLV_NA: validator_exiting;
 var BOOLV_NA: validator_old_enough;
-constraint validator_credential_ok(validator_credential, validator_pubkey_found);
+constraint withdrawal_credential_ok(validator_credential, validator_pubkey_found);
 constraint validator_lifecycle_ok(validator_active, validator_exiting, validator_pubkey_found);
 constraint validator_seasoning_ok(validator_old_enough, validator_pubkey_found);
 % lifecycle/seasoning coherence: an activated (old-enough), non-exiting validator is active
