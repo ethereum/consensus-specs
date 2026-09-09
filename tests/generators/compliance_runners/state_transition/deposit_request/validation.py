@@ -33,7 +33,6 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     amount = int(request.amount)
     return {
         "amount_profile": deposit_amount_profile(spec, amount),
-        "amount_nonzero": amount > 0,
         "withdrawal_credentials_profile": withdrawal_credentials_profile(
             spec, request.withdrawal_credentials
         ),
