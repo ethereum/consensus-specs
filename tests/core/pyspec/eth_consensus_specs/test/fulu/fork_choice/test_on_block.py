@@ -1,5 +1,3 @@
-# TODO(jtraglia): for all tests in this file, consider adding support for Gloas later
-
 from random import Random
 
 from eth_consensus_specs.test.context import (
