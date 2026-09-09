@@ -17,6 +17,9 @@ from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_length_from_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
+    withdrawal_credentials_from_profile,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -29,8 +32,6 @@ TARGET_INDEX = 1
 CURRENT_EPOCH = 70
 ADDRESS = b"\x22" * 20
 OTHER_ADDRESS = b"\x33" * 20
-
-_SRC_PREFIX = {"CRED_BLS": b"\x00", "CRED_ETH1": b"\x01", "CRED_COMPOUNDING": b"\x02"}
 
 _DIMS = [
     "same_source_target",
@@ -79,10 +80,12 @@ class ConsolidationRequestMaterializer(Materializer):
         return activation, exit_epoch
 
     def _set_validator(
-        self, v: Any, prefix: bytes, active: bool, exiting: bool, old_enough: bool
+        self, v: Any, credential_profile: str, active: bool, exiting: bool, old_enough: bool
     ) -> None:
         spec = self.spec
-        v.withdrawal_credentials = spec.Bytes32(prefix + b"\x00" * 11 + ADDRESS)
+        v.withdrawal_credentials = spec.Bytes32(
+            withdrawal_credentials_from_profile(spec, credential_profile, ADDRESS)
+        )
         activation, exit_epoch = self._epochs(active, exiting, old_enough)
         v.activation_epoch = spec.Epoch(activation)
         v.exit_epoch = spec.Epoch(exit_epoch)
@@ -106,7 +109,7 @@ class ConsolidationRequestMaterializer(Materializer):
         if source_found:
             self._set_validator(
                 pre.validators[SOURCE_INDEX],
-                _SRC_PREFIX[_s(sol, "validator_credential")],
+                _s(sol, "validator_credential"),
                 _s(sol, "validator_active") == "T",
                 _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
@@ -123,7 +126,7 @@ class ConsolidationRequestMaterializer(Materializer):
         elif _s(sol, "target_found") == "T":
             self._set_validator(
                 pre.validators[TARGET_INDEX],
-                _SRC_PREFIX[_s(sol, "target_credential")],
+                _s(sol, "target_credential"),
                 _s(sol, "target_active") == "T",
                 _s(sol, "target_exiting") == "T",
                 old_enough=True,
