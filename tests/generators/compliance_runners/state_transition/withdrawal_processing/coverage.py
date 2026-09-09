@@ -18,10 +18,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import minizinc
-
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.aspect_coverage import cover, signature
+from tests.generators.compliance_runners.state_transition.materializer.common import (
+    solve_all_solutions,
+)
 from tests.generators.compliance_runners.state_transition.withdrawal_processing.materializer import (
     _normalize_pending_withdrawal,
     _normalize_withdrawal_processing,
@@ -107,8 +108,7 @@ _MODELS = [
 
 def _pairs(model_path: Path, normalize, aspects: dict) -> list[tuple]:
     """Distinct (solution, record) pairs, deduplicated by aspect signature."""
-    model = minizinc.Model(str(model_path))
-    result = minizinc.Instance(minizinc.Solver.lookup("gecode"), model).solve(all_solutions=True)
+    result = solve_all_solutions(model_path)
     seen: dict = {}
     for sol in result:
         rec = normalize(sol)
