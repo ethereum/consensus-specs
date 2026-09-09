@@ -31,7 +31,6 @@ INVALID_SIGNATURE = b"\x00" * 96  # not verified by this handler
 
 _DIMS = [
     "amount_profile",
-    "amount_nonzero",
     "withdrawal_credentials_profile",
     "signature_profile",
     "pubkey_is_existing_validator",
