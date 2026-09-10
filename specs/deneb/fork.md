@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Deneb](#fork-to-deneb)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -14,7 +14,7 @@
 
 This document describes the process of Deneb upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -54,9 +54,9 @@ def upgrade_to_deneb(pre: capella.BeaconState) -> BeaconState:
         transactions_root=pre.latest_execution_payload_header.transactions_root,
         withdrawals_root=pre.latest_execution_payload_header.withdrawals_root,
         # [New in Deneb:EIP4844]
-        blob_gas_used=uint64(0),
+        blob_gas_used=Uint64(0),
         # [New in Deneb:EIP4844]
-        excess_blob_gas=uint64(0),
+        excess_blob_gas=Uint64(0),
     )
     post = BeaconState(
         genesis_time=pre.genesis_time,

@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Capella](#fork-to-capella)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -14,7 +14,7 @@
 
 This document describes the process of the Capella upgrade.
 
-## Configuration
+## Configs
 
 | Name                   | Value                                            |
 | ---------------------- | ------------------------------------------------ |
@@ -73,6 +73,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [Modified in Capella]
             current_version=CAPELLA_FORK_VERSION,
             epoch=epoch,
         ),
@@ -102,7 +103,7 @@ def upgrade_to_capella(pre: bellatrix.BeaconState) -> BeaconState:
         # [New in Capella]
         next_withdrawal_validator_index=ValidatorIndex(0),
         # [New in Capella]
-        historical_summaries=List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]([]),
+        historical_summaries=HistoricalSummaries(),
     )
 
     return post

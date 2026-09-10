@@ -42,9 +42,9 @@ specifications before continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
-    block_value: uint256
+    block_value: Uint256
 ```
 
 ## Protocols
@@ -53,7 +53,15 @@ class GetPayloadResponse(object):
 
 #### Modified `get_payload`
 
-`get_payload` returns the upgraded Capella `ExecutionPayload` type.
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload and Uint256 objects.
+    """
+```
 
 ## Beacon chain responsibilities
 

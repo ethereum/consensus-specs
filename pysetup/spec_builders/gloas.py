@@ -1,4 +1,5 @@
-from ..constants import GLOAS
+from pysetup.constants import GLOAS
+
 from .base import BaseSpecBuilder
 
 
@@ -8,22 +9,113 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.fulu import {preset_name} as fulu
+from ssz.bitfields import ProgressiveBitList
+from ssz.container import active_fields, ProgressiveContainer
+
+from eth_consensus_specs.fulu import {preset_name} as fulu
 """
 
     @classmethod
-    def deprecate_constants(cls) -> set[str]:
-        return set(
-            [
-                "EXECUTION_PAYLOAD_GINDEX",
-            ]
-        )
+    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
+        return {
+            "FINALIZED_ROOT_GINDEX_GLOAS": "GeneralizedIndex(735)",
+            "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS": "GeneralizedIndex(2945)",
+            "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS": "GeneralizedIndex(2946)",
+            "EXECUTION_BLOCK_HASH_GINDEX": "GeneralizedIndex(412)",
+            "EXECUTION_BLOCK_HASH_GINDEX_DENEB": "GeneralizedIndex(812)",
+            "EXECUTION_BLOCK_HASH_GINDEX_GLOAS": "GeneralizedIndex(2856)",
+        }
 
     @classmethod
     def deprecate_presets(cls) -> set[str]:
-        return set(
-            [
-                "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
-                "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
-            ]
-        )
+        return {
+            "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
+            "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
+        }
+
+    @classmethod
+    def deprecate_constants(cls) -> set[str]:
+        return {
+            "MAX_DEPOSIT_REQUESTS_PER_PAYLOAD",
+        }
+
+    @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return {
+            "ExecutionPayloadHeader",
+            "KZGCommitmentsInclusionProof",
+            "OptionalPartialDataColumnHeader",
+            "PartialDataColumnHeader",
+        }
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "compute_proposer_index",
+            "get_activation_exit_churn_limit",
+            "get_balance_churn_limit",
+            "initialize_proposer_lookahead",
+            "process_execution_payload",
+            "retrieve_column_sidecars",
+            "upgrade_lc_bootstrap_to_electra",
+            "upgrade_lc_finality_update_to_electra",
+            "upgrade_lc_header_to_electra",
+            "upgrade_lc_optimistic_update_to_electra",
+            "upgrade_lc_store_to_electra",
+            "upgrade_lc_update_to_electra",
+            "upgrade_to_fulu",
+            "verify_data_column_sidecar_inclusion_proof",
+            "verify_partial_data_column_header_inclusion_proof",
+        }
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return """
+class NoopExecutionEngine(ExecutionEngine):
+
+    def notify_new_payload(self: ExecutionEngine,
+                           execution_payload: ExecutionPayload,
+                           parent_beacon_block_root: Root,
+                           execution_requests_list: Sequence[bytes]) -> bool:
+        return True
+
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes],
+                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
+        pass
+
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+        raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine,
+                            execution_payload: ExecutionPayload,
+                            parent_beacon_block_root: Root,
+                            execution_requests_list: Sequence[bytes]) -> bool:
+        return True
+
+    def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+
+EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return """
+def retrieve_column_sidecars_and_kzg_commitments(
+    beacon_block_root: Root
+) -> tuple[Sequence[DataColumnSidecar], BlobKZGCommitments]:
+    return [], BlobKZGCommitments()
+
+_get_parent_payload_status = get_parent_payload_status
+get_parent_payload_status = cache_this(
+    lambda store, block: block.hash_tree_root(),
+    _get_parent_payload_status, lru_size=1024)
+"""

@@ -10,7 +10,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
@@ -100,18 +100,18 @@ specifications before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name                               | Value         |    Unit    |
-| ---------------------------------- | ------------- | :--------: |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+| Name                               | Value                 |
+| ---------------------------------- | --------------------- |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) |
 
-## Configuration
+## Configs
 
 ### Time parameters
 
-| Name                  | Value          |     Unit     |          Duration          |
-| --------------------- | -------------- | :----------: | :------------------------: |
-| `ATTESTATION_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS`   | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                  | Value          | Duration                   |
+| --------------------- | -------------- | -------------------------- |
+| `ATTESTATION_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS`   | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -119,9 +119,9 @@ specifications before continuing and use as a reference throughout.
 
 ```python
 class Eth1Block(Container):
-    timestamp: uint64
+    timestamp: Uint64
     deposit_root: Root
-    deposit_count: uint64
+    deposit_count: Uint64
     # All other eth1 block fields
 ```
 
@@ -172,7 +172,7 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
 `withdrawal_credentials` field must be such that:
 
 - `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-- `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+- `withdrawal_credentials[1:] == sha256(bls_withdrawal_pubkey)[1:]`
 
 *Note*: The `bls_withdrawal_privkey` is not required for validating and can be
 kept in cold storage.
@@ -234,10 +234,10 @@ be activated when total deposits for the validator pubkey meet or exceed
 Deposits cannot be processed into the beacon chain until the proof-of-work block
 in which they were deposited or any of its descendants is added to the beacon
 chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1
-blocks (~8 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~6.8 hours). Once
-the requisite proof-of-work block data is added, the deposit will normally be
-added to a beacon-chain block and processed into the `state.validators` within
-an epoch or two. The validator is then in a queue to be activated.
+blocks plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs. Once the requisite
+proof-of-work block data is added, the deposit will normally be added to a
+beacon-chain block and processed into the `state.validators` within an epoch or
+two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -254,7 +254,7 @@ any point and should be stored locally.
 
 In normal operation, the validator is quickly activated, at which point the
 validator is added to the shuffling and begins validation after an additional
-`MAX_SEED_LOOKAHEAD` epochs (25.6 minutes).
+`MAX_SEED_LOOKAHEAD` epochs.
 
 The function [`is_active_validator`](./beacon-chain.md#is_active_validator) can
 be used to check if a validator is active during a given epoch. Usage is as
@@ -291,7 +291,7 @@ def get_committee_assignment(
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -375,13 +375,13 @@ To propose, the validator selects a `BeaconBlock`, `parent` using this process:
 
 1. Compute fork choice's view of the head at the start of `slot`, after running
    `on_tick` and applying any queued attestations from `slot - 1`. Set
-   `head_root = get_head(store)`.
+   `head_node = get_head(store)`.
 2. Compute the _proposer head_, which is the head upon which the proposer SHOULD
    build in order to incentivise timely block propagation by other validators.
-   Set `parent_root = get_proposer_head(store, head_root, slot)`. A proposer may
-   set `parent_root == head_root` if proposer re-orgs are not implemented or
+   Set `parent_node = get_proposer_head(store, head_node, slot)`. A proposer may
+   set `parent_node == head_node` if proposer re-orgs are not implemented or
    have been disabled.
-3. Let `parent` be the block with `parent_root`.
+3. Let `parent` be the block with `parent_node.root`.
 
 The validator creates, signs, and broadcasts a `block` that is a child of
 `parent` and satisfies a valid
@@ -390,8 +390,7 @@ Note that the parent's slot must be strictly less than the slot of the block
 about to be proposed, i.e. `parent.slot < slot`.
 
 There is one proposer per slot, so if there are N active validators any
-individual validator will on average be assigned to propose once per N slots
-(e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
+individual validator will on average be assigned to propose once per N slots.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
@@ -460,15 +459,15 @@ An honest block proposer sets
 `block.body.eth1_data = get_eth1_vote(state, eth1_chain)` where:
 
 ```python
-def voting_period_start_time(state: BeaconState) -> uint64:
-    eth1_voting_period_start_slot = Slot(
-        state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
+def voting_period_start_time(state: BeaconState) -> Uint64:
+    eth1_voting_period_start_slot = state.slot - state.slot % (
+        Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
 
 ```python
-def is_candidate_block(block: Eth1Block, period_start: uint64) -> bool:
+def is_candidate_block(block: Eth1Block, period_start: Uint64) -> bool:
     return (
         block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE <= period_start
         and block.timestamp + SECONDS_PER_ETH1_BLOCK * ETH1_FOLLOW_DISTANCE * 2 >= period_start
@@ -584,7 +583,7 @@ root for this purpose:
 ```python
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
     temp_state: BeaconState = state.copy()
-    signed_block = SignedBeaconBlock(message=block)
+    signed_block = SignedBeaconBlock(message=block, signature=BLSSignature())
     state_transition(temp_state, signed_block, validate_result=False)
     return hash_tree_root(temp_state)
 ```
@@ -611,8 +610,8 @@ validator performs this role during an epoch are defined by
 A validator should create and broadcast the `attestation` to the associated
 attestation subnet when either (a) the validator has received a valid block from
 the expected block proposer for the assigned `slot` or (b)
-`get_attestation_due_ms(epoch)` milliseconds has transpired since the start of
-the slot -- whichever comes first.
+`get_attestation_due_ms()` milliseconds has transpired since the start of the
+slot -- whichever comes first.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG
 finality, these initial attestations do give weight to the fork choice, are
@@ -651,7 +650,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 
 - Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
 - Let
-  `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
+  `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(head_state, get_current_epoch(head_state))`.
 
 #### Construct attestation
 
@@ -666,9 +665,9 @@ Set `attestation.data = attestation_data` where `attestation_data` is the
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the
-  bit of the index of the validator in the `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be an `AggregationBits` of length
+  `len(committee)`, where the bit of the index of the validator in the
+  `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation)` should return a list
 of length equal to 1, containing `validator_index`.
@@ -701,13 +700,13 @@ The `subnet_id` for the `attestation` is calculated with:
 
 ```python
 def compute_subnet_for_attestation(
-    committees_per_slot: uint64, slot: Slot, committee_index: CommitteeIndex
+    committees_per_slot: Uint64, slot: Slot, committee_index: CommitteeIndex
 ) -> SubnetID:
     """
     Compute the correct subnet for an attestation for Phase 0.
     Note, this mimics expected future behavior where attestations will be mapped to their shard subnet.
     """
-    slots_since_epoch_start = uint64(slot % SLOTS_PER_EPOCH)
+    slots_since_epoch_start = Uint64(slot % SLOTS_PER_EPOCH)
     committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
 
     return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT)
@@ -736,7 +735,7 @@ def is_aggregator(
 ) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate
@@ -757,9 +756,9 @@ being aggregated.
 
 ##### Aggregation bits
 
-Let `aggregate_attestation.aggregation_bits` be a
-`Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each
-bit set from each individual attestation is set to `0b1`.
+Let `aggregate_attestation.aggregation_bits` be an `AggregationBits` of length
+`len(committee)`, where each bit set from each individual attestation is set to
+`0b1`.
 
 ##### Aggregate signature
 
@@ -776,8 +775,8 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 their best aggregate as a `SignedAggregateAndProof` to the global aggregate
-channel (`beacon_aggregate_and_proof`) `get_aggregate_due_ms(epoch)`
-milliseconds into the slot.
+channel (`beacon_aggregate_and_proof`) `get_aggregate_due_ms()` milliseconds
+into the slot.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.

@@ -1,0 +1,231 @@
+import random
+
+from frozendict import frozendict
+
+from eth_consensus_specs.test.context import (
+    spec_configured_state_test,
+    with_fulu_and_later,
+)
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs,
+    build_block_with_blobs_for_next_slot,
+    get_max_blob_count,
+)
+from eth_consensus_specs.test.helpers.block import sign_block
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_state_with_complete_transition,
+)
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_gloas,
+)
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    run_validate_gossip,
+    wrap_genesis_block,
+)
+
+
+@with_fulu_and_later
+@spec_configured_state_test(
+    {
+        "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),),
+    },
+    activate_at_genesis=True,
+)
+def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
+    """
+    Test that a block carrying exactly ``get_blob_parameters().max_blobs_per_block``
+    blob kzg commitments passes gossip validation under EIP-7892.
+    """
+    yield "topic", "meta", "beacon_block"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    rng = random.Random(1234)
+    max_blobs = get_max_blob_count(spec, state.slot + 1)
+    # Sanity check: the BLOB_SCHEDULE override should be exercising the Fulu
+    # code path (`get_blob_parameters`), not the Electra fallback. A client that
+    # forgets EIP-7892 and uses MAX_BLOBS_PER_BLOCK_ELECTRA would reject this block.
+    assert max_blobs > spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
+    block, _, _, _ = build_block_with_blobs_for_next_slot(
+        spec, state, rng=rng, blob_count=max_blobs
+    )
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+
+    yield get_filename(signed_block), signed_block
+
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        **kwargs,
+    )
+    assert result == "valid"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 500,
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
+    )
+
+
+@with_fulu_and_later
+@spec_configured_state_test(
+    {
+        "BLOB_SCHEDULE": (
+            frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),
+            frozendict({"EPOCH": 1, "MAX_BLOBS_PER_BLOCK": 21}),
+        ),
+    },
+    activate_at_genesis=True,
+)
+def test_gossip_beacon_block__reject_next_epoch_blob_limit_at_epoch_end(spec, state):
+    """A block at epoch 0's last slot carrying epoch 1's blob limit is rejected."""
+    yield "topic", "meta", "beacon_block"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    rng = random.Random(1234)
+    slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    current_max_blobs = get_max_blob_count(spec, slot)
+    next_max_blobs = get_max_blob_count(spec, slot + 1)
+    assert next_max_blobs > current_max_blobs
+    block, _, _, _ = build_block_with_blobs(
+        spec, state, rng=rng, blob_count=next_max_blobs, slot=slot
+    )
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+
+    yield get_filename(signed_block), signed_block
+
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        **kwargs,
+    )
+    assert result == "reject"
+    assert reason == "too many blob kzg commitments"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 500,
+                "message": get_filename(signed_block),
+                "expected": "reject",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_fulu_and_later
+@spec_configured_state_test(
+    {
+        "BLOB_SCHEDULE": (
+            frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),
+            frozendict({"EPOCH": 1, "MAX_BLOBS_PER_BLOCK": 21}),
+        ),
+    },
+    activate_at_genesis=True,
+)
+def test_gossip_beacon_block__valid_previous_epoch_blob_limit_plus_one_at_epoch_start(spec, state):
+    """A block at epoch 1's first slot carrying epoch 0's blob limit plus one is valid."""
+    yield "topic", "meta", "beacon_block"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    rng = random.Random(1234)
+    slot = spec.Slot(spec.SLOTS_PER_EPOCH)
+    previous_max_blobs = get_max_blob_count(spec, slot - 1)
+    current_max_blobs = get_max_blob_count(spec, slot)
+    blob_count = previous_max_blobs + 1
+    assert blob_count < current_max_blobs
+    block, _, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=blob_count, slot=slot)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+
+    yield get_filename(signed_block), signed_block
+
+    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        **kwargs,
+    )
+    assert result == "valid"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 500,
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
+    )

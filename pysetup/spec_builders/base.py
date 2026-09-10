@@ -5,7 +5,7 @@ class BaseSpecBuilder(ABC):
     @property
     @abstractmethod
     def fork(self) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
@@ -40,6 +40,10 @@ class BaseSpecBuilder(ABC):
         return ""
 
     @classmethod
+    def proof_engine_cls(cls) -> str:
+        return ""
+
+    @classmethod
     def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         """
         The constants that are required for SSZ objects.
@@ -60,4 +64,12 @@ class BaseSpecBuilder(ABC):
 
     @classmethod
     def deprecate_presets(cls) -> set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
         return set()

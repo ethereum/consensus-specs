@@ -26,7 +26,7 @@ before processing.
 def upgrade_lc_header_to_capella(pre: altair.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
-        execution=ExecutionPayloadHeader(),
+        execution=ExecutionPayloadHeader.empty(),
         execution_branch=ExecutionBranch(),
     )
 ```

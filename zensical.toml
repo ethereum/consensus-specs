@@ -1,0 +1,39 @@
+[project]
+site_name = "Ethereum Consensus Specs"
+site_url = "https://ethereum.github.io/consensus-specs/"
+repo_url = "https://github.com/ethereum/consensus-specs"
+repo_name = "ethereum/consensus-specs"
+
+[project.theme]
+features = [
+  "navigation.indexes",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "black"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "black"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/ethereum/consensus-specs"
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.highlight]
+linenums = true
+anchor_linenums = true
+
+[project.markdown_extensions.mdx_truly_sane_lists]
+nested_indent = 4

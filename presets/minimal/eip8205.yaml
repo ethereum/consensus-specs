@@ -1,0 +1,10 @@
+# Minimal preset - EIP8205
+
+# Execution
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD: 4
+# [customized] 2**6 (= 64)
+PREREGISTRATIONS_LIMIT: 64
+# [customized] 2**6 (= 64)
+PREREGISTRATION_EXPIRY_SLOTS: 64

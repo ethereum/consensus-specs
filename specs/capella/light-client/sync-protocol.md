@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `ExecutionBranch`](#new-executionbranch)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -26,16 +27,23 @@ as part of the Capella upgrade. It extends the
 The [fork document](./fork.md) explains how to upgrade existing Altair based
 deployments to Capella.
 
-Additional documents describes the impact of the upgrade on certain roles:
+Additional documents describe the impact of the upgrade on certain roles:
 
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
 ## Types
 
-| Name              | SSZ equivalent                                         | Description                                                   |
-| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
-| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
+### New `ExecutionBranch`
+
+```python
+class ExecutionBranch(Vector[Bytes32]):
+    """
+    A Merkle branch proving ``execution_payload`` within ``BeaconBlockBody``.
+    """
+
+    LENGTH = floorlog2(EXECUTION_PAYLOAD_GINDEX)
+```
 
 ## Constants
 
@@ -108,7 +116,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # [Modified in Capella]
     finalized_header: LightClientHeader
     current_sync_committee: SyncCommittee
@@ -117,8 +125,8 @@ class LightClientStore(object):
     best_valid_update: Optional[LightClientUpdate]
     # [Modified in Capella]
     optimistic_header: LightClientHeader
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
 ## Helpers
@@ -143,7 +151,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
-            header.execution == ExecutionPayloadHeader()
+            header.execution == ExecutionPayloadHeader.empty()
             and header.execution_branch == ExecutionBranch()
         )
 

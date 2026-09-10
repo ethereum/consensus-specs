@@ -17,7 +17,7 @@ This upgrade updates light client data to include the Deneb changes to the
 The [fork document](./fork.md) explains how to upgrade existing Capella based
 deployments to Deneb.
 
-Additional documents describes the impact of the upgrade on certain roles:
+Additional documents describe the impact of the upgrade on certain roles:
 
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
@@ -66,14 +66,14 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
     # [New in Deneb:EIP4844]
     if epoch < DENEB_FORK_EPOCH:
-        if header.execution.blob_gas_used != uint64(0):
+        if header.execution.blob_gas_used != 0:
             return False
-        if header.execution.excess_blob_gas != uint64(0):
+        if header.execution.excess_blob_gas != 0:
             return False
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
-            header.execution == ExecutionPayloadHeader()
+            header.execution == ExecutionPayloadHeader.empty()
             and header.execution_branch == ExecutionBranch()
         )
 

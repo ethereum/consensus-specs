@@ -1,29 +1,5 @@
-#!/usr/bin/env python3
-"""
-Standalone script to generate Ethereum consensus specs from markdown files.
-
-This script parses markdown specification files and generates Python modules
-for each fork (phase0, altair, bellatrix, capella, deneb, electra, etc.)
-with different presets (minimal, mainnet).
-
-The generated Python modules are written to the output directory and can be
-imported as part of the eth2spec package.
-
-Usage:
-    python pysetup/generate_specs.py [options]
-
-    # Generate all forks to default location
-    python pysetup/generate_specs.py --all-forks
-
-    # Generate specific fork
-    python pysetup/generate_specs.py --fork phase0 --out-dir ./output
-
-Dependencies:
-    - marko: Markdown parsing
-    - ruamel.yaml: YAML config/preset loading
-"""
-
 import argparse
+import ast
 import copy
 import sys
 from collections import OrderedDict
@@ -32,12 +8,7 @@ from functools import cache
 from pathlib import Path
 from typing import cast
 
-try:
-    from ruamel.yaml import YAML
-except ImportError:
-    print("Error: Missing required dependencies.", file=sys.stderr)
-    print("Run: uv sync --all-extras", file=sys.stderr)
-    sys.exit(1)
+from ruamel.yaml import YAML
 
 from pysetup.constants import PHASE0
 from pysetup.helpers import (
@@ -47,7 +18,7 @@ from pysetup.helpers import (
     objects_to_spec,
     parse_config_vars,
 )
-from pysetup.md_doc_paths import get_md_doc_paths
+from pysetup.md_doc_paths import get_md_doc_paths, PREVIOUS_FORK_OF
 from pysetup.md_to_spec import MarkdownToSpec
 from pysetup.spec_builders import spec_builders
 from pysetup.typing import BuildTarget, SpecObject  # type: ignore[attr-defined]
@@ -79,7 +50,7 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return cast(dict[str, str], parse_config_vars(preset))
+    return cast("dict[str, str]", parse_config_vars(preset))
 
 
 @cache
@@ -127,12 +98,61 @@ def build_spec(
     new_objects: dict[str, str] = {}
     while OrderedDict(new_objects) != OrderedDict(class_objects):
         new_objects = copy.deepcopy(class_objects)
-        dependency_order_class_objects(
-            class_objects,
-            spec_object.custom_types,
-        )
+        dependency_order_class_objects(class_objects)
 
-    return objects_to_spec(preset_name, spec_object, fork, class_objects)
+    # Names this fork's own documents declare, as opposed to the ones it inherits.
+    redefined: set[str] = set()
+    for source_file, parsed in zip(source_files, all_specs, strict=True):
+        if f"/{fork}/" not in source_file.as_posix():
+            continue
+        redefined |= set(parsed.custom_types)
+        redefined |= set(parsed.ssz_objects)
+        redefined |= set(parsed.dataclasses)
+
+    shared_types = collect_shared_types(fork, redefined, spec_object, class_objects)
+
+    return objects_to_spec(preset_name, spec_object, fork, class_objects, shared_types)
+
+
+def collect_shared_types(
+    fork: str,
+    redefined: set[str],
+    spec_object: SpecObject,
+    class_objects: dict[str, str],
+) -> dict[str, str]:
+    """
+    Find the types this fork inherits unchanged, mapped to the module they come from.
+
+    The SSZ type system compares by exact type, so a ``Slot`` built under one fork
+    must be the same class as the next fork's ``Slot``, and a container handed to
+    ``upgrade_to_<fork>`` must be an instance of the field's declared class. Binding
+    an unchanged type to the previous fork's class is what makes that hold.
+
+    A type counts as unchanged only when this fork's own documents neither declare
+    it nor declare anything it is built from -- a container holding a redefined
+    field type is a different shape, and has to be declared again here.
+    """
+    previous = PREVIOUS_FORK_OF[fork]
+    if previous is None:
+        return {}
+
+    definitions = {**spec_object.custom_types, **class_objects}
+    # What each definition is built from, read as code rather than as text: a
+    # docstring that says which container a branch proves against does not make
+    # the branch depend on that container.
+    built_from = {
+        name: {node.id for node in ast.walk(ast.parse(text)) if isinstance(node, ast.Name)}
+        for name, text in definitions.items()
+    }
+
+    redefined = set(redefined)
+    candidates = set(definitions) - redefined
+    # Whatever is built from a redefined type is itself redefined. Settle it.
+    while newly_redefined := {n for n in candidates if built_from[n] & redefined}:
+        candidates -= newly_redefined
+        redefined |= newly_redefined
+
+    return dict.fromkeys(sorted(candidates), previous)
 
 
 def parse_build_targets(targets_str: str) -> list[BuildTarget]:
@@ -256,7 +276,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate all forks to default location (tests/core/pyspec/eth2spec/)
+  # Generate all forks to default location (tests/core/pyspec/eth_consensus_specs/)
   python pysetup/generate_specs.py --all-forks
 
   # Generate specific fork
@@ -288,7 +308,7 @@ Examples:
         "--out-dir",
         type=Path,
         default=None,
-        help="Output directory (default: tests/core/pyspec/eth2spec/<fork>)",
+        help="Output directory (default: tests/core/pyspec/eth_consensus_specs/<fork>)",
     )
 
     parser.add_argument(
@@ -336,7 +356,7 @@ Examples:
             if args.out_dir:
                 out_dir = args.out_dir
             else:
-                out_dir = Path("tests/core/pyspec/eth2spec") / fork
+                out_dir = Path("tests/core/pyspec/eth_consensus_specs") / fork
 
             generate_fork_specs(
                 fork=fork,

@@ -1,9 +1,21 @@
-from ..constants import PHASE0
+from pysetup.constants import PHASE0
+
 from .base import BaseSpecBuilder
 
 
 class Phase0SpecBuilder(BaseSpecBuilder):
     fork: str = PHASE0
+
+    @classmethod
+    def classes(cls) -> str:
+        return """
+class GossipIgnore(Exception):
+    pass
+
+
+class GossipReject(Exception):
+    pass
+"""
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
@@ -13,23 +25,27 @@ from dataclasses import (
     dataclass,
     field,
 )
+from hashlib import sha256 as sha256_hash
 from typing import (
-    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
+    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
-from eth2spec.utils.ssz.ssz_typing import (
-    View, boolean, Container, List, Vector, uint8, uint32, uint64, uint256,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist)
-from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
-from eth2spec.utils import bls
-from eth2spec.utils.hash_function import hash
+from ssz.bitfields import BitList, BitVector
+from ssz.boolean import Boolean
+from ssz.collections import List, ProgressiveList, Vector
+from ssz.container import Container
+from ssz.ssz_base import SSZType
+from ssz.uint import BaseUint as Uint, Byte, Uint8, Uint16, Uint32, Uint64, Uint256
+from eth_consensus_specs.utils.ssz.bytes import (
+    Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96)
+from eth_consensus_specs.utils.ssz.ssz_impl import ssz_deserialize, ssz_serialize
+from eth_consensus_specs.utils import bls
 """
 
     @classmethod
     def preparations(cls) -> str:
         return """
-SSZObject = TypeVar('SSZObject', bound=View)
+SSZObject = TypeVar('SSZObject', bound=SSZType)
 """
 
     @classmethod
@@ -42,13 +58,13 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
     return Eth1Data(
         deposit_root=block.deposit_root,
         deposit_count=block.deposit_count,
-        block_hash=hash_tree_root(block))
+        block_hash=Hash32(hash_tree_root(block)))
 
 
-def cache_this(key_fn, value_fn, lru_size):  # type: ignore
+def cache_this(key_fn, value_fn, lru_size):
     cache_dict = LRU(size=lru_size)
 
-    def wrapper(*args, **kw):  # type: ignore
+    def wrapper(*args, **kw):
         key = key_fn(*args, **kw)
         if key not in cache_dict:
             cache_dict[key] = value_fn(*args, **kw)
@@ -56,10 +72,10 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
     return wrapper
 
 
-_compute_shuffled_index = compute_shuffled_index
-compute_shuffled_index = cache_this(
-    lambda index, index_count, seed: (index, index_count, seed),
-    _compute_shuffled_index, lru_size=SLOTS_PER_EPOCH * 3)
+_compute_shuffled_permutation = compute_shuffled_permutation
+compute_shuffled_permutation = cache_this(
+    lambda index_count, seed: (index_count, seed),
+    _compute_shuffled_permutation, lru_size=256)
 
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(
@@ -85,16 +101,6 @@ _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
     _get_beacon_committee, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)
-
-_get_matching_target_attestations = get_matching_target_attestations
-get_matching_target_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_target_attestations, lru_size=10)
-
-_get_matching_head_attestations = get_matching_head_attestations
-get_matching_head_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_head_attestations, lru_size=10)
 
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(

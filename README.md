@@ -1,120 +1,70 @@
-# Ethereum Proof-of-Stake Consensus Specifications
+# Ethereum Consensus Specifications
 
-[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
-[![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
-[![nightly-reftests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml)
+[![tests](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
+[![image](https://img.shields.io/pypi/v/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
+[![image](https://img.shields.io/pypi/l/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.gg/qGpsxSA)
 
-This repository hosts the current Ethereum
+This repository hosts the Ethereum
 [proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
-specifications. Discussions about design rationale and proposed changes can be
-brought up and discussed as issues. Solidified, agreed-upon changes to the
-specifications can be made through pull requests.
+specifications for consensus-layer clients. Design rationale and proposed
+changes are discussed in issues. Agreed-upon changes are made through pull
+requests. Specifications can be found in [specs](specs), arranged by upgrade.
+Each upgrade builds on the previous, specifying only what it changes. Individual
+[features](specs/_features) are developed in parallel and are folded into an
+upgrade when ready.
 
-## Specifications
+### Stable specifications
 
-Core specifications for Ethereum proof-of-stake clients can be found in
-[specs](specs). These are divided into features. Features are researched and
-developed in parallel, and then consolidated into sequential upgrades when
-ready.
+| Seq. | Code Name     | Fork Epoch | Link                    |
+| ---- | ------------- | ---------- | ----------------------- |
+| 0    | **Phase0**    | `0`        | [Spec](specs/phase0)    |
+| 1    | **Altair**    | `74240`    | [Spec](specs/altair)    |
+| 2    | **Bellatrix** | `144896`   | [Spec](specs/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Spec](specs/capella)   |
+| 4    | **Deneb**     | `269568`   | [Spec](specs/deneb)     |
+| 5    | **Electra**   | `364032`   | [Spec](specs/electra)   |
+| 6    | **Fulu**      | `411392`   | [Spec](specs/fulu)      |
 
-### Stable Specifications
+### Unstable specifications
 
-| Seq. | Code Name     | Fork Epoch | Links                                                                        |
-| ---- | ------------- | ---------- | ---------------------------------------------------------------------------- |
-| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth2spec/test/phase0)       |
-| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth2spec/test/altair)       |
-| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
-| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
-| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
-| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
-| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)           |
+| Seq. | Code Name | Fork Epoch | Link                |
+| ---- | --------- | ---------- | ------------------- |
+| 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
+| 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
-### In-development Specifications
+### Rendered viewers
 
-| Seq. | Code Name | Fork Epoch | Links                                                                |
-| ---- | --------- | ---------- | -------------------------------------------------------------------- |
-| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
-
-### Accompanying documents
-
-- [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
-- [Merkle proof formats](ssz/merkle-proofs.md)
-- [General test format](tests/formats/README.md)
-
-### External specifications
-
-Additional specifications and standards outside of requisite client
-functionality can be found in the following repositories:
-
-- [Beacon APIs](https://github.com/ethereum/beacon-apis)
-- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
-- [Builder Specs](https://github.com/ethereum/builder-specs)
+- https://ethereum.github.io/spec-viewer/
+- https://ethereum.github.io/consensus-specs/
 
 ### Reference tests
 
-Reference tests built from the executable Python specifications are available in
-the release assets for each release in this repository. There are also *nightly*
-reference tests which are built from the latest version of the specifications
-[here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
-
-## Contributors
-
-### Prerequisites
-
-This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
-manage its dependencies and virtual environment. `uv` can
-[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
-for your target platform if one of the required versions (3.10-3.13) is not
-available natively.
-
-`uv` can be installed via curl (recommended over a pip-install as it can
-self-update and manage Python versions):
-
-```console
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### Installation and usage
-
-Clone the repository with:
-
-```bash
-git clone https://github.com/ethereum/consensus-specs.git
-```
-
-Switch to the directory:
-
-```bash
-cd consensus-specs
-```
-
-View the help output:
-
-```bash
-make help
-```
+- [Release assets](https://github.com/ethereum/consensus-specs/releases)
+- [Nightly artifacts](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
 
 ### Design goals
 
-The following are the broad design goals for the Ethereum proof-of-stake
-consensus specifications:
-
 - Minimize complexity, even at the cost of some losses in efficiency.
-- Remain live through major network partitions and when very large portions of
-  nodes go offline.
-- Select components that are quantum secure or easily swappable for
-  quantum-secure alternatives.
-- Utilize crypto and design techniques that allow for a large participation of
-  validators.
+- Remain live through major network partitions and mass node outages.
+- Select components that are quantum-secure or easy to swap out.
+- Use crypto and design techniques that support a large validator set.
 - Minimize hardware requirements such that a consumer laptop can participate.
+
+### External specifications
+
+- [Beacon APIs](https://github.com/ethereum/beacon-apis)
+- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
+- [Builder Specs](https://github.com/ethereum/builder-specs)
+- [Cryptography Specs](https://github.com/ethereum/cryptography-specs)
+- [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)
+- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
+- [SimpleSerialize Specs](https://github.com/ethereum/ssz-specs)
 
 ### Useful resources
 
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
-- [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-- [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
-- [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
-- [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
-- [The Eth2 Book](https://eth2book.info)
-- [PySpec Tests](tests/core/pyspec/README.md)
+- [Phase0 for Humans](https://notes.ethereum.org/s/Bkn3zpwxB)
+- [Combining GHOST and Casper](https://arxiv.org/abs/2003.03052)
+- [Vitalik's annotated spec](https://github.com/ethereum/annotated-spec)
+- [Upgrading Ethereum](https://eth2book.info)

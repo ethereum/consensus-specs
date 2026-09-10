@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Electra](#fork-to-electra)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -14,7 +14,7 @@
 
 This document describes the process of the Electra upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -42,12 +42,11 @@ change is made to upgrade to Electra.
 def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     epoch = deneb.get_current_epoch(pre)
 
-    earliest_exit_epoch = compute_activation_exit_epoch(get_current_epoch(pre))
+    earliest_exit_epoch = compute_activation_exit_epoch(epoch)
     for validator in pre.validators:
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
-            if validator.exit_epoch > earliest_exit_epoch:
-                earliest_exit_epoch = validator.exit_epoch
-    earliest_exit_epoch += Epoch(1)
+            earliest_exit_epoch = max(earliest_exit_epoch, validator.exit_epoch)
+    earliest_exit_epoch += 1
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -86,21 +85,21 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         # [New in Electra:EIP6110]
         deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,
         # [New in Electra:EIP7251]
-        deposit_balance_to_consume=0,
+        deposit_balance_to_consume=Gwei(0),
         # [New in Electra:EIP7251]
-        exit_balance_to_consume=0,
+        exit_balance_to_consume=Gwei(0),
         # [New in Electra:EIP7251]
         earliest_exit_epoch=earliest_exit_epoch,
         # [New in Electra:EIP7251]
-        consolidation_balance_to_consume=0,
+        consolidation_balance_to_consume=Gwei(0),
         # [New in Electra:EIP7251]
-        earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
+        earliest_consolidation_epoch=compute_activation_exit_epoch(epoch),
         # [New in Electra:EIP7251]
-        pending_deposits=[],
+        pending_deposits=PendingDeposits(),
         # [New in Electra:EIP7251]
-        pending_partial_withdrawals=[],
+        pending_partial_withdrawals=PendingPartialWithdrawals(),
         # [New in Electra:EIP7251]
-        pending_consolidations=[],
+        pending_consolidations=PendingConsolidations(),
     )
 
     post.exit_balance_to_consume = get_activation_exit_churn_limit(post)
@@ -119,18 +118,18 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
 
     for index in pre_activation:
         balance = post.balances[index]
-        post.balances[index] = 0
+        post.balances[index] = Gwei(0)
         validator = post.validators[index]
-        validator.effective_balance = 0
+        validator.effective_balance = Gwei(0)
         validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
-        # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
+        # Use G2_POINT_AT_INFINITY as a signature field placeholder
         # and GENESIS_SLOT to distinguish from a pending deposit request
         post.pending_deposits.append(
             PendingDeposit(
                 pubkey=validator.pubkey,
                 withdrawal_credentials=validator.withdrawal_credentials,
                 amount=balance,
-                signature=bls.G2_POINT_AT_INFINITY,
+                signature=G2_POINT_AT_INFINITY,
                 slot=GENESIS_SLOT,
             )
         )

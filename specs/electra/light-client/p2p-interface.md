@@ -6,8 +6,8 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`light_client_finality_update`](#light_client_finality_update)
-        - [`light_client_optimistic_update`](#light_client_optimistic_update)
+        - [Modified `light_client_finality_update`](#modified-light_client_finality_update)
+        - [Modified `light_client_optimistic_update`](#modified-light_client_optimistic_update)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [GetLightClientBootstrap](#getlightclientbootstrap)
@@ -29,9 +29,9 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ##### Global topics
 
-###### `light_client_finality_update`
+###### Modified `light_client_finality_update`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Message SSZ type                    |
 | ------------------------------------------------------ | ----------------------------------- |
@@ -41,9 +41,9 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 | `DENEB_FORK_VERSION`                                   | `deneb.LightClientFinalityUpdate`   |
 | `ELECTRA_FORK_VERSION` and later                       | `electra.LightClientFinalityUpdate` |
 
-###### `light_client_optimistic_update`
+###### Modified `light_client_optimistic_update`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -59,7 +59,7 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ##### GetLightClientBootstrap
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type              |
 | ------------------------------------------------------ | ------------------------------ |
@@ -71,7 +71,7 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ##### LightClientUpdatesByRange
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response chunk SSZ type     |
 | ------------------------------------------------------ | --------------------------- |
@@ -83,7 +83,7 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ##### GetLightClientFinalityUpdate
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type                   |
 | ------------------------------------------------------ | ----------------------------------- |
@@ -95,7 +95,7 @@ is extended to exchange [Electra light client data](./sync-protocol.md).
 
 ##### GetLightClientOptimisticUpdate
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 | ------------------------------------------------------ | ------------------------------------- |

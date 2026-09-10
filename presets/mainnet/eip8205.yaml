@@ -1,0 +1,10 @@
+# Mainnet preset - EIP8205
+
+# Execution
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD: 4
+# 2**19 (= 524,288)
+PREREGISTRATIONS_LIMIT: 524288
+# 2**18 (= 262,144)
+PREREGISTRATION_EXPIRY_SLOTS: 262144

@@ -3,24 +3,27 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Electra](#modifications-in-electra)
-  - [Configuration](#configuration)
-  - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
-      - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
+- [Configs](#configs)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [Modified `attester_slashing`](#modified-attester_slashing)
+    - [Attestation subnets](#attestation-subnets)
+      - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
+    - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
 
 <!-- mdformat-toc end -->
 
@@ -32,20 +35,37 @@ Electra.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in Electra
-
-### Configuration
+## Configs
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value       | Description                                                   |
+| ----------------------------------- | ----------- | ------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `Uint64(9)` | Number of blob sidecar subnets used in the gossipsub protocol |
 
-### Helpers
+## Helpers
 
-#### Modified `compute_fork_version`
+### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    # [Modified in Electra:EIP7549]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
+```
+
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -65,11 +85,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+### Modified `compute_max_request_blob_sidecars`
+
+```python
+def compute_max_request_blob_sidecars() -> Uint64:
+    """
+    Return the maximum number of blob sidecars in a single request.
+    """
+    # [Modified in Electra:EIP7691]
+    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA
+```
+
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Electra to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades.
 
@@ -82,80 +113,474 @@ The `attester_slashing` topic is modified to support the gossip of the new
 `AttesterSlashing` type.
 
 The specification around the creation, validation, and dissemination of messages
-has not changed from the Capella document unless explicitly noted here.
+has not changed from the Deneb document unless explicitly noted here.
 
 The derivation of the `message-id` remains stable.
 
-##### Global topics
+#### Global topics
 
-###### `beacon_block`
+##### Modified `beacon_block`
 
-*Updated validation*
+*Note*: This function is modified per EIP-7691. The block's KZG commitment count
+is bounded by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in the consensus layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA`
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: Uint64,
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
+    execution_payload = block.body.execution_payload
 
-###### `beacon_aggregate_and_proof`
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
-Assuming the alias `aggregate = signed_aggregate_and_proof.message.aggregate`:
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
 
-The following convenience variables are re-defined:
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-- `index = get_committee_indices(aggregate.committee_bits)[0]`
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
 
-The following validations are added:
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if block.parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[block.parent_root]
 
-- [REJECT] `len(committee_indices) == 1`, where
-  `committee_indices = get_committee_indices(aggregate.committee_bits)`.
-- [REJECT] `aggregate.data.index == 0`
+    if block.parent_root not in store.block_states:
+        if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+            # [REJECT] The block's parent failed validation and its execution payload is optimistic
+            raise GossipReject("block's parent is invalid and its payload is optimistic")
 
-###### `blob_sidecar_{subnet_id}`
+        # [IGNORE] The block's parent failed validation and its execution payload is processed
+        raise GossipIgnore("block's parent is invalid and its payload is processed")
 
-*[Modified in Electra:EIP7691]*
+    # [IGNORE] The block's parent passed validation but its execution payload is invalid
+    if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
+        raise GossipIgnore("block's parent is valid and its payload is invalid")
 
-The existing validations all apply as given from previous forks, with the
-following exceptions:
+    state = store.block_states[get_head(store).root]
 
-- Uses of `MAX_BLOBS_PER_BLOCK` in existing validations are replaced with
-  `MAX_BLOBS_PER_BLOCK_ELECTRA`.
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
 
-##### Attestation subnets
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
 
-###### `beacon_attestation_{subnet_id}`
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
 
-The topic is updated to propagate `SingleAttestation` objects.
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
 
-The following convenience variables are re-defined:
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
 
-- `index = attestation.committee_index`
+    # [Modified in Electra:EIP7691]
+    # [REJECT] The length of KZG commitments is less than or equal to the limit
+    if len(block.body.blob_kzg_commitments) > MAX_BLOBS_PER_BLOCK_ELECTRA:
+        raise GossipReject("too many blob kzg commitments")
 
-The following validations are added:
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer_index does not match expected proposer")
 
-- _[REJECT]_ `attestation.data.index == 0`
-- _[REJECT]_ The attester is a member of the committee -- i.e.
-  `attestation.attester_index in get_beacon_committee(state, attestation.data.slot, index)`.
+    # Mark this block as seen
+    seen.proposer_slots.add(proposer_slot_key)
+```
 
-The following validations are removed:
+##### Modified `beacon_aggregate_and_proof`
 
-- _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one
-  participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`,
-  i.e. exactly 1 bit is set).
-- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, index))`.
+*Note*: This function is modified per EIP-7549. The committee index is now
+encoded in `aggregate.committee_bits`, `aggregate.data.index` MUST be zero, and
+the gossip seen-cache is keyed by
+`(hash_tree_root(aggregate.data), committee_index)`.
 
-### The Req/Resp domain
+```python
+def validate_beacon_aggregate_and_proof_gossip(
+    seen: Seen,
+    store: Store,
+    signed_aggregate_and_proof: SignedAggregateAndProof,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedAggregateAndProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    aggregate_and_proof = signed_aggregate_and_proof.message
+    aggregate = aggregate_and_proof.aggregate
+    aggregation_bits = aggregate.aggregation_bits
 
-#### Messages
+    # [New in Electra:EIP7549]
+    # [REJECT] The aggregate attestation's data index is zero
+    if aggregate.data.index != 0:
+        raise GossipReject("aggregate data index is non-zero")
 
-##### BeaconBlocksByRange v2
+    # [New in Electra:EIP7549]
+    # [REJECT] Exactly one committee is specified by the committee bits
+    committee_indices = get_committee_indices(aggregate.committee_bits)
+    if len(committee_indices) != 1:
+        raise GossipReject("aggregate committee bits must specify exactly one committee")
+    index = committee_indices[0]
+
+    # [Modified in Electra:EIP7549]
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+    aggregate_data_root = hash_tree_root(aggregate.data)
+    aggregate_cache_key = (aggregate_data_root, index)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
+    seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
+
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
+    aggregator_index = aggregate_and_proof.aggregator_index
+    target_epoch = aggregate.data.target.epoch
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The committee index is within the expected range
+    committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
+    if index >= committee_count:
+        raise GossipReject("committee index out of range")
+
+    # [IGNORE] The aggregate attestation's slot is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, aggregate.data.slot, current_time_ms):
+        raise GossipIgnore("aggregate slot is from a future slot")
+
+    # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
+    attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
+        raise GossipIgnore("aggregate epoch is not current or previous epoch")
+
+    # [REJECT] The aggregate attestation's epoch matches its target
+    if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [REJECT] The number of aggregation bits matches the committee size
+    committee = get_beacon_committee(state, aggregate.data.slot, index)
+    if len(aggregation_bits) != len(committee):
+        raise GossipReject("aggregation bits length does not match committee size")
+
+    # [REJECT] The aggregate attestation has participants
+    attesting_indices = get_attesting_indices(state, aggregate)
+    if len(attesting_indices) < 1:
+        raise GossipReject("aggregate has no participants")
+
+    # [REJECT] The selection proof selects the validator as an aggregator
+    if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
+
+    # [REJECT] The aggregator is a member of the committee
+    if aggregator_index not in committee:
+        raise GossipReject("aggregator is not a member of the committee")
+
+    # [REJECT] The selection proof signature is valid
+    aggregator = state.validators[aggregator_index]
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate.data.slot, domain)
+    if not bls.Verify(aggregator.pubkey, signing_root, aggregate_and_proof.selection_proof):
+        raise GossipReject("invalid selection proof signature")
+
+    # [REJECT] The aggregator signature is valid
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    if not bls.Verify(aggregator.pubkey, signing_root, signed_aggregate_and_proof.signature):
+        raise GossipReject("invalid aggregator signature")
+
+    # [REJECT] The aggregate signature is valid
+    if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
+        raise GossipReject("invalid aggregate signature")
+
+    # [REJECT] The target block is an ancestor of the LMD vote block
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
+    if checkpoint_block != aggregate.data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # Mark this aggregate as seen
+    seen.aggregator_epochs.add(aggregator_epoch_key)
+    if aggregate_cache_key not in seen.aggregate_data_roots:
+        seen.aggregate_data_roots[aggregate_cache_key] = set()
+    seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
+```
+
+##### Modified `attester_slashing`
+
+*Note*: This function is modified per EIP-7549. The new `AttesterSlashing` type
+wraps an `IndexedAttestation` payload sized for
+`MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT` attesting indices; the
+validation logic is otherwise unchanged.
+
+#### Attestation subnets
+
+##### Modified `beacon_attestation_{subnet_id}`
+
+*Note*: This function is modified per EIP-7549. The topic now propagates
+`SingleAttestation` objects: the attesting validator's index is carried directly
+in the message, the committee index is read from `attestation.committee_index`,
+and `attestation.data.index` MUST be zero.
+
+```python
+def validate_beacon_attestation_gossip(
+    seen: Seen,
+    store: Store,
+    # [Modified in Electra:EIP7549]
+    attestation: SingleAttestation,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a SingleAttestation for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    data = attestation.data
+    # [Modified in Electra:EIP7549]
+    committee_index = attestation.committee_index
+    attester_index = attestation.attester_index
+    target_epoch = data.target.epoch
+
+    # [Modified in Electra:EIP7549]
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
+
+    # [New in Electra:EIP7549]
+    # [REJECT] The attestation's data index is zero
+    if data.index != 0:
+        raise GossipReject("attestation data index is non-zero")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The committee index is within the expected range
+    committees_per_slot = get_committee_count_per_slot(state, target_epoch)
+    if committee_index >= committees_per_slot:
+        raise GossipReject("committee index out of range")
+
+    # [REJECT] The attestation is for the correct subnet
+    expected_subnet = compute_subnet_for_attestation(
+        committees_per_slot, data.slot, committee_index
+    )
+    if expected_subnet != subnet_id:
+        raise GossipReject("attestation is for wrong subnet")
+
+    # [IGNORE] The attestation's slot is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, data.slot, current_time_ms):
+        raise GossipIgnore("attestation slot is from a future slot")
+
+    # [IGNORE] The attestation's epoch is either the current or previous epoch
+    attestation_epoch = compute_epoch_at_slot(data.slot)
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
+        raise GossipIgnore("attestation epoch is not current or previous epoch")
+
+    # [REJECT] The attestation's epoch matches its target
+    if target_epoch != compute_epoch_at_slot(data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [New in Electra:EIP7549]
+    # [REJECT] The attester is a member of the committee
+    committee = get_beacon_committee(state, data.slot, committee_index)
+    if attester_index not in committee:
+        raise GossipReject("attester is not a member of the committee")
+
+    # [Modified in Electra:EIP7549]
+    # [REJECT] The attestation signature is valid
+    attester = state.validators[attester_index]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
+    signing_root = compute_signing_root(data, domain)
+    if not bls.Verify(attester.pubkey, signing_root, attestation.signature):
+        raise GossipReject("invalid attestation signature")
+
+    # [REJECT] The attestation's target block is an ancestor of the LMD vote block
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
+    if target_checkpoint_block != data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The current finalized_checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # Mark this attestation as seen
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
+```
+
+#### Blob subnets
+
+##### Modified `blob_sidecar_{subnet_id}`
+
+*Note*: This function is modified per EIP-7691. The sidecar's index is bounded
+by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
+
+```python
+def validate_blob_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    blob_sidecar: BlobSidecar,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a BlobSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block_header = blob_sidecar.signed_block_header.message
+
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    if sidecar_tuple in seen.blob_sidecar_tuples:
+        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
+
+    # [Modified in Electra:EIP7691]
+    # [REJECT] The sidecar's index is consistent with MAX_BLOBS_PER_BLOCK_ELECTRA
+    if blob_sidecar.index >= MAX_BLOBS_PER_BLOCK_ELECTRA:
+        raise GossipReject("blob index out of range")
+
+    # [REJECT] The sidecar is for the correct subnet
+    if compute_subnet_for_blob_sidecar(blob_sidecar.index) != subnet_id:
+        raise GossipReject("blob sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, block_header.slot, current_time_ms):
+        raise GossipIgnore("blob sidecar is from a future slot")
+
+    # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block_header.slot <= finalized_slot:
+        raise GossipIgnore("blob sidecar is not from a slot greater than the latest finalized slot")
+
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    parent_root = block_header.parent_root
+    if parent_root not in store.blocks:
+        raise GossipIgnore("blob sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if parent_root not in store.block_states:
+        raise GossipReject("blob sidecar's parent failed validation")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if block_header.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature of blob_sidecar.signed_block_header is valid
+    proposer = state.validators[block_header.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    signing_root = compute_signing_root(block_header, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, blob_sidecar.signed_block_header.signature):
+        raise GossipReject("invalid proposer signature on blob sidecar block header")
+
+    # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
+    if block_header.slot <= store.blocks[parent_root].slot:
+        raise GossipReject("blob sidecar is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
+
+    # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof
+    if not verify_blob_sidecar_inclusion_proof(blob_sidecar):
+        raise GossipReject("invalid blob sidecar inclusion proof")
+
+    # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
+    if not kzg.verify_blob_kzg_proof(
+        blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
+    ):
+        raise GossipReject("invalid blob kzg proof")
+
+    # [REJECT] The sidecar is proposed by the expected proposer_index
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[parent_root].copy()
+    process_slots(parent_state, block_header.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block_header.proposer_index != expected_proposer:
+        raise GossipReject("blob sidecar proposer_index does not match expected proposer")
+
+    # Mark this blob sidecar as seen
+    seen.blob_sidecar_tuples.add(sidecar_tuple)
+```
+
+## The Req/Resp domain
+
+### Messages
+
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
 The Electra fork-digest is introduced to the `context` enum to specify Electra
 beacon block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -166,11 +591,14 @@ beacon block type.
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-<!-- eth2spec: skip -->
+The Electra fork-digest is introduced to the `context` enum to specify Electra
+beacon block type.
+
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -181,57 +609,20 @@ beacon block type.
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 
-##### BlobSidecarsByRange v1
+#### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.
 
-```
-(
-  start_slot: Slot
-  count: uint64
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-*Updated validation*
-
-Clients MUST respond with at least the blob sidecars of the first blob-carrying
-block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
-
-##### BlobSidecarsByRoot v1
+#### BlobSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
-
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-*Updated validation*
-
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.

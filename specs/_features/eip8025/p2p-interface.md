@@ -2,33 +2,69 @@
 
 This document contains the networking specifications for EIP-8025.
 
+*Note*: This specification is built upon [Gloas](../../gloas/p2p-interface.md)
+and imports proof types from [beacon-chain.md](./beacon-chain.md).
+
+EIP-8025 proofs propagate exclusively through gossip. No EIP-8025-specific
+Req/Resp protocol is defined.
+
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
-- [Containers](#containers)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
-      - [`execution_proof_{subnet_id}`](#execution_proof_subnet_id)
-- [The Req/Resp domain](#the-reqresp-domain)
-  - [Messages](#messages)
-    - [ExecutionProofsByHash](#executionproofsbyhash)
+      - [New `execution_proof`](#new-execution_proof)
+- [The discovery domain: discv5](#the-discovery-domain-discv5)
+  - [ENR structure](#enr-structure)
+    - [Execution proof awareness](#execution-proof-awareness)
 
 <!-- mdformat-toc end -->
 
 ## Constants
 
-*Note*: There are `MAX_EXECUTION_PROOFS_PER_PAYLOAD` (from
-[beacon-chain.md](./beacon-chain.md)) execution proof subnets to provide 1-to-1
-mapping with proof systems. Each proof system gets its own dedicated subnet.
+### Type-specific SSZ bounds
 
-## Containers
+| Name                                       | Value                        |
+| ------------------------------------------ | ---------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
-*Note*: Execution proofs are broadcast directly as `SignedExecutionProof`
-containers. No additional message wrapper is needed.
+## Helpers
+
+### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
+    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
+    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    # [New in EIP8025]
+    execution_proof_roots: Dict[Root, Set[Root]]
+    # [New in EIP8025]
+    execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
+```
 
 ## The gossip domain: gossipsub
 
@@ -36,73 +72,99 @@ containers. No additional message wrapper is needed.
 
 #### Global topics
 
-##### `execution_proof_{subnet_id}`
+##### New `execution_proof`
 
-Execution proof subnets are used to propagate execution proofs for specific
-proof systems.
-
-The execution proof subnet for a given `proof_id` is:
+This topic is used to propagate `SignedExecutionProofEnvelope` messages.
 
 ```python
-def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
-    assert proof_id < MAX_EXECUTION_PROOFS_PER_PAYLOAD
-    return SubnetID(proof_id)
+def validate_execution_proof_gossip(
+    seen: Seen,
+    store: Store,
+    signed_proof_envelope: SignedExecutionProofEnvelope,
+    proof_engine: ProofEngine,
+) -> None:
+    """
+    Validate a SignedExecutionProofEnvelope for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    proof_envelope = signed_proof_envelope.message
+    beacon_block_root = proof_envelope.beacon_block_root
+    proof_root = hash_tree_root(proof_envelope)
+
+    # [IGNORE] The proof has not already been processed
+    if proof_root in seen.execution_proof_roots.get(beacon_block_root, set()):
+        raise GossipIgnore("execution proof has already been processed")
+
+    # [IGNORE] This is the prover's first valid or invalid proof for this key
+    validator_index = signed_proof_envelope.validator_index
+    prover_key = (beacon_block_root, proof_envelope.proof_type, validator_index)
+    if prover_key in seen.execution_proof_provers:
+        raise GossipIgnore(
+            "proof already seen from this prover for this beacon block and proof type"
+        )
+
+    # [IGNORE] The proof's beacon block has been seen
+    if beacon_block_root not in store.blocks:
+        raise GossipIgnore("execution proof's beacon block has not been seen")
+
+    # [REJECT] The proof's beacon block has passed consensus validation
+    if beacon_block_root not in store.block_states:
+        raise GossipReject("execution proof's beacon block failed validation")
+
+    state = store.block_states[beacon_block_root]
+
+    # [IGNORE] The proof's execution payload is available
+    if beacon_block_root not in store.payloads:
+        raise GossipIgnore("execution proof's payload is unavailable")
+
+    payload_envelope = store.payloads[beacon_block_root]
+
+    # [IGNORE] No valid proof is known for this beacon block and proof type
+    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
+        raise GossipIgnore("verified proof already known for this beacon block and proof type")
+
+    # [REJECT] The execution proof envelope passes validation
+    try:
+        verify_execution_proof_envelope(
+            state,
+            signed_proof_envelope,
+            payload_envelope,
+        )
+    except AssertionError:
+        raise GossipReject("execution proof envelope is invalid") from None
+
+    proof = get_execution_proof(
+        state,
+        proof_envelope,
+        payload_envelope,
+    )
+
+    # Mark the authenticated proof and prover attempt as seen
+    if beacon_block_root not in seen.execution_proof_roots:
+        seen.execution_proof_roots[beacon_block_root] = set()
+    seen.execution_proof_roots[beacon_block_root].add(proof_root)
+    seen.execution_proof_provers.add(prover_key)
+
+    # [REJECT] The execution proof is valid
+    if not proof_engine.verify_execution_proof(proof):
+        raise GossipReject("execution proof is invalid")
 ```
 
-The following validations MUST pass before forwarding the
-`signed_execution_proof` on the network:
+## The discovery domain: discv5
 
-- _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(signed_execution_proof.message.zk_proof.public_inputs.block_hash, subnet_id)`.
-- _[REJECT]_ The `signed_execution_proof.message.validator_index` is within the
-  known validator registry.
-- _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
-  validator's public key.
-- _[REJECT]_ The `signed_execution_proof.message.zk_proof.proof_data` is
-  non-empty.
-- _[REJECT]_ The proof system ID matches the subnet:
-  `signed_execution_proof.message.zk_proof.proof_type == subnet_id`.
-- _[REJECT]_ The execution proof is valid as verified by
-  `verify_execution_proof()` with the appropriate parent and block hashes from
-  the execution layer.
+### ENR structure
 
-## The Req/Resp domain
+#### Execution proof awareness
 
-### Messages
+A new field is added to the ENR under the key `eproof` to facilitate discovery
+and peering between nodes that participate in execution-proof gossip.
 
-#### ExecutionProofsByHash
+| Key      | Value                                    |
+| -------- | ---------------------------------------- |
+| `eproof` | Execution layer proof awareness, `Uint8` |
 
-**Protocol ID:** `/eth2/beacon/req/execution_proofs_by_hash/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`.
-
-Request Content:
-
-```
-(
-  Hash32  # block_hash
-)
-```
-
-Response Content:
-
-```
-(
-  List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
-)
-```
-
-Requests execution proofs for the given execution payload `block_hash`. The
-response MUST contain all available proofs for the requested block hash, up to
-`MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
-
-The following validations MUST pass:
-
-- _[REJECT]_ The `block_hash` is a 32-byte value.
-
-The response MUST contain:
-
-- All available execution proofs for the requested block hash.
-- The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
-  proofs.
+A node is considered execution proof-aware if the `eproof` key is present and
+its value is not `0`. An execution proof-aware node subscribes to the
+`execution_proof` gossip topic and implements its validation rules. Clients MAY
+prefer execution proof-aware nodes when selecting peers for execution-proof
+gossip.

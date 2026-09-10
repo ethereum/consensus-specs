@@ -1,7 +1,6 @@
 import re
 import textwrap
 from functools import reduce
-from typing import TypeVar
 
 from .constants import CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS
 from .md_doc_paths import PREVIOUS_FORK_OF
@@ -22,21 +21,8 @@ def collect_prev_forks(fork: str) -> list[str]:
         forks.append(fork)
 
 
-def requires_mypy_type_ignore(value: str) -> bool:
-    return (
-        value.startswith("Bitlist")
-        or value.startswith("ByteVector")
-        or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
-        or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
-    )
-
-
 def gen_new_type_definition(name: str, value: str) -> str:
-    return (
-        f"class {name}({value}):\n    pass"
-        if not requires_mypy_type_ignore(value)
-        else f"class {name}(\n    {value}  # type: ignore\n):\n    pass"
-    )
+    return f"class {name}({value}):\n    pass"
 
 
 def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
@@ -45,15 +31,31 @@ def make_function_abstract(protocol_def: ProtocolDefinition, key: str):
 
 
 def objects_to_spec(
-    preset_name: str, spec_object: SpecObject, fork: str, ordered_class_objects: dict[str, str]
+    preset_name: str,
+    spec_object: SpecObject,
+    fork: str,
+    ordered_class_objects: dict[str, str],
+    shared_types: dict[str, str] | None = None,
 ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
+
+    ``shared_types`` maps the name of a type this fork inherits unchanged to the
+    module it is inherited from. Such a type is bound to the previous fork's class
+    instead of being declared again, so that ``phase0.Slot`` and ``bellatrix.Slot``
+    are one class. The SSZ type system compares by exact type, so a value built
+    under one fork has to stay usable under the next.
     """
+    shared_types = shared_types or {}
 
     def gen_new_type_definitions(custom_types: dict[str, str]) -> str:
         return "\n\n\n".join(
-            [gen_new_type_definition(key, value) for key, value in custom_types.items()]
+            [
+                f"{key}: TypeAlias = {shared_types[key]}.{key}"
+                if key in shared_types
+                else gen_new_type_definition(key, value)
+                for key, value in custom_types.items()
+            ]
         )
 
     new_type_definitions = gen_new_type_definitions(spec_object.custom_types)
@@ -64,7 +66,7 @@ def objects_to_spec(
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
         abstract_functions = ["verify_and_notify_new_payload"]
-        for key in protocol_def.functions.keys():
+        for key in protocol_def.functions:
             if key in abstract_functions:
                 make_function_abstract(protocol_def, key)
 
@@ -86,12 +88,27 @@ def objects_to_spec(
     functions = reduce(
         lambda fns, builder: builder.implement_optimizations(fns), builders, spec_object.functions
     )
+    # Remove deprecated functions
+    deprecate_functions = reduce(
+        lambda obj, builder: obj.union(builder.deprecate_functions()), builders, set()
+    )
+    functions = {k: v for k, v in functions.items() if k not in deprecate_functions}
     functions_spec = "\n\n\n".join(functions.values())
-    ordered_class_objects_spec = "\n\n\n".join(ordered_class_objects.values())
+    # Remove deprecated containers
+    deprecate_containers = reduce(
+        lambda obj, builder: obj.union(builder.deprecate_containers()), builders, set()
+    )
+    ordered_class_objects = {
+        k: v for k, v in ordered_class_objects.items() if k not in deprecate_containers
+    }
+    ordered_class_objects_spec = "\n\n\n".join(
+        f"{k}: TypeAlias = {shared_types[k]}.{k}" if k in shared_types else v
+        for k, v in ordered_class_objects.items()
+    )
 
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
-    for name in spec_object.config_vars.keys():
+    for name in spec_object.config_vars:
         functions_spec = re.sub(rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, functions_spec)
         ordered_class_objects_spec = re.sub(
             rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, ordered_class_objects_spec
@@ -175,6 +192,8 @@ def objects_to_spec(
     execution_engine_cls = reduce(
         lambda txt, builder: builder.execution_engine_cls() or txt, builders, ""
     )
+    # Keep proof engine from the most recent fork
+    proof_engine_cls = reduce(lambda txt, builder: builder.proof_engine_cls() or txt, builders, "")
 
     # Remove deprecated constants
     deprecate_constants = reduce(
@@ -203,19 +222,14 @@ def objects_to_spec(
         format_constant(k, v) for k, v in spec_object.preset_vars.items()
     )
     ssz_dep_constants = "\n".join(
-        map(lambda x: f"{x} = {hardcoded_ssz_dep_constants[x]}", hardcoded_ssz_dep_constants)
+        f"{x} = {hardcoded_ssz_dep_constants[x]}" for x in hardcoded_ssz_dep_constants
     )
     ssz_dep_constants_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.ssz_dep_constants[x]}",
-            filtered_ssz_dep_constants,
-        )
+        f"assert {x} == {spec_object.ssz_dep_constants[x]}" for x in filtered_ssz_dep_constants
     )
     func_dep_presets_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501",
-            filtered_hardcoded_func_dep_presets,
-        )
+        f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501"
+        for x in filtered_hardcoded_func_dep_presets
     )
     spec_strs = [
         imports,
@@ -238,8 +252,7 @@ def objects_to_spec(
         functions_spec,
         sundry_functions,
         execution_engine_cls,
-        # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
-        # as same as the spec definition.
+        proof_engine_cls,
         ssz_dep_constants_verification,
         func_dep_presets_verification,
     ]
@@ -258,65 +271,30 @@ def combine_protocols(
     return old_protocols
 
 
-T = TypeVar("T")
-
-
-def combine_dicts(old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T]:
+def combine_dicts[T](old_dict: dict[str, T], new_dict: dict[str, T]) -> dict[str, T]:
     return {**old_dict, **new_dict}
 
 
-ignored_dependencies = [
-    "bit",
-    "Bitlist",
-    "Bitvector",
-    "boolean",
-    "byte",
-    "ByteList",
-    "bytes",
-    "Bytes1",
-    "Bytes20",
-    "Bytes31",
-    "Bytes32",
-    "Bytes4",
-    "Bytes48",
-    "Bytes8",
-    "Bytes96",
-    "ByteVector",
-    "ceillog2",
-    "Container",
-    "defaultdict",
-    "DefaultDict",
-    "dict",
-    "Dict",
-    "field",
-    "floorlog2",
-    "List",
-    "Optional",
-    "ProgressiveBitlist",
-    "ProgressiveList",
-    "Sequence",
-    "Set",
-    "Tuple",
-    "uint128",
-    "uint16",
-    "uint256",
-    "uint32",
-    "uint64",
-    "uint8",
-    "Vector",
-]
-
-
-def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[str, str]) -> None:
+def dependency_order_class_objects(objects: dict[str, str]) -> None:
     """
     Determines which SSZ Object is dependent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
         dependencies = []
-        for i, line in enumerate(value.split("\n")):
+        lines = value.split("\n")
+        # Join a class signature that wraps over multiple lines, so that its
+        # base class expression is matched as a whole. Strip comments from
+        # each line first, so that a comment on one line does not swallow the
+        # rest of the signature.
+        signature_end = next((i for i, line in enumerate(lines) if line.rstrip().endswith("):")), 0)
+        signature = " ".join(
+            line[: line.index("#")] if "#" in line else line for line in lines[: signature_end + 1]
+        )
+        lines = [signature] + lines[signature_end + 1 :]
+        for i, line in enumerate(lines):
             if i == 0:
-                match = re.match(r".+\((.+)\):", line)
+                match = re.match(r".+?\((.+)\):", line)
             else:
                 match = re.match(r"\s+\w+: (.+)", line)
             if not match:
@@ -327,11 +305,9 @@ def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[s
             dependencies.extend(
                 re.findall(r"(\w+)", line)
             )  # catch all legible words, potential dependencies
-        dependencies = filter(
-            lambda x: "_" not in x and x.upper() != x, dependencies
-        )  # filter out constants
-        dependencies = filter(lambda x: x not in ignored_dependencies, dependencies)
-        dependencies = filter(lambda x: x not in custom_types, dependencies)
+        # Only other class objects count as dependencies. Everything else
+        # (constants, builtin types, custom types) is defined before them.
+        dependencies = filter(lambda x: x in objects and x != key, dependencies)
         for dep in dependencies:
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep) + 1 :]:
@@ -395,7 +371,7 @@ def finalized_spec_object(spec_object: SpecObject) -> SpecObject:
     custom_types = {}
     ssz_objects = spec_object.ssz_objects
     for name, value in spec_object.custom_types.items():
-        if any(k in name for k in all_config_dependencies):
+        if any(name in k for k in all_config_dependencies):
             custom_types[name] = value
         else:
             ssz_objects[name] = gen_new_type_definition(name, value)
@@ -419,7 +395,7 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: dict[str, str | list[dict[str, str]]] = dict()
+    out: dict[str, str | list[dict[str, str]]] = {}
     for k, v in conf.items():
         if isinstance(v, list):
             # A special case for list of records

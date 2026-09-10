@@ -1,0 +1,422 @@
+from eth_consensus_specs.test.context import (
+    default_activation_threshold,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
+    with_heze_and_later,
+)
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store,
+    run_on_block,
+)
+from eth_consensus_specs.test.helpers.inclusion_list import (
+    get_sample_inclusion_list,
+    get_sample_signed_inclusion_list,
+    get_sample_transactions,
+    run_with_inclusion_list_store,
+    sign_inclusion_list,
+)
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+
+
+def advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store):
+    """
+    Advance ``state`` and the ``forkchoice_store`` clock past the genesis epochs,
+    so that inclusion lists built for the current slot have a dependent root that
+    resolves to a known block.
+    """
+    slot = spec.compute_start_slot_at_epoch(spec.MIN_SEED_LOOKAHEAD + 1)
+    spec.process_slots(state, slot)
+    time = state.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    spec.on_tick(forkchoice_store, time)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_transaction_uniqueness(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        signed_inclusion_lists = []
+
+        # An IL with minimal (one-byte) transactions.
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[1],
+                max_transaction_size=1,
+                max_transaction_count=5,
+            )
+        )
+
+        # Two ILs that have the same list of transactions.
+        transactions = get_sample_transactions(spec)
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[2],
+                transactions=transactions,
+            )
+        )
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[3],
+                transactions=transactions,
+            )
+        )
+
+        # An IL with non-overlapping transactions with other ILs.
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[4],
+            )
+        )
+
+        # A full-sized IL with 1 transaction.
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[5],
+                max_transaction_size=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
+                max_transaction_count=1,
+            )
+        )
+
+        # A full-sized IL with multiple transactions.
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[6],
+                max_transaction_size=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST // 16,
+                max_transaction_count=16,
+            )
+        )
+
+        # A full-sized IL with transactions each of which is 1 byte.
+        signed_inclusion_lists.append(
+            get_sample_signed_inclusion_list(
+                spec,
+                forkchoice_store,
+                state,
+                validator_index=inclusion_list_committee[7],
+                max_transaction_size=1,
+                max_transaction_count=spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
+            )
+        )
+
+        for signed_inclusion_list in signed_inclusion_lists:
+            spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
+
+        dependent_root = signed_inclusion_lists[0].message.dependent_root
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == {
+            transaction
+            for signed_inclusion_list in signed_inclusion_lists
+            for transaction in signed_inclusion_list.message.transactions
+        }
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_by_slot_and_dependent_root__empty_slot(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+
+        signed_inclusion_list_slot_0 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state
+        )
+
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_slot_0)
+
+        inclusion_list_transactions_slot_0 = spec.get_inclusion_list_transactions(
+            inclusion_list_store,
+            state.slot,
+            signed_inclusion_list_slot_0.message.dependent_root,
+        )
+        inclusion_list_transactions_slot_1 = spec.get_inclusion_list_transactions(
+            inclusion_list_store,
+            state.slot + 1,
+            signed_inclusion_list_slot_0.message.dependent_root,
+        )
+
+        assert set(inclusion_list_transactions_slot_0) == set(
+            signed_inclusion_list_slot_0.message.transactions
+        )
+        assert inclusion_list_transactions_slot_1 == []
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_root(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        # Build IL0 against the canonical branch.
+        transactions = get_sample_transactions(spec, max_transaction_count=1)
+        inclusion_list_0 = get_sample_inclusion_list(
+            spec,
+            forkchoice_store,
+            state,
+            validator_index=inclusion_list_committee[0],
+            transactions=transactions,
+        )
+        signed_inclusion_list_0 = sign_inclusion_list(spec, state, inclusion_list_0)
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
+
+        # Make a fork branch off the head.
+        head_root = spec.get_head(forkchoice_store).root
+        fork_state = forkchoice_store.block_states[head_root].copy()
+        block = build_empty_block_for_next_slot(spec, fork_state)
+        signed_block = state_transition_and_sign_block(spec, fork_state, block)
+        run_on_block(spec, forkchoice_store, signed_block)
+
+        # Build IL1 against the fork branch.
+        spec.process_slots(fork_state, state.slot)
+        fork_inclusion_list_committee = spec.get_inclusion_list_committee(
+            fork_state, fork_state.slot
+        )
+        inclusion_list_1 = get_sample_inclusion_list(
+            spec,
+            forkchoice_store,
+            fork_state,
+            validator_index=fork_inclusion_list_committee[0],
+            # Reverse transaction bytes to ensure IL0 and IL1 have different transactions.
+            transactions=spec.Transactions(
+                data=[spec.Transaction(data=transaction[::-1]) for transaction in transactions]
+            ),
+        )
+        signed_inclusion_list_1 = sign_inclusion_list(spec, fork_state, inclusion_list_1)
+
+        # Both inclusion lists are valid, with different dependent roots.
+        assert inclusion_list_0.dependent_root != inclusion_list_1.dependent_root
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+
+        # Only the inclusion list stored under the given dependent root is returned.
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, inclusion_list_0.dependent_root
+        )
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_0.message.transactions)
+
+        fork_inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, fork_state.slot, inclusion_list_1.dependent_root
+        )
+        assert set(fork_inclusion_list_transactions) == set(
+            signed_inclusion_list_1.message.transactions
+        )
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_equivocation(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        signed_inclusion_list_1 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
+        )
+        signed_inclusion_list_2 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
+        )
+        signed_inclusion_list_3 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
+        )
+        signed_inclusion_list_4 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[1]
+        )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
+
+        # The first IL from an IL committee member should be stored successfully.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+
+        # The IL committee member equivocates. This will empty all ILs from that equivocator.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert inclusion_list_transactions == []
+
+        # An IL from another IL committee member should be stored successfully.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_4)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
+
+        # The equivocator equivocates again. This should not affect other ILs.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_test
+@with_custom_state(
+    balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * 2,
+    threshold_fn=default_activation_threshold,
+)
+@single_phase
+def test_inclusion_list_store_equivocation_scope(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+        validator_index = inclusion_list_committee[0]
+
+        signed_inclusion_list_1 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=validator_index
+        )
+        signed_inclusion_list_2 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=validator_index
+        )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
+
+        # An IL committee member equivocates.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert inclusion_list_transactions == []
+
+        # Find a later slot where the equivocator becomes an IL committee member again.
+        found_later_assignment = False
+        for _ in range(spec.SLOTS_PER_EPOCH * 2):
+            spec.process_slots(state, state.slot + 1)
+            committee = spec.get_inclusion_list_committee(state, state.slot)
+            if validator_index in committee:
+                found_later_assignment = True
+                break
+        assert found_later_assignment
+
+        # Advance the fork choice store clock to the new slot.
+        time = state.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000
+        spec.on_tick(forkchoice_store, time)
+
+        # After the equivocated slot, the IL committee member should be able to participate successfully.
+        signed_inclusion_list_3 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=validator_index
+        )
+        dependent_root = signed_inclusion_list_3.message.dependent_root
+
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_3.message.transactions)
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_inclusion_list_due(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        signed_inclusion_list_1 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
+        )
+        signed_inclusion_list_2 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[0]
+        )
+        signed_inclusion_list_3 = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, validator_index=inclusion_list_committee[1]
+        )
+        dependent_root = signed_inclusion_list_1.message.dependent_root
+
+        # An IL received before the inclusion list due should be stored successfully.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+
+        # Advance time to after the inclusion list due
+        inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
+        assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
+
+        time = forkchoice_store.time + inclusion_list_due_ceiling
+        spec.on_tick(forkchoice_store, time)
+        assert forkchoice_store.time == time
+
+        # An IL received after the inclusion list due should be ignored.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+
+        # Any equivocation after the inclusion list due should still be handled.
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert inclusion_list_transactions == []
+
+    run_with_inclusion_list_store(spec, run_func)

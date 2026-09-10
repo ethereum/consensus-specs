@@ -52,9 +52,3 @@ A test-runner can implement the following assertions:
     result, and verify if the bytes match the original `serialized`.
 - Hash-tree-root: After parsing the `value` (or deserializing `serialized`),
   Hash-tree-root it: the output should match `root`
-
-## References
-
-**`serialized`**—[SSZ serialization](../../../ssz/simple-serialize.md#serialization)
-**`root`**—[hash_tree_root](../../../ssz/simple-serialize.md#merkleization)
-function

@@ -4,8 +4,11 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [`CurrentSyncCommitteeBranch`](#currentsynccommitteebranch)
+  - [`FinalityBranch`](#finalitybranch)
+  - [`NextSyncCommitteeBranch`](#nextsynccommitteebranch)
 - [Constants](#constants)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Misc](#misc)
 - [Containers](#containers)
   - [`LightClientHeader`](#lightclientheader)
@@ -59,11 +62,39 @@ Additional documents describe how the light client sync protocol can be used:
 
 ## Types
 
-| Name                         | SSZ equivalent                                              | Description                                                       |
-| ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState` |
-| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)]` | Merkle branch of `current_sync_committee` within `BeaconState`    |
-| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)]`    | Merkle branch of `next_sync_committee` within `BeaconState`       |
+### `CurrentSyncCommitteeBranch`
+
+```python
+class CurrentSyncCommitteeBranch(Vector[Bytes32]):
+    """
+    A Merkle branch proving ``current_sync_committee`` within ``BeaconState``.
+    """
+
+    LENGTH = floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX)
+```
+
+### `FinalityBranch`
+
+```python
+class FinalityBranch(Vector[Bytes32]):
+    """
+    A Merkle branch proving ``finalized_checkpoint.root`` within
+    ``BeaconState``.
+    """
+
+    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX)
+```
+
+### `NextSyncCommitteeBranch`
+
+```python
+class NextSyncCommitteeBranch(Vector[Bytes32]):
+    """
+    A Merkle branch proving ``next_sync_committee`` within ``BeaconState``.
+    """
+
+    LENGTH = floorlog2(NEXT_SYNC_COMMITTEE_GINDEX)
+```
 
 ## Constants
 
@@ -73,14 +104,14 @@ Additional documents describe how the light client sync protocol can be used:
 | `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54)        |
 | `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55)           |
 
-## Preset
+## Presets
 
 ### Misc
 
-| Name                              | Value                                                | Unit       | Duration    |
-| --------------------------------- | ---------------------------------------------------- | ---------- | ----------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |             |
-| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      | ~27.3 hours |
+| Name                              | Value                                                      |
+| --------------------------------- | ---------------------------------------------------------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `Uint64(1)`                                                |
+| `UPDATE_TIMEOUT`                  | `Slot(SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD)` |
 
 ## Containers
 
@@ -155,7 +186,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # Header that is finalized
     finalized_header: LightClientHeader
     # Sync committees corresponding to the finalized header
@@ -166,8 +197,8 @@ class LightClientStore(object):
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)
-    previous_max_active_participants: uint64
-    current_max_active_participants: uint64
+    previous_max_active_participants: Uint64
+    current_max_active_participants: Uint64
 ```
 
 ## Helpers
@@ -220,8 +251,8 @@ def is_finality_update(update: LightClientUpdate) -> bool:
 def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdate) -> bool:
     # Compare supermajority (> 2/3) sync committee participation
     max_active_participants = len(new_update.sync_aggregate.sync_committee_bits)
-    new_num_active_participants = sum(new_update.sync_aggregate.sync_committee_bits)
-    old_num_active_participants = sum(old_update.sync_aggregate.sync_committee_bits)
+    new_num_active_participants = get_set_bit_count(new_update.sync_aggregate.sync_committee_bits)
+    old_num_active_participants = get_set_bit_count(old_update.sync_aggregate.sync_committee_bits)
     new_has_supermajority = new_num_active_participants * 3 >= max_active_participants * 2
     old_has_supermajority = old_num_active_participants * 3 >= max_active_participants * 2
     if new_has_supermajority != old_has_supermajority:
@@ -274,13 +305,13 @@ def is_better_update(new_update: LightClientUpdate, old_update: LightClientUpdat
 
 ```python
 def is_next_sync_committee_known(store: LightClientStore) -> bool:
-    return store.next_sync_committee != SyncCommittee()
+    return store.next_sync_committee != SyncCommittee.empty()
 ```
 
 ### `get_safety_threshold`
 
 ```python
-def get_safety_threshold(store: LightClientStore) -> uint64:
+def get_safety_threshold(store: LightClientStore) -> Uint64:
     return (
         max(
             store.previous_max_active_participants,
@@ -293,8 +324,8 @@ def get_safety_threshold(store: LightClientStore) -> uint64:
 ### `get_subtree_index`
 
 ```python
-def get_subtree_index(generalized_index: GeneralizedIndex) -> uint64:
-    return uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
+def get_subtree_index(generalized_index: GeneralizedIndex) -> Uint64:
+    return Uint64(generalized_index % 2 ** (floorlog2(generalized_index)))
 ```
 
 ### `is_valid_normalized_merkle_branch`
@@ -315,7 +346,7 @@ def is_valid_normalized_merkle_branch(
 ### `compute_sync_committee_period_at_slot`
 
 ```python
-def compute_sync_committee_period_at_slot(slot: Slot) -> uint64:
+def compute_sync_committee_period_at_slot(slot: Slot) -> Uint64:
     return compute_sync_committee_period(compute_epoch_at_slot(slot))
 ```
 
@@ -345,11 +376,11 @@ def initialize_light_client_store(
     return LightClientStore(
         finalized_header=bootstrap.header,
         current_sync_committee=bootstrap.current_sync_committee,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         best_valid_update=None,
         optimistic_header=bootstrap.header,
-        previous_max_active_participants=0,
-        current_max_active_participants=0,
+        previous_max_active_participants=Uint64(0),
+        current_max_active_participants=Uint64(0),
     )
 ```
 
@@ -380,7 +411,7 @@ def validate_light_client_update(
 ) -> None:
     # Verify sync committee has sufficient participants
     sync_aggregate = update.sync_aggregate
-    assert sum(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert get_set_bit_count(sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
 
     # Verify update does not skip a sync committee period
     assert is_valid_light_client_header(update.attested_header)
@@ -407,10 +438,10 @@ def validate_light_client_update(
     # to match the finalized checkpoint root saved in the state of `attested_header`.
     # Note that the genesis finalized checkpoint root is represented as a zero hash.
     if not is_finality_update(update):
-        assert update.finalized_header == LightClientHeader()
+        assert update.finalized_header == LightClientHeader.empty()
     else:
         if update_finalized_slot == GENESIS_SLOT:
-            assert update.finalized_header == LightClientHeader()
+            assert update.finalized_header == LightClientHeader.empty()
             finalized_root = Bytes32()
         else:
             assert is_valid_light_client_header(update.finalized_header)
@@ -425,7 +456,7 @@ def validate_light_client_update(
     # Verify that the `next_sync_committee`, if present, actually is the next sync committee saved in the
     # state of the `attested_header`
     if not is_sync_committee_update(update):
-        assert update.next_sync_committee == SyncCommittee()
+        assert update.next_sync_committee == SyncCommittee.empty()
     else:
         if update_attested_period == store_period and is_next_sync_committee_known(store):
             assert update.next_sync_committee == store.next_sync_committee
@@ -443,10 +474,12 @@ def validate_light_client_update(
         sync_committee = store.next_sync_committee
     participant_pubkeys = [
         pubkey
-        for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
+        for (bit, pubkey) in zip(
+            sync_aggregate.sync_committee_bits, sync_committee.pubkeys, strict=True
+        )
         if bit
     ]
-    fork_version_slot = max(update.signature_slot, Slot(1)) - Slot(1)
+    fork_version_slot = max(update.signature_slot, Slot(1)) - 1
     fork_version = compute_fork_version(compute_epoch_at_slot(fork_version_slot))
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header.beacon, domain)
@@ -470,7 +503,7 @@ def apply_light_client_update(store: LightClientStore, update: LightClientUpdate
         store.current_sync_committee = store.next_sync_committee
         store.next_sync_committee = update.next_sync_committee
         store.previous_max_active_participants = store.current_max_active_participants
-        store.current_max_active_participants = 0
+        store.current_max_active_participants = Uint64(0)
     if update.finalized_header.beacon.slot > store.finalized_header.beacon.slot:
         store.finalized_header = update.finalized_header
         if store.finalized_header.beacon.slot > store.optimistic_header.beacon.slot:
@@ -518,12 +551,12 @@ def process_light_client_update(
     # Track the maximum number of active participants in the committee signatures
     store.current_max_active_participants = max(
         store.current_max_active_participants,
-        sum(sync_committee_bits),
+        get_set_bit_count(sync_committee_bits),
     )
 
     # Update the optimistic header
     if (
-        sum(sync_committee_bits) > get_safety_threshold(store)
+        get_set_bit_count(sync_committee_bits) > get_safety_threshold(store)
         and update.attested_header.beacon.slot > store.optimistic_header.beacon.slot
     ):
         store.optimistic_header = update.attested_header
@@ -538,7 +571,7 @@ def process_light_client_update(
             == compute_sync_committee_period_at_slot(update.attested_header.beacon.slot)
         )
     )
-    if sum(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2 and (
+    if get_set_bit_count(sync_committee_bits) * 3 >= len(sync_committee_bits) * 2 and (
         update.finalized_header.beacon.slot > store.finalized_header.beacon.slot
         or update_has_finalized_next_sync_committee
     ):
@@ -558,7 +591,7 @@ def process_light_client_finality_update(
 ) -> None:
     update = LightClientUpdate(
         attested_header=finality_update.attested_header,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         next_sync_committee_branch=NextSyncCommitteeBranch(),
         finalized_header=finality_update.finalized_header,
         finality_branch=finality_update.finality_branch,
@@ -579,9 +612,9 @@ def process_light_client_optimistic_update(
 ) -> None:
     update = LightClientUpdate(
         attested_header=optimistic_update.attested_header,
-        next_sync_committee=SyncCommittee(),
+        next_sync_committee=SyncCommittee.empty(),
         next_sync_committee_branch=NextSyncCommitteeBranch(),
-        finalized_header=LightClientHeader(),
+        finalized_header=LightClientHeader.empty(),
         finality_branch=FinalityBranch(),
         sync_aggregate=optimistic_update.sync_aggregate,
         signature_slot=optimistic_update.signature_slot,
