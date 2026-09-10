@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
+    compute_and_sign_execution_payload_bid,
     compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
@@ -65,28 +66,50 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-# TODO(jtraglia): Pretty sure this doesn't play well with Gloas. Needs some work.
-def _set_operations_by_dict(spec, block, operation_dict, state):
-    for key, value in operation_dict.items():
-        # to handle e.g. `execution_requests.deposits` and `deposits`
-        obj = block.body
-        for attr in key.split(".")[:-1]:
-            obj = getattr(obj, attr)
-        field = key.split(".")[-1]
-        # The operations arrive as plain lists, so each takes the type its
-        # field is declared with.
-        declared = type(obj).model_fields[field].annotation
-        setattr(obj, field, declared(data=value))
-    if is_post_gloas(spec):
-        payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
-            spec, payload, state
-        )
-    elif is_post_bellatrix(spec):
+def _build_block_with_operations(
+    spec,
+    state,
+    slot=None,
+    operation_dict=None,
+    execution_requests=None,
+):
+    """Build a block with operations and an optional payload request commitment."""
+    if slot is not None and state.slot < slot:
+        state = state.copy()
+        spec.process_slots(state, slot)
+    block = build_empty_block(spec, state, slot=slot)
+    for field, value in (operation_dict or {}).items():
+        declared = type(block.body).model_fields[field].annotation
+        setattr(block.body, field, declared(data=value))
+
+    if execution_requests is not None:
+        if is_post_gloas(spec):
+            payload = build_empty_execution_payload(
+                spec,
+                state,
+                randao_mix=spec.get_randao_mix(state, spec.get_current_epoch(state)),
+                execution_requests=execution_requests,
+            )
+            payload.parent_hash = state.latest_block_hash
+            payload.block_hash = compute_el_block_hash(spec, payload, state, execution_requests)
+            block.body.signed_execution_payload_bid = compute_and_sign_execution_payload_bid(
+                spec, state, payload, execution_requests=execution_requests
+            )
+        else:
+            block.body.execution_requests = execution_requests
+
+    if is_post_bellatrix(spec) and not is_post_gloas(spec):
         block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
+    return block
 
 
-def _state_transition_and_sign_block_at_slot(spec, state, sync_aggregate=None, operation_dict=None):
+def _state_transition_and_sign_block_at_slot(
+    spec,
+    state,
+    sync_aggregate=None,
+    operation_dict=None,
+    execution_requests=None,
+):
     """
     Cribbed from ``transition_unsigned_block`` helper
     where the early parts of the state transition have already
@@ -94,17 +117,18 @@ def _state_transition_and_sign_block_at_slot(spec, state, sync_aggregate=None, o
 
     Used to produce a block during an irregular state transition.
 
-    The optional `operation_dict` is a dict of {'<BeaconBlockBody field>': <value>}.
-    This is used for assigning the block operations.
-    p.s. we can't just pass `body` and assign it because randao_reveal and eth1_data was set in `build_empty_block`
-    Thus use dict to pass operations.
+    `operation_dict` maps operation fields to lists of operations.
+    `execution_requests` is an optional ExecutionRequests object: pre-Gloas it
+    goes in the body; post-Gloas the bid commits to it for the child to apply.
     """
-    block = build_empty_block(spec, state)
+    block = _build_block_with_operations(
+        spec,
+        state,
+        operation_dict=operation_dict,
+        execution_requests=execution_requests,
+    )
     if sync_aggregate is not None:
         block.body.sync_aggregate = sync_aggregate
-
-    if operation_dict:
-        _set_operations_by_dict(spec, block, operation_dict, state)
 
     assert state.latest_block_header.slot < block.slot
     assert state.slot == block.slot
@@ -196,7 +220,14 @@ def get_upgrade_fn(spec, fork):
 
 
 def do_fork(
-    state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None
+    state,
+    spec,
+    post_spec,
+    fork_epoch,
+    with_block=True,
+    sync_aggregate=None,
+    operation_dict=None,
+    execution_requests=None,
 ):
     spec.process_slots(state, state.slot + 1)
 
@@ -219,13 +250,21 @@ def do_fork(
             state,
             sync_aggregate=sync_aggregate,
             operation_dict=operation_dict,
+            execution_requests=execution_requests,
         )
     else:
         return state, None
 
 
 def do_fork_generate(
-    state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None
+    state,
+    spec,
+    post_spec,
+    fork_epoch,
+    with_block=True,
+    sync_aggregate=None,
+    operation_dict=None,
+    execution_requests=None,
 ):
     spec.process_slots(state, state.slot + 1)
 
@@ -252,6 +291,7 @@ def do_fork_generate(
             state,
             sync_aggregate=sync_aggregate,
             operation_dict=operation_dict,
+            execution_requests=execution_requests,
         )
     else:
         return state, None
@@ -336,6 +376,7 @@ def run_transition_with_operation(
     """
     Generate `operation_type` operation with the spec before fork.
     The operation would be included into the block at `operation_at_slot`.
+    In Gloas, execution requests are committed to in that block and applied by its child.
     """
     is_at_fork = operation_at_slot == spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH
     is_right_before_fork = operation_at_slot == spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
@@ -352,6 +393,8 @@ def run_transition_with_operation(
     )
     # prepare operation
     selected_validator_index = None
+    operation_dict = None
+    execution_requests = None
     if is_slashing_operation:
         # avoid slashing the next proposer
         future_state = state.copy()
@@ -412,19 +455,25 @@ def run_transition_with_operation(
         deposit_request = prepare_deposit_request(
             post_spec, selected_validator_index, amount, signed=True
         )
-        operation_dict = {"execution_requests.deposits": [deposit_request]}
+        execution_requests = post_spec.ExecutionRequests(
+            deposits=post_spec.DepositRequests(data=[deposit_request])
+        )
     elif operation_type == OperationType.WITHDRAWAL_REQUEST:
         selected_validator_index = 0
         withdrawal_request = prepare_withdrawal_request(
             post_spec, state, selected_validator_index, amount=post_spec.FULL_EXIT_REQUEST_AMOUNT
         )
-        operation_dict = {"execution_requests.withdrawals": [withdrawal_request]}
+        execution_requests = post_spec.ExecutionRequests(
+            withdrawals=post_spec.WithdrawalRequests(data=[withdrawal_request])
+        )
     elif operation_type == OperationType.CONSOLIDATION_REQUEST:
         selected_validator_index = 0
         consolidation_request = prepare_switch_to_compounding_request(
             post_spec, state, selected_validator_index
         )
-        operation_dict = {"execution_requests.consolidations": [consolidation_request]}
+        execution_requests = post_spec.ExecutionRequests(
+            consolidations=post_spec.ConsolidationRequests(data=[consolidation_request])
+        )
 
     def _check_state():
         if operation_type == OperationType.PROPOSER_SLASHING:
@@ -473,8 +522,13 @@ def run_transition_with_operation(
 
     if is_right_before_fork:
         # add a block with operation.
-        block = build_empty_block_for_next_slot(spec, state)
-        _set_operations_by_dict(spec, block, operation_dict, state)
+        block = _build_block_with_operations(
+            spec,
+            state,
+            slot=state.slot + 1,
+            operation_dict=operation_dict,
+            execution_requests=execution_requests,
+        )
         signed_block = state_transition_and_sign_block(spec, state, block)
         blocks.append(pre_tag(signed_block))
 
@@ -482,10 +536,26 @@ def run_transition_with_operation(
 
     # irregular state transition to handle fork:
     _operation_at_slot = operation_dict if is_at_fork else None
-    state, block = do_fork(state, spec, post_spec, fork_epoch, operation_dict=_operation_at_slot)
+    state, block = do_fork(
+        state,
+        spec,
+        post_spec,
+        fork_epoch,
+        operation_dict=_operation_at_slot,
+        execution_requests=execution_requests if is_at_fork else None,
+    )
     blocks.append(post_tag(block))
 
     if is_at_fork:
+        if is_post_gloas(post_spec) and execution_requests is not None:
+            # Gloas commits to requests in the fork block's bid and applies them
+            # in the child that selects the FULL parent.
+            child = build_empty_block_for_next_slot(post_spec, state)
+            child.body.signed_execution_payload_bid.message.parent_block_hash = (
+                state.latest_execution_payload_bid.block_hash
+            )
+            child.body.parent_execution_requests = execution_requests
+            blocks.append(post_tag(state_transition_and_sign_block(post_spec, state, child)))
         _check_state()
 
     # after the fork
