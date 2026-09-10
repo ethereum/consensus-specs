@@ -159,9 +159,7 @@ class WithdrawalRequestMaterializer(Materializer):
                 )
             )
         if queue_length:
-            filler_index = (
-                self.rng.randrange(NUM_VALIDATORS - 1) if self.seed is not None else 0
-            )
+            filler_index = self.rng.randrange(NUM_VALIDATORS - 1) if self.seed is not None else 0
             if filler_index >= target_index:
                 filler_index += 1
             while len(entries) < queue_length:
