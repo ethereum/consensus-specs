@@ -361,7 +361,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         solutions: SolutionCatalog,
         fork_name="gloas",
         preset_name="minimal",
-        seed: int | None = None,
+        seed: int = 0,
     ):
         super().__init__(spec, fork_name, preset_name, seed)
         self.solutions = solutions
