@@ -5,7 +5,7 @@ Generate index.md files for specification directories to enable directory browsi
 Each specification directory gets an index page listing the documents it contains,
 providing a GitHub-like directory browsing experience on the documentation site.
 The pages are written directly into the docs directory, which is a copy of the
-specification sources assembled by the `_copy_docs` make target.
+specification sources assembled by the `website` make target.
 """
 
 import os

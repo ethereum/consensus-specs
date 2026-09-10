@@ -3,12 +3,11 @@ all: help
 # A list of fake targets.
 .PHONY: \
 	_sync         \
-	build_docs    \
 	clean         \
 	help          \
 	lint          \
-	serve_docs    \
-	test
+	test          \
+	website
 
 ###############################################################################
 # Help
@@ -30,8 +29,8 @@ help-nonverbose:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)lint$(NORM)       -- run linters and checks"
-	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
+	@echo "make $(BOLD)website$(NORM)    -- build/serve website"
 	@echo ""
 	@echo "Run 'make $(BOLD)help verbose=true$(NORM)' to print detailed usage/examples."
 	@echo ""
@@ -118,12 +117,16 @@ help-verbose:
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
-	@echo "$(BOLD)make serve_docs$(NORM)"
+	@echo "$(BOLD)make website$(NORM)"
 	@echo ""
-	@echo "  Builds and serves the documentation locally using Zensical."
+	@echo "  Build/serve the documentation website."
 	@echo ""
-	@echo "  Example: make serve_docs"
-	@echo "  Then open: http://127.0.0.1:8000/consensus-specs/"
+	@echo "  Serving:"
+	@echo "    serve=true         Host the website locally"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make website"
+	@echo "    make website serve=true"
 	@echo ""
 	@echo "$(BOLD)MAINTENANCE$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
@@ -217,26 +220,22 @@ test: _pyspec
 
 DOCS_CONFIG = ./zensical.toml
 DOCS_BUILD_CONFIG = ./.zensical.build.toml
-
 DOCS_DIR = ./docs
 SPEC_DIR = ./specs
 
-# Copy files to the docs directory.
-_copy_docs:
+# Build/serve the documentation website.
+website: _sync
 	@rm -rf $(DOCS_DIR)
 	@mkdir -p $(DOCS_DIR)
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
 	@$(UV_RUN) python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
 	@$(UV_RUN) python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)
-
-# Build the documentation.
-build_docs: _sync _copy_docs
-	@$(UV_RUN) zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
-
-# Start a local documentation server.
-serve_docs: _pyspec _copy_docs
+ifeq ($(serve),true)
 	@$(UV_RUN) zensical serve -f $(DOCS_BUILD_CONFIG)
+else
+	@$(UV_RUN) zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
+endif
 
 ###############################################################################
 # Checks
