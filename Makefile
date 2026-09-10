@@ -142,8 +142,8 @@ help-verbose:
 UV_RUN    = uv run
 
 # Sync dependencies using uv.
-_sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-_sync: pyproject.toml
+sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+sync: pyproject.toml
 	@command -v uv >/dev/null 2>&1 || { \
 		echo "Error: uv is required but not installed."; \
 		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
@@ -160,7 +160,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
 _pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-_pyspec: _sync
+_pyspec: sync
 	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
@@ -215,7 +215,7 @@ DOCS_DIR = ./docs
 SPEC_DIR = ./specs
 
 # Build/serve the documentation website.
-website: _sync
+website: sync
 	@rm -rf $(DOCS_DIR)
 	@mkdir -p $(DOCS_DIR)
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
