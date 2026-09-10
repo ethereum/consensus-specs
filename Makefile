@@ -29,7 +29,39 @@ help-nonverbose:
 # Print verbose help output.
 help-verbose:
 	@echo ""
-	@echo "$(BOLD)TESTING$(NORM)"
+	@echo "$(BOLD)GENERAL$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make clean$(NORM)"
+	@echo ""
+	@echo "  Removes all untracked files. This includes:"
+	@echo "    - Virtual environment (.venv/)"
+	@echo "    - Build artifacts"
+	@echo "    - Cache files"
+	@echo ""
+	@echo "  $(BOLD)WARNING:$(NORM) This will delete ALL untracked files. Make sure to commit or"
+	@echo "           stash any important changes first."
+	@echo ""
+	@echo "  Example: make clean"
+	@echo ""
+	@echo "$(BOLD)CHECK$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make lint$(NORM)"
+	@echo ""
+	@echo "  Runs all linters, formatters, and checks:"
+	@echo "    - mdformat: Formats markdown files"
+	@echo "    - codespell: Checks for spelling mistakes"
+	@echo "    - ruff: Python linter and formatter"
+	@echo "    - ty: Static type checker for Python"
+	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
+	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
+	@echo "    - Markdown note style fix (scripts/fix_note_style.py)"
+	@echo "    - Trailing whitespace check"
+	@echo ""
+	@echo "  Example: make lint"
+	@echo ""
+	@echo "$(BOLD)TEST$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
 	@echo "$(BOLD)make test$(NORM)"
@@ -60,26 +92,6 @@ help-verbose:
 	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo "    make test coverage=true k=test_process_attestation"
 	@echo "    make test coverage=true fork=electra"
-	@echo ""
-	@echo "$(BOLD)CODE QUALITY$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
-	@echo "$(BOLD)make lint$(NORM)"
-	@echo ""
-	@echo "  Runs all linters, formatters, and checks:"
-	@echo "    - mdformat: Formats markdown files"
-	@echo "    - codespell: Checks for spelling mistakes"
-	@echo "    - ruff: Python linter and formatter"
-	@echo "    - ty: Static type checker for Python"
-	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
-	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
-	@echo "    - Markdown note style fix (scripts/fix_note_style.py)"
-	@echo "    - Trailing whitespace check"
-	@echo ""
-	@echo "  Example: make lint"
-	@echo ""
-	@echo "$(BOLD)TEST GENERATION$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
@@ -119,24 +131,9 @@ help-verbose:
 	@echo "    make website"
 	@echo "    make website serve=true"
 	@echo ""
-	@echo "$(BOLD)MAINTENANCE$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
-	@echo "$(BOLD)make clean$(NORM)"
-	@echo ""
-	@echo "  Removes all untracked files. This includes:"
-	@echo "    - Virtual environment (.venv/)"
-	@echo "    - Build artifacts"
-	@echo "    - Cache files"
-	@echo ""
-	@echo "  $(BOLD)WARNING:$(NORM) This will delete ALL untracked files. Make sure to commit or"
-	@echo "           stash any important changes first."
-	@echo ""
-	@echo "  Example: make clean"
-	@echo ""
 
 ###############################################################################
-# Virtual Environment
+# General
 ###############################################################################
 
 # Sync dependencies using uv.
@@ -149,17 +146,48 @@ sync: pyproject.toml
 	}
 	@uv sync --all-extras $(MAYBE_VERBOSE)
 
-###############################################################################
-# Specification
-###############################################################################
-
-# Create the pyspec for all phases.
+# Generate executable specifications.
 build: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 build: sync
 	@uv run python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
+# Delete all untracked files.
+clean:
+	@git clean -fdx
+
 ###############################################################################
-# Testing
+# Check
+###############################################################################
+
+LINT_DIFF_BEFORE := .lint_diff_before
+LINT_DIFF_AFTER := .lint_diff_after
+MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
+
+# Check for mistakes.
+lint: build
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
+	@git diff > $(LINT_DIFF_BEFORE)
+	@uv --quiet lock --check
+	@uv run codespell
+	@uv run python $(CURDIR)/scripts/fix_note_style.py
+	@uv run python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@uv run python $(CURDIR)/scripts/check_fork_comments.py
+	@uv run python $(CURDIR)/scripts/check_markdown_headings.py
+	@uv run python $(CURDIR)/scripts/check_value_annotations.py
+	@uv run mdformat --number --wrap=80 $(MARKDOWN_FILES)
+	@uv run ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
+	@uv run ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
+	@uv run ruff format --preview --quiet $(CURDIR)/specs
+	@uv run ty check --no-progress \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
+	@git diff > $(LINT_DIFF_AFTER)
+	@diff -q $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER) >/dev/null 2>&1 || \
+		echo "$(BOLD)Note: make lint modified tracked files$(NORM)"
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
+
+###############################################################################
+# Test
 ###############################################################################
 
 PYSPEC_DIR = $(CURDIR)/tests/core/pyspec
@@ -200,65 +228,6 @@ test: build
 		$(COVERAGE) \
 		$(PYSPEC_DIR)/eth_consensus_specs
 
-
-###############################################################################
-# Documentation
-###############################################################################
-
-DOCS_CONFIG = ./zensical.toml
-DOCS_BUILD_CONFIG = ./.zensical.build.toml
-DOCS_DIR = ./docs
-SPEC_DIR = ./specs
-
-# Build/serve the documentation website.
-website: sync
-	@rm -rf $(DOCS_DIR)
-	@mkdir -p $(DOCS_DIR)
-	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
-	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
-	@uv run python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
-	@uv run python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)
-ifeq ($(serve),true)
-	@uv run zensical serve -f $(DOCS_BUILD_CONFIG)
-else
-	@uv run zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
-endif
-
-###############################################################################
-# Checks
-###############################################################################
-
-LINT_DIFF_BEFORE := .lint_diff_before
-LINT_DIFF_AFTER := .lint_diff_after
-MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
-
-# Check for mistakes.
-lint: build
-	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
-	@git diff > $(LINT_DIFF_BEFORE)
-	@uv --quiet lock --check
-	@uv run codespell
-	@uv run python $(CURDIR)/scripts/fix_note_style.py
-	@uv run python $(CURDIR)/scripts/fix_trailing_whitespace.py
-	@uv run python $(CURDIR)/scripts/check_fork_comments.py
-	@uv run python $(CURDIR)/scripts/check_markdown_headings.py
-	@uv run python $(CURDIR)/scripts/check_value_annotations.py
-	@uv run mdformat --number --wrap=80 $(MARKDOWN_FILES)
-	@uv run ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
-	@uv run ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
-	@uv run ruff format --preview --quiet $(CURDIR)/specs
-	@uv run ty check --no-progress \
-		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
-		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
-	@git diff > $(LINT_DIFF_AFTER)
-	@diff -q $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER) >/dev/null 2>&1 || \
-		echo "$(BOLD)Note: make lint modified tracked files$(NORM)"
-	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
-
-###############################################################################
-# Generators
-###############################################################################
-
 COMMA:= ,
 DEFAULT_COMPTESTS_DIR = $(CURDIR)/../compliance-spec-tests/tests
 COMPTESTS_DIR = $(if $(comptests_dir),$(comptests_dir),$(DEFAULT_COMPTESTS_DIR))
@@ -287,9 +256,24 @@ comptests: build
 		$(CURDIR)/tests/generators/compliance_runners/fork_choice/generate_comptests.py
 
 ###############################################################################
-# Cleaning
+# Documentation
 ###############################################################################
 
-# Delete all untracked files.
-clean:
-	@git clean -fdx
+DOCS_CONFIG = ./zensical.toml
+DOCS_BUILD_CONFIG = ./.zensical.build.toml
+DOCS_DIR = ./docs
+SPEC_DIR = ./specs
+
+# Build/serve the documentation website.
+website: sync
+	@rm -rf $(DOCS_DIR)
+	@mkdir -p $(DOCS_DIR)
+	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
+	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
+	@uv run python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
+	@uv run python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)
+ifeq ($(serve),true)
+	@uv run zensical serve -f $(DOCS_BUILD_CONFIG)
+else
+	@uv run zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
+endif
