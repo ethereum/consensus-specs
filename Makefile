@@ -29,9 +29,6 @@ help-nonverbose:
 # Print verbose help output.
 help-verbose:
 	@echo ""
-	@echo "$(BOLD)GENERAL$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
 	@echo "$(BOLD)make clean$(NORM)"
 	@echo ""
 	@echo "  Removes all untracked files. This includes:"
@@ -43,9 +40,6 @@ help-verbose:
 	@echo "           stash any important changes first."
 	@echo ""
 	@echo "  Example: make clean"
-	@echo ""
-	@echo "$(BOLD)CHECK$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
 	@echo "$(BOLD)make lint$(NORM)"
 	@echo ""
@@ -60,9 +54,6 @@ help-verbose:
 	@echo "    - Trailing whitespace check"
 	@echo ""
 	@echo "  Example: make lint"
-	@echo ""
-	@echo "$(BOLD)TEST$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
 	@echo "$(BOLD)make test$(NORM)"
 	@echo ""
@@ -117,9 +108,6 @@ help-verbose:
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
 	@echo "    make comptests fc_gen_config=tiny fork=gloas group_slice_index=0 group_slice_count=4"
 	@echo ""
-	@echo "$(BOLD)DOCUMENTATION$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
 	@echo "$(BOLD)make website$(NORM)"
 	@echo ""
 	@echo "  Build/serve the documentation website."
@@ -133,7 +121,7 @@ help-verbose:
 	@echo ""
 
 ###############################################################################
-# General
+# Setup
 ###############################################################################
 
 PYSPEC_DIR = $(CURDIR)/tests/core/pyspec
@@ -158,7 +146,7 @@ clean:
 	@git clean -fdx
 
 ###############################################################################
-# Check
+# Lint
 ###############################################################################
 
 LINT_DIFF_BEFORE := .lint_diff_before
@@ -257,7 +245,7 @@ comptests: build
 		$(CURDIR)/tests/generators/compliance_runners/fork_choice/generate_comptests.py
 
 ###############################################################################
-# Documentation
+# Website
 ###############################################################################
 
 DOCS_CONFIG = ./zensical.toml
