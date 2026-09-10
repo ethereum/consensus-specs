@@ -141,6 +141,17 @@ def randomize_state_gloas(spec, state, stats, exit_fraction=0.1, slash_fraction=
     return scenario_state
 
 
+def randomize_state_heze(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_gloas(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
 # epochs
 
 
@@ -348,6 +359,14 @@ def random_block_gloas(spec, state, signed_blocks, scenario_state, rng=None):
     block.body.payload_attestations = spec.PayloadAttestations(
         data=get_random_payload_attestations(spec, state, rng)
     )
+
+    return block
+
+
+def random_block_heze(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
+    block = random_block_gloas(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block
 
