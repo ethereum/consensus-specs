@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import random
 import shutil
+from enum import Enum
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.utils.dumper import Dumper
@@ -43,12 +45,53 @@ class Materializer:
         self.preset_name = preset_name
         self.seed = seed
 
-    def _rng_for_case(self, case_name: str) -> random.Random:
-        """Return a case-local RNG without making generation order observable."""
+    @classmethod
+    def _solution_identity(cls, value: Any) -> Any:
+        """Return a canonical, JSON-compatible identity for a model solution.
+
+        Solutions are normally ``SimpleNamespace`` instances created from a
+        coverage record, but this also supports nested containers used by
+        materializers directly. The identity excludes the generated case
+        number so reordering representatives cannot change materialization.
+        """
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        if isinstance(value, Enum):
+            return value.name
+        if isinstance(value, bytes):
+            return {"bytes": value.hex()}
+        if isinstance(value, dict):
+            return {
+                str(key): cls._solution_identity(item)
+                for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+            }
+        if isinstance(value, (list, tuple)):
+            return [cls._solution_identity(item) for item in value]
+        if isinstance(value, set):
+            return sorted(
+                (cls._solution_identity(item) for item in value),
+                key=lambda item: json.dumps(item, sort_keys=True, separators=(",", ":")),
+            )
+        if hasattr(value, "__dict__"):
+            return {
+                str(key): cls._solution_identity(item)
+                for key, item in sorted(vars(value).items())
+                if not key.startswith("_")
+            }
+        raise TypeError(f"Cannot derive a stable identity for solution value: {value!r}")
+
+    def _rng_for_solution(self, solution: Any) -> random.Random:
+        """Return an RNG keyed by the semantic model solution.
+
+        The seed deliberately excludes the emitted ``case_####`` name so
+        providers may add, remove, or reorder representatives safely.
+        """
         if self.seed is None:
-            # Preserve the pre-seed behavior for materializers which already
-            # used a fixed per-case seed.
+            # Preserve the pre-seed behavior of a fixed materialization seed.
             return random.Random(0)
+        solution_identity = json.dumps(
+            self._solution_identity(solution), sort_keys=True, separators=(",", ":")
+        )
         identity = ":".join(
             (
                 str(self.seed),
@@ -57,7 +100,7 @@ class Materializer:
                 self.runner_name,
                 self.handler_name,
                 self.test_provider,
-                case_name,
+                solution_identity,
             )
         )
         derived_seed = int.from_bytes(hashlib.sha256(identity.encode()).digest()[:16], "big")
@@ -68,7 +111,7 @@ class Materializer:
 
     def write_case(self, dumper: Dumper, output_dir: Path, index: int, solution: Any) -> None:
         case_name = f"case_{index:04d}"
-        self.rng = self._rng_for_case(case_name)
+        self.rng = self._rng_for_solution(solution)
         meta, parts = self.materialize_solution(solution)
         claimed = meta.pop("claimed")
         test_case = TestCase(
