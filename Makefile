@@ -139,8 +139,6 @@ help-verbose:
 # Virtual Environment
 ###############################################################################
 
-UV_RUN    = uv run
-
 # Sync dependencies using uv.
 sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 sync: pyproject.toml
@@ -161,7 +159,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 # Create the pyspec for all phases.
 build: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 build: sync
-	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
+	@uv run python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
 # Testing
@@ -190,7 +188,7 @@ test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SING
 test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
 test: build
 	@mkdir -p $(TEST_REPORT_DIR)
-	@$(UV_RUN) pytest \
+	@uv run pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
 		$(MAYBE_VERBOSE) \
@@ -220,12 +218,12 @@ website: sync
 	@mkdir -p $(DOCS_DIR)
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)/specs
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/index.md
-	@$(UV_RUN) python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
-	@$(UV_RUN) python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)
+	@uv run python $(CURDIR)/scripts/strip_inline_tocs.py $(DOCS_DIR)
+	@uv run python $(CURDIR)/scripts/gen_spec_indices.py $(DOCS_DIR) $(DOCS_CONFIG) $(DOCS_BUILD_CONFIG)
 ifeq ($(serve),true)
-	@$(UV_RUN) zensical serve -f $(DOCS_BUILD_CONFIG)
+	@uv run zensical serve -f $(DOCS_BUILD_CONFIG)
 else
-	@$(UV_RUN) zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
+	@uv run zensical build --clean --strict -f $(DOCS_BUILD_CONFIG)
 endif
 
 ###############################################################################
@@ -241,17 +239,17 @@ lint: build
 	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
 	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
-	@$(UV_RUN) codespell
-	@$(UV_RUN) python $(CURDIR)/scripts/fix_note_style.py
-	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
-	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
-	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
-	@$(UV_RUN) python $(CURDIR)/scripts/check_value_annotations.py
-	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
-	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
-	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
-	@$(UV_RUN) ruff format --preview --quiet $(CURDIR)/specs
-	@$(UV_RUN) ty check --no-progress \
+	@uv run codespell
+	@uv run python $(CURDIR)/scripts/fix_note_style.py
+	@uv run python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@uv run python $(CURDIR)/scripts/check_fork_comments.py
+	@uv run python $(CURDIR)/scripts/check_markdown_headings.py
+	@uv run python $(CURDIR)/scripts/check_value_annotations.py
+	@uv run mdformat --number --wrap=80 $(MARKDOWN_FILES)
+	@uv run ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
+	@uv run ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
+	@uv run ruff format --preview --quiet $(CURDIR)/specs
+	@uv run ty check --no-progress \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
 	@git diff > $(LINT_DIFF_AFTER)
@@ -277,7 +275,7 @@ comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: MAYBE_GROUP_SLICE_INDEX := $(if $(group_slice_index),--group-slice-index $(group_slice_index))
 comptests: MAYBE_GROUP_SLICE_COUNT := $(if $(group_slice_count),--group-slice-count $(group_slice_count))
 comptests: build
-	@$(UV_RUN) pytest \
+	@uv run pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
 		$(MAYBE_TEST) \
