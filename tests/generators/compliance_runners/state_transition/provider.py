@@ -147,7 +147,7 @@ def _materialize_provider(
     clean: bool,
     spec: Any,
     preset_name: str,
-    seed: int | None,
+    seed: int,
 ) -> tuple[Any, int]:
     module = import_module(f".{provider.module}", __package__)
     _, chosen = module.build_profile(profile)
@@ -168,7 +168,7 @@ def materialize_handler(
     output_dir: Path,
     spec: Any | None = None,
     preset_name: str = "minimal",
-    seed: int | None = None,
+    seed: int = 0,
 ) -> int:
     """Materialize and validate all providers registered for ``handler``."""
     if spec is None:
@@ -219,6 +219,7 @@ def run(
 ) -> int:
     spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     handlers = HANDLERS if handler == "all" else (handler,)
+    seed = seed if seed is not None else 0
     for current_handler in handlers:
         materialize_handler(current_handler, profile, comptests_output, spec, preset_name, seed)
     return 0
