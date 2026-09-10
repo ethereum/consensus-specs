@@ -153,9 +153,6 @@ sync: pyproject.toml
 # Specification
 ###############################################################################
 
-TEST_LIBS_DIR = $(CURDIR)/tests/core
-PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-
 # Create the pyspec for all phases.
 build: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 build: sync
@@ -165,6 +162,7 @@ build: sync
 # Testing
 ###############################################################################
 
+PYSPEC_DIR = $(CURDIR)/tests/core/pyspec
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 REFTESTS_DIR = $(CURDIR)/reftests
 COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
