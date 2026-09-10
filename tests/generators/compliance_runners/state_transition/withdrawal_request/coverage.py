@@ -30,7 +30,7 @@ FINE_INPUT_ASPECTS = {
     "source_authorization": ["source_address_matches"],
     "validator_lifecycle": ["validator_active", "validator_exiting", "validator_old_enough"],
     "validator_pending_withdrawal": ["has_pending_partial_withdrawal"],
-    "validator_balance": ["sufficient_effective_balance", "has_excess_balance"],
+    "validator_balance": ["effective_balance_to_min_activation", "balance_to_required"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 INPUT_ASPECTS = {
@@ -44,8 +44,8 @@ INPUT_ASPECTS = {
         "validator_exiting",
         "validator_old_enough",
         "has_pending_partial_withdrawal",
-        "sufficient_effective_balance",
-        "has_excess_balance",
+        "effective_balance_to_min_activation",
+        "balance_to_required",
     ],
 }
 FINE_ALL_ASPECTS = {**FINE_INPUT_ASPECTS, **OUTCOME_ASPECT}

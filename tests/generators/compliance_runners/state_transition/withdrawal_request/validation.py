@@ -33,6 +33,14 @@ def _tri(x: bool) -> str:
     return "T" if x else "F"
 
 
+def _cmp(left: int, right: int) -> str:
+    if left < right:
+        return "LT"
+    if left > right:
+        return "GT"
+    return "EQ"
+
+
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     current_epoch = spec.get_current_epoch(pre)
     pubkeys = [v.pubkey for v in pre.validators]
@@ -62,11 +70,11 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             int(current_epoch) >= int(v.activation_epoch) + int(spec.config.SHARD_COMMITTEE_PERIOD)
         )
         r["has_pending_partial_withdrawal"] = _tri(pending > 0)
-        r["sufficient_effective_balance"] = _tri(
-            int(v.effective_balance) >= int(spec.MIN_ACTIVATION_BALANCE)
+        r["effective_balance_to_min_activation"] = _cmp(
+            int(v.effective_balance), int(spec.MIN_ACTIVATION_BALANCE)
         )
-        r["has_excess_balance"] = _tri(
-            int(pre.balances[idx]) > int(spec.MIN_ACTIVATION_BALANCE) + pending
+        r["balance_to_required"] = _cmp(
+            int(pre.balances[idx]), int(spec.MIN_ACTIVATION_BALANCE) + pending
         )
     else:
         r["validator_credential"] = "CRED_NA"
@@ -78,8 +86,8 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             "validator_exiting",
             "validator_old_enough",
             "has_pending_partial_withdrawal",
-            "sufficient_effective_balance",
-            "has_excess_balance",
+            "effective_balance_to_min_activation",
+            "balance_to_required",
         ):
             r[n] = "NA"
 
@@ -109,9 +117,9 @@ def _derive(r: dict) -> str:
         )
     if not r["validator_has_compounding_credential"]:
         return "PARTIAL_NOOP_NOT_COMPOUNDING"
-    if r["sufficient_effective_balance"] != "T":
+    if r["effective_balance_to_min_activation"] not in {"EQ", "GT"}:
         return "PARTIAL_NOOP_INSUFFICIENT_EFFECTIVE_BALANCE"
-    if r["has_excess_balance"] != "T":
+    if r["balance_to_required"] != "GT":
         return "PARTIAL_NOOP_NO_EXCESS_BALANCE"
     return "PARTIAL_QUEUED"
 

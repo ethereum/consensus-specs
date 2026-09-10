@@ -25,8 +25,11 @@ from tests.generators.compliance_runners.state_transition.materializer import Ma
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-N_SUFFICIENT = 64  # get_consolidation_churn_limit > MIN_ACTIVATION_BALANCE
-N_INSUFFICIENT = 32  # get_consolidation_churn_limit == MIN_ACTIVATION_BALANCE
+_VALIDATOR_COUNT_BY_CHURN_RELATION = {
+    "LT": 16,
+    "EQ": 32,
+    "GT": 64,
+}
 SOURCE_INDEX = 0
 TARGET_INDEX = 1
 CURRENT_EPOCH = 70
@@ -36,7 +39,7 @@ OTHER_ADDRESS = b"\x33" * 20
 _DIMS = [
     "same_source_target",
     "pending_consolidations_capacity",
-    "sufficient_consolidation_churn",
+    "consolidation_churn_to_min_activation",
     "validator_pubkey_found",
     "validator_credential",
     "source_address_matches",
@@ -92,7 +95,7 @@ class ConsolidationRequestMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        n = N_SUFFICIENT if _b(sol, "sufficient_consolidation_churn") else N_INSUFFICIENT
+        n = _VALIDATOR_COUNT_BY_CHURN_RELATION[_s(sol, "consolidation_churn_to_min_activation")]
         pre = create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
