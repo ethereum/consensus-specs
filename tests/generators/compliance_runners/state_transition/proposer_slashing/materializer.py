@@ -125,9 +125,7 @@ class ProposerSlashingMaterializer(Materializer):
                     builder_index=spec.BuilderIndex(self.rng.randrange(64)),
                 ),
                 proposer_index=spec.ValidatorIndex(
-                    proposer_index
-                    if _s(sol, "payment_proposer_matches") == "T"
-                    else foreign_index
+                    proposer_index if _s(sol, "payment_proposer_matches") == "T" else foreign_index
                 ),
             )
         post = pre.copy()
