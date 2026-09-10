@@ -183,7 +183,7 @@ def verify_execution_proof_envelope(
     """
     proof_envelope = signed_proof_envelope.message
     assert signed_proof_envelope.validator_index < len(state.validators)
-    assert len(proof_envelope.proof_data) > 0
+    assert len(proof_envelope.proof_data) != 0
     assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
