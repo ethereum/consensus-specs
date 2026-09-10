@@ -239,7 +239,7 @@ class BidProcessingMaterializer(Materializer):
         return bls.Sign(privkey, root)
 
     def __init__(
-        self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int | None = None
+        self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int = 0
     ):
         super().__init__(spec, fork_name, preset_name, seed)
         # Precompute both base-state variants once; each solution starts from a copy.
