@@ -7,6 +7,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
+    get_slot_start_time,
     on_tick_and_append_step,
     tick_and_add_block,
 )
@@ -28,7 +29,7 @@ def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
 
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
+    current_time = get_slot_start_time(spec, store.genesis_time, state.slot)
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     # Add a block on top of genesis

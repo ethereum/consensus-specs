@@ -17,6 +17,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
+    get_slot_start_time,
     on_tick_and_append_step,
 )
 from eth_consensus_specs.test.helpers.optimistic_sync import (
@@ -46,9 +47,9 @@ def test_from_syncing_to_invalid(spec, state):
 
     next_epoch(spec, state)
 
-    current_time = (
-        spec.SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY * 10 + state.slot
-    ) * spec.config.SLOT_DURATION_MS // 1000 + fc_store.genesis_time
+    current_time = get_slot_start_time(
+        spec, fc_store.genesis_time, spec.SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY * 10 + state.slot
+    )
     on_tick_and_append_step(spec, fc_store, current_time, test_steps)
 
     # Block 0

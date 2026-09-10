@@ -9,8 +9,10 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store,
+    get_slot_start_time,
     run_on_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_eip8198
 from eth_consensus_specs.test.helpers.inclusion_list import (
     get_sample_inclusion_list,
     get_sample_signed_inclusion_list,
@@ -29,7 +31,7 @@ def advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store):
     """
     slot = spec.compute_start_slot_at_epoch(spec.MIN_SEED_LOOKAHEAD + 1)
     spec.process_slots(state, slot)
-    time = state.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    time = get_slot_start_time(spec, state.genesis_time, slot)
     spec.on_tick(forkchoice_store, time)
 
 
@@ -344,7 +346,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         assert found_later_assignment
 
         # Advance the fork choice store clock to the new slot.
-        time = state.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000
+        time = get_slot_start_time(spec, state.genesis_time, state.slot)
         spec.on_tick(forkchoice_store, time)
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.
@@ -393,13 +395,22 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
 
-        # Advance time to after the inclusion list due
-        inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
-        assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
-
-        time = forkchoice_store.time + inclusion_list_due_ceiling
-        spec.on_tick(forkchoice_store, time)
-        assert forkchoice_store.time == time
+        # Advance time to the inclusion list deadline. EIP-8198 retains
+        # millisecond precision; its strict timeliness check is false exactly
+        # at the deadline.
+        if is_post_eip8198(spec):
+            inclusion_list_due_ms = spec.get_inclusion_list_due_ms(
+                spec.get_current_slot(forkchoice_store)
+            )
+            time_ms = forkchoice_store.time_ms + inclusion_list_due_ms
+            spec.on_tick_ms(forkchoice_store, time_ms)
+            assert forkchoice_store.time_ms == time_ms
+        else:
+            inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
+            assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
+            time = forkchoice_store.time + inclusion_list_due_ceiling
+            spec.on_tick(forkchoice_store, time)
+            assert forkchoice_store.time == time
 
         # An IL received after the inclusion list due should be ignored.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)

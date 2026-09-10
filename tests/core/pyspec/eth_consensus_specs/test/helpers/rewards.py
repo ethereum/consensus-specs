@@ -8,7 +8,11 @@ from ssz.uint import Uint64
 from eth_consensus_specs.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_eip8198,
+)
 from eth_consensus_specs.test.helpers.random import (
     exit_random_validators,
     randomize_state,
@@ -51,6 +55,24 @@ def get_inactivity_penalty_quotient(spec):
         return spec.INACTIVITY_PENALTY_QUOTIENT
 
 
+def get_expected_inactivity_penalty(spec, state, index):
+    """
+    Mirror the spec's post-Altair inactivity penalty for ``index``, including
+    the EIP-8198 slot-duration rescaling of the penalty denominator.
+    """
+    penalty_numerator = state.validators[index].effective_balance * state.inactivity_scores[index]
+    penalty_denominator = int(spec.config.INACTIVITY_SCORE_BIAS) * int(
+        get_inactivity_penalty_quotient(spec)
+    )
+    if is_post_eip8198(spec):
+        duration_ms = int(spec.get_slot_duration_ms(spec.get_previous_epoch(state)))
+        base_duration_ms = int(spec.get_slot_duration_ms(spec.GENESIS_EPOCH))
+        penalty_denominator = (
+            penalty_denominator * base_duration_ms * base_duration_ms // (duration_ms * duration_ms)
+        )
+    return int(penalty_numerator) // penalty_denominator
+
+
 def has_enough_for_reward(spec, state, index):
     """
     Check if base_reward will be non-zero.
@@ -58,6 +80,8 @@ def has_enough_for_reward(spec, state, index):
     At very low balances, it is possible for a validator have a positive effective_balance
     but a zero base reward.
     """
+    if is_post_eip8198(spec):
+        return spec.get_base_reward_at_epoch(state, index, spec.get_previous_epoch(state)) > 0
     return (
         state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
         > spec.integer_squareroot(spec.get_total_active_balance(state))
@@ -73,7 +97,10 @@ def has_enough_for_leak_penalty(spec, state, index):
     and be in a leak, but have zero leak penalty.
     """
 
-    if is_post_altair(spec):
+    if is_post_eip8198(spec):
+        # The slot-ratio rescaling can round a small penalty down to zero.
+        return get_expected_inactivity_penalty(spec, state, index) > 0
+    elif is_post_altair(spec):
         return state.validators[index].effective_balance * state.inactivity_scores[
             index
         ] > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
@@ -313,14 +340,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
         elif index in matching_attesting_indices:
             assert penalties[index] == 0
         else:
-            # copied from spec:
-            penalty_numerator = (
-                state.validators[index].effective_balance * state.inactivity_scores[index]
-            )
-            penalty_denominator = (
-                spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
-            )
-            assert penalties[index] == penalty_numerator // penalty_denominator
+            assert penalties[index] == get_expected_inactivity_penalty(spec, state, index)
 
 
 def transition_state_to_leak(spec, state, epochs=None):

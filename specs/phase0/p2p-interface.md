@@ -23,6 +23,7 @@
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
+    - [`compute_slot_at_time_ms`](#compute_slot_at_time_ms)
     - [`is_future_slot`](#is_future_slot)
     - [`is_future_epoch`](#is_future_epoch)
     - [`is_within_slot_range`](#is_within_slot_range)
@@ -368,6 +369,17 @@ def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
+#### `compute_slot_at_time_ms`
+
+```python
+def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time_ms``.
+    """
+    assert time_ms >= genesis_time * 1000
+    return Slot(GENESIS_SLOT + (time_ms - genesis_time * 1000) // SLOT_DURATION_MS)
+```
+
 #### `is_future_slot`
 
 ```python
@@ -396,9 +408,9 @@ def is_future_epoch(
     Check if the given epoch is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
-    time_since_genesis_ms += MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    current_slot = compute_slot_at_time_ms(
+        store.genesis_time, current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    )
     return compute_epoch_at_slot(current_slot) < epoch
 ```
 
