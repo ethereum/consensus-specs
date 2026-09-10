@@ -42,8 +42,8 @@ _DIMS = [
     "validator_exiting",
     "validator_old_enough",
     "has_pending_partial_withdrawal",
-    "sufficient_effective_balance",
-    "has_excess_balance",
+    "effective_balance_to_min_activation",
+    "balance_to_required",
     "validator_has_execution_credential",
     "validator_has_compounding_credential",
     "outcome",
@@ -109,11 +109,13 @@ class WithdrawalRequestMaterializer(Materializer):
             )
             v.activation_epoch = spec.Epoch(activation)
             v.exit_epoch = spec.Epoch(exit_epoch)
-            v.effective_balance = spec.Gwei(
-                spec.MIN_ACTIVATION_BALANCE
-                if _s(sol, "sufficient_effective_balance") == "T"
-                else spec.MIN_ACTIVATION_BALANCE - 1
-            )
+            effective_balance_relation = _s(sol, "effective_balance_to_min_activation")
+            effective_balance = int(spec.MIN_ACTIVATION_BALANCE)
+            if effective_balance_relation == "LT":
+                effective_balance -= 1
+            elif effective_balance_relation == "GT":
+                effective_balance += int(spec.EFFECTIVE_BALANCE_INCREMENT)
+            v.effective_balance = spec.Gwei(effective_balance)
 
         # Pending-partial-withdrawals queue: target entry (for has_pending) +
         # filler realizes the requested capacity profile.
@@ -145,10 +147,14 @@ class WithdrawalRequestMaterializer(Materializer):
 
         if found:
             pending_amount = 1 if pending_for_target else 0
-            if _s(sol, "has_excess_balance") == "T":
-                balance = spec.MIN_ACTIVATION_BALANCE + pending_amount + PARTIAL_AMOUNT
+            required_balance = int(spec.MIN_ACTIVATION_BALANCE) + pending_amount
+            balance_relation = _s(sol, "balance_to_required")
+            if balance_relation == "LT":
+                balance = required_balance - 1
+            elif balance_relation == "GT":
+                balance = required_balance + PARTIAL_AMOUNT
             else:
-                balance = spec.MIN_ACTIVATION_BALANCE + pending_amount  # not strictly greater
+                balance = required_balance
             pre.balances[TARGET_INDEX] = spec.Gwei(balance)
 
         request = spec.WithdrawalRequest(
