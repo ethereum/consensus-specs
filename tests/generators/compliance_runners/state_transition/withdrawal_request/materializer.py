@@ -95,9 +95,9 @@ class WithdrawalRequestMaterializer(Materializer):
         found = _b(sol, "validator_pubkey_found")
         is_full = _b(sol, "is_full_exit_request")
         target_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
-        absent_index = NUM_VALIDATORS + distinct_indices(
-            self.rng, len(pubkeys) - NUM_VALIDATORS, 1
-        )[0]
+        absent_index = (
+            NUM_VALIDATORS + distinct_indices(self.rng, len(pubkeys) - NUM_VALIDATORS, 1)[0]
+        )
         credential_address, other_address = credential_and_other_address(self.rng)
 
         source_address = credential_address
