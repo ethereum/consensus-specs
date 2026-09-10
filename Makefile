@@ -67,7 +67,7 @@ help-verbose:
 	@echo "$(BOLD)make test$(NORM)"
 	@echo ""
 	@echo "  Runs pyspec tests with various configuration options. Tests run in parallel"
-	@echo "  by default using pytest with the minimal preset and fastest BLS library."
+	@echo "  by default using pytest with the minimal preset."
 	@echo ""
 	@echo "  Filtering:"
 	@echo "    k=<name>           Run only tests matching this name"
