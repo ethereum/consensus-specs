@@ -7,14 +7,18 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-PROPOSER_INDEX = 1
-FOREIGN_INDEX = 0
 _DIMS = [
     "slots_match",
     "proposers_match",
@@ -69,7 +73,8 @@ class ProposerSlashingMaterializer(Materializer):
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
         current = int(spec.get_current_epoch(pre))
-        proposer = pre.validators[PROPOSER_INDEX]
+        proposer_index, foreign_index = distinct_indices(self.rng, len(pre.validators), 2)
+        proposer = pre.validators[proposer_index]
         proposer.slashed = _b(sol, "proposer_slashed")
         proposer.activation_epoch = spec.Epoch(0 if _b(sol, "proposer_activated") else current + 1)
         proposer.exit_epoch = spec.Epoch(
@@ -85,21 +90,23 @@ class ProposerSlashingMaterializer(Materializer):
             - int(spec.SLOTS_PER_EPOCH) * {"CURRENT": 0, "PREVIOUS": 1, "OLD": 2}[window]
         )
         slot_2 = slot_1 if _b(sol, "slots_match") else slot_1 + 1
-        proposer_2 = PROPOSER_INDEX if _b(sol, "proposers_match") else FOREIGN_INDEX
-        root_2 = b"\x22" * 32 if _b(sol, "headers_different") else b"\x11" * 32
+        proposer_2 = proposer_index if _b(sol, "proposers_match") else foreign_index
+        parent_root, other_parent_root = distinct_bytes(self.rng, 32)
+        state_root, _ = distinct_bytes(self.rng, 32)
+        body_root, _ = distinct_bytes(self.rng, 32)
         h1 = spec.BeaconBlockHeader(
             slot=spec.Slot(slot_1),
-            proposer_index=spec.ValidatorIndex(PROPOSER_INDEX),
-            parent_root=b"\x11" * 32,
-            state_root=b"\x33" * 32,
-            body_root=b"\x44" * 32,
+            proposer_index=spec.ValidatorIndex(proposer_index),
+            parent_root=parent_root,
+            state_root=state_root,
+            body_root=body_root,
         )
         h2 = spec.BeaconBlockHeader(
             slot=spec.Slot(slot_2),
             proposer_index=spec.ValidatorIndex(proposer_2),
-            parent_root=root_2,
-            state_root=b"\x33" * 32,
-            body_root=b"\x44" * 32,
+            parent_root=other_parent_root if _b(sol, "headers_different") else parent_root,
+            state_root=state_root,
+            body_root=body_root,
         )
         slashing = spec.ProposerSlashing(
             signed_header_1=self._sign(pre, h1, _s(sol, "signature_1_valid") == "T"),
@@ -109,15 +116,18 @@ class ProposerSlashingMaterializer(Materializer):
             index = (int(spec.SLOTS_PER_EPOCH) if window == "CURRENT" else 0) + slot_1 % int(
                 spec.SLOTS_PER_EPOCH
             )
+            payment_address, _ = distinct_bytes(self.rng, 20)
             pre.builder_pending_payments[index] = spec.BuilderPendingPayment(
-                weight=spec.Gwei(1),
+                weight=spec.Gwei(self.rng.randrange(1, 1_000_000_001)),
                 withdrawal=spec.BuilderPendingWithdrawal(
-                    fee_recipient=spec.ExecutionAddress(b"\xaa" * 20),
-                    amount=spec.Gwei(1),
-                    builder_index=spec.BuilderIndex(0),
+                    fee_recipient=spec.ExecutionAddress(payment_address),
+                    amount=spec.Gwei(self.rng.randrange(1, 1_000_000_001)),
+                    builder_index=spec.BuilderIndex(self.rng.randrange(64)),
                 ),
                 proposer_index=spec.ValidatorIndex(
-                    PROPOSER_INDEX if _s(sol, "payment_proposer_matches") == "T" else FOREIGN_INDEX
+                    proposer_index
+                    if _s(sol, "payment_proposer_matches") == "T"
+                    else foreign_index
                 ),
             )
         post = pre.copy()
