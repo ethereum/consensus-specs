@@ -238,9 +238,7 @@ class BidProcessingMaterializer(Materializer):
         root = spec.compute_signing_root(bid, domain)
         return bls.Sign(privkey, root)
 
-    def __init__(
-        self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int = 0
-    ):
+    def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int = 0):
         super().__init__(spec, fork_name, preset_name, seed)
         # Precompute both base-state variants once; each solution starts from a copy.
         self._base_genesis = make_base_state(spec, num_validators=256, preprocess=False)
