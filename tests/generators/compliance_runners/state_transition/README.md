@@ -85,9 +85,8 @@ the provider directory is an implementation detail, while the generated manifest
 continues to use the protocol handler name.
 
 `--seed` changes only materialization choices, never the model solutions or
-coverage profile. The same seed produces the same vectors; omitting it retains
-the canonical materialization. The seed is recorded in each generated case's
-`dimensions.yaml`.
+coverage profile. It defaults to `0`, and the same seed produces the same
+vectors. The seed is recorded in each generated case's `dimensions.yaml`.
 
 ## Running generated tests
 
