@@ -63,7 +63,7 @@ def request_execution_proofs(
     assert payload_envelope.beacon_block_root == hash_tree_root(block)
 
     bid = block.body.signed_execution_payload_bid.message
-    new_payload_request = SSZNewPayloadRequest(
+    new_payload_request = NewPayloadRequest(
         execution_payload=payload_envelope.payload,
         versioned_hashes=VersionedHashes(
             data=[

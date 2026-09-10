@@ -130,10 +130,10 @@ def process_execution_payload(
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
 
-    # Compute list of versioned hashes
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-    ]
+    # Compute versioned hashes
+    versioned_hashes = VersionedHashes()
+    for commitment in body.blob_kzg_commitments:
+        versioned_hashes.append(kzg_commitment_to_versioned_hash(commitment))
 
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
