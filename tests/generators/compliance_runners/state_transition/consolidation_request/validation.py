@@ -34,6 +34,14 @@ def _tri(x: bool) -> str:
     return "T" if x else "F"
 
 
+def _cmp(left: int, right: int) -> str:
+    if left < right:
+        return "LT"
+    if left > right:
+        return "GT"
+    return "EQ"
+
+
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     cur = spec.get_current_epoch(pre)
     scp = int(spec.config.SHARD_COMMITTEE_PERIOD)
@@ -46,8 +54,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "pending_consolidations_capacity": queue_capacity_profile(
             len(pre.pending_consolidations), int(spec.PENDING_CONSOLIDATIONS_LIMIT)
         ),
-        "sufficient_consolidation_churn": int(spec.get_consolidation_churn_limit(pre))
-        > int(spec.MIN_ACTIVATION_BALANCE),
+        "consolidation_churn_to_min_activation": _cmp(
+            int(spec.get_consolidation_churn_limit(pre)), int(spec.MIN_ACTIVATION_BALANCE)
+        ),
         "validator_pubkey_found": bool(source_found),
     }
 
@@ -132,7 +141,7 @@ def _derive(r: dict) -> str:
         return "SWITCH_REJECTED_EXITING"
     if r["pending_consolidations_capacity"] == "FULL":
         return "REJECTED_QUEUE_FULL"
-    if not r["sufficient_consolidation_churn"]:
+    if r["consolidation_churn_to_min_activation"] != "GT":
         return "REJECTED_INSUFFICIENT_CHURN"
     if not src_found:
         return "REJECTED_SOURCE_NOT_FOUND"
