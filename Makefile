@@ -1,18 +1,5 @@
 all: help
 
-# A list of executable specifications.
-# These must pass a strict linter.
-ALL_EXECUTABLE_SPEC_NAMES = \
-	phase0    \
-	altair    \
-	bellatrix \
-	capella   \
-	deneb     \
-	electra   \
-	fulu      \
-	gloas     \
-	heze      \
-
 # A list of fake targets.
 .PHONY: \
 	_sync         \
@@ -189,6 +176,7 @@ _pyspec: _sync
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 REFTESTS_DIR = $(CURDIR)/reftests
 COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
+UPGRADE_NAMES := $(filter-out _features,$(notdir $(wildcard specs/*)))
 
 # Run pyspec tests.
 #
@@ -203,7 +191,7 @@ test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
 test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests)),minimal mainnet,minimal))
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
-test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$P))
+test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach U,$(UPGRADE_NAMES), --cov=eth_consensus_specs.$U.$P))
 test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SINGLE),$(COV_SCOPE_ALL)))
 test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
 test: _pyspec
