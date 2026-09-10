@@ -14,6 +14,12 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.authorization import (
+    credential_and_other_address,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
+)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_length_from_profile,
 )
@@ -30,11 +36,7 @@ _VALIDATOR_COUNT_BY_CHURN_RELATION = {
     "EQ": 32,
     "GT": 64,
 }
-SOURCE_INDEX = 0
-TARGET_INDEX = 1
 CURRENT_EPOCH = 70
-ADDRESS = b"\x22" * 20
-OTHER_ADDRESS = b"\x33" * 20
 
 _DIMS = [
     "same_source_target",
@@ -83,11 +85,19 @@ class ConsolidationRequestMaterializer(Materializer):
         return activation, exit_epoch
 
     def _set_validator(
-        self, v: Any, credential_profile: str, active: bool, exiting: bool, old_enough: bool
+        self,
+        v: Any,
+        credential_profile: str,
+        credential_address: bytes,
+        active: bool,
+        exiting: bool,
+        old_enough: bool,
     ) -> None:
         spec = self.spec
         v.withdrawal_credentials = spec.Bytes32(
-            withdrawal_credentials_from_profile(spec, credential_profile, ADDRESS, self.rng)
+            withdrawal_credentials_from_profile(
+                spec, credential_profile, credential_address, self.rng
+            )
         )
         activation, exit_epoch = self._epochs(active, exiting, old_enough)
         v.activation_epoch = spec.Epoch(activation)
@@ -102,8 +112,17 @@ class ConsolidationRequestMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         pre.slot = spec.Slot(CURRENT_EPOCH * spec.SLOTS_PER_EPOCH)
-        absent_source = pubkeys[n]
-        absent_target = pubkeys[n + 1]
+        source_index, target_index, queue_source_index, queue_target_index = distinct_indices(
+            self.rng, n, 4
+        )
+        absent_source_index, absent_target_index = distinct_indices(
+            self.rng,
+            len(pubkeys) - n,
+            2,
+        )
+        absent_source = pubkeys[n + absent_source_index]
+        absent_target = pubkeys[n + absent_target_index]
+        credential_address, other_address = credential_and_other_address(self.rng)
 
         same = _b(sol, "same_source_target")
         source_found = _b(sol, "validator_pubkey_found")
@@ -111,30 +130,34 @@ class ConsolidationRequestMaterializer(Materializer):
         # ---- source validator --------------------------------------------------
         if source_found:
             self._set_validator(
-                pre.validators[SOURCE_INDEX],
+                pre.validators[source_index],
                 _s(sol, "validator_credential"),
+                credential_address,
                 _s(sol, "validator_active") == "T",
                 _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
             )
-            source_pubkey = pre.validators[SOURCE_INDEX].pubkey
-            source_address = ADDRESS if _s(sol, "source_address_matches") == "T" else OTHER_ADDRESS
+            source_pubkey = pre.validators[source_index].pubkey
+            source_address = (
+                credential_address if _s(sol, "source_address_matches") == "T" else other_address
+            )
         else:
             source_pubkey = absent_source
-            source_address = ADDRESS
+            source_address = credential_address
 
         # ---- target validator (consolidation path only) ------------------------
         if same:
             target_pubkey = source_pubkey
         elif _s(sol, "target_found") == "T":
             self._set_validator(
-                pre.validators[TARGET_INDEX],
+                pre.validators[target_index],
                 _s(sol, "target_credential"),
+                credential_address,
                 _s(sol, "target_active") == "T",
                 _s(sol, "target_exiting") == "T",
                 old_enough=True,
             )
-            target_pubkey = pre.validators[TARGET_INDEX].pubkey
+            target_pubkey = pre.validators[target_index].pubkey
         else:
             target_pubkey = absent_target
 
@@ -142,7 +165,7 @@ class ConsolidationRequestMaterializer(Materializer):
         if source_found and _s(sol, "has_pending_partial_withdrawal") == "T":
             pre.pending_partial_withdrawals.append(
                 spec.PendingPartialWithdrawal(
-                    validator_index=spec.ValidatorIndex(SOURCE_INDEX),
+                    validator_index=spec.ValidatorIndex(source_index),
                     amount=spec.Gwei(1),
                     withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
                 )
@@ -157,8 +180,8 @@ class ConsolidationRequestMaterializer(Materializer):
             pre.pending_consolidations = spec.PendingConsolidations(
                 data=[
                     spec.PendingConsolidation(
-                        source_index=spec.ValidatorIndex(2),
-                        target_index=spec.ValidatorIndex(3),
+                        source_index=spec.ValidatorIndex(queue_source_index),
+                        target_index=spec.ValidatorIndex(queue_target_index),
                     )
                     for _ in range(queue_length)
                 ]

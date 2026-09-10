@@ -13,6 +13,12 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.authorization import (
+    credential_and_other_address,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
+)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_length_from_profile,
 )
@@ -25,11 +31,7 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 NUM_VALIDATORS = 64
-TARGET_INDEX = 0
-ABSENT_PUBKEY = pubkeys[NUM_VALIDATORS]  # not in a NUM_VALIDATORS-validator genesis
 CURRENT_EPOCH = 70  # > SHARD_COMMITTEE_PERIOD (64), for old-enough headroom
-ADDRESS = b"\x22" * 20
-OTHER_ADDRESS = b"\x33" * 20
 PARTIAL_AMOUNT = 10**9
 
 _DIMS = [
@@ -63,27 +65,6 @@ class WithdrawalRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "withdrawal_request"
 
-    def _target_index(self) -> int:
-        """Select a target validator without changing the canonical no-seed case."""
-        if self.seed is None:
-            return TARGET_INDEX
-        return self.rng.randrange(NUM_VALIDATORS)
-
-    def _absent_pubkey(self) -> Any:
-        """Select a pubkey outside the genesis state for a not-found request."""
-        if self.seed is None:
-            return ABSENT_PUBKEY
-        index = NUM_VALIDATORS + self.rng.randrange(len(pubkeys) - NUM_VALIDATORS)
-        return pubkeys[index]
-
-    def _addresses(self) -> tuple[bytes, bytes]:
-        """Return distinct credential and source addresses for one vector."""
-        if self.seed is None:
-            return ADDRESS, OTHER_ADDRESS
-        credential_address = self.rng.getrandbits(160).to_bytes(20, "big")
-        other_address = bytes([credential_address[0] ^ 1]) + credential_address[1:]
-        return credential_address, other_address
-
     def _base_state(self) -> Any:
         spec = self.spec
         state = create_genesis_state(
@@ -113,8 +94,11 @@ class WithdrawalRequestMaterializer(Materializer):
         pre = self._base_state()
         found = _b(sol, "validator_pubkey_found")
         is_full = _b(sol, "is_full_exit_request")
-        target_index = self._target_index()
-        credential_address, other_address = self._addresses()
+        target_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
+        absent_index = NUM_VALIDATORS + distinct_indices(
+            self.rng, len(pubkeys) - NUM_VALIDATORS, 1
+        )[0]
+        credential_address, other_address = credential_and_other_address(self.rng)
 
         source_address = credential_address
         if found:
@@ -187,7 +171,7 @@ class WithdrawalRequestMaterializer(Materializer):
         request = spec.WithdrawalRequest(
             source_address=spec.ExecutionAddress(source_address),
             validator_pubkey=spec.BLSPubkey(
-                pre.validators[target_index].pubkey if found else self._absent_pubkey()
+                pre.validators[target_index].pubkey if found else pubkeys[absent_index]
             ),
             amount=spec.Gwei(0) if is_full else spec.Gwei(PARTIAL_AMOUNT),
         )
