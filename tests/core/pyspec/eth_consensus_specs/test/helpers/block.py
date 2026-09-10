@@ -1,6 +1,3 @@
-from eth_consensus_specs.test.helpers.eip8321.randao import (
-    get_hash_chain_reveal,
-)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_empty_signed_execution_payload_bid,
@@ -9,7 +6,6 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
-    is_post_eip8321,
     is_post_electra,
     is_post_gloas,
 )
@@ -34,13 +30,7 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
 
 def apply_randao_reveal(spec, state, block, proposer_index):
     assert state.slot <= block.slot
-
-    if is_post_eip8321(spec) and state.randao_commitments[proposer_index] != spec.Bytes32():
-        # The proposer walks its hash chain instead of signing; the legacy reveal must be empty.
-        block.body.randao_reveal = spec.G2_POINT_AT_INFINITY
-        block.body.hash_chain_reveal = get_hash_chain_reveal(spec, state, proposer_index)
-    else:
-        sign_randao_reveal(spec, state, block, proposer_index)
+    sign_randao_reveal(spec, state, block, proposer_index)
 
 
 # Fully ignore the function if BLS is off, signing is slow.
