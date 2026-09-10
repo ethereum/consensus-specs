@@ -63,6 +63,27 @@ class WithdrawalRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "withdrawal_request"
 
+    def _target_index(self) -> int:
+        """Select a target validator without changing the canonical no-seed case."""
+        if self.seed is None:
+            return TARGET_INDEX
+        return self.rng.randrange(NUM_VALIDATORS)
+
+    def _absent_pubkey(self) -> Any:
+        """Select a pubkey outside the genesis state for a not-found request."""
+        if self.seed is None:
+            return ABSENT_PUBKEY
+        index = NUM_VALIDATORS + self.rng.randrange(len(pubkeys) - NUM_VALIDATORS)
+        return pubkeys[index]
+
+    def _addresses(self) -> tuple[bytes, bytes]:
+        """Return distinct credential and source addresses for one vector."""
+        if self.seed is None:
+            return ADDRESS, OTHER_ADDRESS
+        credential_address = self.rng.getrandbits(160).to_bytes(20, "big")
+        other_address = bytes([credential_address[0] ^ 1]) + credential_address[1:]
+        return credential_address, other_address
+
     def _base_state(self) -> Any:
         spec = self.spec
         state = create_genesis_state(
@@ -92,15 +113,19 @@ class WithdrawalRequestMaterializer(Materializer):
         pre = self._base_state()
         found = _b(sol, "validator_pubkey_found")
         is_full = _b(sol, "is_full_exit_request")
+        target_index = self._target_index()
+        credential_address, other_address = self._addresses()
 
-        source_address = ADDRESS
+        source_address = credential_address
         if found:
-            v = pre.validators[TARGET_INDEX]
+            v = pre.validators[target_index]
             cred = _s(sol, "validator_credential")
             v.withdrawal_credentials = spec.Bytes32(
-                withdrawal_credentials_from_profile(spec, cred, ADDRESS, self.rng)
+                withdrawal_credentials_from_profile(spec, cred, credential_address, self.rng)
             )
-            source_address = ADDRESS if _s(sol, "source_address_matches") == "T" else OTHER_ADDRESS
+            source_address = (
+                credential_address if _s(sol, "source_address_matches") == "T" else other_address
+            )
 
             activation, exit_epoch = self._epochs(
                 _s(sol, "validator_active") == "T",
@@ -128,17 +153,21 @@ class WithdrawalRequestMaterializer(Materializer):
         if pending_for_target:
             entries.append(
                 spec.PendingPartialWithdrawal(
-                    validator_index=spec.ValidatorIndex(TARGET_INDEX),
+                    validator_index=spec.ValidatorIndex(target_index),
                     amount=spec.Gwei(1),
                     withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
                 )
             )
         if queue_length:
-            filler_index = spec.ValidatorIndex(1)
+            filler_index = (
+                self.rng.randrange(NUM_VALIDATORS - 1) if self.seed is not None else 0
+            )
+            if filler_index >= target_index:
+                filler_index += 1
             while len(entries) < queue_length:
                 entries.append(
                     spec.PendingPartialWithdrawal(
-                        validator_index=filler_index,
+                        validator_index=spec.ValidatorIndex(filler_index),
                         amount=spec.Gwei(1),
                         withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
                     )
@@ -155,12 +184,12 @@ class WithdrawalRequestMaterializer(Materializer):
                 balance = required_balance + PARTIAL_AMOUNT
             else:
                 balance = required_balance
-            pre.balances[TARGET_INDEX] = spec.Gwei(balance)
+            pre.balances[target_index] = spec.Gwei(balance)
 
         request = spec.WithdrawalRequest(
             source_address=spec.ExecutionAddress(source_address),
             validator_pubkey=spec.BLSPubkey(
-                pre.validators[TARGET_INDEX].pubkey if found else ABSENT_PUBKEY
+                pre.validators[target_index].pubkey if found else self._absent_pubkey()
             ),
             amount=spec.Gwei(0) if is_full else spec.Gwei(PARTIAL_AMOUNT),
         )
