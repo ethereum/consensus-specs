@@ -364,7 +364,7 @@ def is_gas_limit_target_compatible(
     Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
     EIP-1559 transition rule from ``parent_gas_limit``.
     """
-    max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+    max_gas_limit_difference = saturating_sub(parent_gas_limit // 1024, 1)
     min_gas_limit = parent_gas_limit - max_gas_limit_difference
     max_gas_limit = parent_gas_limit + max_gas_limit_difference
 
