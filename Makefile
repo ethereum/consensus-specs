@@ -136,6 +136,8 @@ help-verbose:
 # General
 ###############################################################################
 
+PYSPEC_DIR = $(CURDIR)/tests/core/pyspec
+
 # Sync dependencies using uv.
 sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 sync: pyproject.toml
@@ -190,7 +192,6 @@ lint: build
 # Test
 ###############################################################################
 
-PYSPEC_DIR = $(CURDIR)/tests/core/pyspec
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 REFTESTS_DIR = $(CURDIR)/reftests
 COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
