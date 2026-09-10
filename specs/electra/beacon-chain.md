@@ -46,6 +46,7 @@
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconState`](#beaconstate)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
@@ -86,8 +87,6 @@
     - [New `process_pending_consolidations`](#new-process_pending_consolidations)
     - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
   - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-      - [Modified `NewPayloadRequest`](#modified-newpayloadrequest)
     - [Engine APIs](#engine-apis)
       - [Modified `is_valid_block_hash`](#modified-is_valid_block_hash)
       - [Modified `notify_new_payload`](#modified-notify_new_payload)
@@ -559,6 +558,17 @@ class BeaconState(Container):
     pending_partial_withdrawals: PendingPartialWithdrawals
     # [New in Electra:EIP7251]
     pending_consolidations: PendingConsolidations
+```
+
+#### `NewPayloadRequest`
+
+```python
+class NewPayloadRequest(Container):
+    execution_payload: ExecutionPayload
+    versioned_hashes: VersionedHashes
+    parent_beacon_block_root: Root
+    # [New in Electra]
+    execution_requests: ExecutionRequests
 ```
 
 ## Dataclasses
@@ -1246,20 +1256,6 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 
 ### Execution engine
 
-#### Request data
-
-##### Modified `NewPayloadRequest`
-
-```python
-@dataclass
-class NewPayloadRequest:
-    execution_payload: ExecutionPayload
-    versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
-    # [New in Electra]
-    execution_requests: ExecutionRequests
-```
-
 #### Engine APIs
 
 ##### Modified `is_valid_block_hash`
@@ -1559,10 +1555,10 @@ def process_execution_payload(
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
 
-    # Compute list of versioned hashes
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-    ]
+    # Compute versioned hashes
+    versioned_hashes = VersionedHashes()
+    for commitment in body.blob_kzg_commitments:
+        versioned_hashes.append(kzg_commitment_to_versioned_hash(commitment))
 
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(

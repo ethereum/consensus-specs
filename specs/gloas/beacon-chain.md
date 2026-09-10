@@ -79,6 +79,7 @@
     - [`BeaconState`](#beaconstate)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionRequests`](#executionrequests)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
@@ -978,6 +979,19 @@ class ExecutionRequests(ProgressiveContainer):
     builder_deposits: BuilderDepositRequests
     # [New in Gloas:EIP8282]
     builder_exits: BuilderExitRequests
+```
+
+#### `NewPayloadRequest`
+
+```python
+# [Modified in Gloas:EIP7688]
+class NewPayloadRequest(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
+    execution_payload: ExecutionPayload
+    versioned_hashes: VersionedHashes
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
 ```
 
 ## Dataclasses

@@ -21,6 +21,7 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [`is_merge_transition_complete`](#is_merge_transition_complete)
@@ -32,8 +33,6 @@
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-      - [`NewPayloadRequest`](#newpayloadrequest)
     - [Engine APIs](#engine-apis)
     - [`notify_new_payload`](#notify_new_payload)
     - [`is_valid_block_hash`](#is_valid_block_hash)
@@ -247,6 +246,13 @@ class ExecutionPayloadHeader(Container):
     transactions_root: Root
 ```
 
+#### `NewPayloadRequest`
+
+```python
+class NewPayloadRequest(Container):
+    execution_payload: ExecutionPayload
+```
+
 ## Helpers
 
 ### Predicates
@@ -345,16 +351,6 @@ def slash_validator(
 ## Beacon chain state transition function
 
 ### Execution engine
-
-#### Request data
-
-##### `NewPayloadRequest`
-
-```python
-@dataclass
-class NewPayloadRequest:
-    execution_payload: ExecutionPayload
-```
 
 #### Engine APIs
 
