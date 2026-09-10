@@ -39,7 +39,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_capella,
-    is_post_eip8025,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -178,12 +177,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     )
     if is_post_bellatrix(spec) and not is_post_gloas(spec):
         if is_post_capella(spec) or spec.is_execution_enabled(state, block.body):
-            if is_post_eip8025(spec):
-                spec.process_execution_payload(
-                    state, block.body, spec.EXECUTION_ENGINE, spec.PROOF_ENGINE
-                )
-            else:
-                spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
+            spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
 
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)

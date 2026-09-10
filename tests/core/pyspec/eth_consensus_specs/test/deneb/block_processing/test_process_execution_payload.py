@@ -14,7 +14,6 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_eip8025
 
 
 def run_execution_payload_processing(
@@ -49,10 +48,7 @@ def run_execution_payload_processing(
 
     def call_process_execution_payload():
         engine = TestEngine()
-        if is_post_eip8025(spec):
-            spec.process_execution_payload(state, body, engine, spec.PROOF_ENGINE)
-        else:
-            spec.process_execution_payload(state, body, engine)
+        spec.process_execution_payload(state, body, engine)
 
     if not valid:
         expect_assertion_error(call_process_execution_payload)
