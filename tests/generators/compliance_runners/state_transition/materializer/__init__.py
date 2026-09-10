@@ -38,7 +38,7 @@ class Materializer:
         spec: Any,
         fork_name: str = "gloas",
         preset_name: str = "minimal",
-        seed: int | None = None,
+        seed: int = 0,
     ) -> None:
         self.spec = spec
         self.fork_name = fork_name
@@ -86,9 +86,6 @@ class Materializer:
         The seed deliberately excludes the emitted ``case_####`` name so
         providers may add, remove, or reorder representatives safely.
         """
-        if self.seed is None:
-            # Preserve the pre-seed behavior of a fixed materialization seed.
-            return random.Random(0)
         solution_identity = json.dumps(
             self._solution_identity(solution), sort_keys=True, separators=(",", ":")
         )
@@ -130,8 +127,7 @@ class Materializer:
             "test_provider": self.test_provider,
             "claimed": claimed,
         }
-        if self.seed is not None:
-            dimensions["seed"] = self.seed
+        dimensions["seed"] = self.seed
         dumper.dump_data(
             result.test_case.dir,
             "dimensions",
