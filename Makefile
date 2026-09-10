@@ -159,8 +159,8 @@ TEST_LIBS_DIR = $(CURDIR)/tests/core
 PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
-_pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-_pyspec: sync
+build: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+build: sync
 	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
@@ -188,7 +188,7 @@ test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_s
 test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach U,$(UPGRADE_NAMES), --cov=eth_consensus_specs.$U.$P))
 test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SINGLE),$(COV_SCOPE_ALL)))
 test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
-test: _pyspec
+test: build
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
@@ -237,7 +237,7 @@ LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
 
 # Check for mistakes.
-lint: _pyspec
+lint: build
 	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
 	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
@@ -276,7 +276,7 @@ comptests: MAYBE_PRESETS := $(foreach P,$(subst ${COMMA}, ,$(preset)),--presets 
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: MAYBE_GROUP_SLICE_INDEX := $(if $(group_slice_index),--group-slice-index $(group_slice_index))
 comptests: MAYBE_GROUP_SLICE_COUNT := $(if $(group_slice_count),--group-slice-count $(group_slice_count))
-comptests: _pyspec
+comptests: build
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
