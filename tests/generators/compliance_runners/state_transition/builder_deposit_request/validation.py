@@ -12,6 +12,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool
 from tests.generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
     deposit_amount_profile,
 )
@@ -29,10 +30,6 @@ _YAML = YAML(typ="safe")
 _ACCEPT = {"ADDED_NEW_BUILDER", "TOPPED_UP", "TOPPED_UP_AFTER_RESET"}
 
 
-def _tri(x: bool) -> str:
-    return "T" if x else "F"
-
-
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     pubkeys = [b.pubkey for b in pre.builders]
     found = request.pubkey in pubkeys
@@ -43,7 +40,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             spec.is_builder_withdrawal_credential(request.withdrawal_credentials)
         ),
         "builder_pubkey_found": found,
-        "builder_signature_valid": _tri(bool(spec.is_valid_builder_deposit_signature(request))),
+        "builder_signature_valid": _to_bool(
+            bool(spec.is_valid_builder_deposit_signature(request))
+        ).name,
         "amount_profile": deposit_amount_profile(spec, request.amount),
     }
 
@@ -51,8 +50,8 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         b = pre.builders[pubkeys.index(request.pubkey)]
         wset = b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH
         bzero = int(b.balance) == 0
-        r["builder_withdrawable_epoch_set"] = _tri(wset)
-        r["builder_balance_zero"] = _tri(bzero)
+        r["builder_withdrawable_epoch_set"] = _to_bool(wset).name
+        r["builder_balance_zero"] = _to_bool(bzero).name
         r["reset_applies"] = bool(wset and bzero)
     else:
         r["builder_withdrawable_epoch_set"] = "NA"
