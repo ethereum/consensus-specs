@@ -62,9 +62,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         ).name
         r["validator_active"] = _to_bool(bool(spec.is_active_validator(sv, cur))).name
         r["validator_exiting"] = _to_bool(sv.exit_epoch != spec.FAR_FUTURE_EPOCH).name
-        r["validator_old_enough"] = _to_bool(
-            int(cur) >= int(sv.activation_epoch) + scp
-        ).name
+        r["validator_old_enough"] = _to_bool(int(cur) >= int(sv.activation_epoch) + scp).name
         r["has_pending_partial_withdrawal"] = _to_bool(
             int(spec.get_pending_balance_to_withdraw(pre, sidx)) > 0
         ).name
