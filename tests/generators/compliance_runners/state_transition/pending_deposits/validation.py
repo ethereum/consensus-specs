@@ -7,6 +7,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -148,30 +149,16 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
     )
     withdrawable = "NA"
     if validator is not None:
-        withdrawable = (
-            "LT"
-            if validator.withdrawable_epoch < next_epoch
-            else ("EQ" if validator.withdrawable_epoch == next_epoch else "GT")
-        )
+        withdrawable = _to_cmp(validator.withdrawable_epoch, next_epoch).name
     available = pre.deposit_balance_to_consume + spec.get_activation_churn_limit(pre)
-    comparison = (
-        "NA"
-        if role in {"EXITING", "WITHDRAWN"}
-        else (
-            "LT"
-            if candidate.amount < available
-            else "EQ"
-            if candidate.amount == available
-            else "GT"
-        )
-    )
+    comparison = "NA"
+    if role not in {"EXITING", "WITHDRAWN"}:
+        comparison = _to_cmp(candidate.amount, available).name
     second_comparison = "NA"
     if layout in {"TWO_PROCESSABLE", "INVALID_THEN_PROCESSABLE"}:
         remaining = available - candidate.amount
         second_amount = deposits[1].amount
-        second_comparison = (
-            "LT" if second_amount < remaining else "EQ" if second_amount == remaining else "GT"
-        )
+        second_comparison = _to_cmp(second_amount, remaining).name
     outcome = {
         "UNFINALIZED": "STOP_UNFINALIZED",
         "PER_EPOCH_LIMIT": "STOP_PER_EPOCH_LIMIT",
@@ -191,14 +178,16 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
         ),
         "primary_reached": layout not in {"EMPTY", "FIRST_UNFINALIZED", "LIMIT_AFTER_WITHDRAWN"},
         "primary_role": role,
-        "deposit_signature_valid": "T"
-        if role == "NEW_VALID"
-        else "F"
-        if role == "NEW_INVALID"
-        else "NA",
+        "deposit_signature_valid": (
+            _to_bool(role == "NEW_VALID").name
+            if role in {"NEW_VALID", "NEW_INVALID"}
+            else "NA"
+        ),
         "validator_pubkey_found": found,
-        "validator_active": "T" if role == "ACTIVE" else "F" if found else "NA",
-        "validator_exiting": "T" if role in {"EXITING", "WITHDRAWN"} else "F" if found else "NA",
+        "validator_active": _to_bool(role == "ACTIVE").name if found else "NA",
+        "validator_exiting": (
+            _to_bool(role in {"EXITING", "WITHDRAWN"}).name if found else "NA"
+        ),
         "withdrawable_epoch_to_next_epoch": withdrawable
         if role in {"EXITING", "WITHDRAWN"}
         else "NA",
