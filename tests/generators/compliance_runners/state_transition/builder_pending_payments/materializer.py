@@ -64,7 +64,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
             else:
                 qualifiers = {"ZERO": 0, "ONE": 1, "MULTIPLE_COUNT": 2}[count]
                 ws = [weight]
-                qualifying_weight = weight if weight >= q else q
+                qualifying_weight = max(weight, q)
                 ws.extend([qualifying_weight] * max(0, qualifiers - int(weight >= q)))
                 ws.extend([q - 1] * (payment_count - len(ws)))
                 for i, w in enumerate(ws):
