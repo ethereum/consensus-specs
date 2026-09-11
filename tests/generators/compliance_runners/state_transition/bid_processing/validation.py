@@ -18,6 +18,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -26,14 +27,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.state_transition.provider import Check
 
 _YAML = YAML(typ="safe")
-
-
-def _cmp(a: int, b: int) -> str:
-    return "LT" if a < b else ("EQ" if a == b else "GT")
-
-
-def _tri(x: bool) -> str:
-    return "T" if x else "F"
 
 
 def recover(pre: Any, signed: Any) -> dict[str, Any]:
@@ -53,21 +46,21 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
 
     r: dict[str, Any] = {
         "builder_type": builder_type,
-        "cmp_bid_value_zero": _cmp(int(bid.value), 0),
+        "cmp_bid_value_zero": _to_cmp(int(bid.value), 0).name,
         "state_slot_past_genesis": int(pre.slot) > spec.GENESIS_SLOT,
-        "parent_block_hash_match": _tri(bid.parent_block_hash == pre.latest_block_hash),
-        "prev_randao_match": _tri(bid.prev_randao == spec.get_randao_mix(pre, current_epoch)),
+        "parent_block_hash_match": _to_bool(bid.parent_block_hash == pre.latest_block_hash).name,
+        "prev_randao_match": _to_bool(bid.prev_randao == spec.get_randao_mix(pre, current_epoch)).name,
     }
 
     max_blobs = spec.get_blob_parameters(current_epoch).max_blobs_per_block
-    r["cmp_len_kzg_commitments_max_blobs"] = _cmp(len(bid.blob_kzg_commitments), max_blobs)
-    r["cmp_state_slot_bid_slot"] = _cmp(int(pre.slot), int(bid.slot))
+    r["cmp_len_kzg_commitments_max_blobs"] = _to_cmp(len(bid.blob_kzg_commitments), max_blobs).name
+    r["cmp_state_slot_bid_slot"] = _to_cmp(int(pre.slot), int(bid.slot)).name
     r["amount_positive"] = int(bid.value) > 0
 
     # parent_block_root: only defined past genesis
     if int(pre.slot) > spec.GENESIS_SLOT:
         expected = spec.get_block_root_at_slot(pre, spec.Slot(int(pre.slot) - 1))
-        r["parent_block_root_match"] = _tri(bid.parent_block_root == expected)
+        r["parent_block_root_match"] = _to_bool(bid.parent_block_root == expected).name
     else:
         r["parent_block_root_match"] = "NA"
 
@@ -88,28 +81,28 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         pending_amount = int(spec.get_pending_balance_to_withdraw_for_builder(pre, idx))
         min_balance = int(spec.MIN_DEPOSIT_AMOUNT) + pending_amount
 
-        r["cmp_state_epoch_deposit_epoch"] = _cmp(int(current_epoch), int(b.deposit_epoch))
-        r["cmp_state_epoch_withdrawal_epoch"] = _cmp(int(current_epoch), int(b.withdrawable_epoch))
-        r["cmp_finalized_epoch_deposit_epoch"] = _cmp(finalized, int(b.deposit_epoch))
-        r["withdrawable_epoch_set"] = _tri(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH)
-        r["payload_builder_version"] = _tri(b.version == spec.PAYLOAD_BUILDER_VERSION)
-        r["cmp_balance_zero"] = _cmp(int(b.balance), 0)
-        r["cmp_balance_min_deposit"] = _cmp(int(b.balance), int(spec.MIN_DEPOSIT_AMOUNT))
-        r["has_pending_payments"] = _tri(
+        r["cmp_state_epoch_deposit_epoch"] = _to_cmp(int(current_epoch), int(b.deposit_epoch)).name
+        r["cmp_state_epoch_withdrawal_epoch"] = _to_cmp(int(current_epoch), int(b.withdrawable_epoch)).name
+        r["cmp_finalized_epoch_deposit_epoch"] = _to_cmp(finalized, int(b.deposit_epoch)).name
+        r["withdrawable_epoch_set"] = _to_bool(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH).name
+        r["payload_builder_version"] = _to_bool(b.version == spec.PAYLOAD_BUILDER_VERSION).name
+        r["cmp_balance_zero"] = _to_cmp(int(b.balance), 0).name
+        r["cmp_balance_min_deposit"] = _to_cmp(int(b.balance), int(spec.MIN_DEPOSIT_AMOUNT)).name
+        r["has_pending_payments"] = _to_bool(
             any(
                 p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
                 for p in pre.builder_pending_payments
             )
-        )
-        r["has_pending_withdrawals"] = _tri(
+        ).name
+        r["has_pending_withdrawals"] = _to_bool(
             any(
                 w.builder_index == idx and int(w.amount) > 0
                 for w in pre.builder_pending_withdrawals
             )
-        )
-        r["cmp_builder_balance_to_bid_value_plus_min_balance"] = _cmp(
+        ).name
+        r["cmp_builder_balance_to_bid_value_plus_min_balance"] = _to_cmp(
             int(b.balance), int(bid.value) + min_balance
-        )
+        ).name
     else:
         for name in (
             "cmp_state_epoch_deposit_epoch",
@@ -124,7 +117,7 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         ):
             r[name] = "NA"
         # For SELF/NON_EXISTING: min_balance = 0, so cmp(0, bid.value)
-        r["cmp_builder_balance_to_bid_value_plus_min_balance"] = _cmp(0, int(bid.value))
+        r["cmp_builder_balance_to_bid_value_plus_min_balance"] = _to_cmp(0, int(bid.value)).name
 
     # Normalize NA variants: the mzn model uses NA_CMP/NA_BOOL while recovery uses NA.
     _NA_MAP = {"NA_CMP": "NA", "NA_BOOL": "NA"}

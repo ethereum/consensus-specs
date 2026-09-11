@@ -7,6 +7,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -31,7 +32,7 @@ def recover(pre: Any, operation: Any) -> dict[str, Any]:
     signature_valid = (
         "NA"
         if not nonempty
-        else ("T" if spec.is_valid_indexed_payload_attestation(pre, indexed) else "F")
+        else _to_bool(spec.is_valid_indexed_payload_attestation(pre, indexed)).name
     )
     result = {
         "parent_root_matches": data.beacon_block_root == pre.latest_block_header.parent_root,
