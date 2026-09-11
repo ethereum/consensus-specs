@@ -189,6 +189,7 @@ class ConsolidationRequestMaterializer(Materializer):
             queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT), self.rng
         )
         if queue_length:
+
             def pending_consolidation() -> Any:
                 queue_source_index, queue_target_index = distinct_indices(self.rng, n, 2)
                 return spec.PendingConsolidation(
