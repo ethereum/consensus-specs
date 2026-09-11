@@ -39,23 +39,24 @@ class PayloadAttestationMaterializer(Materializer):
             validator_balances=[self.spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=self.spec.MAX_EFFECTIVE_BALANCE,
         )
-        self.spec.process_slots(state, self.spec.Slot(3))
+        self.spec.process_slots(state, self.spec.Slot(self.rng.randrange(2, 11)))
         return state
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
         slot = pre.slot - 1 if _b(sol, "slot_is_previous") else pre.slot
-        root = (
-            pre.latest_block_header.parent_root
-            if _b(sol, "parent_root_matches")
-            else spec.Root(b"\x42" * 32)
-        )
+        if _b(sol, "parent_root_matches"):
+            root = pre.latest_block_header.parent_root
+        else:
+            root = bytearray(pre.latest_block_header.parent_root)
+            root[self.rng.randrange(len(root))] ^= self.rng.randrange(1, 256)
+            root = spec.Root(bytes(root))
         ptc = spec.get_ptc(pre, slot)
         indices_profile = _s(sol, "attesting_indices_profile")
         if indices_profile == "EMPTY":
             attesting_indices = []
         elif indices_profile == "PARTIAL":
-            attesting_indices = ptc[: max(1, len(ptc) // 2)]
+            attesting_indices = sorted(self.rng.sample(ptc, self.rng.randrange(1, len(ptc))))
         elif indices_profile == "ALL":
             attesting_indices = None
         else:
