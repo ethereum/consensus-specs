@@ -154,7 +154,7 @@ LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
 
 # Check for mistakes.
-lint: build
+lint: sync
 	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
 	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
@@ -168,6 +168,7 @@ lint: build
 	@uv run ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
 	@uv run ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
 	@uv run ruff format --preview --quiet $(CURDIR)/specs
+	@$(MAKE) --no-print-directory --assume-old=sync build
 	@uv run ty check --no-progress \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
