@@ -25,13 +25,13 @@ def _check_valid(pre: Any, signed: Any) -> str:
         spec.DOMAIN_BEACON_PROPOSER,
         spec.compute_epoch_at_slot(signed.message.slot),
     )
-    return _to_bool(bool(
+    return _to_bool(
         bls.Verify(
             pre.validators[signed.message.proposer_index].pubkey,
             spec.compute_signing_root(signed.message, domain),
             signed.signature,
         )
-    )).name
+    ).name
 
 
 def recover(pre: Any, slashing: Any) -> dict[str, Any]:
@@ -53,9 +53,7 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         payment_matches = "NA"
     else:
         pending_payment = pre.builder_pending_payments[payment_index]
-        payment_matches = _to_bool(
-            pending_payment.proposer_index == m1.proposer_index
-        ).name
+        payment_matches = _to_bool(pending_payment.proposer_index == m1.proposer_index).name
 
     r = {
         "slots_match": m1.slot == m2.slot,
