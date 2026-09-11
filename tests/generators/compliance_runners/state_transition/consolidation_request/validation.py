@@ -13,6 +13,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
@@ -30,18 +31,6 @@ _YAML = YAML(typ="safe")
 _ACCEPT = {"SWITCHED_TO_COMPOUNDING", "CONSOLIDATED"}
 
 
-def _tri(x: bool) -> str:
-    return "T" if x else "F"
-
-
-def _cmp(left: int, right: int) -> str:
-    if left < right:
-        return "LT"
-    if left > right:
-        return "GT"
-    return "EQ"
-
-
 def recover(pre: Any, request: Any) -> dict[str, Any]:
     cur = spec.get_current_epoch(pre)
     scp = int(spec.config.SHARD_COMMITTEE_PERIOD)
@@ -54,9 +43,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "pending_consolidations_capacity": queue_capacity_profile(
             len(pre.pending_consolidations), int(spec.PENDING_CONSOLIDATIONS_LIMIT)
         ),
-        "consolidation_churn_to_min_activation": _cmp(
+        "consolidation_churn_to_min_activation": _to_cmp(
             int(spec.get_consolidation_churn_limit(pre)), int(spec.MIN_ACTIVATION_BALANCE)
-        ),
+        ).name,
         "validator_pubkey_found": bool(source_found),
     }
 
@@ -68,13 +57,17 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         r["validator_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(sv)
         )
-        r["source_address_matches"] = _tri(sv.withdrawal_credentials[12:] == request.source_address)
-        r["validator_active"] = _tri(bool(spec.is_active_validator(sv, cur)))
-        r["validator_exiting"] = _tri(sv.exit_epoch != spec.FAR_FUTURE_EPOCH)
-        r["validator_old_enough"] = _tri(int(cur) >= int(sv.activation_epoch) + scp)
-        r["has_pending_partial_withdrawal"] = _tri(
+        r["source_address_matches"] = _to_bool(
+            sv.withdrawal_credentials[12:] == request.source_address
+        ).name
+        r["validator_active"] = _to_bool(bool(spec.is_active_validator(sv, cur))).name
+        r["validator_exiting"] = _to_bool(sv.exit_epoch != spec.FAR_FUTURE_EPOCH).name
+        r["validator_old_enough"] = _to_bool(
+            int(cur) >= int(sv.activation_epoch) + scp
+        ).name
+        r["has_pending_partial_withdrawal"] = _to_bool(
             int(spec.get_pending_balance_to_withdraw(pre, sidx)) > 0
-        )
+        ).name
     else:
         r["validator_credential"] = "CRED_NA"
         r["validator_has_execution_credential"] = False
@@ -102,8 +95,8 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         r["target_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(tv)
         )
-        r["target_active"] = _tri(bool(spec.is_active_validator(tv, cur)))
-        r["target_exiting"] = _tri(tv.exit_epoch != spec.FAR_FUTURE_EPOCH)
+        r["target_active"] = _to_bool(bool(spec.is_active_validator(tv, cur))).name
+        r["target_exiting"] = _to_bool(tv.exit_epoch != spec.FAR_FUTURE_EPOCH).name
     else:
         r["target_found"] = "F"
         r["target_credential"] = "CRED_NA"
