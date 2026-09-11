@@ -36,7 +36,7 @@ _VALIDATOR_COUNT_BY_CHURN_RELATION = {
     "EQ": 32,
     "GT": 64,
 }
-CURRENT_EPOCH = 70
+PENDING_WITHDRAWAL_AMOUNT = 10**9
 
 _DIMS = [
     "same_source_target",
@@ -73,15 +73,22 @@ class ConsolidationRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "consolidation_request"
 
-    def _epochs(self, active: bool, exiting: bool, old_enough: bool) -> tuple[int, int]:
+    def _epochs(
+        self, current_epoch: int, active: bool, exiting: bool, old_enough: bool
+    ) -> tuple[int, int]:
         far = int(self.spec.FAR_FUTURE_EPOCH)
-        activation = 0 if old_enough else CURRENT_EPOCH - 10
+        committee_period = int(self.spec.config.SHARD_COMMITTEE_PERIOD)
+        activation = (
+            self.rng.randrange(current_epoch - committee_period + 1)
+            if old_enough
+            else self.rng.randrange(current_epoch - committee_period + 1, current_epoch + 1)
+        )
         if active:
-            exit_epoch = (CURRENT_EPOCH + 10) if exiting else far
+            exit_epoch = current_epoch + self.rng.randrange(1, 11) if exiting else far
         elif exiting:
-            exit_epoch = CURRENT_EPOCH - 1
+            exit_epoch = self.rng.randrange(current_epoch + 1)
         else:
-            activation, exit_epoch = CURRENT_EPOCH + 10, far
+            activation, exit_epoch = current_epoch + self.rng.randrange(1, 11), far
         return activation, exit_epoch
 
     def _set_validator(
@@ -89,6 +96,7 @@ class ConsolidationRequestMaterializer(Materializer):
         v: Any,
         credential_profile: str,
         credential_address: bytes,
+        current_epoch: int,
         active: bool,
         exiting: bool,
         old_enough: bool,
@@ -99,7 +107,7 @@ class ConsolidationRequestMaterializer(Materializer):
                 spec, credential_profile, credential_address, self.rng
             )
         )
-        activation, exit_epoch = self._epochs(active, exiting, old_enough)
+        activation, exit_epoch = self._epochs(current_epoch, active, exiting, old_enough)
         v.activation_epoch = spec.Epoch(activation)
         v.exit_epoch = spec.Epoch(exit_epoch)
 
@@ -111,10 +119,12 @@ class ConsolidationRequestMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        pre.slot = spec.Slot(CURRENT_EPOCH * spec.SLOTS_PER_EPOCH)
-        source_index, target_index, queue_source_index, queue_target_index = distinct_indices(
-            self.rng, n, 4
+        current_epoch = self.rng.randrange(
+            int(spec.config.SHARD_COMMITTEE_PERIOD) + 10,
+            int(spec.config.SHARD_COMMITTEE_PERIOD) + 101,
         )
+        pre.slot = spec.Slot(current_epoch * spec.SLOTS_PER_EPOCH)
+        source_index, target_index = distinct_indices(self.rng, n, 2)
         absent_source_index, absent_target_index = distinct_indices(
             self.rng,
             len(pubkeys) - n,
@@ -133,6 +143,7 @@ class ConsolidationRequestMaterializer(Materializer):
                 pre.validators[source_index],
                 _s(sol, "validator_credential"),
                 credential_address,
+                current_epoch,
                 _s(sol, "validator_active") == "T",
                 _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
@@ -153,6 +164,7 @@ class ConsolidationRequestMaterializer(Materializer):
                 pre.validators[target_index],
                 _s(sol, "target_credential"),
                 credential_address,
+                current_epoch,
                 _s(sol, "target_active") == "T",
                 _s(sol, "target_exiting") == "T",
                 old_enough=True,
@@ -166,8 +178,8 @@ class ConsolidationRequestMaterializer(Materializer):
             pre.pending_partial_withdrawals.append(
                 spec.PendingPartialWithdrawal(
                     validator_index=spec.ValidatorIndex(source_index),
-                    amount=spec.Gwei(1),
-                    withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                    amount=spec.Gwei(self.rng.randrange(1, PENDING_WITHDRAWAL_AMOUNT + 1)),
+                    withdrawable_epoch=spec.Epoch(current_epoch + self.rng.randrange(11)),
                 )
             )
 
@@ -177,14 +189,15 @@ class ConsolidationRequestMaterializer(Materializer):
             queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT), self.rng
         )
         if queue_length:
+            def pending_consolidation() -> Any:
+                queue_source_index, queue_target_index = distinct_indices(self.rng, n, 2)
+                return spec.PendingConsolidation(
+                    source_index=spec.ValidatorIndex(queue_source_index),
+                    target_index=spec.ValidatorIndex(queue_target_index),
+                )
+
             pre.pending_consolidations = spec.PendingConsolidations(
-                data=[
-                    spec.PendingConsolidation(
-                        source_index=spec.ValidatorIndex(queue_source_index),
-                        target_index=spec.ValidatorIndex(queue_target_index),
-                    )
-                    for _ in range(queue_length)
-                ]
+                data=[pending_consolidation() for _ in range(queue_length)]
             )
 
         request = spec.ConsolidationRequest(
