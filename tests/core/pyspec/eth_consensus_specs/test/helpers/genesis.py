@@ -13,7 +13,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_deneb,
-    is_post_eip8148,
     is_post_eip8321,
     is_post_electra,
     is_post_fulu,
@@ -222,11 +221,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
         )
         state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
         state.ptc_window = initialize_ptc_window(spec, state)
-
-    if is_post_eip8148(spec):
-        state.validator_sweep_thresholds = spec.SweepThresholds(
-            data=[spec.Gwei(0)] * len(validator_balances)
-        )
 
     if is_post_eip8321(spec):
         state.randao_commitments = spec.RandaoCommitments(
