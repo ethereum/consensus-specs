@@ -179,15 +179,11 @@ def recover_dimensions(pre: Any, trace: dict[str, Any]) -> dict[str, Any]:
         "primary_reached": layout not in {"EMPTY", "FIRST_UNFINALIZED", "LIMIT_AFTER_WITHDRAWN"},
         "primary_role": role,
         "deposit_signature_valid": (
-            _to_bool(role == "NEW_VALID").name
-            if role in {"NEW_VALID", "NEW_INVALID"}
-            else "NA"
+            _to_bool(role == "NEW_VALID").name if role in {"NEW_VALID", "NEW_INVALID"} else "NA"
         ),
         "validator_pubkey_found": found,
         "validator_active": _to_bool(role == "ACTIVE").name if found else "NA",
-        "validator_exiting": (
-            _to_bool(role in {"EXITING", "WITHDRAWN"}).name if found else "NA"
-        ),
+        "validator_exiting": (_to_bool(role in {"EXITING", "WITHDRAWN"}).name if found else "NA"),
         "withdrawable_epoch_to_next_epoch": withdrawable
         if role in {"EXITING", "WITHDRAWN"}
         else "NA",

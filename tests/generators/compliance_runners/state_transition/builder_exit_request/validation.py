@@ -35,7 +35,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         finalized = int(pre.finalized_checkpoint.epoch)
         pending = int(spec.get_pending_balance_to_withdraw_for_builder(pre, idx))
         r["builder_deposit_to_finalized_epoch"] = _to_cmp(int(b.deposit_epoch), finalized).name
-        r["builder_withdrawable_epoch_set"] = _to_bool(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH).name
+        r["builder_withdrawable_epoch_set"] = _to_bool(
+            b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH
+        ).name
         r["builder_has_pending_withdrawal"] = _to_bool(
             any(
                 w.builder_index == idx and int(w.amount) > 0
