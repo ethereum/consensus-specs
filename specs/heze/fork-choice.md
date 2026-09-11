@@ -268,6 +268,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
+    # The slot must be within the retention window
+    assert inclusion_list.slot <= current_slot
+    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
+
     # The transactions must be non-empty and not exceed the maximum size
     transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
     assert transactions_size > 0
@@ -275,10 +279,6 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     # Every transaction must be non-empty
     assert all(len(transaction) > 0 for transaction in inclusion_list.transactions)
-
-    # The slot must be within the retention window
-    assert inclusion_list.slot <= current_slot
-    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
     # The dependent block must be known
     assert inclusion_list.dependent_root in store.blocks
@@ -289,7 +289,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     dependent_slot = compute_shuffling_dependent_slot(epoch)
     assert store.blocks[inclusion_list.dependent_root].slot <= dependent_slot
 
-    # The dependent block must be a possible dependent block for the inclusion list committee lookahead
+    # The dependent block must be a possible dependent block for the committee lookahead
     assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
 
     # Verify the validator is in the inclusion list committee

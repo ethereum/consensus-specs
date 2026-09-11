@@ -11,6 +11,7 @@
 - [Types](#types)
   - [New `SignedInclusionLists`](#new-signedinclusionlists)
 - [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -65,6 +66,33 @@ class SignedInclusionLists(List[SignedInclusionList]):
 
 ## Helpers
 
+### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
+    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
+    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    # [New in Heze:EIP7805]
+    inclusion_list_counts: Counter[Tuple[Slot, Root, ValidatorIndex]]
+```
+
 ### Modified `compute_fork_version`
 
 ```python
@@ -108,48 +136,227 @@ are given in this table:
 
 ##### Modified `execution_payload_bid`
 
-The following validations are added, assuming the alias
-`bid = signed_execution_payload_bid.message`:
+```python
+def validate_execution_payload_bid_gossip(
+    seen: Seen,
+    store: Store,
+    signed_execution_payload_bid: SignedExecutionPayloadBid,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedExecutionPayloadBid for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    bid = signed_execution_payload_bid.message
 
-- _[IGNORE]_ `bid.inclusion_list_bits` is inclusive of the node's view of
-  inclusion lists for the slot preceding the bid's slot -- i.e.
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`
-  returns `True`, where `inclusion_list_committee` is
-  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
-  `dependent_root` is
-  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
-  and `store` is the fork choice store.
+    # [IGNORE] This is the first bid for this slot, parent, and builder
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    if bid_key in seen.execution_payload_bids:
+        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
+
+    # [IGNORE] This is the highest value bid seen for the slot and parent
+    best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
+    if best_bid_key in seen.best_execution_payload_bid:
+        if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
+            raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
+
+    # [IGNORE] The bid's slot is the current slot or the next slot
+    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
+        raise GossipIgnore("bid's slot is not the current or next slot")
+
+    # [REJECT] The bid's execution payment is zero
+    if bid.execution_payment != 0:
+        raise GossipReject("bid's execution payment must be zero")
+
+    # [REJECT] The bid's block hash is not equal to its parent block hash
+    if bid.block_hash == bid.parent_block_hash:
+        raise GossipReject("bid's block hash equals its parent block hash")
+
+    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
+    proposal_epoch = compute_epoch_at_slot(bid.slot)
+    max_blobs = get_blob_parameters(proposal_epoch).max_blobs_per_block
+    if len(bid.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
+
+    # [IGNORE] The bid's parent block root is a known beacon block
+    # (MAY be queued until parent is retrieved)
+    if bid.parent_block_root not in store.blocks:
+        raise GossipIgnore("bid's parent block root is not a known beacon block")
+
+    # [REJECT] The bid is for a higher slot than its parent block
+    if bid.slot <= store.blocks[bid.parent_block_root].slot:
+        raise GossipReject("bid's slot is not higher than its parent's slot")
+
+    # [IGNORE] The bid's parent block has been imported
+    # (MAY be queued until parent is imported)
+    if bid.parent_block_root not in store.block_states:
+        raise GossipIgnore("bid's parent block post-state is unavailable")
+
+    state = store.block_states[bid.parent_block_root]
+
+    # [IGNORE] The bid's slot is within the parent's proposer lookahead
+    if proposal_epoch > get_current_epoch(state) + MIN_SEED_LOOKAHEAD:
+        raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
+
+    # [IGNORE] The matching proposer preferences have been seen
+    dependent_root = get_shuffling_dependent_root(store, bid.parent_block_root, proposal_epoch)
+    prefs_key = (bid.slot, dependent_root)
+    if prefs_key not in seen.proposer_preferences:
+        raise GossipIgnore("matching proposer preferences have not been seen")
+
+    proposer_preferences = seen.proposer_preferences[prefs_key]
+
+    # [IGNORE] The bid's fee recipient matches the proposer's preference
+    if bid.fee_recipient != proposer_preferences.fee_recipient:
+        raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
+
+    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
+    if bid.parent_block_hash not in seen.execution_payloads:
+        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+
+    # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
+    parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
+    if not is_gas_limit_target_compatible(
+        parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
+    ):
+        raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
+
+    # [IGNORE] The bid is compatible with the current head branch
+    if not is_bid_compatible_with_head(store, bid):
+        raise GossipIgnore("bid is not compatible with the current head branch")
+
+    # [REJECT] The bid's previous randao is correct
+    if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
+        raise GossipReject("bid's previous randao is incorrect")
+
+    state = state.copy()
+    process_slots(state, bid.slot)
+
+    # [REJECT] The builder index is valid
+    if bid.builder_index >= len(state.builders):
+        raise GossipReject("builder index out of range")
+
+    builder = state.builders[bid.builder_index]
+
+    # [REJECT] The builder is a payload builder
+    if builder.version != PAYLOAD_BUILDER_VERSION:
+        raise GossipReject("builder is not a payload builder")
+
+    # [REJECT] The builder is active
+    if not is_active_builder(state, bid.builder_index):
+        raise GossipReject("builder is not active")
+
+    # [IGNORE] The builder can cover the bid
+    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
+        raise GossipIgnore("builder cannot cover bid value")
+
+    # [IGNORE] The parent's payload does not try to exit the builder
+    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+        envelope = store.payloads[bid.parent_block_root]
+        for request in envelope.execution_requests.builder_exits:
+            if request.pubkey == builder.pubkey:
+                if request.source_address == builder.execution_address:
+                    raise GossipIgnore("builder may exit")
+
+    # [New in Heze:EIP7805]
+    # [IGNORE] The bid's inclusion list bits is inclusive
+    inclusion_list_slot = bid.slot - 1
+    inclusion_list_epoch = compute_epoch_at_slot(inclusion_list_slot)
+    if not is_inclusion_list_bits_inclusive(
+        get_inclusion_list_store(),
+        get_inclusion_list_committee(state, inclusion_list_slot),
+        inclusion_list_slot,
+        get_shuffling_dependent_root(store, bid.parent_block_root, inclusion_list_epoch),
+        bid.inclusion_list_bits,
+        only_timely=True,
+    ):
+        raise GossipIgnore("bid's inclusion list bits is not inclusive")
+
+    # [REJECT] The bid signature is valid
+    if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
+        raise GossipReject("invalid bid signature")
+
+    # Mark this bid as seen and update the highest-value bid for this slot/parent
+    seen.execution_payload_bids.add(bid_key)
+    seen.best_execution_payload_bid[best_bid_key] = bid.value
+```
 
 ##### New `inclusion_list`
 
-This topic is used to propagate signed inclusion list as `SignedInclusionList`.
-The following validations MUST pass before forwarding the `inclusion_list` on
-the network, assuming the alias `message = signed_inclusion_list.message`:
+This topic is used to propagate signed inclusion list.
 
-- _[IGNORE]_ The size of `message.transactions` is greater than 0.
-- _[REJECT]_ The size of `message.transactions` is within upperbound
-  `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST`.
-- _[REJECT]_ Every transaction in `message.transactions` is non-empty.
-- _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
-  `message.slot == current_slot`.
-- _[IGNORE]_ The `message` is either the first or second valid message received
-  from the validator with index `message.validator_index`.
-- _[IGNORE]_ The block with root `message.dependent_root` has been seen (via
-  gossip or non-gossip sources) (a client MAY queue the message for processing
-  once the block is retrieved).
-- _[REJECT]_ The slot of the block with root `message.dependent_root` is
-  strictly less than
-  `compute_start_slot_at_epoch(compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD)`.
-- _[IGNORE]_ `is_valid_dependent_root(store, message.dependent_root, epoch)`
-  returns `True`, where `store` is the fork choice store and `epoch` is
-  `compute_epoch_at_slot(message.slot) - MIN_SEED_LOOKAHEAD`.
-- _[REJECT]_ The message's validator index is in
-  `get_inclusion_list_committee(state, message.slot)`, where `state` is the
-  state corresponding to processing the block with root `message.dependent_root`
-  up to the slot `message.slot`.
-- _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
-  respect to the validator's public key.
+```python
+def validate_inclusion_list_gossip(
+    seen: Seen,
+    store: Store,
+    signed_inclusion_list: SignedInclusionList,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedInclusionList for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    inclusion_list = signed_inclusion_list.message
+
+    # [IGNORE] This is the first or second valid message from this validator
+    includer_index = inclusion_list.validator_index
+    inclusion_list_key = (inclusion_list.slot, inclusion_list.dependent_root, includer_index)
+    if seen.inclusion_list_counts[inclusion_list_key] >= 2:
+        raise GossipIgnore("already seen two valid inclusion lists from this validator")
+
+    # [IGNORE] The inclusion list's slot is for the current slot
+    if not is_current_slot(store, inclusion_list.slot, current_time_ms):
+        raise GossipIgnore("inclusion list is not for the current slot")
+
+    transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+
+    # [IGNORE] The size of inclusion list transactions must be non-empty
+    if transactions_size == 0:
+        raise GossipIgnore("inclusion list contains no transactions")
+
+    # [REJECT] The size of inclusion list transactions must not exceed the maximum size
+    if transactions_size > MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST:
+        raise GossipReject("inclusion list transactions exceed the maximum size")
+
+    # [REJECT] Every transaction must be non-empty
+    if any(len(transaction) == 0 for transaction in inclusion_list.transactions):
+        raise GossipReject("inclusion list contains an empty transaction")
+
+    # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    if inclusion_list.dependent_root not in store.blocks:
+        raise GossipIgnore("dependent block has not been seen")
+
+    # [IGNORE] The dependent block passes validation
+    if inclusion_list.dependent_root not in store.block_states:
+        raise GossipIgnore("dependent block failed validation")
+
+    # [REJECT] The dependent block's slot is not after the shuffling dependent slot
+    epoch = compute_epoch_at_slot(inclusion_list.slot)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
+    if store.blocks[inclusion_list.dependent_root].slot > dependent_slot:
+        raise GossipReject("dependent block is after the shuffling dependent slot")
+
+    # [IGNORE] The dependent block is a possible dependent block for the committee lookahead
+    if not is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot):
+        raise GossipIgnore("dependent block is not a possible dependent block")
+
+    state = store.block_states[inclusion_list.dependent_root].copy()
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
+
+    # [REJECT] The includer is a member of the committee
+    if includer_index not in get_inclusion_list_committee(state, inclusion_list.slot):
+        raise GossipReject("includer is not a member of the committee")
+
+    # [REJECT] The signature is valid
+    if not is_valid_inclusion_list_signature(state, signed_inclusion_list):
+        raise GossipReject("invalid inclusion list signature")
+
+    # Mark this inclusion list as seen
+    seen.inclusion_list_counts[inclusion_list_key] += 1
+```
 
 ## The Req/Resp domain
 
