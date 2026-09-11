@@ -77,10 +77,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
                     value_for_comparison(self.rng, "LT", int(q)),
                     int(q),
                     value_for_comparison(self.rng, "GT", int(q)),
-                ] + [
-                    value_for_comparison(self.rng, "LT", int(q))
-                    for _ in range(payment_count - 3)
-                ]
+                ] + [value_for_comparison(self.rng, "LT", int(q)) for _ in range(payment_count - 3)]
             else:
                 qualifiers = {"ZERO": 0, "ONE": 1, "MULTIPLE_COUNT": 2}[count]
                 ws = [weight]
