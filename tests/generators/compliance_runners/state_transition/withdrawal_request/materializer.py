@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 NUM_VALIDATORS = 64
-CURRENT_EPOCH = 70  # > SHARD_COMMITTEE_PERIOD (64), for old-enough headroom
 PARTIAL_AMOUNT = 10**9
 
 _DIMS = [
@@ -72,26 +71,38 @@ class WithdrawalRequestMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        state.slot = spec.Slot(CURRENT_EPOCH * spec.SLOTS_PER_EPOCH)
+        current_epoch = self.rng.randrange(
+            int(spec.config.SHARD_COMMITTEE_PERIOD) + 10,
+            int(spec.config.SHARD_COMMITTEE_PERIOD) + 101,
+        )
+        state.slot = spec.Slot(current_epoch * spec.SLOTS_PER_EPOCH)
         return state
 
-    def _epochs(self, active: bool, exiting: bool, old_enough: bool) -> tuple[int, int]:
-        """(activation_epoch, exit_epoch) realizing the lifecycle triple at CURRENT_EPOCH."""
+    def _epochs(
+        self, current_epoch: int, active: bool, exiting: bool, old_enough: bool
+    ) -> tuple[int, int]:
+        """Realize the lifecycle triple at ``current_epoch``."""
         spec = self.spec
         far = int(spec.FAR_FUTURE_EPOCH)
-        activation = 0 if old_enough else CURRENT_EPOCH - 10  # <= C-64 vs in (C-64, C]
+        committee_period = int(spec.config.SHARD_COMMITTEE_PERIOD)
+        activation = (
+            self.rng.randrange(current_epoch - committee_period + 1)
+            if old_enough
+            else self.rng.randrange(current_epoch - committee_period + 1, current_epoch + 1)
+        )
         if active:
-            exit_epoch = (CURRENT_EPOCH + 10) if exiting else far  # future exit still active
+            exit_epoch = current_epoch + self.rng.randrange(1, 11) if exiting else far
         elif exiting:
-            exit_epoch = CURRENT_EPOCH - 1  # exited (epoch >= exit)
+            exit_epoch = self.rng.randrange(current_epoch + 1)
         else:
-            activation = CURRENT_EPOCH + 10  # not yet activated
+            activation = current_epoch + self.rng.randrange(1, 11)
             exit_epoch = far
         return activation, exit_epoch
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
+        current_epoch = int(spec.get_current_epoch(pre))
         found = _b(sol, "validator_pubkey_found")
         is_full = _b(sol, "is_full_exit_request")
         target_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
@@ -112,6 +123,7 @@ class WithdrawalRequestMaterializer(Materializer):
             )
 
             activation, exit_epoch = self._epochs(
+                current_epoch,
                 _s(sol, "validator_active") == "T",
                 _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
@@ -121,9 +133,9 @@ class WithdrawalRequestMaterializer(Materializer):
             effective_balance_relation = _s(sol, "effective_balance_to_min_activation")
             effective_balance = int(spec.MIN_ACTIVATION_BALANCE)
             if effective_balance_relation == "LT":
-                effective_balance -= 1
+                effective_balance = self.rng.randrange(effective_balance)
             elif effective_balance_relation == "GT":
-                effective_balance += int(spec.EFFECTIVE_BALANCE_INCREMENT)
+                effective_balance += int(spec.EFFECTIVE_BALANCE_INCREMENT) * self.rng.randrange(1, 11)
             v.effective_balance = spec.Gwei(effective_balance)
 
         # Pending-partial-withdrawals queue: target entry (for has_pending) +
@@ -138,32 +150,36 @@ class WithdrawalRequestMaterializer(Materializer):
             entries.append(
                 spec.PendingPartialWithdrawal(
                     validator_index=spec.ValidatorIndex(target_index),
-                    amount=spec.Gwei(1),
-                    withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                    amount=spec.Gwei(self.rng.randrange(1, PARTIAL_AMOUNT + 1)),
+                    withdrawable_epoch=spec.Epoch(current_epoch + self.rng.randrange(11)),
                 )
             )
         if queue_length:
-            filler_index = self.rng.randrange(NUM_VALIDATORS - 1) if self.seed is not None else 0
-            if filler_index >= target_index:
-                filler_index += 1
             while len(entries) < queue_length:
+                filler_index = self.rng.randrange(NUM_VALIDATORS - 1)
+                if filler_index >= target_index:
+                    filler_index += 1
                 entries.append(
                     spec.PendingPartialWithdrawal(
                         validator_index=spec.ValidatorIndex(filler_index),
-                        amount=spec.Gwei(1),
-                        withdrawable_epoch=spec.Epoch(CURRENT_EPOCH),
+                        amount=spec.Gwei(self.rng.randrange(1, PARTIAL_AMOUNT + 1)),
+                        withdrawable_epoch=spec.Epoch(current_epoch + self.rng.randrange(11)),
                     )
                 )
         pre.pending_partial_withdrawals = spec.PendingPartialWithdrawals(data=entries)
 
         if found:
-            pending_amount = 1 if pending_for_target else 0
+            pending_amount = (
+                sum(int(entry.amount) for entry in entries if entry.validator_index == target_index)
+                if pending_for_target
+                else 0
+            )
             required_balance = int(spec.MIN_ACTIVATION_BALANCE) + pending_amount
             balance_relation = _s(sol, "balance_to_required")
             if balance_relation == "LT":
-                balance = required_balance - 1
+                balance = self.rng.randrange(required_balance)
             elif balance_relation == "GT":
-                balance = required_balance + PARTIAL_AMOUNT
+                balance = required_balance + self.rng.randrange(1, PARTIAL_AMOUNT + 1)
             else:
                 balance = required_balance
             pre.balances[target_index] = spec.Gwei(balance)
@@ -173,7 +189,7 @@ class WithdrawalRequestMaterializer(Materializer):
             validator_pubkey=spec.BLSPubkey(
                 pre.validators[target_index].pubkey if found else pubkeys[absent_index]
             ),
-            amount=spec.Gwei(0) if is_full else spec.Gwei(PARTIAL_AMOUNT),
+            amount=spec.Gwei(0) if is_full else spec.Gwei(self.rng.randrange(1, PARTIAL_AMOUNT + 1)),
         )
 
         post = pre.copy()

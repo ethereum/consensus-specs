@@ -12,6 +12,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
@@ -27,18 +28,6 @@ if TYPE_CHECKING:
 
 _YAML = YAML(typ="safe")
 _ACCEPT = {"FULL_EXIT_INITIATED", "PARTIAL_QUEUED"}
-
-
-def _tri(x: bool) -> str:
-    return "T" if x else "F"
-
-
-def _cmp(left: int, right: int) -> str:
-    if left < right:
-        return "LT"
-    if left > right:
-        return "GT"
-    return "EQ"
 
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
@@ -63,19 +52,21 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         r["validator_has_compounding_credential"] = bool(
             spec.has_compounding_withdrawal_credential(v)
         )
-        r["source_address_matches"] = _tri(v.withdrawal_credentials[12:] == request.source_address)
-        r["validator_active"] = _tri(bool(spec.is_active_validator(v, current_epoch)))
-        r["validator_exiting"] = _tri(v.exit_epoch != spec.FAR_FUTURE_EPOCH)
-        r["validator_old_enough"] = _tri(
+        r["source_address_matches"] = _to_bool(
+            v.withdrawal_credentials[12:] == request.source_address
+        ).name
+        r["validator_active"] = _to_bool(bool(spec.is_active_validator(v, current_epoch))).name
+        r["validator_exiting"] = _to_bool(v.exit_epoch != spec.FAR_FUTURE_EPOCH).name
+        r["validator_old_enough"] = _to_bool(
             int(current_epoch) >= int(v.activation_epoch) + int(spec.config.SHARD_COMMITTEE_PERIOD)
-        )
-        r["has_pending_partial_withdrawal"] = _tri(pending > 0)
-        r["effective_balance_to_min_activation"] = _cmp(
+        ).name
+        r["has_pending_partial_withdrawal"] = _to_bool(pending > 0).name
+        r["effective_balance_to_min_activation"] = _to_cmp(
             int(v.effective_balance), int(spec.MIN_ACTIVATION_BALANCE)
-        )
-        r["balance_to_required"] = _cmp(
+        ).name
+        r["balance_to_required"] = _to_cmp(
             int(pre.balances[idx]), int(spec.MIN_ACTIVATION_BALANCE) + pending
-        )
+        ).name
     else:
         r["validator_credential"] = "CRED_NA"
         r["validator_has_execution_credential"] = False
