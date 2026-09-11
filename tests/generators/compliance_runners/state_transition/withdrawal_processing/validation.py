@@ -102,13 +102,9 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
         "state_latest_block_hash_match": _to_bool(
             pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash
         ).name,
-        "builder_pending_withdrawals_exist": _to_bool(
-            bool(pre.builder_pending_withdrawals)
-        ).name,
+        "builder_pending_withdrawals_exist": _to_bool(pre.builder_pending_withdrawals).name,
         "builder_pending_withdrawals_hit_limit": _to_bool(builder_hit).name,
-        "validator_pending_withdrawals_exist": _to_bool(
-            bool(pre.pending_partial_withdrawals)
-        ).name,
+        "validator_pending_withdrawals_exist": _to_bool(pre.pending_partial_withdrawals).name,
         "eligible_validator_pending_withdrawals_exist": _to_bool(
             any(w.withdrawable_epoch <= epoch for w in pre.pending_partial_withdrawals)
         ).name,
