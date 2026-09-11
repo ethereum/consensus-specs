@@ -135,7 +135,9 @@ class WithdrawalRequestMaterializer(Materializer):
             if effective_balance_relation == "LT":
                 effective_balance = self.rng.randrange(effective_balance)
             elif effective_balance_relation == "GT":
-                effective_balance += int(spec.EFFECTIVE_BALANCE_INCREMENT) * self.rng.randrange(1, 11)
+                effective_balance += int(spec.EFFECTIVE_BALANCE_INCREMENT) * self.rng.randrange(
+                    1, 11
+                )
             v.effective_balance = spec.Gwei(effective_balance)
 
         # Pending-partial-withdrawals queue: target entry (for has_pending) +
@@ -189,7 +191,9 @@ class WithdrawalRequestMaterializer(Materializer):
             validator_pubkey=spec.BLSPubkey(
                 pre.validators[target_index].pubkey if found else pubkeys[absent_index]
             ),
-            amount=spec.Gwei(0) if is_full else spec.Gwei(self.rng.randrange(1, PARTIAL_AMOUNT + 1)),
+            amount=spec.Gwei(0)
+            if is_full
+            else spec.Gwei(self.rng.randrange(1, PARTIAL_AMOUNT + 1)),
         )
 
         post = pre.copy()
