@@ -9,6 +9,9 @@ from eth_consensus_specs.test.helpers.withdrawals import (
     set_parent_block_empty,
     set_parent_block_full,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -17,8 +20,7 @@ if TYPE_CHECKING:
 EPOCHS_PAST_GENESIS = 10
 EVICTED_EPOCH_DISTANCE = 5
 DISPATCH_DEPOSITS_COUNT = 20
-FEE_RECIPIENT = b"\xab" * 20
-PAYMENT_VALUE = 50_000_000
+MAX_PAYMENT_VALUE = 50_000_000
 
 _DIMS = [
     "parent_payload_revealed",
@@ -65,7 +67,10 @@ class ParentExecutionPayloadMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        state.slot = spec.Slot(EPOCHS_PAST_GENESIS * spec.SLOTS_PER_EPOCH)
+        state.slot = spec.Slot(
+            self.rng.randrange(EVICTED_EPOCH_DISTANCE + 1, EPOCHS_PAST_GENESIS + 1)
+            * spec.SLOTS_PER_EPOCH
+        )
         return state
 
     def _request_list(
@@ -76,15 +81,20 @@ class ParentExecutionPayloadMaterializer(Materializer):
         cap: int,
         dispatch_nonempty: bool,
     ) -> Any:
-        count = 1 if dispatch_nonempty else 0
         if not within_cap:
-            count = cap + 1
+            count = cap + self.rng.randrange(1, 5)
+        elif dispatch_nonempty:
+            count = self.rng.randrange(1, cap + 1)
+        else:
+            count = 0
         return container_type(data=[request_type()] * count)
 
     def _requests(self, solution: Any) -> Any:
         spec = self.spec
         deposits_nonempty = _b(solution, "deposits_nonempty")
-        deposits_count = DISPATCH_DEPOSITS_COUNT if deposits_nonempty else 0
+        deposits_count = (
+            self.rng.randrange(1, DISPATCH_DEPOSITS_COUNT + 1) if deposits_nonempty else 0
+        )
         return spec.ExecutionRequests(
             deposits=spec.DepositRequests(data=[spec.DepositRequest()] * deposits_count),
             withdrawals=self._request_list(
@@ -145,25 +155,32 @@ class ParentExecutionPayloadMaterializer(Materializer):
         if _b(solution, "requests_root_matches"):
             pre.latest_execution_payload_bid.execution_requests_root = requests_root
         else:
-            mismatched_root = bytes(requests_root)
-            mismatched_root = bytes([mismatched_root[0] ^ 1]) + mismatched_root[1:]
-            pre.latest_execution_payload_bid.execution_requests_root = spec.Root(mismatched_root)
+            mismatched_root = bytearray(bytes(requests_root))
+            mismatched_root[self.rng.randrange(len(mismatched_root))] ^= self.rng.randrange(1, 256)
+            pre.latest_execution_payload_bid.execution_requests_root = spec.Root(
+                bytes(mismatched_root)
+            )
 
         settlement = _s(solution, "payment_settlement")
         current_epoch = int(spec.get_current_epoch(pre))
         parent_slot = self._parent_slot(current_epoch, settlement)
         parent_bid = pre.latest_execution_payload_bid
         parent_bid.slot = spec.Slot(parent_slot)
-        parent_bid.fee_recipient = spec.ExecutionAddress(FEE_RECIPIENT)
+        fee_recipient, _ = distinct_bytes(self.rng, 20)
+        parent_bid.fee_recipient = spec.ExecutionAddress(fee_recipient)
         parent_bid.builder_index = spec.BuilderIndex(0)
-        payment_value = spec.Gwei(PAYMENT_VALUE if _b(solution, "payment_value_nonzero") else 0)
+        payment_value = spec.Gwei(
+            self.rng.randrange(1, MAX_PAYMENT_VALUE + 1)
+            if _b(solution, "payment_value_nonzero")
+            else 0
+        )
         if settlement == "EVICTED":
             parent_bid.value = payment_value
         else:
             payment_index = self._payment_index(parent_slot, settlement)
             pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
                 withdrawal=spec.BuilderPendingWithdrawal(
-                    fee_recipient=spec.ExecutionAddress(FEE_RECIPIENT),
+                    fee_recipient=spec.ExecutionAddress(fee_recipient),
                     amount=payment_value,
                     builder_index=spec.BuilderIndex(0),
                 )
