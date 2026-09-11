@@ -63,9 +63,7 @@ class DepositRequestMaterializer(Materializer):
         )
         pre.slot = spec.Slot(self.rng.randrange(10 * int(spec.SLOTS_PER_EPOCH)))
         existing_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
-        new_index = NUM_VALIDATORS + distinct_indices(
-            self.rng, len(pubkeys) - NUM_VALIDATORS, 1
-        )[0]
+        new_index = NUM_VALIDATORS + distinct_indices(self.rng, len(pubkeys) - NUM_VALIDATORS, 1)[0]
         pubkey_is_existing = _b(sol, "pubkey_is_existing_validator")
         key_index = existing_index if pubkey_is_existing else new_index
         pubkey = pre.validators[key_index].pubkey if pubkey_is_existing else pubkeys[key_index]
