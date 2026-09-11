@@ -14,9 +14,9 @@ ASPECTS = {
     "previous_section": ["previous_epoch_occupancy", "mixed_quorum_relations"],
     "quorum": ["target_weight_to_quorum", "qualifying_payment_count"],
     "withdrawal": ["target_amount_nonzero"],
-    "retained_section": ["next_epoch_payments_nondefault"],
-    "existing_output": ["preexisting_withdrawals_nonempty"],
-    "effects": ["withdrawals_appended", "state_effected", "outcome"],
+    "retained_section": ["next_epoch_payments_occupancy"],
+    "existing_output": ["preexisting_withdrawals_occupancy"],
+    "effects": ["qualifying_payment_count", "state_effected", "outcome"],
 }
 
 
