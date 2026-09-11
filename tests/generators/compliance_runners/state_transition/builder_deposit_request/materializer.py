@@ -87,7 +87,9 @@ class BuilderDepositRequestMaterializer(Materializer):
         found = _b(sol, "builder_pubkey_found")
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
-        request_pubkey_index, wrong_pubkey_index = distinct_indices(self.rng, len(builder_pubkeys), 2)
+        request_pubkey_index, wrong_pubkey_index = distinct_indices(
+            self.rng, len(builder_pubkeys), 2
+        )
         request_pubkey = builder_pubkeys[request_pubkey_index]
         wrong_pubkey = builder_pubkeys[wrong_pubkey_index]
         address_tail = spec.sha256(request_pubkey)[12:]
