@@ -13,6 +13,7 @@ from typing import Any, TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -21,14 +22,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.state_transition.provider import Check
 
 _YAML = YAML(typ="safe")
-
-
-def _tri(x: bool) -> str:
-    return "T" if x else "F"
-
-
-def _cmp(a: int, b: int) -> str:
-    return "LT" if a < b else ("EQ" if a == b else "GT")
 
 
 def recover(pre: Any, request: Any) -> dict[str, Any]:
@@ -41,21 +34,21 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         b = pre.builders[idx]
         finalized = int(pre.finalized_checkpoint.epoch)
         pending = int(spec.get_pending_balance_to_withdraw_for_builder(pre, idx))
-        r["builder_deposit_to_finalized_epoch"] = _cmp(int(b.deposit_epoch), finalized)
-        r["builder_withdrawable_epoch_set"] = _tri(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH)
-        r["builder_has_pending_withdrawal"] = _tri(
+        r["builder_deposit_to_finalized_epoch"] = _to_cmp(int(b.deposit_epoch), finalized).name
+        r["builder_withdrawable_epoch_set"] = _to_bool(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH).name
+        r["builder_has_pending_withdrawal"] = _to_bool(
             any(
                 w.builder_index == idx and int(w.amount) > 0
                 for w in pre.builder_pending_withdrawals
             )
-        )
-        r["builder_has_pending_payment"] = _tri(
+        ).name
+        r["builder_has_pending_payment"] = _to_bool(
             any(
                 p.withdrawal.builder_index == idx and int(p.withdrawal.amount) > 0
                 for p in pre.builder_pending_payments
             )
-        )
-        r["source_address_matches"] = _tri(b.execution_address == request.source_address)
+        ).name
+        r["source_address_matches"] = _to_bool(b.execution_address == request.source_address).name
         r["builder_active"] = bool(spec.is_active_builder(pre, idx))
         r["builder_has_pending_balance"] = pending != 0
     else:
