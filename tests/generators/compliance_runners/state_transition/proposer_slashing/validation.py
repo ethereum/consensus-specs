@@ -8,6 +8,7 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -18,24 +19,25 @@ if TYPE_CHECKING:
 _YAML = YAML(typ="safe")
 
 
+def _check_valid(pre: Any, signed: Any) -> str:
+    domain = spec.get_domain(
+        pre,
+        spec.DOMAIN_BEACON_PROPOSER,
+        spec.compute_epoch_at_slot(signed.message.slot),
+    )
+    return _to_bool(bool(
+        bls.Verify(
+            pre.validators[signed.message.proposer_index].pubkey,
+            spec.compute_signing_root(signed.message, domain),
+            signed.signature,
+        )
+    )).name
+
+
 def recover(pre: Any, slashing: Any) -> dict[str, Any]:
     h1, h2 = slashing.signed_header_1, slashing.signed_header_2
     m1, m2 = h1.message, h2.message
     current, proposer = spec.get_current_epoch(pre), pre.validators[m1.proposer_index]
-
-    def valid(signed: Any) -> bool:
-        domain = spec.get_domain(
-            pre,
-            spec.DOMAIN_BEACON_PROPOSER,
-            spec.compute_epoch_at_slot(signed.message.slot),
-        )
-        return bool(
-            bls.Verify(
-                pre.validators[signed.message.proposer_index].pubkey,
-                spec.compute_signing_root(signed.message, domain),
-                signed.signature,
-            )
-        )
 
     epoch = spec.compute_epoch_at_slot(m1.slot)
     if epoch == current:
@@ -47,21 +49,20 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         window, payment_index = "PREVIOUS", int(m1.slot) % int(spec.SLOTS_PER_EPOCH)
     else:
         window, payment_index = "OLD", None
-    payment_matches = (
-        "NA"
-        if payment_index is None
-        else (
-            "T"
-            if pre.builder_pending_payments[payment_index].proposer_index == m1.proposer_index
-            else "F"
-        )
-    )
+    if payment_index is None:
+        payment_matches = "NA"
+    else:
+        pending_payment = pre.builder_pending_payments[payment_index]
+        payment_matches = _to_bool(
+            pending_payment.proposer_index == m1.proposer_index
+        ).name
+
     r = {
         "slots_match": m1.slot == m2.slot,
         "proposers_match": m1.proposer_index == m2.proposer_index,
         "headers_different": m1 != m2,
-        "signature_1_valid": "T" if valid(h1) else "F",
-        "signature_2_valid": "T" if valid(h2) else "F",
+        "signature_1_valid": _check_valid(pre, h1),
+        "signature_2_valid": _check_valid(pre, h2),
         "proposer_slashed": bool(proposer.slashed),
         "proposer_activated": proposer.activation_epoch <= current,
         "proposer_withdrawable": proposer.withdrawable_epoch <= current,
