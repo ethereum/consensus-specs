@@ -47,6 +47,8 @@ def validate_case(case_dir: Path) -> list[Check]:
         previous_epoch_occupancy = "EMPTY"
     elif len(occupied) == 1:
         previous_epoch_occupancy = "SINGLE"
+    elif len(occupied) == len(first):
+        previous_epoch_occupancy = "FULL"
     else:
         previous_epoch_occupancy = "MULTIPLE"
 
@@ -74,28 +76,27 @@ def validate_case(case_dir: Path) -> list[Check]:
             quorum_relations.add("GT")
     mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
 
-    next_epoch_payments_nondefault = any(
-        p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
+    next_epoch_payments = pre.builder_pending_payments[spe:]
+    next_epoch_nondefault_count = sum(
+        p != spec.BuilderPendingPayment() for p in next_epoch_payments
     )
-
-    preexisting_withdrawals_nonempty = bool(pre.builder_pending_withdrawals)
-
-    if not appended:
-        withdrawals_appended = "ZERO"
-    elif len(appended) == 1:
-        withdrawals_appended = "ONE"
+    if not next_epoch_nondefault_count:
+        next_epoch_payments_occupancy = "EMPTY"
+    elif next_epoch_nondefault_count == 1:
+        next_epoch_payments_occupancy = "SINGLE"
+    elif next_epoch_nondefault_count == len(next_epoch_payments):
+        next_epoch_payments_occupancy = "FULL"
     else:
-        withdrawals_appended = "MULTIPLE_COUNT"
+        next_epoch_payments_occupancy = "MULTIPLE"
 
-    previous_epoch_discarded = all(p == spec.BuilderPendingPayment() for p in payments[spe:])
+    if not pre.builder_pending_withdrawals:
+        preexisting_withdrawals_occupancy = "ZERO"
+    elif len(pre.builder_pending_withdrawals) == 1:
+        preexisting_withdrawals_occupancy = "ONE"
+    else:
+        preexisting_withdrawals_occupancy = "MULTIPLE_COUNT"
 
-    next_epoch_shifted_forward = list(payments[:spe]) == list(pre.builder_pending_payments[spe:])
-
-    new_tail_defaulted = all(p == spec.BuilderPendingPayment() for p in payments[spe:])
-
-    if not occupied and not any(
-        p != spec.BuilderPendingPayment() for p in pre.builder_pending_payments[spe:]
-    ):
+    if not occupied and next_epoch_payments_occupancy == "EMPTY":
         outcome = "NO_STATE_CHANGE"
     elif not appended:
         outcome = "ROTATED_ONLY"
@@ -112,12 +113,8 @@ def validate_case(case_dir: Path) -> list[Check]:
         "target_amount_nonzero": target_amount_nonzero,
         "qualifying_payment_count": qualifying_payment_count,
         "mixed_quorum_relations": mixed_quorum_relations,
-        "next_epoch_payments_nondefault": next_epoch_payments_nondefault,
-        "preexisting_withdrawals_nonempty": preexisting_withdrawals_nonempty,
-        "withdrawals_appended": withdrawals_appended,
-        "previous_epoch_discarded": previous_epoch_discarded,
-        "next_epoch_shifted_forward": next_epoch_shifted_forward,
-        "new_tail_defaulted": new_tail_defaulted,
+        "next_epoch_payments_occupancy": next_epoch_payments_occupancy,
+        "preexisting_withdrawals_occupancy": preexisting_withdrawals_occupancy,
         "outcome": outcome,
         "state_effected": state_effected,
     }
