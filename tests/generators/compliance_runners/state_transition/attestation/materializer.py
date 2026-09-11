@@ -7,6 +7,9 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.state import transition_to
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -56,7 +59,10 @@ class AttestationMaterializer(Materializer):
             validator_balances=[self.spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=self.spec.MAX_EFFECTIVE_BALANCE,
         )
-        state.slot = self.spec.Slot(EPOCHS_PAST_GENESIS * self.spec.SLOTS_PER_EPOCH + 2)
+        state.slot = self.spec.Slot(
+            self.rng.randrange(2, EPOCHS_PAST_GENESIS + 1) * self.spec.SLOTS_PER_EPOCH
+            + self.rng.randrange(1, self.spec.SLOTS_PER_EPOCH)
+        )
         return state
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
@@ -86,13 +92,14 @@ class AttestationMaterializer(Materializer):
             )
         )
         committee = spec.get_beacon_committee(pre, spec.Slot(slot), 0)
+        participant = self.rng.choice(committee)
         attestation = get_valid_attestation(
             spec,
             pre,
             slot=slot,
             index=0,
             signed=False,
-            filter_participant_set=lambda _: {committee[0]},
+            filter_participant_set=lambda _: {participant},
         )
         data = attestation.data
         if not _b(sol, "target_epoch_in_window"):
@@ -121,19 +128,21 @@ class AttestationMaterializer(Materializer):
         # These are pre-state properties. Materialize them independently of
         # whether a later gate permits the handler to consume the attestation.
         if same_slot and not _b(sol, "sets_new_participation_flag"):
-            flags = pre.current_epoch_participation[committee[0]]
+            flags = pre.current_epoch_participation[participant]
             for flag in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
                 flags = spec.add_flag(flags, flag)
-            pre.current_epoch_participation[committee[0]] = flags
+            pre.current_epoch_participation[participant] = flags
         if same_slot and _b(sol, "pending_payment_amount_positive"):
             payment_index = int(spec.SLOTS_PER_EPOCH) + slot % int(spec.SLOTS_PER_EPOCH)
+            fee_recipient, _ = distinct_bytes(self.rng, 20)
             pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
-                weight=spec.Gwei(0),
+                weight=spec.Gwei(self.rng.randrange(1001)),
                 withdrawal=spec.BuilderPendingWithdrawal(
-                    fee_recipient=spec.ExecutionAddress(),
-                    amount=spec.Gwei(1),
-                    builder_index=spec.BuilderIndex(0),
+                    fee_recipient=spec.ExecutionAddress(fee_recipient),
+                    amount=spec.Gwei(self.rng.randrange(1, 1001)),
+                    builder_index=spec.BuilderIndex(self.rng.randrange(64)),
                 ),
+                proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
             )
         if (
             _b(sol, "signature_valid")
