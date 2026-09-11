@@ -14,8 +14,14 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
     deposit_amount_from_profile,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
 )
 from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
     withdrawal_credentials_from_profile,
@@ -26,7 +32,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 NUM_VALIDATORS = 64
-REQUEST_INDEX = 5
 INVALID_SIGNATURE = b"\x00" * 96  # not verified by this handler
 
 _DIMS = [
@@ -56,14 +61,21 @@ class DepositRequestMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        key_index = 0 if _b(sol, "pubkey_is_existing_validator") else NUM_VALIDATORS
-        pubkey = pre.validators[key_index].pubkey if key_index == 0 else pubkeys[key_index]
+        pre.slot = spec.Slot(self.rng.randrange(10 * int(spec.SLOTS_PER_EPOCH)))
+        existing_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
+        new_index = NUM_VALIDATORS + distinct_indices(
+            self.rng, len(pubkeys) - NUM_VALIDATORS, 1
+        )[0]
+        pubkey_is_existing = _b(sol, "pubkey_is_existing_validator")
+        key_index = existing_index if pubkey_is_existing else new_index
+        pubkey = pre.validators[key_index].pubkey if pubkey_is_existing else pubkeys[key_index]
         amount_profile = _s(sol, "amount_profile")
         credentials_profile = _s(sol, "withdrawal_credentials_profile")
         signature_profile = _s(sol, "signature_profile")
         amount = deposit_amount_from_profile(spec, amount_profile, self.rng)
+        address_tail, _ = distinct_bytes(self.rng, 20)
         withdrawal_credentials = withdrawal_credentials_from_profile(
-            spec, credentials_profile, b"\x11" * 20, self.rng
+            spec, credentials_profile, address_tail, self.rng
         )
         deposit_data = build_deposit_data(
             spec,
@@ -82,7 +94,7 @@ class DepositRequestMaterializer(Materializer):
                 if signature_profile == "VALID"
                 else spec.BLSSignature(INVALID_SIGNATURE)
             ),
-            index=spec.Uint64(REQUEST_INDEX),
+            index=spec.Uint64(self.rng.getrandbits(64)),
         )
         post = pre.copy()
         spec.process_deposit_request(post, request)  # never raises
