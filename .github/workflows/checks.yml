@@ -166,4 +166,4 @@ jobs:
         with:
           enable-cache: true
       - name: Build website
-        run: make build_docs
+        run: make website

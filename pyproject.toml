@@ -76,6 +76,9 @@ specs = ["**/*.md"]
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.codespell]
+skip = "docs,site"
+
 [tool.ruff]
 line-length = 100
 namespace-packages = ["scripts"]
