@@ -18,6 +18,17 @@ def queue_capacity_profile(length: int, limit: int) -> str:
     return "AVAILABLE"
 
 
+def queue_occupancy(length: int, capacity: int) -> str:
+    """Classify a bounded queue's occupancy."""
+    if length == 0:
+        return "EMPTY"
+    if length == 1:
+        return "SINGLE"
+    if length == capacity:
+        return "FULL"
+    return "MULTIPLE"
+
+
 def queue_length_from_profile(profile: str, limit: int, rng: Random) -> int:
     """Choose a reproducible random queue length for a capacity profile."""
     if profile == "EMPTY":
