@@ -14,15 +14,14 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-REQUEST_PUBKEY = builder_pubkeys[0]
-BUILDER_ADDRESS = b"\x22" * 20
-OTHER_ADDRESS = b"\x33" * 20
-FINALIZED_EPOCH = 5
 EPOCHS_PAST_GENESIS = 10
 
 _DIMS = [
@@ -60,9 +59,6 @@ class BuilderExitRequestMaterializer(Materializer):
         )
         state.builders = type(state.builders)()
         state.slot = spec.Slot(EPOCHS_PAST_GENESIS * spec.SLOTS_PER_EPOCH)
-        state.finalized_checkpoint = spec.Checkpoint(
-            epoch=spec.Epoch(FINALIZED_EPOCH), root=spec.Root(b"\x01" * 32)
-        )
         return state
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
@@ -70,21 +66,28 @@ class BuilderExitRequestMaterializer(Materializer):
         found = _b(sol, "builder_pubkey_found")
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
+        finalized_epoch = self.rng.randrange(2, current_epoch)
+        finalized_root, _ = distinct_bytes(self.rng, 32)
+        pre.finalized_checkpoint = spec.Checkpoint(
+            epoch=spec.Epoch(finalized_epoch), root=spec.Root(finalized_root)
+        )
+        builder_pubkey = self.rng.choice(builder_pubkeys)
+        builder_address, other_address = distinct_bytes(self.rng, 20)
 
         if found:
             dep = _s(sol, "builder_deposit_to_finalized_epoch")
             deposit_epoch = {
-                "LT": FINALIZED_EPOCH - 1,
-                "EQ": FINALIZED_EPOCH,
-                "GT": FINALIZED_EPOCH + 1,
+                "LT": self.rng.randrange(finalized_epoch),
+                "EQ": finalized_epoch,
+                "GT": finalized_epoch + self.rng.randrange(1, 11),
             }[dep]
             wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
             pre.builders.append(
                 spec.Builder(
-                    pubkey=spec.BLSPubkey(REQUEST_PUBKEY),
+                    pubkey=spec.BLSPubkey(builder_pubkey),
                     version=spec.PAYLOAD_BUILDER_VERSION,
-                    execution_address=spec.ExecutionAddress(BUILDER_ADDRESS),
-                    balance=spec.Gwei(spec.MIN_ACTIVATION_BALANCE),
+                    execution_address=spec.ExecutionAddress(builder_address),
+                    balance=spec.Gwei(int(spec.MIN_ACTIVATION_BALANCE) + self.rng.randrange(1001)),
                     deposit_epoch=spec.Epoch(deposit_epoch),
                     withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
                 )
@@ -92,29 +95,30 @@ class BuilderExitRequestMaterializer(Materializer):
             if _s(sol, "builder_has_pending_withdrawal") == "T":
                 pre.builder_pending_withdrawals.append(
                     spec.BuilderPendingWithdrawal(
-                        fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                        amount=spec.Gwei(1),
+                        fee_recipient=spec.ExecutionAddress(builder_address),
+                        amount=spec.Gwei(self.rng.randrange(1, 1001)),
                         builder_index=spec.BuilderIndex(0),
                     )
                 )
             if _s(sol, "builder_has_pending_payment") == "T":
-                pre.builder_pending_payments[0] = spec.BuilderPendingPayment(
-                    weight=spec.Gwei(1),
+                payment_index = self.rng.randrange(len(pre.builder_pending_payments))
+                pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
+                    weight=spec.Gwei(self.rng.randrange(1, 1001)),
                     withdrawal=spec.BuilderPendingWithdrawal(
-                        fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                        amount=spec.Gwei(1),
+                        fee_recipient=spec.ExecutionAddress(builder_address),
+                        amount=spec.Gwei(self.rng.randrange(1, 1001)),
                         builder_index=spec.BuilderIndex(0),
                     ),
-                    proposer_index=spec.ValidatorIndex(0),
+                    proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
                 )
             matches = _s(sol, "source_address_matches") == "T"
-            source_address = BUILDER_ADDRESS if matches else OTHER_ADDRESS
+            source_address = builder_address if matches else other_address
         else:
-            source_address = BUILDER_ADDRESS  # arbitrary; pubkey absent from registry
+            source_address = builder_address  # arbitrary; pubkey absent from registry
 
         request = spec.BuilderExitRequest(
             source_address=spec.ExecutionAddress(source_address),
-            pubkey=spec.BLSPubkey(REQUEST_PUBKEY),
+            pubkey=spec.BLSPubkey(builder_pubkey),
         )
         post = pre.copy()
         spec.process_builder_exit_request(post, request)  # never raises
