@@ -49,7 +49,9 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         "cmp_bid_value_zero": _to_cmp(int(bid.value), 0).name,
         "state_slot_past_genesis": int(pre.slot) > spec.GENESIS_SLOT,
         "parent_block_hash_match": _to_bool(bid.parent_block_hash == pre.latest_block_hash).name,
-        "prev_randao_match": _to_bool(bid.prev_randao == spec.get_randao_mix(pre, current_epoch)).name,
+        "prev_randao_match": _to_bool(
+            bid.prev_randao == spec.get_randao_mix(pre, current_epoch)
+        ).name,
     }
 
     max_blobs = spec.get_blob_parameters(current_epoch).max_blobs_per_block
@@ -82,7 +84,9 @@ def recover(pre: Any, signed: Any) -> dict[str, Any]:
         min_balance = int(spec.MIN_DEPOSIT_AMOUNT) + pending_amount
 
         r["cmp_state_epoch_deposit_epoch"] = _to_cmp(int(current_epoch), int(b.deposit_epoch)).name
-        r["cmp_state_epoch_withdrawal_epoch"] = _to_cmp(int(current_epoch), int(b.withdrawable_epoch)).name
+        r["cmp_state_epoch_withdrawal_epoch"] = _to_cmp(
+            int(current_epoch), int(b.withdrawable_epoch)
+        ).name
         r["cmp_finalized_epoch_deposit_epoch"] = _to_cmp(finalized, int(b.deposit_epoch)).name
         r["withdrawable_epoch_set"] = _to_bool(b.withdrawable_epoch != spec.FAR_FUTURE_EPOCH).name
         r["payload_builder_version"] = _to_bool(b.version == spec.PAYLOAD_BUILDER_VERSION).name
