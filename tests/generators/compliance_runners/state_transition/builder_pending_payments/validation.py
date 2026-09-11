@@ -5,6 +5,11 @@ from typing import TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
+from tests.generators.compliance_runners.state_transition.aspects_helpers.count import count_profile
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
+    queue_occupancy,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -36,65 +41,29 @@ def validate_case(case_dir: Path) -> list[Check]:
 
     relation = "NA"
     if occupied:
-        if occupied[0].weight < q:
-            relation = "LT"
-        elif occupied[0].weight == q:
-            relation = "EQ"
-        else:
-            relation = "GT"
+        relation = _to_cmp(occupied[0].weight, q).name
 
-    if not occupied:
-        previous_epoch_occupancy = "EMPTY"
-    elif len(occupied) == 1:
-        previous_epoch_occupancy = "SINGLE"
-    elif len(occupied) == len(first):
-        previous_epoch_occupancy = "FULL"
-    else:
-        previous_epoch_occupancy = "MULTIPLE"
+    previous_epoch_occupancy = queue_occupancy(len(occupied), len(first))
 
     if not occupied:
         target_amount_nonzero = "NA"
-    elif occupied[0].withdrawal.amount:
-        target_amount_nonzero = "T"
     else:
-        target_amount_nonzero = "F"
+        target_amount_nonzero = _to_bool(bool(occupied[0].withdrawal.amount)).name
 
-    if not appended:
-        qualifying_payment_count = "ZERO"
-    elif len(appended) == 1:
-        qualifying_payment_count = "ONE"
-    else:
-        qualifying_payment_count = "MULTIPLE_COUNT"
+    qualifying_payment_count = count_profile(len(appended))
 
-    quorum_relations = set()
-    for payment in occupied:
-        if payment.weight < q:
-            quorum_relations.add("LT")
-        elif payment.weight == q:
-            quorum_relations.add("EQ")
-        else:
-            quorum_relations.add("GT")
+    quorum_relations = {_to_cmp(payment.weight, q).name for payment in occupied}
     mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
 
     next_epoch_payments = pre.builder_pending_payments[spe:]
     next_epoch_nondefault_count = sum(
         p != spec.BuilderPendingPayment() for p in next_epoch_payments
     )
-    if not next_epoch_nondefault_count:
-        next_epoch_payments_occupancy = "EMPTY"
-    elif next_epoch_nondefault_count == 1:
-        next_epoch_payments_occupancy = "SINGLE"
-    elif next_epoch_nondefault_count == len(next_epoch_payments):
-        next_epoch_payments_occupancy = "FULL"
-    else:
-        next_epoch_payments_occupancy = "MULTIPLE"
+    next_epoch_payments_occupancy = queue_occupancy(
+        next_epoch_nondefault_count, len(next_epoch_payments)
+    )
 
-    if not pre.builder_pending_withdrawals:
-        preexisting_withdrawals_occupancy = "ZERO"
-    elif len(pre.builder_pending_withdrawals) == 1:
-        preexisting_withdrawals_occupancy = "ONE"
-    else:
-        preexisting_withdrawals_occupancy = "MULTIPLE_COUNT"
+    preexisting_withdrawals_occupancy = count_profile(len(pre.builder_pending_withdrawals))
 
     if not occupied and next_epoch_payments_occupancy == "EMPTY":
         outcome = "NO_STATE_CHANGE"
