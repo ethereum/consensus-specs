@@ -3,6 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
+    distinct_bytes,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.comparison_witness import (
+    value_for_comparison,
+)
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -37,58 +46,82 @@ class BuilderPendingPaymentsMaterializer(Materializer):
         assert q > 0
         spe = int(s.SLOTS_PER_EPOCH)
 
-        def payment(slot, weight, amount):
+        def payment(weight, amount):
+            fee_recipient, _ = distinct_bytes(self.rng, 20)
             return s.BuilderPendingPayment(
                 weight=s.Gwei(weight),
                 withdrawal=s.BuilderPendingWithdrawal(
-                    fee_recipient=s.ExecutionAddress(bytes([slot + 1]) * 20),
+                    fee_recipient=s.ExecutionAddress(fee_recipient),
                     amount=s.Gwei(amount),
-                    builder_index=s.BuilderIndex(slot + 10),
+                    builder_index=s.BuilderIndex(self.rng.randrange(64)),
                 ),
-                proposer_index=s.ValidatorIndex(slot + 20),
+                proposer_index=s.ValidatorIndex(self.rng.randrange(64)),
             )
 
         rel = str(sol.target_weight_to_quorum)
-        weight = {"LT": q - 1, "EQ": q, "GT": q + 1}.get(rel, 0)
-        amount = 0 if str(sol.target_amount_nonzero) == "F" else 100
+        weight = value_for_comparison(self.rng, rel, int(q)) if rel != "NA" else 0
+        amount = 0 if str(sol.target_amount_nonzero) == "F" else self.rng.randrange(1, 1_000)
         occ = str(sol.previous_epoch_occupancy)
         count = str(sol.qualifying_payment_count)
+        previous_slots = (
+            tuple(range(spe))
+            if occ == "FULL"
+            else tuple(sorted(distinct_indices(self.rng, spe, 3)))
+        )
         if occ == "SINGLE":
-            pre.builder_pending_payments[0] = payment(0, weight, amount)
+            pre.builder_pending_payments[previous_slots[0]] = payment(weight, amount)
         elif occ in {"MULTIPLE", "FULL"}:
             payment_count = 3 if occ == "MULTIPLE" else spe
             if bool(sol.mixed_quorum_relations):
-                weights = [q - 1, q, q + 1] + [q - 1] * (payment_count - 3)
-                for i, w in enumerate(weights):
-                    pre.builder_pending_payments[i] = payment(i, w, amount + i)
+                weights = [
+                    value_for_comparison(self.rng, "LT", int(q)),
+                    int(q),
+                    value_for_comparison(self.rng, "GT", int(q)),
+                ] + [
+                    value_for_comparison(self.rng, "LT", int(q))
+                    for _ in range(payment_count - 3)
+                ]
             else:
                 qualifiers = {"ZERO": 0, "ONE": 1, "MULTIPLE_COUNT": 2}[count]
                 ws = [weight]
                 qualifying_weight = max(weight, q)
                 ws.extend([qualifying_weight] * max(0, qualifiers - int(weight >= q)))
-                ws.extend([q - 1] * (payment_count - len(ws)))
-                for i, w in enumerate(ws):
-                    pre.builder_pending_payments[i] = payment(i, w, amount + i)
+                ws.extend(
+                    value_for_comparison(self.rng, "LT", int(q))
+                    for _ in range(payment_count - len(ws))
+                )
+                weights = ws
+            for i, (slot, entry_weight) in enumerate(zip(previous_slots, weights, strict=True)):
+                entry_amount = amount if i == 0 else self.rng.randrange(1, 1_000)
+                pre.builder_pending_payments[slot] = payment(entry_weight, entry_amount)
         next_epoch_count = {
             "EMPTY": 0,
             "SINGLE": 1,
             "MULTIPLE": 2,
             "FULL": spe,
         }[str(sol.next_epoch_payments_occupancy)]
-        for i in range(next_epoch_count):
-            pre.builder_pending_payments[spe + i] = payment(i + 7, q + 1, 77 + i)
+        next_slots = (
+            tuple(range(spe))
+            if next_epoch_count == spe
+            else tuple(sorted(distinct_indices(self.rng, spe, next_epoch_count)))
+        )
+        for slot in next_slots:
+            pre.builder_pending_payments[spe + slot] = payment(
+                value_for_comparison(self.rng, "GT", int(q)), self.rng.randrange(1, 1_000)
+            )
 
         withdrawal_count = {
             "ZERO": 0,
             "ONE": 1,
             "MULTIPLE_COUNT": 2,
         }[str(sol.preexisting_withdrawals_occupancy)]
-        for i in range(withdrawal_count):
+        for _ in range(withdrawal_count):
+            fee_recipient, _ = distinct_bytes(self.rng, 20)
             pre.builder_pending_withdrawals.append(
                 s.BuilderPendingWithdrawal(
-                    fee_recipient=s.ExecutionAddress(bytes([0xAA + i]) * 20),
-                    amount=s.Gwei(99 + i),
-                    builder_index=s.BuilderIndex(99 + i),
+                    fee_recipient=s.ExecutionAddress(fee_recipient),
+                    amount=s.Gwei(self.rng.randrange(1, 1_000)),
+                    builder_index=s.BuilderIndex(self.rng.randrange(64)),
                 )
             )
         post = pre.copy()
