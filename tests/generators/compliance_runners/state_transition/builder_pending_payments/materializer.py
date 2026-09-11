@@ -14,12 +14,8 @@ _DIMS = [
     "target_amount_nonzero",
     "qualifying_payment_count",
     "mixed_quorum_relations",
-    "next_epoch_payments_nondefault",
-    "preexisting_withdrawals_nonempty",
-    "withdrawals_appended",
-    "previous_epoch_discarded",
-    "next_epoch_shifted_forward",
-    "new_tail_defaulted",
+    "next_epoch_payments_occupancy",
+    "preexisting_withdrawals_occupancy",
     "outcome",
     "state_effected",
 ]
@@ -59,26 +55,40 @@ class BuilderPendingPaymentsMaterializer(Materializer):
         count = str(sol.qualifying_payment_count)
         if occ == "SINGLE":
             pre.builder_pending_payments[0] = payment(0, weight, amount)
-        elif occ == "MULTIPLE":
+        elif occ in {"MULTIPLE", "FULL"}:
+            payment_count = 3 if occ == "MULTIPLE" else spe
             if bool(sol.mixed_quorum_relations):
-                for i, w in enumerate((q - 1, q, q + 1)):
+                weights = [q - 1, q, q + 1] + [q - 1] * (payment_count - 3)
+                for i, w in enumerate(weights):
                     pre.builder_pending_payments[i] = payment(i, w, amount + i)
             else:
                 qualifiers = {"ZERO": 0, "ONE": 1, "MULTIPLE_COUNT": 2}[count]
                 ws = [weight]
-                ws.extend([q] * max(0, qualifiers - int(weight >= q)))
-                ws.extend([q if count == "MULTIPLE_COUNT" else q - 1] * (3 - len(ws)))
+                qualifying_weight = weight if weight >= q else q
+                ws.extend([qualifying_weight] * max(0, qualifiers - int(weight >= q)))
+                ws.extend([q - 1] * (payment_count - len(ws)))
                 for i, w in enumerate(ws):
                     pre.builder_pending_payments[i] = payment(i, w, amount + i)
-        if bool(sol.next_epoch_payments_nondefault):
-            pre.builder_pending_payments[spe] = payment(7, q + 1, 77)
-            pre.builder_pending_payments[spe + 1] = payment(8, q - 1, 88)
-        if bool(sol.preexisting_withdrawals_nonempty):
+        next_epoch_count = {
+            "EMPTY": 0,
+            "SINGLE": 1,
+            "MULTIPLE": 2,
+            "FULL": spe,
+        }[str(sol.next_epoch_payments_occupancy)]
+        for i in range(next_epoch_count):
+            pre.builder_pending_payments[spe + i] = payment(i + 7, q + 1, 77 + i)
+
+        withdrawal_count = {
+            "ZERO": 0,
+            "ONE": 1,
+            "MULTIPLE_COUNT": 2,
+        }[str(sol.preexisting_withdrawals_occupancy)]
+        for i in range(withdrawal_count):
             pre.builder_pending_withdrawals.append(
                 s.BuilderPendingWithdrawal(
-                    fee_recipient=s.ExecutionAddress(b"\xaa" * 20),
-                    amount=s.Gwei(99),
-                    builder_index=s.BuilderIndex(99),
+                    fee_recipient=s.ExecutionAddress(bytes([0xAA + i]) * 20),
+                    amount=s.Gwei(99 + i),
+                    builder_index=s.BuilderIndex(99 + i),
                 )
             )
         post = pre.copy()
