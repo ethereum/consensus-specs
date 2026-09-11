@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.builder_sweep_validator import (
     get_builder_sweep_solution,
 )
@@ -30,10 +31,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _YAML = YAML(typ="safe")
-
-
-def _cmp(a, b) -> str:
-    return "GT" if a > b else ("LT" if a < b else "EQ")
 
 
 def recover_pending_withdrawal(pre) -> dict[str, str]:
@@ -58,24 +55,28 @@ def recover_pending_withdrawal(pre) -> dict[str, str]:
     )
 
     return {
-        "state_latest_block_hash_match": (
-            "T" if pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash else "F"
-        ),
-        "cmp_pending_amount_zero": _cmp(amount, 0),
-        "cmp_builder_balance_amount": _cmp(balance, amount),
-        "payload_builder_version": (
-            "T" if int(builder.version) == int(spec.PAYLOAD_BUILDER_VERSION) else "F"
-        ),
-        "cmp_state_epoch_deposit_epoch": _cmp(state_epoch, int(builder.deposit_epoch)),
-        "cmp_state_epoch_withdrawal_epoch": _cmp(state_epoch, int(builder.withdrawable_epoch)),
-        "cmp_finalized_epoch_deposit_epoch": _cmp(finalized_epoch, int(builder.deposit_epoch)),
-        "withdrawable_epoch_set": (
-            "T" if int(builder.withdrawable_epoch) != int(spec.FAR_FUTURE_EPOCH) else "F"
-        ),
-        "cmp_balance_zero": _cmp(balance, 0),
-        "cmp_balance_min_deposit": _cmp(balance, min_deposit),
-        "has_pending_payments": "T" if has_pending_payments else "F",
-        "has_pending_withdrawals": "T" if has_pending_withdrawals else "F",
+        "state_latest_block_hash_match": _to_bool(
+            pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash
+        ).name,
+        "cmp_pending_amount_zero": _to_cmp(amount, 0).name,
+        "cmp_builder_balance_amount": _to_cmp(balance, amount).name,
+        "payload_builder_version": _to_bool(
+            int(builder.version) == int(spec.PAYLOAD_BUILDER_VERSION)
+        ).name,
+        "cmp_state_epoch_deposit_epoch": _to_cmp(state_epoch, int(builder.deposit_epoch)).name,
+        "cmp_state_epoch_withdrawal_epoch": _to_cmp(
+            state_epoch, int(builder.withdrawable_epoch)
+        ).name,
+        "cmp_finalized_epoch_deposit_epoch": _to_cmp(
+            finalized_epoch, int(builder.deposit_epoch)
+        ).name,
+        "withdrawable_epoch_set": _to_bool(
+            int(builder.withdrawable_epoch) != int(spec.FAR_FUTURE_EPOCH)
+        ).name,
+        "cmp_balance_zero": _to_cmp(balance, 0).name,
+        "cmp_balance_min_deposit": _to_cmp(balance, min_deposit).name,
+        "has_pending_payments": _to_bool(has_pending_payments).name,
+        "has_pending_withdrawals": _to_bool(has_pending_withdrawals).name,
     }
 
 
@@ -98,26 +99,24 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
     )
 
     dims: dict[str, str] = {
-        "state_latest_block_hash_match": (
-            "T" if pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash else "F"
-        ),
-        "builder_pending_withdrawals_exist": "T"
-        if len(pre.builder_pending_withdrawals) > 0
-        else "F",
-        "builder_pending_withdrawals_hit_limit": "T" if builder_hit else "F",
-        "validator_pending_withdrawals_exist": "T"
-        if len(pre.pending_partial_withdrawals) > 0
-        else "F",
-        "eligible_validator_pending_withdrawals_exist": (
-            "T"
-            if any(w.withdrawable_epoch <= epoch for w in pre.pending_partial_withdrawals)
-            else "F"
-        ),
-        "validator_pending_withdrawals_hit_limit": "T" if validator_hit else "F",
-        "validators_eligible_for_sweep_exist": "T" if validators_eligible else "F",
-        "swept_validators_hit_limit": (
-            "T" if len(exp.withdrawals) == int(spec.MAX_WITHDRAWALS_PER_PAYLOAD) else "F"
-        ),
+        "state_latest_block_hash_match": _to_bool(
+            pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash
+        ).name,
+        "builder_pending_withdrawals_exist": _to_bool(
+            bool(pre.builder_pending_withdrawals)
+        ).name,
+        "builder_pending_withdrawals_hit_limit": _to_bool(builder_hit).name,
+        "validator_pending_withdrawals_exist": _to_bool(
+            bool(pre.pending_partial_withdrawals)
+        ).name,
+        "eligible_validator_pending_withdrawals_exist": _to_bool(
+            any(w.withdrawable_epoch <= epoch for w in pre.pending_partial_withdrawals)
+        ).name,
+        "validator_pending_withdrawals_hit_limit": _to_bool(validator_hit).name,
+        "validators_eligible_for_sweep_exist": _to_bool(validators_eligible).name,
+        "swept_validators_hit_limit": _to_bool(
+            len(exp.withdrawals) == int(spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+        ).name,
     }
 
     sweep = get_builder_sweep_solution(spec, pre, prior)
