@@ -802,8 +802,7 @@ def validate_target_epoch_against_current_time(store: Store, attestation: Attest
 
     # Attestations must be from the current or previous epoch
     current_epoch = get_current_store_epoch(store)
-    # Use GENESIS_EPOCH for previous when genesis to avoid underflow
-    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
+    previous_epoch = saturating_sub(current_epoch, 1)
     # If attestation target is from a future epoch, delay consideration until the epoch arrives
     assert target.epoch in [current_epoch, previous_epoch]
 ```
