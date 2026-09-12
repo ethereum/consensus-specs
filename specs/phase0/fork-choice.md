@@ -26,9 +26,9 @@
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
-    - [`filter_block_tree`](#filter_block_tree)
-    - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_node_children`](#get_node_children)
+    - [`filter_node_tree`](#filter_node_tree)
+    - [`get_filtered_node_tree`](#get_filtered_node_tree)
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
@@ -394,28 +394,38 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         return head_state.current_justified_checkpoint
 ```
 
-#### `filter_block_tree`
-
-*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
-by the recursive logic in this function) MUST set `block_root` to
-`store.justified_checkpoint.root`.
+#### `get_node_children`
 
 ```python
-def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
-    block = store.blocks[block_root]
-    children = [root for root in store.blocks if store.blocks[root].parent_root == block_root]
+def get_node_children(
+    store: Store,
+    node: ForkChoiceNode,
+) -> Sequence[ForkChoiceNode]:
+    return [
+        ForkChoiceNode(root=root)
+        for root in store.blocks
+        if store.blocks[root].parent_root == node.root
+    ]
+```
+
+#### `filter_node_tree`
+
+```python
+def filter_node_tree(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+    children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
-    # add to filtered block-tree and signal viability to parent.
+    # include this node and those descendants in the filtered node tree.
     if any(children):
-        filter_block_tree_result = [filter_block_tree(store, child, blocks) for child in children]
-        if any(filter_block_tree_result):
-            blocks[block_root] = block
-            return True
-        return False
+        viable_nodes: list[ForkChoiceNode] = []
+        for child in children:
+            viable_nodes.extend(filter_node_tree(store, child))
+        if any(viable_nodes):
+            return viable_nodes + [node]
+        return []
 
     current_epoch = get_current_store_epoch(store)
-    voting_source = get_voting_source(store, block_root)
+    voting_source = get_voting_source(store, node.root)
 
     # The voting source should be either at the same height as the store's justified checkpoint or
     # not more than two epochs ago
@@ -427,7 +437,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
 
     finalized_checkpoint_block = get_checkpoint_block(
         store,
-        block_root,
+        node.root,
         store.finalized_checkpoint.epoch,
     )
 
@@ -436,50 +446,38 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
         or store.finalized_checkpoint.root == finalized_checkpoint_block
     )
 
-    # If expected finalized/justified, add to viable block-tree and signal viability to parent.
+    # If expected finalized/justified, add to viable node tree and signal viability to parent.
     if correct_justified and correct_finalized:
-        blocks[block_root] = block
-        return True
+        return [node]
 
     # Otherwise, branch not viable
-    return False
+    return []
 ```
 
-#### `get_filtered_block_tree`
+#### `get_filtered_node_tree`
 
 ```python
-def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
+def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
     """
-    Retrieve a filtered block tree from ``store``, only returning branches
+    Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
     """
-    base = store.justified_checkpoint.root
-    blocks: Dict[Root, BeaconBlock] = {}
-    filter_block_tree(store, base, blocks)
-    return blocks
-```
-
-#### `get_node_children`
-
-```python
-def get_node_children(
-    store: Store,  # noqa: ARG001
-    blocks: Dict[Root, BeaconBlock],
-    node: ForkChoiceNode,
-) -> Sequence[ForkChoiceNode]:
-    return [ForkChoiceNode(root=root) for root in blocks if blocks[root].parent_root == node.root]
+    base = ForkChoiceNode(root=store.justified_checkpoint.root)
+    return filter_node_tree(store, base)
 ```
 
 #### `get_head`
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_block_tree(store)
+    # Get filtered node tree that only includes viable branches
+    filtered_node_tree = get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = ForkChoiceNode(root=store.justified_checkpoint.root)
     while True:
-        children = get_node_children(store, blocks, head)
+        children = [
+            child for child in get_node_children(store, head) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically

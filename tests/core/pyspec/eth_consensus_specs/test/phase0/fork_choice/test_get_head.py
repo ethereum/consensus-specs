@@ -707,7 +707,7 @@ We cannot generate a block that:
 - is a descendant of store.justified_checkpoint.root
 
 The block being a descendant of store.justified_checkpoint.root is necessary because
-filter_block_tree descends the tree starting at store.justified_checkpoint.root
+filter_node_tree descends the tree starting at store.justified_checkpoint.root
 
 @with_altair_and_later
 @spec_state_test
