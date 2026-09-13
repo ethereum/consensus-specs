@@ -114,6 +114,16 @@ def withdrawal_processing_validator(
     swept_validators_hit_limit = _to_bool(
         len(expected_withdrawals.withdrawals) == int(spec.MAX_WITHDRAWALS_PER_PAYLOAD)
     )
+    partial_validator_sweep_withdrawal = _to_bool(
+        any(
+            withdrawal.validator_index < len(beacon_state.validators)
+            and spec.is_partially_withdrawable_validator(
+                beacon_state.validators[withdrawal.validator_index],
+                beacon_state.balances[withdrawal.validator_index],
+            )
+            for withdrawal in expected_withdrawals.withdrawals
+        )
+    )
 
     withdrawals_prior_builder_sweep_count = (
         expected_withdrawals.processed_builder_withdrawals_count
@@ -133,6 +143,7 @@ def withdrawal_processing_validator(
         builder_pending_withdrawals_hit_limit=builder_pending_withdrawals_hit_limit,
         validator_pending_withdrawals_hit_limit=validator_pending_withdrawals_hit_limit,
         swept_validators_hit_limit=swept_validators_hit_limit,
+        partial_validator_sweep_withdrawal=partial_validator_sweep_withdrawal,
         builder_sweep=solution.builder_sweep,
     )
 

@@ -26,6 +26,7 @@ class WithdrawalProcessing(Record):
     builder_sweep: BuilderSweep
     # 4. Validator sweep
     validators_eligible_for_sweep_exist: Bool
+    partial_validator_sweep_withdrawal: Bool
     swept_validators_hit_limit: Bool
 
 
@@ -65,6 +66,12 @@ def withdrawal_processing_constraints(p: WithdrawalProcessing) -> None:
     # Validator sweep constraints
     if p.swept_validators_hit_limit == Bool.T:
         assert p.validators_eligible_for_sweep_exist == Bool.T
+    if p.partial_validator_sweep_withdrawal == Bool.T:
+        assert p.state_latest_block_hash_match == Bool.T
+        assert p.validators_eligible_for_sweep_exist == Bool.T
+        assert p.builder_pending_withdrawals_hit_limit == Bool.F
+        assert p.validator_pending_withdrawals_hit_limit == Bool.F
+        assert p.builder_sweep.cmp_swept_count_zero == Cmp.EQ
 
     # Swept count must be zero if the limit is already hit
     if p.builder_pending_withdrawals_hit_limit == Bool.T or (

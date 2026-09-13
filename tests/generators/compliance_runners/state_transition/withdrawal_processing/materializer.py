@@ -92,6 +92,7 @@ WITHDRAWAL_PROCESSING_DIMS = [
     "eligible_validator_pending_withdrawals_exist",
     "validator_pending_withdrawals_hit_limit",
     "validators_eligible_for_sweep_exist",
+    "partial_validator_sweep_withdrawal",
     "swept_validators_hit_limit",
     "cmp_builder_count_withdrawals_limit",
     "cmp_builder_count_max_per_sweep",
@@ -206,6 +207,7 @@ def _normalize_withdrawal_processing(sol: Any) -> dict[str, Any]:
             p["validator_pending_withdrawals_hit_limit"]
         ),
         "validators_eligible_for_sweep_exist": str(p["validators_eligible_for_sweep_exist"]),
+        "partial_validator_sweep_withdrawal": str(p["partial_validator_sweep_withdrawal"]),
         "swept_validators_hit_limit": str(p["swept_validators_hit_limit"]),
         "builder_sweep": {k: str(v) for k, v in p["builder_sweep"].items()},
     }
@@ -254,6 +256,7 @@ def _to_withdrawal_processing_solution(rec: dict[str, Any]) -> WithdrawalProcess
             rec["validator_pending_withdrawals_hit_limit"]
         ],
         validators_eligible_for_sweep_exist=BOOL[rec["validators_eligible_for_sweep_exist"]],
+        partial_validator_sweep_withdrawal=BOOL[rec["partial_validator_sweep_withdrawal"]],
         swept_validators_hit_limit=BOOL[rec["swept_validators_hit_limit"]],
         builder_sweep=_to_sweep(builder_sweep_dims),
     )
@@ -456,6 +459,22 @@ class WithdrawalProcessingMaterializer(Materializer):
         )
         pre.balances[idx] = spec.Gwei(1_000_000)
 
+    def _make_partially_withdrawable(self, pre: Any, idx: int) -> None:
+        """Make the validator at ``idx`` sweepable for its excess balance."""
+        spec = self.spec
+        old = pre.validators[idx]
+        pre.validators[idx] = spec.Validator(
+            pubkey=old.pubkey,
+            withdrawal_credentials=spec.Bytes32(b"\x02" + b"\x00" * 11 + VALIDATOR_ADDRESS),
+            effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
+            slashed=False,
+            activation_eligibility_epoch=old.activation_eligibility_epoch,
+            activation_epoch=old.activation_epoch,
+            exit_epoch=spec.FAR_FUTURE_EPOCH,
+            withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+        )
+        pre.balances[idx] = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA) + BIG)
+
     def _record(self, sol: Any) -> dict[str, Any]:
         """Normalize a MiniZinc solution or a catalog representative."""
         if hasattr(sol, "p"):
@@ -657,14 +676,20 @@ class WithdrawalProcessingMaterializer(Materializer):
         # validators_eligible_for_sweep_exist / swept_validators_hit_limit.
         pre.next_withdrawal_validator_index = spec.ValidatorIndex(0)
         window_end = int(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+        partial_sweep = rec["partial_validator_sweep_withdrawal"] == "T"
+        partial_index = 1
+        if partial_sweep:
+            self._make_partially_withdrawable(pre, partial_index)
         if rec["swept_validators_hit_limit"] == "T":
             # Fill the sweep window (skipping the pending-partial validator at 0)
             # so the validator sweep drains the remaining capacity to the limit.
             for idx in range(1, window_end):
-                self._make_fully_withdrawable(pre, idx, state_epoch)
+                if idx != partial_index:
+                    self._make_fully_withdrawable(pre, idx, state_epoch)
         elif rec["validators_eligible_for_sweep_exist"] == "T":
-            # A single eligible validator outside the sweep window.
-            self._make_fully_withdrawable(pre, window_end, state_epoch)
+            if not partial_sweep:
+                # A single eligible validator outside the sweep window.
+                self._make_fully_withdrawable(pre, window_end, state_epoch)
 
         solution = _to_withdrawal_processing_solution(rec)
         verified = withdrawal_processing_validator(
@@ -694,6 +719,7 @@ class WithdrawalProcessingMaterializer(Materializer):
                 "validator_pending_withdrawals_hit_limit"
             ],
             "validators_eligible_for_sweep_exist": rec["validators_eligible_for_sweep_exist"],
+            "partial_validator_sweep_withdrawal": rec["partial_validator_sweep_withdrawal"],
             "swept_validators_hit_limit": rec["swept_validators_hit_limit"],
         }
         claimed_dims.update({name: rec[name] for name in WITHDRAWAL_PROCESSING_DIMS if name in rec})
