@@ -557,6 +557,14 @@ def validate_beacon_block_gossip(
     block = signed_beacon_block.message
     bid = block.body.signed_execution_payload_bid.message
 
+    # [New in Gloas:EIP7688]
+    # [REJECT] The block body operation counts are within their limits
+    verify_block_body_operation_limits(block.body)
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent execution request counts are within their limits
+    verify_execution_requests_limits(block.body.parent_execution_requests)
+
     # [IGNORE] The block is the first block with valid signature received for the slot and proposer
     proposer_slot_key = (block.slot, block.proposer_index)
     if proposer_slot_key in seen.proposer_slots:
@@ -573,14 +581,6 @@ def validate_beacon_block_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The block body operation counts are within their limits
-    verify_block_body_operation_limits(block.body)
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent execution request counts are within their limits
-    verify_execution_requests_limits(block.body.parent_execution_requests)
 
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
@@ -807,6 +807,13 @@ def validate_execution_payload_envelope_gossip(
     payload = envelope.payload
     block_root = envelope.beacon_block_root
 
+    # [REJECT] The execution request counts are within their limits
+    verify_execution_requests_limits(envelope.execution_requests)
+
+    # [REJECT] The number of withdrawals is within the limit
+    if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawals")
+
     # [IGNORE] The node has not seen another valid envelope for this block root from this builder
     envelope_key = (block_root, envelope.builder_index)
     if envelope_key in seen.execution_payload_envelopes:
@@ -846,13 +853,6 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The envelope's execution requests root matches the bid's execution requests root
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
         raise GossipReject("envelope's execution requests root does not match the bid's")
-
-    # [REJECT] The execution request counts are within their limits
-    verify_execution_requests_limits(envelope.execution_requests)
-
-    # [REJECT] The number of withdrawals is within the limit
-    if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise GossipReject("too many withdrawals")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
