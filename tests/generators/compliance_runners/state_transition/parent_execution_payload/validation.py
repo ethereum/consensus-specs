@@ -19,7 +19,7 @@ _YAML = YAML(typ="safe")
 
 def _payment_dimensions(pre: Any) -> tuple[str, bool]:
     parent_bid = pre.latest_execution_payload_bid
-    parent_slot = int(parent_bid.slot)
+    parent_slot = int(pre.latest_block_header.slot)
     parent_epoch = int(spec.compute_epoch_at_slot(parent_slot))
     current_epoch = int(spec.get_current_epoch(pre))
     if parent_epoch == current_epoch:
@@ -80,7 +80,9 @@ def recover(pre: Any, block: Any) -> dict[str, Any]:
             "APPLY_CURRENT_WITH_WITHDRAWAL" if value_nonzero else "APPLY_CURRENT_NO_WITHDRAWAL"
         )
     elif settlement == "PREVIOUS_EPOCH":
-        outcome = "APPLY_PREVIOUS_WITH_WITHDRAWAL"
+        outcome = (
+            "APPLY_PREVIOUS_WITH_WITHDRAWAL" if value_nonzero else "APPLY_PREVIOUS_NO_WITHDRAWAL"
+        )
     else:
         outcome = (
             "APPLY_EVICTED_WITH_WITHDRAWAL" if value_nonzero else "APPLY_EVICTED_NO_WITHDRAWAL"
