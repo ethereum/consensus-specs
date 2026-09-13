@@ -62,6 +62,7 @@ type WithdrawalProcessing = record(
     var {F, T}: validator_pending_withdrawals_hit_limit,
     var BuilderSweep: builder_sweep,
     var {F, T}: validators_eligible_for_sweep_exist,
+    var {F, T}: partial_validator_sweep_withdrawal,
     var {F, T}: swept_validators_hit_limit,
 );
 
@@ -93,6 +94,13 @@ predicate withdrawal_processing_constraints(var WithdrawalProcessing: p) =
     % Hitting the limit implies eligible validators for the sweep exist
     /\ (p.swept_validators_hit_limit == T ->
             p.validators_eligible_for_sweep_exist == T)
+    % A partial validator sweep must be reachable after earlier sources.
+    /\ (p.partial_validator_sweep_withdrawal == T ->
+            p.state_latest_block_hash_match == T
+            /\ p.validators_eligible_for_sweep_exist == T
+            /\ p.builder_pending_withdrawals_hit_limit == F
+            /\ p.validator_pending_withdrawals_hit_limit == F
+            /\ p.builder_sweep.cmp_swept_count_zero == EQ)
     % Swept count must be zero if the limit is already hit
     /\ ((p.builder_pending_withdrawals_hit_limit == T
                 \/ (p.validator_pending_withdrawals_hit_limit == T

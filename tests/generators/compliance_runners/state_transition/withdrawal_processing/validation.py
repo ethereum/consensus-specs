@@ -97,6 +97,13 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
         or spec.is_partially_withdrawable_validator(v, pre.balances[i])
         for i, v in enumerate(pre.validators)
     )
+    partial_sweep_withdrawal = any(
+        withdrawal.validator_index < len(pre.validators)
+        and spec.is_partially_withdrawable_validator(
+            pre.validators[withdrawal.validator_index], pre.balances[withdrawal.validator_index]
+        )
+        for withdrawal in exp.withdrawals
+    )
 
     dims: dict[str, str] = {
         "state_latest_block_hash_match": _to_bool(
@@ -110,6 +117,7 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
         ).name,
         "validator_pending_withdrawals_hit_limit": _to_bool(validator_hit).name,
         "validators_eligible_for_sweep_exist": _to_bool(validators_eligible).name,
+        "partial_validator_sweep_withdrawal": _to_bool(partial_sweep_withdrawal).name,
         "swept_validators_hit_limit": _to_bool(
             len(exp.withdrawals) == int(spec.MAX_WITHDRAWALS_PER_PAYLOAD)
         ).name,
