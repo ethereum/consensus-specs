@@ -46,6 +46,11 @@ constraint outcome =
     (if reset_applies then TOPPED_UP_AFTER_RESET else TOPPED_UP endif)
   endif;
 
+% A new builder either reuses a swept slot or appends to the registry.  The
+% choice is not applicable on rejected or top-up paths.
+var BOOLV_NA: reuses_swept_slot;
+constraint (reuses_swept_slot == NA) <-> (outcome != ADDED_NEW_BUILDER);
+
 % ---- Effect -----------------------------------------------------------------
 % Declared-and-constrained so the solver exposes it (see TEST_METHODOLOGY.md).
 var bool: builder_credited;
