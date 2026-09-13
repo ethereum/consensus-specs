@@ -10,6 +10,7 @@
 include "../../aspects/consolidation_pair.mzn";
 include "../../aspects/pending_consolidations_capacity.mzn";
 include "../../aspects/consolidation_churn.mzn";
+include "../../aspects/queue_churn.mzn";
 include "../../aspects/validator_membership.mzn";     % source membership (validator_pubkey_found)
 include "../../aspects/withdrawal_credential.mzn";    % parameterized (source + target)
 include "../../aspects/validator_lifecycle.mzn";      % parameterized (source + target)
@@ -117,3 +118,9 @@ var bool: source_execution_and_authorized = validator_has_execution_credential /
 % ---- Effect -----------------------------------------------------------------
 var bool: state_effected;
 constraint state_effected <-> (outcome in {SWITCHED_TO_COMPOUNDING, CONSOLIDATED});
+
+% Only a successful consolidation enters the consolidation churn helper.
+constraint (churn_variant == QUEUE_CHURN_NA) <-> (outcome != CONSOLIDATED);
+% A compounding source can validly carry enough effective balance to span
+% several consolidation queue epochs.
+constraint churn_variant == CARRY_OVERFLOW -> validator_credential == COMPOUNDING;

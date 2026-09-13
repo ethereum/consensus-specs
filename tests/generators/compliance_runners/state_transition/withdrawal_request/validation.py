@@ -16,6 +16,9 @@ from tests.generators.compliance_runners.state_transition.aspects.base import _t
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_churn import (
+    queue_churn_variant,
+)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
     withdrawal_credentials_profile,
 )
@@ -41,6 +44,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             len(pre.pending_partial_withdrawals), int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
         ),
         "validator_pubkey_found": found,
+        "churn_variant": "QUEUE_CHURN_NA",
     }
 
     if found:
@@ -83,6 +87,13 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             r[n] = "NA"
 
     r["outcome"] = _derive(r)
+    if r["outcome"] == "FULL_EXIT_INITIATED":
+        r["churn_variant"] = queue_churn_variant(
+            spec.compute_activation_exit_epoch(current_epoch),
+            pre.earliest_exit_epoch,
+            v.effective_balance,
+            pre.exit_balance_to_consume,
+        )
     r["withdrawal_effected"] = r["outcome"] in _ACCEPT
     return r
 
