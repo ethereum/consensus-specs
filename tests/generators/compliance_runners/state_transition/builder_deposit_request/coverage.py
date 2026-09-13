@@ -26,6 +26,7 @@ INPUT_ASPECTS = {
     "signed_message": ["builder_signature_valid"],
     "deposit_amount": ["amount_profile"],
     "builder_reset": ["builder_withdrawable_epoch_set", "builder_balance_zero"],
+    "builder_registry": ["reuses_swept_slot"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}

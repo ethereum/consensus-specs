@@ -67,6 +67,11 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
     else:
         outcome = "TOPPED_UP_AFTER_RESET" if r["reset_applies"] else "TOPPED_UP"
     r["outcome"] = outcome
+    r["reuses_swept_slot"] = (
+        _to_bool(int(spec.get_index_for_new_builder(pre)) < len(pre.builders)).name
+        if outcome == "ADDED_NEW_BUILDER"
+        else "NA"
+    )
     r["builder_credited"] = outcome in _ACCEPT
     return r
 
