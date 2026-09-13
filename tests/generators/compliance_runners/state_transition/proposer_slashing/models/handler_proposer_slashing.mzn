@@ -4,6 +4,7 @@
 % Signature values remain applicable even when an earlier assertion rejects.
 
 include "../../aspects/signed_message.mzn";
+include "../../aspects/queue_churn.mzn";
 
 enum PaymentWindow = { CURRENT, PREVIOUS, OLD };
 enum Outcome = {
@@ -70,3 +71,6 @@ constraint state_effected <-> outcome in {
   ACCEPT_CURRENT_PAYMENT_CLEARED, ACCEPT_CURRENT_PAYMENT_RETAINED,
   ACCEPT_PREVIOUS_PAYMENT_CLEARED, ACCEPT_PREVIOUS_PAYMENT_RETAINED, ACCEPT_OLD
 };
+
+% slash_validator initiates the exit unless it had already been initiated.
+constraint (churn_variant == QUEUE_CHURN_NA) <-> (not state_effected \/ proposer_exited);

@@ -29,6 +29,7 @@ _DIMS = [
     "proposer_activated",
     "proposer_withdrawable",
     "proposer_exited",
+    "churn_variant",
     "payment_window",
     "payment_proposer_matches",
     "pending_payment_cleared",
@@ -83,6 +84,24 @@ class ProposerSlashingMaterializer(Materializer):
         proposer.withdrawable_epoch = spec.Epoch(
             current if _b(sol, "proposer_withdrawable") else spec.FAR_FUTURE_EPOCH
         )
+
+        variant = _s(sol, "churn_variant")
+        if variant == "CARRY_OVERFLOW":
+            proposer.withdrawal_credentials = spec.Bytes32(
+                spec.COMPOUNDING_WITHDRAWAL_PREFIX + bytes(31)
+            )
+            proposer.effective_balance = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA))
+            pre.balances[proposer_index] = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA))
+        activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
+        if variant == "RESET_FIT":
+            pre.earliest_exit_epoch = spec.Epoch(max(0, activation_epoch - 1))
+            pre.exit_balance_to_consume = spec.Gwei(0)
+        elif variant == "CARRY_FIT":
+            pre.earliest_exit_epoch = spec.Epoch(activation_epoch)
+            pre.exit_balance_to_consume = proposer.effective_balance
+        elif variant == "CARRY_OVERFLOW":
+            pre.earliest_exit_epoch = spec.Epoch(activation_epoch + 1)
+            pre.exit_balance_to_consume = spec.Gwei(1)
 
         window = _s(sol, "payment_window")
         slot_1 = (

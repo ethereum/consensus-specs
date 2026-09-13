@@ -17,6 +17,9 @@ from tests.generators.compliance_runners.state_transition.aspects.base import _t
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_capacity_profile,
 )
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_churn import (
+    queue_churn_variant,
+)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
     withdrawal_credentials_profile,
 )
@@ -46,6 +49,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
         "consolidation_churn_to_min_activation": _to_cmp(
             int(spec.get_consolidation_churn_limit(pre)), int(spec.MIN_ACTIVATION_BALANCE)
         ).name,
+        "churn_variant": "QUEUE_CHURN_NA",
         "validator_pubkey_found": bool(source_found),
     }
 
@@ -103,6 +107,14 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             r[n] = "NA"
 
     r["outcome"] = _derive(r)
+    if r["outcome"] == "CONSOLIDATED":
+        source = pre.validators[val_pubkeys.index(request.source_pubkey)]
+        r["churn_variant"] = queue_churn_variant(
+            spec.compute_activation_exit_epoch(cur),
+            pre.earliest_consolidation_epoch,
+            source.effective_balance,
+            pre.consolidation_balance_to_consume,
+        )
     r["state_effected"] = r["outcome"] in _ACCEPT
     return r
 

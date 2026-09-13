@@ -16,6 +16,8 @@ include "../../aspects/validator_seasoning.mzn";      % parameterized
 include "../../aspects/source_authorization.mzn";     % shared with builder_exit_request
 include "../../aspects/validator_pending_withdrawal.mzn";
 include "../../aspects/validator_balance.mzn";
+include "../../aspects/queue_churn.mzn";
+
 
 % ---- Pending-partial-withdrawals queue --------------------------------------
 var QueueCapacity: partial_queue_capacity;
@@ -84,6 +86,13 @@ constraint outcome =
      elseif  has_excess_balance != T                  then PARTIAL_NOOP_NO_EXCESS_BALANCE
      else    PARTIAL_QUEUED endif)
   endif;
+
+% Exit churn is exercised only when this request actually initiates an exit.
+constraint (churn_variant == QUEUE_CHURN_NA) <-> (outcome != FULL_EXIT_INITIATED);
+% An overflow vector needs an effective balance that can span queue epochs.
+constraint churn_variant == CARRY_OVERFLOW ->
+  (effective_balance_to_min_activation == GT /\ validator_credential == COMPOUNDING);
+
 
 % ---- Faults -----------------------------------------------------------------
 var bool: fault_queue    = partial_queue_full /\ not is_full_exit_request;
