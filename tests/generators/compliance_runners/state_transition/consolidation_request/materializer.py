@@ -43,6 +43,8 @@ _DIMS = [
     "pending_consolidations_capacity",
     "consolidation_churn_to_min_activation",
     "churn_variant",
+    "switch_balance_to_min_activation",
+    "switch_excess_queued",
     "validator_pubkey_found",
     "validator_credential",
     "source_address_matches",
@@ -160,6 +162,16 @@ class ConsolidationRequestMaterializer(Materializer):
         else:
             source_pubkey = absent_source
             source_address = credential_address
+
+        switch_balance = _s(sol, "switch_balance_to_min_activation")
+        if switch_balance != "NA":
+            minimum = int(spec.MIN_ACTIVATION_BALANCE)
+            if switch_balance == "LT":
+                pre.balances[source_index] = spec.Gwei(self.rng.randrange(minimum))
+            elif switch_balance == "GT":
+                pre.balances[source_index] = spec.Gwei(
+                    minimum + self.rng.randrange(1, PENDING_WITHDRAWAL_AMOUNT + 1)
+                )
 
         activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
         source_balance = int(pre.validators[source_index].effective_balance)

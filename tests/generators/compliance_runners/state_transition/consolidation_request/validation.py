@@ -50,6 +50,7 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             int(spec.get_consolidation_churn_limit(pre)), int(spec.MIN_ACTIVATION_BALANCE)
         ).name,
         "churn_variant": "QUEUE_CHURN_NA",
+        "switch_balance_to_min_activation": "NA",
         "validator_pubkey_found": bool(source_found),
     }
 
@@ -107,6 +108,11 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             r[n] = "NA"
 
     r["outcome"] = _derive(r)
+    if r["outcome"] == "SWITCHED_TO_COMPOUNDING":
+        source_index = val_pubkeys.index(request.source_pubkey)
+        r["switch_balance_to_min_activation"] = _to_cmp(
+            int(pre.balances[source_index]), int(spec.MIN_ACTIVATION_BALANCE)
+        ).name
     if r["outcome"] == "CONSOLIDATED":
         source = pre.validators[val_pubkeys.index(request.source_pubkey)]
         r["churn_variant"] = queue_churn_variant(
@@ -116,6 +122,9 @@ def recover(pre: Any, request: Any) -> dict[str, Any]:
             pre.consolidation_balance_to_consume,
         )
     r["state_effected"] = r["outcome"] in _ACCEPT
+    r["switch_excess_queued"] = (
+        r["outcome"] == "SWITCHED_TO_COMPOUNDING" and r["switch_balance_to_min_activation"] == "GT"
+    )
     return r
 
 

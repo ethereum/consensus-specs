@@ -63,6 +63,7 @@ var bool: source_has_pending = has_pending_partial_withdrawal == T;
 var bool: switch_valid =
     same_source_target /\ source_found /\ source_authorized /\ source_is_eth1
     /\ source_active /\ (not source_exiting);
+var CMP_NA: switch_balance_to_min_activation;
 
 % ---- Outcome ----------------------------------------------------------------
 enum Outcome = {
@@ -118,6 +119,12 @@ var bool: source_execution_and_authorized = validator_has_execution_credential /
 % ---- Effect -----------------------------------------------------------------
 var bool: state_effected;
 constraint state_effected <-> (outcome in {SWITCHED_TO_COMPOUNDING, CONSOLIDATED});
+
+% queue_excess_active_balance is reached only by a successful switch.
+constraint (switch_balance_to_min_activation == NA) <-> (outcome != SWITCHED_TO_COMPOUNDING);
+var bool: switch_excess_queued;
+constraint switch_excess_queued <->
+  outcome == SWITCHED_TO_COMPOUNDING /\ switch_balance_to_min_activation == GT;
 
 % Only a successful consolidation enters the consolidation churn helper.
 constraint (churn_variant == QUEUE_CHURN_NA) <-> (outcome != CONSOLIDATED);
