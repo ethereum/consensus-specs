@@ -45,6 +45,7 @@ _DIMS = [
     "has_pending_partial_withdrawal",
     "effective_balance_to_min_activation",
     "balance_to_required",
+    "churn_variant",
     "validator_has_execution_credential",
     "validator_has_compounding_credential",
     "outcome",
@@ -140,6 +141,11 @@ class WithdrawalRequestMaterializer(Materializer):
                 )
             v.effective_balance = spec.Gwei(effective_balance)
 
+            # A carry-overflow vector must exceed the per-epoch exit churn by
+            # several epochs.  Keep the declared balance relation (GT) true.
+            if _s(sol, "churn_variant") == "CARRY_OVERFLOW":
+                v.effective_balance = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA))
+
         # Pending-partial-withdrawals queue: target entry (for has_pending) +
         # filler realizes the requested capacity profile.
         pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
@@ -185,6 +191,19 @@ class WithdrawalRequestMaterializer(Materializer):
             else:
                 balance = required_balance
             pre.balances[target_index] = spec.Gwei(balance)
+
+        variant = _s(sol, "churn_variant")
+        activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
+        if variant == "RESET_FIT":
+            pre.earliest_exit_epoch = spec.Epoch(max(0, activation_epoch - 1))
+            pre.exit_balance_to_consume = spec.Gwei(0)
+        elif variant == "CARRY_FIT":
+            pre.earliest_exit_epoch = spec.Epoch(activation_epoch)
+            pre.exit_balance_to_consume = pre.validators[target_index].effective_balance
+        elif variant == "CARRY_OVERFLOW":
+            # A later epoch and one-unit remainder force multi-epoch queueing.
+            pre.earliest_exit_epoch = spec.Epoch(activation_epoch + 1)
+            pre.exit_balance_to_consume = spec.Gwei(1)
 
         request = spec.WithdrawalRequest(
             source_address=spec.ExecutionAddress(source_address),

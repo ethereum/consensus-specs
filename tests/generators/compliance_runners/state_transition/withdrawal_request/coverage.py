@@ -31,11 +31,13 @@ FINE_INPUT_ASPECTS = {
     "validator_lifecycle": ["validator_active", "validator_exiting", "validator_old_enough"],
     "validator_pending_withdrawal": ["has_pending_partial_withdrawal"],
     "validator_balance": ["effective_balance_to_min_activation", "balance_to_required"],
+    "queue_churn": ["churn_variant"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome"]}
 INPUT_ASPECTS = {
     "withdrawal_amount": ["is_full_exit_request"],
     "partial_queue_capacity": ["partial_queue_capacity"],
+    "queue_churn": ["churn_variant"],
     "validator_state": [
         "validator_pubkey_found",
         "validator_credential",
