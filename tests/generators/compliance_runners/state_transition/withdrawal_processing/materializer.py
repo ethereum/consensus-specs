@@ -266,7 +266,11 @@ def _pick_builder_queue_len(rec: dict[str, Any], limit: int) -> int:
     """Pick a concrete builder pending-withdrawal queue length from the bool dims."""
     if rec["builder_pending_withdrawals_exist"] == "F":
         return 0
-    return limit if rec["builder_pending_withdrawals_hit_limit"] == "T" else 1
+    # Add one entry beyond the available capacity.  This makes
+    # get_builder_withdrawals evaluate ``has_reached_limit`` as true and take
+    # its ``break`` branch, rather than merely exhausting the queue at the
+    # same count.
+    return limit + 1 if rec["builder_pending_withdrawals_hit_limit"] == "T" else 1
 
 
 def _pick_validator_queue_len(rec: dict[str, Any], max_partials: int) -> int:
@@ -645,7 +649,13 @@ class WithdrawalProcessingMaterializer(Materializer):
             amount = balance
         else:  # GT
             amount = balance - 1
-        for idx in active_indices:
+        # Pending withdrawals may refer to the same active builder.  Reuse
+        # indices when the boundary vector needs more queue entries than the
+        # minimal builder set has active builders.
+        queue_builder_indices = [
+            active_indices[i % len(active_indices)] for i in range(builder_queue_len)
+        ]
+        for idx in queue_builder_indices:
             pre.builder_pending_withdrawals.append(
                 spec.BuilderPendingWithdrawal(
                     fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
