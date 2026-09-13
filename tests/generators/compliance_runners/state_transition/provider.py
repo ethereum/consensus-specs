@@ -148,7 +148,7 @@ def _materialize_provider(
     spec: Any,
     preset_name: str,
     seed: int,
-) -> tuple[Any, int]:
+) -> tuple[Any, int, str]:
     module = import_module(f".{provider.module}", __package__)
     _, chosen = module.build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
@@ -159,7 +159,7 @@ def _materialize_provider(
     generated = materializer.materialize_reps(
         output_dir, reps, case_offset=case_offset, clean=clean
     )
-    return module.validate_case, _generated_count(generated)
+    return module.validate_case, _generated_count(generated), materializer.fork_name
 
 
 def materialize_handler(
@@ -177,7 +177,7 @@ def materialize_handler(
     case_offset = 0
     for provider_index, provider in enumerate(providers):
         print(f"Materializing '{profile}' test vectors for '{handler}' from '{provider.name}'")
-        validate_case, generated = _materialize_provider(
+        validate_case, generated, fork_name = _materialize_provider(
             provider,
             profile,
             output_dir,
@@ -192,7 +192,10 @@ def materialize_handler(
         }
         case_offset += generated
         print(f"Validating cases from '{provider.name}'")
-        if validate_cases(output_dir, handler, validate_case, selected_cases=selected_cases):
+        generated_preset_dir = output_dir / preset_name / fork_name
+        if validate_cases(
+            generated_preset_dir, handler, validate_case, selected_cases=selected_cases
+        ):
             raise RuntimeError(f"validation failed for provider: {provider.name}")
     return case_offset
 
