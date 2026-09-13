@@ -42,6 +42,7 @@ _DIMS = [
     "same_source_target",
     "pending_consolidations_capacity",
     "consolidation_churn_to_min_activation",
+    "churn_variant",
     "validator_pubkey_found",
     "validator_credential",
     "source_address_matches",
@@ -148,6 +149,10 @@ class ConsolidationRequestMaterializer(Materializer):
                 _s(sol, "validator_exiting") == "T",
                 _s(sol, "validator_old_enough") == "T",
             )
+            if _s(sol, "churn_variant") == "CARRY_OVERFLOW":
+                pre.validators[source_index].effective_balance = spec.Gwei(
+                    int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+                )
             source_pubkey = pre.validators[source_index].pubkey
             source_address = (
                 credential_address if _s(sol, "source_address_matches") == "T" else other_address
@@ -155,6 +160,21 @@ class ConsolidationRequestMaterializer(Materializer):
         else:
             source_pubkey = absent_source
             source_address = credential_address
+
+        activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
+        source_balance = int(pre.validators[source_index].effective_balance)
+        variant = _s(sol, "churn_variant")
+        if variant == "RESET_FIT":
+            pre.earliest_consolidation_epoch = spec.Epoch(max(0, activation_epoch - 1))
+            pre.consolidation_balance_to_consume = spec.Gwei(0)
+        elif variant == "CARRY_FIT":
+            pre.earliest_consolidation_epoch = spec.Epoch(activation_epoch)
+            pre.consolidation_balance_to_consume = spec.Gwei(source_balance)
+        elif variant == "CARRY_OVERFLOW":
+            # A later queue epoch and one-unit remainder exercise reuse plus
+            # multi-epoch consolidation queueing.
+            pre.earliest_consolidation_epoch = spec.Epoch(activation_epoch + 1)
+            pre.consolidation_balance_to_consume = spec.Gwei(1)
 
         # ---- target validator (consolidation path only) ------------------------
         if same:

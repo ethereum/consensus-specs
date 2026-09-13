@@ -9,6 +9,9 @@ from ruamel.yaml import YAML
 from eth_consensus_specs.gloas import minimal as spec
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool
+from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_churn import (
+    queue_churn_variant,
+)
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
 if TYPE_CHECKING:
@@ -65,6 +68,7 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         "proposer_activated": proposer.activation_epoch <= current,
         "proposer_withdrawable": proposer.withdrawable_epoch <= current,
         "proposer_exited": proposer.exit_epoch <= current,
+        "churn_variant": "QUEUE_CHURN_NA",
         "payment_window": window,
         "payment_proposer_matches": payment_matches,
     }
@@ -95,6 +99,13 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         pending_payment_cleared=outcome.endswith("CLEARED"),
         state_effected=outcome.startswith("ACCEPT_"),
     )
+    if r["state_effected"] and not r["proposer_exited"]:
+        r["churn_variant"] = queue_churn_variant(
+            spec.compute_activation_exit_epoch(current),
+            pre.earliest_exit_epoch,
+            proposer.effective_balance,
+            pre.exit_balance_to_consume,
+        )
     return r
 
 

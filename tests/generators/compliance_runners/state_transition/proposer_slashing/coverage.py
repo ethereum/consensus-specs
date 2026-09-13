@@ -21,6 +21,7 @@ INPUT_ASPECTS = {
     ],
     "signatures": ["signature_1_valid", "signature_2_valid"],
     "pending_payment": ["payment_window", "payment_proposer_matches"],
+    "queue_churn": ["churn_variant"],
 }
 OUTCOME_ASPECT = {"outcome": ["outcome", "pending_payment_cleared", "state_effected"]}
 ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
