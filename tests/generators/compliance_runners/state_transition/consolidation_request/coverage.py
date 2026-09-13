@@ -27,6 +27,7 @@ FINE_INPUT_ASPECTS = {
     "pending_consolidations_capacity": ["pending_consolidations_capacity"],
     "consolidation_churn": ["consolidation_churn_to_min_activation"],
     "churn_state": ["churn_variant"],
+    "switch_balance": ["switch_balance_to_min_activation", "switch_excess_queued"],
     "validator_membership": ["validator_pubkey_found"],
     "validator_credential": ["validator_credential"],
     "source_authorization": ["source_address_matches"],
@@ -40,6 +41,7 @@ INPUT_ASPECTS = {
     "pending_consolidations_capacity": ["pending_consolidations_capacity"],
     "consolidation_churn": ["consolidation_churn_to_min_activation"],
     "churn_state": ["churn_variant"],
+    "switch_balance": ["switch_balance_to_min_activation", "switch_excess_queued"],
     "validator_state": [
         "validator_pubkey_found",
         "validator_credential",
