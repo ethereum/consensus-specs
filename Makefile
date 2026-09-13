@@ -86,15 +86,18 @@ help-verbose:
 	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
-	@echo "  Generates compliance tests for fork choice. These tests verify that"
-	@echo "  implementations correctly handle fork choice scenarios."
+	@echo "  Generates compliance tests. These tests verify that implementations"
+	@echo "  correctly handle fork choice and state transition scenarios."
 	@echo "  Uses pytest collection and xdist parallelism."
 	@echo ""
 	@echo "  Parameters:"
+	@echo "    kind=<kind>            Test kind: fork_choice (default), state_transition"
 	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
 	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
+	@echo "    handler=<handler>      State-transition handler (default: all)"
+	@echo "    profile=<profile>      State-transition profile (smoke, standard, all; default: standard)"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo "    group_slice_index=N    0-based shard index for deterministic test-group slicing"
@@ -107,6 +110,8 @@ help-verbose:
 	@echo "    make comptests comptests_dir=./compliance-spec-tests/tests"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
 	@echo "    make comptests fc_gen_config=tiny fork=gloas group_slice_index=0 group_slice_count=4"
+	@echo "    make comptests kind=state_transition"
+	@echo "    make comptests kind=state_transition handler=withdrawals profile=smoke"
 	@echo ""
 	@echo "$(BOLD)make website$(NORM)"
 	@echo ""
@@ -221,6 +226,9 @@ test: build
 COMMA:= ,
 DEFAULT_COMPTESTS_DIR = $(CURDIR)/../compliance-spec-tests/tests
 COMPTESTS_DIR = $(if $(comptests_dir),$(comptests_dir),$(DEFAULT_COMPTESTS_DIR))
+COMPTESTS_KIND = $(if $(kind),$(kind),fork_choice)
+
+ifeq ($(COMPTESTS_KIND),fork_choice)
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
@@ -244,6 +252,33 @@ comptests: build
 		$(MAYBE_GROUP_SLICE_INDEX) \
 		$(MAYBE_GROUP_SLICE_COUNT) \
 		$(CURDIR)/tests/generators/compliance_runners/fork_choice/generate_comptests.py
+
+else ifeq ($(COMPTESTS_KIND),state_transition)
+
+# Generate compliance tests (state transition).
+comptests: MAYBE_HANDLER := $(if $(handler),--handler $(handler))
+comptests: MAYBE_PROFILE := $(if $(profile),--profile $(profile))
+comptests: MAYBE_SEED := $(if $(seed),--seed $(seed))
+comptests: PRESET := $(if $(preset),$(preset),minimal)
+comptests: MAYBE_PARALLEL := $(if $(filter 1,$(threads)),,$(if $(threads),-n $(threads) --dist=worksteal,-n logical --dist=worksteal))
+comptests: _pyspec
+	@$(UV_RUN) pytest \
+		$(MAYBE_PARALLEL) \
+		--capture=no \
+		--comptests-output=$(COMPTESTS_DIR) \
+		$(MAYBE_HANDLER) \
+		$(MAYBE_PROFILE) \
+		$(MAYBE_SEED) \
+		--preset $(PRESET) \
+		$(CURDIR)/tests/generators/compliance_runners/state_transition/generate_comptests.py
+
+else
+
+comptests:
+	@echo "Unsupported compliance test kind: $(COMPTESTS_KIND)" >&2
+	@exit 1
+
+endif
 
 ###############################################################################
 # Website
