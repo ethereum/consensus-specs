@@ -42,6 +42,7 @@ _DIMS = [
     "builder_withdrawable_epoch_set",
     "builder_balance_zero",
     "reset_applies",
+    "reuses_swept_slot",
     "builder_credited",
     "outcome",
 ]
@@ -110,6 +111,20 @@ class BuilderDepositRequestMaterializer(Materializer):
                     ),
                     deposit_epoch=spec.Epoch(self.rng.randrange(current_epoch + 1)),
                     withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
+                )
+            )
+        elif _s(sol, "reuses_swept_slot") == "T":
+            # A distinct drained builder is reusable: the handler must replace
+            # this registry entry instead of appending the request builder.
+            execution_address, _ = distinct_bytes(self.rng, 20)
+            pre.builders.append(
+                spec.Builder(
+                    pubkey=spec.BLSPubkey(wrong_pubkey),
+                    version=spec.PAYLOAD_BUILDER_VERSION,
+                    execution_address=spec.ExecutionAddress(execution_address),
+                    balance=spec.Gwei(0),
+                    deposit_epoch=spec.Epoch(0),
+                    withdrawable_epoch=spec.Epoch(current_epoch),
                 )
             )
 
