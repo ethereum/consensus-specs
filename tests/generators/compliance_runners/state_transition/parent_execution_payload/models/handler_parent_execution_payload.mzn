@@ -19,6 +19,7 @@ enum Outcome = {
   APPLY_CURRENT_WITH_WITHDRAWAL,
   APPLY_CURRENT_NO_WITHDRAWAL,
   APPLY_PREVIOUS_WITH_WITHDRAWAL,
+  APPLY_PREVIOUS_NO_WITHDRAWAL,
   APPLY_EVICTED_WITH_WITHDRAWAL,
   APPLY_EVICTED_NO_WITHDRAWAL
 };
@@ -41,10 +42,6 @@ constraint requests_empty <->
   withdrawals_within_cap /\ consolidations_within_cap /\
   builder_deposits_within_cap /\ builder_exits_within_cap /\
   not deposits_nonempty;
-
-% A previous-epoch zero-value case has the same observable branch effect as the
-% current-epoch zero-value case, apart from the circular-buffer index.
-constraint payment_settlement == PREVIOUS_EPOCH -> payment_value_nonzero;
 
 var bool: requests_empty_checked;
 var bool: requests_root_checked;
@@ -80,7 +77,8 @@ constraint outcome =
     if payment_value_nonzero then APPLY_CURRENT_WITH_WITHDRAWAL
     else APPLY_CURRENT_NO_WITHDRAWAL endif
   elseif payment_settlement == PREVIOUS_EPOCH then
-    APPLY_PREVIOUS_WITH_WITHDRAWAL
+    if payment_value_nonzero then APPLY_PREVIOUS_WITH_WITHDRAWAL
+    else APPLY_PREVIOUS_NO_WITHDRAWAL endif
   else
     if payment_value_nonzero then APPLY_EVICTED_WITH_WITHDRAWAL
     else APPLY_EVICTED_NO_WITHDRAWAL endif
@@ -90,6 +88,7 @@ set of Outcome: APPLIED = {
   APPLY_CURRENT_WITH_WITHDRAWAL,
   APPLY_CURRENT_NO_WITHDRAWAL,
   APPLY_PREVIOUS_WITH_WITHDRAWAL,
+  APPLY_PREVIOUS_NO_WITHDRAWAL,
   APPLY_EVICTED_WITH_WITHDRAWAL,
   APPLY_EVICTED_NO_WITHDRAWAL
 };
