@@ -166,6 +166,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
         parent_slot = self._parent_slot(current_epoch, settlement)
         parent_bid = pre.latest_execution_payload_bid
         parent_bid.slot = spec.Slot(parent_slot)
+        pre.latest_block_header.slot = spec.Slot(parent_slot)
         fee_recipient, _ = distinct_bytes(self.rng, 20)
         parent_bid.fee_recipient = spec.ExecutionAddress(fee_recipient)
         parent_bid.builder_index = spec.BuilderIndex(0)
