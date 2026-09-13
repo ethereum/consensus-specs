@@ -79,6 +79,7 @@ WITHDRAWAL_PROCESSING_ASPECTS = {
     ],
     "validator_sweep": [
         "validators_eligible_for_sweep_exist",
+        "partial_validator_sweep_withdrawal",
         "swept_validators_hit_limit",
     ],
 }
