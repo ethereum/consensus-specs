@@ -14,6 +14,8 @@
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
+- [Presets](#presets)
+  - [Execution](#execution-1)
 - [Containers](#containers)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
@@ -48,6 +50,8 @@ class ProofData(ProgressiveList[Byte]):
     """
     The opaque proof bytes of an execution proof.
     """
+
+    LIMIT = MAX_PROOF_SIZE
 ```
 
 ### New `ProofType`
@@ -64,12 +68,9 @@ class ProofType(Uint8):
 
 ### Execution
 
-*Note*: The execution values are not definitive.
-
-| Name                        | Value                                  |
-| --------------------------- | -------------------------------------- |
-| `MAX_PROOF_SIZE`            | `Uint64(4194304)` (= 4,096 KiB, 4 MiB) |
-| `STATELESS_INPUT_SCHEMA_ID` | `Uint16(0x1501)`                       |
+| Name                        | Value            |
+| --------------------------- | ---------------- |
+| `STATELESS_INPUT_SCHEMA_ID` | `Uint16(0x1501)` |
 
 `STATELESS_INPUT_SCHEMA_ID` encodes the Amsterdam protocol fork (`0x15`) and
 schema revision (`0x01`).
@@ -79,6 +80,14 @@ schema revision (`0x01`).
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0F000000')` |
+
+## Presets
+
+### Execution
+
+| Name             | Value                       |
+| ---------------- | --------------------------- |
+| `MAX_PROOF_SIZE` | `Uint64(4194304)` (= 4 MiB) |
 
 ## Containers
 
@@ -158,7 +167,7 @@ def verify_execution_proof_envelope(
     proof_envelope = signed_proof_envelope.message
     assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
-    assert 0 < len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
+    assert len(proof_envelope.proof_data) != 0
     assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
