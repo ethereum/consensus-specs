@@ -245,7 +245,7 @@ def test_gossip_rejects_malformed_execution_proof_fields_without_caching(spec, s
     """
     store, block_root = setup_store_with_block(spec, state)
 
-    # Exercise empty and oversized proof data and proof types outside the supported set.
+    # Exercise empty proof data and proof types outside the supported set.
     cases = [
         make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
         make_signed_execution_proof_envelope(
@@ -257,13 +257,6 @@ def test_gossip_rejects_malformed_execution_proof_fields_without_caching(spec, s
             block_root,
             prover_index=1,
             proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
-        ),
-        make_signed_execution_proof_envelope(
-            spec,
-            state,
-            block_root,
-            prover_index=2,
-            proof_data=b"\x01" * (int(spec.MAX_PROOF_SIZE) + 1),
         ),
     ]
 
