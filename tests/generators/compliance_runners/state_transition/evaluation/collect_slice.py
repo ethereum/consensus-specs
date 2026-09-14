@@ -103,7 +103,9 @@ def collect(module, roots: list[str], excluded: set[str]):
     return expanded, imports, typing_imports, uses_config, reachable_from
 
 
-def emit(module, roots, excluded, expanded, imports, typing_imports, uses_config, reachable_from, group) -> str:
+def emit(
+    module, roots, excluded, expanded, imports, typing_imports, uses_config, reachable_from, group
+) -> str:
     parts = [
         f'"""Code slice for {", ".join(f"`{root}`" for root in roots)}.',
         "",
@@ -114,9 +116,11 @@ def emit(module, roots, excluded, expanded, imports, typing_imports, uses_config
         '"""',
         "",
     ]
-    import_names = [*imports, *( ["config"] if uses_config else [])]
+    import_names = [*imports, *(["config"] if uses_config else [])]
     if import_names:
-        parts.extend([f"from {module.__name__} import (", *(f"    {name}," for name in import_names), ")"])
+        parts.extend(
+            [f"from {module.__name__} import (", *(f"    {name}," for name in import_names), ")"]
+        )
     if typing_imports:
         parts.append(f"from typing import {', '.join(typing_imports)}")
     for name, source in expanded:
@@ -160,8 +164,15 @@ def main() -> int:
         module, args.roots, set(args.exclude)
     )
     output = emit(
-        module, args.roots, set(args.exclude), expanded, imports, typing_imports, uses_config,
-        reachable_from, args.group,
+        module,
+        args.roots,
+        set(args.exclude),
+        expanded,
+        imports,
+        typing_imports,
+        uses_config,
+        reachable_from,
+        args.group,
     )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
