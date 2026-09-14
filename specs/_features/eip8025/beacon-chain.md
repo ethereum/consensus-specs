@@ -19,8 +19,6 @@
   - [New `ExecutionProof`](#new-executionproof)
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
-- [Helpers](#helpers)
-  - [New `get_supported_proof_types`](#new-get_supported_proof_types)
 - [Execution proof verification](#execution-proof-verification)
   - [New `verify_execution_proof_envelope`](#new-verify_execution_proof_envelope)
   - [New `get_execution_proof`](#new-get_execution_proof)
@@ -54,12 +52,25 @@ class ProofData(ByteList):
 
 ### New `ProofType`
 
+*Note*: The initial proof type assignments are provisional. A `ProofType`
+identifies an immutable combination of proof system, guest program, and version.
+Assignments MUST NOT be reused. Admitting only assigned values places the
+rejection at deserialization, so no later check has to repeat it.
+
 ```python
 class ProofType(Uint8):
     """
     The identifier of the proof system, guest program, and version associated
     with an execution proof.
     """
+
+    ASSIGNED_VALUES = frozenset({1, 2, 3})
+
+    @classmethod
+    def _wrap(cls, value: int) -> "ProofType":
+        # Every construction and deserialization path narrows to this call.
+        assert value in cls.ASSIGNED_VALUES
+        return super()._wrap(value)
 ```
 
 ## Constants
@@ -123,26 +134,6 @@ class SignedExecutionProofEnvelope(Container):
     signature: BLSSignature
 ```
 
-## Helpers
-
-### New `get_supported_proof_types`
-
-*Note*: The initial proof type assignments are provisional. A `ProofType`
-identifies an immutable combination of proof system, guest program, and version.
-Assignments MUST NOT be reused.
-
-```python
-def get_supported_proof_types() -> set[ProofType]:
-    """
-    Return the supported execution proof types.
-    """
-    return {
-        ProofType(1),
-        ProofType(2),
-        ProofType(3),
-    }
-```
-
 ## Execution proof verification
 
 ### New `verify_execution_proof_envelope`
@@ -159,7 +150,6 @@ def verify_execution_proof_envelope(
     proof_envelope = signed_proof_envelope.message
     assert signed_proof_envelope.validator_index < len(state.validators)
     assert len(proof_envelope.proof_data) != 0
-    assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
     validator = state.validators[signed_proof_envelope.validator_index]

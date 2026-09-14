@@ -93,10 +93,6 @@ def validate_execution_proof_gossip(
     if len(proof_envelope.proof_data) == 0:
         raise GossipReject("execution proof is empty")
 
-    # [REJECT] The proof type is supported
-    if proof_envelope.proof_type not in get_supported_proof_types():
-        raise GossipReject("unexpected execution proof type")
-
     beacon_block_root = proof_envelope.beacon_block_root
 
     # [IGNORE] The proof's beacon block has been seen
