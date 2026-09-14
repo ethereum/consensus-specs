@@ -453,22 +453,6 @@ def test_max_proposer_slashings(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_proposer_slashings(spec, state):
-    num_slashings = spec.MAX_PROPOSER_SLASHINGS + 1
-    proposer_slashings = get_valid_proposer_slashings(spec, state, num_slashings)
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.proposer_slashings = spec.ProposerSlashings(data=proposer_slashings)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_invalid_payload_attestation_too_old_slot(spec, state):
     """
     Test that payload attestation for slot too far in past fails.
@@ -532,33 +516,6 @@ def test_max_attester_slashings(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_attester_slashings(spec, state):
-    num_slashings = get_max_attester_slashings(spec) + 1
-    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[:8]
-    per_slashing_length = len(full_indices) // num_slashings
-    attester_slashings = [
-        get_valid_attester_slashing_by_indices(
-            spec,
-            state,
-            full_indices[i * per_slashing_length : (i + 1) * per_slashing_length],
-            signed_1=True,
-            signed_2=True,
-        )
-        for i in range(num_slashings)
-    ]
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.attester_slashings = spec.AttesterSlashings(data=attester_slashings)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_attestations(spec, state):
     rng = Random(2000)
 
@@ -578,25 +535,6 @@ def test_max_attestations(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_attestations(spec, state):
-    rng = Random(2000)
-
-    next_epoch(spec, state)
-    num_attestations = get_max_attestations(spec) + 1
-    attestations = get_random_attestations(spec, state, rng, num_attestations)
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.attestations = spec.Attestations(data=attestations)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_deposits(spec, state):
     yield "pre", state
 
@@ -606,19 +544,6 @@ def test_max_deposits(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", state
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_invalid_too_many_deposits(spec, state):
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.deposits = spec.Deposits(data=[spec.Deposit()])
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
 
 
 @with_gloas_and_later
@@ -643,26 +568,6 @@ def test_max_voluntary_exits(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_voluntary_exits(spec, state):
-    next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
-    num_exits = spec.MAX_VOLUNTARY_EXITS + 1
-    full_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[
-        :num_exits
-    ]
-    signed_exits = prepare_signed_exits(spec, state, full_indices)
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_bls_to_execution_changes(spec, state):
     num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES
     signed_address_changes = [
@@ -678,25 +583,6 @@ def test_max_bls_to_execution_changes(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", state
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_invalid_too_many_bls_to_execution_changes(spec, state):
-    num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES + 1
-    signed_address_changes = [
-        get_signed_address_change(spec, state, validator_index=i)
-        for i in range(num_address_changes)
-    ]
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.bls_to_execution_changes = spec.BLSToExecutionChanges(data=signed_address_changes)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
 
 
 @with_gloas_and_later
@@ -719,28 +605,6 @@ def test_max_payload_attestations(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", state
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_invalid_too_many_payload_attestations(spec, state):
-    rng = Random(3000)
-
-    state_transition_and_sign_block(spec, state, build_empty_block_for_next_slot(spec, state))
-
-    payload_attestations = []
-    for _ in range(spec.MAX_PAYLOAD_ATTESTATIONS + 1):
-        payload_attestations.extend(get_random_payload_attestations(spec, state, rng))
-    assert len(payload_attestations) > spec.MAX_PAYLOAD_ATTESTATIONS
-
-    yield "pre", state
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.payload_attestations = spec.PayloadAttestations(data=payload_attestations)
-    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
-
-    yield "blocks", [signed_block]
-    yield "post", None
 
 
 @with_gloas_and_later

@@ -622,23 +622,6 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_deposit_requests_greater_than_electra_max(spec, state):
-    requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(
-            data=[spec.DepositRequest()] * (spec.electra.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block)
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_withdrawal_requests(spec, state):
     requests = spec.ExecutionRequests(
         withdrawals=spec.WithdrawalRequests(
@@ -652,23 +635,6 @@ def test_max_withdrawal_requests(spec, state):
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_invalid_too_many_withdrawal_requests(spec, state):
-    requests = spec.ExecutionRequests(
-        withdrawals=spec.WithdrawalRequests(
-            data=[spec.WithdrawalRequest()] * (spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
@@ -690,23 +656,6 @@ def test_max_consolidation_requests(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_consolidation_requests(spec, state):
-    requests = spec.ExecutionRequests(
-        consolidations=spec.ConsolidationRequests(
-            data=[spec.ConsolidationRequest()] * (spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_builder_deposit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_deposits=spec.BuilderDepositRequests(
@@ -724,24 +673,6 @@ def test_max_builder_deposit_requests(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_invalid_too_many_builder_deposit_requests(spec, state):
-    requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(
-            data=[spec.BuilderDepositRequest()]
-            * (spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_max_builder_exit_requests(spec, state):
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests(
@@ -755,20 +686,3 @@ def test_max_builder_exit_requests(spec, state):
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_invalid_too_many_builder_exit_requests(spec, state):
-    requests = spec.ExecutionRequests(
-        builder_exits=spec.BuilderExitRequests(
-            data=[spec.BuilderExitRequest()] * (spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)

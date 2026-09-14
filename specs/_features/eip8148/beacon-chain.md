@@ -69,6 +69,8 @@ class SweepThresholdRequests(ProgressiveList[SetSweepThresholdRequest]):
     The set-sweep-threshold requests pertaining to a single execution
     payload.
     """
+
+    LIMIT = MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
 ```
 
 ### New `SweepThresholds`
@@ -500,13 +502,6 @@ def apply_parent_execution_payload(
     parent_bid = state.latest_execution_payload_bid
     parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
-
-    assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-    assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-    assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
-    assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
-    # [New in EIP8148]
-    assert len(requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
 
     # Process execution requests from parent's payload. The execution
     # requests are processed at state.slot (child's slot), not the parent's slot.

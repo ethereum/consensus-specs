@@ -13,7 +13,7 @@ requires-python = ">=3.12, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "blake3==1.0.9",
-  "eth-ssz-specs==0.1.0",
+  "eth-ssz-specs",
   "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
@@ -154,3 +154,6 @@ ignore = [
 combine-as-imports = true
 known-first-party = ["eth_consensus_specs"]
 order-by-type = false
+
+[tool.uv.sources]
+eth-ssz-specs = { git = "https://github.com/ethereum/ssz-specs", rev = "28a7b1e7" }

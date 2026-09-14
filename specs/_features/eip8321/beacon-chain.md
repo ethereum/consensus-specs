@@ -100,6 +100,8 @@ class RandaoCommitmentRegistrations(ProgressiveList[SignedRandaoCommitmentRegist
     The signed hash-chain RANDAO commitment registrations included in a beacon
     block.
     """
+
+    LIMIT = MAX_RANDAO_COMMITMENT_REGISTRATIONS
 ```
 
 ### New `RandaoCommitments`
@@ -431,20 +433,9 @@ def process_operations(
     body: BeaconBlockBody,
     parent_slot: Slot,
 ) -> None:
-    assert len(body.deposits) == 0
-
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
             fn(state, operation, *args)
-
-    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
-    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
-    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
-    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
-    assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
-    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
-    # [New in EIP8321]
-    assert len(body.randao_commitment_registrations) <= MAX_RANDAO_COMMITMENT_REGISTRATIONS
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)

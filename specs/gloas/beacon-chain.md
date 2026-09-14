@@ -85,7 +85,6 @@
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
-    - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
     - [New `is_builder_index`](#new-is_builder_index)
     - [New `is_active_builder`](#new-is_active_builder)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
@@ -196,6 +195,8 @@ class AggregationBits(ProgressiveBitList):
     The participation bits of all committees participating in an attestation,
     concatenated in committee order.
     """
+
+    LIMIT = MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
 ```
 
 ### Modified `Attestations`
@@ -206,6 +207,8 @@ class Attestations(ProgressiveList[Attestation]):
     """
     The attestations included in a beacon block.
     """
+
+    LIMIT = MAX_ATTESTATIONS_ELECTRA
 ```
 
 ### Modified `AttesterSlashings`
@@ -216,6 +219,8 @@ class AttesterSlashings(ProgressiveList[AttesterSlashing]):
     """
     The attester slashings included in a beacon block.
     """
+
+    LIMIT = MAX_ATTESTER_SLASHINGS_ELECTRA
 ```
 
 ### Modified `AttestingIndices`
@@ -226,6 +231,8 @@ class AttestingIndices(ProgressiveList[ValidatorIndex]):
     """
     The indices of the validators participating in an attestation.
     """
+
+    LIMIT = MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
 ```
 
 ### Modified `Balances`
@@ -246,6 +253,8 @@ class BlobKZGCommitments(ProgressiveList[KZGCommitment]):
     """
     The KZG commitments to the blobs of a beacon block.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### Modified `BLSToExecutionChanges`
@@ -257,6 +266,8 @@ class BLSToExecutionChanges(ProgressiveList[SignedBLSToExecutionChange]):
     The signed BLS-to-execution credential changes included in a beacon
     block.
     """
+
+    LIMIT = MAX_BLS_TO_EXECUTION_CHANGES
 ```
 
 ### Modified `ConsolidationRequests`
@@ -267,6 +278,8 @@ class ConsolidationRequests(ProgressiveList[ConsolidationRequest]):
     """
     The consolidation requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
 ```
 
 ### Modified `DepositRequests`
@@ -277,6 +290,8 @@ class DepositRequests(ProgressiveList[DepositRequest]):
     """
     The deposit requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
 ```
 
 ### Modified `Deposits`
@@ -287,6 +302,8 @@ class Deposits(ProgressiveList[Deposit]):
     """
     The deposits included in a beacon block.
     """
+
+    LIMIT = 0
 ```
 
 ### Modified `EpochParticipation`
@@ -347,6 +364,8 @@ class ProposerSlashings(ProgressiveList[ProposerSlashing]):
     """
     The proposer slashings included in a beacon block.
     """
+
+    LIMIT = MAX_PROPOSER_SLASHINGS
 ```
 
 ### Modified `Transaction`
@@ -388,6 +407,8 @@ class VoluntaryExits(ProgressiveList[SignedVoluntaryExit]):
     """
     The signed voluntary exits included in a beacon block.
     """
+
+    LIMIT = MAX_VOLUNTARY_EXITS
 ```
 
 ### Modified `WithdrawalRequests`
@@ -398,6 +419,8 @@ class WithdrawalRequests(ProgressiveList[WithdrawalRequest]):
     """
     The withdrawal requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
 ```
 
 ### Modified `Withdrawals`
@@ -408,6 +431,8 @@ class Withdrawals(ProgressiveList[Withdrawal]):
     """
     A list of withdrawals.
     """
+
+    LIMIT = MAX_WITHDRAWALS_PER_PAYLOAD
 ```
 
 ### New `BlockAccessList`
@@ -426,6 +451,8 @@ class BuilderDepositRequests(ProgressiveList[BuilderDepositRequest]):
     """
     The builder deposit requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
 ```
 
 ### New `BuilderExitRequests`
@@ -435,6 +462,8 @@ class BuilderExitRequests(ProgressiveList[BuilderExitRequest]):
     """
     The builder exit requests pertaining to a single execution payload.
     """
+
+    LIMIT = MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
 ```
 
 ### New `BuilderIndex`
@@ -494,6 +523,8 @@ class PayloadAttestations(ProgressiveList[PayloadAttestation]):
     """
     The payload attestations included in a beacon block.
     """
+
+    LIMIT = MAX_PAYLOAD_ATTESTATIONS
 ```
 
 ### New `PayloadTimelinessCommittee`
@@ -1015,31 +1046,6 @@ class ExpectedWithdrawals:
 ## Helpers
 
 ### Predicates
-
-#### Modified `is_valid_indexed_attestation`
-
-```python
-def is_valid_indexed_attestation(
-    state: BeaconState, indexed_attestation: IndexedAttestation
-) -> bool:
-    """
-    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
-    """
-    # Verify indices are sorted and unique
-    indices = indexed_attestation.attesting_indices
-    if (
-        len(indices) == 0
-        # [New in Gloas:EIP7688]
-        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
-        or list(indices) != sorted(set(indices))
-    ):
-        return False
-    # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
-    signing_root = compute_signing_root(indexed_attestation.data, domain)
-    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
-```
 
 #### New `is_builder_index`
 
@@ -1748,11 +1754,6 @@ def apply_parent_execution_payload(
     parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-    assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-    assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
-    assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
-
     # Process execution requests from parent's payload. The execution
     # requests are processed at state.slot (child's slot), not the parent's slot.
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
@@ -2170,20 +2171,10 @@ def process_operations(
     # [New in Gloas:EIP7732]
     parent_slot: Slot,
 ) -> None:
-    assert len(body.deposits) == 0
-
     # [Modified in Gloas:EIP7732]
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
             fn(state, operation, *args)
-
-    # [New in Gloas:EIP7688]
-    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
-    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
-    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
-    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
-    assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
-    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
 
     # [Modified in Gloas:EIP7732]
     for_ops(body.proposer_slashings, process_proposer_slashing)
