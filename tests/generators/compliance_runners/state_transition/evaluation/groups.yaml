@@ -1,0 +1,35 @@
+# A group selects both test vectors and the processor slices to score.  Groups
+# may include other groups; `handlers` adds individual handlers directly.
+operations:
+  handlers:
+    - attestation
+    - builder_deposit_request
+    - builder_exit_request
+    - consolidation_request
+    - deposit_request
+    - execution_payload_bid
+    - parent_execution_payload
+    - payload_attestation
+    - proposer_slashing
+    - withdrawal_request
+    - withdrawals
+
+epoch_processing:
+  handlers:
+    - builder_pending_payments
+    - pending_deposits
+    - ptc_window
+
+# The parent handler is an integration test; the individual handlers provide
+# detailed coverage of the execution requests it dispatches.
+parent_execution_payload_plus_invoked:
+  handlers:
+    - parent_execution_payload
+    - deposit_request
+    - withdrawal_request
+    - consolidation_request
+    - builder_deposit_request
+    - builder_exit_request
+
+all:
+  includes: [operations, epoch_processing]
