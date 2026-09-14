@@ -118,7 +118,11 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
         if case.handler == "attestation" and is_post_gloas(spec):
             extra_args = (spec.Slot(test_case["meta"]["parent_slot"]),)
         test_run.run_processing_case(
-            processor, test_case["pre"], test_case["operation"], test_case["post"], extra_args,
+            processor,
+            test_case["pre"],
+            test_case["operation"],
+            test_case["post"],
+            extra_args,
         )
     finally:
         bls.bls_active = old_bls_active
@@ -126,7 +130,8 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
 
 def cases_for(tests: list[Path], handler: str, preset: str):
     cases = [
-        case for case in test_run.gather_tests(tests)
+        case
+        for case in test_run.gather_tests(tests)
         if case.handler == handler and case.preset == preset and case.fork == "gloas"
     ]
     if not cases:
