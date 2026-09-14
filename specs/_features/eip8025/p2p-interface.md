@@ -31,14 +31,9 @@ Req/Resp protocol is defined.
 
 ### Type-specific SSZ bounds
 
-*Note*: `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` is derived from
-`MAX_PROOF_SIZE` plus 145 bytes of fixed SSZ overhead: two 4-byte offsets, a
-1-byte `ProofType`, a 32-byte `Root`, an 8-byte `ValidatorIndex`, and a 96-byte
-`BLSSignature`.
-
-| Name                                       | Value                                              |
-| ------------------------------------------ | -------------------------------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(MAX_PROOF_SIZE + 145)` (= 4,194,449 bytes) |
+| Name                                       | Value             |
+| ------------------------------------------ | ----------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` |
 
 ## Helpers
 
@@ -96,11 +91,11 @@ def validate_execution_proof_gossip(
 
     # [REJECT] The proof data is non-empty
     if len(proof_envelope.proof_data) == 0:
-        raise GossipReject("execution proof envelope is invalid")
+        raise GossipReject("execution proof is empty")
 
     # [REJECT] The proof type is supported
     if proof_envelope.proof_type not in get_supported_proof_types():
-        raise GossipReject("execution proof envelope is invalid")
+        raise GossipReject("unexpected execution proof type")
 
     beacon_block_root = proof_envelope.beacon_block_root
 
@@ -130,10 +125,10 @@ def validate_execution_proof_gossip(
     if beacon_block_root not in store.payloads:
         raise GossipIgnore("execution proof's payload is unavailable")
 
+    state = store.block_states[beacon_block_root]
     payload_envelope = store.payloads[beacon_block_root]
 
     # [REJECT] The execution proof envelope passes validation
-    state = store.block_states[beacon_block_root]
     try:
         verify_execution_proof_envelope(state, signed_proof_envelope)
     except AssertionError:

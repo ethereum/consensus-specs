@@ -200,14 +200,14 @@ def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
     empty_proof = make_signed_execution_proof_envelope(spec, state, unknown_root, proof_data=b"")
     assert validate(spec, get_seen(spec), store, empty_proof) == (
         "reject",
-        "execution proof envelope is invalid",
+        "execution proof is empty",
     )
     unsupported_proof = make_signed_execution_proof_envelope(
         spec, state, unknown_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
     )
     assert validate(spec, get_seen(spec), store, unsupported_proof) == (
         "reject",
-        "execution proof envelope is invalid",
+        "unexpected execution proof type",
     )
 
     # Ignore known duplicates without requiring the payload.
@@ -312,24 +312,33 @@ def test_gossip_rejects_malformed_execution_proof_fields_without_caching(spec, s
 
     # Exercise empty proof data and proof types outside the supported set.
     cases = [
-        make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
-        make_signed_execution_proof_envelope(
-            spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
+        (
+            make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
+            "execution proof is empty",
         ),
-        make_signed_execution_proof_envelope(
-            spec,
-            state,
-            block_root,
-            prover_index=1,
-            proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
+        (
+            make_signed_execution_proof_envelope(
+                spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
+            ),
+            "unexpected execution proof type",
+        ),
+        (
+            make_signed_execution_proof_envelope(
+                spec,
+                state,
+                block_root,
+                prover_index=1,
+                proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
+            ),
+            "unexpected execution proof type",
         ),
     ]
 
-    for signed_proof in cases:
+    for signed_proof, error_message in cases:
         seen = get_seen(spec)
         assert validate(spec, seen, store, signed_proof) == (
             "reject",
-            "execution proof envelope is invalid",
+            error_message,
         )
         assert seen.execution_proof_roots == {}
         assert seen.execution_proof_provers == set()
