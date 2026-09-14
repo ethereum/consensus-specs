@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Presets](#presets)
-  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Configs](#configs)
 - [Types](#types)
   - [Modified `DataColumn`](#modified-datacolumn)
@@ -56,23 +54,6 @@ This document contains the consensus-layer networking specifications for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
-
-## Presets
-
-### Type-specific SSZ bounds
-
-*[New in Gloas:EIP7688]*
-
-These constants supersede
-[type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
-for the corresponding variable-size libp2p messages. The bound for
-`DataColumnSidecar` is given by `compute_max_data_column_sidecar_size()`.
-
-| Name                                    | Value                         |
-| --------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
-| `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
 ## Configs
 
@@ -301,6 +282,11 @@ def verify_data_column_sidecar(
 ```
 
 ### New `compute_max_data_column_sidecar_size`
+
+*Note*: This supersedes the
+[type-specific SSZ bound](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
+for `DataColumnSidecar`. The blob schedule caps a column far below the element
+limits its types declare, so the bound derived from those types is much looser.
 
 ```python
 def compute_max_data_column_sidecar_size() -> Uint64:

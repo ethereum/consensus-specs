@@ -1,67 +1,3 @@
-from eth_consensus_specs.test.helpers.forks import is_post_heze
-
-
-def build_max_size_attestation(spec):
-    aggregation_bits = spec.AggregationBits(
-        data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
-    )
-    return spec.Attestation(
-        aggregation_bits=spec.AggregationBits(data=aggregation_bits),
-        data=spec.AttestationData(),
-        signature=spec.BLSSignature(),
-        committee_bits=spec.CommitteeBits(),
-    )
-
-
-def build_max_size_indexed_attestation(spec):
-    attesting_indices = spec.AttestingIndices(
-        data=[spec.ValidatorIndex(0)]
-        * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
-    )
-    return spec.IndexedAttestation(
-        attesting_indices=spec.AttestingIndices(data=attesting_indices),
-        data=spec.AttestationData(),
-        signature=spec.BLSSignature(),
-    )
-
-
-def build_max_size_payload_attestation(spec):
-    return spec.PayloadAttestation(
-        aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=[True] * spec.PTC_SIZE),
-        data=spec.PayloadAttestationData(),
-        signature=spec.BLSSignature(),
-    )
-
-
-def build_max_size_attester_slashing(spec):
-    return spec.AttesterSlashing(
-        attestation_1=build_max_size_indexed_attestation(spec),
-        attestation_2=build_max_size_indexed_attestation(spec),
-    )
-
-
-def build_max_size_signed_aggregate_and_proof(spec):
-    aggregate_and_proof = spec.AggregateAndProof(
-        aggregator_index=spec.ValidatorIndex(0),
-        aggregate=build_max_size_attestation(spec),
-        selection_proof=spec.BLSSignature(),
-    )
-    return spec.SignedAggregateAndProof(
-        message=aggregate_and_proof,
-        signature=spec.BLSSignature(),
-    )
-
-
-def build_max_size_signed_execution_payload_bid(spec):
-    blob_kzg_commitments = spec.BlobKZGCommitments(
-        data=[spec.KZGCommitment()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-    )
-    bid = spec.ExecutionPayloadBid(
-        blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments)
-    )
-    return spec.SignedExecutionPayloadBid(message=bid, signature=spec.BLSSignature())
-
-
 def build_max_size_signed_inclusion_list(spec):
     # The largest valid list: MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST one-byte transactions,
     # each costing its byte plus a 4-byte SSZ offset
@@ -88,21 +24,6 @@ def build_max_size_signed_execution_proof_envelope(spec):
         validator_index=spec.ValidatorIndex(0),
         signature=spec.BLSSignature(),
     )
-
-
-def get_max_signed_aggregate_and_proof_size(spec):
-    return spec.MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE
-
-
-def get_max_attester_slashing_size(spec):
-    return spec.MAX_ATTESTER_SLASHING_SIZE
-
-
-def get_max_signed_execution_payload_bid_size(spec):
-    size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
-    if is_post_heze(spec):
-        size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE
-    return size
 
 
 def get_max_signed_inclusion_list_size(spec):
