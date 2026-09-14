@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra, is_post_fulu
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
@@ -20,6 +20,9 @@ from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activat
 
 
 def get_max_deposits(spec):
+    # Blocks must not contain any deposits since Fulu
+    if is_post_fulu(spec):
+        return 0
     return spec.MAX_DEPOSITS
 
 
