@@ -20,7 +20,6 @@
   - [New `ExecutionProofEnvelope`](#new-executionproofenvelope)
   - [New `SignedExecutionProofEnvelope`](#new-signedexecutionproofenvelope)
 - [Helpers](#helpers)
-  - [New `get_execution_proof_envelope_signature`](#new-get_execution_proof_envelope_signature)
   - [New `get_supported_proof_types`](#new-get_supported_proof_types)
 - [Execution proof verification](#execution-proof-verification)
   - [New `verify_execution_proof_envelope`](#new-verify_execution_proof_envelope)
@@ -126,20 +125,6 @@ class SignedExecutionProofEnvelope(Container):
 ```
 
 ## Helpers
-
-### New `get_execution_proof_envelope_signature`
-
-```python
-def get_execution_proof_envelope_signature(
-    state: BeaconState, proof_envelope: ExecutionProofEnvelope, privkey: int
-) -> BLSSignature:
-    """
-    Return the prover signature for an execution proof envelope.
-    """
-    domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof_envelope, domain)
-    return bls.Sign(privkey, signing_root)
-```
 
 ### New `get_supported_proof_types`
 
