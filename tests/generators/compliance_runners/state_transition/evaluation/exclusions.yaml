@@ -1,0 +1,22 @@
+# Functions deliberately excluded from the generator-quality denominator.
+# They are fork-shared utilities with independent PySpec coverage.  Exclusions
+# are shown in reports and apply equally to statement and branch metrics.
+functions:
+  compute_domain:
+    reason: Shared cross-fork domain utility; covered by PySpec tests.
+  compute_fork_data_root:
+    reason: Shared cross-fork domain utility; covered by PySpec tests.
+  compute_signing_root:
+    reason: Shared cross-fork signing utility; covered by PySpec tests.
+  hash_tree_root:
+    reason: Shared SSZ utility; covered by PySpec tests.
+  integer_squareroot:
+    reason: Shared integer utility; covered by PySpec tests.
+  ssz_serialize:
+    reason: Shared SSZ utility; covered by PySpec tests.
+  uint_to_bytes:
+    reason: Shared byte utility; covered by PySpec tests.
+  bytes_to_uint64:
+    reason: Shared byte utility; covered by PySpec tests.
+  sha256:
+    reason: Shared cryptographic utility; covered by PySpec tests.
