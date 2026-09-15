@@ -86,11 +86,20 @@ upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
 proposer preferences. The usual gas-limit adjustment rule applies at the
 transition, so reaching a lower target requires advance coordination.
 
-<!-- list-of-records:slot_duration_schedule -->
+<!-- list-of-records:slot_duration_schedule[0] -->
 
-| Epoch | Slot Duration Ms | Proposer Reorg Cutoff Ms | Attestation Due Ms | Aggregate Due Ms | Sync Message Due Ms | Contribution Due Ms | Payload Due Ms | Payload Attestation Due Ms | Inclusion List Due Ms | Description                            |
-| ----: | ---------------: | -----------------------: | -----------------: | ---------------: | ------------------: | ------------------: | -------------: | -------------------------: | --------------------: | -------------------------------------- |
-|     0 |            12000 |                     2000 |               3000 |             6000 |                3000 |                6000 |           6000 |                       9000 |                  8000 | Historical duration and Heze deadlines |
+| Name                         |           Value |
+| ---------------------------- | --------------: |
+| `EPOCH`                      |      `Epoch(0)` |
+| `SLOT_DURATION_MS`           | `Uint64(12000)` |
+| `PROPOSER_REORG_CUTOFF_MS`   |  `Uint64(2000)` |
+| `ATTESTATION_DUE_MS`         |  `Uint64(3000)` |
+| `AGGREGATE_DUE_MS`           |  `Uint64(6000)` |
+| `SYNC_MESSAGE_DUE_MS`        |  `Uint64(3000)` |
+| `CONTRIBUTION_DUE_MS`        |  `Uint64(6000)` |
+| `PAYLOAD_DUE_MS`             |  `Uint64(6000)` |
+| `PAYLOAD_ATTESTATION_DUE_MS` |  `Uint64(9000)` |
+| `INCLUSION_LIST_DUE_MS`      |  `Uint64(8000)` |
 
 ## Helpers
 

@@ -67,6 +67,7 @@ class MarkdownToSpec:
 
         self.document_iterator: Iterator[Element] = self._parse_document(file_name)
         self.current_heading_name: str | None = None
+        self.indexed_records: dict[str, list[dict[str, str]]] = {}
 
         # Use a single dict to hold all SpecObject fields
         self.spec: dict[str, dict] = {
@@ -424,6 +425,53 @@ class MarkdownToSpec:
         return list_of_records_spec
 
     @staticmethod
+    def _extract_record_spec(table: Table) -> dict[str, str]:
+        """
+        Extracts a single record from a two-column table of names and values.
+        """
+        record: dict[str, str] = {}
+        for row in table.children[1:]:
+            cells = cast("TableRow", row).children
+            name = cast("TableCell", cells[0]).children[0].children
+            value = cast("TableCell", cells[1]).children[0].children
+            record[str(name)] = str(value)
+        return record
+
+    def _process_indexed_record_table(self, table: Table, name: str, index: int) -> None:
+        """
+        Handles one table of a list-of-records that is split over several tables,
+        each marked with its index. The indices must start at zero and be
+        contiguous, so that a missing table is an error rather than a short list.
+        """
+        records = self.indexed_records.setdefault(name, [])
+        if index != len(records):
+            raise Exception(f"expected {name}[{len(records)}], got {name}[{index}]")
+        records.append(self._extract_record_spec(table))
+
+        # Apply the types to the file config
+        type_map = self._make_list_of_records_type_map(records)
+        list_of_records_config_file = self._extract_typed_records_config(name, type_map)
+
+        if index >= len(list_of_records_config_file):
+            raise Exception(f"{name}[{index}] has no matching entry in the config file")
+
+        # For mainnet, check that the spec record & file record are the same
+        # For minimal, we expect this to be different; just use the file config
+        if self.preset_name == "mainnet":
+            assert records[index] == list_of_records_config_file[index], (
+                f"record mismatch for {name}[{index}]: "
+                f"{records[index]} vs {list_of_records_config_file[index]}"
+            )
+
+        # Set the config variable
+        self.spec["config_vars"][name] = VariableDefinition(
+            "tuple[frozendict[str, Any], ...]",
+            self._format_frozen_records(list_of_records_config_file),
+            None,
+            None,
+        )
+
+    @staticmethod
     def _format_frozen_records(records: list[dict[str, str]]) -> str:
         lines = ["("]
         for record in records:
@@ -470,20 +518,32 @@ class MarkdownToSpec:
 
         # Handle list-of-records tables
         # This comment marks that the next table is a list-of-records
-        # e.g. <!-- list-of-records: <name> -->
-        match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)\s*-->", body)
+        # e.g. <!-- list-of-records: <name> --> for a single table, or
+        # <!-- list-of-records: <name>[<index>] --> for one entry per table
+        match = re.match(r"<!--\s*list-of-records:([a-zA-Z0-9_-]+)(?:\[(\d+)\])?\s*-->", body)
         if match:
             table_element = self._get_next_element()
             if not isinstance(table_element, Table):
                 raise Exception(
                     f"expected table after list-of-records comment, got {type(table_element)}"
                 )
-            self._process_list_of_records_table(table_element, match.group(1).upper())
+            name = match.group(1).upper()
+            if match.group(2) is None:
+                self._process_list_of_records_table(table_element, name)
+            else:
+                self._process_indexed_record_table(table_element, name, int(match.group(2)))
 
     def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
         """
+        for name, records in self.indexed_records.items():
+            entries = self.config[name]
+            if len(records) != len(entries):
+                raise Exception(
+                    f"{name} has {len(records)} tables "
+                    f"but {len(entries)} entries in the config file"
+                )
         return SpecObject(
             config_vars=self.spec["config_vars"],
             constant_vars=self.spec["constant_vars"],
