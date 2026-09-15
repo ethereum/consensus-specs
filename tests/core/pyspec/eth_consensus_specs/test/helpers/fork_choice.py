@@ -281,6 +281,10 @@ def get_attester_slashing_file_name(attester_slashing):
     return f"attester_slashing_{encode_hex(attester_slashing.hash_tree_root())}"
 
 
+def get_proposer_slashing_file_name(proposer_slashing):
+    return f"proposer_slashing_{encode_hex(proposer_slashing.hash_tree_root())}"
+
+
 def get_blobs_file_name(blobs=None, blobs_root=None):
     if blobs:
         return f"blobs_{encode_hex(blobs.hash_tree_root())}"
@@ -403,6 +407,10 @@ def add_block(
         run_on_attester_slashing(spec, store, attester_slashing, valid=True)
 
     if is_post_gloas(spec):
+        # An on_block step implies receiving block's proposer slashings (post GLOAS)
+        for proposer_slashing in signed_block.message.body.proposer_slashings:
+            run_on_proposer_slashing(spec, store, proposer_slashing, valid=True)
+
         # An on_block step implies receiving block's payload attestations (post GLOAS)
         state = store.block_states[signed_block.message.hash_tree_root()]
         for payload_attestation in signed_block.message.body.payload_attestations:
@@ -484,6 +492,26 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
     run_on_attester_slashing(spec, store, attester_slashing)
     test_steps.append({"attester_slashing": slashing_file_name})
+
+
+def run_on_proposer_slashing(spec, store, proposer_slashing, valid=True):
+    if not valid:
+        expect_assertion_error(lambda: spec.on_proposer_slashing(store, proposer_slashing))
+        return
+
+    spec.on_proposer_slashing(store, proposer_slashing)
+
+
+def add_proposer_slashing(spec, store, proposer_slashing, test_steps, valid=True):
+    slashing_file_name = get_proposer_slashing_file_name(proposer_slashing)
+    yield slashing_file_name, proposer_slashing
+
+    run_on_proposer_slashing(spec, store, proposer_slashing, valid=valid)
+    step = {"proposer_slashing": slashing_file_name}
+
+    if not valid:
+        step["valid"] = False
+    test_steps.append(step)
 
 
 def run_on_payload_attestation_message(spec, store, ptc_message, is_from_block=False, valid=True):

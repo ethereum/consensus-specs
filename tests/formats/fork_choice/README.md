@@ -18,9 +18,12 @@ components of the fork choice.
     - [`on_payload_info` execution step](#on_payload_info-execution-step)
     - [`on_execution_payload_envelope` execution step](#on_execution_payload_envelope-execution-step)
     - [`on_payload_attestation_message` execution step](#on_payload_attestation_message-execution-step)
+    - [`on_proposer_slashing` execution step](#on_proposer_slashing-execution-step)
     - [Checks step](#checks-step)
   - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
+  - [`attester_slashing_<32-byte-root>.ssz_snappy`](#attester_slashing_32-byte-rootssz_snappy)
+  - [`proposer_slashing_<32-byte-root>.ssz_snappy`](#proposer_slashing_32-byte-rootssz_snappy)
   - [`execution_payload_envelope_<32-byte-root>.ssz_snappy`](#execution_payload_envelope_32-byte-rootssz_snappy)
   - [`payload_attestation_message_<32-byte-root>.ssz_snappy`](#payload_attestation_message_32-byte-rootssz_snappy)
 - [Condition](#condition)
@@ -222,6 +225,29 @@ This execution step is available for Gloas and later forks.
 
 After this step, the `store` object may have been updated.
 
+#### `on_proposer_slashing` execution step
+
+The parameter that is required for executing
+`on_proposer_slashing(store, proposer_slashing)`.
+
+```yaml
+{
+    proposer_slashing: string  -- the name of the `proposer_slashing_<32-byte-root>.ssz_snappy` file.
+                            To execute `on_proposer_slashing(store, proposer_slashing)` with the given proposer slashing.
+    valid: bool          -- optional, default to `true`.
+                            If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+The file is located in the same folder (see below).
+
+This execution step is available for Gloas and later forks.
+
+*Note*: The handler records the time at which the equivocation became known, so
+the preceding `on_tick` steps are significant.
+
+After this step, the `store` object may have been updated.
+
 #### Checks step
 
 The checks to verify the current status of `store`.
@@ -304,6 +330,18 @@ of the `SignedBeaconBlock`).
 
 Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
+### `attester_slashing_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given attester slashing.
+
+Each file is an SSZ-snappy encoded `AttesterSlashing`.
+
+### `proposer_slashing_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given proposer slashing.
+
+Each file is an SSZ-snappy encoded `ProposerSlashing`.
+
 ### `execution_payload_envelope_<32-byte-root>.ssz_snappy`
 
 `<32-byte-root>` is the hash tree root of the given signed envelope.
@@ -327,7 +365,12 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
      - For the `on_block` execution step: if
        `len(block.message.body.attestations) > 0`, execute each attestation with
        `on_attestation(store, attestation)` after executing
-       `on_block(store, block)`. For Gloas and later forks, if
+       `on_block(store, block)`. Likewise, execute each attester slashing in
+       `block.message.body.attester_slashings` with
+       `on_attester_slashing(store, attester_slashing)`. For Gloas and later
+       forks, execute each proposer slashing in
+       `block.message.body.proposer_slashings` with
+       `on_proposer_slashing(store, proposer_slashing)`, and if
        `len(block.message.body.payload_attestations) > 0`, expand each
        `PayloadAttestation` into its constituent `PayloadAttestationMessage`
        values and execute each one with
@@ -339,5 +382,8 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
      - For the `on_payload_attestation_message` execution step: look up the
        corresponding `payload_attestation_message_<root>.ssz_snappy` file and
        execute `on_payload_attestation_message(store, ptc_message)`.
+     - For the `on_proposer_slashing` execution step: look up the corresponding
+       `proposer_slashing_<root>.ssz_snappy` file and execute
+       `on_proposer_slashing(store, proposer_slashing)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.

@@ -13,11 +13,15 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_block,
+    add_proposer_slashing,
     on_tick_and_append_step,
     output_store_checks,
     setup_finalized_store,
     tick_and_add_block,
     tick_and_run_on_attestation,
+)
+from eth_consensus_specs.test.helpers.proposer_slashings import (
+    get_proposer_slashing_for_blocks,
 )
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
@@ -25,23 +29,39 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
+def _tick_past_payload_attestation_due(spec, store, slot, test_steps):
+    """
+    Tick the store to just past the payload attestation deadline of ``slot``.
+    """
+    slot_start = store.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    late_time = slot_start + spec.get_payload_attestation_due_ms() // 1000 + 1
+    if store.time < late_time:
+        on_tick_and_append_step(spec, store, late_time, test_steps)
+
+
+def _setup_boost_scenario(spec, state, adjacent, weak, sibling, slashing=None):
     """
     Build a finalized store, a weak/strong re-org target `parent`, an optional
     same-slot same-proposer `sibling`, then a boosted `block` on that parent.
     Returns after `block` is added while the store is still in `block`'s slot, so
     `store.proposer_boost_root == block`.
 
-    `sibling` selects the sibling's timeliness:
-      - None      : no sibling
+    `sibling` selects how the sibling block reaches the store:
+      - None      : the sibling block is never imported
       - "timely"  : added before the PTC deadline -> counts as an early equivocation
       - "late"    : added after the PTC deadline -> a head competitor that is NOT
                     an equivocation (fails the block_timeliness[PTC] filter)
 
-    The sibling doubles as the head-flip competitor. With a weak (zero-weight)
-    parent, parent-subtree and sibling tie on weight, so the head is decided by the
-    fork-choice root tiebreak. The sibling is regenerated (via graffiti) until its
-    root sorts ABOVE the parent's, so:
+    `slashing` selects when a ProposerSlashing over parent and sibling arrives:
+      - None      : never; the equivocation is only visible through the blocks
+      - "timely"  : before the PTC deadline -> an early equivocation even when the
+                    sibling block itself is unknown or was imported late
+      - "late"    : after the PTC deadline -> not an early equivocation
+
+    An imported sibling doubles as the head-flip competitor. With a weak
+    (zero-weight) parent, parent-subtree and sibling tie on weight, so the head is
+    decided by the fork-choice root tiebreak. The sibling is regenerated (via
+    graffiti) until its root sorts ABOVE the parent's, so:
       - boost withheld -> tie -> sibling wins            -> head == sibling
       - boost applied  -> parent gains get_proposer_score -> head == block
     This flips `get_head`, the field clients actually check (weights are not
@@ -59,7 +79,7 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
 
     # --- same-slot same-proposer sibling (competitor, tuned to outrank on tiebreak) ---
     sibling_root = None
-    if sibling is not None:
+    if sibling is not None or slashing is not None:
         # Orient the sibling root above the parent root so it wins the fork-choice
         # tiebreak on a weight tie. Graffiti only perturbs the block root; bounded
         # so a helper change can never spin forever.
@@ -76,21 +96,27 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
         # Equivocation match depends on same proposer at the same slot; assert the
         # invariant so a future helper change cannot silently break discrimination.
         assert signed_sibling.message.proposer_index == signed_parent.message.proposer_index
+        proposer_slashing = get_proposer_slashing_for_blocks(
+            spec, state, signed_parent, signed_sibling
+        )
+
+        if slashing == "timely":
+            # Recorded within the PTC window -> early equivocation, whether or not
+            # the sibling block itself is ever imported
+            yield from add_proposer_slashing(spec, store, proposer_slashing, test_steps)
+
         if sibling == "timely":
             # Added within the PTC window -> block_timeliness[PTC] True -> early equivocation
             yield from tick_and_add_block(spec, store, signed_sibling, test_steps)
-        else:
+        elif sibling == "late":
             # Added past the PTC deadline -> block_timeliness[PTC] False -> NOT an
             # equivocation, but still a viable head competitor
-            ptc_due_s = spec.get_payload_attestation_due_ms() // 1000
-            late_time = (
-                parent_block.slot * spec.config.SLOT_DURATION_MS // 1000
-                + store.genesis_time
-                + ptc_due_s
-                + 1
-            )
-            on_tick_and_append_step(spec, store, late_time, test_steps)
+            _tick_past_payload_attestation_due(spec, store, parent_block.slot, test_steps)
             yield from add_block(spec, store, signed_sibling, test_steps)
+
+        if slashing == "late":
+            _tick_past_payload_attestation_due(spec, store, parent_block.slot, test_steps)
+            yield from add_proposer_slashing(spec, store, proposer_slashing, test_steps)
 
     # --- make the parent strong if the row requires weak == False ---
     # Attest the whole parent-slot committee to the parent so its weight exceeds
@@ -231,6 +257,84 @@ def test_should_apply_proposer_boost_withheld(spec, state):
     # Boost withheld -> weight tie broken by root -> head flips to the sibling
     assert spec.get_head(store).root == roots["sibling"]
     assert spec.get_head(store).root != roots["block"]
+
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="too slow")
+@spec_state_test
+def test_should_apply_proposer_boost_withheld_by_slashing(spec, state):
+    """
+    Parent is adjacent and weak, and its equivocating sibling was never imported:
+    only a timely ProposerSlashing proves the equivocation -> the boost is
+    WITHHELD. A client that looks for equivocations in its block tree alone finds
+    none here and wrongly applies the boost.
+
+    NOT head-discriminating: the equivocating block is unknown, so there is no
+    competitor for the head to flip to. The should_apply/weight assertions pin
+    the branch.
+    """
+    store, state, roots, test_steps = yield from _setup_boost_scenario(
+        spec, state, adjacent=True, weak=True, sibling=None, slashing="timely"
+    )
+
+    assert roots["sibling"] not in store.blocks
+    assert spec.should_apply_proposer_boost(store) is False
+    _assert_weight_reflects_boost(spec, store, roots["block"], boost_applied=False)
+    assert spec.get_head(store).root == roots["block"]
+
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="too slow")
+@spec_state_test
+def test_should_apply_proposer_boost_late_slashing(spec, state):
+    """
+    Parent is adjacent and weak, and the ProposerSlashing proving the equivocation
+    only arrived after the PTC deadline -> it is not an early equivocation and the
+    boost applies, mirroring the treatment of a late equivocating block.
+    """
+    store, state, roots, test_steps = yield from _setup_boost_scenario(
+        spec, state, adjacent=True, weak=True, sibling=None, slashing="late"
+    )
+
+    assert roots["sibling"] not in store.blocks
+    assert spec.should_apply_proposer_boost(store) is True
+    _assert_weight_reflects_boost(spec, store, roots["block"], boost_applied=True)
+    assert spec.get_head(store).root == roots["block"]
+
+    output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="too slow")
+@spec_state_test
+def test_should_apply_proposer_boost_withheld_by_slashing_for_late_sibling(spec, state):
+    """
+    Parent is adjacent and weak, with a same-slot same-proposer sibling that was
+    imported AFTER the PTC deadline but whose slashing arrived BEFORE it -> the
+    equivocation was public in time, so the boost is WITHHELD.
+
+    Head-discriminating: the sibling fails the block_timeliness[PTC] filter, so a
+    client that derives equivocations from its block tree alone applies the boost
+    and keeps the block as head, while the head flips to the sibling here.
+    """
+    store, state, roots, test_steps = yield from _setup_boost_scenario(
+        spec, state, adjacent=True, weak=True, sibling="late", slashing="timely"
+    )
+
+    # The sibling block is known but untimely; only the slashing makes it early
+    assert not store.block_timeliness[roots["sibling"]][spec.PTC_TIMELINESS_INDEX]
+    assert store.equivocating_proposals[roots["sibling"]].is_timely
+
+    assert spec.should_apply_proposer_boost(store) is False
+    _assert_weight_reflects_boost(spec, store, roots["block"], boost_applied=False)
+    assert spec.get_head(store).root == roots["sibling"]
 
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
     yield "steps", test_steps
