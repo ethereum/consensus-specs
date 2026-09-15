@@ -646,12 +646,10 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     head_weight = get_attestation_score(store, head_node, justified_state)
     for index in range(get_committee_count_per_slot(head_state, epoch)):
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
-        head_weight += Gwei(
-            sum(
-                justified_state.validators[i].effective_balance
-                for i in committee
-                if i in store.equivocating_indices
-            )
+        head_weight += sum(
+            justified_state.validators[i].effective_balance
+            for i in committee
+            if i in store.equivocating_indices
         )
 
     return head_weight < reorg_threshold

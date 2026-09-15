@@ -339,7 +339,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        HYSTERESIS_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         # [Modified in EIP8148]

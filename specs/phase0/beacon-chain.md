@@ -1246,7 +1246,7 @@ def compute_proposer_index(
     total = Uint64(len(indices))
     while True:
         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        random_byte = sha256(seed + uint_to_bytes(Uint64(i // 32)))[i % 32]
+        random_byte = sha256(seed + uint_to_bytes(i // 32))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -1263,7 +1263,7 @@ def compute_committee(
     Return the committee corresponding to ``indices``, ``seed``, ``index``, and committee ``count``.
     """
     start = (len(indices) * index) // count
-    end = (len(indices) * Uint64(index + 1)) // count
+    end = (len(indices) * (index + 1)) // count
     return [
         indices[compute_shuffled_index(Uint64(i), Uint64(len(indices)), seed)]
         for i in range(start, end)
@@ -1949,7 +1949,7 @@ def weigh_justification_and_finalization(
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     total_balance = get_total_active_balance(state)
     effective_balance = state.validators[index].effective_balance
-    return Gwei(
+    return (
         effective_balance
         * BASE_REWARD_FACTOR
         // integer_squareroot(total_balance)
@@ -2178,7 +2178,7 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        Gwei(sum(state.slashings)) * PROPORTIONAL_SLASHING_MULTIPLIER, total_balance
+        sum(state.slashings) * PROPORTIONAL_SLASHING_MULTIPLIER, total_balance
     )
     for index, validator in enumerate(state.validators):
         if (
@@ -2210,7 +2210,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validators):
         balance = state.balances[index]
-        HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        HYSTERESIS_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT
         DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
         UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
         if (
