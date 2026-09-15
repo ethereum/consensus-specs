@@ -119,11 +119,9 @@ def get_slot_timing_parameters(epoch: Epoch) -> SlotTimingParameters:
     """
     Return the slot timing parameters in effect at ``epoch``.
     """
-    entry = SLOT_DURATION_SCHEDULE[0]
-    for candidate in SLOT_DURATION_SCHEDULE[1:]:
-        if candidate["EPOCH"] > epoch:
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
+        if epoch >= entry["EPOCH"]:
             break
-        entry = candidate
     return SlotTimingParameters(
         slot_duration_ms=entry["SLOT_DURATION_MS"],
         proposer_reorg_cutoff_ms=entry["PROPOSER_REORG_CUTOFF_MS"],
@@ -154,17 +152,15 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
     Return the Unix time in milliseconds at the start of ``slot``.
     """
+    end_slot = slot
     time_ms = genesis_time * 1000
-    era_start_slot = GENESIS_SLOT
-    era_duration_ms = get_slot_duration_ms(GENESIS_EPOCH)
-    for entry in SLOT_DURATION_SCHEDULE[1:]:
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        if slot < entry_slot:
-            break
-        time_ms += (entry_slot - era_start_slot) * era_duration_ms
-        era_start_slot = entry_slot
-        era_duration_ms = entry["SLOT_DURATION_MS"]
-    return Uint64(time_ms + (slot - era_start_slot) * era_duration_ms)
+        if entry_slot < end_slot:
+            slots = end_slot - entry_slot
+            time_ms += slots * entry["SLOT_DURATION_MS"]
+            end_slot = entry_slot
+    return time_ms
 ```
 
 #### Modified `compute_slot_at_time_ms`
@@ -175,19 +171,14 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     assert time_ms >= genesis_time * 1000
-    # [Modified in EIP8198]
-    remaining_ms = time_ms - genesis_time * 1000
-    era_start_slot = GENESIS_SLOT
-    era_duration_ms = get_slot_duration_ms(GENESIS_EPOCH)
-    for entry in SLOT_DURATION_SCHEDULE[1:]:
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        era_length_ms = (entry_slot - era_start_slot) * era_duration_ms
-        if remaining_ms < era_length_ms:
+        entry_time_ms = compute_slot_start_time_ms(genesis_time, entry_slot)
+        if time_ms >= entry_time_ms:
             break
-        remaining_ms -= era_length_ms
-        era_start_slot = entry_slot
-        era_duration_ms = entry["SLOT_DURATION_MS"]
-    return Slot(era_start_slot + remaining_ms // era_duration_ms)
+    time_diff_ms = time_ms - entry_time_ms
+    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
+    return entry_slot + slots
 ```
 
 #### New `compute_slot_range_duration_ms`
@@ -198,9 +189,9 @@ def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
     Return the duration of ``[start_slot, end_slot)`` in milliseconds.
     """
     assert start_slot <= end_slot
-    return compute_slot_start_time_ms(Uint64(0), end_slot) - compute_slot_start_time_ms(
-        Uint64(0), start_slot
-    )
+    start_time_ms = compute_slot_start_time_ms(Uint64(0), start_slot)
+    end_time_ms = compute_slot_start_time_ms(Uint64(0), end_slot)
+    return end_time_ms - start_time_ms
 ```
 
 #### Modified `compute_time_at_slot`

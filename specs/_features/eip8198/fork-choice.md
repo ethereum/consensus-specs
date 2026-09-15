@@ -295,13 +295,12 @@ def on_tick_per_slot_ms(store: Store, time_ms: Uint64) -> None:
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    # [Modified in EIP8198]
+    slot = get_current_slot(store)
     time_into_slot_ms = get_time_into_slot_ms(store)
-    attestation_threshold_ms = get_attestation_due_ms(get_current_slot(store))
-    is_current_slot = get_current_slot(store) == block.slot
-    ptc_threshold_ms = get_payload_attestation_due_ms(get_current_slot(store))
+    attestation_threshold_ms = get_attestation_due_ms(slot)
+    ptc_threshold_ms = get_payload_attestation_due_ms(slot)
     store.block_timeliness[root] = [
-        is_current_slot and time_into_slot_ms < threshold
+        slot == block.slot and time_into_slot_ms < threshold
         for threshold in [attestation_threshold_ms, ptc_threshold_ms]
     ]
 ```
