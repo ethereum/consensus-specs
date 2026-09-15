@@ -1,10 +1,14 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_deneb_and_later,
 )
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA, FULU
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    get_store_from_state,
+    run_validate_gossip,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     sign_voluntary_exit,
@@ -20,7 +24,7 @@ def create_signed_voluntary_exit(spec, state, validator_index, epoch=None, fork_
     )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     """
@@ -30,22 +34,42 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     yield "topic", "meta", "voluntary_exit"
 
     seen = get_seen(spec)
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+    current_time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(current_time_ms)
 
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0)
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec,
+        seen=seen,
+        store=store,
+        signed_voluntary_exit=signed_exit,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [{"message": get_filename(signed_exit), "expected": "valid"}]
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_exit),
+                "expected": "valid",
+            }
+        ],
+    )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 @always_bls
 def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
@@ -56,8 +80,14 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     yield "topic", "meta", "voluntary_exit"
 
     seen = get_seen(spec)
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+    current_time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Sign with DENEB fork version (the wrong domain under EIP-7044).
     signed_exit = create_signed_voluntary_exit(
@@ -66,7 +96,11 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_gossip(
-        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+        spec,
+        seen=seen,
+        store=store,
+        signed_voluntary_exit=signed_exit,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "invalid voluntary exit signature"
@@ -74,5 +108,12 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     yield (
         "messages",
         "meta",
-        [{"message": get_filename(signed_exit), "expected": "reject", "reason": reason}],
+        [
+            {
+                "offset_ms": 0,
+                "message": get_filename(signed_exit),
+                "expected": "reject",
+                "reason": reason,
+            }
+        ],
     )

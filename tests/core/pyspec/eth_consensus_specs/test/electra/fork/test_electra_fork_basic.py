@@ -106,7 +106,7 @@ def test_fork_pre_activation(spec, phases, state):
     assert post_state.balances[index] == 0
     assert validator.effective_balance == 0
     assert validator.activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
-    assert post_state.pending_deposits == [
+    assert list(post_state.pending_deposits) == [
         post_spec.PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
@@ -156,7 +156,7 @@ def test_fork_has_compounding_withdrawal_credential(spec, phases, state):
     post_state = yield from run_fork_test(post_spec, state)
 
     assert post_state.balances[index] == post_spec.MIN_ACTIVATION_BALANCE
-    assert post_state.pending_deposits == [
+    assert list(post_state.pending_deposits) == [
         post_spec.PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
@@ -194,7 +194,7 @@ def test_fork_inactive_compounding_validator_with_excess_balance(spec, phases, s
     # the validator should now have a zero balance
     assert post_state.balances[index] == 0
     # there should be a single pending deposit for this validator
-    assert post_state.pending_deposits == [
+    assert list(post_state.pending_deposits) == [
         post_spec.PendingDeposit(
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,

@@ -161,7 +161,7 @@ def _template_test_after_fork_new_validator_active_pre_electra(
 
         # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
         deposit_block = build_empty_block_for_next_slot(spec, state)
-        deposit_block.body.deposits = [deposit]
+        deposit_block.body.deposits = spec.Deposits(data=[deposit])
 
         _ = state_transition_and_sign_block(spec, state, deposit_block)
 
@@ -247,7 +247,9 @@ def _template_test_after_fork_new_validator_active_post_electra(
         # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
         deposit_block = build_empty_block_for_next_slot(spec, state)
 
-        deposit_block.body.execution_requests.deposits = [deposit_request]
+        deposit_block.body.execution_requests.deposits = spec.DepositRequests(
+            data=[deposit_request]
+        )
         deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
             spec, deposit_block
         )
@@ -261,7 +263,7 @@ def _template_test_after_fork_new_validator_active_post_electra(
             signature=deposit_request.signature,
             slot=deposit_block.slot,
         )
-        assert state.pending_deposits == [pending_deposit]
+        assert list(state.pending_deposits) == [pending_deposit]
 
         next_epoch(spec, state)
         next_epoch(spec, state)
@@ -270,7 +272,7 @@ def _template_test_after_fork_new_validator_active_post_electra(
 
         next_epoch(spec, state)
 
-        assert state.pending_deposits == []
+        assert state.pending_deposits == spec.PendingDeposits()
 
         assert len(state.validators) == new_validator_index + 1
 

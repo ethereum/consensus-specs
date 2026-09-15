@@ -40,6 +40,10 @@ class BaseSpecBuilder(ABC):
         return ""
 
     @classmethod
+    def proof_engine_cls(cls) -> str:
+        return ""
+
+    @classmethod
     def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         """
         The constants that are required for SSZ objects.

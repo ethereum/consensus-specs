@@ -8,6 +8,10 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 
 
+def get_max_withdrawals(spec):
+    return spec.MAX_WITHDRAWALS_PER_PAYLOAD
+
+
 def check_is_partially_withdrawable_validator(spec, state, validator_index, balance=None):
     """Call ``is_partially_withdrawable_validator`` with the correct arguments for the fork."""
     validator = state.validators[validator_index]
@@ -472,7 +476,7 @@ def prepare_process_withdrawals(
 
     # Helper to get parameter value from single value, dict, or None
     def get_param_value(
-        param: None | int | dict[int, int],
+        param: int | dict[int, int] | None,
         index: int,
         default: int,
     ) -> int:
@@ -692,7 +696,7 @@ def assert_process_withdrawals(
     withdrawals = list(state.payload_expected_withdrawals)
 
     # INVARIANT: Verify payload_expected_withdrawals matches expected
-    expected_list = spec.ProgressiveList[spec.Withdrawal](expected_withdrawals)
+    expected_list = spec.Withdrawals(data=expected_withdrawals)
     assert list(withdrawals) == list(expected_list), (
         "state.payload_expected_withdrawals must match spec.get_expected_withdrawals()"
     )

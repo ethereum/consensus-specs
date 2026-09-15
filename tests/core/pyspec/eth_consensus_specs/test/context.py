@@ -1,8 +1,8 @@
-import importlib
 from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
+from types import FunctionType, ModuleType
 from typing import Any
 
 import pytest
@@ -11,7 +11,6 @@ from lru import LRU
 
 from eth_consensus_specs.test.utils.yield_generator import MultiPhaseResult, vector_test
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
@@ -24,6 +23,8 @@ from .helpers.constants import (
     EIP7716,
     EIP8025,
     EIP8148,
+    EIP8205,
+    EIP8321,
     ELECTRA,
     FULU,
     GLOAS,
@@ -65,11 +66,15 @@ def _prepare_state(
     threshold_fn: Callable[[Any], int],
     spec: Spec,
     phases: SpecForks,
+    builder_count: int,
 ):
     balances = balances_fn(spec)
     activation_threshold = threshold_fn(spec)
     state = create_genesis_state(
-        spec=spec, validator_balances=balances, activation_threshold=activation_threshold
+        spec=spec,
+        validator_balances=balances,
+        activation_threshold=activation_threshold,
+        builder_count=builder_count,
     )
     return state
 
@@ -78,19 +83,28 @@ _custom_state_cache_dict = LRU(size=10)
 
 
 def with_custom_state(
-    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
+    balances_fn: Callable[[Any], Sequence[int]],
+    threshold_fn: Callable[[Any], int],
+    builder_count: int = 8,
 ):
     def deco(fn):
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
-            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
+            key = (
+                spec.fork,
+                spec.config.__hash__(),
+                spec.__file__,
+                balances_fn,
+                threshold_fn,
+                builder_count,
+            )
             if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
-                _custom_state_cache_dict[key] = state.get_backing()
+                state = _prepare_state(balances_fn, threshold_fn, spec, phases, builder_count)
+                _custom_state_cache_dict[key] = state
 
-            # Take an entry out of the LRU.
-            # No copy is necessary, as we wrap the immutable backing with a new view.
-            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
+            # Take an entry out of the LRU. A state is mutable here, so the test
+            # gets a copy and the cached one stays as it was prepared.
+            state = _custom_state_cache_dict[key].copy()
             kw["state"] = state
             return fn(*args, spec=spec, phases=phases, **kw)
 
@@ -124,7 +138,7 @@ def default_balances(spec: Spec, num_validators=None):
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
     if num_validators is None:
-        num_validators = spec.SLOTS_PER_EPOCH * 8
+        num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -136,7 +150,7 @@ def default_balances_electra(spec: Spec):
     if not is_post_electra(spec):
         return default_balances(spec)
 
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
 
 
@@ -147,7 +161,9 @@ def scaled_churn_balances_min_churn_limit(spec: Spec):
     See the second argument of ``max`` in ``get_validator_churn_limit``.
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_min_churn_limit, ...)`
     """
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MIN_PER_EPOCH_CHURN_LIMIT + 2)
+    )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -157,15 +173,15 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
             // spec.MIN_ACTIVATION_BALANCE
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
-        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -177,7 +193,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * (
                 spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
@@ -187,8 +203,8 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
-        spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
+    num_validators = spec.Uint64(
+        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -200,7 +216,7 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        num_validators = (
+        num_validators = spec.Uint64(
             2
             * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
@@ -208,7 +224,7 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
         )
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
-    num_validators = (
+    num_validators = spec.Uint64(
         2
         * spec.config.CHURN_LIMIT_QUOTIENT
         * spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT
@@ -225,7 +241,7 @@ def low_balances(spec: Spec):
     Helper method to create a series of low balances.
     Usage: `@with_custom_state(balances_fn=low_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     # Technically the balances cannot be this low starting from genesis, but it is useful for testing
     low_balance = 18 * 10**9
     return [low_balance] * num_validators
@@ -236,7 +252,7 @@ def misc_balances(spec: Spec):
     Helper method to create a series of balances that includes some misc. balances.
     Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     balances = [spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators for i in range(num_validators)]
     rng = Random(1234)
     rng.shuffle(balances)
@@ -251,7 +267,7 @@ def misc_balances_electra(spec: Spec):
     if not is_post_electra(spec):
         return misc_balances(spec)
 
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8)
     balances = [
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA * 2 * i // num_validators for i in range(num_validators)
     ]
@@ -266,7 +282,7 @@ def misc_balances_in_default_range_with_many_validators(spec: Spec):
     none that are below the ``EJECTION_BALANCE``.
     """
     # Double validators to facilitate randomized testing
-    num_validators = spec.SLOTS_PER_EPOCH * 8 * 2
+    num_validators = spec.Uint64(spec.SLOTS_PER_EPOCH * 8 * 2)
     floor = spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     balances = [
         max(spec.MAX_EFFECTIVE_BALANCE * 2 * i // num_validators, floor)
@@ -300,7 +316,7 @@ def large_validator_set(spec: Spec):
     Helper method to create a large series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = (
+    num_validators = spec.Uint64(
         2 * spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
@@ -733,6 +749,8 @@ with_heze_and_later = with_all_phases_from(HEZE, all_phases=ALLOWED_TEST_RUNNER_
 with_eip7716_and_later = with_all_phases_from(EIP7716, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])
 with_electra_only = with_phases([ELECTRA])
@@ -759,23 +777,33 @@ def _get_basic_value(v: Any) -> Any:
 
 
 def get_copy_of_spec(spec):
-    fork = spec.fork
-    preset = spec.config.PRESET_BASE
-    module_path = f"eth_consensus_specs.{fork}.{preset}"
-    module_spec = importlib.util.find_spec(module_path)
-    module = importlib.util.module_from_spec(module_spec)
-    module_spec.loader.exec_module(module)
+    """
+    A spec whose config can be overridden without disturbing the original.
+
+    The types are the original's, not copies of them. Re-executing the module
+    would define a second set of classes, and a `Slot` from one set does not
+    meet a `Slot` from the other -- so a state prepared before the override
+    could not be handed to a function after it.
+
+    Only the functions are remade, over a namespace of their own, which is what
+    lets them read the overridden config. Everything else is shared, so a value
+    made under either spec is at home in both.
+    """
+    module = ModuleType(spec.__name__)
+    namespace = module.__dict__
+    namespace.update(vars(spec))
+    for name, value in list(namespace.items()):
+        if isinstance(value, FunctionType) and value.__globals__ is vars(spec):
+            namespace[name] = FunctionType(
+                value.__code__,
+                namespace,
+                value.__name__,
+                value.__defaults__,
+                value.__closure__,
+            )
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
-
-    # Re-apply ckzg monkey-patches if the source spec had them. Without this,
-    # the freshly-loaded module falls back to the pure-Python KZG impl, which
-    # makes blob-heavy tests (e.g. anything that calls
-    # `compute_cells_and_kzg_proofs`) prohibitively slow.
-    ts = getattr(spec, "_ckzg_trusted_setup", None)
-    if ts is not None:
-        apply_ckzg_to_spec(module, ts)
 
     return module
 

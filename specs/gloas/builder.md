@@ -188,9 +188,7 @@ def get_data_column_sidecars(
     # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a beacon block root and the cells/proofs associated with each blob
@@ -199,14 +197,15 @@ def get_data_column_sidecars(
     """
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
-        column_cells, column_proofs = [], []
+        column_cells = DataColumn()
+        column_proofs = KZGProofs()
         for cells, proofs in cells_and_kzg_proofs:
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
         sidecars.append(
             # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
-                index=column_index,
+                index=ColumnIndex(column_index),
                 column=column_cells,
                 kzg_proofs=column_proofs,
                 slot=slot,
@@ -224,9 +223,7 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the

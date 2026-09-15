@@ -15,7 +15,17 @@ from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ssz.ssz_typing import Bitlist
+
+
+def get_parent_slot(state):
+    return state.latest_block_header.slot
+
+
+def process_attestation(spec, state, attestation):
+    if is_post_gloas(spec):
+        spec.process_attestation(state, attestation, get_parent_slot(state))
+    else:
+        spec.process_attestation(state, attestation)
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -23,6 +33,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     Run ``process_attestation``, yielding:
       - pre-state ('pre')
       - attestation ('attestation')
+      - parent slot ('parent_slot' in meta, Gloas and later)
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
@@ -31,9 +42,13 @@ def run_attestation_processing(spec, state, attestation, valid=True):
 
     yield "attestation", attestation
 
+    # Gloas takes the parent block's slot as an extra input.
+    if is_post_gloas(spec):
+        yield "parent_slot", "meta", int(get_parent_slot(state))
+
     # If the attestation is invalid, processing is aborted, and there is no post-state.
     if not valid:
-        expect_assertion_error(lambda: spec.process_attestation(state, attestation))
+        expect_assertion_error(lambda: process_attestation(spec, state, attestation))
         yield "post", None
         return
 
@@ -42,7 +57,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
         previous_epoch_count = len(state.previous_epoch_attestations)
 
     # process attestation
-    spec.process_attestation(state, attestation)
+    process_attestation(spec, state, attestation)
 
     # Make sure the attestation has been processed
     if not is_post_altair(spec):
@@ -223,14 +238,14 @@ def fill_aggregate_attestation(
     # initialize `aggregation_bits`
     if is_post_electra(spec):
         attestation.committee_bits[committee_index] = True
-        attestation.aggregation_bits = get_empty_eip7549_aggregation_bits(
-            spec, state, attestation.committee_bits, attestation.data.slot
+        attestation.aggregation_bits = spec.AggregationBits(
+            data=get_empty_eip7549_aggregation_bits(
+                spec, state, attestation.committee_bits, attestation.data.slot
+            )
         )
     else:
         committee_size = len(beacon_committee)
-        attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
-            *([0] * committee_size)
-        )
+        attestation.aggregation_bits = spec.AggregationBits(data=[False] * committee_size)
 
     # fill in the `aggregation_bits`
     for i in range(len(beacon_committee)):
@@ -253,7 +268,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
     if state.slot < slot:
         spec.process_slots(state, slot)
     for attestation in attestations:
-        spec.process_attestation(state, attestation)
+        process_attestation(spec, state, attestation)
 
 
 def get_valid_attestations_at_slot(
@@ -421,7 +436,7 @@ def state_transition_with_full_attestations_block(spec, state, fill_cur_epoch, f
     """
     # Build a block with previous attestations
     block = build_empty_block_for_next_slot(spec, state)
-    attestations = []
+    attestations = spec.Attestations()
 
     if fill_cur_epoch:
         # current epoch
@@ -514,12 +529,15 @@ def cached_prepare_state_with_attestations(spec, state):
     key = (spec.fork, state.hash_tree_root())
     if key not in _prep_state_cache_dict:
         prepare_state_with_attestations(spec, state)
-        _prep_state_cache_dict[key] = (
-            state.get_backing()
-        )  # cache the tree structure, not the view wrapping it.
+        # Cache the prepared state itself, since a state is mutable here.
+        _prep_state_cache_dict[key] = state.copy()
 
-    # Put the LRU cache result into the state view, as if we transitioned the original view
-    state.set_backing(_prep_state_cache_dict[key])
+    # Bring the caller's state up to the cached one, field by field. The fields
+    # come off a copy, not off the cached state itself, or the caller would go
+    # on to mutate what the next test is meant to start from.
+    cached = _prep_state_cache_dict[key].copy()
+    for name in type(state).model_fields:
+        setattr(state, name, getattr(cached, name))
 
 
 def get_max_attestations(spec):
@@ -535,7 +553,7 @@ def get_empty_eip7549_aggregation_bits(spec, state, committee_bits, slot):
     for index in committee_indices:
         committee = spec.get_beacon_committee(state, slot, index)
         participants_count += len(committee)
-    aggregation_bits = spec.AggregationBits([False] * participants_count)
+    aggregation_bits = spec.AggregationBits(data=[False] * participants_count)
     return aggregation_bits
 
 

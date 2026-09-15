@@ -2,6 +2,8 @@ import contextlib
 import random
 from dataclasses import dataclass, field
 
+from ssz.ssz_base import SSZType
+
 from eth_consensus_specs.test.context import spec_test
 from eth_consensus_specs.test.helpers.attestations import (
     get_max_attestations,
@@ -43,7 +45,6 @@ from eth_consensus_specs.test.helpers.keys import (
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 from .debug_helpers import print_epoch, print_head
 
@@ -208,13 +209,13 @@ def messages_to_payload_attestations(spec, state, messages):
     for data, attesting_indices in groups.values():
         ptc = spec.get_ptc(state, data.slot)
         index_set = set(attesting_indices)
-        aggregation_bits = spec.Bitvector[spec.PTC_SIZE]()
+        aggregation_bits = spec.PayloadTimelinessCommitteeBits()
         for i, validator_index in enumerate(ptc):
             if validator_index in index_set:
                 aggregation_bits[i] = True
         result.append(
             spec.PayloadAttestation(
-                aggregation_bits=aggregation_bits,
+                aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
                 data=data,
                 signature=spec.BLSSignature(),
             )
@@ -234,16 +235,8 @@ def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
 
 def get_dependent_root(spec, state, slot):
     epoch = spec.compute_epoch_at_slot(slot)
-    if epoch <= spec.MIN_SEED_LOOKAHEAD:
-        dependent_slot = spec.GENESIS_SLOT
-    else:
-        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
-
-    if dependent_slot > spec.GENESIS_SLOT:
-        return spec.get_block_root_at_slot(state, dependent_slot)
-    else:
-        # Default genesis block value
-        return spec.Root()
+    dependent_slot = spec.compute_shuffling_dependent_slot(epoch)
+    return spec.get_block_root_at_slot(state, dependent_slot)
 
 
 def get_voting_source(spec, state, target):
@@ -254,7 +247,7 @@ def get_voting_source(spec, state, target):
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
-    pseudo_vrn = spec.Uint64((proposer_index + 1) * (epoch + 1))
+    pseudo_vrn = spec.Uint64(proposer_index + 1) * spec.Uint64(epoch + 1)
     pseudo_vrn_bytes = spec.uint_to_bytes(pseudo_vrn)
     randao_reveal_bytes = bytes(96 - len(pseudo_vrn_bytes)) + pseudo_vrn_bytes
     return spec.BLSSignature(randao_reveal_bytes)
@@ -574,7 +567,7 @@ def filter_out_duplicate_messages(fn):
                 yield data
             else:
                 (key, value) = data
-                if value is not None and isinstance(value, bytes | View):
+                if value is not None and isinstance(value, bytes | SSZType):
                     # skip already processed ssz parts
                     if key not in processed_keys:
                         processed_keys.add(key)

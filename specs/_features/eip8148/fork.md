@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to EIP-8148](#fork-to-eip-8148)
 
 <!-- mdformat-toc end -->
@@ -14,7 +14,7 @@
 
 This document describes the process of the EIP-8148 upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -34,7 +34,7 @@ that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 ```python
 def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = heze.get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
@@ -88,7 +88,7 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8148]
-        validator_sweep_thresholds=ProgressiveList[Gwei](),
+        validator_sweep_thresholds=SweepThresholds(),
     )
 
     for validator in post.validators:

@@ -40,7 +40,7 @@ def get_fork_initial_smoothed_offline_balance(state: BeaconState) -> Gwei:
     for slot_offset in range(SLOTS_PER_EPOCH):
         slot = Slot(start_slot + slot_offset)
         total += get_slot_offline_balance(state, slot)
-    return Gwei(total // SLOTS_PER_EPOCH)
+    return Gwei(total // Uint64(SLOTS_PER_EPOCH))
 ```
 
 ## Fork to EIP-7716
@@ -54,7 +54,7 @@ that sets `state.slot` equal to `EIP7716_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 ```python
 def upgrade_to_eip7716(pre: heze.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = heze.get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,

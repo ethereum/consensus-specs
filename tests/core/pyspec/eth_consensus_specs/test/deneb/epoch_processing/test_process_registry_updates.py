@@ -10,7 +10,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
@@ -50,6 +50,8 @@ def run_test_activation_churn_limit(spec, state):
         state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.inactivity_scores.append(0)
         state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
+        if is_post_eip8148(spec):
+            state.validator_sweep_thresholds.append(spec.Gwei(0))
 
     if is_post_electra(spec):
         churn_limit_0 = get_activation_churn_limit(spec, state) // spec.MIN_ACTIVATION_BALANCE

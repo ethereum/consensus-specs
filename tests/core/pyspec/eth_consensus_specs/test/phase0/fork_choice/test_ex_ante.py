@@ -1,6 +1,5 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_to,
     with_altair_and_later,
     with_presets,
 )
@@ -12,8 +11,6 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
     MAINNET,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -90,7 +87,7 @@ def test_ex_ante_vanilla(spec, state):
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
+    assert spec.get_set_bit_count(attestation.aggregation_bits) == 1
     sign_attestation(spec, state_b, attestation)
 
     # Block C received at N+2 — C is head
@@ -125,7 +122,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
             spec.get_active_validator_indices(state, spec.get_current_epoch(state))
         )
         avg_balance = spec.get_total_active_balance(state) // num_validators
-        committee_size = num_validators // spec.SLOTS_PER_EPOCH
+        committee_size = num_validators // spec.Uint64(spec.SLOTS_PER_EPOCH)
         committee_weight = committee_size * avg_balance
         proposer_score = (committee_weight * spec.config.PROPOSER_SCORE_BOOST) // 100
 
@@ -203,7 +200,7 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
+    assert spec.get_set_bit_count(attestation.aggregation_bits) == participant_num
     sign_attestation(spec, state_b, attestation)
 
     # Attestation_set_1 received at N+2 — B is head because B's attestation_score > C's proposer_score.
@@ -331,7 +328,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
+    assert spec.get_set_bit_count(attestation.aggregation_bits) == 1
     sign_attestation(spec, state_c, attestation)
 
     # Block D at slot `N + 3`, parent is B
@@ -362,8 +359,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield "steps", test_steps
 
 
-# TODO(jtraglia): Investigate why this doesn't work with Gloas
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
@@ -438,11 +434,10 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
-    assert len([i for i in attestation.aggregation_bits if i == 1]) == participant_num
+    assert spec.get_set_bit_count(attestation.aggregation_bits) == participant_num
     sign_attestation(spec, state_c, attestation)
 
-    # Attestation_1 received at N+3 — B is head because B's attestation_score > C's proposer_score.
-    # (B's proposer_score = C's attestation_score = 0)
+    # Attestation_set_1 received at N+3 — C is head due to its attestation score.
     time = state_d.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_attestation(spec, store, attestation, test_steps)

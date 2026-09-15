@@ -1,0 +1,8 @@
+# Minimal preset - EIP8321
+
+# Hash-chain RANDAO
+# ---------------------------------------------------------------
+# 3 (= MIN_SEED_LOOKAHEAD + 2)
+COMMITMENT_REGISTRATION_DELAY: 3
+# 2**7 (= 128)
+MAX_RANDAO_COMMITMENT_REGISTRATIONS: 128

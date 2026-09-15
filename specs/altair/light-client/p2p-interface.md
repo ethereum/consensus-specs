@@ -3,7 +3,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Networking](#networking)
-  - [Configuration](#configuration)
+  - [Types](#types)
+    - [`LightClientUpdates`](#lightclientupdates)
+  - [Configs](#configs)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -28,11 +30,24 @@ This section extends the
 [networking specification for Altair](../p2p-interface.md) with additional
 messages, topics and data to the Req-Resp and Gossip domains.
 
-### Configuration
+### Types
 
-| Name                               | Value          | Description                                                         |
-| ---------------------------------- | -------------- | ------------------------------------------------------------------- |
-| `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `2**7` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
+#### `LightClientUpdates`
+
+```python
+class LightClientUpdates(List[LightClientUpdate]):
+    """
+    Light client updates returned in a ``LightClientUpdatesByRange`` response.
+    """
+
+    LIMIT = MAX_REQUEST_LIGHT_CLIENT_UPDATES
+```
+
+### Configs
+
+| Name                               | Value                  | Description                                                         |
+| ---------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| `MAX_REQUEST_LIGHT_CLIENT_UPDATES` | `Uint64(2**7)` (= 128) | Maximum number of `LightClientUpdate` instances in a single request |
 
 ### The gossip domain: gossipsub
 
@@ -212,7 +227,7 @@ Response Content:
 
 ```
 (
-  List[LightClientUpdate, MAX_REQUEST_LIGHT_CLIENT_UPDATES]
+  LightClientUpdates
 )
 ```
 

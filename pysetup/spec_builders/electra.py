@@ -10,7 +10,6 @@ class ElectraSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.deneb import {preset_name} as deneb
-from eth_consensus_specs.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 """
 
     @classmethod

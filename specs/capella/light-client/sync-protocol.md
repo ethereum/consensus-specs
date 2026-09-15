@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `ExecutionBranch`](#new-executionbranch)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -33,9 +34,16 @@ Additional documents describe the impact of the upgrade on certain roles:
 
 ## Types
 
-| Name              | SSZ equivalent                                         | Description                                                   |
-| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
-| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
+### New `ExecutionBranch`
+
+```python
+class ExecutionBranch(Vector[Bytes32]):
+    """
+    A Merkle branch proving ``execution_payload`` within ``BeaconBlockBody``.
+    """
+
+    LENGTH = floorlog2(EXECUTION_PAYLOAD_GINDEX)
+```
 
 ## Constants
 
@@ -143,7 +151,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
 
     if epoch < CAPELLA_FORK_EPOCH:
         return (
-            header.execution == ExecutionPayloadHeader()
+            header.execution == ExecutionPayloadHeader.empty()
             and header.execution_branch == ExecutionBranch()
         )
 

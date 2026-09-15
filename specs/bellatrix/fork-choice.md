@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `PayloadId`](#new-payloadid)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -32,9 +33,14 @@ first PoS block.
 
 ## Types
 
-| Name        | SSZ equivalent | Description                              |
-| ----------- | -------------- | ---------------------------------------- |
-| `PayloadId` | `Bytes8`       | Identifier of a payload building process |
+### New `PayloadId`
+
+```python
+class PayloadId(Bytes8):
+    """
+    An identifier of a payload build process on the execution engine.
+    """
+```
 
 ## Protocols
 
@@ -181,10 +187,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     consider scheduling it for later processing in such case.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
+    pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -201,7 +213,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # [New in Bellatrix]

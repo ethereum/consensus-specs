@@ -132,7 +132,8 @@ To obtain an execution payload, a block proposer building a block on top of a
    - `state` is the state object after applying `process_slots(state, slot)`
      transition to the resulting state of the parent block processing
    - `safe_block_hash` is the return value of the
-     `get_safe_execution_block_hash(store: Store)` function call
+     `get_safe_execution_block_hash(fcr_store: FastConfirmationStore)` function
+     call
    - `finalized_block_hash` is the block hash of the latest finalized execution
      payload (`Hash32()` if none yet finalized)
    - `suggested_fee_recipient` is the value suggested to be used for the
@@ -194,7 +195,7 @@ def get_execution_payload(
 ) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
-        return ExecutionPayload()
+        return ExecutionPayload.empty()
     else:
         return execution_engine.get_payload(payload_id).execution_payload
 ```

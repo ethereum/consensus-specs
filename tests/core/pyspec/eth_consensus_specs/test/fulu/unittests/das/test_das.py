@@ -9,13 +9,16 @@ from eth_consensus_specs.test.context import (
     with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
-    get_block_with_blob_and_sidecars,
+    build_block_with_blobs,
+    get_data_column_sidecars,
     get_sample_blob,
 )
+from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.fork_choice import BlobData, with_blob_data
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
+from eth_consensus_specs.utils import kzg
 
 
 def chunks(lst, n):
@@ -40,12 +43,10 @@ def test_compute_matrix(spec):
         assert len(row) == spec.CELLS_PER_EXT_BLOB
 
     for blob_index, row in enumerate(rows):
-        extended_blob = []
-        for entry in row:
-            extended_blob.extend(spec.cell_to_coset_evals(entry.cell))
-        blob_part = extended_blob[0 : len(extended_blob) // 2]
-        blob = b"".join([spec.bls_field_to_bytes(x) for x in blob_part])
-        assert blob == input_blobs[blob_index]
+        # The first half of a row's cells holds the original (un-extended) blob data
+        extended_blob = b"".join(bytes(entry.cell) for entry in row)
+        blob = extended_blob[: len(extended_blob) // 2]
+        assert blob == bytes(input_blobs[blob_index])
 
 
 @with_fulu_and_later
@@ -86,9 +87,11 @@ def run_is_data_available_peerdas_test(spec, blob_data):
 @spec_state_test
 def test_is_data_available_peerdas(spec, state):
     rng = random.Random(1234)
-    _, blobs, blob_kzg_proofs, _, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    block, blobs, kzg_commitments, blob_kzg_proofs = build_block_with_blobs(
         spec, state, rng=rng, blob_count=2
     )
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars, kzg_commitments)
 
     result = run_is_data_available_peerdas_test(spec, blob_data)
@@ -100,21 +103,21 @@ def test_is_data_available_peerdas(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, signed_block, sidecars, _kzg_commitments = get_block_with_blob_and_sidecars(
-        spec, state, rng=rng, blob_count=2
-    )
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     if is_post_gloas(spec):
         sidecars_result = spec.get_data_column_sidecars_from_block(
             signed_block,
-            [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+            [kzg.compute_cells_and_kzg_proofs(blob) for blob in blobs],
         )
     else:
         sidecars_result = spec.get_data_column_sidecars(
             signed_block_header=spec.compute_signed_block_header(signed_block),
             kzg_commitments=sidecars[0].kzg_commitments,
             kzg_commitments_inclusion_proof=sidecars[0].kzg_commitments_inclusion_proof,
-            cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+            cells_and_kzg_proofs=[kzg.compute_cells_and_kzg_proofs(blob) for blob in blobs],
         )
 
     assert len(sidecars_result) == len(sidecars), (
@@ -127,13 +130,13 @@ def test_get_data_column_sidecars(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, _, sidecars, _ = get_block_with_blob_and_sidecars(
-        spec, state, rng=rng, blob_count=2
-    )
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
         sidecar=sidecars[0],
-        cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+        cells_and_kzg_proofs=[kzg.compute_cells_and_kzg_proofs(blob) for blob in blobs],
     )
 
     assert len(sidecars_result) == len(sidecars), (

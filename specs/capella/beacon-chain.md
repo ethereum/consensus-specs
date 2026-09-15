@@ -4,9 +4,13 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `BLSToExecutionChanges`](#new-blstoexecutionchanges)
+  - [New `HistoricalSummaries`](#new-historicalsummaries)
+  - [New `WithdrawalIndex`](#new-withdrawalindex)
+  - [New `Withdrawals`](#new-withdrawals)
 - [Constants](#constants)
   - [Domains](#domains)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
@@ -68,9 +72,48 @@ and the blocks.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name              | SSZ equivalent | Description                |
-| ----------------- | -------------- | -------------------------- |
-| `WithdrawalIndex` | `Uint64`       | An index of a `Withdrawal` |
+### New `BLSToExecutionChanges`
+
+```python
+class BLSToExecutionChanges(List[SignedBLSToExecutionChange]):
+    """
+    The signed BLS-to-execution credential changes included in a beacon
+    block.
+    """
+
+    LIMIT = MAX_BLS_TO_EXECUTION_CHANGES
+```
+
+### New `HistoricalSummaries`
+
+```python
+class HistoricalSummaries(List[HistoricalSummary]):
+    """
+    Summaries of the chain's block and state root history.
+    """
+
+    LIMIT = HISTORICAL_ROOTS_LIMIT
+```
+
+### New `WithdrawalIndex`
+
+```python
+class WithdrawalIndex(Uint64):
+    """
+    The index of a withdrawal, counting all withdrawals ever made.
+    """
+```
+
+### New `Withdrawals`
+
+```python
+class Withdrawals(List[Withdrawal]):
+    """
+    A list of withdrawals.
+    """
+
+    LIMIT = MAX_WITHDRAWALS_PER_PAYLOAD
+```
 
 ## Constants
 
@@ -80,7 +123,7 @@ We define the following Python custom types for type hinting and readability:
 | -------------------------------- | -------------------------- |
 | `DOMAIN_BLS_TO_EXECUTION_CHANGE` | `DomainType('0x0A000000')` |
 
-## Preset
+## Presets
 
 ### Max operations per block
 
@@ -152,18 +195,18 @@ class ExecutionPayload(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
     block_number: Uint64
     gas_limit: Uint64
     gas_used: Uint64
     timestamp: Uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    extra_data: ExtraData
     base_fee_per_gas: Uint256
     block_hash: Hash32
-    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    transactions: Transactions
     # [New in Capella]
-    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    withdrawals: Withdrawals
 ```
 
 #### `ExecutionPayloadHeader`
@@ -174,13 +217,13 @@ class ExecutionPayloadHeader(Container):
     fee_recipient: ExecutionAddress
     state_root: Bytes32
     receipts_root: Bytes32
-    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    logs_bloom: LogsBloom
     prev_randao: Bytes32
     block_number: Uint64
     gas_limit: Uint64
     gas_used: Uint64
     timestamp: Uint64
-    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    extra_data: ExtraData
     base_fee_per_gas: Uint256
     block_hash: Hash32
     transactions_root: Root
@@ -195,15 +238,15 @@ class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
-    attestations: List[Attestation, MAX_ATTESTATIONS]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    deposits: Deposits
+    voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     execution_payload: ExecutionPayload
     # [New in Capella]
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    bls_to_execution_changes: BLSToExecutionChanges
 ```
 
 #### `BeaconState`
@@ -218,23 +261,23 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[Uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Capella]
@@ -244,7 +287,7 @@ class BeaconState(Container):
     # [New in Capella]
     next_withdrawal_validator_index: ValidatorIndex
     # [New in Capella]
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
 ```
 
 ## Dataclasses
@@ -322,7 +365,7 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    # [Modified in Altair]
+    # [Modified in Capella]
     # Removed `process_historical_roots_update`
     # [New in Capella]
     process_historical_summaries_update(state)
@@ -335,8 +378,8 @@ def process_epoch(state: BeaconState) -> None:
 ```python
 def process_historical_summaries_update(state: BeaconState) -> None:
     # Set historical block root accumulator.
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+    next_epoch = get_current_epoch(state) + 1
+    if next_epoch % Uint64(SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_summary = HistoricalSummary(
             block_summary_root=hash_tree_root(state.block_roots),
             state_summary_root=hash_tree_root(state.state_roots),
@@ -392,11 +435,11 @@ def get_validators_sweep_withdrawals(
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: Uint64 = 0
-    withdrawals: List[Withdrawal] = []
+    processed_count = Uint64(0)
+    withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
-        all_withdrawals = prior_withdrawals + withdrawals
+        all_withdrawals = list(prior_withdrawals) + withdrawals
         has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
@@ -412,7 +455,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
         elif is_partially_withdrawable_validator(validator, balance):
             withdrawals.append(
                 Withdrawal(
@@ -422,9 +465,9 @@ def get_validators_sweep_withdrawals(
                     amount=balance - MAX_EFFECTIVE_BALANCE,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -435,7 +478,7 @@ def get_validators_sweep_withdrawals(
 ```python
 def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
     withdrawal_index = state.next_withdrawal_index
-    withdrawals: List[Withdrawal] = []
+    withdrawals: list[Withdrawal] = []
 
     # Get validators sweep withdrawals
     validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
@@ -464,7 +507,7 @@ def update_next_withdrawal_index(state: BeaconState, withdrawals: Sequence[Withd
     # Update the next withdrawal index if this block contained withdrawals
     if len(withdrawals) != 0:
         latest_withdrawal = withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
+        state.next_withdrawal_index = latest_withdrawal.index + 1
 ```
 
 #### New `update_next_withdrawal_validator_index`
@@ -476,14 +519,12 @@ def update_next_withdrawal_validator_index(
     # Update the next validator index to start the next withdrawal sweep
     if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
         # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex(
-            (withdrawals[-1].validator_index + 1) % len(state.validators)
-        )
+        next_validator_index = (withdrawals[-1].validator_index + 1) % len(state.validators)
         state.next_withdrawal_validator_index = next_validator_index
     else:
         # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
         next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
+        next_validator_index = next_index % len(state.validators)
         state.next_withdrawal_validator_index = next_validator_index
 ```
 
@@ -493,7 +534,7 @@ def update_next_withdrawal_validator_index(
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     # Get expected withdrawals
     expected = get_expected_withdrawals(state)
-    assert payload.withdrawals == expected.withdrawals
+    assert list(payload.withdrawals) == expected.withdrawals
 
     # Apply expected withdrawals
     apply_withdrawals(state, expected.withdrawals)
@@ -585,7 +626,7 @@ def process_bls_to_execution_change(
     validator = state.validators[address_change.validator_index]
 
     assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
-    assert validator.withdrawal_credentials[1:] == hash(address_change.from_bls_pubkey)[1:]
+    assert validator.withdrawal_credentials[1:] == sha256(address_change.from_bls_pubkey)[1:]
 
     # Fork-agnostic domain since address changes are valid across forks
     domain = compute_domain(
@@ -594,7 +635,7 @@ def process_bls_to_execution_change(
     signing_root = compute_signing_root(address_change, domain)
     assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
 
-    validator.withdrawal_credentials = (
+    validator.withdrawal_credentials = Bytes32(
         ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + address_change.to_execution_address
     )
 ```

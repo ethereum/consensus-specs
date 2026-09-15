@@ -9,7 +9,8 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist, ProgressiveByteList, ProgressiveContainer, ProgressiveList
+from ssz.bitfields import ProgressiveBitList
+from ssz.container import active_fields, ProgressiveContainer
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
 """
@@ -42,6 +43,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",
+            "KZGCommitmentsInclusionProof",
+            "OptionalPartialDataColumnHeader",
             "PartialDataColumnHeader",
         }
 
@@ -54,23 +57,72 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
             "initialize_proposer_lookahead",
             "process_execution_payload",
             "retrieve_column_sidecars",
+            "upgrade_lc_bootstrap_to_electra",
+            "upgrade_lc_finality_update_to_electra",
+            "upgrade_lc_header_to_electra",
+            "upgrade_lc_optimistic_update_to_electra",
+            "upgrade_lc_store_to_electra",
+            "upgrade_lc_update_to_electra",
             "upgrade_to_fulu",
+            "verify_data_column_sidecar_inclusion_proof",
             "verify_partial_data_column_header_inclusion_proof",
-            # TODO(jtraglia): Temporarily deprecate these until we update them for Gloas.
-            "validate_data_column_sidecar_gossip",
-            "validate_partial_data_column_sidecar_gossip",
         }
+
+    @classmethod
+    def execution_engine_cls(cls) -> str:
+        return """
+class NoopExecutionEngine(ExecutionEngine):
+
+    def notify_new_payload(self: ExecutionEngine,
+                           execution_payload: ExecutionPayload,
+                           parent_beacon_block_root: Root,
+                           execution_requests_list: Sequence[bytes]) -> bool:
+        return True
+
+    def notify_forkchoice_updated(self: ExecutionEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32,
+                                  payload_attributes: Optional[PayloadAttributes],
+                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
+        pass
+
+    def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+        raise NotImplementedError("no default block production")
+
+    def is_valid_block_hash(self: ExecutionEngine,
+                            execution_payload: ExecutionPayload,
+                            parent_beacon_block_root: Root,
+                            execution_requests_list: Sequence[bytes]) -> bool:
+        return True
+
+    def is_valid_versioned_hashes(self: ExecutionEngine, new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+    def verify_and_notify_new_payload(self: ExecutionEngine,
+                                      new_payload_request: NewPayloadRequest) -> bool:
+        return True
+
+
+EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars_and_kzg_commitments(
     beacon_block_root: Root
-) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
-    return [], []
+) -> tuple[Sequence[DataColumnSidecar], BlobKZGCommitments]:
+    return [], BlobKZGCommitments()
 
 _get_parent_payload_status = get_parent_payload_status
 get_parent_payload_status = cache_this(
     lambda store, block: block.hash_tree_root(),
     _get_parent_payload_status, lru_size=1024)
+
+_compute_balance_weighted_selection = compute_balance_weighted_selection
+compute_balance_weighted_selection = cache_this(
+    lambda state, indices, seed, size, shuffle_indices: (
+        state.validators.hash_tree_root(), tuple(indices), seed, size, shuffle_indices
+    ),
+    _compute_balance_weighted_selection, lru_size=SLOTS_PER_EPOCH * 6)
 """

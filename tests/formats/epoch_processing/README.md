@@ -67,6 +67,7 @@ Sub-transitions:
 - `effective_balance_updates` (>=Electra)
 - `pending_consolidations` (>=Electra)
 - `pending_deposits` (>=Electra)
+- `pending_randao_commitments` (>=EIP-8321)
 
 The resulting state should match the expected `post` state.
 

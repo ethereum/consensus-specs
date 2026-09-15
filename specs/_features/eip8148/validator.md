@@ -32,13 +32,13 @@ threshold requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    deposits = []
-    withdrawals = []
-    consolidations = []
-    builder_deposits = []
-    builder_exits = []
+    deposits = DepositRequests()
+    withdrawals = WithdrawalRequests()
+    consolidations = ConsolidationRequests()
+    builder_deposits = BuilderDepositRequests()
+    builder_exits = BuilderExitRequests()
     # [New in EIP8148]
-    sweep_thresholds = []
+    sweep_thresholds = SweepThresholdRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,

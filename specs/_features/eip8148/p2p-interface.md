@@ -5,14 +5,13 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in EIP-8148](#modifications-in-eip-8148)
-  - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [Modified `execution_payload`](#modified-execution_payload)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `execution_payload`](#modified-execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -24,11 +23,9 @@ EIP-8148.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modifications in EIP-8148
+## Helpers
 
-### Helpers
-
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -56,13 +53,13 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
-#### Topics and messages
+### Topics and messages
 
-##### Global topics
+#### Global topics
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 *[Modified in EIP8148]*
 
@@ -73,7 +70,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
   i.e. validate that
   `len(block.body.parent_execution_requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD`.
 
-###### Modified `execution_payload`
+##### Modified `execution_payload`
 
 *[Modified in EIP8148]*
 

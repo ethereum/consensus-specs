@@ -38,9 +38,6 @@ categories:
         - eip7805
 
   # Features
-  - title: EIP-6914
-    when:
-      label: eip6914
   - title: EIP-7716
     when:
       label: eip7716
@@ -50,6 +47,12 @@ categories:
   - title: EIP-8148
     when:
       label: eip8148
+  - title: EIP-8205
+    when:
+      label: eip8205
+  - title: EIP-8321
+    when:
+      label: eip8321
 
   # Testing
   - title: Testing

@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
 - [Protocols](#protocols)
@@ -29,7 +29,7 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement Heze.
 
-## Configuration
+## Configs
 
 ## Helpers
 
@@ -87,7 +87,7 @@ def get_inclusion_list_committee_assignment(
     index ``validator_index`` is a member of the inclusion list committee.
     Returns None if no assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -116,7 +116,12 @@ with respect to the proposer's inclusion list view, which comprises all valid
 and non-equivocating inclusion lists they have observed.
 
 - The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, only_timely=False)`.
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`,
+  where `inclusion_list_committee` is
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
+  `dependent_root` is
+  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
+  and `store` is the fork choice store.
 
 ##### ExecutionPayload
 
@@ -145,10 +150,10 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head):
+    if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
-        state = copy(state)
+        state = state.copy()
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
@@ -168,7 +173,10 @@ def prepare_execution_payload(
         target_gas_limit=target_gas_limit,
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
-            get_inclusion_list_store(), state, Slot(state.slot - 1), only_timely=False
+            get_inclusion_list_store(),
+            state.slot - 1,
+            get_shuffling_dependent_root(store, head.root, compute_epoch_at_slot(state.slot - 1)),
+            only_timely=False,
         ),
     )
     return execution_engine.notify_forkchoice_updated(
@@ -176,6 +184,7 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        custody_columns=None,
     )
 ```
 
@@ -195,19 +204,11 @@ head, or against the local head returned by `get_head()` otherwise.
 
 #### Constructing the `SignedInclusionList`
 
-The validator creates the `signed_inclusion_list` as follows:
-
-- First, the validator creates the `inclusion_list`.
-- Set `inclusion_list.slot` to the assigned slot returned by
-  `get_inclusion_list_committee_assignment`.
-- Set `inclusion_list.validator_index` to the validator's index.
-- Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of
-  the committee that the validator is a member of.
-- Set `inclusion_list.transactions` using the response from `ExecutionEngine`
-  via `get_inclusion_list`.
-
-After building the `inclusion_list`, the validator obtains a `signature` of the
-inclusion list by using:
+A validator constructs the `signed_inclusion_list` with
+`get_signed_inclusion_list` for the assigned `slot` returned by
+`get_inclusion_list_committee_assignment`. Let `head_root` be the validator's
+current head root and `inclusion_list_transactions` be the inclusion list
+transactions obtained from `ExecutionEngine` via `get_inclusion_list`.
 
 ```python
 def get_inclusion_list_signature(
@@ -220,6 +221,22 @@ def get_inclusion_list_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-Then the validator assembles
-`signed_inclusion_list = SignedInclusionList(message=inclusion_list, signature=signature)`
-and broadcasts it on the `inclusion_list` global gossip topic.
+```python
+def get_signed_inclusion_list(
+    store: Store,
+    state: BeaconState,
+    head_root: Root,
+    slot: Slot,
+    validator_index: ValidatorIndex,
+    inclusion_list_transactions: Sequence[Transaction],
+    privkey: int,
+) -> SignedInclusionList:
+    inclusion_list = InclusionList(
+        slot=slot,
+        validator_index=validator_index,
+        dependent_root=get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot)),
+        transactions=Transactions(data=inclusion_list_transactions),
+    )
+    signature = get_inclusion_list_signature(state, inclusion_list, privkey)
+    return SignedInclusionList(message=inclusion_list, signature=signature)
+```

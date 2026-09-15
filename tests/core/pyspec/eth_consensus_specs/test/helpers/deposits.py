@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra, is_post_fulu
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
@@ -16,9 +16,14 @@ from eth_consensus_specs.test.helpers.keys import (
 from eth_consensus_specs.test.helpers.state import get_balance
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
-from eth_consensus_specs.utils.ssz.ssz_typing import List
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
+
+
+def get_max_deposits(spec):
+    # Blocks must not contain any deposits since Fulu
+    if is_post_fulu(spec):
+        return 0
+    return spec.MAX_DEPOSITS
 
 
 def make_withdrawal_credentials(spec, prefix, address_byte):
@@ -77,9 +82,7 @@ def build_deposit(spec, deposit_data_list, pubkey, privkey, amount, withdrawal_c
 
 def deposit_from_context(spec, deposit_data_list, index):
     deposit_data = deposit_data_list[index]
-    root = hash_tree_root(
-        List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list)
-    )
+    root = spec.hash_tree_root(spec.DepositDataList(data=deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [
         len(deposit_data_list).to_bytes(32, "little")
@@ -88,7 +91,7 @@ def deposit_from_context(spec, deposit_data_list, index):
     assert spec.is_valid_merkle_branch(
         leaf, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH + 1, index, root
     )
-    deposit = spec.Deposit(proof=proof, data=deposit_data)
+    deposit = spec.Deposit(proof=spec.DepositProof(data=proof), data=deposit_data)
 
     return deposit, root, deposit_data_list
 
@@ -103,7 +106,7 @@ def prepare_full_genesis_deposits(
         pubkey = pubkeys[pubkey_index]
         privkey = privkeys[pubkey_index]
         # insecurely use pubkey as withdrawal key if no credentials provided
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
             deposit_data_list=deposit_data_list,
@@ -143,7 +146,7 @@ def prepare_random_genesis_deposits(
         privkey = privkeys[pubkey_index]
         amount = rng.randint(min_amount, max_amount)
         random_byte = bytes([rng.randint(0, 255)])
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(random_byte)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(random_byte)[1:]
         deposit, root, deposit_data_list = build_deposit(
             spec,
             deposit_data_list=deposit_data_list,
@@ -180,7 +183,7 @@ def prepare_state_and_deposit(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     deposit, root, deposit_data_list = build_deposit(
         spec,
@@ -222,7 +225,7 @@ def prepare_deposit_request(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     deposit_data = build_deposit_data(
         spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed
@@ -282,7 +285,7 @@ def prepare_builder_deposit_request(
     if withdrawal_credentials is None:
         # Builder withdrawal prefix followed by an eth1 address derived from the pubkey
         withdrawal_credentials = (
-            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256(pubkey)[12:]
         )
 
     request = spec.BuilderDepositRequest(
@@ -317,7 +320,7 @@ def prepare_pending_deposit(
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     # use GENESIS_SLOT which is always finalized if no slot provided
     if slot is None:
@@ -428,7 +431,7 @@ def run_deposit_processing_with_specific_fork_version(
 
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     deposit_message = spec.DepositMessage(
         pubkey=pubkey, withdrawal_credentials=withdrawal_credentials, amount=amount
@@ -492,7 +495,7 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
         slot=state.slot,
     )
 
-    assert state.pending_deposits == [pending_deposit]
+    assert list(state.pending_deposits) == [pending_deposit]
 
 
 def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, effective=True):

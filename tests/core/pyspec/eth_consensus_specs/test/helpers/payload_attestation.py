@@ -13,6 +13,10 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
+def get_max_payload_attestations(spec):
+    return spec.MAX_PAYLOAD_ATTESTATIONS
+
+
 def get_random_payload_attestations(spec, state, rng):
     """Build random payload attestations for the parent block."""
     attested_slot = state.latest_block_header.slot

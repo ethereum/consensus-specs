@@ -6,10 +6,12 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `SweepThresholdRequests`](#new-sweepthresholdrequests)
+  - [New `SweepThresholds`](#new-sweepthresholds)
 - [Constants](#constants)
   - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
   - [Sweep threshold validation](#sweep-threshold-validation)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Execution](#execution)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -18,13 +20,20 @@
   - [New containers](#new-containers)
     - [`SetSweepThresholdRequest`](#setsweepthresholdrequest)
 - [Helper functions](#helper-functions)
+  - [Math](#math)
+    - [New `bytes_to_uint16`](#new-bytes_to_uint16)
   - [Predicates](#predicates)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
   - [Misc](#misc)
+    - [New `get_initial_sweep_threshold`](#new-get_initial_sweep_threshold)
     - [New `get_effective_sweep_threshold`](#new-get_effective_sweep_threshold)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `switch_to_compounding_validator`](#modified-switch_to_compounding_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
@@ -52,9 +61,24 @@ control their balance withdrawals more precisely.
 
 ## Types
 
-| Name                     | SSZ equivalent                              |
-| ------------------------ | ------------------------------------------- |
-| `SweepThresholdRequests` | `ProgressiveList[SetSweepThresholdRequest]` |
+### New `SweepThresholdRequests`
+
+```python
+class SweepThresholdRequests(ProgressiveList[SetSweepThresholdRequest]):
+    """
+    The set-sweep-threshold requests pertaining to a single execution
+    payload.
+    """
+```
+
+### New `SweepThresholds`
+
+```python
+class SweepThresholds(ProgressiveList[Gwei]):
+    """
+    Per-validator withdrawal sweep thresholds.
+    """
+```
 
 ## Constants
 
@@ -66,11 +90,12 @@ control their balance withdrawals more precisely.
 
 ### Sweep threshold validation
 
-| Name                  | Value                                         |
-| --------------------- | --------------------------------------------- |
-| `MIN_SWEEP_THRESHOLD` | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
+| Name                                | Value        |
+| ----------------------------------- | ------------ |
+| `SWEEP_THRESHOLD_CREDENTIAL_OFFSET` | `Uint64(10)` |
+| `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` | `Uint64(2)`  |
 
-## Preset
+## Presets
 
 ### Execution
 
@@ -85,61 +110,65 @@ control their balance withdrawals more precisely.
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=47)
+
     genesis_time: Uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_data_votes: Eth1DataVotes
     eth1_deposit_index: Uint64
-    validators: ProgressiveList[Validator]
-    balances: ProgressiveList[Gwei]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: ProgressiveList[ParticipationFlags]
-    current_epoch_participation: ProgressiveList[ParticipationFlags]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: ProgressiveList[Uint64]
+    inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    historical_summaries: HistoricalSummaries
     deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
-    pending_deposits: ProgressiveList[PendingDeposit]
-    pending_partial_withdrawals: ProgressiveList[PendingPartialWithdrawal]
-    pending_consolidations: ProgressiveList[PendingConsolidation]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    builders: ProgressiveList[Builder]
+    pending_deposits: PendingDeposits
+    pending_partial_withdrawals: PendingPartialWithdrawals
+    pending_consolidations: PendingConsolidations
+    proposer_lookahead: ProposerLookahead
+    builders: Builders
     next_withdrawal_builder_index: BuilderIndex
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
-    builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
+    execution_payload_availability: ExecutionPayloadAvailability
+    builder_pending_payments: BuilderPendingPayments
+    builder_pending_withdrawals: BuilderPendingWithdrawals
     latest_execution_payload_bid: ExecutionPayloadBid
-    payload_expected_withdrawals: ProgressiveList[Withdrawal]
-    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
+    payload_expected_withdrawals: Withdrawals
+    ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8148]
-    validator_sweep_thresholds: ProgressiveList[Gwei]
+    validator_sweep_thresholds: SweepThresholds
 ```
 
 #### `ExecutionRequests`
 
 ```python
-class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 6)):
+class ExecutionRequests(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=6)
+
     deposits: DepositRequests
     withdrawals: WithdrawalRequests
     consolidations: ConsolidationRequests
@@ -161,6 +190,18 @@ class SetSweepThresholdRequest(Container):
 ```
 
 ## Helper functions
+
+### Math
+
+#### New `bytes_to_uint16`
+
+```python
+def bytes_to_uint16(data: bytes) -> Uint16:
+    """
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+    """
+    return Uint16(int.from_bytes(data, ENDIANNESS))
+```
 
 ### Predicates
 
@@ -189,6 +230,50 @@ def is_partially_withdrawable_validator(
 
 ### Misc
 
+#### New `get_initial_sweep_threshold`
+
+A validator may be created with a custom sweep threshold already in place, by
+encoding it in the compounding withdrawal credentials of the deposit that
+creates it. The `SWEEP_THRESHOLD_CREDENTIAL_LENGTH` bytes starting at
+`SWEEP_THRESHOLD_CREDENTIAL_OFFSET`, which are unused before this upgrade, hold
+the threshold in units of `EFFECTIVE_BALANCE_INCREMENT`, encoded as a
+little-endian integer:
+
+| Bytes    | Contents                                         |
+| -------- | ------------------------------------------------ |
+| `0`      | `COMPOUNDING_WITHDRAWAL_PREFIX` (`0x02`)         |
+| `1..9`   | Reserved                                         |
+| `10..11` | Threshold in `EFFECTIVE_BALANCE_INCREMENT` units |
+| `12..31` | Execution address                                |
+
+*Note*: A threshold that is out of range is ignored rather than rejected, so
+that a deposit built by tooling unaware of this upgrade, or carrying a
+nonsensical value, still creates a validator with the default threshold. Only
+compounding credentials carry a threshold; for any other prefix this returns 0,
+which means the default applies.
+
+```python
+def get_initial_sweep_threshold(withdrawal_credentials: Bytes32) -> Gwei:
+    """
+    Get the initial sweep threshold for a validator created with
+    ``withdrawal_credentials``.
+    """
+    if not is_compounding_withdrawal_credential(withdrawal_credentials):
+        return Gwei(0)
+
+    start = SWEEP_THRESHOLD_CREDENTIAL_OFFSET
+    end = start + SWEEP_THRESHOLD_CREDENTIAL_LENGTH
+    increments = bytes_to_uint16(withdrawal_credentials[start:end])
+    threshold = Gwei(increments) * EFFECTIVE_BALANCE_INCREMENT
+
+    if threshold < MIN_ACTIVATION_BALANCE:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+    if threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+
+    return threshold
+```
+
 #### New `get_effective_sweep_threshold`
 
 ```python
@@ -211,7 +296,7 @@ item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -221,16 +306,55 @@ def add_validator_to_registry(
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8148]
-    set_or_append_list(
-        state.validator_sweep_thresholds,
-        index,
-        MAX_EFFECTIVE_BALANCE_ELECTRA
-        if has_compounding_withdrawal_credential(validator)
-        else Gwei(0),
+    threshold = get_initial_sweep_threshold(withdrawal_credentials)
+    set_or_append_list(state.validator_sweep_thresholds, index, threshold)
+```
+
+### Beacon state mutators
+
+#### Modified `switch_to_compounding_validator`
+
+```python
+def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    validator.withdrawal_credentials = Bytes32(
+        COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     )
+    queue_excess_active_balance(state, index)
+    # [New in EIP8148]
+    state.validator_sweep_thresholds[index] = MAX_EFFECTIVE_BALANCE_ELECTRA
 ```
 
 ## Beacon chain state transition function
+
+### Epoch processing
+
+#### Modified `process_effective_balance_updates`
+
+*Note*: The function `process_effective_balance_updates` is modified to use
+custom sweep thresholds.
+
+```python
+def process_effective_balance_updates(state: BeaconState) -> None:
+    # Update effective balances with hysteresis
+    for index, validator in enumerate(state.validators):
+        balance = state.balances[index]
+        HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
+        # [Modified in EIP8148]
+        sweep_threshold = state.validator_sweep_thresholds[index]
+        effective_sweep_threshold = get_effective_sweep_threshold(validator, sweep_threshold)
+
+        if (
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
+        ):
+            # [Modified in EIP8148]
+            validator.effective_balance = min(
+                balance - balance % EFFECTIVE_BALANCE_INCREMENT, effective_sweep_threshold
+            )
+```
 
 ### Block processing
 
@@ -276,11 +400,11 @@ def get_validators_sweep_withdrawals(
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: Uint64 = 0
-    withdrawals: List[Withdrawal] = []
+    processed_count = Uint64(0)
+    withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
-        all_withdrawals = prior_withdrawals + withdrawals
+        all_withdrawals = list(prior_withdrawals) + withdrawals
         has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
@@ -298,7 +422,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
         # [Modified in EIP8148]
         elif is_partially_withdrawable_validator(validator, balance, sweep_threshold):
             withdrawals.append(
@@ -310,9 +434,9 @@ def get_validators_sweep_withdrawals(
                     amount=balance - get_effective_sweep_threshold(validator, sweep_threshold),
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -351,7 +475,7 @@ def process_set_sweep_threshold_request(
         return
     if request.threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
-    if request.threshold < MIN_SWEEP_THRESHOLD:
+    if request.threshold < MIN_ACTIVATION_BALANCE:
         return
     if request.threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
         return
@@ -374,7 +498,7 @@ def apply_parent_execution_payload(
     requests: ExecutionRequests,
 ) -> None:
     parent_bid = state.latest_execution_payload_bid
-    parent_slot = parent_bid.slot
+    parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
@@ -417,6 +541,6 @@ def apply_parent_execution_payload(
         )
 
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

@@ -9,7 +9,10 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block
-from eth_consensus_specs.test.helpers.withdrawals import set_validator_fully_withdrawable
+from eth_consensus_specs.test.helpers.withdrawals import (
+    set_parent_block_full,
+    set_validator_fully_withdrawable,
+)
 
 
 @with_electra_and_later
@@ -356,7 +359,7 @@ def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
 def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(b"junk")[1:]
     pending_deposit = prepare_pending_deposit(
         spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )
@@ -372,8 +375,10 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
 
-    # All-zero pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
-    pubkey = b"\x00" * 48
+    # G1 point with x=4: on the curve, but not in the prime-order subgroup.
+    # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
+    pubkey = bytes.fromhex(pubkey_hex)
 
     pending_deposit = prepare_pending_deposit(
         spec, validator_index, amount, pubkey=pubkey, signed=True
@@ -394,6 +399,48 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
     # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case
     # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
     pubkey_hex = "c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    pending_deposit = prepare_pending_deposit(
+        spec, validator_index, amount, pubkey=pubkey, signed=True
+    )
+
+    yield from run_pending_deposit_applying(
+        spec, state, pending_deposit, validator_index, effective=False
+    )
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_key_validate_invalid_not_on_curve(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MIN_ACTIVATION_BALANCE
+
+    # G1 compressed encoding with x=1: not a point on the curve.
+    # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    pending_deposit = prepare_pending_deposit(
+        spec, validator_index, amount, pubkey=pubkey, signed=True
+    )
+
+    yield from run_pending_deposit_applying(
+        spec, state, pending_deposit, validator_index, effective=False
+    )
+
+
+@with_electra_and_later
+@spec_state_test
+@always_bls
+def test_apply_pending_deposit_key_validate_invalid_identity(spec, state):
+    validator_index = len(state.validators)
+    amount = spec.MIN_ACTIVATION_BALANCE
+
+    # G1 point at infinity (identity): on the curve and in the subgroup, but KeyValidate rejects it.
+    # This pubkey would not pass `bls.KeyValidate`, but `apply_pending_deposit` would not throw exception
+    pubkey_hex = "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     pubkey = bytes.fromhex(pubkey_hex)
 
     pending_deposit = prepare_pending_deposit(
@@ -500,7 +547,7 @@ def test_apply_pending_deposit_success_top_up_to_withdrawn_validator(spec, state
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0

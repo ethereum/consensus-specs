@@ -10,14 +10,21 @@
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
+    - [`Attnets`](#attnets)
+    - [`BeaconBlockRoots`](#beaconblockroots)
+    - [`ErrorMessage`](#errormessage)
+    - [`NodeID`](#nodeid)
+    - [`SignedBeaconBlocks`](#signedbeaconblocks)
+    - [`SubnetID`](#subnetid)
   - [Constants](#constants)
-  - [Configuration](#configuration)
+  - [Configs](#configs)
   - [Helpers](#helpers)
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
-    - [`is_not_from_future_slot`](#is_not_from_future_slot)
+    - [`is_future_slot`](#is_future_slot)
+    - [`is_future_epoch`](#is_future_epoch)
     - [`is_within_slot_range`](#is_within_slot_range)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
@@ -215,34 +222,92 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 We define the following Python custom types for type hinting and readability:
 
-| Name       | SSZ equivalent | Description       |
-| ---------- | -------------- | ----------------- |
-| `NodeID`   | `Uint256`      | Node identifier   |
-| `SubnetID` | `Uint64`       | Subnet identifier |
+#### `Attnets`
+
+```python
+class Attnets(BitVector):
+    """
+    The attestation subnets a node is subscribed to, one bit per subnet.
+    """
+
+    LENGTH = ATTESTATION_SUBNET_COUNT
+```
+
+#### `BeaconBlockRoots`
+
+```python
+class BeaconBlockRoots(List[Root]):
+    """
+    Beacon block roots requested in a ``BeaconBlocksByRoot`` request.
+    """
+
+    LIMIT = MAX_REQUEST_BLOCKS
+```
+
+#### `ErrorMessage`
+
+```python
+class ErrorMessage(List[Byte]):
+    """
+    The error message of an unsuccessful response chunk.
+    """
+
+    LIMIT = 256
+```
+
+#### `NodeID`
+
+```python
+class NodeID(Uint256):
+    """
+    A node identifier on the discovery network.
+    """
+```
+
+#### `SignedBeaconBlocks`
+
+```python
+class SignedBeaconBlocks(List[SignedBeaconBlock]):
+    """
+    Signed beacon blocks returned in a ``BeaconBlocksByRange`` or
+    ``BeaconBlocksByRoot`` response.
+    """
+
+    LIMIT = MAX_REQUEST_BLOCKS
+```
+
+#### `SubnetID`
+
+```python
+class SubnetID(Uint64):
+    """
+    The identifier of a gossip subnet, like an attestation subnet.
+    """
+```
 
 ### Constants
 
-| Name           | Value | Unit                             |
-| -------------- | ----- | -------------------------------- |
-| `NODE_ID_BITS` | `256` | The bit length of Uint256 is 256 |
+| Name           | Value         |
+| -------------- | ------------- |
+| `NODE_ID_BITS` | `Uint64(256)` |
 
-### Configuration
+### Configs
 
 This section outlines configurations that are used in this specification.
 
-| Name                                 | Value                               | Description                                                                       |
-| ------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                      |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                         |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | Maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
-| `SUBNETS_PER_NODE`                   | `2`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue     |
+| Name                                 | Value                                       | Description                                                                       |
+| ------------------------------------ | ------------------------------------------- | --------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `Uint64(10 * 2**20)` (= 10,485,760, 10 MiB) | Maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `Uint64(2**10)` (= 1,024)                   | Maximum number of blocks in a single request                                      |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `Epoch(2**8)` (= 256)                       | Number of epochs on a subnet subscription                                         |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `Slot(32)`                                  | Maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `Uint64(500)`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                  | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                  | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
+| `SUBNETS_PER_NODE`                   | `Uint64(2)`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `Uint64(2**6)` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `Uint64(0)`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `MAX_CONCURRENT_REQUESTS`            | `Uint64(2)`                                 | Maximum number of concurrent requests per protocol ID that a client may issue     |
 
 ### Helpers
 
@@ -255,13 +320,13 @@ propagation.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[Boolean, ...]]]
+    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
 ```
 
 #### `compute_fork_version`
@@ -295,35 +360,53 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
-#### `is_not_from_future_slot`
+#### `is_future_slot`
 
 ```python
-def is_not_from_future_slot(
-    state: BeaconState,
+def is_future_slot(
+    store: Store,
     slot: Slot,
     current_time_ms: Uint64,
 ) -> bool:
     """
-    Check if the given slot is not from the future
+    Check if the given slot is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(state, slot)
-    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
+    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
+```
+
+#### `is_future_epoch`
+
+```python
+def is_future_epoch(
+    store: Store,
+    epoch: Epoch,
+    current_time_ms: Uint64,
+) -> bool:
+    """
+    Check if the given epoch is in the future
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
+    time_since_genesis_ms += MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    return compute_epoch_at_slot(current_slot) < epoch
 ```
 
 #### `is_within_slot_range`
 
 ```python
 def is_within_slot_range(
-    state: BeaconState,
+    store: Store,
     slot: Slot,
     slot_range: Uint64,
     current_time_ms: Uint64,
@@ -332,10 +415,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(state, slot)
+    start_time_ms = compute_time_at_slot_ms(store, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(state, Slot(slot + slot_range + 1))
+    end_time_ms = compute_time_at_slot_ms(store, slot + slot_range + 1)
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -348,7 +431,7 @@ def compute_attestation_subnet_prefix_bits() -> Uint64:
     """
     Return the number of NodeId bits to use when mapping to a subscribed subnet.
     """
-    return Uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+    return ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS
 ```
 
 #### `compute_min_epochs_for_block_requests`
@@ -365,8 +448,8 @@ def compute_min_epochs_for_block_requests() -> Uint64:
 
 ```python
 def is_non_strict_superset(
-    seen_bits_set: Set[Tuple[Boolean, ...]],
-    new_bits: Tuple[Boolean, ...],
+    seen_bits_set: Set[Tuple[bool, ...]],
+    new_bits: Tuple[bool, ...],
 ) -> bool:
     """
     Return True if any prior bitset in ``seen_bits_set`` is a non-strict
@@ -390,7 +473,7 @@ Clients MUST locally store the following `MetaData`:
 ```
 (
   seq_number: Uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  attnets: Attnets
 )
 ```
 
@@ -399,7 +482,7 @@ Where
 - `seq_number` is a `Uint64` starting at `0` used to version the node's
   metadata. If any other field in the local `MetaData` changes, the node MUST
   increment `seq_number` by 1.
-- `attnets` is a `Bitvector` representing the node's persistent attestation
+- `attnets` is a `BitVector` representing the node's persistent attestation
   subnet subscriptions.
 
 *Note*: `MetaData.seq_number` is used for versioning of the node's metadata, is
@@ -417,7 +500,7 @@ can carry according to the following functions:
 def max_compressed_len(n: Uint64) -> Uint64:
     # Worst-case compressed length for a given payload of size n when using snappy:
     # https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-    return Uint64(32 + n + n / 6)
+    return 32 + n + n // 6
 ```
 
 #### `max_message_size`
@@ -425,7 +508,7 @@ def max_compressed_len(n: Uint64) -> Uint64:
 ```python
 def max_message_size() -> Uint64:
     # Allow 1024 bytes for framing and encoding overhead but at least 1MiB in case MAX_PAYLOAD_SIZE is small.
-    return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, 1024 * 1024)
+    return max(max_compressed_len(MAX_PAYLOAD_SIZE) + 1024, Uint64(1024 * 1024))
 ```
 
 ### The gossip domain: gossipsub
@@ -551,14 +634,12 @@ frequency validator messages (`voluntary_exit`, `proposer_slashing`, and
 ###### `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
-to all nodes on the networks. Signed blocks are sent in their entirety. The
-`state` parameter is the head state.
+to all nodes on the networks. Signed blocks are sent in their entirety.
 
 ```python
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
 ) -> None:
@@ -568,9 +649,14 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
 
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if is_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -580,9 +666,16 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's parent passes validation
+    if block.parent_root not in store.block_states:
+        raise GossipReject("block's parent is invalid")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -595,24 +688,14 @@ def validate_beacon_block_gossip(
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
-    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until parent is retrieved)
-    if block.parent_root not in store.blocks:
-        raise GossipIgnore("block's parent has not been seen")
-
-    # [REJECT] The block's parent passes validation
-    if block.parent_root not in store.block_states:
-        raise GossipReject("block's parent is invalid")
-
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
@@ -624,21 +707,19 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
 ###### `beacon_aggregate_and_proof`
 
 The `beacon_aggregate_and_proof` topic is used to propagate aggregated
 attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically
-validators) to be included in future blocks. The `state` parameter is the head
-state.
+validators) to be included in future blocks.
 
 ```python
 def validate_beacon_aggregate_and_proof_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
     current_time_ms: Uint64,
 ) -> None:
@@ -651,6 +732,32 @@ def validate_beacon_aggregate_and_proof_gossip(
     index = aggregate.data.index
     aggregation_bits = aggregate.aggregation_bits
 
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+    aggregate_data_root = hash_tree_root(aggregate.data)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
+    seen_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
+
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
+    aggregator_index = aggregate_and_proof.aggregator_index
+    target_epoch = aggregate.data.target.epoch
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The committee index is within the expected range
     committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
     if index >= committee_count:
@@ -659,7 +766,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] The aggregate attestation's slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 
@@ -677,26 +784,13 @@ def validate_beacon_aggregate_and_proof_gossip(
     if len(attesting_indices) < 1:
         raise GossipReject("aggregate has no participants")
 
-    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
-    aggregate_data_root = hash_tree_root(aggregate.data)
-    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
-    if is_non_strict_superset(seen_bits, aggregate_bits):
-        raise GossipIgnore("already seen aggregate for this data")
-
-    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
-    aggregator_index = aggregate_and_proof.aggregator_index
-    target_epoch = aggregate.data.target.epoch
-    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
-
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
 
-    # [REJECT] The aggregator's validator index is within the committee
+    # [REJECT] The aggregator is a member of the committee
     if aggregator_index not in committee:
-        raise GossipReject("aggregator index not in committee")
+        raise GossipReject("aggregator is not a member of the committee")
 
     # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
@@ -715,31 +809,19 @@ def validate_beacon_aggregate_and_proof_gossip(
     if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
         raise GossipReject("invalid aggregate signature")
 
-    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until block is retrieved)
-    if aggregate.data.beacon_block_root not in store.blocks:
-        raise GossipIgnore("block being voted for has not been seen")
-
-    # [REJECT] The block being voted for passes validation
-    if aggregate.data.beacon_block_root not in store.block_states:
-        raise GossipReject("block being voted for failed validation")
-
     # [REJECT] The target block is an ancestor of the LMD vote block
-    checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
-    )
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
     if checkpoint_block != aggregate.data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The finalized checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this aggregate as seen
-    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    seen.aggregator_epochs.add(aggregator_epoch_key)
     if aggregate_data_root not in seen.aggregate_data_roots:
         seen.aggregate_data_roots[aggregate_data_root] = set()
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
@@ -749,13 +831,14 @@ def validate_beacon_aggregate_and_proof_gossip(
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary
 validator exits to proposers on the network. Signed voluntary exits are sent in
-their entirety. The `state` parameter is the head state.
+their entirety.
 
 ```python
 def validate_voluntary_exit_gossip(
     seen: Seen,
-    state: BeaconState,
+    store: Store,
     signed_voluntary_exit: SignedVoluntaryExit,
+    current_time_ms: Uint64,
 ) -> None:
     """
     Validate a SignedVoluntaryExit for gossip propagation.
@@ -768,6 +851,12 @@ def validate_voluntary_exit_gossip(
     if validator_index in seen.voluntary_exit_indices:
         raise GossipIgnore("already seen voluntary exit for this validator")
 
+    # [IGNORE] The voluntary exit epoch is not in the future
+    if is_future_epoch(store, voluntary_exit.epoch, current_time_ms):
+        raise GossipIgnore("voluntary exit epoch is in the future")
+
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
@@ -775,17 +864,13 @@ def validate_voluntary_exit_gossip(
     validator = state.validators[validator_index]
     current_epoch = get_current_epoch(state)
 
+    # [IGNORE] The validator has not already initiated exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        raise GossipIgnore("validator has already initiated exit")
+
     # [REJECT] The validator is active
     if not is_active_validator(validator, current_epoch):
         raise GossipReject("validator is not active")
-
-    # [REJECT] The validator has not already initiated exit
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        raise GossipReject("validator has already initiated exit")
-
-    # [REJECT] The voluntary exit epoch is not in the future
-    if current_epoch < voluntary_exit.epoch:
-        raise GossipReject("voluntary exit epoch is in the future")
 
     # [REJECT] The validator has been active long enough
     if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
@@ -804,13 +889,12 @@ def validate_voluntary_exit_gossip(
 ###### `proposer_slashing`
 
 The `proposer_slashing` topic is used solely for propagating proposer slashings
-to proposers on the network. Proposer slashings are sent in their entirety. The
-`state` parameter is the head state.
+to proposers on the network. Proposer slashings are sent in their entirety.
 
 ```python
 def validate_proposer_slashing_gossip(
     seen: Seen,
-    state: BeaconState,
+    store: Store,
     proposer_slashing: ProposerSlashing,
 ) -> None:
     """
@@ -837,6 +921,8 @@ def validate_proposer_slashing_gossip(
     if header_1 == header_2:
         raise GossipReject("headers are not different")
 
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The proposer index is a valid validator index
     if proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
@@ -862,13 +948,12 @@ def validate_proposer_slashing_gossip(
 ###### `attester_slashing`
 
 The `attester_slashing` topic is used solely for propagating attester slashings
-to proposers on the network. Attester slashings are sent in their entirety. The
-`state` parameter is the head state.
+to proposers on the network. Attester slashings are sent in their entirety.
 
 ```python
 def validate_attester_slashing_gossip(
     seen: Seen,
-    state: BeaconState,
+    store: Store,
     attester_slashing: AttesterSlashing,
 ) -> None:
     """
@@ -890,6 +975,8 @@ def validate_attester_slashing_gossip(
     # [REJECT] The attestation data is slashable (double vote or surround vote)
     if not is_slashable_attestation_data(attestation_1.data, attestation_2.data):
         raise GossipReject("attestation data is not slashable")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] All validator indices in the first indexed attestation are valid
     if any(index >= len(state.validators) for index in attestation_1.attesting_indices):
@@ -931,13 +1018,12 @@ subsections of the network.
 The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated
 attestations to the subnet `subnet_id` (typically beacon and persistent
 committees) to be aggregated before being gossiped to
-`beacon_aggregate_and_proof`. The `state` parameter is the head state.
+`beacon_aggregate_and_proof`.
 
 ```python
 def validate_beacon_attestation_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     attestation: Attestation,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -950,6 +1036,18 @@ def validate_beacon_attestation_gossip(
     committee_index = data.index
     target_epoch = data.target.epoch
     aggregation_bits = attestation.aggregation_bits
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The committee index is within the expected range
     committees_per_slot = get_committee_count_per_slot(state, target_epoch)
@@ -966,7 +1064,7 @@ def validate_beacon_attestation_gossip(
     # [IGNORE] The attestation slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
-        state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+        store, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
     ):
         raise GossipIgnore("attestation slot not within propagation range")
 
@@ -975,7 +1073,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attestation epoch does not match target epoch")
 
     # [REJECT] The attestation is unaggregated (exactly one bit set)
-    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    num_bits_set = get_set_bit_count(aggregation_bits)
     if num_bits_set != 1:
         raise GossipReject("attestation is not unaggregated")
 
@@ -984,40 +1082,31 @@ def validate_beacon_attestation_gossip(
     if len(aggregation_bits) != len(committee):
         raise GossipReject("aggregation bits length does not match committee size")
 
-    # [IGNORE] No other valid attestation seen for this validator and target epoch
-    participant_index = committee[aggregation_bits.index(True)]
-    if (participant_index, target_epoch) in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation from this validator for this epoch")
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    set_bit_indices = [index for index, bit in enumerate(aggregation_bits) if bit]
+    participant_index = committee[set_bit_indices[0]]
+    attestation_epoch_key = (target_epoch, participant_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
 
     # [REJECT] The attestation signature is valid
     indexed_attestation = get_indexed_attestation(state, attestation)
     if not is_valid_indexed_attestation(state, indexed_attestation):
         raise GossipReject("invalid attestation signature")
 
-    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until block is retrieved)
-    beacon_block_root = data.beacon_block_root
-    if beacon_block_root not in store.blocks:
-        raise GossipIgnore("block being voted for has not been seen")
-
-    # [REJECT] The block being voted for passes validation
-    if beacon_block_root not in store.block_states:
-        raise GossipReject("block being voted for failed validation")
-
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
-    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
     if target_checkpoint_block != data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
     # [IGNORE] The current finalized_checkpoint is an ancestor of the block
-    finalized_checkpoint_block = get_checkpoint_block(
-        store, beacon_block_root, store.finalized_checkpoint.epoch
-    )
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipIgnore("finalized checkpoint is not an ancestor of block")
 
     # Mark this attestation as seen
-    seen.attestation_validator_epochs.add((participant_index, target_epoch))
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
 ```
 
 ##### Attestations and Aggregation
@@ -1209,13 +1298,12 @@ unsigned byte:
   expected message schema and encoding specified in the request.
 - 1: **InvalidRequest** -- the contents of the request are semantically invalid,
   or the payload is malformed, or could not be understood. The response payload
-  adheres to the `ErrorMessage` schema (described below).
+  adheres to the schema (described below).
 - 2: **ServerError** -- the responder encountered an error while processing the
-  request. The response payload adheres to the `ErrorMessage` schema (described
-  below).
+  request. The response payload adheres to the schema (described below).
 - 3: **ResourceUnavailable** -- the responder does not have requested resource.
-  The response payload adheres to the `ErrorMessage` schema (described below).
-  *Note*: This response code is only valid as a response where specified.
+  The response payload adheres to the schema (described below). *Note*: This
+  response code is only valid as a response where specified.
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous
 request-specific responses.
@@ -1223,11 +1311,9 @@ request-specific responses.
 The range `[4, 127]` is RESERVED for future usages, and should be treated as
 error if not recognized expressly.
 
-The `ErrorMessage` schema is:
-
 ```
 (
-  error_message: List[Byte, 256]
+  error_message: ErrorMessage
 )
 ```
 
@@ -1244,8 +1330,7 @@ IDs defined in this specification.
 The token of the negotiated protocol ID specifies the type of encoding to be
 used for the req/resp interaction. Only one value is possible at this time:
 
-- `ssz_snappy`: The contents are first
-  [SSZ-encoded](../../ssz/simple-serialize.md) and then compressed with
+- `ssz_snappy`: The contents are first SSZ-encoded and then compressed with
   [Snappy](https://github.com/google/snappy) frames compression. For objects
   containing a single field, only the field is SSZ-encoded not a container with
   a single field. For example, the `BeaconBlocksByRoot` request is an
@@ -1254,7 +1339,7 @@ used for the req/resp interaction. Only one value is possible at this time:
 
 ##### SSZ-snappy encoding strategy
 
-The [SimpleSerialize (SSZ) specification](../../ssz/simple-serialize.md)
+The [SimpleSerialize (SSZ) specification](https://github.com/ethereum/ssz-specs)
 outlines how objects are SSZ-encoded.
 
 To achieve snappy encoding on top of SSZ, we feed the serialized form of the
@@ -1316,11 +1401,10 @@ In case of an invalid input (header or payload), a reader MUST:
 All messages that contain only a single field MUST be encoded directly as the
 type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `List[SignedBeaconBlock, ...]`) send
-their constituents individually as `response_chunk`s. For example, the
-`List[SignedBeaconBlock, ...]` response type sends zero or more
-`response_chunk`s. Each _successful_ `response_chunk` contains a single
-`SignedBeaconBlock` payload.
+Responses that are SSZ-lists (for example `SignedBeaconBlocks`) send their
+constituents individually as `response_chunk`s. For example, the
+`SignedBeaconBlocks` response type sends zero or more `response_chunk`s. Each
+_successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 #### Messages
 
@@ -1429,7 +1513,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 
@@ -1505,7 +1589,7 @@ Request Content:
 
 ```
 (
-  List[Root, MAX_REQUEST_BLOCKS]
+  BeaconBlockRoots
 )
 ```
 
@@ -1513,7 +1597,7 @@ Response Content:
 
 ```
 (
-  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS]
+  SignedBeaconBlocks
 )
 ```
 
@@ -1659,9 +1743,9 @@ The ENR `attnets` entry signifies the attestation subnet bitfield with the
 following form to more easily discover peers participating in particular
 attestation gossip subnets.
 
-| Key       | Value                                     |
-| --------- | ----------------------------------------- |
-| `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
+| Key       | Value     |
+| --------- | --------- |
+| `attnets` | `Attnets` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
 `attnets` entry with the same value as `MetaData.attnets`.
@@ -1675,9 +1759,9 @@ ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
 fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
-| Key    | Value           |
-| ------ | --------------- |
-| `eth2` | SSZ `ENRForkID` |
+| Key    | Value       |
+| ------ | ----------- |
+| `eth2` | `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
 object (`ENRForkID`)
@@ -1740,14 +1824,14 @@ should:
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
     prefix_bits = int(compute_attestation_subnet_prefix_bits())
-    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
-    node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(
+    node_id_prefix = node_id >> int(NODE_ID_BITS - prefix_bits)
+    node_offset = Uint64(node_id % Uint256(EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    permutation_seed = sha256(
         uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
-        node_id_prefix,
-        1 << prefix_bits,
+        Uint64(node_id_prefix),
+        Uint64(1 << prefix_bits),
         permutation_seed,
     )
     return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)

@@ -1,11 +1,12 @@
+from hashlib import sha256
+
 import pytest
 
-from .hash_function import hash
 from .merkle_minimal import get_merkle_root, merkleize_chunks, zerohashes
 
 
 def h(a: bytes, b: bytes) -> bytes:
-    return hash(a + b)
+    return sha256(a + b).digest()
 
 
 def e(v: int) -> bytes:

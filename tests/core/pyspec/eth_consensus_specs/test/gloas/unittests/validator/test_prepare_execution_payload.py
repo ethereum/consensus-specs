@@ -1,6 +1,6 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -8,7 +8,6 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -30,7 +29,12 @@ class CaptureEngine:
         self.payload_attributes = None
 
     def notify_forkchoice_updated(
-        self, head_block_hash, safe_block_hash, finalized_block_hash, payload_attributes
+        self,
+        head_block_hash,
+        safe_block_hash,
+        finalized_block_hash,
+        payload_attributes,
+        custody_columns,
     ):
         self.head_block_hash = head_block_hash
         self.payload_attributes = payload_attributes
@@ -91,7 +95,7 @@ def _advance_to_proposal_slot(spec, state, store):
     return proposal_state
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__extend_payload(spec, state):
     # Give validator[0] 0x01 credentials so the envelope can carry a valid
@@ -100,7 +104,9 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     # not touch it.
     validator_index = 0
     consolidation_request = prepare_switch_to_compounding_request(spec, state, validator_index)
-    execution_requests = spec.ExecutionRequests(consolidations=[consolidation_request])
+    execution_requests = spec.ExecutionRequests(
+        consolidations=spec.ConsolidationRequests.of(consolidation_request)
+    )
 
     # Build block_1 with a bid that commits to the requests we will deliver
     # in the envelope. The bid's execution_requests_root must match
@@ -167,15 +173,24 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     assert list(skip_apply_withdrawals) != list(expected_withdrawals)
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__no_payload_verified(spec, state):
-    # Build and process block without execution requests.
+    carried_withdrawal = spec.Withdrawal(
+        index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
+    )
+    state.payload_expected_withdrawals = spec.Withdrawals(data=[carried_withdrawal])
+
     store, _, block_root = _add_block_to_store(spec, state)
 
     assert not spec.is_payload_verified(store, block_root)
 
     proposal_state = _advance_to_proposal_slot(spec, state, store)
+    carried_withdrawals = proposal_state.payload_expected_withdrawals
+    fresh_withdrawals = spec.get_expected_withdrawals(proposal_state).withdrawals
+
+    assert len(carried_withdrawals) > 0
+    assert list(carried_withdrawals) != list(fresh_withdrawals)
 
     engine = CaptureEngine()
     parent_bid = proposal_state.latest_execution_payload_bid
@@ -192,10 +207,49 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
 
     assert payload_id == SAMPLE_PAYLOAD_ID
     assert engine.head_block_hash == parent_bid.parent_block_hash
-    assert engine.payload_attributes.withdrawals == proposal_state.payload_expected_withdrawals
+    assert engine.payload_attributes.withdrawals == carried_withdrawals
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
+@spec_state_test
+def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
+    store, block_root, _ = _setup_full_parent(spec, state)
+
+    # Model a PTC majority that observed the payload but not its blob data.
+    # The locally verified payload remains in the store.
+    store.payload_timeliness_vote[block_root] = [True] * spec.PTC_SIZE
+    unavailable_votes = spec.DATA_AVAILABILITY_TIMELY_THRESHOLD + 1
+    store.payload_data_availability_vote[block_root] = [False] * unavailable_votes + [None] * (
+        spec.PTC_SIZE - unavailable_votes
+    )
+
+    proposal_state = _advance_to_proposal_slot(spec, state, store)
+    head = spec.get_head(store)
+    assert head.root == block_root
+    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
+    assert spec.payload_data_availability(store, block_root, available=False)
+    assert not spec.should_build_on_full(store, head, proposal_state.slot)
+
+    engine = CaptureEngine()
+    parent_bid = proposal_state.latest_execution_payload_bid
+    assert parent_bid.block_hash != parent_bid.parent_block_hash
+
+    payload_id = spec.prepare_execution_payload(
+        store=store,
+        head=head,
+        state=proposal_state,
+        safe_block_hash=spec.Hash32(),
+        finalized_block_hash=spec.Hash32(),
+        suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.Uint64(60_000_000),
+        execution_engine=engine,
+    )
+
+    assert payload_id == SAMPLE_PAYLOAD_ID
+    assert engine.head_block_hash == parent_bid.parent_block_hash
+
+
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -218,7 +272,7 @@ def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, s
     assert proposal_state.hash_tree_root() == state_root_before
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__payload_attributes(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -247,7 +301,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     assert attrs.target_gas_limit == spec.Uint64(60_000_000)
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)
@@ -274,4 +328,4 @@ def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     assert block.slot == proposal_state.slot
     state_transition_and_sign_block(spec, state, block)
 
-    assert list(state.payload_expected_withdrawals) == prepared_withdrawals
+    assert list(state.payload_expected_withdrawals) == list(prepared_withdrawals)

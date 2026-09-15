@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.state import (
 def run_block_with_blobs(
     spec,
     state,
+    block,
     blob_count,
     tx_count=1,
     blob_gas_used=1,
@@ -39,16 +40,15 @@ def run_block_with_blobs(
         rng = random.Random(7777)
     yield "pre", state
 
-    block = build_empty_block_for_next_slot(spec, state)
-    txs = []
-    blob_kzg_commitments = []
+    txs = spec.Transactions()
+    blob_kzg_commitments = spec.BlobKZGCommitments()
     for _ in range(tx_count):
         opaque_tx, _, commits, _ = get_sample_blob_tx(spec, blob_count=blob_count)
-        txs.append(opaque_tx)
+        txs.append(spec.Transaction(data=list(opaque_tx)))
         blob_kzg_commitments += commits
 
     for _ in range(non_blob_tx_count):
-        txs.append(get_random_tx(rng))
+        txs.append(get_random_tx(spec, rng))
 
     rng.shuffle(txs)
 
@@ -72,60 +72,72 @@ def run_block_with_blobs(
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_zero_blob(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=0)
+    block = build_empty_block_for_next_slot(spec, state)
+    yield from run_block_with_blobs(spec, state, block, blob_count=0)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1)
+    block = build_empty_block_for_next_slot(spec, state)
+    yield from run_block_with_blobs(spec, state, block, blob_count=1)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob_two_txs(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=2)
+    block = build_empty_block_for_next_slot(spec, state)
+    yield from run_block_with_blobs(spec, state, block, blob_count=1, tx_count=2)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
-    yield from run_block_with_blobs(
-        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state)
-    )
+    block = build_empty_block_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, block.slot)
+    yield from run_block_with_blobs(spec, state, block, blob_count=1, tx_count=max_blobs)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, block.slot)
     yield from run_block_with_blobs(
-        spec, state, blob_count=1, tx_count=get_max_blob_count(spec, state) + 1, valid=False
+        spec, state, block, blob_count=1, tx_count=max_blobs + 1, valid=False
     )
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec, state))
+    block = build_empty_block_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, block.slot)
+    yield from run_block_with_blobs(spec, state, block, blob_count=max_blobs)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, block.slot)
     yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec, state), tx_count=2, valid=False
+        spec, state, block, blob_count=max_blobs, tx_count=2, valid=False
     )
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
-    yield from run_block_with_blobs(
-        spec, state, blob_count=get_max_blob_count(spec, state) + 1, valid=False
-    )
+    block = build_empty_block_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, block.slot)
+    yield from run_block_with_blobs(spec, state, block, blob_count=max_blobs + 1, valid=False)
 
 
 @with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_mix_blob_tx_and_non_blob_tx(spec, state):
-    yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=1, non_blob_tx_count=1)
+    block = build_empty_block_for_next_slot(spec, state)
+    yield from run_block_with_blobs(
+        spec, state, block, blob_count=1, tx_count=1, non_blob_tx_count=1
+    )

@@ -39,7 +39,7 @@ def test_lookahead_consistency_at_fork(spec, phases, state):
     state = yield from run_fork_test(spec, state)
 
     # Check if the pre-fork simulation matches the post-fork `state.proposer_lookahead`
-    assert pre_fork_proposers == state.proposer_lookahead
+    assert list(pre_fork_proposers) == list(state.proposer_lookahead)
 
 
 @with_phases(phases=[ELECTRA], other_phases=[FULU])
@@ -66,7 +66,7 @@ def test_proposer_lookahead_init_at_fork_only_contains_active_validators(spec, p
 
     # Check that the proposer lookahead does not contain inactive validators
     for slot_index, validator_index in enumerate(state.proposer_lookahead):
-        epoch_for_slot = current_epoch + (slot_index // spec.SLOTS_PER_EPOCH)
+        epoch_for_slot = current_epoch + spec.Epoch(slot_index // spec.SLOTS_PER_EPOCH)
         assert spec.is_active_validator(state.validators[validator_index], epoch_for_slot), (
             f"Validator {validator_index} in lookahead at slot {slot_index} (epoch {epoch_for_slot}) should be active"
         )

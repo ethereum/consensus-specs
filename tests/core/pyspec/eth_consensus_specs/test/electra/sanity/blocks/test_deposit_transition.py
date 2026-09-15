@@ -90,8 +90,8 @@ def prepare_state_and_block(
     deposit_requests_start_index=None,
     eth1_data_deposit_count=None,
 ):
-    deposits = []
-    deposit_requests = []
+    deposits = spec.Deposits()
+    deposit_requests = spec.DepositRequests()
     keypair_index = len(state.validators)
 
     # Prepare deposits
@@ -104,7 +104,7 @@ def prepare_state_and_block(
             # use min activation balance
             spec.MIN_ACTIVATION_BALANCE,
             # insecurely use pubkey as withdrawal key
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkeys[keypair_index])[1:],
+            spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkeys[keypair_index])[1:],
             signed=True,
         )
         deposit_data_list.append(deposit_data)

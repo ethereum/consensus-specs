@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases_from_to,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob
+from eth_consensus_specs.test.helpers.blob import build_block_with_blobs_for_next_slot
 from eth_consensus_specs.test.helpers.constants import (
     DENEB,
     FULU,
@@ -34,8 +34,8 @@ def test_simple_blob_data(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, blobs, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block for `GENESIS_SLOT + 1` slot
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
     blob_data = BlobData(blobs, blob_kzg_proofs)
 
@@ -43,8 +43,8 @@ def test_simple_blob_data(spec, state):
 
     assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
-    # On receiving a block of next epoch
-    block, blobs, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block that extends the block for `GENESIS_SLOT + 1`
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
     blob_data = BlobData(blobs, blob_kzg_proofs)
 
@@ -69,8 +69,8 @@ def test_invalid_incorrect_proof(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, blobs, _, _ = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block for `GENESIS_SLOT + 1` slot
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
     # Insert incorrect proof
     blob_kzg_proofs = [b"\xc0" + b"\x00" * 47]
@@ -99,8 +99,8 @@ def test_invalid_data_unavailable(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, _, _, _ = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block for `GENESIS_SLOT + 1` slot
+    block, _, _, _ = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # data unavailable
@@ -129,8 +129,8 @@ def test_invalid_wrong_proofs_length(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, blobs, _, _ = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block for `GENESIS_SLOT + 1` slot
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # unavailable proofs
@@ -159,8 +159,8 @@ def test_invalid_wrong_blobs_length(spec, state):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    block, _, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
+    # On receiving a block for `GENESIS_SLOT + 1` slot
+    block, _, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # unavailable blobs

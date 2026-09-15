@@ -10,7 +10,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
@@ -100,18 +100,18 @@ specifications before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name                               | Value         | Unit       |
-| ---------------------------------- | ------------- | ---------- |
-| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+| Name                               | Value                 |
+| ---------------------------------- | --------------------- |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `Uint64(2**4)` (= 16) |
 
-## Configuration
+## Configs
 
 ### Time parameters
 
-| Name                  | Value          | Unit         | Duration                   |
-| --------------------- | -------------- | ------------ | -------------------------- |
-| `ATTESTATION_DUE_BPS` | `Uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS`   | `Uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| Name                  | Value          | Duration                   |
+| --------------------- | -------------- | -------------------------- |
+| `ATTESTATION_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS`   | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -172,7 +172,7 @@ Withdrawal credentials with the BLS withdrawal prefix allow a BLS key pair
 `withdrawal_credentials` field must be such that:
 
 - `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
-- `withdrawal_credentials[1:] == hash(bls_withdrawal_pubkey)[1:]`
+- `withdrawal_credentials[1:] == sha256(bls_withdrawal_pubkey)[1:]`
 
 *Note*: The `bls_withdrawal_privkey` is not required for validating and can be
 kept in cold storage.
@@ -291,7 +291,7 @@ def get_committee_assignment(
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -460,8 +460,8 @@ An honest block proposer sets
 
 ```python
 def voting_period_start_time(state: BeaconState) -> Uint64:
-    eth1_voting_period_start_slot = Slot(
-        state.slot - state.slot % (EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH)
+    eth1_voting_period_start_slot = state.slot - state.slot % (
+        Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     )
     return compute_time_at_slot(state, eth1_voting_period_start_slot)
 ```
@@ -583,7 +583,7 @@ root for this purpose:
 ```python
 def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
     temp_state: BeaconState = state.copy()
-    signed_block = SignedBeaconBlock(message=block)
+    signed_block = SignedBeaconBlock(message=block, signature=BLSSignature())
     state_transition(temp_state, signed_block, validate_result=False)
     return hash_tree_root(temp_state)
 ```
@@ -665,9 +665,9 @@ Set `attestation.data = attestation_data` where `attestation_data` is the
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the
-  bit of the index of the validator in the `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be an `AggregationBits` of length
+  `len(committee)`, where the bit of the index of the validator in the
+  `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation)` should return a list
 of length equal to 1, containing `validator_index`.
@@ -735,7 +735,7 @@ def is_aggregator(
 ) -> bool:
     committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_uint64(hash(slot_signature)[0:8]) % modulo == 0
+    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate
@@ -756,9 +756,9 @@ being aggregated.
 
 ##### Aggregation bits
 
-Let `aggregate_attestation.aggregation_bits` be a
-`Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each
-bit set from each individual attestation is set to `0b1`.
+Let `aggregate_attestation.aggregation_bits` be an `AggregationBits` of length
+`len(committee)`, where each bit set from each individual attestation is set to
+`0b1`.
 
 ##### Aggregate signature
 

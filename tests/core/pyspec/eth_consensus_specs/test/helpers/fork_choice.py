@@ -343,7 +343,7 @@ def add_block(
         assert blob_data.is_pre_fulu() or blob_data.is_post_fulu(), "Integrity fail blob_data"
 
         if blob_data.is_pre_fulu():
-            blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
+            blobs = spec.Blobs(data=blob_data.blobs)
             blobs_root = blobs.hash_tree_root()
             yield get_blobs_file_name(blobs_root=blobs_root), blobs
 

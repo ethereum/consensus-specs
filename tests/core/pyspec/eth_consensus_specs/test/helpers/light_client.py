@@ -103,7 +103,7 @@ def get_sync_aggregate(spec, state, num_participants=None, signature_slot=None, 
         committee_indices[:num_participants],
     )
     sync_aggregate = signature_spec.SyncAggregate(
-        sync_committee_bits=sync_committee_bits,
+        sync_committee_bits=spec.SyncCommitteeBits(data=sync_committee_bits),
         sync_committee_signature=sync_committee_signature,
     )
     return sync_aggregate, signature_slot
@@ -119,7 +119,7 @@ def create_update(
     participation_rate,
     signature_slot=None,
 ):
-    num_participants = floor(spec.SYNC_COMMITTEE_SIZE * participation_rate)
+    num_participants = floor(int(spec.SYNC_COMMITTEE_SIZE) * participation_rate)
 
     update = spec.LightClientUpdate()
 
@@ -127,14 +127,14 @@ def create_update(
 
     if with_next:
         update.next_sync_committee = attested_state.next_sync_committee
-        update.next_sync_committee_branch = spec.compute_merkle_proof(
-            attested_state, latest_next_sync_committee_gindex(spec)
+        update.next_sync_committee_branch = spec.NextSyncCommitteeBranch(
+            data=spec.compute_merkle_proof(attested_state, latest_next_sync_committee_gindex(spec))
         )
 
     if with_finality:
         update.finalized_header = spec.block_to_light_client_header(finalized_block)
-        update.finality_branch = spec.compute_merkle_proof(
-            attested_state, latest_finalized_root_gindex(spec)
+        update.finality_branch = spec.FinalityBranch(
+            data=spec.compute_merkle_proof(attested_state, latest_finalized_root_gindex(spec))
         )
 
     update.sync_aggregate, update.signature_slot = get_sync_aggregate(

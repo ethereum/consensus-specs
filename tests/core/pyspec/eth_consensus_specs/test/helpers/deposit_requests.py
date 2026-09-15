@@ -52,7 +52,7 @@ def prepare_process_deposit_request(
             validator.
         pubkey: Explicit BLSPubkey. Default: derived from validator_index.
         withdrawal_credentials: Explicit Bytes32 credentials. Default: BLS prefix (0x00) +
-            hash(pubkey)[1:].
+            sha256(pubkey)[1:].
         amount: Deposit amount in Gwei. Default: MIN_ACTIVATION_BALANCE.
         signed: If True, sign with valid BLS signature.
 
@@ -70,12 +70,12 @@ def prepare_process_deposit_request(
     effective_privkey = privkeys[index]
     effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
 
-    # Default withdrawal credentials: BLS prefix + hash(pubkey)[1:]
+    # Default withdrawal credentials: BLS prefix + sha256(pubkey)[1:]
     if withdrawal_credentials is not None:
         effective_withdrawal_credentials = withdrawal_credentials
     else:
         effective_withdrawal_credentials = (
-            spec.BLS_WITHDRAWAL_PREFIX + spec.hash(effective_pubkey)[1:]
+            spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(effective_pubkey)[1:]
         )
 
     # Phase 3: Build deposit data and optionally sign

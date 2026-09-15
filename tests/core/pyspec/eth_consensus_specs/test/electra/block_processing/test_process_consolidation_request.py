@@ -31,7 +31,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
 @single_phase
 def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -78,7 +78,7 @@ def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
 @single_phase
 def test_basic_consolidation_with_excess_target_balance(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -128,7 +128,7 @@ def test_basic_consolidation_with_excess_target_balance(spec, state):
 @single_phase
 def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     # Set consolidation balance to consume to some arbitrary nonzero value below the churn limit
     state.consolidation_balance_to_consume = spec.EFFECTIVE_BALANCE_INCREMENT
@@ -173,7 +173,7 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
 @single_phase
 def test_basic_consolidation_with_preexisting_churn(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -217,7 +217,7 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
 @single_phase
 def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -264,7 +264,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
 @single_phase
 def test_basic_consolidation_with_compounding_credentials(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -309,7 +309,7 @@ def test_basic_consolidation_with_compounding_credentials(spec, state):
 @single_phase
 def test_consolidation_churn_limit_balance(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -357,7 +357,7 @@ def test_consolidation_churn_limit_balance(spec, state):
 @single_phase
 def test_basic_consolidation_source_has_less_than_max_effective_balance(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
@@ -410,7 +410,7 @@ def test_basic_consolidation_source_has_less_than_max_effective_balance(spec, st
 @single_phase
 def test_basic_consolidation_target_has_less_than_min_activation_effective_balance(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
@@ -459,7 +459,7 @@ def test_basic_consolidation_target_has_less_than_min_activation_effective_balan
 @single_phase
 def test_consolidation_balance_larger_than_churn_limit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -506,7 +506,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
 @single_phase
 def test_consolidation_balance_through_two_churn_epochs(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # This state has 256 validators each with 32 ETH in MINIMAL preset, 128 ETH consolidation churn
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -546,7 +546,7 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
 @spec_state_test
 def test_basic_switch_to_compounding(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
 
@@ -587,9 +587,10 @@ def test_switch_to_compounding_with_excess(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state):
-    state.pending_consolidations = [
-        spec.PendingConsolidation(source_index=0, target_index=1)
-    ] * spec.PENDING_CONSOLIDATIONS_LIMIT
+    state.pending_consolidations = spec.PendingConsolidations(
+        data=[spec.PendingConsolidation(source_index=0, target_index=1)]
+        * spec.PENDING_CONSOLIDATIONS_LIMIT
+    )
 
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -622,7 +623,7 @@ def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state)
 @single_phase
 def test_incorrect_same_source_target(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
@@ -655,11 +656,12 @@ def test_incorrect_same_source_target(spec, state):
 @single_phase
 def test_incorrect_exceed_pending_consolidations_limit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
-    state.pending_consolidations = [
-        spec.PendingConsolidation(source_index=0, target_index=1)
-    ] * spec.PENDING_CONSOLIDATIONS_LIMIT
+    state.pending_consolidations = spec.PendingConsolidations(
+        data=[spec.PendingConsolidation(source_index=0, target_index=1)]
+        * spec.PENDING_CONSOLIDATIONS_LIMIT
+    )
 
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
@@ -685,9 +687,11 @@ def test_incorrect_exceed_pending_consolidations_limit(spec, state):
 @single_phase
 def test_incorrect_not_enough_consolidation_churn_available(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
-    state.pending_consolidations = [spec.PendingConsolidation(source_index=0, target_index=1)]
+    state.pending_consolidations = spec.PendingConsolidations.of(
+        spec.PendingConsolidation(source_index=0, target_index=1)
+    )
 
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
@@ -730,7 +734,7 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
 @single_phase
 def test_incorrect_exited_source(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -763,7 +767,7 @@ def test_incorrect_exited_source(spec, state):
 @single_phase
 def test_incorrect_exited_target(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -795,7 +799,7 @@ def test_incorrect_exited_target(spec, state):
 @single_phase
 def test_incorrect_inactive_source(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -828,7 +832,7 @@ def test_incorrect_inactive_source(spec, state):
 @single_phase
 def test_incorrect_inactive_target(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -861,7 +865,7 @@ def test_incorrect_inactive_target(spec, state):
 @single_phase
 def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up a correct consolidation, but source does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
@@ -891,7 +895,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
 @single_phase
 def test_incorrect_target_with_bls_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up a correct consolidation, but target does not have
     # an execution withdrawal credential
     current_epoch = spec.get_current_epoch(state)
@@ -921,7 +925,7 @@ def test_incorrect_target_with_bls_credential(spec, state):
 @single_phase
 def test_incorrect_source_with_bls_credential(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
 
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -955,7 +959,7 @@ def test_incorrect_source_with_bls_credential(spec, state):
 @single_phase
 def test_incorrect_target_with_eth1_credential(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -984,7 +988,7 @@ def test_incorrect_target_with_eth1_credential(spec, state):
 @single_phase
 def test_incorrect_source_address(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -1017,7 +1021,7 @@ def test_incorrect_source_address(spec, state):
 @single_phase
 def test_incorrect_source_pubkey_is_target_pubkey(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -1045,7 +1049,7 @@ def test_incorrect_source_pubkey_is_target_pubkey(spec, state):
 @single_phase
 def test_incorrect_unknown_source_pubkey(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -1076,7 +1080,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
 @single_phase
 def test_incorrect_unknown_target_pubkey(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -1107,7 +1111,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
 @single_phase
 def test_incorrect_source_has_pending_withdrawal(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
     # Set up an otherwise correct consolidation
     current_epoch = spec.get_current_epoch(state)
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
@@ -1366,9 +1370,9 @@ def run_consolidation_processing(spec, state, consolidation, success=True):
             source_index=source_index,
             target_index=target_index,
         )
-        assert state.pending_consolidations == pre_pending_consolidations + [
-            expected_new_pending_consolidation
-        ]
+        assert list(state.pending_consolidations) == list(
+            pre_pending_consolidations + [expected_new_pending_consolidation]
+        )
         # Check no balance move happened
         assert state.balances[source_index] == pre_source_balance
         assert state.balances[target_index] == pre_target_balance
@@ -1429,6 +1433,6 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
             assert pending_deposit.slot == spec.GENESIS_SLOT
         # Check no consolidation has been initiated
         assert state.validators[source_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-        assert state.pending_consolidations == pre_pending_consolidations
+        assert list(state.pending_consolidations) == list(pre_pending_consolidations)
     else:
         assert pre_state == state

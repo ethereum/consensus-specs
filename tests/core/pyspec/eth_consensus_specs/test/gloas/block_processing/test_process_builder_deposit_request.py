@@ -481,6 +481,110 @@ def test_process_builder_deposit_request__new_builder_invalid_sig(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
+def test_process_builder_deposit_request__key_validate_invalid_subgroup(spec, state):
+    """
+    Test that a new builder deposit with a pubkey on the curve but outside the
+    prime-order subgroup is dropped without raising.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # G1 point with x=4: on the curve, but not in the prime-order subgroup.
+    # This pubkey would not pass `bls.KeyValidate`, but
+    # `process_builder_deposit_request` would not throw an exception.
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    # Sign with an unrelated privkey; KeyValidate fails before signature match matters.
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, pubkey=pubkey, privkey=privkeys[0], signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_builder_deposit_request__key_validate_invalid_decompression(spec, state):
+    """
+    Test that a new builder deposit with a pubkey that fails G1 decompression
+    is dropped without raising.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
+    # This pubkey would not pass `bls.KeyValidate`, but
+    # `process_builder_deposit_request` would not throw an exception.
+    pubkey_hex = "c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    # Sign with an unrelated privkey; KeyValidate fails before signature match matters.
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, pubkey=pubkey, privkey=privkeys[0], signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_builder_deposit_request__key_validate_invalid_not_on_curve(spec, state):
+    """
+    Test that a new builder deposit with a pubkey whose x-coordinate is not on
+    the BLS12-381 G1 curve is dropped without raising.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # G1 compressed encoding with x=1: not a point on the curve.
+    # This pubkey would not pass `bls.KeyValidate`, but
+    # `process_builder_deposit_request` would not throw an exception.
+    pubkey_hex = "800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    # Sign with an unrelated privkey; KeyValidate fails before signature match matters.
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, pubkey=pubkey, privkey=privkeys[0], signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_builder_deposit_request__key_validate_invalid_identity(spec, state):
+    """
+    Test that a new builder deposit with the G1 identity (point at infinity)
+    pubkey is dropped without raising.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # G1 point at infinity (identity): on the curve and in the subgroup, but KeyValidate rejects it.
+    # This pubkey would not pass `bls.KeyValidate`, but
+    # `process_builder_deposit_request` would not throw an exception.
+    pubkey_hex = "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    pubkey = bytes.fromhex(pubkey_hex)
+
+    # Sign with an unrelated privkey; KeyValidate fails before signature match matters.
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, pubkey=pubkey, privkey=privkeys[0], signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
 def test_process_builder_deposit_request__new_builder_replayed_validator_sig(spec, state):
     """
     Test that a builder deposit signed under DOMAIN_DEPOSIT is dropped.

@@ -5,7 +5,10 @@ from random import Random
 from rlp import encode, Serializable
 from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLPList
 
-from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.block import (
+    build_empty_block,
+    build_empty_block_for_next_slot,
+)
 from eth_consensus_specs.test.helpers.execution_payload import compute_el_block_hash
 from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
@@ -13,7 +16,10 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
-from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+from eth_consensus_specs.utils import kzg
+
+# Scalar field modulus of BLS12-381; a canonical field element is in [0, BLS_MODULUS).
+BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513
 
 
 class Eip4844RlpTransaction(Serializable):
@@ -49,44 +55,15 @@ def get_sample_blob(spec, rng=None, is_valid_blob=True):
     if rng is None:
         rng = random.Random(5566)
     values = [
-        rng.randint(0, spec.BLS_MODULUS - 1) if is_valid_blob else spec.BLS_MODULUS
+        rng.randint(0, BLS_MODULUS - 1) if is_valid_blob else BLS_MODULUS
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
 
     b = b""
     for v in values:
-        b += v.to_bytes(32, spec.KZG_ENDIANNESS)
+        b += v.to_bytes(32, "big")
 
     return spec.Blob(b)
-
-
-def eval_poly_in_coeff_form(spec, coeffs, x):
-    """
-    Evaluate a polynomial in coefficient form at 'x' using Horner's rule
-    """
-    total = spec.BLSFieldElement(0)
-    for a in reversed(coeffs):
-        total = total * x + a
-    return total
-
-
-def get_poly_in_both_forms(spec, rng=None):
-    """
-    Generate and return a random polynomial in both coefficient form and evaluation form
-    """
-    if rng is None:
-        rng = random.Random(5566)
-
-    roots_of_unity_brp = spec.bit_reversal_permutation(
-        spec.compute_roots_of_unity(spec.FIELD_ELEMENTS_PER_BLOB)
-    )
-    coeffs = [
-        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
-        for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
-    ]
-    evals = [eval_poly_in_coeff_form(spec, coeffs, z) for z in roots_of_unity_brp]
-
-    return coeffs, evals
 
 
 def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
@@ -99,8 +76,8 @@ def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
     for _ in range(blob_count):
         blob = get_sample_blob(spec, rng, is_valid_blob=is_valid_blob)
         if is_valid_blob:
-            blob_commitment = spec.KZGCommitment(spec.blob_to_kzg_commitment(blob))
-            blob_kzg_proof = spec.compute_blob_kzg_proof(blob, blob_commitment)
+            blob_commitment = spec.KZGCommitment(kzg.blob_to_kzg_commitment(blob))
+            blob_kzg_proof = spec.KZGProof(kzg.compute_blob_kzg_proof(blob, blob_commitment))
         else:
             blob_commitment = spec.KZGCommitment()
             blob_kzg_proof = spec.KZGProof()
@@ -130,24 +107,24 @@ def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_max_blob_count(spec, state):
+def get_max_blob_count(spec, slot):
     if is_post_fulu(spec):
-        return spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block
+        return spec.get_blob_parameters(spec.compute_epoch_at_slot(slot)).max_blobs_per_block
     elif is_post_electra(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     else:
         return spec.config.MAX_BLOBS_PER_BLOCK
 
 
-def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
-    block = build_empty_block_for_next_slot(spec, state)
+def add_blobs_to_block(spec, state, block, rng: Random | None = None, blob_count=1):
+    """Populate a block with blob data."""
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.ProgressiveList[
-            spec.KZGCommitment
-        ](blob_kzg_commitments)
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = (
+            spec.BlobKZGCommitments(data=blob_kzg_commitments)
+        )
         # For self-builds, use point at infinity signature as per spec
         if (
             block.body.signed_execution_payload_bid.message.builder_index
@@ -163,31 +140,93 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
                 )
             )
     else:
-        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.transactions = spec.Transactions.of(
+            spec.Transaction(data=list(opaque_tx))
+        )
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
         )
-        block.body.blob_kzg_commitments = blob_kzg_commitments
+        block.body.blob_kzg_commitments = spec.BlobKZGCommitments(data=blob_kzg_commitments)
+    return blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def build_block_with_blobs(spec, state, rng: Random | None = None, blob_count=1, slot=None):
+    """Build an unsigned block with blobs for ``slot``."""
+    block = build_empty_block(spec, state, slot=slot)
+    blobs, blob_kzg_commitments, blob_kzg_proofs = add_blobs_to_block(
+        spec, state, block, rng=rng, blob_count=blob_count
+    )
     return block, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
-    block, blobs, blob_kzg_commitments, blob_kzg_proofs = get_block_with_blob(
-        spec, state, rng=rng, blob_count=blob_count
+def build_block_with_blobs_for_next_slot(spec, state, rng: Random | None = None, blob_count=1):
+    """Build an unsigned block with blobs for the next slot."""
+    block = build_empty_block_for_next_slot(spec, state)
+    blobs, blob_kzg_commitments, blob_kzg_proofs = add_blobs_to_block(
+        spec, state, block, rng=rng, blob_count=blob_count
     )
+    return block, blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def get_data_column_sidecars(spec, signed_block, blobs):
+    """Build data column sidecars from a signed block and its blobs."""
     cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
+    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
 
-    # We need a signed block to call `get_data_column_sidecars_from_block`
-    signed_block = state_transition_and_sign_block(spec, state, block)
 
+def make_partial_data_column_group_id(spec, sidecar):
+    """
+    Build the fork-appropriate ``PartialDataColumnGroupID`` for a
+    ``DataColumnSidecar``. Gloas added a ``slot`` field and derives the block
+    root from ``sidecar.beacon_block_root`` rather than the (removed) header.
+    """
     if is_post_gloas(spec):
-        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
-    else:
-        # For Fulu and earlier, use 2-parameter version
-        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
-    return block, blobs, blob_kzg_proofs, signed_block, sidecars, blob_kzg_commitments
+        return spec.PartialDataColumnGroupID(
+            slot=sidecar.slot,
+            beacon_block_root=sidecar.beacon_block_root,
+        )
+    return spec.PartialDataColumnGroupID(
+        beacon_block_root=spec.hash_tree_root(sidecar.signed_block_header.message),
+    )
+
+
+def make_partial_header(spec, sidecar):
+    """Build a ``PartialDataColumnHeader`` from a (pre-Gloas) ``DataColumnSidecar``."""
+    return spec.PartialDataColumnHeader(
+        kzg_commitments=sidecar.kzg_commitments,
+        signed_block_header=sidecar.signed_block_header,
+        kzg_commitments_inclusion_proof=sidecar.kzg_commitments_inclusion_proof,
+    )
+
+
+def make_partial_sidecar(spec, sidecar, blob_indices=None, include_header=True):
+    """
+    Build a ``PartialDataColumnSidecar`` from a ``DataColumnSidecar``.
+    ``blob_indices`` selects which blob indices are present (default: all). Gloas
+    removed the optional ``header`` field, so it is only set pre-Gloas.
+    """
+    num_blobs = len(sidecar.column)
+    if blob_indices is None:
+        blob_indices = list(range(num_blobs))
+    bitmap = [i in blob_indices for i in range(num_blobs)]
+    cells = [sidecar.column[i] for i in blob_indices]
+    proofs = [sidecar.kzg_proofs[i] for i in blob_indices]
+    if is_post_gloas(spec):
+        return spec.PartialDataColumnSidecar(
+            cells_present_bitmap=spec.CellsBitList(data=bitmap),
+            partial_column=spec.DataColumn(data=cells),
+            kzg_proofs=spec.KZGProofs(data=proofs),
+        )
+    header = [make_partial_header(spec, sidecar)] if include_header else []
+    return spec.PartialDataColumnSidecar(
+        cells_present_bitmap=spec.CellsBitList(data=bitmap),
+        partial_column=spec.DataColumn(data=cells),
+        kzg_proofs=spec.KZGProofs(data=proofs),
+        header=spec.OptionalPartialDataColumnHeader(data=header),
+    )
 
 
 @cache
 def _cached_compute_cells_and_kzg_proofs(spec, blob):
-    return spec.compute_cells_and_kzg_proofs(blob)
+    cells, proofs = kzg.compute_cells_and_kzg_proofs(blob)
+    return [spec.Cell(cell) for cell in cells], [spec.KZGProof(proof) for proof in proofs]

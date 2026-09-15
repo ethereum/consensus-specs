@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to Bellatrix](#fork-to-bellatrix)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -14,7 +14,7 @@
 
 This document describes the process of Bellatrix upgrade.
 
-## Configuration
+## Configs
 
 | Name                     | Value                                          |
 | ------------------------ | ---------------------------------------------- |
@@ -84,7 +84,7 @@ def upgrade_to_bellatrix(pre: altair.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [New in Bellatrix]
-        latest_execution_payload_header=ExecutionPayloadHeader(),
+        latest_execution_payload_header=ExecutionPayloadHeader.empty(),
     )
 
     return post

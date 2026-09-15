@@ -2,6 +2,10 @@ from eth_consensus_specs.test.helpers.keys import privkeys, pubkey_to_privkey, p
 from eth_consensus_specs.utils import bls
 
 
+def get_max_bls_to_execution_changes(spec):
+    return spec.MAX_BLS_TO_EXECUTION_CHANGES
+
+
 def get_signed_address_change(
     spec,
     state,

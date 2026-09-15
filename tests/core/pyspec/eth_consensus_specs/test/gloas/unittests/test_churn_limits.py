@@ -74,7 +74,7 @@ def test_compute_weak_subjectivity_period_weighted_delta(spec, state):
     consolidation_churn = spec.get_consolidation_churn_limit(state)
 
     expected_delta = 2 * exit_churn // 3 + activation_churn // 3 + consolidation_churn
-    expected_epochs = spec.SAFETY_DECAY * t // (2 * expected_delta * 100)
+    expected_epochs = spec.Epoch(spec.SAFETY_DECAY * t // (2 * expected_delta * 100))
     expected_wsp = spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + expected_epochs
 
     actual_wsp = spec.compute_weak_subjectivity_period(state)
@@ -101,7 +101,7 @@ def test_compute_weak_subjectivity_period_scaled(spec, state):
     t = spec.get_total_active_balance(state)
     consolidation_churn = spec.get_consolidation_churn_limit(state)
     expected_delta = 2 * exit_churn // 3 + activation_churn // 3 + consolidation_churn
-    expected_epochs = spec.SAFETY_DECAY * t // (2 * expected_delta * 100)
+    expected_epochs = spec.Epoch(spec.SAFETY_DECAY * t // (2 * expected_delta * 100))
     expected_wsp = spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + expected_epochs
 
     actual_wsp = spec.compute_weak_subjectivity_period(state)

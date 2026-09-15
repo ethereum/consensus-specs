@@ -3,20 +3,20 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Bellatrix](#modifications-in-bellatrix)
-  - [Types](#types)
-  - [Constants](#constants)
-  - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-    - [Transitioning the gossip](#transitioning-the-gossip)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
-      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+- [Types](#types)
+  - [New `PayloadValidationStatus`](#new-payloadvalidationstatus)
+- [Constants](#constants)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+  - [Transitioning the gossip](#transitioning-the-gossip)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+    - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
 - [Gossipsub](#gossipsub)
   - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
   - [Req/Resp](#reqresp)
@@ -39,15 +39,18 @@ document" and "Altair document" respectively, hereafter. Readers should
 understand the Phase 0 and Altair documents and use them as a basis to
 understand the changes outlined in this document.
 
-## Modifications in Bellatrix
+## Types
 
-### Types
+### New `PayloadValidationStatus`
 
-| Name                      | SSZ equivalent | Description                                     |
-| ------------------------- | -------------- | ----------------------------------------------- |
-| `PayloadValidationStatus` | `Uint8`        | Execution payload validation status for a block |
+```python
+class PayloadValidationStatus(Uint8):
+    """
+    The status of an execution payload's validation by the execution engine.
+    """
+```
 
-### Constants
+## Constants
 
 | Name                           | Value                        |
 | ------------------------------ | ---------------------------- |
@@ -55,9 +58,9 @@ understand the changes outlined in this document.
 | `PAYLOAD_STATUS_INVALIDATED`   | `PayloadValidationStatus(1)` |
 | `PAYLOAD_STATUS_NOT_VALIDATED` | `PayloadValidationStatus(2)` |
 
-### Helpers
+## Helpers
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
@@ -71,11 +74,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Bellatrix to support upgraded types.
 
-#### Topics and messages
+### Topics and messages
 
 Topics follow the same specification as in prior upgrades. All topics remain
 stable except the beacon block topic which is updated with the modified type.
@@ -95,25 +98,23 @@ are given in this table:
 Note that the `ForkDigestValue` path segment of the topic separates the old and
 the new `beacon_block` topics.
 
-##### Global topics
+#### Global topics
 
 Bellatrix changes the type of the global beacon block topic.
 
-###### Modified `beacon_block`
+##### Modified `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
-to all nodes on the networks. Signed blocks are sent in their entirety. The
-`state` parameter is the head state.
+to all nodes on the networks. Signed blocks are sent in their entirety.
 
 *Note*: Blocks with execution enabled will be permitted to propagate regardless
 of the validity of the execution payload. This prevents network segregation
-between [optimistic](../../sync/optimistic.md) and non-optimistic nodes.
+between [optimistic](./optimistic-sync.md) and non-optimistic nodes.
 
 ```python
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     # [New in Bellatrix]
@@ -126,9 +127,14 @@ def validate_beacon_block_gossip(
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
 
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+    if is_future_slot(store, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -138,9 +144,33 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
-    if (block.proposer_index, block.slot) in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [New in Bellatrix]
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if block.parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[block.parent_root]
+
+    # [New in Bellatrix]
+    if block.parent_root not in store.block_states:
+        # The parent has no post-state, so `is_execution_enabled` uses the
+        # justified checkpoint (always imported). Merge-complete is monotonic.
+        if is_execution_enabled(store.block_states[store.justified_checkpoint.root], block.body):
+            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+                # [REJECT] The block's parent failed validation and its execution payload is optimistic
+                raise GossipReject("block's parent is invalid and its payload is optimistic")
+
+            # [IGNORE] The block's parent failed validation and its execution payload is processed
+            raise GossipIgnore("block's parent is invalid and its payload is processed")
+
+        # [Modified in Bellatrix]
+        # [REJECT] The block's parent passes validation
+        raise GossipReject("block's parent is invalid and execution is not enabled")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -153,47 +183,24 @@ def validate_beacon_block_gossip(
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
-    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until parent is retrieved)
-    if block.parent_root not in store.blocks:
-        raise GossipIgnore("block's parent has not been seen")
-
     # [New in Bellatrix]
     if is_execution_enabled(state, block.body):
         # [REJECT] The block's execution payload timestamp is correct with respect to the slot
         if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
             raise GossipReject("incorrect execution payload timestamp")
 
-        parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
-        if block.parent_root in block_payload_statuses:
-            parent_payload_status = block_payload_statuses[block.parent_root]
-
-        if block.parent_root not in store.block_states:
-            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
-                # [REJECT] The block's parent failed validation and its execution payload is optimistic
-                raise GossipReject("block's parent is invalid and its payload is optimistic")
-
-            # [IGNORE] The block's parent failed validation and its execution payload is processed
-            raise GossipIgnore("block's parent is invalid and its payload is processed")
-
         # [IGNORE] The block's parent passed validation but its execution payload is invalid
         if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
             raise GossipIgnore("block's parent is valid and its payload is invalid")
-
-    # [REJECT] The block's parent passes validation
-    elif block.parent_root not in store.block_states:
-        # [Modified in Bellatrix]
-        raise GossipReject("block's parent is invalid and execution is not enabled")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized checkpoint is an ancestor of the block
-    checkpoint_block = get_checkpoint_block(
-        store, block.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
@@ -205,18 +212,18 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # Mark this block as seen
-    seen.proposer_slots.add((block.proposer_index, block.slot))
+    seen.proposer_slots.add(proposer_slot_key)
 ```
 
-#### Transitioning the gossip
+### Transitioning the gossip
 
 See gossip transition details found in the
 [Altair document](../altair/p2p-interface.md#transitioning-the-gossip) for
 details on how to handle transitioning gossip topics.
 
-### The Req/Resp domain
+## The Req/Resp domain
 
-Non-faulty, [optimistic](../../sync/optimistic.md) nodes may send blocks which
+Non-faulty, [optimistic](./optimistic-sync.md) nodes may send blocks which
 result in an INVALID response from an execution engine. To prevent network
 segregation between optimistic and non-optimistic nodes, transmission of an
 INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
@@ -224,9 +231,9 @@ down-scored or disconnected. Transmission of a block which is invalid due to any
 consensus-layer rules (i.e., *not* execution-layer rules) MAY result in
 down-scoring or disconnection.
 
-#### Messages
+### Messages
 
-##### BeaconBlocksByRange v2
+#### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
@@ -241,7 +248,7 @@ the `context` enum to specify Bellatrix block type.
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
-##### BeaconBlocksByRoot v2
+#### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 

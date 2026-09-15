@@ -9,6 +9,8 @@ from .constants import (
     EIP7716,
     EIP8025,
     EIP8148,
+    EIP8205,
+    EIP8321,
     ELECTRA,
     FULU,
     GLOAS,
@@ -29,18 +31,13 @@ PREVIOUS_FORK_OF = {
     EIP7716: HEZE,
     EIP8025: GLOAS,
     EIP8148: HEZE,
+    EIP8205: HEZE,
+    EIP8321: HEZE,
 }
 
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
 
-IGNORE_SPEC_FILES = ["specs/phase0/deposit-contract.md"]
-
-EXTRA_SPEC_FILES = {BELLATRIX: "sync/optimistic.md"}
-
-DEFAULT_ORDER = (
-    "beacon-chain",
-    "polynomial-commitments",
-)
+DEFAULT_ORDER = ("beacon-chain",)
 
 
 def is_post_fork(a, b) -> bool:
@@ -88,10 +85,7 @@ def get_md_doc_paths(spec_fork: str) -> str:
                     filepath = str(Path(root) / filename)
                     filepaths.append(filepath)
                 for filepath in sorted(filepaths, key=sort_key):
-                    if filepath.endswith(".md") and filepath not in IGNORE_SPEC_FILES:
+                    if filepath.endswith(".md"):
                         md_doc_paths += filepath + "\n"
-            # Append extra files if any
-            if fork in EXTRA_SPEC_FILES:
-                md_doc_paths += EXTRA_SPEC_FILES[fork] + "\n"
 
     return md_doc_paths

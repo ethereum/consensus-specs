@@ -37,7 +37,7 @@ def run_test_pending_deposits_activation_churn(spec, state):
 
     assert state.balances[index] == pre_balance + amount
     assert state.deposit_balance_to_consume == 0
-    assert state.pending_deposits == []
+    assert state.pending_deposits == spec.PendingDeposits()
 
 
 @with_gloas_and_later
@@ -110,4 +110,4 @@ def test_deposit_above_activation_churn_not_processed(spec, state):
 
     assert state.balances[index] == pre_balance
     assert state.deposit_balance_to_consume == activation_churn
-    assert state.pending_deposits == [prepare_pending_deposit(spec, index, amount)]
+    assert list(state.pending_deposits) == [prepare_pending_deposit(spec, index, amount)]

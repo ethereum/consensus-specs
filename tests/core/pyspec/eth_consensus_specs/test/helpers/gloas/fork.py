@@ -10,7 +10,10 @@ GLOAS_FORK_TEST_META_TAGS = {
 def run_fork_test(post_spec, pre_state):
     yield "pre", pre_state
 
-    post_state = post_spec.upgrade_to_gloas(pre_state)
+    # The upgrade keeps the collections it is handed rather than copying
+    # them, so it is given a copy: the pre-state is the test's own, and is
+    # still yielded above as what the fork started from.
+    post_state = post_spec.upgrade_to_gloas(pre_state.copy())
 
     # Stable fields
     stable_fields = [
@@ -84,6 +87,11 @@ def run_fork_test(post_spec, pre_state):
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.GLOAS_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
+
+    # `process_execution_payload_bid` returns this slot as the `parent_slot` of
+    # the first Gloas block, which is where `process_attestation` looks up the
+    # availability of the attested payload.
+    assert post_state.latest_execution_payload_bid.slot == pre_state.latest_block_header.slot
 
     yield "post", post_state
 

@@ -55,7 +55,7 @@ def compute_sync_committee_inclusion_reward(spec, state):
         total_base_rewards
         * spec.SYNC_REWARD_WEIGHT
         // spec.WEIGHT_DENOMINATOR
-        // spec.SLOTS_PER_EPOCH
+        // spec.Uint64(spec.SLOTS_PER_EPOCH)
     )
     return max_participant_rewards // spec.SYNC_COMMITTEE_SIZE
 
@@ -82,7 +82,7 @@ def compute_sync_committee_participant_reward_and_penalty(
 def compute_sync_committee_proposer_reward(spec, state, committee_indices, committee_bits):
     proposer_reward_denominator = spec.WEIGHT_DENOMINATOR - spec.PROPOSER_WEIGHT
     inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
-    participant_number = committee_bits.count(True)
+    participant_number = spec.get_set_bit_count(committee_bits)
     participant_reward = inclusion_reward * spec.PROPOSER_WEIGHT // proposer_reward_denominator
     return spec.Gwei(participant_reward * participant_number)
 
@@ -160,7 +160,7 @@ def _build_block_for_next_slot_with_sync_participation(
 ):
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
-        sync_committee_bits=committee_bits,
+        sync_committee_bits=spec.SyncCommitteeBits(data=committee_bits),
         sync_committee_signature=compute_aggregate_sync_committee_signature(
             spec,
             state,

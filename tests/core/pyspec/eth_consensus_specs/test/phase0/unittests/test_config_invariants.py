@@ -84,7 +84,7 @@ def test_time(spec, state):
 @spec_state_test
 def test_networking(spec, state):
     assert spec.config.SUBNETS_PER_NODE <= spec.config.ATTESTATION_SUBNET_COUNT
-    node_id_length = spec.NodeID(1).type_byte_length()  # in bytes
+    node_id_length = spec.NodeID(1).get_byte_length()  # in bytes
     assert node_id_length * 8 == spec.NODE_ID_BITS  # in bits
 
 

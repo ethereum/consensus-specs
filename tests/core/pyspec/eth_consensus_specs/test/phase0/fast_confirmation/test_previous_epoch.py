@@ -333,7 +333,9 @@ class PreviousEpochTestBuilder:
         def include_att_fn(block, attestation) -> bool:
             epoch = spec.compute_epoch_at_slot(block.slot)
             graffiti = graffiti_to_str(block.body.graffiti)
-            no_justification_boundary = epoch * spec.SLOTS_PER_EPOCH + spec.SLOTS_PER_EPOCH * 2 // 3
+            no_justification_boundary = (
+                spec.Uint64(epoch) * spec.SLOTS_PER_EPOCH + spec.SLOTS_PER_EPOCH * 2 // 3
+            )
 
             if epoch == spec.GENESIS_EPOCH:
                 return True
@@ -478,7 +480,9 @@ class PreviousEpochTestBuilder:
         def include_att_fn(block, attestation) -> bool:
             epoch = spec.compute_epoch_at_slot(block.slot)
             graffiti = graffiti_to_str(block.body.graffiti)
-            no_justification_boundary = epoch * spec.SLOTS_PER_EPOCH + spec.SLOTS_PER_EPOCH * 2 // 3
+            no_justification_boundary = (
+                spec.Uint64(epoch) * spec.SLOTS_PER_EPOCH + spec.SLOTS_PER_EPOCH * 2 // 3
+            )
 
             if epoch == spec.GENESIS_EPOCH:
                 return True

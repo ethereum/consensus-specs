@@ -2,9 +2,10 @@ import functools
 import inspect
 from collections.abc import Generator, Iterable
 
+from ssz.ssz_base import SSZType
+
 from eth_consensus_specs.test.helpers.typing import SpecForkName
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
-from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 MultiPhaseResult = dict[SpecForkName, list]
 
@@ -27,13 +28,13 @@ def _yield_generator_post_processing(vector: Iterable) -> Generator:
         (key, value) = data
         if value is None:
             continue
-        if isinstance(value, View):
+        if isinstance(value, SSZType):
             yield key, "ssz", serialize(value)
         elif isinstance(value, bytes):
             yield key, "ssz", value
-        elif isinstance(value, list) and all(isinstance(el, View | bytes) for el in value):
+        elif isinstance(value, list) and all(isinstance(el, SSZType | bytes) for el in value):
             for i, el in enumerate(value):
-                if isinstance(el, View):
+                if isinstance(el, SSZType):
                     yield f"{key}_{i}", "ssz", serialize(el)
                 elif isinstance(el, bytes):
                     yield f"{key}_{i}", "ssz", el

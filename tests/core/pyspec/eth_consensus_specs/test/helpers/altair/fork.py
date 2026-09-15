@@ -4,12 +4,16 @@ ALTAIR_FORK_TEST_META_TAGS = {
 
 
 def run_fork_test(post_spec, pre_state):
-    # Clean up state to be more realistic
-    pre_state.current_epoch_attestations = []
+    # Clean up state to be more realistic. Only the post-fork spec is in scope
+    # here, so the empty list takes its type from the field it replaces.
+    pre_state.current_epoch_attestations = type(pre_state.current_epoch_attestations)()
 
     yield "pre", pre_state
 
-    post_state = post_spec.upgrade_to_altair(pre_state)
+    # The upgrade keeps the collections it is handed rather than copying
+    # them, so it is given a copy: the pre-state is the test's own, and is
+    # still yielded above as what the fork started from.
+    post_state = post_spec.upgrade_to_altair(pre_state.copy())
 
     # Stable fields
     stable_fields = [

@@ -20,6 +20,7 @@ from eth_consensus_specs.test.helpers.gloas.fork import (
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_epoch_via_block,
+    next_slots,
 )
 from eth_consensus_specs.test.utils import with_meta_tags
 
@@ -57,6 +58,20 @@ def test_fork_next_epoch_with_block(spec, phases, state):
 def test_fork_many_next_epoch(spec, phases, state):
     for _ in range(3):
         next_epoch(spec, state)
+    yield from run_fork_test(phases[GLOAS], state)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_missed_slots_before_fork(spec, phases, state):
+    # Leave a gap between the last pre-fork block and the fork slot, so that the
+    # upgraded payload bid cannot inherit its slot from the slot before the fork
+    next_epoch_via_block(spec, state)
+    next_slots(spec, state, 3)
+    assert state.latest_block_header.slot > 0
+    assert state.slot > state.latest_block_header.slot + 1
     yield from run_fork_test(phases[GLOAS], state)
 
 

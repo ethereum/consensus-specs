@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
@@ -34,18 +34,18 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement Gloas.
 
-## Configuration
+## Configs
 
 ### Time parameters
 
-| Name                          | Value          | Unit         | Duration                  |
-| ----------------------------- | -------------- | ------------ | ------------------------- |
-| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                          | Value          | Duration                  |
+| ----------------------------- | -------------- | ------------------------- |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `Uint64(2500)` | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `Uint64(5000)` | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `Uint64(7500)` | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -67,7 +67,7 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    max_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD)
+    max_epoch = get_current_epoch(state) + MIN_SEED_LOOKAHEAD
     assert epoch <= max_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -144,7 +144,7 @@ def get_upcoming_proposal_slots(
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
     upcoming_proposal_slots = []
     for offset, proposer_index in enumerate(state.proposer_lookahead):
-        slot = Slot(current_epoch_start_slot + offset)
+        slot = current_epoch_start_slot + offset
         if slot <= state.slot:
             continue
         if validator_index == proposer_index:
@@ -212,8 +212,8 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
-    `should_build_on_full(store, head)` is true, otherwise
-    `state.latest_execution_payload_bid.parent_block_hash`.
+    `should_build_on_full(store, head, get_current_slot(store))` is true,
+    otherwise `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
   - The `bid.prev_randao` equals
     `get_randao_mix(state, get_current_epoch(state))`.
@@ -247,12 +247,12 @@ The `parent_execution_requests` field contains the execution requests from the
 parent's execution payload. The proposer constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
-  `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_build_on_full(store, head)` returns `True` (the proposer is
-  building on the parent's full payload), set `parent_execution_requests` to
-  `store.payloads[head.root].execution_requests`.
+  `parent_execution_requests` to `ExecutionRequests.empty()`.
+- If `should_build_on_full(store, head, get_current_slot(store))` returns `True`
+  (the proposer is building on the parent's full payload), set
+  `parent_execution_requests` to `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
-  `parent_execution_requests` to an empty `ExecutionRequests()`.
+  `parent_execution_requests` to `ExecutionRequests.empty()`.
 
 ##### Execution requests
 
@@ -261,13 +261,13 @@ deposit requests and builder exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
-    deposits = []
-    withdrawals = []
-    consolidations = []
+    deposits = DepositRequests()
+    withdrawals = WithdrawalRequests()
+    consolidations = ConsolidationRequests()
     # [New in Gloas:EIP8282]
-    builder_deposits = []
+    builder_deposits = BuilderDepositRequests()
     # [New in Gloas:EIP8282]
-    builder_exits = []
+    builder_exits = BuilderExitRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,
@@ -319,10 +319,11 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
 ##### ExecutionPayload
 
 *Note*: `prepare_execution_payload` is modified to build on the parent's full
-payload or its empty variant, as decided by `should_build_on_full(store, head)`,
-which determines the withdrawals source and the execution head for the new
-payload. When building on a full parent, `apply_parent_execution_payload` is
-called so that withdrawals are computed against the post-processing state.
+payload or its empty variant, as decided by
+`should_build_on_full(store, head, get_current_slot(store))`, which determines
+the withdrawals source and the execution head for the new payload. When building
+on a full parent, `apply_parent_execution_payload` is called so that withdrawals
+are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
@@ -340,10 +341,10 @@ def prepare_execution_payload(
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head):
+    if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
-        state = copy(state)
+        state = state.copy()
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
@@ -371,6 +372,8 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+        # [New in Gloas:EIP8070]
+        custody_columns=None,
     )
 ```
 
@@ -388,18 +391,16 @@ Some validators are selected to submit payload timeliness attestations.
 Validators should call `get_ptc_assignment` at the beginning of an epoch to be
 prepared to submit their PTC attestations during the next epoch.
 
-A validator should create and broadcast the `payload_attestation_message` to the
-global execution attestation subnet within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+A validator should create and broadcast the `payload_attestation_message` as
+soon as it has seen the execution payload envelope and blob data for the block,
+and no later than `get_payload_attestation_due_ms()` milliseconds into the slot.
 
 #### Constructing the `PayloadAttestationMessage`
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot. Follow the logic below to
-create the `payload_attestation_message` and broadcast to the global
-`payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+`PayloadAttestationMessage` for the current slot and broadcast it to the global
+`payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
@@ -413,6 +414,8 @@ The validator creates `payload_attestation_message` as follows:
   `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
   to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
+  Only set it to `False` once `get_payload_attestation_due_ms()` milliseconds
+  have elapsed, as the blob data may still arrive before then.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
@@ -445,9 +448,7 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[
-        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
-    ],
+    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob

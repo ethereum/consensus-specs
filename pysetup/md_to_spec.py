@@ -1,6 +1,5 @@
 import ast
 import contextlib
-import json
 import re
 import string
 from collections.abc import Iterator, Mapping
@@ -15,6 +14,40 @@ from marko.ext.gfm.elements import Table, TableCell, TableRow
 from marko.inline import CodeSpan
 
 from .typing import ProtocolDefinition, SpecObject, VariableDefinition
+
+COLLECTION_BASE_CLASSES = (
+    "BitList",
+    "BitVector",
+    "ByteList",
+    "ByteVector",
+    "List",
+    "ProgressiveBitList",
+    "ProgressiveList",
+    "Vector",
+)
+
+SCALAR_BASE_CLASSES = (
+    "Boolean",
+    "Byte",
+    "Bytes1",
+    "Bytes4",
+    "Bytes8",
+    "Bytes20",
+    "Bytes31",
+    "Bytes32",
+    "Bytes48",
+    "Bytes96",
+    "Uint8",
+    "Uint16",
+    "Uint32",
+    "Uint64",
+    "Uint128",
+    "Uint256",
+)
+
+# Calls a collection's bound may contain. Anything else is a spec helper, which
+# the generated specification defines after its types.
+BOUND_SAFE_CALLS = frozenset({"active_fields", "ceillog2", "floorlog2", *SCALAR_BASE_CLASSES})
 
 
 class MarkdownToSpec:
@@ -56,7 +89,6 @@ class MarkdownToSpec:
         """
         while (child := self._get_next_element()) is not None:
             self._process_child(child)
-        self._finalize_types()
         return self._build_spec_object()
 
     def _get_next_element(self) -> Element | None:
@@ -179,10 +211,27 @@ class MarkdownToSpec:
         if class_name != self.current_heading_name:
             raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
 
-        if parent_class == "ProgressiveContainer":
-            source = re.sub(
-                r"^(.*ProgressiveContainer.*)$", r"\1  # type: ignore", source, flags=re.MULTILINE
-            )
+        if parent_class in SCALAR_BASE_CLASSES and isinstance(cls.bases[0], ast.Name):
+            # Scalar aliases are handled as custom types, so that those used in
+            # the types of configurations, presets, and constants are defined
+            # before them in the generated specification.
+            self.spec["custom_types"][class_name] = parent_class
+            return
+        if parent_class in COLLECTION_BASE_CLASSES or parent_class == "ProgressiveContainer":
+            # A collection declares its bound in the class body, as `LIMIT`,
+            # `LENGTH`, or `ACTIVE_FIELDS`. Types whose bound comes from a
+            # helper function only appear in networking schemas. They cannot be
+            # compiled, since helpers are defined after types in the generated
+            # specification. Everything available before types is allowed:
+            # scalar constructors, the builtin int, and the math helpers.
+            if any(
+                isinstance(node, ast.Call)
+                and not (isinstance(node.func, ast.Name) and node.func.id in BOUND_SAFE_CALLS)
+                for statement in cls.body
+                if isinstance(statement, ast.Assign)
+                for node in ast.walk(statement)
+            ):
+                return
         else:
             assert parent_class is None or parent_class == "Container"
         self.spec["ssz_objects"][class_name] = source
@@ -207,14 +256,13 @@ class MarkdownToSpec:
                 if value.startswith(
                     (
                         "Uint",
-                        "Bitlist",
-                        "Bitvector",
+                        "BitList",
+                        "BitVector",
                         "ByteList",
                         "ByteVector",
                         "Bytes",
                         "List",
-                        "ProgressiveBitlist",
-                        "ProgressiveByteList",
+                        "ProgressiveBitList",
                         "ProgressiveList",
                         "Union",
                         "Vector",
@@ -258,8 +306,8 @@ class MarkdownToSpec:
 
             # It is a constant variable or a preset_dep_constant_vars
             else:
-                if name in ("ENDIANNESS", "KZG_ENDIANNESS"):
-                    # Deal with mypy Literal typing check
+                if name == "ENDIANNESS":
+                    # Deal with Literal typing check
                     value_def = _parse_value(name, value, type_hint="Final")
                 if any(k in value for k in self.preset) or any(
                     k in value for k in self.spec["preset_dep_constant_vars"]
@@ -432,16 +480,6 @@ class MarkdownToSpec:
                 )
             self._process_list_of_records_table(table_element, match.group(1).upper())
 
-    def _finalize_types(self) -> None:
-        """
-        Calls helper functions to update KZG setups if needed.
-        """
-        # Update KZG trusted setup if needed
-        if any("KZG_SETUP" in name for name in self.spec["constant_vars"]):
-            _update_constant_vars_with_kzg_setups(
-                self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
-            )
-
     def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
@@ -514,30 +552,6 @@ def _is_constant_id(name: str) -> bool:
 
 
 @cache
-def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], list[str]]:
-    trusted_setups_file_path = (
-        str(Path(__file__).parent.parent)
-        + "/presets/"
-        + preset_name
-        + "/trusted_setups/trusted_setup_4096.json"
-    )
-
-    with Path(trusted_setups_file_path).open() as f:
-        json_data = json.load(f)
-        trusted_setup_G1_monomial = json_data["g1_monomial"]
-        trusted_setup_G1_lagrange = json_data["g1_lagrange"]
-        trusted_setup_G2_monomial = json_data["g2_monomial"]
-
-    return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
-
-
-ALL_KZG_SETUPS = {
-    "minimal": _load_kzg_trusted_setups("minimal"),
-    "mainnet": _load_kzg_trusted_setups("mainnet"),
-}
-
-
-@cache
 def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> VariableDefinition:
     comment = None
     if name in ("ROOT_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_EXTENDED", "ROOTS_OF_UNITY_REDUCED"):
@@ -553,24 +567,6 @@ def _parse_value(name: str, typed_value: str, type_hint: str | None = None) -> V
 
     return VariableDefinition(
         type_name=type_name, value=typed_value[i + 1 : -1], comment=comment, type_hint=type_hint
-    )
-
-
-def _update_constant_vars_with_kzg_setups(
-    constant_vars: dict[str, VariableDefinition],
-    preset_dep_constant_vars: dict[str, VariableDefinition],
-    preset_name: str,
-) -> None:
-    comment = "noqa: E501"
-    kzg_setups = ALL_KZG_SETUPS[preset_name]
-    preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_MONOMIAL"].value, str(kzg_setups[0]), comment, None
-    )
-    preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"] = VariableDefinition(
-        preset_dep_constant_vars["KZG_SETUP_G1_LAGRANGE"].value, str(kzg_setups[1]), comment, None
-    )
-    constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
-        constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
     )
 
 

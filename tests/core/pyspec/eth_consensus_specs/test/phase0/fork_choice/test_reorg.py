@@ -114,7 +114,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     # add one block on chain z, which is not enough to justify c4
     attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
     block_z = build_empty_block_for_next_slot(spec, state)
-    block_z.body.attestations = [attestation]
+    block_z.body.attestations = spec.Attestations.of(attestation)
     signed_block_z = state_transition_and_sign_block(spec, state, block_z)
     signed_blocks_of_z.append(signed_block_z)
 
@@ -412,7 +412,7 @@ def _run_include_votes_of_another_empty_chain(
             (not is_justifying_previous_epoch)
             or (is_justifying_previous_epoch and attestations_for_y[0][0].data.slot == slot - 5)
         ):
-            block.body.attestations = attestations_for_y.pop(0)
+            block.body.attestations = spec.Attestations(data=attestations_for_y.pop(0))
         signed_block_z = state_transition_and_sign_block(spec, state, block)
         if signed_block_y != signed_block_z:
             yield from tick_and_add_block(spec, store, signed_block_z, test_steps)

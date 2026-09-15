@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL
+from eth_consensus_specs.utils.kzg import load_trusted_setup
 from tests.generators.compliance_runners.gen_base.pytest_support import (
     add_comptests_pytest_options,
     configure_generator_context,
@@ -34,6 +35,11 @@ def pytest_generate_tests(metafunc):
         enumerate_groups=enumerate_test_groups,
         base_dir=str(Path(__file__).parent),
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def trusted_setup():
+    load_trusted_setup()
 
 
 @pytest.fixture

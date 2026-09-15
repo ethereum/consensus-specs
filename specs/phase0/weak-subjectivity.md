@@ -5,8 +5,9 @@
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
 - [Types](#types)
+  - [`Ether`](#ether)
 - [Constants](#constants)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
@@ -37,9 +38,14 @@ This document uses data structures, constants, functions, and terminology from
 
 ## Types
 
-| Name    | SSZ Equivalent | Description        |
-| ------- | -------------- | ------------------ |
-| `Ether` | `Uint64`       | An amount in Ether |
+### `Ether`
+
+```python
+class Ether(Uint64):
+    """
+    An amount in Ether, the standard unit of currency on Ethereum.
+    """
+```
 
 ## Constants
 
@@ -47,7 +53,7 @@ This document uses data structures, constants, functions, and terminology from
 | ------------- | --------------- |
 | `ETH_TO_GWEI` | `Uint64(10**9)` |
 
-## Configuration
+## Configs
 
 | Name           | Value        |
 | -------------- | ------------ |

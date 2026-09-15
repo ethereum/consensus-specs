@@ -996,11 +996,12 @@ def test_is_one_confirmed_fails_large_validator_slashed(spec, state):
     # Build a block and attest with all validators, then slash the large one
     b_root = fcr.add_and_apply_block()
     fcr.attest()
-    fcr.next_slot()
     fcr.apply_attester_slashing(slashing_indices=[_large_validator_index])
+    fcr.next_slot()
 
     # Check precondition
-    assert store.latest_messages.get(_large_validator_index).root == b_root
+    assert fcr.head_root() == b_root
+    assert store.latest_messages.get(_large_validator_index) is None
     assert _large_validator_index in store.equivocating_indices
 
     # The block must not be confirmed
@@ -1046,11 +1047,12 @@ def test_is_one_confirmed_passes_large_validator_slashed(spec, state):
     # Build a block and attest with all validators, then slash the large one
     b_root = fcr.add_and_apply_block()
     fcr.attest()
-    fcr.next_slot()
     fcr.apply_attester_slashing(slashing_indices=[_large_validator_index])
+    fcr.next_slot()
 
     # Check precondition
-    assert store.latest_messages.get(_large_validator_index).root == b_root
+    assert fcr.head_root() == b_root
+    assert store.latest_messages.get(_large_validator_index) is None
     assert _large_validator_index in store.equivocating_indices
 
     # The block must be confirmed
@@ -1466,6 +1468,7 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
     curr_committee.discard(_consecutive_slots_val_idx)
     fcr.attest(attester_indices=curr_committee)
     fcr.next_slot()
+    fcr.run_fast_confirmation()
 
     # Check that _consecutive_slots_val_idx does not support parent block
     assert store.latest_messages.get(_consecutive_slots_val_idx).root != p_root

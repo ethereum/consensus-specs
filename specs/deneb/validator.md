@@ -4,6 +4,9 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
+- [Types](#types)
+  - [`Blobs`](#blobs)
+  - [`KZGProofs`](#kzgproofs)
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
@@ -37,6 +40,30 @@ updated [beacon-chain specifications of Deneb](./beacon-chain.md) are requisite
 for this document and used throughout. Please see related beacon-chain
 specifications before continuing and use them as a reference throughout.
 
+## Types
+
+### `Blobs`
+
+```python
+class Blobs(List[Blob]):
+    """
+    The blobs of a single beacon block.
+    """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
+```
+
+### `KZGProofs`
+
+```python
+class KZGProofs(List[KZGProof]):
+    """
+    A list of KZG proofs, one for each blob or cell being proven.
+    """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
+```
+
 ## Helpers
 
 ### `BlobsBundle`
@@ -46,9 +73,9 @@ specifications before continuing and use them as a reference throughout.
 ```python
 @dataclass
 class BlobsBundle:
-    commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    commitments: BlobKZGCommitments
+    proofs: KZGProofs
+    blobs: Blobs
 ```
 
 ### Modified `GetPayloadResponse`
@@ -171,14 +198,16 @@ def get_blob_sidecars(
     signed_block_header = compute_signed_block_header(signed_block)
     return [
         BlobSidecar(
-            index=index,
+            index=BlobIndex(index),
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],
             signed_block_header=signed_block_header,
-            kzg_commitment_inclusion_proof=compute_merkle_proof(
-                block.body,
-                get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
+            kzg_commitment_inclusion_proof=KZGCommitmentInclusionProof(
+                data=compute_merkle_proof(
+                    block.body,
+                    get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
+                )
             ),
         )
         for index, blob in enumerate(blobs)

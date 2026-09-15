@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Handlers](#handlers)
@@ -24,10 +24,7 @@ Unless stated explicitly, all prior functionality from
 
 ### `ExecutionEngine`
 
-*Note*: The `notify_forkchoice_updated` function is modified in the
-`ExecutionEngine` protocol at the Capella upgrade.
-
-#### `notify_forkchoice_updated`
+#### Modified `notify_forkchoice_updated`
 
 The only change made is to the `PayloadAttributes` container through the
 addition of `withdrawals`. Otherwise, `notify_forkchoice_updated` inherits all
@@ -72,6 +69,12 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     Run ``on_block`` upon receiving a new block.
     """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
@@ -90,8 +93,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
-    block_root = hash_tree_root(block)
+    state = store.block_states[block.parent_root].copy()
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block

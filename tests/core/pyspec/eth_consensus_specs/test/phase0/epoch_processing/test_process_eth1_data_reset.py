@@ -34,7 +34,7 @@ def test_eth1_vote_no_reset(spec, state):
 @spec_state_test
 def test_eth1_vote_reset(spec, state):
     # skip ahead to the end of the voting period
-    state.slot = (spec.EPOCHS_PER_ETH1_VOTING_PERIOD * spec.SLOTS_PER_EPOCH) - 1
+    state.slot = (spec.Uint64(spec.EPOCHS_PER_ETH1_VOTING_PERIOD) * spec.SLOTS_PER_EPOCH) - 1
     for _i in range(state.slot + 1):  # add a vote for each skipped slot.
         state.eth1_data_votes.append(
             spec.Eth1Data(

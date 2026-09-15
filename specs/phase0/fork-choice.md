@@ -4,8 +4,8 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
-  - [Configuration](#configuration)
+  - [Constants](#constants)
+  - [Configs](#configs)
     - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
     - [`ForkChoiceNode`](#forkchoicenode)
@@ -40,7 +40,7 @@
     - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
-      - [`is_not_epoch_boundary`](#is_not_epoch_boundary)
+      - [`is_shuffling_stable`](#is_shuffling_stable)
       - [`is_ffg_competitive`](#is_ffg_competitive)
       - [`is_finalization_ok`](#is_finalization_ok)
       - [`is_proposing_on_time`](#is_proposing_on_time)
@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`compute_shuffling_dependent_slot`](#compute_shuffling_dependent_slot)
       - [`get_shuffling_dependent_root`](#get_shuffling_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
@@ -115,13 +116,13 @@ handlers must not modify `store`.
    computation, space, or any other resource. A number of optimized alternatives
    can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Constant
+### Constants
 
 | Name           | Value           |
 | -------------- | --------------- |
 | `BASIS_POINTS` | `Uint64(10000)` |
 
-### Configuration
+### Configs
 
 | Name                                  | Value         |
 | ------------------------------------- | ------------- |
@@ -136,9 +137,9 @@ handlers must not modify `store`.
 
 #### Time parameters
 
-| Name                        | Value          | Unit         | Duration                   |
-| --------------------------- | -------------- | ------------ | -------------------------- |
-| `PROPOSER_REORG_CUTOFF_BPS` | `Uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
+| Name                        | Value          | Duration                   |
+| --------------------------- | -------------- | -------------------------- |
+| `PROPOSER_REORG_CUTOFF_BPS` | `Uint64(1667)` | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
 
@@ -192,12 +193,12 @@ class Store:
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Boolean] = field(default_factory=dict)
-    checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
-    unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock]
+    block_states: Dict[Root, BeaconState]
+    block_timeliness: Dict[Root, bool]
+    checkpoint_states: Dict[Checkpoint, BeaconState]
+    latest_messages: Dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: Dict[Root, Checkpoint]
 ```
 
 #### `get_forkchoice_store`
@@ -228,9 +229,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
+        block_timeliness={},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
+        latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
     )
 ```
@@ -246,7 +249,7 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
+    return GENESIS_SLOT + get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -285,8 +288,8 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
-    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
-    return Gwei((committee_weight * committee_percent) // 100)
+    committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
+    return (committee_weight * committee_percent) // 100
 ```
 
 #### `get_checkpoint_block`
@@ -340,7 +343,7 @@ def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState
 
 ```python
 def compute_proposer_score(state: BeaconState) -> Gwei:
-    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     return (committee_weight * PROPOSER_SCORE_BOOST) // 100
 ```
 
@@ -587,10 +590,10 @@ def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
-##### `is_not_epoch_boundary`
+##### `is_shuffling_stable`
 
 ```python
-def is_not_epoch_boundary(slot: Slot) -> bool:
+def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
 ```
 
@@ -623,11 +626,34 @@ def is_proposing_on_time(store: Store) -> bool:
 
 ##### `is_head_weak`
 
+*Note*: The function `is_head_weak` counts weight also from equivocating
+validators from the committees of the head slot. This ensures that the counted
+weight and the output of `is_head_weak` are monotonic: more attestations can
+only increase the weight and change the output from `True` to `False`, not
+vice-versa.
+
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
+    # Calculate weight threshold for weak head
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
-    head_weight = get_weight(store, ForkChoiceNode(root=head_root))
+
+    # Compute head weight including equivocations
+    head_state = store.block_states[head_root]
+    head_block = store.blocks[head_root]
+    epoch = compute_epoch_at_slot(head_block.slot)
+    head_node = ForkChoiceNode(root=head_root)
+    head_weight = get_attestation_score(store, head_node, justified_state)
+    for index in range(get_committee_count_per_slot(head_state, epoch)):
+        committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
+        head_weight += Gwei(
+            sum(
+                justified_state.validators[i].effective_balance
+                for i in committee
+                if i in store.equivocating_indices
+            )
+        )
+
     return head_weight < reorg_threshold
 ```
 
@@ -639,7 +665,7 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
     parent_root = store.blocks[root].parent_root
     parent_node = ForkChoiceNode(root=parent_root)
-    parent_weight = get_weight(store, parent_node)
+    parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
 ```
 
@@ -671,8 +697,8 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     # Only re-org the head block if it arrived later than the attestation deadline.
     head_late = is_head_late(store, head_node.root)
 
-    # Do not re-org on an epoch boundary.
-    not_epoch_boundary = is_not_epoch_boundary(slot)
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = is_shuffling_stable(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
@@ -700,7 +726,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        not_epoch_boundary,
+        shuffling_stable,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,
@@ -819,7 +845,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
-        base_state = copy(store.block_states[target.root])
+        base_state = store.block_states[target.root].copy()
         if base_state.slot < compute_start_slot_at_epoch(target.epoch):
             process_slots(base_state, compute_start_slot_at_epoch(target.epoch))
         store.checkpoint_states[target] = base_state
@@ -856,16 +882,21 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `compute_shuffling_dependent_slot`
+
+```python
+def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        return GENESIS_SLOT
+    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1
+```
+
 ##### `get_shuffling_dependent_root`
 
 ```python
 def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        # Genesis block parent
-        return Root()
-
     node = ForkChoiceNode(root=root)
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
     return get_ancestor(store, node, dependent_slot).root
 ```
 
@@ -907,11 +938,20 @@ def on_tick(store: Store, time: Uint64) -> None:
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+    """
     block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
+    pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -928,7 +968,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
-    block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
@@ -953,7 +992,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 ```python
 def on_attestation(store: Store, attestation: Attestation, is_from_block: bool = False) -> None:
     """
-    Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
+    Run ``on_attestation`` upon receiving a new attestation from either within a block or directly on the wire.
 
     An ``attestation`` that is asserted as invalid may be valid at a later time,
     consider scheduling it for later processing in such case.
@@ -980,7 +1019,7 @@ finalized checkpoint.
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:
     """
-    Run ``on_attester_slashing`` immediately upon receiving a new ``AttesterSlashing``
+    Run ``on_attester_slashing`` immediately upon receiving a new attester slashing
     from either within a block or directly on the wire.
     """
     attestation_1 = attester_slashing.attestation_1

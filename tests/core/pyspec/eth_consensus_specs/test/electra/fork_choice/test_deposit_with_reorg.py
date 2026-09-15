@@ -47,7 +47,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, signed=True
     )
     deposit_block = build_empty_block_for_next_slot(spec, state)
-    deposit_block.body.execution_requests.deposits = [deposit_request]
+    deposit_block.body.execution_requests.deposits = spec.DepositRequests(data=[deposit_request])
     deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
         spec, deposit_block
     )
@@ -61,7 +61,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         slot=deposit_block.slot,
     )
 
-    assert state.pending_deposits == [pending_deposit]
+    assert list(state.pending_deposits) == [pending_deposit]
 
     yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps)
 
@@ -72,7 +72,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     )
 
     # check new validator has been created
-    assert post_state.pending_deposits == []
+    assert post_state.pending_deposits == spec.PendingDeposits()
     new_validator = post_state.validators[len(post_state.validators) - 1]
     assert new_validator.pubkey == pending_deposit.pubkey
     assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
@@ -84,7 +84,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     prev_epoch_ancestor = store.blocks[prev_epoch_ancestor.parent_root]
     another_fork_state = store.block_states[prev_epoch_ancestor.hash_tree_root()].copy()
 
-    assert another_fork_state.pending_deposits == [pending_deposit]
+    assert list(another_fork_state.pending_deposits) == [pending_deposit]
 
     # skip a slot to create and process a fork block
     next_slot(spec, another_fork_state)
@@ -99,7 +99,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     )
 
     # check new validator has been created on another fork
-    assert post_state.pending_deposits == []
+    assert post_state.pending_deposits == spec.PendingDeposits()
     new_validator = post_state.validators[len(post_state.validators) - 1]
     assert new_validator.pubkey == pending_deposit.pubkey
     assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials

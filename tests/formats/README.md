@@ -48,7 +48,6 @@ Test formats:
 - [`operations`](./operations/README.md)
 - [`sanity`](./sanity/README.md)
 - [`shuffling`](./shuffling/README.md)
-- [`ssz_generic`](./ssz_generic/README.md)
 - [`ssz_static`](./ssz_static/README.md)
 - More formats are planned, see tracking issues for CI/testing
 

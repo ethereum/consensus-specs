@@ -6,7 +6,10 @@ from eth_utils import encode_hex
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_block,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import Bytes32
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_capella,
+)
+from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
 class PayloadStatusV1StatusAlias(Enum):
@@ -59,15 +62,13 @@ class MegaStore:
 def get_optimistic_store(spec, anchor_state, anchor_block):
     assert anchor_block.state_root == anchor_state.hash_tree_root()
 
-    opt_store = spec.OptimisticStore(
-        optimistic_roots=set(),
-        head_block_root=anchor_block.hash_tree_root(),
-    )
     anchor_block_root = anchor_block.hash_tree_root()
-    opt_store.blocks[anchor_block_root] = anchor_block.copy()
-    opt_store.block_states[anchor_block_root] = anchor_state.copy()
-
-    return opt_store
+    return spec.OptimisticStore(
+        optimistic_roots=set(),
+        head_block_root=anchor_block_root,
+        blocks={anchor_block_root: anchor_block.copy()},
+        block_states={anchor_block_root: anchor_state.copy()},
+    )
 
 
 def get_valid_flag_value(status: PayloadStatusV1Status) -> bool:
@@ -142,7 +143,7 @@ def add_optimistic_block(
     )
 
     # Update stores
-    is_optimistic_candidate = spec.is_optimistic_candidate_block(
+    is_optimistic_candidate = is_post_capella(spec) or spec.is_optimistic_candidate_block(
         mega_store.opt_store,
         current_slot=spec.get_current_slot(mega_store.fc_store),
         block=signed_block.message,

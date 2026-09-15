@@ -6,6 +6,10 @@ from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
 
 
+def get_max_voluntary_exits(spec):
+    return spec.MAX_VOLUNTARY_EXITS
+
+
 def prepare_signed_exits(spec, state, indices, fork_version=None):
     def create_signed_exit(index):
         voluntary_exit = spec.VoluntaryExit(

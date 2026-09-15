@@ -285,7 +285,9 @@ def convert_test_vector_to_events(test_vector):
     events = []
     current_time = None
     for time, (event_kind, data) in test_vector:
-        if time != current_time:
+        # Either side is still None before the first tick, and a time and a
+        # None cannot meet as operands, so the two cases are asked separately.
+        if (time is None) != (current_time is None) or (time is not None and time != current_time):
             current_time = time
             events.append(("tick", time, None))
         events.append((event_kind, data, None))

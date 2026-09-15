@@ -83,7 +83,9 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 
     # Compute slashed balance
     # 25% of 2 slots * (len(validators) // SLOTS_PER_EPOCH * effective_balance)
-    slashed_balance = 2 * (len(state.validators) // S * state.validators[0].effective_balance // 4)
+    slashed_balance = 2 * (
+        len(state.validators) // spec.Uint64(S) * state.validators[0].effective_balance // 4
+    )
 
     # Add a half of slashed balance back to the safety threshold
     # and check the support would be lower than the threshold

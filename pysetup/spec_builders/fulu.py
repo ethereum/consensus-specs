@@ -14,38 +14,11 @@ from eth_consensus_specs.electra import {preset_name} as electra
 """
 
     @classmethod
-    def classes(cls):
-        return """
-class PolynomialCoeff(list):
-    def __init__(self, coeffs: Sequence[BLSFieldElement]):
-        if len(coeffs) > FIELD_ELEMENTS_PER_EXT_BLOB:
-            raise ValueError("expected <= FIELD_ELEMENTS_PER_EXT_BLOB coeffs")
-        super().__init__(coeffs)
-
-
-class Coset(list):
-    def __init__(self, coeffs: Optional[Sequence[BLSFieldElement]] = None):
-        if coeffs is None:
-            coeffs = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_CELL
-        if len(coeffs) != FIELD_ELEMENTS_PER_CELL:
-            raise ValueError("expected FIELD_ELEMENTS_PER_CELL coeffs")
-        super().__init__(coeffs)
-
-
-class CosetEvals(list):
-    def __init__(self, evals: Optional[Sequence[BLSFieldElement]] = None):
-        if evals is None:
-            evals = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_CELL
-        if len(evals) != FIELD_ELEMENTS_PER_CELL:
-            raise ValueError("expected FIELD_ELEMENTS_PER_CELL coeffs")
-        super().__init__(evals)
-"""
-
-    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "BlobIdentifier",
             "BlobSidecar",
+            "KZGCommitmentInclusionProof",
         }
 
     @classmethod
@@ -57,6 +30,7 @@ class CosetEvals(list):
             "get_blob_sidecars",
             "get_eth1_pending_deposit_count",
             "get_eth1_vote",
+            "is_shuffling_stable",
             "process_deposit",
             "upgrade_to_electra",
             "validate_blob_sidecar_gossip",

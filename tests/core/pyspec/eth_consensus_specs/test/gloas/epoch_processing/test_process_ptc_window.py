@@ -1,13 +1,12 @@
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
-    with_phases,
+    with_gloas_and_later,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 @single_phase
 def test_process_ptc_window__shifts_all_epochs(spec, state):
@@ -25,8 +24,8 @@ def test_process_ptc_window__shifts_all_epochs(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 
     # After shift: [curr, next, new_next]
-    assert list(state.ptc_window[:SPE]) == curr_epoch_ptc
-    assert list(state.ptc_window[SPE : 2 * SPE]) == next_epoch_ptc
+    assert list(state.ptc_window[:SPE]) == list(curr_epoch_ptc)
+    assert list(state.ptc_window[SPE : 2 * SPE]) == list(next_epoch_ptc)
 
     # run_epoch_processing_with does not increment the slot, so do it manually
     state.slot += 1

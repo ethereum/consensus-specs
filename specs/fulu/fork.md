@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helpers](#helpers)
   - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
 - [Fork to Fulu](#fork-to-fulu)
@@ -16,7 +16,7 @@
 
 This document describes the process of the Fulu upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
@@ -31,17 +31,17 @@ Warning: this configuration is not definitive.
 
 ```python
 def initialize_proposer_lookahead(
-    state: electra.BeaconState,
-) -> Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]:
+    state: BeaconState,
+) -> ProposerLookahead:
     """
     Return the proposer indices for the full available lookahead starting from current epoch.
     Used to initialize the ``proposer_lookahead`` field in the beacon state at genesis and after forks.
     """
     current_epoch = get_current_epoch(state)
-    lookahead = []
+    lookahead: list[ValidatorIndex] = []
     for i in range(MIN_SEED_LOOKAHEAD + 1):
-        lookahead.extend(get_beacon_proposer_indices(state, Epoch(current_epoch + i)))
-    return lookahead
+        lookahead.extend(get_beacon_proposer_indices(state, current_epoch + i))
+    return ProposerLookahead(data=lookahead)
 ```
 
 ## Fork to Fulu
@@ -106,8 +106,11 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in Fulu:EIP7917]
-        proposer_lookahead=initialize_proposer_lookahead(pre),
+        proposer_lookahead=ProposerLookahead(),
     )
+
+    # [New in Fulu:EIP7917]
+    post.proposer_lookahead = initialize_proposer_lookahead(post)
 
     return post
 ```
