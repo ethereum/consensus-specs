@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from eth_consensus_specs.test.helpers.fork_choice import get_slot_start_time, get_store_time
-
 from .helpers import payload_attestation_to_messages
 
 
@@ -107,22 +105,18 @@ class MessageScheduler:
 
     def process_tick(self, time) -> list:
         applied_events = []
-        assert time >= get_store_time(self.spec, self.store)
-        while True:
-            next_slot_time = get_slot_start_time(
-                self.spec,
-                self.store.genesis_time,
-                self.spec.get_current_slot(self.store) + 1,
+        SLOT_DURATION_MS = self.spec.config.SLOT_DURATION_MS
+        assert time >= self.store.time
+        tick_slot = (time - self.store.genesis_time) * 1000 // SLOT_DURATION_MS
+        while self.spec.get_current_slot(self.store) < tick_slot:
+            previous_time = (
+                self.store.genesis_time
+                + (self.spec.get_current_slot(self.store) + 1) * SLOT_DURATION_MS // 1000
             )
-            if next_slot_time > time:
-                break
-            self.spec.on_tick(self.store, next_slot_time)
-            following_slot_time = get_slot_start_time(
-                self.spec,
-                self.store.genesis_time,
-                self.spec.get_current_slot(self.store) + 1,
+            self.spec.on_tick(self.store, previous_time)
+            applied_events.append(
+                ("tick", previous_time, self.spec.get_current_slot(self.store) < tick_slot)
             )
-            applied_events.append(("tick", next_slot_time, following_slot_time <= time))
             applied_events.extend(self.purge_queue())
         return applied_events
 

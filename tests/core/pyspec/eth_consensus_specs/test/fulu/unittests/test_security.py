@@ -7,7 +7,6 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import (
     MAINNET,
 )
-from eth_consensus_specs.test.helpers.fork_choice import get_slot_start_time_ms
 
 
 @with_fulu_and_later
@@ -28,5 +27,4 @@ def test_sampling_config(spec):
     bytes_per_slot = column_size_in_bytes * spec.config.SAMPLES_PER_SLOT
     # TODO: What is the bandwidth requirement?
     bandwidth_requirement = 10000  # bytes/s
-    slot_duration_ms = get_slot_start_time_ms(spec, 0, spec.GENESIS_SLOT + 1)
-    assert bytes_per_slot * 1000 // slot_duration_ms < bandwidth_requirement
+    assert bytes_per_slot * 1000 // spec.config.SLOT_DURATION_MS < bandwidth_requirement

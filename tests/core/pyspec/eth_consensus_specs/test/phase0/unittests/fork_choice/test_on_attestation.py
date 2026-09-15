@@ -5,10 +5,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.fork_choice import (
-    get_genesis_forkchoice_store,
-    get_slot_start_time,
-)
+from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -47,9 +44,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 @spec_state_test
 def test_on_attestation_current_epoch(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(
-        store, get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 2)
-    )
+    spec.on_tick(store, store.time + spec.config.SLOT_DURATION_MS * 2 // 1000)
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -68,12 +63,7 @@ def test_on_attestation_current_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_previous_epoch(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(
-        store,
-        get_slot_start_time(
-            spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH
-        ),
-    )
+    spec.on_tick(store, store.time + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000)
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -94,9 +84,7 @@ def test_on_attestation_past_epoch(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
 
     # move time forward 2 epochs
-    time = get_slot_start_time(
-        spec, store.genesis_time, spec.get_current_slot(store) + 2 * spec.SLOTS_PER_EPOCH
-    )
+    time = store.time + 2 * spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000
     spec.on_tick(store, time)
 
     # create and store block from 3 epochs ago
@@ -116,12 +104,7 @@ def test_on_attestation_past_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_mismatched_target_and_slot(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    spec.on_tick(
-        store,
-        get_slot_start_time(
-            spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH
-        ),
-    )
+    spec.on_tick(store, store.time + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000)
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -145,10 +128,7 @@ def test_on_attestation_mismatched_target_and_slot(spec, state):
 def test_on_attestation_inconsistent_target_and_head(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
     spec.on_tick(
-        store,
-        get_slot_start_time(
-            spec, store.genesis_time, spec.get_current_slot(store) + 2 * spec.SLOTS_PER_EPOCH
-        ),
+        store, store.time + 2 * spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000
     )
 
     # Create chain 1 as empty chain between genesis and start of 1st epoch
@@ -189,9 +169,7 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
 @spec_state_test
 def test_on_attestation_target_block_not_in_store(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(
-        spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH + 1
-    )
+    time = store.time + spec.config.SLOT_DURATION_MS * (spec.SLOTS_PER_EPOCH + 1) // 1000
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
@@ -213,9 +191,7 @@ def test_on_attestation_target_block_not_in_store(spec, state):
 @spec_state_test
 def test_on_attestation_target_checkpoint_not_in_store(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(
-        spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH + 1
-    )
+    time = store.time + spec.config.SLOT_DURATION_MS * (spec.SLOTS_PER_EPOCH + 1) // 1000
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
@@ -240,9 +216,7 @@ def test_on_attestation_target_checkpoint_not_in_store(spec, state):
 @spec_state_test
 def test_on_attestation_target_checkpoint_not_in_store_diff_slot(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(
-        spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH + 1
-    )
+    time = store.time + spec.config.SLOT_DURATION_MS * (spec.SLOTS_PER_EPOCH + 1) // 1000
     spec.on_tick(store, time)
 
     # move to two slots before next epoch to make target block one before an empty slot
@@ -269,9 +243,7 @@ def test_on_attestation_target_checkpoint_not_in_store_diff_slot(spec, state):
 @spec_state_test
 def test_on_attestation_beacon_block_not_in_store(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(
-        spec, store.genesis_time, spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH + 1
-    )
+    time = store.time + spec.config.SLOT_DURATION_MS * (spec.SLOTS_PER_EPOCH + 1) // 1000
     spec.on_tick(store, time)
 
     # move to immediately before next epoch to make block new target
@@ -300,7 +272,7 @@ def test_on_attestation_beacon_block_not_in_store(spec, state):
 @spec_state_test
 def test_on_attestation_future_epoch(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 3)
+    time = store.time + 3 * spec.config.SLOT_DURATION_MS // 1000
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -320,7 +292,7 @@ def test_on_attestation_future_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_future_block(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 5)
+    time = store.time + spec.config.SLOT_DURATION_MS * 5 // 1000
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -340,7 +312,7 @@ def test_on_attestation_future_block(spec, state):
 @spec_state_test
 def test_on_attestation_same_slot(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 1)
+    time = store.time + spec.config.SLOT_DURATION_MS // 1000
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -356,7 +328,7 @@ def test_on_attestation_same_slot(spec, state):
 @spec_state_test
 def test_on_attestation_invalid_attestation(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    time = get_slot_start_time(spec, store.genesis_time, spec.get_current_slot(store) + 3)
+    time = store.time + 3 * spec.config.SLOT_DURATION_MS // 1000
     spec.on_tick(store, time)
 
     block = build_empty_block_for_next_slot(spec, state)
