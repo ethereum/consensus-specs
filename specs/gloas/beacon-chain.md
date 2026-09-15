@@ -244,6 +244,7 @@ class Balances(ProgressiveList[Gwei]):
     The balances of all validators.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -293,6 +294,7 @@ class DepositRequests(ProgressiveList[DepositRequest]):
     The deposit requests pertaining to a single execution payload.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -305,6 +307,7 @@ class Deposits(ProgressiveList[Deposit]):
     The deposits included in a beacon block.
     """
 
+    # [Modified in Gloas]
     LIMIT = 0
 ```
 
@@ -317,6 +320,7 @@ class EpochParticipation(ProgressiveList[ParticipationFlags]):
     The participation flags of each validator for an epoch.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -329,6 +333,7 @@ class InactivityScores(ProgressiveList[Uint64]):
     Each validator's inactivity score, tracking missed timely target votes.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -341,6 +346,7 @@ class PendingConsolidations(ProgressiveList[PendingConsolidation]):
     The queue of consolidations awaiting processing.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -353,6 +359,7 @@ class PendingDeposits(ProgressiveList[PendingDeposit]):
     The queue of deposits awaiting processing.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -365,6 +372,7 @@ class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
     The queue of partial withdrawals awaiting processing.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -390,6 +398,7 @@ class Transaction(ProgressiveList[Byte]):
     envelope or a legacy RLP-encoded transaction.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -402,6 +411,7 @@ class Transactions(ProgressiveList[Transaction]):
     A list of execution-layer transactions.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
@@ -414,6 +424,7 @@ class Validators(ProgressiveList[Validator]):
     The validator registry.
     """
 
+    # [Modified in Gloas:EIP7688]
     LIMIT = None
 ```
 
