@@ -183,14 +183,17 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
 
 #### New `compute_slot_range_duration_ms`
 
+*Note*: The genesis time cancels in the difference, so it is passed as zero.
+
 ```python
 def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
     """
     Return the duration of ``[start_slot, end_slot)`` in milliseconds.
     """
     assert start_slot <= end_slot
-    start_time_ms = compute_slot_start_time_ms(Uint64(0), start_slot)
-    end_time_ms = compute_slot_start_time_ms(Uint64(0), end_slot)
+    genesis_time = Uint64(0)
+    start_time_ms = compute_slot_start_time_ms(genesis_time, start_slot)
+    end_time_ms = compute_slot_start_time_ms(genesis_time, end_slot)
     return end_time_ms - start_time_ms
 ```
 
