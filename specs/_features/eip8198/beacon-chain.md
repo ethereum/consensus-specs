@@ -9,6 +9,7 @@
   - [Slot duration schedule](#slot-duration-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
+    - [New `milliseconds_to_seconds`](#new-milliseconds_to_seconds)
     - [New `SlotTimingParameters`](#new-slottimingparameters)
     - [New `get_slot_timing_parameters`](#new-get_slot_timing_parameters)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
@@ -105,6 +106,16 @@ transition, so reaching a lower target requires advance coordination.
 
 ### Misc
 
+#### New `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
+    """
+    Convert milliseconds to seconds, discarding any remainder.
+    """
+    return milliseconds // 1000
+```
+
 #### New `SlotTimingParameters`
 
 ```python
@@ -162,7 +173,7 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     Return the Unix time in milliseconds at the start of ``slot``.
     """
     end_slot = slot
-    time_ms = genesis_time * 1000
+    time_ms = seconds_to_milliseconds(genesis_time)
     for entry in reversed(SLOT_DURATION_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         if entry_slot < end_slot:
@@ -179,7 +190,7 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     """
     Return the slot at Unix time ``time_ms``.
     """
-    assert time_ms >= genesis_time * 1000
+    assert time_ms >= seconds_to_milliseconds(genesis_time)
     for entry in reversed(SLOT_DURATION_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         entry_time_ms = compute_slot_start_time_ms(genesis_time, entry_slot)
@@ -214,8 +225,8 @@ duration change.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    # [Modified in EIP8198]
-    return compute_slot_start_time_ms(state.genesis_time, slot) // 1000
+    time_ms = compute_slot_start_time_ms(state.genesis_time, slot)
+    return milliseconds_to_seconds(time_ms)
 ```
 
 ### Beacon state accessors
