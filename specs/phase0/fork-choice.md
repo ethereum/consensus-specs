@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`compute_shuffling_lookahead_start_slot`](#compute_shuffling_lookahead_start_slot)
       - [`compute_shuffling_dependent_slot`](#compute_shuffling_dependent_slot)
       - [`get_shuffling_dependent_root`](#get_shuffling_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
@@ -881,13 +882,20 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `compute_shuffling_lookahead_start_slot`
+
+```python
+def compute_shuffling_lookahead_start_slot(epoch: Epoch) -> Slot:
+    lookahead_epoch = saturating_sub(epoch, MIN_SEED_LOOKAHEAD)
+    return compute_start_slot_at_epoch(lookahead_epoch)
+```
+
 ##### `compute_shuffling_dependent_slot`
 
 ```python
 def compute_shuffling_dependent_slot(epoch: Epoch) -> Slot:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        return GENESIS_SLOT
-    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    return saturating_sub(lookahead_start_slot, 1)
 ```
 
 ##### `get_shuffling_dependent_root`
