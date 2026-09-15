@@ -13,14 +13,20 @@ from eth_consensus_specs.heze import {preset_name} as heze
 """
 
     @classmethod
-    def deprecate_functions(cls) -> set[str]:
+    def deprecate_constants(cls) -> set[str]:
         return {
-            "on_tick_per_slot",
-            "get_slot_component_duration_ms",
+            "BASIS_POINTS",
         }
 
     @classmethod
     def deprecate_config_vars(cls) -> set[str]:
         return {
             "SLOT_DURATION_MS",
+        }
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "on_tick_per_slot",
+            "get_slot_component_duration_ms",
         }

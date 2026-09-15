@@ -376,8 +376,10 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     """
     Return the slot at Unix time ``time_ms``.
     """
-    assert time_ms >= genesis_time * 1000
-    return Slot(GENESIS_SLOT + (time_ms - genesis_time * 1000) // SLOT_DURATION_MS)
+    genesis_time_ms = seconds_to_milliseconds(genesis_time)
+    time_since_genesis_ms = time_ms - genesis_time_ms
+    slots_since_genesis = time_since_genesis_ms // SLOT_DURATION_MS
+    return GENESIS_SLOT + slots_since_genesis
 ```
 
 #### `is_future_slot`
@@ -408,9 +410,8 @@ def is_future_epoch(
     Check if the given epoch is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    current_slot = compute_slot_at_time_ms(
-        store.genesis_time, current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    )
+    max_current_time_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    current_slot = compute_slot_at_time_ms(store.genesis_time, max_current_time_ms)
     return compute_epoch_at_slot(current_slot) < epoch
 ```
 

@@ -9,7 +9,6 @@
   - [Slot duration schedule](#slot-duration-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
-    - [New `milliseconds_to_seconds`](#new-milliseconds_to_seconds)
     - [New `SlotTimingParameters`](#new-slottimingparameters)
     - [New `get_slot_timing_parameters`](#new-get_slot_timing_parameters)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
@@ -105,16 +104,6 @@ transition, so reaching a lower target requires advance coordination.
 ## Helpers
 
 ### Misc
-
-#### New `milliseconds_to_seconds`
-
-```python
-def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
-    """
-    Convert milliseconds to seconds, discarding any remainder.
-    """
-    return milliseconds // 1000
-```
 
 #### New `SlotTimingParameters`
 

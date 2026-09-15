@@ -34,6 +34,7 @@
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`get_latest_message_epoch`](#get_latest_message_epoch)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
@@ -546,6 +547,16 @@ def seconds_to_milliseconds(seconds: Uint64) -> Uint64:
     if seconds > UINT64_MAX // 1000:
         return UINT64_MAX
     return seconds * 1000
+```
+
+#### `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
+    """
+    Convert milliseconds to seconds, discarding any remainder.
+    """
+    return milliseconds // 1000
 ```
 
 #### `get_slot_component_duration_ms`
