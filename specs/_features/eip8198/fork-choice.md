@@ -35,7 +35,7 @@
 
 ## Introduction
 
-EIP-8198 makes the slot duration change per `SLOT_DURATION_SCHEDULE`. Intra-slot
+EIP-8198 makes the slot duration change per `SLOT_TIMING_SCHEDULE`. Intra-slot
 deadlines are read from the schedule entry in effect at a duty's slot, so the
 deadline helpers gain a `slot` parameter; the genesis entry supplies the
 baseline deadlines. The mapping between wall-clock time and slot number becomes

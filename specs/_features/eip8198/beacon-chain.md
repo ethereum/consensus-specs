@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-  - [Slot duration schedule](#slot-duration-schedule)
+  - [Slot timing schedule](#slot-timing-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
     - [New `SlotTimingParameters`](#new-slottimingparameters)
@@ -54,10 +54,10 @@ counts, so their wall-clock spans scale with the slot duration.
 
 ## Configuration
 
-### Slot duration schedule
+### Slot timing schedule
 
 The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favour
-of `SLOT_DURATION_SCHEDULE`.
+of `SLOT_TIMING_SCHEDULE`.
 
 *[New in EIP8198]* This schedule defines the slot duration and intra-slot
 deadlines. It MUST begin at `GENESIS_EPOCH`, with the historical slot duration
@@ -86,7 +86,7 @@ upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
 proposer preferences. The usual gas-limit adjustment rule applies at the
 transition, so reaching a lower target requires advance coordination.
 
-<!-- list-of-records:slot_duration_schedule[0] -->
+<!-- list-of-records:slot_timing_schedule[0] -->
 
 | Name                         |           Value |
 | ---------------------------- | --------------: |
@@ -128,7 +128,7 @@ def get_slot_timing_parameters(epoch: Epoch) -> SlotTimingParameters:
     """
     Return the slot timing parameters in effect at ``epoch``.
     """
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
+    for entry in reversed(SLOT_TIMING_SCHEDULE):
         if epoch >= entry["EPOCH"]:
             break
     return SlotTimingParameters(
@@ -163,7 +163,7 @@ def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
     end_slot = slot
     time_ms = seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
+    for entry in reversed(SLOT_TIMING_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         if entry_slot < end_slot:
             slots = end_slot - entry_slot
@@ -180,7 +180,7 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     assert time_ms >= seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
+    for entry in reversed(SLOT_TIMING_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         entry_time_ms = compute_slot_start_time_ms(genesis_time, entry_slot)
         if time_ms >= entry_time_ms:
