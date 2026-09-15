@@ -5,7 +5,10 @@ from random import Random
 from rlp import encode, Serializable
 from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLPList
 
-from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.block import (
+    build_empty_block,
+    build_empty_block_for_next_slot,
+)
 from eth_consensus_specs.test.helpers.execution_payload import compute_el_block_hash
 from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
@@ -13,7 +16,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
-from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 from eth_consensus_specs.utils import kzg
 
 # Scalar field modulus of BLS12-381; a canonical field element is in [0, BLS_MODULUS).
@@ -105,17 +107,17 @@ def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
     return opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_max_blob_count(spec, state):
+def get_max_blob_count(spec, slot):
     if is_post_fulu(spec):
-        return spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block
+        return spec.get_blob_parameters(spec.compute_epoch_at_slot(slot)).max_blobs_per_block
     elif is_post_electra(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     else:
         return spec.config.MAX_BLOBS_PER_BLOCK
 
 
-def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
-    block = build_empty_block_for_next_slot(spec, state)
+def add_blobs_to_block(spec, state, block, rng: Random | None = None, blob_count=1):
+    """Populate a block with blob data."""
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
@@ -145,24 +147,31 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
             spec, block.body.execution_payload, state
         )
         block.body.blob_kzg_commitments = spec.BlobKZGCommitments(data=blob_kzg_commitments)
+    return blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def build_block_with_blobs(spec, state, rng: Random | None = None, blob_count=1, slot=None):
+    """Build an unsigned block with blobs for ``slot``."""
+    block = build_empty_block(spec, state, slot=slot)
+    blobs, blob_kzg_commitments, blob_kzg_proofs = add_blobs_to_block(
+        spec, state, block, rng=rng, blob_count=blob_count
+    )
     return block, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
-def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
-    block, blobs, blob_kzg_commitments, blob_kzg_proofs = get_block_with_blob(
-        spec, state, rng=rng, blob_count=blob_count
+def build_block_with_blobs_for_next_slot(spec, state, rng: Random | None = None, blob_count=1):
+    """Build an unsigned block with blobs for the next slot."""
+    block = build_empty_block_for_next_slot(spec, state)
+    blobs, blob_kzg_commitments, blob_kzg_proofs = add_blobs_to_block(
+        spec, state, block, rng=rng, blob_count=blob_count
     )
+    return block, blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def get_data_column_sidecars(spec, signed_block, blobs):
+    """Build data column sidecars from a signed block and its blobs."""
     cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
-
-    # We need a signed block to call `get_data_column_sidecars_from_block`
-    signed_block = state_transition_and_sign_block(spec, state, block)
-
-    if is_post_gloas(spec):
-        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
-    else:
-        # For Fulu and earlier, use 2-parameter version
-        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
-    return block, blobs, blob_kzg_proofs, signed_block, sidecars, blob_kzg_commitments
+    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
 
 
 def make_partial_data_column_group_id(spec, sidecar):

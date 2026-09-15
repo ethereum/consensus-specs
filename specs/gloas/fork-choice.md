@@ -686,13 +686,16 @@ def verify_execution_payload_envelope(
     assert payload.parent_hash == state.latest_block_hash
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+
+    # Compute versioned hashes
+    versioned_hashes = VersionedHashes()
+    for commitment in bid.blob_kzg_commitments:
+        versioned_hashes.append(kzg_commitment_to_versioned_hash(commitment))
+
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
-            versioned_hashes=[
-                kzg_commitment_to_versioned_hash(commitment)
-                for commitment in bid.blob_kzg_commitments
-            ],
+            versioned_hashes=versioned_hashes,
             parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )

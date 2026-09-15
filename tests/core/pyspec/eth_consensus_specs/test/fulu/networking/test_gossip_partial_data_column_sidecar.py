@@ -8,13 +8,15 @@ from eth_consensus_specs.test.context import (
     with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
-    get_block_with_blob_and_sidecars,
+    build_block_with_blobs,
+    build_block_with_blobs_for_next_slot,
+    get_data_column_sidecars,
     get_max_blob_count,
     make_partial_data_column_group_id,
     make_partial_header,
     make_partial_sidecar,
 )
-from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
@@ -30,21 +32,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.test.helpers.state import (
-    state_transition_and_sign_block,
-    transition_to,
-)
-
-
-def build_signed_block_and_sidecars(spec, state, blob_count=1):
-    """
-    Build a signed block carrying ``blob_count`` blobs (applying the state
-    transition) and return its (signed_block, data_column_sidecars).
-    """
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(
-        spec, state, blob_count=blob_count
-    )
-    return signed_block, list(sidecars)
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def setup_store_with_anchor(spec, state):
@@ -79,7 +67,9 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -121,7 +111,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
 @with_all_phases_from_to(FULU, GLOAS)
 @spec_configured_state_test(
     {
-        "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
+        "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),),
     },
     activate_at_genesis=True,
 )
@@ -139,12 +129,14 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    max_blobs = get_max_blob_count(spec, state)
+    max_blobs = get_max_blob_count(spec, state.slot + 1)
     # Sanity check: the BLOB_SCHEDULE override should be exercising the Fulu
     # code path (`get_blob_parameters`), not the Electra fallback. A client that
     # forgets EIP-7892 and uses MAX_BLOBS_PER_BLOCK_ELECTRA would reject this sidecar.
     assert max_blobs > spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=max_blobs)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, blob_count=max_blobs)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -199,7 +191,9 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, blob_count=2)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
@@ -275,7 +269,23 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    yield get_filename(signed_anchor), signed_anchor
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    else:
+        signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield "blocks", "meta", blocks_meta
+
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     column_index = sidecar.index
 
@@ -284,15 +294,6 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
 
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     yield get_filename(partial), partial
-
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    if is_post_gloas(spec):
-        store.blocks[sidecar.beacon_block_root] = signed_block.message
-        store.block_states[sidecar.beacon_block_root] = state.copy()
-        yield get_filename(signed_block), signed_block
-        blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
 
     block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
@@ -341,7 +342,23 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    yield get_filename(signed_anchor), signed_anchor
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    else:
+        signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield "blocks", "meta", blocks_meta
+
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     column_index = sidecar.index
 
@@ -353,15 +370,6 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     cells_type = type(partial.partial_column)
     partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
-
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    if is_post_gloas(spec):
-        store.blocks[sidecar.beacon_block_root] = signed_block.message
-        store.block_states[sidecar.beacon_block_root] = state.copy()
-        yield get_filename(signed_block), signed_block
-        blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
 
     block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
@@ -410,7 +418,23 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    yield get_filename(signed_anchor), signed_anchor
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    else:
+        signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield "blocks", "meta", blocks_meta
+
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     column_index = sidecar.index
 
@@ -422,15 +446,6 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     proofs_type = type(partial.kzg_proofs)
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
-
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    if is_post_gloas(spec):
-        store.blocks[sidecar.beacon_block_root] = signed_block.message
-        store.block_states[sidecar.beacon_block_root] = state.copy()
-        yield get_filename(signed_block), signed_block
-        blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
 
     block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
@@ -482,7 +497,9 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
@@ -564,7 +581,9 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = spec.Root(b"\xab" * 32)
@@ -621,7 +640,9 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].kzg_commitments = spec.BlobKZGCommitments()
@@ -678,7 +699,9 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -733,10 +756,11 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
     yield "state", anchor_state
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs(spec, state, slot=spec.SLOTS_PER_EPOCH)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -804,7 +828,9 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.message.proposer_index = spec.ValidatorIndex(
@@ -865,7 +891,9 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.signature = spec.BLSSignature(b"\x00" * 96)
@@ -922,7 +950,9 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.message.parent_root = b"\x12" * 32
@@ -997,7 +1027,9 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -1069,7 +1101,9 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.message.slot = signed_parent.message.slot
@@ -1130,7 +1164,9 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -1193,7 +1229,9 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].kzg_commitments_inclusion_proof = spec.KZGCommitmentsInclusionProof()
@@ -1250,7 +1288,9 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
 
@@ -1312,7 +1352,9 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=False)
     group_id = make_partial_data_column_group_id(spec, sidecar)
@@ -1370,7 +1412,9 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
@@ -1450,10 +1494,11 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    transition_to(spec, state, spec.Slot(spec.SLOTS_PER_EPOCH - 1))
     yield "state", anchor_state
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs(spec, state, slot=spec.SLOTS_PER_EPOCH)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
@@ -1538,7 +1583,23 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
+    yield get_filename(signed_anchor), signed_anchor
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    else:
+        signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield "blocks", "meta", blocks_meta
+
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     column_index = sidecar.index
 
@@ -1555,15 +1616,6 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
-
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    if is_post_gloas(spec):
-        store.blocks[sidecar.beacon_block_root] = signed_block.message
-        store.block_states[sidecar.beacon_block_root] = state.copy()
-        yield get_filename(signed_block), signed_block
-        blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
 
     block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
@@ -1612,7 +1664,23 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
 
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    signed_block, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
+    yield get_filename(signed_anchor), signed_anchor
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, blob_count=2)
+
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    if is_post_gloas(spec):
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
+        yield get_filename(signed_block), signed_block
+        blocks_meta.append({"block": get_filename(signed_block)})
+    else:
+        signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield "blocks", "meta", blocks_meta
+
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     column_index = sidecar.index
 
@@ -1626,15 +1694,6 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     first, second = partial.kzg_proofs[0], partial.kzg_proofs[1]
     partial.kzg_proofs = proofs_type(data=[second, first])
     yield get_filename(partial), partial
-
-    yield get_filename(signed_anchor), signed_anchor
-    blocks_meta = [{"block": get_filename(signed_anchor)}]
-    if is_post_gloas(spec):
-        store.blocks[sidecar.beacon_block_root] = signed_block.message
-        store.block_states[sidecar.beacon_block_root] = state.copy()
-        yield get_filename(signed_block), signed_block
-        blocks_meta.append({"block": get_filename(signed_block)})
-    yield "blocks", "meta", blocks_meta
 
     block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)

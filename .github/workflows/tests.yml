@@ -154,7 +154,7 @@ jobs:
           python-version-file: "pyproject.toml"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
 
@@ -226,9 +226,3 @@ jobs:
           artifact-prefix: reftests
           source-path: tests/${{ matrix.preset }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload ${{ matrix.preset }}.tar.gz
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          path: ${{ matrix.preset }}.tar.gz
-          archive: false
