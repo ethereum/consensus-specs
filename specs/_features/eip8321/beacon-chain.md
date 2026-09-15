@@ -90,6 +90,8 @@ class PendingRandaoCommitments(ProgressiveList[PendingRandaoCommitment]):
     """
     The queue of hash-chain RANDAO commitments awaiting activation.
     """
+
+    LIMIT = None
 ```
 
 ### New `RandaoCommitmentRegistrations`
@@ -113,6 +115,8 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
     means that the validator has not registered a commitment and reveals with
     the legacy BLS signature instead.
     """
+
+    LIMIT = None
 ```
 
 ## Constants

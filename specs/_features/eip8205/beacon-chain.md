@@ -81,6 +81,8 @@ class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
     The preregistrations stored in the beacon state, including expired
     records not yet garbage-collected.
     """
+
+    LIMIT = None
 ```
 
 ## Constants

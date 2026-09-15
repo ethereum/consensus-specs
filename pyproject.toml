@@ -156,4 +156,4 @@ known-first-party = ["eth_consensus_specs"]
 order-by-type = false
 
 [tool.uv.sources]
-eth-ssz-specs = { git = "https://github.com/ethereum/ssz-specs", rev = "28a7b1e7" }
+eth-ssz-specs = { git = "https://github.com/ethereum/ssz-specs", rev = "b42af0a2" }

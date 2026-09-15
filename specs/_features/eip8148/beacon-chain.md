@@ -80,6 +80,8 @@ class SweepThresholds(ProgressiveList[Gwei]):
     """
     Per-validator withdrawal sweep thresholds.
     """
+
+    LIMIT = None
 ```
 
 ## Constants

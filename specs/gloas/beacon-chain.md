@@ -243,6 +243,8 @@ class Balances(ProgressiveList[Gwei]):
     """
     The balances of all validators.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `BlobKZGCommitments`
@@ -314,6 +316,8 @@ class EpochParticipation(ProgressiveList[ParticipationFlags]):
     """
     The participation flags of each validator for an epoch.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `InactivityScores`
@@ -324,6 +328,8 @@ class InactivityScores(ProgressiveList[Uint64]):
     """
     Each validator's inactivity score, tracking missed timely target votes.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `PendingConsolidations`
@@ -334,6 +340,8 @@ class PendingConsolidations(ProgressiveList[PendingConsolidation]):
     """
     The queue of consolidations awaiting processing.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `PendingDeposits`
@@ -344,6 +352,8 @@ class PendingDeposits(ProgressiveList[PendingDeposit]):
     """
     The queue of deposits awaiting processing.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `PendingPartialWithdrawals`
@@ -354,6 +364,8 @@ class PendingPartialWithdrawals(ProgressiveList[PendingPartialWithdrawal]):
     """
     The queue of partial withdrawals awaiting processing.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `ProposerSlashings`
@@ -377,6 +389,8 @@ class Transaction(ProgressiveList[Byte]):
     An opaque execution-layer transaction, either a typed transaction
     envelope or a legacy RLP-encoded transaction.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `Transactions`
@@ -387,6 +401,8 @@ class Transactions(ProgressiveList[Transaction]):
     """
     A list of execution-layer transactions.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `Validators`
@@ -397,6 +413,8 @@ class Validators(ProgressiveList[Validator]):
     """
     The validator registry.
     """
+
+    LIMIT = None
 ```
 
 ### Modified `VoluntaryExits`
@@ -442,6 +460,8 @@ class BlockAccessList(ProgressiveList[Byte]):
     """
     The serialized block access list of an execution payload.
     """
+
+    LIMIT = None
 ```
 
 ### New `BuilderDepositRequests`
@@ -493,6 +513,8 @@ class BuilderPendingWithdrawals(ProgressiveList[BuilderPendingWithdrawal]):
     """
     The queue of builder withdrawals awaiting processing.
     """
+
+    LIMIT = None
 ```
 
 ### New `Builders`
@@ -502,6 +524,8 @@ class Builders(ProgressiveList[Builder]):
     """
     The builder registry.
     """
+
+    LIMIT = None
 ```
 
 ### New `ExecutionPayloadAvailability`

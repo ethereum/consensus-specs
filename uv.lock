@@ -548,7 +548,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.3" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.1.0" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
-    { name = "eth-ssz-specs", git = "https://github.com/ethereum/ssz-specs?rev=28a7b1e7" },
+    { name = "eth-ssz-specs", git = "https://github.com/ethereum/ssz-specs?rev=b42af0a2" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
@@ -594,7 +594,7 @@ pycryptodome = [
 [[package]]
 name = "eth-ssz-specs"
 version = "0.1.0"
-source = { git = "https://github.com/ethereum/ssz-specs?rev=28a7b1e7#28a7b1e7e82ffa27fb10adb926cfa3f7afad4664" }
+source = { git = "https://github.com/ethereum/ssz-specs?rev=b42af0a2#b42af0a2265c25f5353cace185d066e8d39dbd6e" }
 dependencies = [
     { name = "pydantic" },
 ]
