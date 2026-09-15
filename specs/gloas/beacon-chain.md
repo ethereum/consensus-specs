@@ -293,7 +293,7 @@ class DepositRequests(ProgressiveList[DepositRequest]):
     The deposit requests pertaining to a single execution payload.
     """
 
-    LIMIT = MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+    LIMIT = None
 ```
 
 ### Modified `Deposits`
