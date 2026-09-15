@@ -177,15 +177,13 @@ def get_updated_smoothed_offline_balance(smoothed_balance: Gwei, offline_balance
     Return the exponential moving average updated with one slot's offline balance.
     """
     if offline_balance > smoothed_balance:
-        return (
-            smoothed_balance
-            + (offline_balance - smoothed_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
-        )
+        delta = offline_balance - smoothed_balance
+        smoothed_delta = delta // OFFLINE_BALANCE_SMOOTHING_FACTOR
+        return smoothed_balance + smoothed_delta
     else:
-        return (
-            smoothed_balance
-            - (smoothed_balance - offline_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
-        )
+        delta = smoothed_balance - offline_balance
+        smoothed_delta = delta // OFFLINE_BALANCE_SMOOTHING_FACTOR
+        return smoothed_balance - smoothed_delta
 ```
 
 #### New `get_slot_penalty_factors`
