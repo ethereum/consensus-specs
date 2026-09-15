@@ -55,6 +55,7 @@ that sets `state.slot` equal to `EIP7716_FORK_EPOCH * SLOTS_PER_EPOCH`.
 ```python
 def upgrade_to_eip7716(pre: heze.BeaconState) -> BeaconState:
     epoch = heze.get_current_epoch(pre)
+
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
@@ -110,6 +111,7 @@ def upgrade_to_eip7716(pre: heze.BeaconState) -> BeaconState:
         # [New in EIP7716]
         smoothed_offline_balance=Gwei(0),
     )
+
     # [New in EIP7716]
     post.smoothed_offline_balance = get_fork_initial_smoothed_offline_balance(post)
 

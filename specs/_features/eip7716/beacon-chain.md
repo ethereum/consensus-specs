@@ -48,11 +48,11 @@ takes over as the protocol's correlation pricing mechanism.
 
 ### Penalty factor
 
-| Name                               | Value                      | Description                                                                                                               |
-| ---------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `MAX_PENALTY_FACTOR`               | `Uint64(2**8)` (= 256)     | *[New in EIP7716]* Ceiling on the penalty factor; the single severity parameter                                           |
-| `PENALTY_SLOPE`                    | `Uint64(765)`              | *[New in EIP7716]* Slope of the penalty factor in excess offline stake; equal to `3 * (MAX_PENALTY_FACTOR - 1)`           |
-| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**16)` (= 65,536) | *[New in EIP7716]* Smoothing divisor of the offline balance moving average; half-life of roughly 45,500 slots (~6.3 days) |
+| Name                               | Value                                  | Description                                             |
+| ---------------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| `MAX_PENALTY_FACTOR`               | `Uint64(2**8)` (= 256)                 | Maximum penalty factor, the single severity parameter   |
+| `PENALTY_SLOPE`                    | `Uint64(3 * (MAX_PENALTY_FACTOR - 1))` | Slope of the penalty factor in excess offline balance   |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | `Uint64(2**16)` (= 65,536)             | Smoothing divisor of the offline balance moving average |
 
 ## Containers
 
@@ -111,7 +111,6 @@ class BeaconState(ProgressiveContainer):
     execution_payload_availability: ExecutionPayloadAvailability
     builder_pending_payments: BuilderPendingPayments
     builder_pending_withdrawals: BuilderPendingWithdrawals
-    # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
