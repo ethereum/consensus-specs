@@ -38,9 +38,9 @@ def get_fork_initial_smoothed_offline_balance(state: BeaconState) -> Gwei:
     total = Gwei(0)
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
-        slot = Slot(start_slot + slot_offset)
+        slot = start_slot + slot_offset
         total += get_slot_offline_balance(state, slot)
-    return Gwei(total // Uint64(SLOTS_PER_EPOCH))
+    return total // Uint64(SLOTS_PER_EPOCH)
 ```
 
 ## Fork to EIP-7716

@@ -166,7 +166,7 @@ def get_slot_reference_balance(state: BeaconState) -> Gwei:
     """
     Return the average active balance per slot, the normalizer of the penalty factor.
     """
-    return Gwei(get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH))
+    return get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
 ```
 
 #### New `get_updated_smoothed_offline_balance`
@@ -177,12 +177,12 @@ def get_updated_smoothed_offline_balance(smoothed_balance: Gwei, offline_balance
     Return the exponential moving average updated with one slot's offline balance.
     """
     if offline_balance > smoothed_balance:
-        return Gwei(
+        return (
             smoothed_balance
             + (offline_balance - smoothed_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
         )
     else:
-        return Gwei(
+        return (
             smoothed_balance
             - (smoothed_balance - offline_balance) // OFFLINE_BALANCE_SMOOTHING_FACTOR
         )
@@ -202,7 +202,7 @@ def get_slot_penalty_factors(state: BeaconState) -> Sequence[Uint64]:
     reference_balance = get_slot_reference_balance(state)
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
-        slot = Slot(start_slot + slot_offset)
+        slot = start_slot + slot_offset
         offline_balance = get_slot_offline_balance(state, slot)
         excess = offline_balance - min(offline_balance, smoothed_balance)
         excess_factor = PENALTY_SLOPE * excess // reference_balance
@@ -224,7 +224,7 @@ def get_validator_slot_offsets(state: BeaconState) -> Sequence[Uint64]:
     previous_epoch = get_previous_epoch(state)
     start_slot = compute_start_slot_at_epoch(previous_epoch)
     for slot_offset in range(SLOTS_PER_EPOCH):
-        slot = Slot(start_slot + slot_offset)
+        slot = start_slot + slot_offset
         for committee_index in range(get_committee_count_per_slot(state, previous_epoch)):
             committee = get_beacon_committee(state, slot, CommitteeIndex(committee_index))
             for index in committee:
@@ -306,15 +306,15 @@ def get_flag_index_deltas(
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
-                rewards[index] += Gwei(reward_numerator // (active_increments * WEIGHT_DENOMINATOR))
+                rewards[index] += reward_numerator // (active_increments * WEIGHT_DENOMINATOR)
         # [New in EIP7716]
         elif flag_index == TIMELY_TARGET_FLAG_INDEX:
             penalty_factor = Uint64(1)
             if is_offline_in_previous_epoch(state, index):
                 penalty_factor = penalty_factors[slot_offsets[index]]
-            penalties[index] += Gwei(penalty_factor * base_reward * weight // WEIGHT_DENOMINATOR)
+            penalties[index] += penalty_factor * base_reward * weight // WEIGHT_DENOMINATOR
         elif flag_index != TIMELY_HEAD_FLAG_INDEX:
-            penalties[index] += Gwei(base_reward * weight // WEIGHT_DENOMINATOR)
+            penalties[index] += base_reward * weight // WEIGHT_DENOMINATOR
     return rewards, penalties
 ```
 
@@ -324,7 +324,7 @@ def get_flag_index_deltas(
 def process_smoothed_offline_balance(state: BeaconState) -> None:
     start_slot = compute_start_slot_at_epoch(get_previous_epoch(state))
     for slot_offset in range(SLOTS_PER_EPOCH):
-        slot = Slot(start_slot + slot_offset)
+        slot = start_slot + slot_offset
         state.smoothed_offline_balance = get_updated_smoothed_offline_balance(
             state.smoothed_offline_balance, get_slot_offline_balance(state, slot)
         )
