@@ -50,8 +50,6 @@ whole-second `on_tick` remains only as a compatibility adapter.
 
 ### Modified `Store`
 
-*Note*: `time_ms`, at millisecond precision, replaces `time` as the store clock.
-
 ```python
 @dataclass
 class Store:
@@ -134,7 +132,7 @@ def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the Unix time in milliseconds at the end of ``slot``.
     """
-    return compute_slot_start_time_ms(store.genesis_time, Slot(slot + 1))
+    return compute_slot_start_time_ms(store.genesis_time, slot + 1)
 ```
 
 ### New `get_time_into_slot_ms`
@@ -144,7 +142,7 @@ def get_time_into_slot_ms(store: Store) -> Uint64:
     """
     Return the milliseconds elapsed since the start of the current slot.
     """
-    current_slot = Slot(GENESIS_SLOT + get_slot_from_time_ms(store, store.time_ms))
+    current_slot = GENESIS_SLOT + get_slot_from_time_ms(store, store.time_ms)
     slot_start_time_ms = compute_slot_start_time_ms(store.genesis_time, current_slot)
     return store.time_ms - slot_start_time_ms
 ```
@@ -159,16 +157,14 @@ def get_slots_since_genesis(store: Store) -> int:
 
 ### Modified `get_attestation_due_ms`
 
-*Note*: This helper and the deadline helpers below gain a `slot` parameter,
-since the deadline of a duty is read from the schedule entry in effect at its
-slot.
-
 ```python
 def get_attestation_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).attestation_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.attestation_due_ms
 ```
 
 ### Modified `get_proposer_reorg_cutoff_ms`
@@ -178,7 +174,9 @@ def get_proposer_reorg_cutoff_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).proposer_reorg_cutoff_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.proposer_reorg_cutoff_ms
 ```
 
 ### Modified `get_aggregate_due_ms`
@@ -188,7 +186,9 @@ def get_aggregate_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).aggregate_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.aggregate_due_ms
 ```
 
 ### Modified `get_sync_message_due_ms`
@@ -198,7 +198,9 @@ def get_sync_message_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).sync_message_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.sync_message_due_ms
 ```
 
 ### Modified `get_contribution_due_ms`
@@ -208,7 +210,9 @@ def get_contribution_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).contribution_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.contribution_due_ms
 ```
 
 ### Modified `get_payload_due_ms`
@@ -218,7 +222,9 @@ def get_payload_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).payload_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.payload_due_ms
 ```
 
 ### Modified `get_payload_attestation_due_ms`
@@ -228,7 +234,9 @@ def get_payload_attestation_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).payload_attestation_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.payload_attestation_due_ms
 ```
 
 ### Modified `get_inclusion_list_due_ms`
@@ -238,7 +246,9 @@ def get_inclusion_list_due_ms(
     # [New in EIP8198]
     slot: Slot,
 ) -> Uint64:
-    return get_slot_timing_parameters(compute_epoch_at_slot(slot)).inclusion_list_due_ms
+    epoch = compute_epoch_at_slot(slot)
+    timing_parameters = get_slot_timing_parameters(epoch)
+    return timing_parameters.inclusion_list_due_ms
 ```
 
 ### Proposer head and reorg helpers
@@ -261,6 +271,7 @@ def is_proposing_on_time(store: Store) -> bool:
 def on_tick_per_slot_ms(store: Store, time_ms: Uint64) -> None:
     previous_slot = get_current_slot(store)
 
+    # [Modified in EIP8198]
     # Update store time
     store.time_ms = time_ms
 
@@ -303,9 +314,9 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 def on_tick_ms(store: Store, time_ms: Uint64) -> None:
     # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot_ms``
-    tick_slot = Slot(GENESIS_SLOT + get_slot_from_time_ms(store, time_ms))
+    tick_slot = GENESIS_SLOT + get_slot_from_time_ms(store, time_ms)
     while get_current_slot(store) < tick_slot:
-        previous_time_ms = get_time_at_slot_end_ms(store, Slot(get_current_slot(store)))
+        previous_time_ms = get_time_at_slot_end_ms(store, get_current_slot(store))
         on_tick_per_slot_ms(store, previous_time_ms)
     on_tick_per_slot_ms(store, time_ms)
 ```
