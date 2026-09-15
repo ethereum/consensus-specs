@@ -36,7 +36,7 @@ same style as `make test`.
 From the root directory:
 
 ```
-make _pyspec  # Initialize virtual environment
+make build  # Initialize virtual environment
 uv run pytest tests/generators/compliance_runners/fork_choice/runner/test_run.py --test-dir ${test_dir}
 ```
 
@@ -49,7 +49,7 @@ Files in [`tiny`](tiny/), [`small`](small/) and [`standard`](standard/) are
 generated with [`generate_test_instances.py`](generate_test_instances.py), e.g.
 
 ```
-make _pyspec  # Initialize virtual environment
+make build  # Initialize virtual environment
 uv run python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
 ```
 
