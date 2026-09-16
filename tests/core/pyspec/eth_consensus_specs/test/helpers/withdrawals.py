@@ -1,7 +1,6 @@
 import pytest
 
 from eth_consensus_specs.test.helpers.forks import (
-    is_post_eip8148,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -13,16 +12,10 @@ def get_max_withdrawals(spec):
 
 
 def check_is_partially_withdrawable_validator(spec, state, validator_index, balance=None):
-    """Call ``is_partially_withdrawable_validator`` with the correct arguments for the fork."""
+    """Call ``is_partially_withdrawable_validator``."""
     validator = state.validators[validator_index]
     if balance is None:
         balance = state.balances[validator_index]
-    if is_post_eip8148(spec):
-        return spec.is_partially_withdrawable_validator(
-            validator,
-            balance,
-            state.validator_sweep_thresholds[validator_index],
-        )
     return spec.is_partially_withdrawable_validator(validator, balance)
 
 

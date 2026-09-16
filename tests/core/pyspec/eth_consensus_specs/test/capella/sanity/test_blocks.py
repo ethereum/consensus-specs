@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -552,8 +552,6 @@ def _insert_validator(spec, state, balance):
     )
     state.validators.append(validator)
     state.balances.append(balance)
-    if is_post_eip8148(spec):
-        state.validator_sweep_thresholds.append(spec.Gwei(0))
     state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
     state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
     state.inactivity_scores.append(0)
