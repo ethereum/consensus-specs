@@ -1946,6 +1946,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
+    yield get_filename(head_payload), head_payload
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
