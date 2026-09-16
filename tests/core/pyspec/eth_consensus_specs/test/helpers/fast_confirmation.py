@@ -401,9 +401,9 @@ class FCRTest:
 
             # Yield test data
             for attestation in attestations:
-                att_tuple = (get_attestation_file_name(attestation), attestation)
-                self.blockchain_artefacts.append(att_tuple)
-                self.test_steps.append({"attestation": att_tuple[0]})
+                self.blockchain_artefacts.append(
+                    (get_attestation_file_name(attestation), attestation)
+                )
 
         return attestations
 
@@ -411,6 +411,7 @@ class FCRTest:
         # Apply attestations to the fork choice
         for attestation in attestations:
             self.spec.on_attestation(self.store, attestation, is_from_block=False)
+            self.test_steps.append({"attestation": get_attestation_file_name(attestation)})
 
     def run_fast_confirmation(self):
         on_fast_confirmation_and_append_step(self.spec, self.fcr_store, self.test_steps)
@@ -733,6 +734,9 @@ class Attesting(PhaseRun):
         # Instantly apply past slot attestations
         past_slot_attestations = [att for att in attestations if att.data.slot < fcr.current_slot()]
         fcr.apply_attestations(past_slot_attestations)
+        fcr.recent_attestations = [
+            att for att in fcr.recent_attestations if att not in past_slot_attestations
+        ]
 
         return attestations
 
