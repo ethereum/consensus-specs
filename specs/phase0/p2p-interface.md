@@ -73,8 +73,6 @@
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
     - [Why is QUIC the primary transport?](#why-is-quic-the-primary-transport)
-  - [Multiplexing](#multiplexing-1)
-    - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
   - [Protocol negotiation](#protocol-negotiation-1)
     - [When is multiselect 2.0 due and why do we plan to migrate to it?](#when-is-multiselect-20-due-and-why-do-we-plan-to-migrate-to-it)
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
@@ -202,19 +200,6 @@ During connection bootstrapping, libp2p dynamically negotiates a mutually
 supported multiplexing method to conduct parallel conversations. This applies to
 transports that are natively incapable of multiplexing (e.g. TCP, WebSockets,
 WebRTC), and is omitted for capable transports (e.g. QUIC).
-
-Two multiplexers are commonplace in libp2p implementations:
-[mplex](https://github.com/libp2p/specs/tree/master/mplex) and
-[yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). Their
-protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
-
-Because the primary QUIC transport multiplexes natively, a stream multiplexer is
-only required for the TCP fallback transport. Clients that support the TCP
-transport MUST support
-[mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support
-[yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). If both
-are supported by the client, yamux MUST take precedence during negotiation. See
-the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
 
@@ -1935,24 +1920,6 @@ NAT-traversal properties make it a better fit for the consensus-layer p2p
 network than TCP. It is therefore now the primary transport, with TCP retained
 as a fallback for environments where QUIC or UDP is unavailable or blocked.
 
-### Multiplexing
-
-#### Why are we using mplex/yamux?
-
-[Yamux](https://github.com/hashicorp/yamux/blob/master/spec.md) is a multiplexer
-invented by Hashicorp that supports stream-level congestion control.
-Implementations exist in a limited set of languages, and it’s not a trivial
-piece to develop.
-
-Conscious of that, the libp2p community conceptualized
-[mplex](https://github.com/libp2p/specs/blob/master/mplex/README.md) as a
-simple, minimal multiplexer for usage with libp2p. It does not support
-stream-level congestion control and is subject to head-of-line blocking.
-
-Overlay multiplexers are not necessary with QUIC since the protocol provides
-native multiplexing, but they need to be layered atop TCP, WebSockets, and other
-transports that lack such support.
-
 ### Protocol negotiation
 
 #### When is multiselect 2.0 due and why do we plan to migrate to it?
@@ -1984,7 +1951,7 @@ authentication/encryption and multiplexing (e.g. TCP) need to undergo protocol
 negotiation to agree on a mutually supported:
 
 1. authentication/encryption mechanism (such as SecIO, TLS 1.3, Noise).
-2. overlay multiplexer (such as mplex, Yamux, spdystream).
+2. overlay multiplexer (such as Yamux, spdystream).
 
 In this specification, we refer to these two as *connection-level negotiations*.
 Transports supporting those features natively (such as QUIC) omit those
