@@ -14,7 +14,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_deneb,
     is_post_eip8148,
-    is_post_eip8321,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -226,11 +225,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
     if is_post_eip8148(spec):
         state.validator_sweep_thresholds = spec.SweepThresholds(
             data=[spec.Gwei(0)] * len(validator_balances)
-        )
-
-    if is_post_eip8321(spec):
-        state.randao_commitments = spec.RandaoCommitments(
-            data=[spec.Bytes32()] * len(validator_balances)
         )
 
     if is_post_fulu(spec):
