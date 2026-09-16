@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.sync_committee import (
     compute_committee_indices,
     compute_sync_committee_participant_reward_and_penalty,
 )
+from eth_consensus_specs.utils import bls
 
 
 def get_min_slashing_penalty_quotient(spec):
@@ -212,6 +213,42 @@ def get_valid_proposer_slashing(
     return spec.ProposerSlashing(
         signed_header_1=signed_header_1,
         signed_header_2=signed_header_2,
+    )
+
+
+def get_proposer_slashing_for_blocks(spec, state, signed_block_1, signed_block_2):
+    """
+    Build a ProposerSlashing over the headers of two blocks proposed at the same
+    slot by the same validator. The header roots equal the block roots, so the
+    resulting slashing identifies those blocks to the fork choice store.
+    """
+    block_1 = signed_block_1.message
+    block_2 = signed_block_2.message
+    assert block_1.slot == block_2.slot
+    assert block_1.proposer_index == block_2.proposer_index
+
+    privkey = pubkey_to_privkey[state.validators[block_1.proposer_index].pubkey]
+    signed_headers = []
+    for block in (block_1, block_2):
+        header = spec.BeaconBlockHeader(
+            slot=block.slot,
+            proposer_index=block.proposer_index,
+            parent_root=block.parent_root,
+            state_root=block.state_root,
+            body_root=block.body.hash_tree_root(),
+        )
+        assert header.hash_tree_root() == block.hash_tree_root()
+        domain = spec.get_domain(
+            state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(header.slot)
+        )
+        signing_root = spec.compute_signing_root(header, domain)
+        signed_headers.append(
+            spec.SignedBeaconBlockHeader(message=header, signature=bls.Sign(privkey, signing_root))
+        )
+
+    return spec.ProposerSlashing(
+        signed_header_1=signed_headers[0],
+        signed_header_2=signed_headers[1],
     )
 
 

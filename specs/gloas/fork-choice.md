@@ -16,6 +16,7 @@
   - [Modified `ForkChoiceNode`](#modified-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `LatestMessage`](#modified-latestmessage)
+  - [New `EquivocatingProposal`](#new-equivocatingproposal)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `get_custody_column_bits`](#new-get_custody_column_bits)
@@ -34,6 +35,7 @@
   - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
+  - [New `get_proposal_roots`](#new-get_proposal_roots)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_weight`](#modified-get_weight)
   - [Modified `get_node_children`](#modified-get_node_children)
@@ -47,10 +49,12 @@
   - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
   - [New `get_payload_due_ms`](#new-get_payload_due_ms)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
+  - [New `compute_timeliness`](#new-compute_timeliness)
   - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
     - [Modified `is_head_late`](#modified-is_head_late)
     - [Modified `is_head_weak`](#modified-is_head_weak)
     - [Modified `is_parent_strong`](#modified-is_parent_strong)
+    - [Modified `is_proposer_equivocation`](#modified-is_proposer_equivocation)
     - [Modified `get_proposer_head`](#modified-get_proposer_head)
   - [`on_attestation` helpers](#on_attestation-helpers)
     - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
@@ -63,6 +67,7 @@
   - [Modified `on_block`](#modified-on_block)
   - [New `on_execution_payload_envelope`](#new-on_execution_payload_envelope)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
+  - [New `on_proposer_slashing`](#new-on_proposer_slashing)
 
 <!-- mdformat-toc end -->
 
@@ -184,6 +189,21 @@ class LatestMessage:
     payload_present: bool
 ```
 
+### New `EquivocatingProposal`
+
+*Note*: This class records the fork-choice relevant data of a beacon block that
+is known to have been equivocated, even when that block was never imported into
+the store. The flag `is_timely` records whether the equivocation became known to
+this node before the payload attestation deadline of `slot`.
+
+```python
+@dataclass(eq=True, frozen=True)
+class EquivocatingProposal:
+    slot: Slot
+    proposer_index: ValidatorIndex
+    is_timely: bool
+```
+
 ### Modified `Store`
 
 ```python
@@ -210,6 +230,8 @@ class Store:
     payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in Gloas:EIP7732]
     payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
+    # [New in Gloas]
+    equivocating_proposals: Dict[Root, EquivocatingProposal]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -244,6 +266,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Gloas:EIP7732]
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
+        # [New in Gloas]
+        equivocating_proposals={},
     )
 ```
 
@@ -524,6 +548,39 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
         return node.payload_status
 ```
 
+### New `get_proposal_roots`
+
+```python
+def get_proposal_roots(
+    store: Store, slot: Slot, proposer_index: ValidatorIndex, timely: bool = False
+) -> Set[Root]:
+    """
+    Return the roots of the beacon blocks known to have been proposed by
+    ``proposer_index`` at ``slot``, taking into consideration both the imported
+    blocks and the equivocations recorded by ``on_proposer_slashing``. If
+    ``timely`` is set, only return the roots that became known to this node
+    before the payload attestation deadline of ``slot``.
+    """
+    roots = {
+        root
+        for root, block in store.blocks.items()
+        if (
+            block.slot == slot
+            and block.proposer_index == proposer_index
+            and (not timely or store.block_timeliness[root][PTC_TIMELINESS_INDEX])
+        )
+    }
+    return roots | {
+        root
+        for root, proposal in store.equivocating_proposals.items()
+        if (
+            proposal.slot == slot
+            and proposal.proposer_index == proposer_index
+            and (not timely or proposal.is_timely)
+        )
+    }
+```
+
 ### New `should_apply_proposer_boost`
 
 ```python
@@ -546,18 +603,9 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
     # If `parent` is weak and from the previous slot, apply
     # proposer boost if there are no early equivocations
-    equivocations = [
-        root
-        for root, block in store.blocks.items()
-        if (
-            store.block_timeliness[root][PTC_TIMELINESS_INDEX]
-            and block.proposer_index == parent.proposer_index
-            and block.slot + 1 == slot
-            and root != parent_root
-        )
-    ]
+    equivocations = get_proposal_roots(store, parent.slot, parent.proposer_index, timely=True)
 
-    return len(equivocations) == 0
+    return len(equivocations - {parent_root}) == 0
 ```
 
 ### Modified `get_weight`
@@ -765,6 +813,23 @@ def get_payload_attestation_due_ms() -> Uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
 ```
 
+### New `compute_timeliness`
+
+```python
+def compute_timeliness(store: Store, slot: Slot) -> list[bool]:
+    """
+    Return, for each block timeliness deadline, whether the current store time
+    is before that deadline of ``slot``.
+    """
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    is_current_slot = get_current_slot(store) == slot
+    return [
+        is_current_slot and time_into_slot_ms < threshold
+        for threshold in [get_attestation_due_ms(), get_payload_attestation_due_ms()]
+    ]
+```
+
 ### Proposer head and reorg helpers
 
 #### Modified `is_head_late`
@@ -821,6 +886,19 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_node = ForkChoiceNode(root=parent_root, payload_status=PAYLOAD_STATUS_PENDING)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
+```
+
+#### Modified `is_proposer_equivocation`
+
+*Note*: `is_proposer_equivocation` is modified to check against the
+equivocations recorded by `on_proposer_slashing`.
+
+```python
+def is_proposer_equivocation(store: Store, root: Root) -> bool:
+    block = store.blocks[root]
+    # [Modified in Gloas]
+    matching_roots = get_proposal_roots(store, block.slot, block.proposer_index)
+    return len(matching_roots) > 1
 ```
 
 #### Modified `get_proposer_head`
@@ -962,18 +1040,8 @@ def update_latest_messages(
 
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
-    block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_attestation_due_ms()
-    # [New in Gloas:EIP7732]
-    is_current_slot = get_current_slot(store) == block.slot
-    ptc_threshold_ms = get_payload_attestation_due_ms()
     # [Modified in Gloas:EIP7732]
-    store.block_timeliness[root] = [
-        is_current_slot and time_into_slot_ms < threshold
-        for threshold in [attestation_threshold_ms, ptc_threshold_ms]
-    ]
+    store.block_timeliness[root] = compute_timeliness(store, store.blocks[root].slot)
 ```
 
 #### Modified `get_shuffling_dependent_root`
@@ -1161,4 +1229,42 @@ def on_payload_attestation_message(
     for ptc_index in ptc_indices:
         payload_timeliness_vote[ptc_index] = data.payload_present
         payload_data_availability_vote[ptc_index] = data.blob_data_available
+```
+
+### New `on_proposer_slashing`
+
+```python
+def on_proposer_slashing(store: Store, proposer_slashing: ProposerSlashing) -> None:
+    """
+    Run ``on_proposer_slashing`` immediately upon receiving a new proposer slashing
+    from either within a block or directly on the wire.
+    """
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+
+    assert header_1.slot == header_2.slot
+    assert header_1.proposer_index == header_2.proposer_index
+    assert header_1 != header_2
+
+    state = store.block_states[store.justified_checkpoint.root]
+    assert header_1.proposer_index < len(state.validators)
+
+    proposer = state.validators[header_1.proposer_index]
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(
+            state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
+        )
+        signing_root = compute_signing_root(signed_header.message, domain)
+        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
+
+    is_timely = compute_timeliness(store, header_1.slot)[PTC_TIMELINESS_INDEX]
+    for header in (header_1, header_2):
+        # The root of a beacon block header is the beacon block root
+        root = hash_tree_root(header)
+        if root not in store.equivocating_proposals:
+            store.equivocating_proposals[root] = EquivocatingProposal(
+                slot=header.slot,
+                proposer_index=header.proposer_index,
+                is_timely=is_timely,
+            )
 ```
