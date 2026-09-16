@@ -13,8 +13,6 @@ Req/Resp protocol is defined.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
-- [Constants](#constants)
-  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -26,14 +24,6 @@ Req/Resp protocol is defined.
     - [Execution proof awareness](#execution-proof-awareness)
 
 <!-- mdformat-toc end -->
-
-## Constants
-
-### Type-specific SSZ bounds
-
-| Name                                       | Value                        |
-| ------------------------------------------ | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
 
 ## Helpers
 

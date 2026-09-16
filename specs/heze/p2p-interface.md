@@ -36,10 +36,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Type-specific SSZ bounds
 
-| Name                                         | Value                         |
-| -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
+| Name                             | Value                       |
+| -------------------------------- | --------------------------- |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE` | `Uint64(41112)` (= ~40 KiB) |
 
 ## Configs
 

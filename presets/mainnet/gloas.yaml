@@ -21,12 +21,3 @@ MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD: 16
 # ---------------------------------------------------------------
 # 2**14 (= 16,384) builders
 MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16384
-
-# Type-specific SSZ bounds
-# ---------------------------------------------------------------
-# 16,829 bytes, ~16 KiB
-MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE: 16829
-# 2,097,616 bytes, ~2 MiB
-MAX_ATTESTER_SLASHING_SIZE: 2097616
-# 196,932 bytes, ~192 KiB
-MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE: 196932

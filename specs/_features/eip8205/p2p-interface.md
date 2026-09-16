@@ -8,12 +8,6 @@
 - [Modifications in EIP-8205](#modifications-in-eip-8205)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [Modified `beacon_block`](#modified-beacon_block)
-        - [Modified `execution_payload`](#modified-execution_payload)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -62,59 +56,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
-
-#### Modified `verify_execution_requests_limits`
-
-*Note*: The function `verify_execution_requests_limits` is modified to also
-enforce the per-payload preregistration request limit.
-
-```python
-def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
-    """
-    Verify that each execution request count is within its limit.
-    Raises GossipReject on validation failure.
-    """
-    # [REJECT] The withdrawal request count is within the limit
-    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many withdrawal requests")
-
-    # [REJECT] The consolidation request count is within the limit
-    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many consolidation requests")
-
-    # [REJECT] The builder deposit request count is within the limit
-    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder deposit requests")
-
-    # [REJECT] The builder exit request count is within the limit
-    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder exit requests")
-
-    # [New in EIP8205]
-    # [REJECT] The validator preregistration request count is within the limit
-    if len(execution_requests.preregistrations) > MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many validator preregistration requests")
-```
-
-### The gossip domain: gossipsub
-
-#### Topics and messages
-
-##### Global topics
-
-###### Modified `beacon_block`
-
-The existing `validate_beacon_block_gossip` call to
-`verify_execution_requests_limits(block.body.parent_execution_requests)` now
-also enforces the per-payload preregistration request limit.
-
-###### Modified `execution_payload`
-
-The existing `validate_execution_payload_envelope_gossip` call to
-`verify_execution_requests_limits(envelope.execution_requests)` now also
-enforces the per-payload preregistration request limit. All other envelope
-checks, including the bid's `execution_requests_root` commitment, remain
-unchanged.
 
 ### The Req/Resp domain
 

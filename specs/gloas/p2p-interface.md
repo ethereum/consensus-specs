@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Presets](#presets)
-  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Configs](#configs)
 - [Types](#types)
   - [Modified `DataColumn`](#modified-datacolumn)
@@ -28,8 +26,6 @@
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
-  - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
-  - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -59,23 +55,6 @@ This document contains the consensus-layer networking specifications for Gloas.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Presets
-
-### Type-specific SSZ bounds
-
-*[New in Gloas:EIP7688]*
-
-These constants supersede
-[type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
-for the corresponding variable-size libp2p messages. The bound for
-`DataColumnSidecar` is given by `compute_max_data_column_sidecar_size()`.
-
-| Name                                    | Value                         |
-| --------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
-| `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
-
 ## Configs
 
 | Name                   | Value                  |
@@ -92,6 +71,8 @@ class DataColumn(ProgressiveList[Cell]):
     """
     A column of the extended blob data matrix, with at most one cell per blob.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### Modified `KZGProofs`
@@ -102,6 +83,8 @@ class KZGProofs(ProgressiveList[KZGProof]):
     """
     The KZG cell proofs of the cells held by a data column.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### New `ExecutionPayloadEnvelopeRoots`
@@ -300,6 +283,11 @@ def verify_data_column_sidecar(
 
 ### New `compute_max_data_column_sidecar_size`
 
+*Note*: This supersedes the
+[type-specific SSZ bound](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
+for `DataColumnSidecar`. The blob schedule caps a column far below the element
+limits its types declare, so the bound derived from those types is much looser.
+
 ```python
 def compute_max_data_column_sidecar_size() -> Uint64:
     """
@@ -442,72 +430,6 @@ def verify_attestation_payload_status(
         raise GossipReject("attested payload is invalid")
 ```
 
-### New `verify_block_body_operation_limits`
-
-*Note*: These checks MAY be performed when deserializing `BeaconBlockBody`.
-
-```python
-def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
-    """
-    Verify that each block body operation count is within its limit.
-    Raises GossipReject on validation failure.
-    """
-    # [REJECT] The proposer slashing count is within the limit
-    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
-        raise GossipReject("too many proposer slashings")
-
-    # [REJECT] The attester slashing count is within the limit
-    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
-        raise GossipReject("too many attester slashings")
-
-    # [REJECT] The attestation count is within the limit
-    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
-        raise GossipReject("too many attestations")
-
-    # [REJECT] The block contains no deposits
-    if len(body.deposits) != 0:
-        raise GossipReject("block must not contain deposits")
-
-    # [REJECT] The voluntary exit count is within the limit
-    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
-        raise GossipReject("too many voluntary exits")
-
-    # [REJECT] The BLS to execution change count is within the limit
-    if len(body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
-        raise GossipReject("too many bls to execution changes")
-
-    # [REJECT] The payload attestation count is within the limit
-    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
-        raise GossipReject("too many payload attestations")
-```
-
-### New `verify_execution_requests_limits`
-
-*Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
-
-```python
-def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
-    """
-    Verify that each execution request count is within its limit.
-    Raises GossipReject on validation failure.
-    """
-    # [REJECT] The withdrawal request count is within the limit
-    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many withdrawal requests")
-
-    # [REJECT] The consolidation request count is within the limit
-    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many consolidation requests")
-
-    # [REJECT] The builder deposit request count is within the limit
-    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder deposit requests")
-
-    # [REJECT] The builder exit request count is within the limit
-    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many builder exit requests")
-```
-
 ## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Gloas to support upgraded types.
@@ -573,14 +495,6 @@ def validate_beacon_block_gossip(
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The block body operation counts are within their limits
-    verify_block_body_operation_limits(block.body)
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The parent execution request counts are within their limits
-    verify_execution_requests_limits(block.body.parent_execution_requests)
 
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
@@ -846,13 +760,6 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The envelope's execution requests root matches the bid's execution requests root
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
         raise GossipReject("envelope's execution requests root does not match the bid's")
-
-    # [REJECT] The execution request counts are within their limits
-    verify_execution_requests_limits(envelope.execution_requests)
-
-    # [REJECT] The number of withdrawals is within the limit
-    if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise GossipReject("too many withdrawals")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
