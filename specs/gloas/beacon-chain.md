@@ -294,7 +294,7 @@ class DepositRequests(ProgressiveList[DepositRequest]):
     The deposit requests pertaining to a single execution payload.
     """
 
-    # [Modified in Gloas:EIP7688]
+    # [Modified in Gloas]
     LIMIT = None
 ```
 
