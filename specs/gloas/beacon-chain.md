@@ -1939,8 +1939,9 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
         # [Modified in Gloas:EIP7732]
         if is_builder_index(withdrawal.validator_index):
             builder_index = convert_validator_index_to_builder_index(withdrawal.validator_index)
-            builder_balance = state.builders[builder_index].balance
-            state.builders[builder_index].balance -= min(withdrawal.amount, builder_balance)
+            state.builders[builder_index].balance = saturating_sub(
+                state.builders[builder_index].balance, withdrawal.amount
+            )
         else:
             decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 ```

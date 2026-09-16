@@ -89,6 +89,7 @@
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
+    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`sha256`](#sha256)
     - [`hash_tree_root`](#hash_tree_root)
@@ -1028,6 +1029,16 @@ def bytes_to_uint64(data: bytes) -> Uint64:
     return Uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
+#### `saturating_sub`
+
+```python
+def saturating_sub(a: Uint64, b: int) -> Any:
+    """
+    Return ``a - b``, saturating at zero.
+    """
+    return a - b if a > b else a - a
+```
+
 ### Crypto
 
 #### `sha256`
@@ -1379,8 +1390,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch (unless the current epoch is ``GENESIS_EPOCH``).
     """
-    current_epoch = get_current_epoch(state)
-    return GENESIS_EPOCH if current_epoch == GENESIS_EPOCH else current_epoch - 1
+    return saturating_sub(get_current_epoch(state), 1)
 ```
 
 #### `get_block_root`
@@ -1605,12 +1615,9 @@ def increase_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
 ```python
 def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
     """
-    Decrease the validator balance at index ``index`` by ``delta``, with underflow protection.
+    Decrease the validator balance at index ``index`` by ``delta``.
     """
-    if delta > state.balances[index]:
-        state.balances[index] = Gwei(0)
-    else:
-        state.balances[index] -= delta
+    state.balances[index] = saturating_sub(state.balances[index], delta)
 ```
 
 #### `initiate_validator_exit`
