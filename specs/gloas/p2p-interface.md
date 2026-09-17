@@ -245,14 +245,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Modified `compute_min_epochs_for_block_requests`
 
-*Note*: The minimum epoch range is updated to account for the churn limits
-introduced in EIP-8061. As before, it uses the arithmetic from
-`compute_weak_subjectivity_period` found in the
-[weak subjectivity guide](./weak-subjectivity.md) for the worst case of a very
-large validator set and maximal safety decay. For a very large validator set,
-the activation churn is capped by `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS`
-and becomes negligible, which leaves the exit churn (weighted 2/3) and the
-consolidation churn (weighted 1).
+*Note*: `compute_min_epochs_for_block_requests` is modified to use the churn
+limits introduced in EIP-8061, see the
+[weak subjectivity guide](./weak-subjectivity.md). For a very large validator
+set, the capped activation churn is negligible, which leaves the exit churn
+(weighted 2/3) and the consolidation churn (weighted 1).
 
 ```python
 def compute_min_epochs_for_block_requests() -> Uint64:
@@ -260,13 +257,9 @@ def compute_min_epochs_for_block_requests() -> Uint64:
     Return the minimum epoch range over which a node must serve blocks.
     """
     # [Modified in Gloas:EIP8061]
-    return Uint64(
-        MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        + 3
-        * CHURN_LIMIT_QUOTIENT_GLOAS
-        * CONSOLIDATION_CHURN_LIMIT_QUOTIENT
-        // (2 * (2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS))
-    )
+    numerator = 3 * CHURN_LIMIT_QUOTIENT_GLOAS * CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    denominator = 2 * (2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS)
+    return Uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + numerator // denominator)
 ```
 
 ### Modified `verify_data_column_sidecar_kzg_proofs`
