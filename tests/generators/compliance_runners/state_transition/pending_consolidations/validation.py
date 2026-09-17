@@ -40,11 +40,7 @@ def recover_dimensions(pre: Any) -> dict[str, Any]:
     next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
     statuses = [_status(pre, item, next_epoch) for item in pending]
     processable = next(
-        (
-            item
-            for item, status in zip(pending, statuses, strict=True)
-            if status == "PROCESSABLE"
-        ),
+        (item for item, status in zip(pending, statuses, strict=True) if status == "PROCESSABLE"),
         None,
     )
     relation = "NA"

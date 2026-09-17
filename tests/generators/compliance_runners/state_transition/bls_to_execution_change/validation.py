@@ -26,7 +26,9 @@ def recover_dimensions(pre: Any, signed_change: Any) -> dict[str, Any]:
     if index_in_range:
         validator = pre.validators[message.validator_index]
         has_bls_credential = validator.withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
-        from_pubkey_matches = validator.withdrawal_credentials[1:] == spec.sha256(message.from_bls_pubkey)[1:]
+        from_pubkey_matches = (
+            validator.withdrawal_credentials[1:] == spec.sha256(message.from_bls_pubkey)[1:]
+        )
     else:
         has_bls_credential = False
         from_pubkey_matches = False

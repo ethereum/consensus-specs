@@ -35,10 +35,9 @@ def recover_dimensions(pre: Any, slashing: Any) -> dict[str, Any]:
         first_valid = bool(spec.is_valid_indexed_attestation(pre, first))
         second_valid = bool(spec.is_valid_indexed_attestation(pre, second))
     data_slashable = bool(spec.is_slashable_attestation_data(first.data, second.data))
-    first_indices_well_formed = (
-        len(first.attesting_indices) > 0
-        and list(first.attesting_indices) == sorted(set(first.attesting_indices))
-    )
+    first_indices_well_formed = len(first.attesting_indices) > 0 and list(
+        first.attesting_indices
+    ) == sorted(set(first.attesting_indices))
     current_epoch = spec.get_current_epoch(pre)
     indices = set(first.attesting_indices).intersection(second.attesting_indices)
     slashable_intersection = any(

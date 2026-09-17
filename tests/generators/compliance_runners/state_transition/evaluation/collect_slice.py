@@ -119,7 +119,11 @@ def emit(
     import_names = [*imports, *(["config"] if uses_config else [])]
     if import_names:
         parts.extend(
-            [f"from {module.__name__} import (", *(f"    {name}," for name in import_names), ")"]
+            [
+                f"from {module.__name__} import (",
+                *(f"    {name}," for name in import_names),
+                ")",
+            ]
         )
     if typing_imports:
         parts.append(f"from typing import {', '.join(typing_imports)}")
