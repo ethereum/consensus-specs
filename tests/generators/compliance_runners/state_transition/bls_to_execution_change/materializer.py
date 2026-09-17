@@ -52,7 +52,9 @@ class BLSToExecutionChangeMaterializer(Materializer):
                     spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 31
                 )
             elif scenario == "PUBKEY_MISMATCH":
-                validator.withdrawal_credentials = spec.Bytes32(spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 31)
+                validator.withdrawal_credentials = spec.Bytes32(
+                    spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 31
+                )
             elif scenario == "INVALID_SIGNATURE":
                 signed_change.signature = spec.BLSSignature()
             elif scenario != "VALID":
