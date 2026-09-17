@@ -25,9 +25,10 @@ All validator responsibilities remain unchanged other than those noted below.
 ### Slot timing
 
 Validators MUST schedule duties against the piecewise timeline given by
-`compute_time_at_slot_ms`, and MUST call the deadline helpers with the duty's
-slot, whose schedule entry determines its deadlines. Duty schedulers MUST keep
-millisecond precision, since deadlines are not generally whole seconds.
+`compute_time_at_slot_ms`, and use the deadline configuration of the fork
+governing each duty. The duration history does not define historical deadlines.
+Duty schedulers MUST keep millisecond precision, since deadlines are not
+generally whole seconds.
 
 ### Data availability retention
 
