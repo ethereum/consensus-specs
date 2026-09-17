@@ -133,22 +133,18 @@ def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
 
 ### The gossip domain: gossipsub
 
-Slot timing changes coincide with network upgrades. Clients SHOULD subscribe to
-the new fork-digest topics ahead of the upgrade epoch and unsubscribe from the
-old topics after it.
+Each duration schedule entry after genesis MUST coincide with a network upgrade
+at or after `EIP8198_FORK_EPOCH`. Clients SHOULD subscribe to the new
+fork-digest topics ahead of the upgrade epoch and unsubscribe from the old
+topics after it.
 
-The gossipsub `seen_ttl` parameter is the duration in seconds between the start
-of `current_slot` and the start of `current_slot + 2 * SLOTS_PER_EPOCH`. Compute
-it by subtracting the corresponding `compute_time_at_slot_ms` results and
-converting the difference with `milliseconds_to_seconds`. This covers two epochs
-even when the interval crosses a slot duration change.
-
-Durations defined in slots or epochs, including slot-based expiry and
-gossip-scoring windows, MUST be evaluated using the piecewise timeline
-(`compute_time_at_slot_ms` / `compute_slot_at_time_ms`). Duty schedulers and the
-light-client local-clock `current_slot` MUST also use this timeline. Durations
-configured in seconds, including the data-column sidecar retention window,
-remain fixed in wall-clock time.
+Durations defined in slots or epochs MUST use the piecewise timeline
+(`compute_time_at_slot_ms` / `compute_slot_at_time_ms`). For example, the
+gossipsub `seen_ttl` is the difference between the start times of
+`current_slot + 2 * SLOTS_PER_EPOCH` and `current_slot`, converted to seconds
+with `milliseconds_to_seconds`. Duty schedulers and the light-client local-clock
+`current_slot` MUST also use this timeline. Durations configured in seconds,
+including data-column sidecar retention, remain fixed in wall-clock time.
 
 ### The Req/Resp domain
 

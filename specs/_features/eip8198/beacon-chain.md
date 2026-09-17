@@ -55,16 +55,11 @@ counts, so their wall-clock spans scale with the slot duration.
 The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favour
 of `SLOT_DURATION_SCHEDULE`.
 
-*[New in EIP8198]* This schedule records historical slot durations. It MUST
-begin at `GENESIS_EPOCH` with the historical slot duration. The genesis entry
-supplies the duration used as the baseline for issuance, penalty, churn, and
-retention calculations. Entries contain only an activation epoch and a slot
-duration; forks that only change deadlines do not need a duration entry.
-
-Entries MUST be sorted by epoch in strictly ascending order. Every subsequent
-entry MUST coincide with a network upgrade at or after `EIP8198_FORK_EPOCH`.
-Slot timing changes between upgrades are not supported; the upgrade's fork
-version separates the networking domains.
+*[New in EIP8198]* This schedule MUST list slot durations in strictly increasing
+epoch order, beginning at `GENESIS_EPOCH` with the historical slot duration. The
+genesis duration is the baseline for issuance, penalty, and churn calculations.
+Entries contain only an activation epoch and a slot duration; deadline changes
+do not require an entry.
 
 The slot duration MUST be a positive multiple of `1000`, so that every slot
 boundary has an integer-second timestamp.
@@ -96,12 +91,6 @@ structure changes.
 
 The values below retain the inherited Heze timing provisionally. The deadlines
 for the intended 10-second slots remain to be chosen before activation.
-
-Every deadline MUST be positive and less than the slot duration at activation.
-The proposer reorg cutoff MUST precede the attestation deadline, which MUST
-precede the aggregate deadline. The sync message deadline MUST precede the
-contribution deadline, and the payload deadline MUST precede the payload
-attestation deadline.
 
 | Name                         |          Value |
 | ---------------------------- | -------------: |
