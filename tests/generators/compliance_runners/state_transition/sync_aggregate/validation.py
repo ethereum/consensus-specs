@@ -23,17 +23,23 @@ def recover_dimensions(pre: Any, aggregate: Any) -> dict[str, Any]:
     bits = aggregate.sync_committee_bits
     count = int(spec.get_set_bit_count(bits))
     committee_size = int(spec.SYNC_COMMITTEE_SIZE)
-    level = "FULL" if count == committee_size else "MAJORITY" if count > committee_size // 2 else "EMPTY"
+    level = (
+        "FULL"
+        if count == committee_size
+        else "MAJORITY"
+        if count > committee_size // 2
+        else "EMPTY"
+    )
     participant_pubkeys = [
-        pubkey
-        for pubkey, bit in zip(pre.current_sync_committee.pubkeys, bits, strict=True)
-        if bit
+        pubkey for pubkey, bit in zip(pre.current_sync_committee.pubkeys, bits, strict=True) if bit
     ]
     previous_slot = max(pre.slot, spec.Slot(1)) - 1
     domain = spec.get_domain(
         pre, spec.DOMAIN_SYNC_COMMITTEE, spec.compute_epoch_at_slot(previous_slot)
     )
-    signing_root = spec.compute_signing_root(spec.get_block_root_at_slot(pre, previous_slot), domain)
+    signing_root = spec.compute_signing_root(
+        spec.get_block_root_at_slot(pre, previous_slot), domain
+    )
     with bls_enabled():
         signature_valid = bool(
             spec.eth_fast_aggregate_verify(
