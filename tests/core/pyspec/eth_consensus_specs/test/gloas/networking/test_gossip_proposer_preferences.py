@@ -103,10 +103,7 @@ def test_gossip_proposer_preferences__valid(spec, state):
 
 
 @with_phases([GLOAS])
-@spec_configured_state_test(
-    {"GLOAS_FORK_EPOCH": 1},
-    activate_at_genesis=True
-)
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1}, activate_at_genesis=True)
 def test_gossip_proposer_preferences__ignore_pre_gloas_epoch(spec, state):
     """Preferences for a proposal slot before the Gloas fork are ignored."""
     anchor_state = state.copy()
@@ -158,10 +155,7 @@ def test_gossip_proposer_preferences__ignore_pre_gloas_epoch(spec, state):
 
 
 @with_phases([GLOAS])
-@spec_configured_state_test(
-    {"GLOAS_FORK_EPOCH": 2},
-    activate_at_genesis=True
-)
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 2}, activate_at_genesis=True)
 def test_gossip_proposer_preferences__valid_at_gloas_fork_epoch(spec, state):
     """Preferences for a proposal slot in the Gloas fork epoch are valid."""
     anchor_state = state.copy()
