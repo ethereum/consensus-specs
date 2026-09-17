@@ -7,7 +7,6 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Slot duration schedule](#slot-duration-schedule)
-  - [Intra-slot deadlines](#intra-slot-deadlines)
 - [Helpers](#helpers)
   - [Misc](#misc)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
@@ -80,28 +79,6 @@ transition, so reaching a lower target requires advance coordination.
 | ------------------ | --------------: |
 | `EPOCH`            |      `Epoch(0)` |
 | `SLOT_DURATION_MS` | `Uint64(12000)` |
-
-### Intra-slot deadlines
-
-*[New in EIP8198]* These configuration values are millisecond offsets from the
-start of the duty's slot. They apply to EIP-8198 duties, independently of the
-historical slot duration schedule. Earlier forks retain their own deadline
-rules; later forks may modify or deprecate these parameters as their slot
-structure changes.
-
-The values below retain the inherited Heze timing provisionally. The deadlines
-for the intended 10-second slots remain to be chosen before activation.
-
-| Name                         |          Value |
-| ---------------------------- | -------------: |
-| `PROPOSER_REORG_CUTOFF_MS`   | `Uint64(2000)` |
-| `ATTESTATION_DUE_MS`         | `Uint64(3000)` |
-| `AGGREGATE_DUE_MS`           | `Uint64(6000)` |
-| `SYNC_MESSAGE_DUE_MS`        | `Uint64(3000)` |
-| `CONTRIBUTION_DUE_MS`        | `Uint64(6000)` |
-| `PAYLOAD_DUE_MS`             | `Uint64(6000)` |
-| `PAYLOAD_ATTESTATION_DUE_MS` | `Uint64(9000)` |
-| `INCLUSION_LIST_DUE_MS`      | `Uint64(8000)` |
 
 ## Helpers
 

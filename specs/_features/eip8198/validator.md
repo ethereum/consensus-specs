@@ -16,8 +16,6 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement EIP-8198.
 
-*Note*: This specification is built upon [Heze](../../heze/validator.md).
-
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.

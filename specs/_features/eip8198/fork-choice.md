@@ -8,8 +8,6 @@
 - [Helpers](#helpers)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-  - [New `get_slot_from_time_ms`](#new-get_slot_from_time_ms)
-  - [New `get_time_at_slot_end_ms`](#new-get_time_at_slot_end_ms)
   - [New `get_time_into_slot_ms`](#new-get_time_into_slot_ms)
   - [Modified `get_slots_since_genesis`](#modified-get_slots_since_genesis)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
@@ -23,12 +21,10 @@
   - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
     - [Modified `is_proposing_on_time`](#modified-is_proposing_on_time)
   - [`on_tick` helpers](#on_tick-helpers)
-    - [New `on_tick_per_slot_ms`](#new-on_tick_per_slot_ms)
+    - [Modified `on_tick_per_slot`](#modified-on_tick_per_slot)
   - [`on_block` helpers](#on_block-helpers)
     - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
 - [Handlers](#handlers)
-  - [New `on_tick_ms`](#new-on_tick_ms)
-  - [Modified `on_tick`](#modified-on_tick)
   - [Modified `on_inclusion_list`](#modified-on_inclusion_list)
 
 <!-- mdformat-toc end -->
@@ -112,26 +108,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
-### New `get_slot_from_time_ms`
-
-```python
-def get_slot_from_time_ms(store: Store, time_ms: Uint64) -> int:
-    """
-    Return the number of slots since genesis corresponding to ``time_ms``.
-    """
-    return compute_slot_at_time_ms(store.genesis_time, time_ms) - GENESIS_SLOT
-```
-
-### New `get_time_at_slot_end_ms`
-
-```python
-def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
-    """
-    Return the Unix time in milliseconds at the end of ``slot``.
-    """
-    return compute_time_at_slot_ms(store.genesis_time, slot + 1)
-```
-
 ### New `get_time_into_slot_ms`
 
 ```python
@@ -149,7 +125,7 @@ def get_time_into_slot_ms(store: Store) -> Uint64:
 ```python
 def get_slots_since_genesis(store: Store) -> int:
     # [Modified in EIP8198]
-    return get_slot_from_time_ms(store, store.time_ms)
+    return compute_slot_at_time_ms(store.genesis_time, store.time_ms)
 ```
 
 ### Modified `get_attestation_due_ms`
@@ -230,15 +206,15 @@ def is_proposing_on_time(store: Store) -> bool:
 
 ### `on_tick` helpers
 
-#### New `on_tick_per_slot_ms`
+#### Modified `on_tick_per_slot`
 
 ```python
-def on_tick_per_slot_ms(store: Store, time_ms: Uint64) -> None:
+def on_tick_per_slot(store: Store, time: Uint64) -> None:
     previous_slot = get_current_slot(store)
 
     # [Modified in EIP8198]
     # Update store time
-    store.time_ms = time_ms
+    store.time_ms = seconds_to_milliseconds(time)
 
     current_slot = get_current_slot(store)
 
@@ -271,27 +247,6 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 ```
 
 ## Handlers
-
-### New `on_tick_ms`
-
-```python
-def on_tick_ms(store: Store, time_ms: Uint64) -> None:
-    # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
-    # to ensure that every previous slot is processed with ``on_tick_per_slot_ms``
-    tick_slot = GENESIS_SLOT + get_slot_from_time_ms(store, time_ms)
-    while get_current_slot(store) < tick_slot:
-        previous_time_ms = get_time_at_slot_end_ms(store, get_current_slot(store))
-        on_tick_per_slot_ms(store, previous_time_ms)
-    on_tick_per_slot_ms(store, time_ms)
-```
-
-### Modified `on_tick`
-
-```python
-def on_tick(store: Store, time: Uint64) -> None:
-    # [Modified in EIP8198]
-    on_tick_ms(store, seconds_to_milliseconds(time))
-```
 
 ### Modified `on_inclusion_list`
 
