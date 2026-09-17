@@ -91,7 +91,7 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -149,7 +149,7 @@ def test_gossip_data_column_sidecar__reject_block_failed_validation(spec, state)
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -201,7 +201,7 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -277,7 +277,7 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -332,7 +332,7 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, sidecar.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

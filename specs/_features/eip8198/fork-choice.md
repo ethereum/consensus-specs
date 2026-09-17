@@ -91,7 +91,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [Modified in EIP8198]
         # Removed `time`
         # [New in EIP8198]
-        time_ms=compute_slot_start_time_ms(anchor_state.genesis_time, anchor_state.slot),
+        time_ms=compute_time_at_slot_ms(anchor_state.genesis_time, anchor_state.slot),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -129,7 +129,7 @@ def get_time_at_slot_end_ms(store: Store, slot: Slot) -> Uint64:
     """
     Return the Unix time in milliseconds at the end of ``slot``.
     """
-    return compute_slot_start_time_ms(store.genesis_time, slot + 1)
+    return compute_time_at_slot_ms(store.genesis_time, slot + 1)
 ```
 
 ### New `get_time_into_slot_ms`
@@ -140,7 +140,7 @@ def get_time_into_slot_ms(store: Store) -> Uint64:
     Return the milliseconds elapsed since the start of the current slot.
     """
     current_slot = GENESIS_SLOT + get_slot_from_time_ms(store, store.time_ms)
-    slot_start_time_ms = compute_slot_start_time_ms(store.genesis_time, current_slot)
+    slot_start_time_ms = compute_time_at_slot_ms(store.genesis_time, current_slot)
     return store.time_ms - slot_start_time_ms
 ```
 

@@ -11,9 +11,6 @@
 - [Helpers](#helpers)
   - [Misc](#misc)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
-    - [New `compute_slot_start_time_ms`](#new-compute_slot_start_time_ms)
-    - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
-    - [New `compute_slot_range_duration_ms`](#new-compute_slot_range_duration_ms)
     - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_base_reward_per_increment_at_epoch`](#new-get_base_reward_per_increment_at_epoch)
@@ -134,67 +131,11 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     return entry["SLOT_DURATION_MS"]
 ```
 
-#### New `compute_slot_start_time_ms`
-
-```python
-def compute_slot_start_time_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
-    """
-    Return the Unix time in milliseconds at the start of ``slot``.
-    """
-    end_slot = slot
-    time_ms = seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        if entry_slot < end_slot:
-            slots = end_slot - entry_slot
-            time_ms += slots * entry["SLOT_DURATION_MS"]
-            end_slot = entry_slot
-    return time_ms
-```
-
-#### Modified `compute_slot_at_time_ms`
-
-```python
-def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
-    """
-    Return the slot at Unix time ``time_ms``.
-    """
-    assert time_ms >= seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        entry_time_ms = compute_slot_start_time_ms(genesis_time, entry_slot)
-        if time_ms >= entry_time_ms:
-            break
-    time_diff_ms = time_ms - entry_time_ms
-    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
-    return entry_slot + slots
-```
-
-#### New `compute_slot_range_duration_ms`
-
-*Note*: The genesis time cancels in the difference, so it is passed as zero.
-
-```python
-def compute_slot_range_duration_ms(start_slot: Slot, end_slot: Slot) -> Uint64:
-    """
-    Return the duration of ``[start_slot, end_slot)`` in milliseconds.
-    """
-    assert start_slot <= end_slot
-    genesis_time = Uint64(0)
-    start_time_ms = compute_slot_start_time_ms(genesis_time, start_slot)
-    end_time_ms = compute_slot_start_time_ms(genesis_time, end_slot)
-    return end_time_ms - start_time_ms
-```
-
 #### Modified `compute_time_at_slot`
-
-*Note*: Without this override, the execution payload timestamp validated in
-`process_execution_payload` would drift from wall-clock time after a slot
-duration change.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    time_ms = compute_slot_start_time_ms(state.genesis_time, slot)
+    time_ms = compute_time_at_slot_ms(state.genesis_time, slot)
     return milliseconds_to_seconds(time_ms)
 ```
 

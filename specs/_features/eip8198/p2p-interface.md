@@ -10,6 +10,7 @@
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
+    - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
     - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -77,17 +78,39 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 #### Modified `compute_time_at_slot_ms`
 
-*Note*: The gossip slot gates `is_future_slot` and `is_within_slot_range` are
-defined in terms of this function and inherit the piecewise timeline without
-further changes.
-
 ```python
-def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
-    Return the time in milliseconds at the start of the given slot.
+    Return the Unix time in milliseconds at the start of ``slot``.
     """
     # [Modified in EIP8198]
-    return compute_slot_start_time_ms(store.genesis_time, slot)
+    end_slot = slot
+    time_ms = seconds_to_milliseconds(genesis_time)
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        if entry_slot < end_slot:
+            slots = end_slot - entry_slot
+            time_ms += slots * entry["SLOT_DURATION_MS"]
+            end_slot = entry_slot
+    return time_ms
+```
+
+#### Modified `compute_slot_at_time_ms`
+
+```python
+def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time_ms``.
+    """
+    assert time_ms >= seconds_to_milliseconds(genesis_time)
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        entry_time_ms = compute_time_at_slot_ms(genesis_time, entry_slot)
+        if time_ms >= entry_time_ms:
+            break
+    time_diff_ms = time_ms - entry_time_ms
+    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
+    return entry_slot + slots
 ```
 
 #### New `get_data_column_sidecars_retention_start`
@@ -99,7 +122,7 @@ def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
     preserving its wall-clock length across slot duration changes.
     """
     window_ms = seconds_to_milliseconds(MIN_SECONDS_FOR_DATA_COLUMN_SIDECARS_REQUESTS)
-    current_start_ms = compute_slot_start_time_ms(
+    current_start_ms = compute_time_at_slot_ms(
         Uint64(0), compute_start_slot_at_epoch(current_epoch)
     )
     if current_start_ms < window_ms:
@@ -114,23 +137,18 @@ Slot timing changes coincide with network upgrades. Clients SHOULD subscribe to
 the new fork-digest topics ahead of the upgrade epoch and unsubscribe from the
 old topics after it.
 
-The interpretation of time-sensitive networking parameters under a slot duration
-change is as follows:
-
-- `ATTESTATION_PROPAGATION_SLOT_RANGE` remains `32` slots (one epoch plus
-  margin); its wall-clock duration scales with the slot duration.
-- `MAXIMUM_GOSSIP_CLOCK_DISPARITY` is an absolute wall-clock allowance and is
-  not rescaled.
-- The gossipsub `seen_ttl` parameter (seconds) becomes
-  `compute_slot_range_duration_ms(current_slot, Slot(current_slot + 2 * SLOTS_PER_EPOCH)) // 1000`,
-  covering two epochs also when the window crosses a duration change.
+The gossipsub `seen_ttl` parameter is the duration in seconds between the start
+of `current_slot` and the start of `current_slot + 2 * SLOTS_PER_EPOCH`. Compute
+it by subtracting the corresponding `compute_time_at_slot_ms` results and
+converting the difference with `milliseconds_to_seconds`. This covers two epochs
+even when the interval crosses a slot duration change.
 
 Durations defined in slots or epochs, including slot-based expiry and
 gossip-scoring windows, MUST be evaluated using the piecewise timeline
-(`compute_slot_start_time_ms` / `compute_slot_at_time_ms`). Duty schedulers and
-the light-client local-clock `current_slot` MUST also use this timeline.
-Durations configured in seconds, including the data-column sidecar retention
-window, remain fixed in wall-clock time.
+(`compute_time_at_slot_ms` / `compute_slot_at_time_ms`). Duty schedulers and the
+light-client local-clock `current_slot` MUST also use this timeline. Durations
+configured in seconds, including the data-column sidecar retention window,
+remain fixed in wall-clock time.
 
 ### The Req/Resp domain
 

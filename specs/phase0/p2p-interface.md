@@ -361,12 +361,12 @@ def compute_fork_digest(
 #### `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
+def compute_time_at_slot_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `compute_slot_at_time_ms`
@@ -394,7 +394,7 @@ def is_future_slot(
     Check if the given slot is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
     return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
 ```
 
@@ -428,10 +428,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(store, slot)
+    start_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(store, slot + slot_range + 1)
+    end_time_ms = compute_time_at_slot_ms(store.genesis_time, slot + slot_range + 1)
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True

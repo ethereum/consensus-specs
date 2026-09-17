@@ -47,7 +47,7 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     time_ms += 500
