@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 
 PROCESSORS = {
     "attestation": "process_attestation",
+    "attester_slashing": "process_attester_slashing",
+    "bls_to_execution_change": "process_bls_to_execution_change",
     "builder_deposit_request": "process_builder_deposit_request",
     "builder_exit_request": "process_builder_exit_request",
     "consolidation_request": "process_consolidation_request",
@@ -34,9 +36,12 @@ PROCESSORS = {
     "parent_execution_payload": "process_parent_execution_payload",
     "payload_attestation": "process_payload_attestation",
     "proposer_slashing": "process_proposer_slashing",
+    "sync_aggregate": "process_sync_aggregate",
+    "voluntary_exit": "process_voluntary_exit",
     "withdrawal_request": "process_withdrawal_request",
     "withdrawals": "process_withdrawals",
     "builder_pending_payments": "process_builder_pending_payments",
+    "pending_consolidations": "process_pending_consolidations",
     "pending_deposits": "process_pending_deposits",
     "ptc_window": "process_ptc_window",
 }
