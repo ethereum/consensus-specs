@@ -1542,6 +1542,12 @@ Clients MUST keep a record of signed blocks seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time, and clients
 MUST support serving requests of blocks on this range.
 
+*Note*: The epoch range above is defined by the current wall-clock time and does
+not account for finality. Clients MUST NOT prune blocks that are more recent
+than their latest finalized checkpoint, even if these blocks are outside of this
+range. During an extended period of non-finality, peers need these blocks to
+sync from the latest finalized checkpoint.
+
 Peers that are unable to reply to block requests within the
 `compute_min_epochs_for_block_requests()` epoch range SHOULD respond with error
 code `3: ResourceUnavailable`. Such peers that are unable to successfully reply
@@ -2455,8 +2461,8 @@ These checkpoints *in the worst case* (i.e. very large validator set and maximal
 allowed safety decay) must be from the most recent
 `compute_min_epochs_for_block_requests()` epochs, and thus a user must be able
 to block sync to the head from this starting point. Thus, this defines the epoch
-range outside which nodes may prune blocks, and the epoch range that a new node
-syncing from a checkpoint must backfill.
+range outside which nodes may prune finalized blocks, and the epoch range that a
+new node syncing from a checkpoint must backfill.
 
 `compute_min_epochs_for_block_requests()` is calculated using the arithmetic
 from `compute_weak_subjectivity_period` found in the
