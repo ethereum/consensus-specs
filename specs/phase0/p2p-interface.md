@@ -365,8 +365,7 @@ def compute_time_at_slot_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
     """
     Return the time in milliseconds at the start of the given slot.
     """
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(seconds_to_milliseconds(genesis_time) + slot * SLOT_DURATION_MS)
 ```
 
 #### `compute_slot_at_time_ms`
@@ -376,10 +375,8 @@ def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
     """
     Return the slot at Unix time ``time_ms``.
     """
-    genesis_time_ms = seconds_to_milliseconds(genesis_time)
-    time_since_genesis_ms = time_ms - genesis_time_ms
-    slots_since_genesis = time_since_genesis_ms // SLOT_DURATION_MS
-    return GENESIS_SLOT + slots_since_genesis
+    time_since_genesis_ms = time_ms - seconds_to_milliseconds(genesis_time)
+    return Slot(time_since_genesis_ms // SLOT_DURATION_MS)
 ```
 
 #### `is_future_slot`

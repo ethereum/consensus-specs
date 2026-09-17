@@ -77,8 +77,8 @@ optimistically imported blocks which have only received a `NOT_VALIDATED`
 designation from an execution engine (i.e., they are not known to be
 `INVALIDATED` or `VALID`).
 
-Let `current_slot: Slot` be `(time - genesis_time) * 1000 // SLOT_DURATION_MS`
-where `time` is the UNIX time according to the local system clock.
+Let `current_slot: Slot` be `compute_slot_at_time(genesis_time, time)` where
+`time` is the UNIX time according to the local system clock.
 
 ```python
 @dataclass

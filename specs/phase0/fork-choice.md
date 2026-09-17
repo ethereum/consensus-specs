@@ -244,14 +244,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    return (store.time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    return compute_slot_at_time_ms(store.genesis_time, store.time_ms)
 ```
 
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return GENESIS_SLOT + get_slots_since_genesis(store)
+    return get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -943,11 +943,9 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
 def on_tick(store: Store, time: Uint64) -> None:
     # If the ``store.time`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    tick_slot = compute_slot_at_time(store.genesis_time, time)
     while get_current_slot(store) < tick_slot:
-        previous_time = (
-            store.genesis_time + (get_current_slot(store) + 1) * SLOT_DURATION_MS // 1000
-        )
+        previous_time = compute_time_at_slot(store.genesis_time, get_current_slot(store) + 1)
         on_tick_per_slot(store, previous_time)
     on_tick_per_slot(store, time)
 ```
