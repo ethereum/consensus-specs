@@ -32,12 +32,16 @@ def recover_dimensions(pre: Any, signed_exit: Any) -> dict[str, Any]:
             pre.genesis_validators_root,
         )
         signature_valid = bool(
-            bls.Verify(validator.pubkey, spec.compute_signing_root(message, domain), signed_exit.signature)
+            bls.Verify(
+                validator.pubkey, spec.compute_signing_root(message, domain), signed_exit.signature
+            )
         )
     validator_active = bool(spec.is_active_validator(validator, current_epoch))
     exit_not_initiated = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
     exit_epoch_valid = current_epoch >= message.epoch
-    active_long_enough = current_epoch >= validator.activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
+    active_long_enough = (
+        current_epoch >= validator.activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
+    )
     no_pending_withdrawal = pending_balance == 0
     new_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
     if pre.earliest_exit_epoch < new_exit_epoch:
