@@ -22,6 +22,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
     def deprecate_config_vars(cls) -> set[str]:
         return {
             "SLOT_DURATION_MS",
+            "MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS",
         }
 
     @classmethod

@@ -32,7 +32,10 @@ generally whole seconds.
 
 ### Data availability retention
 
-The lower bound of the data-column sidecar retention window in the inherited
-retention guidance is
+The data-column sidecar retention window is defined by
+`MIN_SECONDS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`. Validators MUST retain and
+serve sidecars from
 `max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`
-(see the EIP-8198 networking document).
+through the current epoch. They MAY prune sidecars from earlier epochs. This
+replaces the inherited epoch-count retention and pruning guidance; see the
+EIP-8198 networking document for the time-based cutoff.
