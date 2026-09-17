@@ -16,6 +16,8 @@ depending on the handler.
 Operation handlers:
 
 - `attestation`
+- `attester_slashing`
+- `bls_to_execution_change`
 - `builder_deposit_request`
 - `builder_exit_request`
 - `consolidation_request`
@@ -24,12 +26,15 @@ Operation handlers:
 - `parent_execution_payload`
 - `payload_attestation`
 - `proposer_slashing`
+- `sync_aggregate`
+- `voluntary_exit`
 - `withdrawal_request`
 - `withdrawals`
 
 Epoch-processing handlers:
 
 - `builder_pending_payments`
+- `pending_consolidations`
 - `pending_deposits`
 - `ptc_window`
 
