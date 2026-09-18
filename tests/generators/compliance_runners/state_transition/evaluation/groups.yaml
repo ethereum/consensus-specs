@@ -24,6 +24,7 @@ epoch_processing:
     - pending_consolidations
     - pending_deposits
     - ptc_window
+    - slashings
 
 # The parent handler is an integration test; the individual handlers provide
 # detailed coverage of the execution requests it dispatches.
