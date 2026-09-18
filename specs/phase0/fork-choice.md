@@ -34,6 +34,7 @@
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`get_latest_message_epoch`](#get_latest_message_epoch)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
@@ -243,14 +244,14 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    return (store.time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    return compute_slot_at_time_ms(store.genesis_time, store.time_ms)
 ```
 
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return GENESIS_SLOT + get_slots_since_genesis(store)
+    return get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -547,6 +548,16 @@ def seconds_to_milliseconds(seconds: Uint64) -> Uint64:
     if seconds > UINT64_MAX // 1000:
         return UINT64_MAX
     return seconds * 1000
+```
+
+#### `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
+    """
+    Convert milliseconds to seconds, discarding any remainder.
+    """
+    return milliseconds // 1000
 ```
 
 #### `get_slot_component_duration_ms`
@@ -932,11 +943,9 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
 def on_tick(store: Store, time: Uint64) -> None:
     # If the ``store.time`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    tick_slot = compute_slot_at_time(store.genesis_time, time)
     while get_current_slot(store) < tick_slot:
-        previous_time = (
-            store.genesis_time + (get_current_slot(store) + 1) * SLOT_DURATION_MS // 1000
-        )
+        previous_time = compute_time_at_slot(store.genesis_time, get_current_slot(store) + 1)
         on_tick_per_slot(store, previous_time)
     on_tick_per_slot(store, time)
 ```

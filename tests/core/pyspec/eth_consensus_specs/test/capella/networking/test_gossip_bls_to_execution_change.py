@@ -22,7 +22,7 @@ def get_capella_fork_time_ms(spec, store):
     Return the current time in milliseconds at the Capella fork epoch.
     """
     capella_slot = spec.compute_start_slot_at_epoch(spec.config.CAPELLA_FORK_EPOCH)
-    return spec.compute_time_at_slot_ms(store, capella_slot)
+    return spec.compute_time_at_slot_ms(store.genesis_time, capella_slot)
 
 
 @with_capella_and_later
@@ -83,7 +83,7 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
 
     seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    current_time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(0))
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)

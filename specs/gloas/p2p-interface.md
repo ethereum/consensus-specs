@@ -350,7 +350,7 @@ def is_past_slot(
     Check if the given slot is in the past
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
     return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
 ```
 

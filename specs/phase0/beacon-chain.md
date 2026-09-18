@@ -109,6 +109,7 @@
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
     - [`compute_time_at_slot`](#compute_time_at_slot)
+    - [`compute_slot_at_time`](#compute_slot_at_time)
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
@@ -1287,8 +1288,21 @@ def compute_committee(
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+    """
+    Return the time in seconds at the start of the given slot.
+    """
+    return Uint64(state.genesis_time + slot * SLOT_DURATION_MS // 1000)
+```
+
+#### `compute_slot_at_time`
+
+```python
+def compute_slot_at_time(state: BeaconState, time: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time``.
+    """
+    time_since_genesis_ms = seconds_to_milliseconds(time - state.genesis_time)
+    return Slot(time_since_genesis_ms // SLOT_DURATION_MS)
 ```
 
 #### `compute_epoch_at_slot`

@@ -78,7 +78,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_data_index_too_high(spec, sta
 
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -191,7 +193,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -242,7 +246,9 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec,
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -298,7 +304,9 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -356,7 +364,9 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -414,7 +424,9 @@ def test_gossip_beacon_aggregate_and_proof__valid_payload_validated(spec, state)
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -476,7 +488,9 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_status_without_envelo
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time, signed_agg.message.aggregate.data.slot
+    )
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

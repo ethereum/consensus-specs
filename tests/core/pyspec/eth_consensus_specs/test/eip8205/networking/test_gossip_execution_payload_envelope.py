@@ -59,7 +59,7 @@ def _assert_envelope_preregistrations_gossip(spec, state, count, expected, reaso
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
 
     time_ms += 100
