@@ -398,10 +398,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 #### `get_node_children`
 
 ```python
-def get_node_children(
-    store: Store,
-    node: ForkChoiceNode,
-) -> Sequence[ForkChoiceNode]:
+def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
     return [
         ForkChoiceNode(root=root)
         for root in store.blocks
@@ -472,13 +469,11 @@ def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
     # Get filtered node tree that only includes viable branches
-    filtered_node_tree = get_filtered_node_tree(store)
+    nodes = get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = ForkChoiceNode(root=store.justified_checkpoint.root)
     while True:
-        children = [
-            child for child in get_node_children(store, head) if child in filtered_node_tree
-        ]
+        children = [child for child in get_node_children(store, head) if child in nodes]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically

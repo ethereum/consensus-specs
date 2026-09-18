@@ -637,11 +637,11 @@ node is never returned.
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
     # Get filtered node tree that only includes viable branches
-    filtered_node_tree = get_filtered_node_tree(store)
+    nodes = get_filtered_node_tree(store)
 
     # [New in Gloas:EIP7732]
     # Return empty node if there are no viable nodes
-    if not any(filtered_node_tree):
+    if not any(nodes):
         return ForkChoiceNode(
             root=store.justified_checkpoint.root,
             payload_status=PAYLOAD_STATUS_EMPTY,
@@ -655,9 +655,7 @@ def get_head(store: Store) -> ForkChoiceNode:
     )
 
     while True:
-        children = [
-            child for child in get_node_children(store, head) if child in filtered_node_tree
-        ]
+        children = [child for child in get_node_children(store, head) if child in nodes]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
