@@ -37,6 +37,7 @@ Epoch-processing handlers:
 - `pending_consolidations`
 - `pending_deposits`
 - `ptc_window`
+- `slashings`
 
 ## Generating tests
 

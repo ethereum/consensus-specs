@@ -44,6 +44,7 @@ PROCESSORS = {
     "pending_consolidations": "process_pending_consolidations",
     "pending_deposits": "process_pending_deposits",
     "ptc_window": "process_ptc_window",
+    "slashings": "process_slashings",
 }
 
 PACKAGE_DIR = Path(__file__).resolve().parent

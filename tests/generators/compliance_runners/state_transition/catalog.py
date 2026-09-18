@@ -38,6 +38,7 @@ RUNNERS: dict[str, tuple[str, ...]] = {
         "pending_consolidations",
         "pending_deposits",
         "ptc_window",
+        "slashings",
     ),
 }
 HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handlers)
@@ -113,4 +114,5 @@ PROVIDERS = (
     ),
     Provider("pending_deposits", "pending_deposits", "epoch_processing", "pending_deposits"),
     Provider("ptc_window", "ptc_window", "epoch_processing", "ptc_window"),
+    Provider("slashings", "slashings", "epoch_processing", "slashings"),
 )
