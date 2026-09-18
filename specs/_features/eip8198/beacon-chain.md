@@ -14,7 +14,6 @@
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_base_reward_per_increment_at_epoch`](#new-get_base_reward_per_increment_at_epoch)
     - [New `get_base_reward_at_epoch`](#new-get_base_reward_at_epoch)
-    - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
     - [Modified `get_flag_index_deltas`](#modified-get_flag_index_deltas)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
     - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
@@ -25,6 +24,8 @@
     - [Operations](#operations)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
+    - [Sync aggregate processing](#sync-aggregate-processing)
+      - [Modified `process_sync_aggregate`](#modified-process_sync_aggregate)
 
 <!-- mdformat-toc end -->
 
@@ -108,10 +109,6 @@ def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
 
 #### New `get_base_reward_per_increment_at_epoch`
 
-*Note*: The division is deferred so that the exact
-`get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` ratio
-applies, rather than rounding `BASE_REWARD_FACTOR` to a new integer constant.
-
 ```python
 def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> Gwei:
     """
@@ -137,14 +134,6 @@ def get_base_reward_at_epoch(state: BeaconState, index: ValidatorIndex, epoch: E
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
     return increments * get_base_reward_per_increment_at_epoch(state, epoch)
-```
-
-#### Modified `get_base_reward_per_increment`
-
-```python
-def get_base_reward_per_increment(state: BeaconState) -> Gwei:
-    # [Modified in EIP8198]
-    return get_base_reward_per_increment_at_epoch(state, get_current_epoch(state))
 ```
 
 #### Modified `get_flag_index_deltas`
@@ -380,4 +369,76 @@ def process_attestation(
         state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH] = payment
     else:
         state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
+```
+
+#### Sync aggregate processing
+
+##### Modified `process_sync_aggregate`
+
+```python
+def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
+    # Verify sync committee aggregate signature signing over the previous slot block root
+    committee_pubkeys = state.current_sync_committee.pubkeys
+    committee_bits = sync_aggregate.sync_committee_bits
+    if get_set_bit_count(committee_bits) == SYNC_COMMITTEE_SIZE:
+        # All members participated - use precomputed aggregate key
+        participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
+    elif get_set_bit_count(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+        # More than half participated - subtract non-participant keys.
+        # First determine nonparticipating members
+        non_participant_pubkeys = [
+            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits, strict=True) if not bit
+        ]
+        # Compute aggregate of non-participants
+        non_participant_aggregate = eth_aggregate_pubkeys(non_participant_pubkeys)
+        # Subtract non-participants from the full aggregate
+        # This is equivalent to: aggregate_pubkey + (-non_participant_aggregate)
+        participant_pubkey = bls.add(
+            bls.bytes48_to_G1(state.current_sync_committee.aggregate_pubkey),
+            bls.neg(bls.bytes48_to_G1(non_participant_aggregate)),
+        )
+        participant_pubkeys = [BLSPubkey(bls.G1_to_bytes48(participant_pubkey))]
+    else:
+        # Less than half participated - aggregate participant keys
+        participant_pubkeys = [
+            pubkey
+            for pubkey, bit in zip(
+                committee_pubkeys, sync_aggregate.sync_committee_bits, strict=True
+            )
+            if bit
+        ]
+    previous_slot = saturating_sub(state.slot, 1)
+    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
+    signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
+    assert eth_fast_aggregate_verify(
+        participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
+    )
+
+    # Compute participant and proposer rewards
+    total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    # [Modified in EIP8198]
+    total_base_rewards = (
+        get_base_reward_per_increment_at_epoch(state, get_current_epoch(state))
+        * total_active_increments
+    )
+    max_participant_rewards = (
+        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
+    )
+    participant_reward = max_participant_rewards // SYNC_COMMITTEE_SIZE
+    proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
+
+    # Apply participant and proposer rewards
+    all_pubkeys = [v.pubkey for v in state.validators]
+    committee_indices = [
+        ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
+    ]
+    for participant_index, participation_bit in zip(
+        committee_indices, sync_aggregate.sync_committee_bits, strict=True
+    ):
+        if participation_bit:
+            increase_balance(state, participant_index, participant_reward)
+            increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+        else:
+            decrease_balance(state, participant_index, participant_reward)
 ```
