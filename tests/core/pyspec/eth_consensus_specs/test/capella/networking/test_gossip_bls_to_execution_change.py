@@ -1,13 +1,17 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
+    spec_test,
     with_capella_and_later,
+    with_config_overrides,
+    with_matching_spec_config,
     with_phases,
+    with_state,
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import (
     get_signed_address_change as get_signed_bls_to_execution_change,
 )
-from eth_consensus_specs.test.helpers.constants import CAPELLA
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -68,12 +72,17 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     )
 
 
-@with_phases([CAPELLA])
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
-def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
+@spec_test
+@with_config_overrides({"CAPELLA_FORK_EPOCH": 1})
+@with_state
+@with_matching_spec_config(emitted_fork=CAPELLA)
+def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, phases, state):
     """
     Test that a `bls_to_execution_change` before the Capella fork is ignored.
     """
+    post_spec = phases[CAPELLA]
+    yield "post_fork", "meta", CAPELLA
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
@@ -81,15 +90,15 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    seen = get_seen(spec)
-    signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
+    seen = get_seen(post_spec)
+    signed_bls_to_execution_change = get_signed_bls_to_execution_change(post_spec, state)
     current_time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec,
+        post_spec,
         seen=seen,
         store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
@@ -112,13 +121,18 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     )
 
 
-@with_phases([CAPELLA])
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
-def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, state):
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
+@spec_test
+@with_config_overrides({"CAPELLA_FORK_EPOCH": 1})
+@with_state
+@with_matching_spec_config(emitted_fork=CAPELLA)
+def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, phases, state):
     """
     Test that a `bls_to_execution_change` is ignored immediately before the
     Capella fork epoch's clock-disparity window opens.
     """
+    post_spec = phases[CAPELLA]
+    yield "post_fork", "meta", CAPELLA
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
@@ -126,16 +140,16 @@ def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, sta
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    seen = get_seen(spec)
-    signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    capella_fork_time_ms = get_capella_fork_time_ms(spec, store)
-    current_time_ms = capella_fork_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
+    seen = get_seen(post_spec)
+    signed_bls_to_execution_change = get_signed_bls_to_execution_change(post_spec, state)
+    capella_fork_time_ms = get_capella_fork_time_ms(post_spec, store)
+    current_time_ms = capella_fork_time_ms - post_spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec,
+        post_spec,
         seen=seen,
         store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
@@ -158,13 +172,18 @@ def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, sta
     )
 
 
-@with_phases([CAPELLA])
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
-def test_gossip_bls_to_execution_change__valid_at_clock_disparity(spec, state):
+@with_phases(phases=[BELLATRIX], other_phases=[CAPELLA])
+@spec_test
+@with_config_overrides({"CAPELLA_FORK_EPOCH": 1})
+@with_state
+@with_matching_spec_config(emitted_fork=CAPELLA)
+def test_gossip_bls_to_execution_change__valid_at_clock_disparity(spec, phases, state):
     """
     Test that a `bls_to_execution_change` is valid when the Capella fork epoch's
     clock-disparity window opens while the head state is still in the previous epoch.
     """
+    post_spec = phases[CAPELLA]
+    yield "post_fork", "meta", CAPELLA
     yield "topic", "meta", "bls_to_execution_change"
     yield "state", state
 
@@ -172,16 +191,16 @@ def test_gossip_bls_to_execution_change__valid_at_clock_disparity(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    seen = get_seen(spec)
-    signed_bls_to_execution_change = get_signed_bls_to_execution_change(spec, state)
-    capella_fork_time_ms = get_capella_fork_time_ms(spec, store)
-    current_time_ms = capella_fork_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    seen = get_seen(post_spec)
+    signed_bls_to_execution_change = get_signed_bls_to_execution_change(post_spec, state)
+    capella_fork_time_ms = get_capella_fork_time_ms(post_spec, store)
+    current_time_ms = capella_fork_time_ms - post_spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec,
+        post_spec,
         seen=seen,
         store=store,
         signed_bls_to_execution_change=signed_bls_to_execution_change,
