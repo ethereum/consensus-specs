@@ -35,6 +35,7 @@ RUNNERS: dict[str, tuple[str, ...]] = {
     ),
     "epoch_processing": (
         "builder_pending_payments",
+        "effective_balance_updates",
         "pending_consolidations",
         "pending_deposits",
         "ptc_window",
@@ -105,6 +106,12 @@ PROVIDERS = (
         "builder_pending_payments",
         "epoch_processing",
         "builder_pending_payments",
+    ),
+    Provider(
+        "effective_balance_updates_body",
+        "effective_balance_updates",
+        "epoch_processing",
+        "effective_balance_updates",
     ),
     Provider(
         "pending_consolidations",
