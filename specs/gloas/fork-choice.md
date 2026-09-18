@@ -42,7 +42,6 @@
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
   - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
-  - [New `compute_shuffling_lookahead_start_slot`](#new-compute_shuffling_lookahead_start_slot)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -713,13 +712,16 @@ def verify_execution_payload_envelope(
     assert payload.parent_hash == state.latest_block_hash
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+
+    # Compute versioned hashes
+    versioned_hashes = VersionedHashes()
+    for commitment in bid.blob_kzg_commitments:
+        versioned_hashes.append(kzg_commitment_to_versioned_hash(commitment))
+
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
-            versioned_hashes=[
-                kzg_commitment_to_versioned_hash(commitment)
-                for commitment in bid.blob_kzg_commitments
-            ],
+            versioned_hashes=versioned_hashes,
             parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )
@@ -742,15 +744,6 @@ def is_valid_dependent_root(store: Store, root: Root, dependent_slot: Slot) -> b
             if block.slot > dependent_slot:
                 return True
     return False
-```
-
-### New `compute_shuffling_lookahead_start_slot`
-
-```python
-def compute_shuffling_lookahead_start_slot(epoch: Epoch) -> Slot:
-    if epoch <= MIN_SEED_LOOKAHEAD:
-        return GENESIS_SLOT
-    return compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD)
 ```
 
 ### Modified `get_attestation_due_ms`

@@ -756,9 +756,7 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     )
 
     # Compute min honest FFG support
-    min_honest_ffg_support = ffg_support_for_checkpoint - min(
-        adversarial_weight, ffg_support_for_checkpoint
-    )
+    min_honest_ffg_support = saturating_sub(ffg_support_for_checkpoint, adversarial_weight)
 
     return min_honest_ffg_support + remaining_honest_ffg_weight
 ```

@@ -5,14 +5,14 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Presets](#presets)
-  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Types](#types)
   - [Modified `CellsBitList`](#modified-cellsbitlist)
 - [Containers](#containers)
   - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
   - [Modified `PartialDataColumnPartsMetadata`](#modified-partialdatacolumnpartsmetadata)
   - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
+- [Helpers](#helpers)
+  - [New `compute_max_partial_data_column_sidecar_size`](#new-compute_max_partial_data_column_sidecar_size)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Blob subnets](#blob-subnets)
     - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
@@ -29,16 +29,6 @@ specifications of previous upgrades, and assumes them as pre-requisite. In
 particular, this document builds on the
 [Fulu partial columns networking specification](../../fulu/partial-columns/p2p-interface.md)
 and the [Gloas networking specification](../p2p-interface.md).
-
-## Presets
-
-### Type-specific SSZ bounds
-
-*[New in Gloas:EIP7688]*
-
-| Name                                   | Value                        |
-| -------------------------------------- | ---------------------------- |
-| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `Uint64(8585741)` (= ~8 MiB) |
 
 ## Types
 
@@ -82,6 +72,30 @@ class PartialDataColumnGroupID(Container):
     beacon_block_root: Root
     # [New in Gloas:EIP7732]
     slot: Slot
+```
+
+## Helpers
+
+### New `compute_max_partial_data_column_sidecar_size`
+
+```python
+def compute_max_partial_data_column_sidecar_size() -> Uint64:
+    """
+    Return the maximum size of a serialized ``PartialDataColumnSidecar``
+    computed using the largest ``max_blobs_per_block`` value from the blob
+    schedule, regardless of whether or not that is the current
+    ``max_blobs_per_block``.
+    """
+    max_blobs = MAX_BLOBS_PER_BLOCK_ELECTRA
+    for entry in BLOB_SCHEDULE:
+        max_blobs = max(max_blobs, entry["MAX_BLOBS_PER_BLOCK"])
+
+    sidecar = PartialDataColumnSidecar(
+        cells_present_bitmap=CellsBitList(data=[Boolean()] * max_blobs),
+        partial_column=DataColumn(data=[Cell()] * max_blobs),
+        kzg_proofs=KZGProofs(data=[KZGProof()] * max_blobs),
+    )
+    return Uint64(len(ssz_serialize(sidecar)))
 ```
 
 ## The gossip domain: gossipsub

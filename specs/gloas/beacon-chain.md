@@ -79,6 +79,7 @@
     - [`BeaconState`](#beaconstate)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionRequests`](#executionrequests)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
@@ -978,6 +979,19 @@ class ExecutionRequests(ProgressiveContainer):
     builder_deposits: BuilderDepositRequests
     # [New in Gloas:EIP8282]
     builder_exits: BuilderExitRequests
+```
+
+#### `NewPayloadRequest`
+
+```python
+# [Modified in Gloas:EIP7688]
+class NewPayloadRequest(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
+    execution_payload: ExecutionPayload
+    versioned_hashes: VersionedHashes
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
 ```
 
 ## Dataclasses
@@ -1925,8 +1939,9 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
         # [Modified in Gloas:EIP7732]
         if is_builder_index(withdrawal.validator_index):
             builder_index = convert_validator_index_to_builder_index(withdrawal.validator_index)
-            builder_balance = state.builders[builder_index].balance
-            state.builders[builder_index].balance -= min(withdrawal.amount, builder_balance)
+            state.builders[builder_index].balance = saturating_sub(
+                state.builders[builder_index].balance, withdrawal.amount
+            )
         else:
             decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 ```

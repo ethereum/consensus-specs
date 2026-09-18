@@ -46,3 +46,17 @@ def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
     epochs_for_validator_set_churn = Epoch(SAFETY_DECAY * t // (2 * delta * 100))
     return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + epochs_for_validator_set_churn
 ```
+
+A brief reference for what these values look like in practice
+([reference script](https://gist.github.com/jtraglia/2f9cf5c6f99a9cdf0dd1996ba3d14caf)):
+
+| Safety Decay | Total Active Balance (ETH) | Weak Sub. Period (Epochs) |
+| -----------: | -------------------------: | ------------------------: |
+|           10 |                  1,048,576 |                       620 |
+|           10 |                  2,097,152 |                       911 |
+|           10 |                  4,194,304 |                     1,348 |
+|           10 |                  8,388,608 |                     1,348 |
+|           10 |                 16,777,216 |                     1,484 |
+|           10 |                 33,554,432 |                     1,566 |
+|           10 |                 67,108,864 |                     1,611 |
+|           10 |                134,217,728 |                     1,635 |

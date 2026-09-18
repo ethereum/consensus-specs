@@ -65,11 +65,15 @@ def _prepare_state(
     threshold_fn: Callable[[Any], int],
     spec: Spec,
     phases: SpecForks,
+    builder_count: int,
 ):
     balances = balances_fn(spec)
     activation_threshold = threshold_fn(spec)
     state = create_genesis_state(
-        spec=spec, validator_balances=balances, activation_threshold=activation_threshold
+        spec=spec,
+        validator_balances=balances,
+        activation_threshold=activation_threshold,
+        builder_count=builder_count,
     )
     return state
 
@@ -78,14 +82,23 @@ _custom_state_cache_dict = LRU(size=10)
 
 
 def with_custom_state(
-    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
+    balances_fn: Callable[[Any], Sequence[int]],
+    threshold_fn: Callable[[Any], int],
+    builder_count: int = 8,
 ):
     def deco(fn):
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
-            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
+            key = (
+                spec.fork,
+                spec.config.__hash__(),
+                spec.__file__,
+                balances_fn,
+                threshold_fn,
+                builder_count,
+            )
             if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
+                state = _prepare_state(balances_fn, threshold_fn, spec, phases, builder_count)
                 _custom_state_cache_dict[key] = state
 
             # Take an entry out of the LRU. A state is mutable here, so the test

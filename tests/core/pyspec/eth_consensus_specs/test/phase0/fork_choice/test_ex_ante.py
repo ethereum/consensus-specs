@@ -1,6 +1,5 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_to,
     with_altair_and_later,
     with_presets,
 )
@@ -12,8 +11,6 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
     MAINNET,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -362,8 +359,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield "steps", test_steps
 
 
-# TODO(jtraglia): Investigate why this doesn't work with Gloas
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
@@ -441,8 +437,7 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     assert spec.get_set_bit_count(attestation.aggregation_bits) == participant_num
     sign_attestation(spec, state_c, attestation)
 
-    # Attestation_1 received at N+3 — B is head because B's attestation_score > C's proposer_score.
-    # (B's proposer_score = C's attestation_score = 0)
+    # Attestation_set_1 received at N+3 — C is head due to its attestation score.
     time = state_d.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_attestation(spec, store, attestation, test_steps)
