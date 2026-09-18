@@ -68,6 +68,8 @@ Sub-transitions:
 - `pending_consolidations` (>=Electra)
 - `pending_deposits` (>=Electra)
 - `pending_randao_commitments` (>=EIP-8321)
+- `builder_pending_payments` (>=Gloas)
+- `ptc_window` (>=Gloas)
 
 The resulting state should match the expected `post` state.
 
