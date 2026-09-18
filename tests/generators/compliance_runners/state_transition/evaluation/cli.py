@@ -41,6 +41,7 @@ PROCESSORS = {
     "withdrawal_request": "process_withdrawal_request",
     "withdrawals": "process_withdrawals",
     "builder_pending_payments": "process_builder_pending_payments",
+    "effective_balance_updates": "process_effective_balance_updates",
     "pending_consolidations": "process_pending_consolidations",
     "pending_deposits": "process_pending_deposits",
     "ptc_window": "process_ptc_window",
