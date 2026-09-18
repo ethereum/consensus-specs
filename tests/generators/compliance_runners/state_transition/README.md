@@ -34,6 +34,7 @@ Operation handlers:
 Epoch-processing handlers:
 
 - `builder_pending_payments`
+- `effective_balance_updates`
 - `pending_consolidations`
 - `pending_deposits`
 - `ptc_window`
