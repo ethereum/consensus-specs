@@ -283,6 +283,9 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
     k_state = store.block_states[branch_root].copy()
     next_slots(spec, k_state, k_slot - k_state.slot - 1)
     k_block = build_empty_block_for_next_slot(spec, k_state)
+    k_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
+        b"\x03" + b"\x00" * 31
+    )
     assert k_block.slot == k_slot
     signed_k = state_transition_and_sign_block(spec, k_state, k_block)
     k_root = signed_k.message.hash_tree_root()
