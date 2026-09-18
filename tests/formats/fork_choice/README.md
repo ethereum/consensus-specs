@@ -252,7 +252,7 @@ finalized_checkpoint: {
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
 viable_for_head_roots_and_weights: [{
-    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks/nodes
+    root: string,             -- Encoded 32-byte value of filtered_node_tree leaf blocks/nodes
     weight: int,              -- Integer value of the weight of the block/node
     payload_status: int,      -- Gloas and later, the payload_status of the node
 }]
