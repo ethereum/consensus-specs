@@ -96,8 +96,17 @@ def get_test_case(spec, test_dir: Path, handler: str):
         "meta": read_yaml(test_dir / "meta.yaml"),
         "pre": decode_file(spec, test_dir, "pre", spec.BeaconState),
         "operation": decode_optional_operation(spec, test_dir, handler),
+        "blocks": decode_blocks(spec, test_dir),
         "post": decode_optional_post(spec, test_dir),
     }
+
+
+def decode_blocks(spec, test_dir: Path):
+    meta = read_yaml(test_dir / "meta.yaml")
+    return [
+        decode_file(spec, test_dir, f"blocks_{index}", spec.SignedBeaconBlock)
+        for index in range(meta.get("blocks_count", 0))
+    ]
 
 
 def decode_optional_operation(spec, test_dir: Path, handler: str):
@@ -136,6 +145,12 @@ def run_test(test_info: StateTransitionTestInfo):
             run_epoch_processing_case(spec, state, handler, expected_post)
             return
 
+        if runner == "sanity":
+            if handler != "blocks":
+                raise ValueError(f"Unsupported sanity handler: {handler}")
+            run_sanity_blocks_case(spec, state, test_case["blocks"], expected_post)
+            return
+
         if runner != "operations":
             raise ValueError(f"Unsupported state-transition runner: {runner}")
 
@@ -163,6 +178,18 @@ def run_epoch_processing_case(spec, state, handler, expected_post):
         raise ValueError(f"Unsupported epoch_processing handler: {handler}")
     process_fn = getattr(spec, EPOCH_PROCESSORS[handler])
     run_processing_case(process_fn, state, None, expected_post)
+
+
+def run_sanity_blocks_case(spec, state, blocks, expected_post):
+    def run_blocks():
+        for block in blocks:
+            spec.state_transition(state, block, validate_result=False)
+
+    if expected_post is None:
+        expect_assertion_error(run_blocks)
+    else:
+        run_blocks()
+        assert state.hash_tree_root() == expected_post.hash_tree_root()
 
 
 def run_processing_case(process_fn, state, operation, expected_post, extra_args=()):

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 
 PROCESSORS = {
+    "blocks": "process_operations",
     "attestation": "process_attestation",
     "attester_slashing": "process_attester_slashing",
     "bls_to_execution_change": "process_bls_to_execution_change",
@@ -121,6 +122,15 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
     old_bls_active = bls.bls_active
     bls.bls_active = bool(test_case["meta"].get("bls_setting", 0))
     try:
+        if case.runner == "sanity":
+            test_run.run_sanity_blocks_case(
+                spec,
+                test_case["pre"],
+                test_case["blocks"],
+                test_case["post"],
+            )
+            return
+
         extra_args = ()
         if case.handler == "attestation" and is_post_gloas(spec):
             extra_args = (spec.Slot(test_case["meta"]["parent_slot"]),)

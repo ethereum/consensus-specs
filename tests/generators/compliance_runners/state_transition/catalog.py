@@ -41,6 +41,7 @@ RUNNERS: dict[str, tuple[str, ...]] = {
         "ptc_window",
         "slashings",
     ),
+    "sanity": ("blocks",),
 }
 HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handlers)
 # PROVIDERS = tuple(
@@ -48,6 +49,7 @@ HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handler
 #     for runner, handlers in RUNNERS.items()
 #     for handler in handlers
 PROVIDERS = (
+    Provider("process_operations", "operations", "sanity", "blocks"),
     Provider("attestation", "attestation", "operations", "attestation"),
     Provider("attester_slashing", "attester_slashing", "operations", "attester_slashing"),
     Provider(

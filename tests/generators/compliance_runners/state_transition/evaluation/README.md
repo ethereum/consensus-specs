@@ -11,9 +11,9 @@ source, coverage databases, and JSON reports and must not be committed.
 ## Groups and exclusions
 
 [`groups.yaml`](groups.yaml) defines composable vector/code scopes. The standard
-groups are `all`, `all_operations`, `all_epoch_processing`, and
-`parent_execution_payload_plus_invoked`. A handler name is also a valid
-single-handler group.
+groups are `all`, `all_operations`, `all_epoch_processing`, `all_sanity`, and
+`parent_execution_payload_plus_invoked`. The `blocks` handler uses the sanity
+test format. A handler name is also a valid single-handler group.
 
 [`exclusions.yaml`](exclusions.yaml) defines shared helpers excluded from the
 generator-quality denominator. Every report retains both raw and in-scope
