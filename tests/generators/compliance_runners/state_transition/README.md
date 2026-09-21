@@ -41,6 +41,7 @@ Epoch-processing handlers:
 - `builder_pending_payments`
 - `effective_balance_updates`
 - `eth1_data_reset`
+- `historical_summaries_update`
 - `pending_consolidations`
 - `pending_deposits`
 - `ptc_window`

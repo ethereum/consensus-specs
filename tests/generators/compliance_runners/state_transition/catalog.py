@@ -38,6 +38,7 @@ RUNNERS: dict[str, tuple[str, ...]] = {
         "builder_pending_payments",
         "effective_balance_updates",
         "eth1_data_reset",
+        "historical_summaries_update",
         "pending_consolidations",
         "pending_deposits",
         "ptc_window",
@@ -121,6 +122,12 @@ PROVIDERS = (
         "effective_balance_updates",
     ),
     Provider("eth1_data_reset", "eth1_data_reset", "epoch_processing", "eth1_data_reset"),
+    Provider(
+        "historical_summaries_update",
+        "historical_summaries_update",
+        "epoch_processing",
+        "historical_summaries_update",
+    ),
     Provider(
         "pending_consolidations",
         "pending_consolidations",
