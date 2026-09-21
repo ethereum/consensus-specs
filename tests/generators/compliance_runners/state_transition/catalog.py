@@ -37,10 +37,13 @@ RUNNERS: dict[str, tuple[str, ...]] = {
     "epoch_processing": (
         "builder_pending_payments",
         "effective_balance_updates",
+        "eth1_data_reset",
         "pending_consolidations",
         "pending_deposits",
         "ptc_window",
+        "randao_mixes_reset",
         "slashings",
+        "slashings_reset",
     ),
     "sanity": ("blocks",),
 }
@@ -117,6 +120,7 @@ PROVIDERS = (
         "epoch_processing",
         "effective_balance_updates",
     ),
+    Provider("eth1_data_reset", "eth1_data_reset", "epoch_processing", "eth1_data_reset"),
     Provider(
         "pending_consolidations",
         "pending_consolidations",
@@ -125,5 +129,12 @@ PROVIDERS = (
     ),
     Provider("pending_deposits", "pending_deposits", "epoch_processing", "pending_deposits"),
     Provider("ptc_window", "ptc_window", "epoch_processing", "ptc_window"),
+    Provider(
+        "randao_mixes_reset",
+        "randao_mixes_reset",
+        "epoch_processing",
+        "randao_mixes_reset",
+    ),
     Provider("slashings", "slashings", "epoch_processing", "slashings"),
+    Provider("slashings_reset", "slashings_reset", "epoch_processing", "slashings_reset"),
 )
