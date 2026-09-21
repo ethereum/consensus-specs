@@ -391,18 +391,16 @@ Some validators are selected to submit payload timeliness attestations.
 Validators should call `get_ptc_assignment` at the beginning of an epoch to be
 prepared to submit their PTC attestations during the next epoch.
 
-A validator should create and broadcast the `payload_attestation_message` to the
-global execution attestation subnet within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+A validator should create and broadcast the `payload_attestation_message` as
+soon as it has seen the execution payload envelope and blob data for the block,
+and no later than `get_payload_attestation_due_ms()` milliseconds into the slot.
 
 #### Constructing the `PayloadAttestationMessage`
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot. Follow the logic below to
-create the `payload_attestation_message` and broadcast to the global
-`payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms()` milliseconds of the slot.
+`PayloadAttestationMessage` for the current slot and broadcast it to the global
+`payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
@@ -416,6 +414,8 @@ The validator creates `payload_attestation_message` as follows:
   `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
   to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
+  Only set it to `False` once `get_payload_attestation_due_ms()` milliseconds
+  have elapsed, as the blob data may still arrive before then.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload

@@ -258,7 +258,7 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    max_blobs = spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block
+    max_blobs = spec.get_blob_parameters(spec.compute_epoch_at_slot(block.slot)).max_blobs_per_block
     over_limit = int(max_blobs) + 1
     block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.BlobKZGCommitments(
         data=[spec.KZGCommitment()] * over_limit

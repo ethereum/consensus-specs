@@ -299,7 +299,7 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
-`get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
+`get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block`.
 
 ```python
 def validate_beacon_block_gossip(
@@ -383,7 +383,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Fulu:EIP7892]
     # [REJECT] The length of KZG commitments is less than or equal to the limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(block.body.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 

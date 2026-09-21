@@ -588,7 +588,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
         current_time_ms=current_time_ms + 500,
     )
     assert result == "reject"
-    assert reason == "aggregator not in subcommittee"
+    assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",

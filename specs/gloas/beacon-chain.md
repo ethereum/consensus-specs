@@ -79,6 +79,7 @@
     - [`BeaconState`](#beaconstate)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionRequests`](#executionrequests)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
@@ -980,6 +981,19 @@ class ExecutionRequests(ProgressiveContainer):
     builder_exits: BuilderExitRequests
 ```
 
+#### `NewPayloadRequest`
+
+```python
+# [Modified in Gloas:EIP7688]
+class NewPayloadRequest(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
+    execution_payload: ExecutionPayload
+    versioned_hashes: VersionedHashes
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
+```
+
 ## Dataclasses
 
 ### Modified dataclasses
@@ -1380,6 +1394,8 @@ def get_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     Get the payload timeliness committee for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
+    if state.fork.current_version == GLOAS_FORK_VERSION:
+        assert epoch >= state.fork.epoch
     state_epoch = get_current_epoch(state)
     if epoch < state_epoch:
         assert epoch + 1 == state_epoch
@@ -1925,8 +1941,9 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
         # [Modified in Gloas:EIP7732]
         if is_builder_index(withdrawal.validator_index):
             builder_index = convert_validator_index_to_builder_index(withdrawal.validator_index)
-            builder_balance = state.builders[builder_index].balance
-            state.builders[builder_index].balance -= min(withdrawal.amount, builder_balance)
+            state.builders[builder_index].balance = saturating_sub(
+                state.builders[builder_index].balance, withdrawal.amount
+            )
         else:
             decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 ```

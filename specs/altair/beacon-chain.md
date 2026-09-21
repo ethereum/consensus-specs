@@ -661,7 +661,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
             )
             if bit
         ]
-    previous_slot = max(state.slot, Slot(1)) - 1
+    previous_slot = saturating_sub(state.slot, 1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
@@ -759,13 +759,13 @@ def process_inactivity_updates(state: BeaconState) -> None:
         if index in get_unslashed_participating_indices(
             state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
         ):
-            state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
+            state.inactivity_scores[index] = saturating_sub(state.inactivity_scores[index], 1)
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
         # Decrease the inactivity score of all eligible validators during a leak-free epoch
         if not is_in_inactivity_leak(state):
-            state.inactivity_scores[index] -= min(
-                INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index]
+            state.inactivity_scores[index] = saturating_sub(
+                state.inactivity_scores[index], INACTIVITY_SCORE_RECOVERY_RATE
             )
 ```
 
