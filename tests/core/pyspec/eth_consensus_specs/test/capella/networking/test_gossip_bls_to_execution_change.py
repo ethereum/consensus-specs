@@ -90,7 +90,7 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, phases, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    seen = get_seen(post_spec)
+    seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(post_spec, state)
     current_time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
 
@@ -140,7 +140,7 @@ def test_gossip_bls_to_execution_change__ignore_before_clock_disparity(spec, pha
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    seen = get_seen(post_spec)
+    seen = get_seen(spec)
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(post_spec, state)
     capella_fork_time_ms = get_capella_fork_time_ms(post_spec, store)
     current_time_ms = capella_fork_time_ms - post_spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1

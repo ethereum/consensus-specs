@@ -215,13 +215,13 @@ def validate_bls_to_execution_change_gossip(
     bls_to_execution_change = signed_bls_to_execution_change.message
     validator_index = bls_to_execution_change.validator_index
 
-    # [IGNORE] This is the first valid bls_to_execution_change received for the validator
-    if validator_index in seen.bls_to_execution_change_indices:
-        raise GossipIgnore("already seen BLS to execution change for this validator")
-
     # [IGNORE] The current epoch is at or after the Capella fork epoch
     if is_future_epoch(store, CAPELLA_FORK_EPOCH, current_time_ms):
         raise GossipIgnore("current epoch is pre-capella")
+
+    # [IGNORE] This is the first valid bls_to_execution_change received for the validator
+    if validator_index in seen.bls_to_execution_change_indices:
+        raise GossipIgnore("already seen BLS to execution change for this validator")
 
     state = store.block_states[get_head(store).root]
 
