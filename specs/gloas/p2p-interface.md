@@ -909,6 +909,11 @@ def validate_payload_attestation_message_gossip(
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
 
+    # [REJECT] The payload attestation slot is at or after the Gloas fork
+    if state.fork.current_version == GLOAS_FORK_VERSION:
+        if compute_epoch_at_slot(data.slot) < state.fork.epoch:
+            raise GossipReject("payload attestation slot is pre-gloas")
+
     # [REJECT] The validator is a member of the payload timeliness committee
     if validator_index not in get_ptc(state, data.slot):
         raise GossipReject("validator is not in the payload timeliness committee")
