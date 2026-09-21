@@ -23,9 +23,7 @@ def capture_reset(
     epochs_per_eth1_voting_period: CAttribute[int],
     vote_count: CAttribute[int],
 ):
-    at_reset_boundary: CPred = (
-        next_epoch % epochs_per_eth1_voting_period == 0
-    )
+    at_reset_boundary: CPred = next_epoch % epochs_per_eth1_voting_period == 0
     votes_nonempty: CPred = vote_count > 0
 
 
