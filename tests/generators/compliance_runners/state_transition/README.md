@@ -7,9 +7,10 @@ vectors against the executable specification.
 
 The generator currently targets the `gloas` fork. It supports both the `minimal`
 and `mainnet` presets. Its test cases follow the standard
-[operations test format](../../../formats/operations/README.md) or
-[epoch processing test format](../../../formats/epoch_processing/README.md),
-depending on the handler.
+[operations test format](../../../formats/operations/README.md), the [sanity
+blocks test format](../../../formats/sanity/blocks.md), or the [epoch processing
+test format](../../../formats/epoch_processing/README.md), depending on the
+handler.
 
 ## Handlers
 
@@ -30,6 +31,10 @@ Operation handlers:
 - `voluntary_exit`
 - `withdrawal_request`
 - `withdrawals`
+
+Sanity handlers:
+
+- `blocks`
 
 Epoch-processing handlers:
 
@@ -116,6 +121,7 @@ Generated cases use this layout:
 ```text
 <output>/minimal/gloas/
   operations/<handler>/main/case_XXXX/
+  sanity/blocks/main/case_XXXX/
   epoch_processing/<handler>/main/case_XXXX/
 ```
 
