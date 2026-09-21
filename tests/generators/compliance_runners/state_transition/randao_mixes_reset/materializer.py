@@ -24,9 +24,7 @@ class RandaoMixesResetMaterializer(Materializer):
         )
         at_first_slot = bool(getattr(solution, "destination_is_first_slot", True))
         source_nonzero = bool(getattr(solution, "source_nonzero", True))
-        source_matches_destination = bool(
-            getattr(solution, "source_matches_destination", True)
-        )
+        source_matches_destination = bool(getattr(solution, "source_matches_destination", True))
         vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
         current_epoch = vector_length - 1 if at_first_slot else 0
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
@@ -38,9 +36,7 @@ class RandaoMixesResetMaterializer(Materializer):
             destination_mix = source_mix
         else:
             destination_mix = (
-                spec.Bytes32(b"\x02" * 32)
-                if source_nonzero
-                else spec.Bytes32(b"\x01" * 32)
+                spec.Bytes32(b"\x02" * 32) if source_nonzero else spec.Bytes32(b"\x01" * 32)
             )
         pre.randao_mixes[source_index] = source_mix
         pre.randao_mixes[destination_index] = destination_mix
