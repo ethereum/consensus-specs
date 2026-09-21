@@ -1394,6 +1394,8 @@ def get_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     Get the payload timeliness committee for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
+    if state.fork.current_version == GLOAS_FORK_VERSION:
+        assert epoch >= state.fork.epoch
     state_epoch = get_current_epoch(state)
     if epoch < state_epoch:
         assert epoch + 1 == state_epoch
