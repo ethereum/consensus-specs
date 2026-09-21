@@ -27,6 +27,10 @@ all_epoch_processing:
     - ptc_window
     - slashings
 
+all_sanity:
+  handlers:
+    - blocks
+
 # The parent handler is an integration test; the individual handlers provide
 # detailed coverage of the execution requests it dispatches.
 parent_execution_payload_plus_invoked:
@@ -39,4 +43,4 @@ parent_execution_payload_plus_invoked:
     - builder_exit_request
 
 all:
-  includes: [all_operations, all_epoch_processing]
+  includes: [all_operations, all_epoch_processing, all_sanity]
