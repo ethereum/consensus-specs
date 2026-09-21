@@ -13,9 +13,11 @@ from eth_consensus_specs.test.context import (
     with_state,
 )
 from eth_consensus_specs.test.helpers.constants import FULU, GLOAS, MINIMAL
+from eth_consensus_specs.test.helpers.gloas.fork import GLOAS_FORK_TEST_META_TAGS
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
+from eth_consensus_specs.test.utils import with_meta_tags
 
 
 def run_payload_attestation_processing(spec, state, payload_attestation, valid=True):
@@ -270,6 +272,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
 @with_phases(phases=[FULU], other_phases=[GLOAS])
 @spec_test
 @with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 @always_bls
 def test_process_payload_attestation_pre_fork_epoch(spec, phases, state):
     """
