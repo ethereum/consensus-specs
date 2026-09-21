@@ -11,7 +11,7 @@ source, coverage databases, and JSON reports and must not be committed.
 ## Groups and exclusions
 
 [`groups.yaml`](groups.yaml) defines composable vector/code scopes. The standard
-groups are `all`, `operations`, `epoch_processing`, and
+groups are `all`, `all_operations`, `all_epoch_processing`, and
 `parent_execution_payload_plus_invoked`. A handler name is also a valid
 single-handler group.
 

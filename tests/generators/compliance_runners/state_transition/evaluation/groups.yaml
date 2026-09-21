@@ -1,6 +1,6 @@
 # A group selects both test vectors and the processor slices to score.  Groups
 # may include other groups; `handlers` adds individual handlers directly.
-operations:
+all_operations:
   handlers:
     - attestation
     - attester_slashing
@@ -18,7 +18,7 @@ operations:
     - withdrawal_request
     - withdrawals
 
-epoch_processing:
+all_epoch_processing:
   handlers:
     - builder_pending_payments
     - effective_balance_updates
@@ -39,4 +39,4 @@ parent_execution_payload_plus_invoked:
     - builder_exit_request
 
 all:
-  includes: [operations, epoch_processing]
+  includes: [all_operations, all_epoch_processing]
