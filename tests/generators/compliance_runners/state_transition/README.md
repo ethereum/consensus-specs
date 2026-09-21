@@ -40,10 +40,13 @@ Epoch-processing handlers:
 
 - `builder_pending_payments`
 - `effective_balance_updates`
+- `eth1_data_reset`
 - `pending_consolidations`
 - `pending_deposits`
 - `ptc_window`
+- `randao_mixes_reset`
 - `slashings`
+- `slashings_reset`
 
 ## Generating tests
 

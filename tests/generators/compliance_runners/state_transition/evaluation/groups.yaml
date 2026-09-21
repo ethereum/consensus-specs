@@ -22,10 +22,13 @@ all_operations:
 all_epoch_processing:
   handlers:
     - builder_pending_payments
+    - eth1_data_reset
     - effective_balance_updates
     - pending_consolidations
     - pending_deposits
     - ptc_window
+    - randao_mixes_reset
+    - slashings_reset
     - slashings
 
 all_sanity:
