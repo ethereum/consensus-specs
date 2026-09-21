@@ -14,6 +14,7 @@ from eth_consensus_specs.utils import bls
 
 OPERATION_INPUTS = {
     "attestation": ("attestation", "Attestation"),
+    "block_header": ("block_header", "BeaconBlock"),
     "builder_deposit_request": ("builder_deposit_request", "BuilderDepositRequest"),
     "builder_exit_request": ("builder_exit_request", "BuilderExitRequest"),
     "consolidation_request": ("consolidation_request", "ConsolidationRequest"),
@@ -32,6 +33,7 @@ OPERATION_INPUTS = {
 
 OPERATION_PROCESSORS = {
     "attestation": "process_attestation",
+    "block_header": "process_block_header",
     "builder_deposit_request": "process_builder_deposit_request",
     "builder_exit_request": "process_builder_exit_request",
     "consolidation_request": "process_consolidation_request",

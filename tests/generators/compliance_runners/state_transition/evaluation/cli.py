@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 
 PROCESSORS = {
+    "block_header": "process_block_header",
     "blocks": "process_operations",
     "attestation": "process_attestation",
     "attester_slashing": "process_attester_slashing",
