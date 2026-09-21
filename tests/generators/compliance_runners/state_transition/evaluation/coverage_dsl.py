@@ -752,8 +752,10 @@ TARGETS = {
     "process_operations": "tests.generators.compliance_runners.state_transition.operations.target",
     "eth1_data_reset": "tests.generators.compliance_runners.state_transition.eth1_data_reset.target",
     "historical_summaries_update": "tests.generators.compliance_runners.state_transition.historical_summaries_update.target",
+    "participation_flag_updates": "tests.generators.compliance_runners.state_transition.participation_flag_updates.target",
     "randao_mixes_reset": "tests.generators.compliance_runners.state_transition.randao_mixes_reset.target",
     "slashings_reset": "tests.generators.compliance_runners.state_transition.slashings_reset.target",
+    "sync_committee_updates": "tests.generators.compliance_runners.state_transition.sync_committee_updates.target",
 }
 
 
