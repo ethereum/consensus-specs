@@ -13,12 +13,37 @@ if TYPE_CHECKING:
 
 
 _LIMITS = (
-    ("proposer_slashings", "ProposerSlashing", "MAX_PROPOSER_SLASHINGS", "proposer_slashings_within_limit"),
-    ("attester_slashings", "AttesterSlashing", "MAX_ATTESTER_SLASHINGS_ELECTRA", "attester_slashings_within_limit"),
+    (
+        "proposer_slashings",
+        "ProposerSlashing",
+        "MAX_PROPOSER_SLASHINGS",
+        "proposer_slashings_within_limit",
+    ),
+    (
+        "attester_slashings",
+        "AttesterSlashing",
+        "MAX_ATTESTER_SLASHINGS_ELECTRA",
+        "attester_slashings_within_limit",
+    ),
     ("attestations", "Attestation", "MAX_ATTESTATIONS_ELECTRA", "attestations_within_limit"),
-    ("voluntary_exits", "SignedVoluntaryExit", "MAX_VOLUNTARY_EXITS", "voluntary_exits_within_limit"),
-    ("bls_to_execution_changes", "SignedBLSToExecutionChange", "MAX_BLS_TO_EXECUTION_CHANGES", "bls_to_execution_changes_within_limit"),
-    ("payload_attestations", "PayloadAttestation", "MAX_PAYLOAD_ATTESTATIONS", "payload_attestations_within_limit"),
+    (
+        "voluntary_exits",
+        "SignedVoluntaryExit",
+        "MAX_VOLUNTARY_EXITS",
+        "voluntary_exits_within_limit",
+    ),
+    (
+        "bls_to_execution_changes",
+        "SignedBLSToExecutionChange",
+        "MAX_BLS_TO_EXECUTION_CHANGES",
+        "bls_to_execution_changes_within_limit",
+    ),
+    (
+        "payload_attestations",
+        "PayloadAttestation",
+        "MAX_PAYLOAD_ATTESTATIONS",
+        "payload_attestations_within_limit",
+    ),
 )
 _GATES = ("deposits_empty",) + tuple(item[3] for item in _LIMITS)
 _DIMS = [*_GATES, "accepted", "outcome"]
