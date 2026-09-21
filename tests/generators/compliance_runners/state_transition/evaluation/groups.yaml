@@ -24,6 +24,7 @@ all_epoch_processing:
     - builder_pending_payments
     - eth1_data_reset
     - effective_balance_updates
+    - historical_summaries_update
     - pending_consolidations
     - pending_deposits
     - ptc_window
