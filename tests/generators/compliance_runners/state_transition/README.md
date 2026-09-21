@@ -44,10 +44,12 @@ Epoch-processing handlers:
 - `historical_summaries_update`
 - `pending_consolidations`
 - `pending_deposits`
+- `participation_flag_updates`
 - `ptc_window`
 - `randao_mixes_reset`
 - `slashings`
 - `slashings_reset`
+- `sync_committee_updates`
 
 ## Generating tests
 
