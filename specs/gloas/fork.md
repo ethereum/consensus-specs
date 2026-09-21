@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Configs](#configs)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
@@ -19,6 +21,17 @@
 ## Introduction
 
 This document describes the process of the Gloas upgrade.
+
+## Constants
+
+### Misc
+
+*Note*: The value used for `UNSET_VALIDATOR_INDEX` is an index which is unlikely
+to exist as an active validator on any network at the fork.
+
+| Name                    | Value                   |
+| ----------------------- | ----------------------- |
+| `UNSET_VALIDATOR_INDEX` | `ValidatorIndex(2**30)` |
 
 ## Configs
 
@@ -42,7 +55,7 @@ def initialize_ptc_window(
     Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
     """
     empty_previous_epoch = [
-        PayloadTimelinessCommittee(data=[ValidatorIndex(0) for _ in range(PTC_SIZE)])
+        PayloadTimelinessCommittee(data=[UNSET_VALIDATOR_INDEX for _ in range(PTC_SIZE)])
         for _ in range(SLOTS_PER_EPOCH)
     ]
 

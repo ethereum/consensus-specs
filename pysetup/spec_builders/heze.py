@@ -69,6 +69,12 @@ class NoopExecutionEngine(ExecutionEngine):
 EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
+    def deprecate_constants(cls) -> set[str]:
+        return {
+            "UNSET_VALIDATOR_INDEX",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "initialize_ptc_window",

@@ -267,6 +267,41 @@ def test_process_payload_attestation_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+@always_bls
+def test_process_payload_attestation_unset_previous_epoch_ptc(spec, state):
+    """
+    A payload attestation signed by validator 0 for a previous-epoch slot is
+    invalid at genesis and immediately after the Gloas fork.
+    """
+    next_epoch(spec, state)
+
+    unset = spec.PayloadTimelinessCommittee(
+        data=[spec.UNSET_VALIDATOR_INDEX for _ in range(spec.PTC_SIZE)]
+    )
+    for i in range(spec.SLOTS_PER_EPOCH):
+        state.ptc_window[i] = unset
+
+    slot = state.slot - 1
+    data = spec.PayloadAttestationData(
+        beacon_block_root=state.latest_block_header.parent_root,
+        slot=slot,
+        payload_present=True,
+        blob_data_available=False,
+    )
+    aggregation_bits = spec.PayloadTimelinessCommitteeBits()
+    aggregation_bits[0] = True
+    domain = spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(slot))
+    payload_attestation = spec.PayloadAttestation(
+        aggregation_bits=aggregation_bits,
+        data=data,
+        signature=spec.bls.Sign(privkeys[0], spec.compute_signing_root(data, domain)),
+    )
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
     Test payload attestation with no attesting indices fails
