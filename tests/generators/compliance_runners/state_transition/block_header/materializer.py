@@ -64,11 +64,15 @@ class BlockHeaderMaterializer(Materializer):
         latest_header_slot = block_slot - 1 if slot_is_newer else block_slot
         pre.latest_block_header.slot = spec.Slot(latest_header_slot)
 
-        block = build_empty_block(spec, pre, slot=block_slot, proposer_index=expected_proposer_index)
+        block = build_empty_block(
+            spec, pre, slot=block_slot, proposer_index=expected_proposer_index
+        )
         block.slot = spec.Slot(block_slot)
         block.proposer_index = spec.ValidatorIndex(expected_proposer_index)
         if not proposer_index_matches:
-            block.proposer_index = spec.ValidatorIndex((expected_proposer_index + 1) % len(pre.validators))
+            block.proposer_index = spec.ValidatorIndex(
+                (expected_proposer_index + 1) % len(pre.validators)
+            )
         expected_parent_root = spec.hash_tree_root(pre.latest_block_header)
         block.parent_root = expected_parent_root
         if not parent_matches:

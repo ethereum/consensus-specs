@@ -77,7 +77,11 @@ def observe(ctx) -> None:
 
 
 def _holds(assignment: dict, factor, granularity: str) -> bool | None:
-    return None if factor.name not in assignment else factor.holds(assignment[factor.name], granularity)
+    return (
+        None
+        if factor.name not in assignment
+        else factor.holds(assignment[factor.name], granularity)
+    )
 
 
 def _accepted_iff_all_assertions_hold(assignment: dict, granularity: str) -> bool:
