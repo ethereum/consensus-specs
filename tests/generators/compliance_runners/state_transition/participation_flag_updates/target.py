@@ -38,9 +38,7 @@ def _observe(ctx) -> None:
     capture_participation(
         validator_count=len(state.validators),
         minimum_validator_count=int(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT),
-        previous_nonzero_count=sum(
-            bool(flags) for flags in state.previous_epoch_participation
-        ),
+        previous_nonzero_count=sum(bool(flags) for flags in state.previous_epoch_participation),
         current_nonzero_count=sum(bool(flags) for flags in state.current_epoch_participation),
     )
 

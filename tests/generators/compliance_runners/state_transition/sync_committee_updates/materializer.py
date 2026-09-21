@@ -24,9 +24,7 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
         )
         at_period_boundary = bool(getattr(solution, "at_period_boundary", True))
         committees_already_match = bool(getattr(solution, "committees_already_match", True))
-        computed_next_is_unchanged = bool(
-            getattr(solution, "computed_next_is_unchanged", True)
-        )
+        computed_next_is_unchanged = bool(getattr(solution, "computed_next_is_unchanged", True))
         period = int(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
         current_epoch = period - 1 if at_period_boundary else 0
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
