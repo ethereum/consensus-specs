@@ -25,12 +25,14 @@ all_epoch_processing:
     - eth1_data_reset
     - effective_balance_updates
     - historical_summaries_update
+    - participation_flag_updates
     - pending_consolidations
     - pending_deposits
     - ptc_window
     - randao_mixes_reset
     - slashings_reset
     - slashings
+    - sync_committee_updates
 
 all_sanity:
   handlers:
