@@ -45,6 +45,7 @@ PROCESSORS = {
     "builder_pending_payments": "process_builder_pending_payments",
     "eth1_data_reset": "process_eth1_data_reset",
     "effective_balance_updates": "process_effective_balance_updates",
+    "historical_summaries_update": "process_historical_summaries_update",
     "pending_consolidations": "process_pending_consolidations",
     "pending_deposits": "process_pending_deposits",
     "ptc_window": "process_ptc_window",
