@@ -750,6 +750,9 @@ TARGETS = {
     "block_header": "tests.generators.compliance_runners.state_transition.block_header.target",
     "voluntary_exit": "tests.generators.compliance_runners.state_transition.voluntary_exit.target",
     "process_operations": "tests.generators.compliance_runners.state_transition.operations.target",
+    "eth1_data_reset": "tests.generators.compliance_runners.state_transition.eth1_data_reset.target",
+    "randao_mixes_reset": "tests.generators.compliance_runners.state_transition.randao_mixes_reset.target",
+    "slashings_reset": "tests.generators.compliance_runners.state_transition.slashings_reset.target",
 }
 
 
