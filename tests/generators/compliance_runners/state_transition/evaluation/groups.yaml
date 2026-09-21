@@ -2,6 +2,7 @@
 # may include other groups; `handlers` adds individual handlers directly.
 all_operations:
   handlers:
+    - block_header
     - attestation
     - attester_slashing
     - bls_to_execution_change
