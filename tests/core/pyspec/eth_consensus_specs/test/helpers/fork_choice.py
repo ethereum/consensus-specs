@@ -181,15 +181,16 @@ def tick_and_add_block(
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
-    block_time = (
-        pre_state.genesis_time + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
+    block_time_ms = (
+        spec.seconds_to_milliseconds(pre_state.genesis_time)
+        + signed_block.message.slot * spec.config.SLOT_DURATION_MS
     )
-    while store.time < block_time:
-        time = (
-            pre_state.genesis_time
-            + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
+    while store.time_ms < block_time_ms:
+        time_ms = (
+            spec.seconds_to_milliseconds(pre_state.genesis_time)
+            + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS
         )
-        on_tick_and_append_step(spec, store, time, test_steps)
+        on_tick_and_append_step(spec, store, time_ms, test_steps)
 
     post_state = yield from add_block(
         spec,
@@ -232,10 +233,12 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
-    min_time_to_include = (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
-    if store.time < min_time_to_include:
-        spec.on_tick(store, min_time_to_include)
-        test_steps.append({"tick": int(min_time_to_include)})
+    min_time_to_include_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS
+    )
+    if store.time_ms < min_time_to_include_ms:
+        on_tick_and_append_step(spec, store, min_time_to_include_ms, test_steps)
 
     yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
@@ -306,10 +309,10 @@ def get_payload_attestation_message_file_name(ptc_message):
     return f"payload_attestation_message_{encode_hex(ptc_message.hash_tree_root())}"
 
 
-def on_tick_and_append_step(spec, store, time, test_steps):
-    assert time >= store.time
-    spec.on_tick(store, time)
-    test_steps.append({"tick": int(time)})
+def on_tick_and_append_step(spec, store, time_ms, test_steps):
+    assert time_ms >= store.time_ms
+    spec.on_tick(store, time_ms)
+    test_steps.append({"tick": int(spec.milliseconds_to_seconds(time_ms))})
     output_store_checks(spec, store, test_steps)
 
 
@@ -557,7 +560,7 @@ def output_head_check(spec, store, test_steps):
 
 def get_basic_store_checks(spec, store):
     return {
-        "time": int(store.time),
+        "time": int(spec.milliseconds_to_seconds(store.time_ms)),
         "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
@@ -707,9 +710,11 @@ def tick_store_to_slot(spec, store, slot, test_steps):
     """
     Tick the store forward to the start of ``slot``.
     """
-    slot_time = store.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
-    if store.time < slot_time:
-        on_tick_and_append_step(spec, store, slot_time, test_steps)
+    slot_time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time) + slot * spec.config.SLOT_DURATION_MS
+    )
+    if store.time_ms < slot_time_ms:
+        on_tick_and_append_step(spec, store, slot_time_ms, test_steps)
 
 
 def add_signed_empty_block(spec, store, state, test_steps):
