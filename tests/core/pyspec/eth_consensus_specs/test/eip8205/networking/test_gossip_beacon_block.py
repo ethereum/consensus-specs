@@ -77,13 +77,3 @@ def test_gossip_beacon_block__valid_max_parent_preregistration_requests(spec, st
     """A block with the maximum number of parent preregistration requests is valid."""
     count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
     yield from _assert_parent_preregistrations_gossip(spec, state, count, "valid")
-
-
-@with_eip8205_and_later
-@spec_state_test
-def test_gossip_beacon_block__reject_too_many_parent_preregistration_requests(spec, state):
-    """A block whose parent execution requests exceed the preregistration limit is rejected."""
-    count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1
-    yield from _assert_parent_preregistrations_gossip(
-        spec, state, count, "reject", "too many validator preregistration requests"
-    )

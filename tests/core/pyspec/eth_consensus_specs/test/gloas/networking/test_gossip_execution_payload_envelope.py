@@ -595,19 +595,6 @@ def test_gossip_execution_payload_envelope__valid_max_withdrawal_requests(spec, 
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_withdrawal_requests(spec, state):
-    """An envelope whose execution requests exceed the withdrawal-request limit is rejected."""
-    count = spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1
-    requests = spec.ExecutionRequests(
-        withdrawals=spec.WithdrawalRequests(data=([spec.WithdrawalRequest()] * count))
-    )
-    yield from _assert_envelope_requests(
-        spec, state, requests, "reject", "too many withdrawal requests"
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_consolidation_requests(spec, state):
     """An envelope with the maximum number of consolidation requests is valid."""
     count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
@@ -615,19 +602,6 @@ def test_gossip_execution_payload_envelope__valid_max_consolidation_requests(spe
         consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
     )
     yield from _assert_envelope_requests(spec, state, requests, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_consolidation_requests(spec, state):
-    """An envelope whose execution requests exceed the consolidation-request limit is rejected."""
-    count = spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1
-    requests = spec.ExecutionRequests(
-        consolidations=spec.ConsolidationRequests(data=([spec.ConsolidationRequest()] * count))
-    )
-    yield from _assert_envelope_requests(
-        spec, state, requests, "reject", "too many consolidation requests"
-    )
 
 
 @with_gloas_and_later
@@ -643,19 +617,6 @@ def test_gossip_execution_payload_envelope__valid_max_builder_deposit_requests(s
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_builder_deposit_requests(spec, state):
-    """An envelope whose execution requests exceed the builder-deposit-request limit is rejected."""
-    count = spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD + 1
-    requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(data=([spec.BuilderDepositRequest()] * count))
-    )
-    yield from _assert_envelope_requests(
-        spec, state, requests, "reject", "too many builder deposit requests"
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_builder_exit_requests(spec, state):
     """An envelope with the maximum number of builder exit requests is valid."""
     count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
@@ -667,28 +628,7 @@ def test_gossip_execution_payload_envelope__valid_max_builder_exit_requests(spec
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_builder_exit_requests(spec, state):
-    """An envelope whose execution requests exceed the builder-exit-request limit is rejected."""
-    count = spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD + 1
-    requests = spec.ExecutionRequests(
-        builder_exits=spec.BuilderExitRequests(data=([spec.BuilderExitRequest()] * count))
-    )
-    yield from _assert_envelope_requests(
-        spec, state, requests, "reject", "too many builder exit requests"
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_withdrawals(spec, state):
     """An envelope with the maximum number of payload withdrawals is valid."""
     count = spec.MAX_WITHDRAWALS_PER_PAYLOAD
     yield from _assert_envelope_withdrawals(spec, state, count, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, state):
-    """An envelope whose payload carries more withdrawals than the limit is rejected."""
-    count = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1
-    yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")

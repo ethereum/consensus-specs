@@ -347,24 +347,6 @@ def test_parent_payload_max_preregistrations(spec, state):
 
 @with_eip8205_and_later
 @spec_state_test
-def test_parent_payload_invalid_too_many_preregistrations(spec, state):
-    requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests(
-            data=[spec.PreregistrationRequest()]
-            * (spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1)
-        ),
-    )
-    _commit_parent_requests(spec, state, requests)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.parent_execution_requests = requests
-
-    spec.process_slots(state, block.slot)
-    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
-
-
-@with_eip8205_and_later
-@spec_state_test
 @always_bls
 def test_parent_payload_preregistration_invalid_signature_ignored(spec, state):
     """

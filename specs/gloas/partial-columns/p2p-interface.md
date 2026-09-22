@@ -40,6 +40,8 @@ class CellsBitList(ProgressiveBitList):
     """
     A bitfield over the cells of a column, one bit per blob.
     """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ## Containers

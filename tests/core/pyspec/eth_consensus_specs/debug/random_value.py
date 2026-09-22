@@ -44,7 +44,6 @@ def get_random_ssz_object(
     max_list_length: int,
     mode: RandomizationMode,
     chaos: bool,
-    list_length_limits: dict[type[SSZType], int] | None = None,
 ) -> SSZType:
     """
     Create an object for a given type, filled with random data.
@@ -54,9 +53,6 @@ def get_random_ssz_object(
     :param max_list_length: the max. length for a random list
     :param mode: how to randomize
     :param chaos: if true, the randomization-mode will be randomly changed
-    :param list_length_limits: optional map of ProgressiveList type to max
-        length. Used to keep generated objects within consensus/gossip count
-        limits that SSZ no longer enforces.
     :return: the random object instance, of the given type.
     """
     if chaos:
@@ -107,24 +103,16 @@ def get_random_ssz_object(
                     max_list_length,
                     mode,
                     chaos,
-                    list_length_limits,
                 )
                 for _ in range(typ.LENGTH)
             ]
         )
     elif issubclass(typ, List | ProgressiveList | BitList | ProgressiveBitList):
         limit = max_list_length
-        # SSZ imposes a hard limit on lists, we can't put in more than that
-        if not issubclass(typ, ProgressiveList | ProgressiveBitList) and limit > typ.LIMIT:
-            limit = typ.LIMIT
-        # ProgressiveList has no SSZ bound. Apply optional per-type caps so
-        # generated objects stay within consensus/gossip count limits.
-        if (
-            issubclass(typ, ProgressiveList | ProgressiveBitList)
-            and list_length_limits is not None
-            and typ in list_length_limits
-        ):
-            limit = min(limit, list_length_limits[typ])
+        # A declared bound is a hard limit, we can't put in more than that.
+        # A ProgressiveList declaring none accepts any count.
+        if typ.LIMIT is not None:
+            limit = min(limit, typ.LIMIT)
 
         length = rng.randint(0, limit)
         if mode == RandomizationMode.mode_one_count:
@@ -145,7 +133,6 @@ def get_random_ssz_object(
                     max_list_length,
                     mode,
                     chaos,
-                    list_length_limits,
                 )
                 for _ in range(length)
             ]
@@ -162,7 +149,6 @@ def get_random_ssz_object(
                     max_list_length,
                     mode,
                     chaos,
-                    list_length_limits,
                 )
                 for field_name, field_type in fields.items()
             }
@@ -187,7 +173,6 @@ def get_random_ssz_object(
                 max_list_length,
                 mode,
                 chaos,
-                list_length_limits,
             ),
         )
     else:

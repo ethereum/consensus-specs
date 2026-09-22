@@ -85,13 +85,3 @@ def test_gossip_execution_payload_envelope__valid_max_preregistration_requests(s
     """An envelope with the maximum number of preregistration requests is valid."""
     count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
     yield from _assert_envelope_preregistrations_gossip(spec, state, count, "valid")
-
-
-@with_eip8205_and_later
-@spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_preregistration_requests(spec, state):
-    """An envelope whose execution requests exceed the preregistration limit is rejected."""
-    count = spec.MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD + 1
-    yield from _assert_envelope_preregistrations_gossip(
-        spec, state, count, "reject", "too many validator preregistration requests"
-    )
