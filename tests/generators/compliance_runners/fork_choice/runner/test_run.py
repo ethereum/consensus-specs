@@ -83,8 +83,8 @@ def run_test(test_info):
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
         if "tick" in step:
-            time = step["tick"]
-            spec.on_tick(store, time)
+            time_ms = spec.seconds_to_milliseconds(step["tick"])
+            spec.on_tick(store, time_ms)
         elif "block" in step:
             block_id = step["block"]
             valid = step.get("valid", True)
@@ -152,7 +152,7 @@ def run_test(test_info):
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
-                    assert store.time == expected_time
+                    assert spec.milliseconds_to_seconds(store.time_ms) == expected_time
                 elif check == "head":
                     head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]
