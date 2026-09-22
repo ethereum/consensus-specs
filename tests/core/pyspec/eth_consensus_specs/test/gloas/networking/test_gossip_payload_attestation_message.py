@@ -1,13 +1,17 @@
 from eth_consensus_specs.test.context import (
-    spec_state_test,
+    _with_config_overrides_emit,
+    spec_state_test_with_matching_config,
+    spec_test,
     with_gloas_and_later,
     with_phases,
+    with_state,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import GLOAS
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.gloas.fork import GLOAS_FORK_TEST_META_TAGS
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -17,6 +21,14 @@ from eth_consensus_specs.test.helpers.gossip import (
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_slot, state_transition_and_sign_block
+from eth_consensus_specs.test.utils import with_meta_tags
+
+# Every fork before Gloas is active at genesis and Gloas activates one epoch later, so a
+# pre-fork slot exists for the anchor state's chain.
+PRE_FORK_SLOT_CONFIG_OVERRIDES = {
+    f"{fork.upper()}_FORK_EPOCH": 0
+    for fork in ("altair", "bellatrix", "capella", "deneb", "electra", "fulu")
+} | {"GLOAS_FORK_EPOCH": 1}
 
 
 def setup_store_with_one_block(spec, state):
@@ -63,7 +75,7 @@ def build_payload_attestation_message(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid(spec, state):
     """A PayloadAttestationMessage from a PTC member for the current slot passes."""
     anchor_state = state.copy()
@@ -109,7 +121,7 @@ def test_gossip_payload_attestation_message__valid(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state):
     """A message whose slot is not the current slot is ignored."""
     anchor_state = state.copy()
@@ -156,7 +168,7 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec, state):
     """A message validated exactly at the lower clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -205,7 +217,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity(spec, state):
     """A message 1ms before the lower clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -255,7 +267,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec, state):
     """A message validated exactly at the upper clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -305,7 +317,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity(spec, state):
     """A message 1ms past the upper clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -355,7 +367,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     """The second valid message from the same validator for the same slot is ignored."""
     anchor_state = state.copy()
@@ -420,7 +432,7 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     """A message attesting to an unknown beacon block is ignored."""
     anchor_state = state.copy()
@@ -467,33 +479,44 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([GLOAS])
-@spec_state_test
-def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
-    """A payload attestation for a slot before the Gloas fork is rejected."""
-    state.fork.epoch = spec.Epoch(spec.get_current_epoch(state) + 1)
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@_with_config_overrides_emit(PRE_FORK_SLOT_CONFIG_OVERRIDES, emitted_fork=GLOAS)
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, phases, state):
+    """
+    A payload attestation for a slot before the Gloas fork is rejected, whatever
+    else the message may contain. The chain is still pre-fork: the store is
+    anchored at a pre-fork genesis and the message is received during the last
+    pre-fork slot.
+    """
+    post_spec = phases[GLOAS]
+    pre_fork_slot = spec.compute_start_slot_at_epoch(post_spec.config.GLOAS_FORK_EPOCH) - 1
+
     anchor_state = state.copy()
+    _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
+    store = post_spec.get_forkchoice_store(anchor_state, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
     yield "topic", "meta", "payload_attestation_message"
-
-    store, blocks, block_root = setup_store_with_one_block(spec, state)
     yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    signed_anchor_block = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor_block), signed_anchor_block
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor_block)}]
 
-    seen = get_seen(spec)
+    seen = get_seen(post_spec)
     message = build_payload_attestation_message(
-        spec, state, state.slot, block_root, spec.ValidatorIndex(0)
+        post_spec, state, pre_fork_slot, anchor_root, post_spec.ValidatorIndex(0)
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = post_spec.compute_time_at_slot_ms(store, pre_fork_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec,
+        post_spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
@@ -514,7 +537,7 @@ def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, state):
     """A message from a validator not in the PTC is rejected."""
     anchor_state = state.copy()
@@ -559,7 +582,7 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_invalid_signature(spec, state):
     """A message with an invalid signature is rejected."""
     anchor_state = state.copy()
@@ -606,7 +629,7 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_block_failed_validation(spec, state):
     """A message whose block failed validation is rejected."""
     anchor_state = state.copy()
@@ -661,7 +684,7 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_validator_index_out_of_range(spec, state):
     """A message whose validator index is past the validator registry is rejected."""
     anchor_state = state.copy()
@@ -717,7 +740,7 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(spec, state):
     """A PTC message whose block.slot does not equal data.slot is ignored (assigned slot was empty)."""
     anchor_state = state.copy()
