@@ -412,7 +412,7 @@ class Transactions(ProgressiveList[Transaction]):
     """
 
     # [Modified in Gloas:EIP7688]
-    LIMIT = None
+    LIMIT = MAX_TRANSACTIONS_PER_PAYLOAD
 ```
 
 ### Modified `Validators`
