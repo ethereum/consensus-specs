@@ -881,14 +881,14 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
+    # [REJECT] The payload attestation's slot is at or after the Gloas fork
+    if compute_epoch_at_slot(data.slot) < GLOAS_FORK_EPOCH:
+        raise GossipReject("payload attestation's slot is pre-gloas")
+
     # [IGNORE] This is the first valid payload attestation from this validator index
     payload_attestation_key = (data.slot, validator_index)
     if payload_attestation_key in seen.payload_attestation_validators:
         raise GossipIgnore("already seen payload attestation from this validator")
-
-    # [REJECT] The payload attestation's slot is at or after the Gloas fork
-    if compute_epoch_at_slot(data.slot) < GLOAS_FORK_EPOCH:
-        raise GossipReject("payload attestation's slot is pre-gloas")
 
     # [IGNORE] The payload attestation's slot is for the current slot
     if not is_current_slot(store, data.slot, current_time_ms):
