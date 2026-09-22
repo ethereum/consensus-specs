@@ -8,12 +8,16 @@ from eth_consensus_specs.test.context import (
     spec_test,
     with_custom_state,
     with_gloas_and_later,
+    with_phases,
     with_presets,
+    with_state,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS, MINIMAL
+from eth_consensus_specs.test.helpers.gloas.fork import GLOAS_FORK_TEST_META_TAGS
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
+from eth_consensus_specs.test.utils import with_meta_tags
 
 
 def run_payload_attestation_processing(spec, state, payload_attestation, valid=True):
@@ -263,6 +267,44 @@ def test_process_payload_attestation_invalid_signature(spec, state):
     payload_attestation = prepare_signed_payload_attestation(spec, state, valid_signature=False)
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_process_payload_attestation_pre_fork_epoch(spec, phases, state):
+    """
+    A payload attestation signed by validator 0 for the epoch prior to the
+    Gloas fork is invalid.
+    """
+    next_epoch(spec, state)
+    post_spec = phases[GLOAS]
+    post_state = post_spec.upgrade_to_gloas(state.copy())
+    assert post_spec.get_current_epoch(post_state) == post_state.fork.epoch
+
+    slot = post_state.slot - 1
+    data = post_spec.PayloadAttestationData(
+        beacon_block_root=post_state.latest_block_header.parent_root,
+        slot=slot,
+        payload_present=True,
+        blob_data_available=False,
+    )
+    aggregation_bits = post_spec.PayloadTimelinessCommitteeBits()
+    aggregation_bits[0] = True
+    domain = post_spec.get_domain(
+        post_state, post_spec.DOMAIN_PTC_ATTESTER, post_spec.compute_epoch_at_slot(slot)
+    )
+    payload_attestation = post_spec.PayloadAttestation(
+        aggregation_bits=aggregation_bits,
+        data=data,
+        signature=post_spec.bls.Sign(privkeys[0], post_spec.compute_signing_root(data, domain)),
+    )
+
+    yield from run_payload_attestation_processing(
+        post_spec, post_state, payload_attestation, valid=False
+    )
 
 
 @with_gloas_and_later

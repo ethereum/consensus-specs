@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.execution_payload_bid import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.gossip import get_filename, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
@@ -289,6 +290,7 @@ def build_signed_bid(
     execution_payment=None,
     prev_randao=None,
     blob_kzg_commitments=None,
+    inclusion_list_bits=None,
     valid_signature=True,
     block_hash=None,
 ):
@@ -316,6 +318,12 @@ def build_signed_bid(
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
+    if is_post_heze(spec):
+        bid.inclusion_list_bits = (
+            inclusion_list_bits
+            if inclusion_list_bits is not None
+            else spec.InclusionListBits(data=[True] * spec.INCLUSION_LIST_COMMITTEE_SIZE)
+        )
     if valid_signature and builder_index < len(builder_privkeys):
         privkey = builder_privkeys[builder_index]
         signature = spec.get_execution_payload_bid_signature(state, bid, privkey)

@@ -909,6 +909,11 @@ def validate_payload_attestation_message_gossip(
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
 
+    # [REJECT] The payload attestation slot is at or after the Gloas fork
+    if state.fork.current_version == GLOAS_FORK_VERSION:
+        if compute_epoch_at_slot(data.slot) < state.fork.epoch:
+            raise GossipReject("payload attestation slot is pre-gloas")
+
     # [REJECT] The validator is a member of the payload timeliness committee
     if validator_index not in get_ptc(state, data.slot):
         raise GossipReject("validator is not in the payload timeliness committee")
@@ -1125,10 +1130,11 @@ def validate_proposer_preferences_gossip(
     if not is_valid_dependent_root(store, preferences.dependent_root, dependent_slot):
         raise GossipIgnore("dependent block is not a possible dependent block")
 
-    # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     state = store.block_states[preferences.dependent_root].copy()
     if state.slot < lookahead_start_slot:
         process_slots(state, lookahead_start_slot)
+
+    # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
     lookahead_index = preferences.proposal_slot - lookahead_start_slot
     if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
