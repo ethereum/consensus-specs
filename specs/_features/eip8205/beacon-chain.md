@@ -119,7 +119,7 @@ cross-network replay.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=47)
+    ACTIVE_FIELDS = active_fields(width=47, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -129,9 +129,6 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -149,7 +146,6 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -316,7 +312,6 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-    process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
     process_builder_pending_payments(state)
