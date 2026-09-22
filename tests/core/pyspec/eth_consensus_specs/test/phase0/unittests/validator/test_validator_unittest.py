@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
-from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
+from eth_consensus_specs.test.helpers.constants import FULU, HEZE, PHASE0
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
@@ -148,7 +148,7 @@ def test_get_epoch_signature(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @spec_state_test
 def test_is_candidate_block(spec, state):
     distance_duration = spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE

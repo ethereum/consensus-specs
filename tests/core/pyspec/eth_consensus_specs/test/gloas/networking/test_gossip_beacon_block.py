@@ -1,11 +1,13 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_to,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -651,7 +653,7 @@ def test_gossip_beacon_block__reject_too_many_attestations(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "reject", "too many attestations")
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_gossip_beacon_block__valid_no_deposits(spec, state):
     """A block with no deposits (the maximum allowed) is valid."""
@@ -662,7 +664,7 @@ def test_gossip_beacon_block__valid_no_deposits(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_gossip_beacon_block__reject_contains_deposits(spec, state):
     """A block that carries any deposits is rejected."""

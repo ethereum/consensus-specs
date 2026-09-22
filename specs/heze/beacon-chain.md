@@ -19,12 +19,20 @@
   - [Modified containers](#modified-containers)
     - [`ExecutionPayloadBid`](#executionpayloadbid)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
+    - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Modified `process_epoch`](#modified-process_epoch)
+  - [Block processing](#block-processing)
+    - [Modified `process_block`](#modified-process_block)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
 
 <!-- mdformat-toc end -->
 
@@ -34,6 +42,8 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7805](https://github.com/ethereum/EIPs/blob/9a345f96c2295a678b0ce33e94d41276ddb3fdef/EIPS/eip-7805.md):
   Fork-choice enforced Inclusion Lists (FOCIL)
+- [EIP-8015](https://github.com/ethereum/EIPs/blob/0ebff04bf89b696d51ebf2ff9d029940ef3ed693/EIPS/eip-8015.md):
+  Remove `deposit` and `eth1data` fields
 
 *Note*: These EIPs are in draft and may change or be removed. Each link above
 points to the specific version targeted by this specification, which may differ
@@ -135,11 +145,35 @@ class SignedExecutionPayloadBid(Container):
     signature: BLSSignature
 ```
 
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=13, gaps=(1, 6))
+
+    randao_reveal: BLSSignature
+    # [Modified in Heze:EIP8015]
+    # Removed `eth1_data`
+    graffiti: Bytes32
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    # [Modified in Heze:EIP8015]
+    # Removed `deposits`
+    voluntary_exits: VoluntaryExits
+    sync_aggregate: SyncAggregate
+    bls_to_execution_changes: BLSToExecutionChanges
+    # [Modified in Heze:EIP7805]
+    signed_execution_payload_bid: SignedExecutionPayloadBid
+    payload_attestations: PayloadAttestations
+    parent_execution_requests: ExecutionRequests
+```
+
 #### `BeaconState`
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=46)
+    ACTIVE_FIELDS = active_fields(width=46, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -149,9 +183,12 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
+    # [Modified in Heze:EIP8015]
+    # Removed `eth1_data`
+    # [Modified in Heze:EIP8015]
+    # Removed `eth1_data_votes`
+    # [Modified in Heze:EIP8015]
+    # Removed `eth1_deposit_index`
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -169,7 +206,8 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
+    # [Modified in Heze:EIP8015]
+    # Removed `deposit_requests_start_index`
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -230,4 +268,82 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
     return InclusionListCommittee(
         data=[indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)]
     )
+```
+
+## Beacon chain state transition function
+
+### Epoch processing
+
+#### Modified `process_epoch`
+
+*Note*: `process_epoch` removes call to `process_eth1_data_reset`.
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    # [Modified in Heze:EIP8015]
+    # Removed `process_eth1_data_reset`
+    process_pending_deposits(state)
+    process_pending_consolidations(state)
+    process_builder_pending_payments(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_summaries_update(state)
+    process_participation_flag_updates(state)
+    process_sync_committee_updates(state)
+    process_proposer_lookahead(state)
+    process_ptc_window(state)
+```
+
+### Block processing
+
+#### Modified `process_block`
+
+*Note*: `process_block` removes call to `process_eth1_data`.
+
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    parent_slot = state.latest_block_header.slot
+
+    process_parent_execution_payload(state, block)
+    process_block_header(state, block)
+    process_withdrawals(state)
+    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
+    process_randao(state, block.body)
+    # [Modified in Heze:EIP8015]
+    # Removed `process_eth1_data`
+    process_operations(state, block.body, parent_slot)
+    process_sync_aggregate(state, block.body.sync_aggregate)
+```
+
+#### Operations
+
+##### Modified `process_operations`
+
+*Note*: `process_operations` removes the check that `body.deposits` is empty.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
+    def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
+        for operation in operations:
+            fn(state, operation, *args)
+
+    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
+    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
+    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
+    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
+    assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
+    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation, parent_slot)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.payload_attestations, process_payload_attestation)
 ```
