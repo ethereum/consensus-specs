@@ -14,7 +14,7 @@ Each upgrade builds on the previous, specifying only what it changes. Individual
 [features](specs/_features) are developed in parallel and are folded into an
 upgrade when ready.
 
-### Stable specifications
+## Stable specifications
 
 | Seq. | Code Name     | Fork Epoch | Link                    |
 | ---- | ------------- | ---------- | ----------------------- |
@@ -26,24 +26,24 @@ upgrade when ready.
 | 5    | **Electra**   | `364032`   | [Spec](specs/electra)   |
 | 6    | **Fulu**      | `411392`   | [Spec](specs/fulu)      |
 
-### Unstable specifications
+## Unstable specifications
 
 | Seq. | Code Name | Fork Epoch | Link                |
 | ---- | --------- | ---------- | ------------------- |
 | 7    | **Gloas** | TBD        | [Spec](specs/gloas) |
 | 8    | **Heze**  | TBD        | [Spec](specs/heze)  |
 
-### Rendered viewers
+## Rendered viewers
 
 - https://ethereum.github.io/spec-viewer/
 - https://ethereum.github.io/consensus-specs/
 
-### Reference tests
+## Reference tests
 
 - [Release assets](https://github.com/ethereum/consensus-specs/releases)
 - [Nightly artifacts](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
 
-### Design goals
+## Design goals
 
 - Minimize complexity, even at the cost of some losses in efficiency.
 - Remain live through major network partitions and mass node outages.
@@ -51,7 +51,7 @@ upgrade when ready.
 - Use crypto and design techniques that support a large validator set.
 - Minimize hardware requirements such that a consumer laptop can participate.
 
-### External specifications
+## External specifications
 
 - [Beacon APIs](https://github.com/ethereum/beacon-apis)
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
@@ -61,7 +61,7 @@ upgrade when ready.
 - [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 - [SimpleSerialize Specs](https://github.com/ethereum/ssz-specs)
 
-### Useful resources
+## Useful resources
 
 - [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
 - [Phase0 for Humans](https://notes.ethereum.org/s/Bkn3zpwxB)

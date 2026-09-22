@@ -91,13 +91,12 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
+    - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `get_scheduled_gas_limit`](#new-get_scheduled_gas_limit)
-    - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
-    - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
     - [New `compute_ptc`](#new-compute_ptc)
@@ -107,12 +106,13 @@
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
+    - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
     - [New `get_activation_churn_limit`](#new-get_activation_churn_limit)
     - [New `get_exit_churn_limit`](#new-get_exit_churn_limit)
     - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
-    - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
   - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
     - [New `settle_builder_payment`](#new-settle_builder_payment)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -1110,6 +1110,20 @@ def is_valid_indexed_payload_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
 
+#### New `can_builder_cover_bid`
+
+```python
+def can_builder_cover_bid(
+    state: BeaconState, builder_index: BuilderIndex, bid_amount: Gwei
+) -> bool:
+    builder_balance = state.builders[builder_index].balance
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
+    if builder_balance < min_balance:
+        return False
+    return builder_balance - min_balance >= bid_amount
+```
+
 #### New `is_pending_validator`
 
 *Note*: This function naively revalidates deposit signatures on every call.
@@ -1160,36 +1174,6 @@ def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
         if epoch >= entry["EPOCH"]:
             return entry["GAS_LIMIT"]
     return None
-```
-
-#### New `get_pending_balance_to_withdraw_for_builder`
-
-```python
-def get_pending_balance_to_withdraw_for_builder(
-    state: BeaconState, builder_index: BuilderIndex
-) -> Gwei:
-    balance = Gwei(0)
-    for withdrawal in state.builder_pending_withdrawals:
-        if withdrawal.builder_index == builder_index:
-            balance += withdrawal.amount
-    for payment in state.builder_pending_payments:
-        if payment.withdrawal.builder_index == builder_index:
-            balance += payment.withdrawal.amount
-    return balance
-```
-
-#### New `can_builder_cover_bid`
-
-```python
-def can_builder_cover_bid(
-    state: BeaconState, builder_index: BuilderIndex, bid_amount: Gwei
-) -> bool:
-    builder_balance = state.builders[builder_index].balance
-    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-    min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
-    if builder_balance < min_balance:
-        return False
-    return builder_balance - min_balance >= bid_amount
 ```
 
 #### New `compute_balance_weighted_selection`
@@ -1426,6 +1410,22 @@ def get_indexed_payload_attestation(
     )
 ```
 
+#### New `get_pending_balance_to_withdraw_for_builder`
+
+```python
+def get_pending_balance_to_withdraw_for_builder(
+    state: BeaconState, builder_index: BuilderIndex
+) -> Gwei:
+    balance = Gwei(0)
+    for withdrawal in state.builder_pending_withdrawals:
+        if withdrawal.builder_index == builder_index:
+            balance += withdrawal.amount
+    for payment in state.builder_pending_payments:
+        if payment.withdrawal.builder_index == builder_index:
+            balance += payment.withdrawal.amount
+    return balance
+```
+
 #### New `get_builder_payment_quorum_threshold`
 
 ```python
@@ -1485,6 +1485,8 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
+### Beacon state mutators
+
 #### Modified `compute_exit_epoch_and_update_churn`
 
 *Note*: Exit processing now uses the uncapped exit churn, while deposit
@@ -1516,8 +1518,6 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
 
     return state.earliest_exit_epoch
 ```
-
-### Beacon state mutators
 
 #### New `initiate_builder_exit`
 

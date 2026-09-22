@@ -5,8 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Containers](#containers)
-  - [New containers](#new-containers)
+- [Dataclasses](#dataclasses)
+  - [New dataclasses](#new-dataclasses)
     - [`InclusionListEntry`](#inclusionlistentry)
     - [`InclusionListStore`](#inclusionliststore)
 - [Helpers](#helpers)
@@ -22,9 +22,9 @@
 
 These are the inclusion list specifications to implement Heze.
 
-## Containers
+## Dataclasses
 
-### New containers
+### New dataclasses
 
 #### `InclusionListEntry`
 

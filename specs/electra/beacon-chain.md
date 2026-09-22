@@ -52,7 +52,6 @@
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
-    - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
     - [Modified `is_eligible_for_activation_queue`](#modified-is_eligible_for_activation_queue)
     - [New `is_compounding_withdrawal_credential`](#new-is_compounding_withdrawal_credential)
     - [New `has_compounding_withdrawal_credential`](#new-has_compounding_withdrawal_credential)
@@ -61,6 +60,7 @@
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
     - [New `is_eligible_for_partial_withdrawals`](#new-is_eligible_for_partial_withdrawals)
   - [Misc](#misc-1)
+    - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
     - [New `get_committee_indices`](#new-get_committee_indices)
     - [New `get_max_effective_balance`](#new-get_max_effective_balance)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -590,37 +590,6 @@ class ExpectedWithdrawals:
 
 ### Predicates
 
-#### Modified `compute_proposer_index`
-
-*Note*: The function `compute_proposer_index` is modified to use
-`MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 16-bit random value instead of an
-8-bit random byte in the effective balance filter.
-
-```python
-def compute_proposer_index(
-    state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32
-) -> ValidatorIndex:
-    """
-    Return from ``indices`` a random index sampled by effective balance.
-    """
-    assert len(indices) > 0
-    # [Modified in Electra]
-    MAX_RANDOM_VALUE = 2**16 - 1
-    i = Uint64(0)
-    total = Uint64(len(indices))
-    while True:
-        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-        # [Modified in Electra]
-        random_bytes = sha256(seed + uint_to_bytes(i // 16))
-        offset = i % 16 * 2
-        random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
-        effective_balance = state.validators[candidate_index].effective_balance
-        # [Modified in Electra:EIP7251]
-        if effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value:
-            return candidate_index
-        i += 1
-```
-
 #### Modified `is_eligible_for_activation_queue`
 
 *Note*: The function `is_eligible_for_activation_queue` is modified to use
@@ -729,6 +698,37 @@ def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> 
 ```
 
 ### Misc
+
+#### Modified `compute_proposer_index`
+
+*Note*: The function `compute_proposer_index` is modified to use
+`MAX_EFFECTIVE_BALANCE_ELECTRA` and to use a 16-bit random value instead of an
+8-bit random byte in the effective balance filter.
+
+```python
+def compute_proposer_index(
+    state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32
+) -> ValidatorIndex:
+    """
+    Return from ``indices`` a random index sampled by effective balance.
+    """
+    assert len(indices) > 0
+    # [Modified in Electra]
+    MAX_RANDOM_VALUE = 2**16 - 1
+    i = Uint64(0)
+    total = Uint64(len(indices))
+    while True:
+        candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
+        # [Modified in Electra]
+        random_bytes = sha256(seed + uint_to_bytes(i // 16))
+        offset = i % 16 * 2
+        random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
+        effective_balance = state.validators[candidate_index].effective_balance
+        # [Modified in Electra:EIP7251]
+        if effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value:
+            return candidate_index
+        i += 1
+```
 
 #### New `get_committee_indices`
 
