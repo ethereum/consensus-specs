@@ -17,6 +17,8 @@
     - [Lookahead](#lookahead)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Eth1 data](#eth1-data)
+      - [Deposits](#deposits)
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [ExecutionPayload](#executionpayload)
   - [Inclusion list proposal](#inclusion-list-proposal)
@@ -107,6 +109,18 @@ list committee slot.
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
+
+##### Eth1 data
+
+*[Modified in Heze:EIP8015]*
+
+*Note*: The `eth1_data` field is removed from `BeaconBlockBody`.
+
+##### Deposits
+
+*[Modified in Heze:EIP8015]*
+
+*Note*: The `deposits` field is removed from `BeaconBlockBody`.
 
 ##### Signed execution payload bid
 
