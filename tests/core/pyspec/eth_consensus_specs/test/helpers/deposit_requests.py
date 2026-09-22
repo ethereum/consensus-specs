@@ -1,6 +1,7 @@
 import pytest
 
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 
@@ -176,18 +177,21 @@ def assert_process_deposit_request(
     )
 
     # INVARIANT: deposit_requests_start_index is set only if it was previously UNSET
-    was_unset = pre_state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-    if was_unset:
-        # Should be set to deposit_request.index
-        assert state.deposit_requests_start_index == deposit_request.index, (
-            f"deposit_requests_start_index should be set to request index: "
-            f"expected={deposit_request.index}, got={state.deposit_requests_start_index}"
+    if not is_post_heze(spec):
+        was_unset = (
+            pre_state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
         )
-    else:
-        # Should remain unchanged
-        assert state.deposit_requests_start_index == pre_state.deposit_requests_start_index, (
-            "deposit_requests_start_index should not change when already set"
-        )
+        if was_unset:
+            # Should be set to deposit_request.index
+            assert state.deposit_requests_start_index == deposit_request.index, (
+                f"deposit_requests_start_index should be set to request index: "
+                f"expected={deposit_request.index}, got={state.deposit_requests_start_index}"
+            )
+        else:
+            # Should remain unchanged
+            assert state.deposit_requests_start_index == pre_state.deposit_requests_start_index, (
+                "deposit_requests_start_index should not change when already set"
+            )
 
     # INVARIANT: Validator count unchanged (new validators created during epoch processing)
     assert len(state.validators) == len(pre_state.validators), (

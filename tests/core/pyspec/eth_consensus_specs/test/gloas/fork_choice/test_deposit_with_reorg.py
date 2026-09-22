@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
     tick_and_add_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
@@ -33,7 +34,8 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     Test deposit processing across epochs.
     """
     # signify the eth1 bridge deprecation
-    state.deposit_requests_start_index = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        state.deposit_requests_start_index = state.eth1_deposit_index
 
     # yield anchor state and block
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
