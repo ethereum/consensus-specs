@@ -3,7 +3,9 @@ from random import Random
 from eth_consensus_specs.test.context import (
     always_bls,
     GLOAS,
+    HEZE,
     spec_state_test,
+    with_all_phases_from_to,
     with_gloas_and_later,
     with_phases,
 )
@@ -595,7 +597,7 @@ def test_invalid_too_many_attestations(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_max_deposits(spec, state):
     yield "pre", state
@@ -608,7 +610,7 @@ def test_max_deposits(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_invalid_too_many_deposits(spec, state):
     yield "pre", state

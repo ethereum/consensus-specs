@@ -13,7 +13,12 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.deposits import build_deposit, deposit_from_context
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_electra,
+    is_post_fulu,
+    is_post_gloas,
+    is_post_heze,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
@@ -165,8 +170,9 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
 
 def prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=None):
     deposits, root = get_random_deposits(spec, state, rng, num_deposits=num_deposits)
-    state.eth1_data.deposit_root = root
-    state.eth1_data.deposit_count += len(deposits)
+    if not is_post_heze(spec):
+        state.eth1_data.deposit_root = root
+        state.eth1_data.deposit_count += len(deposits)
     return deposits
 
 

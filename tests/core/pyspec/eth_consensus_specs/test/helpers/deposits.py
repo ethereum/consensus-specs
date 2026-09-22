@@ -6,7 +6,12 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra, is_post_fulu
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_altair,
+    is_post_electra,
+    is_post_fulu,
+    is_post_heze,
+)
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
@@ -509,7 +514,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     assert is_post_electra(spec)
 
     # ensure the transition from eth1 bridge is complete
-    state.deposit_requests_start_index = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        state.deposit_requests_start_index = state.eth1_deposit_index
 
     # ensure there is enough churn to apply the deposit
     if pending_deposit.amount > get_activation_churn_limit(spec, state):
