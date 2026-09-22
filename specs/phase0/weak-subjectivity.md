@@ -97,7 +97,7 @@ scope for overflows in `Uint64`.
 #### `compute_weak_subjectivity_period`
 
 ```python
-def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
+def compute_weak_subjectivity_period(state: BeaconState) -> Epoch:
     """
     Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:
@@ -111,7 +111,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
     t = get_total_active_balance(state) // N // ETH_TO_GWEI
     T = MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI
     delta = get_validator_churn_limit(state)
-    Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
+    Delta = MAX_DEPOSITS * Uint64(SLOTS_PER_EPOCH)
     D = SAFETY_DECAY
 
     if t * (200 + 12 * D) > T * (200 + 3 * D):
@@ -119,9 +119,9 @@ def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
             N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
         )
         epochs_for_balance_top_ups = N * (200 + 3 * D) // (600 * Delta)
-        ws_period += max(epochs_for_validator_set_churn, epochs_for_balance_top_ups)
+        ws_period += Epoch(max(epochs_for_validator_set_churn, epochs_for_balance_top_ups))
     else:
-        ws_period += 3 * N * D * t // (200 * Delta * (T - t))
+        ws_period += Epoch(3 * N * D * t // (200 * Delta * (T - t)))
 
     return ws_period
 ```
