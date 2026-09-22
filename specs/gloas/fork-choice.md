@@ -189,7 +189,7 @@ class LatestMessage:
 ```python
 @dataclass
 class Store:
-    time: Uint64
+    time_ms: Uint64
     genesis_time: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -222,7 +222,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     return Store(
-        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
+        time_ms=Uint64(
+            seconds_to_milliseconds(anchor_state.genesis_time)
+            + SLOT_DURATION_MS * anchor_state.slot
+        ),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -962,8 +965,9 @@ def update_latest_messages(
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    time_into_slot_ms = (
+        store.time_ms - seconds_to_milliseconds(store.genesis_time)
+    ) % SLOT_DURATION_MS
     attestation_threshold_ms = get_attestation_due_ms()
     # [New in Gloas:EIP7732]
     is_current_slot = get_current_slot(store) == block.slot
