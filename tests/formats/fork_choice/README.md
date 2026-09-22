@@ -55,11 +55,12 @@ types:
 
 #### `on_tick` execution step
 
-The parameter that is required for executing `on_tick(store, time_ms)`.
+The parameter that is required for executing `on_tick(store, time_ms)`. Note
+that `tick` is in seconds, while `on_tick` takes milliseconds.
 
 ```yaml
 {
-    tick: int       -- to execute `on_tick(store, time_ms)`.
+    tick: int       -- to execute `on_tick(store, seconds_to_milliseconds(tick))`.
     valid: bool     -- optional, default to `true`.
                        If it's `false`, this execution step is expected to be invalid.
 }
