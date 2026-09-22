@@ -25,6 +25,10 @@ def test_transition_skipped_last_pre_fork_slot_misses_head_flag(
     misses the timely head flag. This is expected and is not worth a special case
     at the fork boundary.
     """
+    assert spec.get_current_epoch(state) < fork_epoch
+
+    yield "pre", state
+
     empty_slot = spec.Uint64(fork_epoch) * spec.SLOTS_PER_EPOCH - 1
     parent_slot = empty_slot - 1
 
@@ -37,8 +41,6 @@ def test_transition_skipped_last_pre_fork_slot_misses_head_flag(
     ]
     assert state.slot == empty_slot
     assert state.latest_block_header.slot == parent_slot
-
-    yield "pre", state
 
     state, _ = do_fork(state, spec, post_spec, fork_epoch, with_block=False)
     assert state.slot == empty_slot + 1
@@ -64,12 +66,11 @@ def test_transition_skipped_last_pre_fork_slot_misses_head_flag(
     blocks.append(post_tag(sign_block(post_spec, state, block)))
 
     assert state.execution_payload_availability[parent_slot % post_spec.SLOTS_PER_HISTORICAL_ROOT]
-
-    yield "blocks", blocks
-    yield "post", state
-
     for index in attesters:
         flags = state.previous_epoch_participation[index]
         assert post_spec.has_flag(flags, post_spec.TIMELY_SOURCE_FLAG_INDEX)
         assert post_spec.has_flag(flags, post_spec.TIMELY_TARGET_FLAG_INDEX)
         assert not post_spec.has_flag(flags, post_spec.TIMELY_HEAD_FLAG_INDEX)
+
+    yield "blocks", blocks
+    yield "post", state
