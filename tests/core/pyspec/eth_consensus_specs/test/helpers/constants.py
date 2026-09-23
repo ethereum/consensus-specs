@@ -20,6 +20,7 @@ EIP8025 = SpecForkName("eip8025")
 EIP8148 = SpecForkName("eip8148")
 EIP8205 = SpecForkName("eip8205")
 EIP8321 = SpecForkName("eip8321")
+PAYLOAD_REQUEST_CHAIN = SpecForkName("payload_request_chain")
 
 #
 # SpecFork settings
@@ -41,6 +42,7 @@ ALL_PHASES = (
     EIP8148,
     EIP8205,
     EIP8321,
+    PAYLOAD_REQUEST_CHAIN,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0] + [GLOAS]
@@ -66,6 +68,7 @@ PREVIOUS_FORK_OF = {
     EIP8148: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
+    PAYLOAD_REQUEST_CHAIN: GLOAS,
 }
 
 # For fork transition tests

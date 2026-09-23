@@ -30,6 +30,7 @@ from .helpers.constants import (
     HEZE,
     LIGHT_CLIENT_TESTING_FORKS,
     MINIMAL,
+    PAYLOAD_REQUEST_CHAIN,
     PHASE0,
     POST_FORK_OF,
 )
@@ -749,6 +750,9 @@ with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_R
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_payload_request_chain_and_later = with_all_phases_from(
+    PAYLOAD_REQUEST_CHAIN, all_phases=ALLOWED_TEST_RUNNER_FORKS
+)
 
 with_bellatrix_only = with_phases([BELLATRIX])
 with_electra_only = with_phases([ELECTRA])
