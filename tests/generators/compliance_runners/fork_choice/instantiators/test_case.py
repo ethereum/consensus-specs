@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_altair_and_later,
+    with_config_overrides,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
@@ -227,6 +228,7 @@ def make_test_context(
 ):
     @with_altair_and_later
     @spec_state_test
+    @with_config_overrides({"GLOAS_FORK_EPOCH": 0})
     def get_spec_test_data_and_events(spec, state):
         test_kind = test_dna_base.kind
         solution = test_dna_base.solution

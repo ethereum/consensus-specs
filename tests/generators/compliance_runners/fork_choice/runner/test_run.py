@@ -8,7 +8,11 @@ from eth_utils import decode_hex
 from ruamel.yaml import YAML
 from snappy import uncompress
 
-from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.context import (
+    expect_assertion_error,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
@@ -76,6 +80,8 @@ class ComplianceTestInfo(NamedTuple):
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
+    if is_post_gloas(spec):
+        spec, _ = spec_with_config_overrides(get_copy_of_spec(spec), {"GLOAS_FORK_EPOCH": 0})
     meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)
     )
