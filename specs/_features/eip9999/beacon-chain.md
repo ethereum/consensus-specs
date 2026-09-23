@@ -142,7 +142,7 @@ the correct value without having derived it.
 The only value a consensus client ever sends is the current one, through the
 payload being delivered. An execution client that holds no accumulator of its
 own has nothing to compare that value against, and MUST adopt it as its own and
-fold forward from there. It cannot instead begin from
+continue from there. It cannot instead begin from
 `PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, since the history the value covers is
 history it never held.
 
@@ -322,28 +322,22 @@ implement this EIP continue to use the previous method version. Making the
 argument omissible would instead create a silent downgrade, in which a consensus
 client that never supplies it is never verified and nothing reports that.
 
-Payload validity is determined by exactly today's rules and does not consult the
-argument. The execution client folds this payload's request root into the chain
-it has accumulated over the ancestry and compares:
+The execution client compares the supplied value against its own payload request
+chain root:
 
-- It MUST return `False` if it held the block data for the ancestry, performed
-  the comparison, and the roots differ. The beacon chain has committed to a
-  payload the execution chain does not contain.
-- It MUST NOT return `False` on account of the comparison if it does not hold
-  that block data, or has no base to fold from. That is not a disagreement, and
-  resolves as the consensus client continues delivering payloads. A client with
-  no base adopts the supplied value as its base. Inability to compare is a
-  property of the execution client's state, which is why it is reported rather
-  than being a reason to omit the argument.
-- It MUST NOT require the block to have been executed in order to compute the
-  request root. Every input is drawn from the execution header or the block
-  body.
-
-*Note*: the boolean here is the consensus client's combined conclusion. On the
-wire the execution client reports payload status and chain status as separate
-fields, because a mismatch does not make the delivered payload invalid — it
-makes the beacon chain that committed to it invalid — and the consensus client
-combines the two.
+- It MUST return `True` only if the payload is valid and the two are consistent.
+  On the wire this is `VALID`.
+- It MUST return `False` if the two are inconsistent. The beacon chain has
+  committed to a payload the execution chain does not contain. On the wire this
+  is `INVALID`, distinguished from a payload that failed validation by
+  `validationError`.
+- It MUST return `False` if it cannot yet determine consistency, because it does
+  not hold the block data for the ancestry or holds no chain of its own. On the
+  wire this is `SYNCING`, which is not a disagreement and resolves as the
+  consensus client continues delivering payloads. A client with no chain of its
+  own adopts the supplied value as its own.
+- It MUST NOT require the block to have been executed in order to compute its
+  own value. Every input is drawn from the execution header or the block body.
 
 ```python
 def verify_and_notify_new_payload(
