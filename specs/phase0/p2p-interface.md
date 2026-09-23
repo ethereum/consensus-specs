@@ -22,7 +22,6 @@
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
-    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`is_future_slot`](#is_future_slot)
     - [`is_future_epoch`](#is_future_epoch)
     - [`is_within_slot_range`](#is_within_slot_range)
@@ -355,17 +354,6 @@ def compute_fork_digest(
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
-```
-
-#### `compute_time_at_slot_ms`
-
-```python
-def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
-    """
-    Return the time in milliseconds at the start of the given slot.
-    """
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(store.genesis_time_ms + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `is_future_slot`

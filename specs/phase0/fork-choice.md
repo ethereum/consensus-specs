@@ -12,6 +12,7 @@
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
     - [`get_forkchoice_store`](#get_forkchoice_store)
+    - [`get_time_into_slot_ms`](#get_time_into_slot_ms)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
     - [`get_current_store_epoch`](#get_current_store_epoch)
@@ -240,18 +241,25 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
+#### `get_time_into_slot_ms`
+
+```python
+def get_time_into_slot_ms(store: Store) -> Uint64:
+    return store.time_ms - compute_time_at_slot_ms(store.genesis_time_ms, get_current_slot(store))
+```
+
 #### `get_slots_since_genesis`
 
 ```python
-def get_slots_since_genesis(store: Store) -> int:
-    return (store.time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
+def get_slots_since_genesis(store: Store) -> Slot:
+    return compute_slot_at_time_ms(store.genesis_time_ms, store.time_ms)
 ```
 
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return GENESIS_SLOT + get_slots_since_genesis(store)
+    return get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
