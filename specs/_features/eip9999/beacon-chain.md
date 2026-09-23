@@ -338,6 +338,12 @@ it has accumulated over the ancestry and compares:
 Omitting the argument leaves behaviour unchanged, so steady-state operation
 carries no additional data and existing consensus clients are unaffected.
 
+*Note*: the boolean here is the consensus client's combined conclusion. On the
+wire the execution client reports payload status and chain status as separate
+fields, because a mismatch does not make the delivered payload invalid — it
+makes the beacon chain that committed to it invalid — and the consensus client
+combines the two.
+
 ```python
 def verify_and_notify_new_payload(
     self: ExecutionEngine,
