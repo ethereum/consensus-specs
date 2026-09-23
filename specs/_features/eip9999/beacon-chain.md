@@ -38,7 +38,7 @@ The rest of the payload is bound through `block_hash` and left to ordinary
 execution-layer validity. No input requires executing the block, so an execution
 client can extend the chain over blocks it never executes.
 
-*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
+*Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
 ## Constants
 
@@ -79,7 +79,6 @@ class NewPayloadRequestCommitment(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    # [Modified in EIP9999]
     ACTIVE_FIELDS = active_fields(width=47)
 
     genesis_time: Uint64
@@ -106,7 +105,6 @@ class BeaconState(ProgressiveContainer):
     inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # Removed `latest_execution_payload_header`
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex

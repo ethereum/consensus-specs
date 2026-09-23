@@ -68,7 +68,7 @@ PREVIOUS_FORK_OF = {
     EIP8148: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
-    EIP9999: GLOAS,
+    EIP9999: HEZE,
 }
 
 # For fork transition tests

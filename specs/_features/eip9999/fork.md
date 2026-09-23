@@ -43,8 +43,8 @@ consensus client reconciling a range that crosses the fork MUST NOT expect the
 execution client to account for pre-fork blocks.
 
 ```python
-def upgrade_to_eip9999(pre: gloas.BeaconState) -> BeaconState:
-    epoch = gloas.get_current_epoch(pre)
+def upgrade_to_eip9999(pre: heze.BeaconState) -> BeaconState:
+    epoch = heze.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,

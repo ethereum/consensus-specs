@@ -9,13 +9,13 @@ class EIP9999SpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.gloas import {preset_name} as gloas
+from eth_consensus_specs.heze import {preset_name} as heze
 """
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
-            "upgrade_to_gloas",
+            "upgrade_to_heze",
         }
 
     @classmethod
@@ -52,6 +52,14 @@ class NoopExecutionEngine(ExecutionEngine):
     def verify_and_notify_new_payload(self: ExecutionEngine,
                                       new_payload_request: NewPayloadRequest,
                                       payload_request_chain_root: Bytes32) -> bool:
+        return True
+
+    def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
+        raise NotImplementedError("no default inclusion list production")
+
+    def is_inclusion_list_satisfied(self: ExecutionEngine,
+                                    execution_payload: ExecutionPayload,
+                                    inclusion_list_transactions: Sequence[Transaction]) -> bool:
         return True
 
 
