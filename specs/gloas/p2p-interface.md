@@ -1140,7 +1140,11 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The signature is valid
     validator = state.validators[preferences.validator_index]
-    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(preferences, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")
