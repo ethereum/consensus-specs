@@ -10,19 +10,24 @@ from __future__ import annotations
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     CAttribute,
+    CConstant,
+    Context,
     coverage_aspect,
     CPred,
     each,
     Target,
 )
 
+from .observation import observe_attributes
+
 
 @coverage_aspect("participation")
 def capture_participation(
     validator_count: CAttribute[int],
-    minimum_validator_count: CAttribute[int],
     previous_nonzero_count: CAttribute[int],
     current_nonzero_count: CAttribute[int],
+    *,
+    minimum_validator_count: CConstant[int],
 ):
     validator_set_is_larger: CPred = validator_count > minimum_validator_count
     previous_has_flags: CPred = previous_nonzero_count > 0
@@ -33,14 +38,8 @@ PARTICIPATION = capture_participation
 ASPECTS = (PARTICIPATION,)
 
 
-def _observe(ctx) -> None:
-    spec, state = ctx.spec, ctx.pre
-    capture_participation(
-        validator_count=len(state.validators),
-        minimum_validator_count=int(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT),
-        previous_nonzero_count=sum(bool(flags) for flags in state.previous_epoch_participation),
-        current_nonzero_count=sum(bool(flags) for flags in state.current_epoch_participation),
-    )
+def _observe(ctx: Context) -> None:
+    capture_participation(**observe_attributes(ctx))
 
 
 PROFILES = {
@@ -50,4 +49,12 @@ PROFILES = {
 }
 
 
-TARGET = Target("participation_flag_updates", ASPECTS, _observe, PROFILES)
+TARGET = Target(
+    "participation_flag_updates",
+    ASPECTS,
+    _observe,
+    PROFILES,
+    constants={
+        "minimum_validator_count": lambda spec: int(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT)
+    },
+)

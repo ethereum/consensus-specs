@@ -25,6 +25,7 @@ all_epoch_processing:
     - eth1_data_reset
     - effective_balance_updates
     - historical_summaries_update
+    - inactivity_updates
     - participation_flag_updates
     - pending_consolidations
     - pending_deposits
