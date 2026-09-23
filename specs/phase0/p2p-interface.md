@@ -365,7 +365,7 @@ def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
     Return the time in milliseconds at the start of the given slot.
     """
     slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+    return Uint64(store.genesis_time_ms + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
 #### `is_future_slot`
@@ -396,7 +396,7 @@ def is_future_epoch(
     Check if the given epoch is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
+    time_since_genesis_ms = current_time_ms - store.genesis_time_ms
     time_since_genesis_ms += MAXIMUM_GOSSIP_CLOCK_DISPARITY
     current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
     return compute_epoch_at_slot(current_slot) < epoch

@@ -32,7 +32,7 @@ This document extends the fork-choice `Store` to retain verified
 @dataclass
 class Store:
     time_ms: Uint64
-    genesis_time: Uint64
+    genesis_time_ms: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -63,10 +63,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time_ms=seconds_to_milliseconds(anchor_state.genesis_time)
-        + SLOT_DURATION_MS * anchor_state.slot,
-        genesis_time=anchor_state.genesis_time,
+        time_ms=genesis_time_ms + SLOT_DURATION_MS * anchor_state.slot,
+        genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
