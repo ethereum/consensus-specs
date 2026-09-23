@@ -123,7 +123,7 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -210,7 +210,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     yield "blocks", "meta", blocks_meta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     proposal_state = parent_state.copy()
@@ -280,7 +280,7 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -337,7 +337,7 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, _, parent_block_hash, time_ms = yield from (
@@ -401,7 +401,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
     # messages are validated shortly before the edge.
     bid_slot = spec.Slot(state.slot + 1)
     edge_time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(bid_slot - 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
@@ -470,7 +470,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     bid_slot = spec.Slot(state.slot + 1)
     # Lower edge of the disparity window: (bid_slot - 1)'s start minus disparity.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(bid_slot - 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -533,7 +533,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
 
     # Validate the bid exactly at the lower edge of the disparity window.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(proposal_slot - 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
@@ -575,7 +575,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     seen = get_seen(spec)
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -636,7 +636,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
 
     # Validate the bid exactly at the upper edge of the disparity window.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(proposal_slot + 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
@@ -675,7 +675,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -698,7 +698,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
     # Upper edge: (bid_slot + 1)'s start + MAXIMUM_GOSSIP_CLOCK_DISPARITY. One
     # ms past that places the bid outside the disparity window.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(proposal_slot + 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
@@ -743,7 +743,7 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -839,7 +839,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -935,7 +935,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1030,7 +1030,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1125,7 +1125,7 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1191,7 +1191,7 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1249,7 +1249,7 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1306,7 +1306,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
         yield get_filename(signed), signed
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1378,7 +1378,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1454,7 +1454,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1530,7 +1530,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1605,7 +1605,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1681,7 +1681,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
         yield get_filename(signed), signed
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1747,7 +1747,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1816,7 +1816,7 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1884,7 +1884,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -1951,7 +1951,7 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     # The bid targets the head's own slot, so bid.slot == parent.slot.
     assert blocks[-1].message.slot == state.slot
     bid_slot = spec.Slot(state.slot)
-    head_slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, bid_slot)
+    head_slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot)
     time_ms = head_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 200
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -2045,7 +2045,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
@@ -2117,7 +2117,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_parent.message.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_parent.message.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2202,7 +2202,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2241,7 +2241,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     yield get_filename(signed_bid), signed_bid
 
     # Validate at the bid's own (future) slot so it counts as the current slot.
-    bid_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, future_slot)
+    bid_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, future_slot)
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2283,7 +2283,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2357,7 +2357,7 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2459,7 +2459,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2562,7 +2562,7 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2669,7 +2669,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2774,7 +2774,7 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -2895,7 +2895,7 @@ def _run_bid_gas_limit_scenario(
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
@@ -3025,7 +3025,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
@@ -3284,7 +3284,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     assert spec.can_builder_cover_bid(advanced_state, builder_index, bid_value)
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

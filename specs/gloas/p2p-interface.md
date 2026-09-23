@@ -350,7 +350,7 @@ def is_past_slot(
     Check if the given slot is in the past
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
 ```
 
@@ -881,6 +881,10 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
+    # [REJECT] The payload attestation's slot is at or after the Gloas fork
+    if compute_epoch_at_slot(data.slot) < GLOAS_FORK_EPOCH:
+        raise GossipReject("payload attestation's slot is pre-gloas")
+
     # [IGNORE] This is the first valid payload attestation from this validator index
     payload_attestation_key = (data.slot, validator_index)
     if payload_attestation_key in seen.payload_attestation_validators:
@@ -908,11 +912,6 @@ def validate_payload_attestation_message_gossip(
     # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
-
-    # [REJECT] The payload attestation slot is at or after the Gloas fork
-    if state.fork.current_version == GLOAS_FORK_VERSION:
-        if compute_epoch_at_slot(data.slot) < state.fork.epoch:
-            raise GossipReject("payload attestation slot is pre-gloas")
 
     # [REJECT] The validator is a member of the payload timeliness committee
     if validator_index not in get_ptc(state, data.slot):
@@ -1141,7 +1140,11 @@ def validate_proposer_preferences_gossip(
 
     # [REJECT] The signature is valid
     validator = state.validators[preferences.validator_index]
-    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(preferences, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")

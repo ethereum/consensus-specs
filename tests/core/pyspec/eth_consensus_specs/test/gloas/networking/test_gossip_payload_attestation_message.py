@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
-    spec_state_test,
+    spec_configured_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
     with_phases,
 )
@@ -63,7 +64,7 @@ def build_payload_attestation_message(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid(spec, state):
     """A PayloadAttestationMessage from a PTC member for the current slot passes."""
     anchor_state = state.copy()
@@ -83,7 +84,7 @@ def test_gossip_payload_attestation_message__valid(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -109,7 +110,7 @@ def test_gossip_payload_attestation_message__valid(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state):
     """A message whose slot is not the current slot is ignored."""
     anchor_state = state.copy()
@@ -130,7 +131,9 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
     yield get_filename(message), message
 
     # Use a current_time well past the message's slot.
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot) + 1000 * 1000
+    time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, state.slot
+    ) + spec.seconds_to_milliseconds(1000)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -156,7 +159,7 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec, state):
     """A message validated exactly at the lower clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -179,7 +182,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
     # Lower edge: start(slot) - MAXIMUM_GOSSIP_CLOCK_DISPARITY is the earliest
     # time still counted as the current slot.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -206,7 +209,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity(spec, state):
     """A message 1ms before the lower clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -227,7 +230,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
     yield get_filename(message), message
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
@@ -256,7 +259,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec, state):
     """A message validated exactly at the upper clock-disparity edge is valid."""
     anchor_state = state.copy()
@@ -279,7 +282,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
     # Upper edge: start(slot + 1) + MAXIMUM_GOSSIP_CLOCK_DISPARITY is the latest
     # time still counted as the current slot.
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(state.slot + 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -306,7 +309,7 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity(spec, state):
     """A message 1ms past the upper clock-disparity edge is ignored."""
     anchor_state = state.copy()
@@ -327,7 +330,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
     yield get_filename(message), message
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, spec.Slot(state.slot + 1))
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
@@ -356,7 +359,7 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     """The second valid message from the same validator for the same slot is ignored."""
     anchor_state = state.copy()
@@ -376,7 +379,7 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -421,7 +424,7 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     """A message attesting to an unknown beacon block is ignored."""
     anchor_state = state.copy()
@@ -442,7 +445,7 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -469,10 +472,9 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
 
 
 @with_phases([GLOAS])
-@spec_state_test
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
 def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
     """A payload attestation for a slot before the Gloas fork is rejected."""
-    state.fork.epoch = spec.Epoch(spec.get_current_epoch(state) + 1)
     anchor_state = state.copy()
     yield "topic", "meta", "payload_attestation_message"
 
@@ -488,7 +490,7 @@ def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -501,7 +503,7 @@ def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
         current_time_ms=time_ms,
     )
     assert result == "reject"
-    assert reason == "payload attestation slot is pre-gloas"
+    assert reason == "payload attestation's slot is pre-gloas"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -515,7 +517,7 @@ def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, state):
     """A message from a validator not in the PTC is rejected."""
     anchor_state = state.copy()
@@ -533,7 +535,7 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
     message = build_payload_attestation_message(spec, state, state.slot, block_root, outsider)
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -560,7 +562,7 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_invalid_signature(spec, state):
     """A message with an invalid signature is rejected."""
     anchor_state = state.copy()
@@ -580,7 +582,7 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -607,7 +609,7 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_block_failed_validation(spec, state):
     """A message whose block failed validation is rejected."""
     anchor_state = state.copy()
@@ -635,7 +637,7 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -662,7 +664,7 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__reject_validator_index_out_of_range(spec, state):
     """A message whose validator index is past the validator registry is rejected."""
     anchor_state = state.copy()
@@ -691,7 +693,7 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -718,7 +720,7 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(spec, state):
     """A PTC message whose block.slot does not equal data.slot is ignored (assigned slot was empty)."""
     anchor_state = state.copy()
@@ -743,7 +745,7 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

@@ -64,7 +64,7 @@ def test_gossip_sync_committee_message__valid(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -113,7 +113,7 @@ def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -168,7 +168,7 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -215,7 +215,7 @@ def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -267,7 +267,7 @@ def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -315,7 +315,7 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -396,7 +396,7 @@ def test_gossip_sync_committee_message__reject_invalid_signature(spec, state):
 
     yield get_filename(message), message
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 

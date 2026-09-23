@@ -75,7 +75,7 @@ def test_gossip_blob_sidecar__valid(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -130,7 +130,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
 
     yield get_filename(blob_sidecar), blob_sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, blob_sidecar_slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, blob_sidecar_slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.SubnetID(0)
@@ -184,7 +184,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -243,7 +243,7 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -300,7 +300,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -357,7 +357,7 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -412,7 +412,7 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -468,7 +468,7 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -539,7 +539,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
 
     yield get_filename(blob_sidecar), blob_sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, block_header.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
@@ -596,7 +596,7 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -655,7 +655,7 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -731,7 +731,7 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -790,7 +790,7 @@ def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -886,7 +886,7 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -948,7 +948,7 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1008,7 +1008,7 @@ def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     yield get_filename(blob_sidecar), blob_sidecar
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, blob_sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 

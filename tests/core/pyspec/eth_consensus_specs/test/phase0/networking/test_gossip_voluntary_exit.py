@@ -49,7 +49,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator to exit
@@ -101,7 +101,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator to exit
@@ -170,7 +170,7 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit with invalid validator index
@@ -229,7 +229,7 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit
@@ -282,7 +282,7 @@ def test_gossip_voluntary_exit__ignore_already_initiated_exit(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit
@@ -331,7 +331,7 @@ def test_gossip_voluntary_exit__ignore_epoch_in_future(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator
@@ -384,7 +384,7 @@ def test_gossip_voluntary_exit__ignore_far_future_epoch(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     signed_exit = create_signed_voluntary_exit(
@@ -440,7 +440,7 @@ def test_gossip_voluntary_exit__ignore_before_clock_disparity(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     epoch_start_slot = spec.compute_start_slot_at_epoch(exit_epoch)
-    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, epoch_start_slot)
+    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     current_time_ms = epoch_start_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -492,7 +492,7 @@ def test_gossip_voluntary_exit__valid_at_clock_disparity(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     epoch_start_slot = spec.compute_start_slot_at_epoch(exit_epoch)
-    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, epoch_start_slot)
+    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     current_time_ms = epoch_start_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -536,7 +536,7 @@ def test_gossip_voluntary_exit__valid_previous_epoch(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     exit_epoch = spec.get_current_epoch(state) - 1
@@ -585,7 +585,7 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator
@@ -638,7 +638,7 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator

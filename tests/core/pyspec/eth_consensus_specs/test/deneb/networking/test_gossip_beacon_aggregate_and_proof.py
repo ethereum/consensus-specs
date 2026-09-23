@@ -65,7 +65,7 @@ def prepare_signed_aggregate_and_proof(spec, state, slot):
 def epoch_window_open_time(spec, store, attestation_epoch):
     return (
         spec.compute_time_at_slot_ms(
-            store.genesis_time, spec.compute_start_slot_at_epoch(attestation_epoch)
+            store.genesis_time_ms, spec.compute_start_slot_at_epoch(attestation_epoch)
         )
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
@@ -74,7 +74,7 @@ def epoch_window_open_time(spec, store, attestation_epoch):
 def epoch_window_close_time(spec, store, attestation_epoch):
     return (
         spec.compute_time_at_slot_ms(
-            store.genesis_time, spec.compute_start_slot_at_epoch(attestation_epoch + 2)
+            store.genesis_time_ms, spec.compute_start_slot_at_epoch(attestation_epoch + 2)
         )
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
@@ -105,7 +105,8 @@ def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, signed_agg.message.aggregate.data.slot) - 1
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_agg.message.aggregate.data.slot)
+        - 1
     )
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -141,7 +142,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_at_slot_start(spec, state):
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, signed_agg.message.aggregate.data.slot
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
     )
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -345,7 +346,8 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time, signed_agg.message.aggregate.data.slot) - 1
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_agg.message.aggregate.data.slot)
+        - 1
     )
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -387,7 +389,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec
     yield get_filename(signed_agg), signed_agg
 
     current_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, signed_agg.message.aggregate.data.slot
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
     )
     yield "current_time_ms", "meta", int(current_time_ms)
 

@@ -41,7 +41,7 @@ def test_gossip_randao_commitment_registration__valid(spec, state):
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -89,7 +89,7 @@ def test_gossip_randao_commitment_registration__ignore_pre_eip8321_head_state(sp
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -139,7 +139,7 @@ def test_gossip_randao_commitment_registration__valid_post_eip8321_head_state(sp
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -187,7 +187,7 @@ def test_gossip_randao_commitment_registration__reject_validator_index_out_of_ra
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -232,7 +232,7 @@ def test_gossip_randao_commitment_registration__ignore_already_seen(spec, state)
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -277,7 +277,7 @@ def test_gossip_randao_commitment_registration__reject_zero_commitment(spec, sta
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -321,7 +321,7 @@ def test_gossip_randao_commitment_registration__ignore_already_registered(spec, 
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -371,7 +371,7 @@ def test_gossip_randao_commitment_registration__ignore_already_pending(spec, sta
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -417,7 +417,7 @@ def test_gossip_randao_commitment_registration__reject_invalid_signature(spec, s
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

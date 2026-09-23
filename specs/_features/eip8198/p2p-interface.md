@@ -9,8 +9,6 @@
 - [Modifications in EIP-8198](#modifications-in-eip-8198)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
-    - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
     - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -74,43 +72,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
-```
-
-#### Modified `compute_time_at_slot_ms`
-
-```python
-def compute_time_at_slot_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
-    """
-    Return the Unix time in milliseconds at the start of ``slot``.
-    """
-    # [Modified in EIP8198]
-    end_slot = slot
-    time_ms = seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        if entry_slot < end_slot:
-            slots = end_slot - entry_slot
-            time_ms += slots * entry["SLOT_DURATION_MS"]
-            end_slot = entry_slot
-    return time_ms
-```
-
-#### Modified `compute_slot_at_time_ms`
-
-```python
-def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
-    """
-    Return the slot at Unix time ``time_ms``.
-    """
-    assert time_ms >= seconds_to_milliseconds(genesis_time)
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
-        entry_time_ms = compute_time_at_slot_ms(genesis_time, entry_slot)
-        if time_ms >= entry_time_ms:
-            break
-    time_diff_ms = time_ms - entry_time_ms
-    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
-    return entry_slot + slots
 ```
 
 #### New `get_data_column_sidecars_retention_start`

@@ -20,7 +20,7 @@ def get_capella_fork_time_ms(spec, store):
     Return the current time in milliseconds at the Capella fork epoch.
     """
     capella_slot = spec.compute_start_slot_at_epoch(spec.config.CAPELLA_FORK_EPOCH)
-    return spec.compute_time_at_slot_ms(store.genesis_time, capella_slot)
+    return spec.compute_time_at_slot_ms(store.genesis_time_ms, capella_slot)
 
 
 @with_capella_and_later

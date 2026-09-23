@@ -22,8 +22,6 @@
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
-    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
-    - [`compute_slot_at_time_ms`](#compute_slot_at_time_ms)
     - [`is_future_slot`](#is_future_slot)
     - [`is_future_epoch`](#is_future_epoch)
     - [`is_within_slot_range`](#is_within_slot_range)
@@ -358,27 +356,6 @@ def compute_fork_digest(
     return ForkDigest(base_digest[:4])
 ```
 
-#### `compute_time_at_slot_ms`
-
-```python
-def compute_time_at_slot_ms(genesis_time: Uint64, slot: Slot) -> Uint64:
-    """
-    Return the time in milliseconds at the start of the given slot.
-    """
-    return Uint64(seconds_to_milliseconds(genesis_time) + slot * SLOT_DURATION_MS)
-```
-
-#### `compute_slot_at_time_ms`
-
-```python
-def compute_slot_at_time_ms(genesis_time: Uint64, time_ms: Uint64) -> Slot:
-    """
-    Return the slot at Unix time ``time_ms``.
-    """
-    time_since_genesis_ms = time_ms - seconds_to_milliseconds(genesis_time)
-    return Slot(time_since_genesis_ms // SLOT_DURATION_MS)
-```
-
 #### `is_future_slot`
 
 ```python
@@ -391,7 +368,7 @@ def is_future_slot(
     Check if the given slot is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
 ```
 
@@ -407,8 +384,8 @@ def is_future_epoch(
     Check if the given epoch is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    max_current_time_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    current_slot = compute_slot_at_time_ms(store.genesis_time, max_current_time_ms)
+    current_time_with_disparity_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    current_slot = compute_slot_at_time_ms(store.genesis_time_ms, current_time_with_disparity_ms)
     return compute_epoch_at_slot(current_slot) < epoch
 ```
 
@@ -425,10 +402,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(store.genesis_time, slot)
+    start_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(store.genesis_time, slot + slot_range + 1)
+    end_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot + slot_range + 1)
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -548,7 +525,7 @@ will be used:
   responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (expiry time for cache of seen message ids, seconds):
-  SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2 // 1000
+  `milliseconds_to_seconds(SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2)`
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)

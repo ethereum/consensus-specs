@@ -10,7 +10,8 @@
 - [Helpers](#helpers)
   - [Misc](#misc)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
-    - [Modified `compute_time_at_slot`](#modified-compute_time_at_slot)
+    - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
+    - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_base_reward_per_increment_at_epoch`](#new-get_base_reward_per_increment_at_epoch)
     - [New `get_base_reward_at_epoch`](#new-get_base_reward_at_epoch)
@@ -98,11 +99,42 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     return entry["SLOT_DURATION_MS"]
 ```
 
-#### Modified `compute_time_at_slot`
+#### Modified `compute_time_at_slot_ms`
 
 ```python
-def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    return milliseconds_to_seconds(compute_time_at_slot_ms(state.genesis_time, slot))
+def compute_time_at_slot_ms(genesis_time_ms: Uint64, slot: Slot) -> Uint64:
+    """
+    Return the Unix time in milliseconds at the start of ``slot``.
+    """
+    # [Modified in EIP8198]
+    end_slot = slot
+    time_ms = genesis_time_ms
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        if entry_slot < end_slot:
+            slots = end_slot - entry_slot
+            time_ms += slots * entry["SLOT_DURATION_MS"]
+            end_slot = entry_slot
+    return time_ms
+```
+
+#### Modified `compute_slot_at_time_ms`
+
+```python
+def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time_ms``.
+    """
+    # [Modified in EIP8198]
+    assert time_ms >= genesis_time_ms
+    for entry in reversed(SLOT_DURATION_SCHEDULE):
+        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+        entry_time_ms = compute_time_at_slot_ms(genesis_time_ms, entry_slot)
+        if time_ms >= entry_time_ms:
+            break
+    time_diff_ms = time_ms - entry_time_ms
+    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
+    return entry_slot + slots
 ```
 
 ### Beacon state accessors

@@ -103,7 +103,7 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -167,7 +167,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -226,7 +226,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
 
     # Set current time to be before the attestation's slot (too far in future)
     attestation_slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, attestation.data.slot
+        store.genesis_time_ms, attestation.data.slot
     )
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
@@ -287,7 +287,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
 
     # Set current time to exactly the boundary (should still be valid)
     attestation_slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, attestation.data.slot
+        store.genesis_time_ms, attestation.data.slot
     )
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
@@ -348,7 +348,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -406,7 +406,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -484,7 +484,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
 
     yield get_filename(signed_agg_1), signed_agg_1
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -614,7 +614,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     yield get_filename(signed_agg_1), signed_agg_1
     yield get_filename(signed_agg_2), signed_agg_2
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, att_1.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, att_1.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -684,7 +684,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -748,7 +748,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -810,7 +810,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -868,7 +868,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
 
     yield get_filename(signed_agg1), signed_agg1
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation1.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation1.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -990,7 +990,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1058,7 +1058,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1117,7 +1117,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1178,7 +1178,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1239,7 +1239,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1300,7 +1300,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1373,7 +1373,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec,
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1434,7 +1434,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, sta
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1499,7 +1499,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_finalized_not_ancestor(spec, 
 
     yield "finalized_checkpoint", "meta", {"epoch": 0, "root": "0x" + "ef" * 32}
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 

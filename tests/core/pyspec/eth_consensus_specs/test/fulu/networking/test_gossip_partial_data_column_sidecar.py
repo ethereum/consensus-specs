@@ -78,7 +78,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -147,7 +147,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -211,7 +211,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield get_filename(cells_msg), cells_msg
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -301,7 +301,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -377,7 +377,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -453,7 +453,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -521,7 +521,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield get_filename(diverging), diverging
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -601,7 +601,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -662,7 +662,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -722,7 +722,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     yield get_filename(partial), partial
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -794,7 +794,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, block_header.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
@@ -857,7 +857,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -919,7 +919,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -982,7 +982,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1058,7 +1058,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1137,7 +1137,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, partial.header[0].signed_block_header.message.slot
+        store.genesis_time_ms, partial.header[0].signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1204,7 +1204,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1265,7 +1265,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1331,7 +1331,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1391,7 +1391,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     yield get_filename(partial), partial
 
     block_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1456,7 +1456,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     yield get_filename(cells_msg), cells_msg
 
     slot_time_ms = spec.compute_time_at_slot_ms(
-        store.genesis_time, sidecar.signed_block_header.message.slot
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
     current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -1543,7 +1543,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
 
     block_header = sidecar.signed_block_header.message
     sidecar_epoch = spec.compute_epoch_at_slot(block_header.slot)
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, block_header.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     block_root = group_id.beacon_block_root
@@ -1649,7 +1649,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
@@ -1727,7 +1727,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     partial.kzg_proofs = proofs_type(data=[second, first])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}

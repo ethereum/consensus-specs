@@ -155,7 +155,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -210,7 +210,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -259,7 +259,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -320,7 +320,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -379,7 +379,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -439,7 +439,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -514,7 +514,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -576,7 +576,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -634,7 +634,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -739,7 +739,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
 
     yield get_filename(signed_superset), signed_superset
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -829,7 +829,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
             second_validator_index = vi
             break
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -943,7 +943,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
 
     yield get_filename(signed_cap1), signed_cap1
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -1031,7 +1031,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -1095,7 +1095,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -1166,7 +1166,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
 
     yield get_filename(signed_cap), signed_cap
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
