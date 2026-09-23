@@ -113,7 +113,7 @@ inclusion list constraints.
 @dataclass
 class Store:
     time_ms: Uint64
-    genesis_time: Uint64
+    genesis_time_ms: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -142,10 +142,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
+    genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time_ms=seconds_to_milliseconds(anchor_state.genesis_time)
-        + SLOT_DURATION_MS * anchor_state.slot,
-        genesis_time=anchor_state.genesis_time,
+        time_ms=genesis_time_ms + SLOT_DURATION_MS * anchor_state.slot,
+        genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
@@ -304,9 +304,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
-    time_into_slot_ms = (
-        store.time_ms - seconds_to_milliseconds(store.genesis_time)
-    ) % SLOT_DURATION_MS
+    time_into_slot_ms = (store.time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
     is_current_slot = inclusion_list.slot == current_slot
     is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
 

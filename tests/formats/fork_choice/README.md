@@ -242,7 +242,7 @@ head: {
     payload_status: int,      -- Gloas and later, the head's payload_status
 }
 time: int                     -- milliseconds_to_seconds(store.time_ms)
-genesis_time: int             -- store.genesis_time
+genesis_time: int             -- milliseconds_to_seconds(store.genesis_time_ms)
 justified_checkpoint: {
     epoch: int,               -- Integer value from store.justified_checkpoint.epoch
     root: string,             -- Encoded 32-byte value from store.justified_checkpoint.root

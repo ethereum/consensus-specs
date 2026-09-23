@@ -60,9 +60,7 @@ def test_all_valid(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
-        store.genesis_time
-    )
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -99,9 +97,7 @@ def test_block_lookup_failed(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
-        store.genesis_time
-    )
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -141,9 +137,7 @@ def test_too_early_for_merge(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
-        store.genesis_time
-    )
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -180,9 +174,7 @@ def test_too_late_for_merge(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
-        store.genesis_time
-    )
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 

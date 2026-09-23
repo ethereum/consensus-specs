@@ -181,13 +181,10 @@ def tick_and_add_block(
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
-    block_time_ms = (
-        spec.seconds_to_milliseconds(pre_state.genesis_time)
-        + signed_block.message.slot * spec.config.SLOT_DURATION_MS
-    )
+    block_time_ms = store.genesis_time_ms + signed_block.message.slot * spec.config.SLOT_DURATION_MS
     while store.time_ms < block_time_ms:
         time_ms = (
-            spec.seconds_to_milliseconds(pre_state.genesis_time)
+            store.genesis_time_ms
             + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS
         )
         on_tick_and_append_step(spec, store, time_ms, test_steps)
@@ -234,8 +231,7 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
     min_time_to_include_ms = (
-        spec.seconds_to_milliseconds(store.genesis_time)
-        + (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS
+        store.genesis_time_ms + (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS
     )
     if store.time_ms < min_time_to_include_ms:
         on_tick_and_append_step(spec, store, min_time_to_include_ms, test_steps)
@@ -710,9 +706,7 @@ def tick_store_to_slot(spec, store, slot, test_steps):
     """
     Tick the store forward to the start of ``slot``.
     """
-    slot_time_ms = (
-        spec.seconds_to_milliseconds(store.genesis_time) + slot * spec.config.SLOT_DURATION_MS
-    )
+    slot_time_ms = store.genesis_time_ms + slot * spec.config.SLOT_DURATION_MS
     if store.time_ms < slot_time_ms:
         on_tick_and_append_step(spec, store, slot_time_ms, test_steps)
 

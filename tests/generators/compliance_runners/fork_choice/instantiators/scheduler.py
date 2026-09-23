@@ -106,13 +106,13 @@ class MessageScheduler:
     def process_tick(self, time) -> list:
         applied_events = []
         SLOT_DURATION_MS = self.spec.config.SLOT_DURATION_MS
-        assert self.spec.seconds_to_milliseconds(time) >= self.store.time_ms
-        tick_slot = (
-            self.spec.seconds_to_milliseconds(time - self.store.genesis_time) // SLOT_DURATION_MS
-        )
+        time_ms = self.spec.seconds_to_milliseconds(time)
+        assert time_ms >= self.store.time_ms
+        tick_slot = (time_ms - self.store.genesis_time_ms) // SLOT_DURATION_MS
         while self.spec.get_current_slot(self.store) < tick_slot:
-            previous_time = self.store.genesis_time + self.spec.milliseconds_to_seconds(
-                (self.spec.get_current_slot(self.store) + 1) * SLOT_DURATION_MS
+            previous_time = self.spec.milliseconds_to_seconds(
+                self.store.genesis_time_ms
+                + (self.spec.get_current_slot(self.store) + 1) * SLOT_DURATION_MS
             )
             self.spec.on_tick(self.store, self.spec.seconds_to_milliseconds(previous_time))
             applied_events.append(
