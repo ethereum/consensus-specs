@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     always_bls,
     GLOAS,
     spec_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
     with_phases,
 )
@@ -383,7 +384,7 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     """
     Test that payload attestation with wrong beacon_block_root fails.
@@ -468,7 +469,7 @@ def test_invalid_too_many_proposer_slashings(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_payload_attestation_too_old_slot(spec, state):
     """
     Test that payload attestation for slot too far in past fails.
@@ -700,7 +701,7 @@ def test_invalid_too_many_bls_to_execution_changes(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_max_payload_attestations(spec, state):
     rng = Random(3000)
 
@@ -722,7 +723,7 @@ def test_max_payload_attestations(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_too_many_payload_attestations(spec, state):
     rng = Random(3000)
 
@@ -744,7 +745,7 @@ def test_invalid_too_many_payload_attestations(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_invalid_payload_attestation_invalid_signature(spec, state):
     """
