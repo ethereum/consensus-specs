@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 import pytest
+from tests.generators.state_transition.tools.coverage_model import Expr, expression
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
@@ -31,7 +32,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     maximum,
     nwise,
 )
-from tests.generators.state_transition.tools.coverage_model import Expr, expression
 
 
 def obligation(**values):
