@@ -525,7 +525,7 @@ will be used:
   responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (expiry time for cache of seen message ids, seconds):
-  milliseconds_to_seconds(SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2)
+  `milliseconds_to_seconds(SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2)`
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
