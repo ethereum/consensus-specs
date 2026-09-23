@@ -17,12 +17,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     ACCEPTED,
     capture_observations,
     capture_outcome,
     CAttribute,
+    CConstant,
     CEnum,
     CFactor,
     CGate,
@@ -32,15 +32,16 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     coverage_aspect,
     CPred,
     each,
+    exhaustive,
     fix,
-    NA,
     nwise,
     nwise_of,
     rules,
     Target,
     union,
 )
-from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+
+from .observation import observe_attributes
 
 # --- aspects ------------------------------------------------------------------
 
@@ -54,8 +55,9 @@ def capture_epochs(
     message_epoch: CAttribute[int],
     activation_epoch: CAttribute[int],
     exit_epoch: CAttribute[int],
-    far_future_epoch: CAttribute[int],
-    shard_committee_period: CAttribute[int],
+    *,
+    far_future_epoch: CConstant[int],
+    shard_committee_period: CConstant[int],
 ):
     if validator_found:
         activation_le_current: CFactor = activation_epoch <= current_epoch
@@ -128,60 +130,10 @@ GATES = (
 
 
 def observe(ctx: Context) -> None:
-    spec, pre, signed_exit = ctx.spec, ctx.pre, ctx.operation
-    message = signed_exit.message
-    validator_index = int(message.validator_index)
-    validator_found = validator_index < len(pre.validators)
-    current_epoch = int(spec.get_current_epoch(pre))
-    message_epoch = int(message.epoch)
-    capture_observations(validator_index, validator_found)
-
-    activation_epoch = exit_epoch = effective_balance = signature_valid = NA
-    if validator_found:
-        validator = pre.validators[validator_index]
-        activation_epoch = int(validator.activation_epoch)
-        exit_epoch = int(validator.exit_epoch)
-        effective_balance = int(validator.effective_balance)
-        with bls_enabled():
-            domain = spec.compute_domain(
-                spec.DOMAIN_VOLUNTARY_EXIT,
-                spec.config.CAPELLA_FORK_VERSION,
-                pre.genesis_validators_root,
-            )
-            signing_root = spec.compute_signing_root(message, domain)
-            signature_valid = bool(
-                bls.Verify(validator.pubkey, signing_root, signed_exit.signature)
-            )
-
-    capture_epochs(
-        validator_found,
-        current_epoch,
-        message_epoch,
-        activation_epoch,
-        exit_epoch,
-        far_future_epoch=int(spec.FAR_FUTURE_EPOCH),
-        shard_committee_period=int(spec.config.SHARD_COMMITTEE_PERIOD),
-    )
-
-    matching = [
-        w for w in pre.pending_partial_withdrawals if int(w.validator_index) == validator_index
-    ]
-    capture_pending(
-        matching_pending=len(matching),
-        foreign_pending=len(pre.pending_partial_withdrawals) - len(matching),
-        pending_balance=sum(int(w.amount) for w in matching),
-    )
-
-    capture_signature(validator_found, signature_valid)
-
-    capture_churn(
-        validator_found,
-        earliest_exit_epoch=int(pre.earliest_exit_epoch),
-        new_exit_epoch=int(spec.compute_activation_exit_epoch(spec.Epoch(current_epoch))),
-        exit_balance_to_consume=int(pre.exit_balance_to_consume),
-        per_epoch_churn=int(spec.get_exit_churn_limit(pre)),
-        effective_balance=effective_balance,
-    )
+    attributes = observe_attributes(ctx)
+    capture_observations(**attributes)
+    for aspect in (capture_epochs, capture_pending, capture_signature, capture_churn):
+        aspect(**{name: attributes[name] for name in aspect.attributes})
 
 
 # --- feasibility --------------------------------------------------------------
@@ -245,11 +197,22 @@ NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 ALL_FACTORS = [f for a in ASPECTS for f in a.factors]
 
+# `additional_epochs` exists only when the balance exceeds the consumable churn,
+# so an exhaustive formula over the whole aspect mentions it in every obligation
+# and, with `_additional_epochs_only_when_exceeding`, silently drops every
+# `balance_gt_consumable` value but the exceeding one: the profile then never
+# asks for an accepted exit that stays within the churn. Enumerate the
+# unconditional factors separately from the gated one.
+CHURN_ARITHMETIC = union(
+    exhaustive([CHURN["earliest_lt_new"], CHURN["balance_gt_consumable"]]),
+    CHURN.exhaustive(),
+)
+
 PROFILES = {
     # every value of every factor, regardless of behaviour
     "smoke": each(ALL_FACTORS).where(FEASIBLE),
     # accepted exits: churn arithmetic exhaustively, epoch boundaries pairwise
-    "normal": (NORMAL * (CHURN.exhaustive() | EPOCHS.nwise(2))).where(FEASIBLE),
+    "normal": (NORMAL * (CHURN_ARITHMETIC | EPOCHS.nwise(2))).where(FEASIBLE),
     # rejected exits: each failing gate in combination with every other factor value
     "exceptional": (EXCEPTIONAL * nwise(ALL_FACTORS, 2)).where(FEASIBLE),
     # each aspect on its own, then aspects pairwise against each other's values
@@ -258,4 +221,14 @@ PROFILES = {
     "pending_loop": (PENDING.exhaustive() * each([ACCEPTED])).where(FEASIBLE),
 }
 
-TARGET = Target("voluntary_exit", ASPECTS, observe, PROFILES, FEASIBLE)
+TARGET = Target(
+    "voluntary_exit",
+    ASPECTS,
+    observe,
+    PROFILES,
+    FEASIBLE,
+    constants={
+        "far_future_epoch": lambda spec: int(spec.FAR_FUTURE_EPOCH),
+        "shard_committee_period": lambda spec: int(spec.config.SHARD_COMMITTEE_PERIOD),
+    },
+)

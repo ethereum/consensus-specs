@@ -15,6 +15,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     CAttribute,
     CFactor,
     CGate,
+    Context,
     coverage_aspect,
     CPred,
     each,
@@ -25,6 +26,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Target,
     union,
 )
+
+from .observation import observe_attributes
 
 
 @coverage_aspect("header")
@@ -57,23 +60,10 @@ GATES = [
 ]
 
 
-def observe(ctx) -> None:
-    spec, state, block = ctx.spec, ctx.pre, ctx.operation
-    proposer_index = int(block.proposer_index)
-    proposer_found = proposer_index < len(state.validators)
-    capture_observations(proposer_found)
-    capture_header(
-        proposer_found,
-        block_slot=int(block.slot),
-        state_slot=int(state.slot),
-        latest_header_slot=int(state.latest_block_header.slot),
-        proposer_index=proposer_index,
-        expected_proposer_index=int(spec.get_beacon_proposer_index(state)),
-        parent_root_match=block.parent_root == spec.hash_tree_root(state.latest_block_header),
-        proposer_slashed=bool(state.validators[proposer_index].slashed)
-        if proposer_found
-        else False,
-    )
+def observe(ctx: Context) -> None:
+    attributes = observe_attributes(ctx)
+    capture_observations(**attributes)
+    capture_header(**attributes)
 
 
 def _holds(assignment: dict, factor, granularity: str) -> bool | None:

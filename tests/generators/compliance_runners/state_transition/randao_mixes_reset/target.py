@@ -10,11 +10,15 @@ from __future__ import annotations
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     CAttribute,
+    CConstant,
+    Context,
     coverage_aspect,
     CPred,
     each,
     Target,
 )
+
+from .observation import observe_attributes
 
 
 @coverage_aspect("reset")
@@ -22,7 +26,8 @@ def capture_reset(
     destination_index: CAttribute[int],
     source_mix: CAttribute[bytes],
     destination_mix: CAttribute[bytes],
-    zero_mix: CAttribute[bytes],
+    *,
+    zero_mix: CConstant[bytes],
 ):
     destination_is_first_slot: CPred = destination_index == 0
     source_nonzero: CPred = source_mix != zero_mix
@@ -33,19 +38,8 @@ RESET = capture_reset
 ASPECTS = (RESET,)
 
 
-def _observe(ctx) -> None:
-    spec, state = ctx.spec, ctx.pre
-    current_epoch = int(spec.get_current_epoch(state))
-    next_epoch = current_epoch + 1
-    vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-    source_index = current_epoch % vector_length
-    destination_index = next_epoch % vector_length
-    capture_reset(
-        destination_index=destination_index,
-        source_mix=bytes(state.randao_mixes[source_index]),
-        destination_mix=bytes(state.randao_mixes[destination_index]),
-        zero_mix=bytes(spec.Root()) if hasattr(spec, "Root") else bytes(32),
-    )
+def _observe(ctx: Context) -> None:
+    capture_reset(**observe_attributes(ctx))
 
 
 PROFILES = {
@@ -55,4 +49,10 @@ PROFILES = {
 }
 
 
-TARGET = Target("randao_mixes_reset", ASPECTS, _observe, PROFILES)
+TARGET = Target(
+    "randao_mixes_reset",
+    ASPECTS,
+    _observe,
+    PROFILES,
+    constants={"zero_mix": lambda spec: bytes(spec.Root()) if hasattr(spec, "Root") else bytes(32)},
+)
