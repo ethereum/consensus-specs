@@ -166,6 +166,101 @@ def test_gossip_execution_payload_bid__valid(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
+    """A bid on the head's beacon parent uses that parent's RANDAO mix."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    parent_state = state.copy()
+    parent_block = blocks[-1]
+
+    head_block = build_empty_block_for_next_slot(spec, state)
+    head_block.body.signed_execution_payload_bid.message.parent_block_hash = (
+        parent_block.message.body.signed_execution_payload_bid.message.block_hash
+    )
+    head_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
+        b"\x03" + b"\x00" * 31
+    )
+    signed_head_block = state_transition_and_sign_block(spec, state, head_block)
+    head_root = record_block_in_store(spec, store, signed_head_block, state.copy())
+    blocks.append(signed_head_block)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    parent_state.finalized_checkpoint = state.finalized_checkpoint
+    store.block_states[parent_root].finalized_checkpoint = state.finalized_checkpoint
+
+    parent_payload = build_signed_execution_payload_envelope(
+        spec, parent_state, parent_root, parent_block
+    )
+    store.payloads[parent_root] = parent_payload.message
+
+    head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
+    parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
+    head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    assert spec.get_head(store).root == head_root
+    assert signed_head_block.message.parent_root == parent_root
+    assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    assert parent_randao != head_randao
+
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    blocks_meta = get_blocks_meta(blocks)
+    blocks_meta[-2]["payload"] = get_filename(parent_payload)
+    yield "blocks", "meta", blocks_meta
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+    proposal_state = parent_state.copy()
+    spec.process_slots(proposal_state, state.slot)
+    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
+        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, time_ms)
+    )
+    assert spec.get_shuffling_dependent_root(
+        store, head_root, spec.compute_epoch_at_slot(proposal_slot)
+    ) == spec.get_shuffling_dependent_root(
+        store, parent_root, spec.compute_epoch_at_slot(proposal_slot)
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        parent_state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        prev_randao=parent_randao,
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
     """The first bid for a slot and parent is valid even with a zero value.
 
@@ -1946,6 +2041,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
+    yield get_filename(head_payload), head_payload
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
