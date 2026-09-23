@@ -6,6 +6,16 @@ attributes  Raw values recovered from a decoded vector (``current_epoch``,
             ``validator.activation_epoch``, a BLS verify result, a queue
             length, ...). ``NA`` marks a value that cannot be recovered.
 
+constants   Spec-bound inputs declared as ``CConstant[T]`` capture parameters.
+            ``Target.constants`` maps their names to functions of the spec.
+            They are bound separately from per-vector attributes and cannot be
+            supplied by capture callers. A target resolves bindings against each
+            observation's spec, allowing reuse across presets without a cache.
+            Targets with ``constant_feasibility`` must be bound using
+            ``target.for_spec(spec)`` before enumerating their profiles or
+            scoring; the CLI does this automatically. Unbound profiles are
+            templates, without constant-dependent pruning.
+
 factors     Coverage dimensions with a finite abstract domain. They are
             *declared inside capture functions* as annotated assignments and
             extracted by parsing the function source:
@@ -74,7 +84,7 @@ import textwrap
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib import import_module
 from itertools import combinations, product
 from pathlib import Path
@@ -233,6 +243,10 @@ class CAttribute[T]:
     """Marker annotation for a capture-function parameter recorded as attribute."""
 
 
+class CConstant[T]:
+    """Marker for a parameter bound from the spec, never supplied by an observer."""
+
+
 class CFactor:
     """Marker annotation: comparison factor if the expression is a comparison, else boolean."""
 
@@ -252,6 +266,7 @@ class CEnum:
 class Recorder:
     attributes: dict[str, Any] = field(default_factory=dict)
     factors: dict[str, Any] = field(default_factory=dict)
+    constants: dict[str, Any] = field(default_factory=dict)
 
     def observation(self) -> Observation:
         return {**self.attributes, **self.factors}
@@ -261,8 +276,8 @@ _RECORDER: ContextVar[Recorder | None] = ContextVar("coverage_recorder", default
 
 
 @contextmanager
-def recording():
-    rec = Recorder()
+def recording(*, constants: dict[str, Any] | None = None):
+    rec = Recorder(constants=dict(constants or {}))
     token = _RECORDER.set(rec)
     try:
         yield rec
@@ -388,7 +403,14 @@ class CapturedAspect(Aspect):
         tree, self.base = _parsed(fn.__code__)
         fdef = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef))
         self.body = fdef.body
-        self.attributes = tuple(a.arg for a in fdef.args.args)
+        parameters = [*fdef.args.posonlyargs, *fdef.args.args, *fdef.args.kwonlyargs]
+        self.constants = tuple(
+            a.arg
+            for a in parameters
+            if isinstance(a.annotation, ast.Subscript)
+            and _callee(a.annotation.value) == "CConstant"
+        )
+        self.attributes = tuple(a.arg for a in parameters if a.arg not in self.constants)
         self.gates = tuple(
             a.arg for a in fdef.args.args if a.annotation and _callee(a.annotation) == "CGate"
         )
@@ -442,10 +464,19 @@ class CapturedAspect(Aspect):
     # interpretation ------------------------------------------------------------
 
     def __call__(self, *args: Any, **kwargs: Any) -> None:
+        rec = _recorder()
+        supplied = self.signature.bind_partial(*args, **kwargs)
+        for name in self.constants:
+            if name in supplied.arguments:
+                raise TypeError(f"{name}: constants must be bound from the spec")
+            if name not in rec.constants:
+                raise ValueError(f"unbound constant: {name}")
+            kwargs[name] = rec.constants[name]
         bound = self.signature.bind(*args, **kwargs)
         bound.apply_defaults()
-        rec = _recorder()
-        rec.attributes.update(bound.arguments)
+        rec.attributes.update(
+            (name, value) for name, value in bound.arguments.items() if name not in self.constants
+        )
         ns = {**self.fn.__globals__, **bound.arguments}
         self._run(self.body, ns, rec, active=True)
 
@@ -665,6 +696,30 @@ class Target:
     observe: Callable[[Context], None]
     profiles: dict[str, Formula]
     feasible: Feasible = lambda _a, _g: True
+    constants: dict[str, Callable[[Any], Any]] = field(default_factory=dict)
+    constant_feasibility: Callable[[dict[str, Any]], Feasible] | None = None
+    _bound_spec: Any = field(default=None, repr=False)
+
+    def for_spec(self, spec: Any) -> Target:
+        """Bind constant-dependent feasibility without mutating the shared target.
+
+        Profiles on the unbound target are templates. Bind before enumerating
+        them or scoring when ``constant_feasibility`` is provided.
+        """
+        if self._bound_spec is not None:
+            if self._bound_spec is not spec:
+                raise ValueError("bind a fresh target template to use a different spec")
+            return self
+        if self.constant_feasibility is None:
+            return self
+        constants = {name: bind(spec) for name, bind in self.constants.items()}
+        feasible = rules(self.feasible, self.constant_feasibility(constants))
+        return replace(
+            self,
+            feasible=feasible,
+            profiles={name: formula.where(feasible) for name, formula in self.profiles.items()},
+            _bound_spec=spec,
+        )
 
     @property
     def factors(self) -> tuple[Factor, ...]:
@@ -678,7 +733,11 @@ class Target:
 
     def observation(self, ctx: Context) -> Observation:
         """Run ``observe`` under a recorder; the outcome aspect is captured for it."""
-        with recording() as rec:
+        if self._bound_spec is not None and ctx.spec is not self._bound_spec:
+            raise ValueError("observation spec differs from the target's bound spec")
+        with recording(
+            constants={name: bind(ctx.spec) for name, bind in self.constants.items()}
+        ) as rec:
             self.observe(ctx)
             capture_outcome(ctx.post is not None)
         return rec.observation()
@@ -730,6 +789,8 @@ def score(
     granularity: str,
     profile: str = "",
 ) -> Report:
+    if target.constant_feasibility is not None and target._bound_spec is None:
+        raise ValueError("bind the target with for_spec(spec) before scoring")
     wanted = formula.run(granularity)
     covered = {o for o in wanted if any(_satisfied(o, r) for r in records)}
     pruned = formula.run(granularity, filtered=False) - wanted
@@ -752,6 +813,8 @@ TARGETS = {
     "process_operations": "tests.generators.compliance_runners.state_transition.operations.target",
     "eth1_data_reset": "tests.generators.compliance_runners.state_transition.eth1_data_reset.target",
     "historical_summaries_update": "tests.generators.compliance_runners.state_transition.historical_summaries_update.target",
+    "inactivity_updates": "tests.generators.compliance_runners.state_transition.inactivity_updates.target",
+    "inactivity_updates_loop": "tests.generators.compliance_runners.state_transition.inactivity_updates_loop.target",
     "participation_flag_updates": "tests.generators.compliance_runners.state_transition.participation_flag_updates.target",
     "randao_mixes_reset": "tests.generators.compliance_runners.state_transition.randao_mixes_reset.target",
     "slashings_reset": "tests.generators.compliance_runners.state_transition.slashings_reset.target",
@@ -815,6 +878,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> dict:
     args = parse_args(argv)
     target: Target = import_module(TARGETS[args.target]).TARGET
+    target = target.for_spec(spec_targets[args.preset]["gloas"])
     if args.describe:
         print(describe(target))
     observations = load_observations(args.tests, target, args.preset)
