@@ -73,13 +73,3 @@ Historical execution payloads remain available from the execution layer, which
 holds them as blocks and serves them over its own protocols. Consumers that need
 a historical payload obtain it there rather than from the beacon network, which
 retains only the commitments.
-
-*Note*: `MAX_REQUEST_PAYLOADS` and `SignedExecutionPayloadEnvelopes` are both
-retained, as `ExecutionPayloadEnvelopesByRoot v1` continues to use them.
-
-*Note*: the beacon API's `getSignedExecutionPayloadEnvelope` accepts any
-`block_id`, so it can be asked for historical envelopes. With this method
-removed it becomes best-effort: a node answers from what it holds locally, and
-returns not-found for blocks whose envelopes it never downloaded. Consumers
-needing historical execution data should query an execution client, which holds
-the payload as a block.
