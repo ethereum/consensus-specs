@@ -109,6 +109,9 @@
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
     - [`compute_time_at_slot`](#compute_time_at_slot)
+    - [`compute_slot_at_time`](#compute_slot_at_time)
+    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
+    - [`compute_slot_at_time_ms`](#compute_slot_at_time_ms)
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
@@ -1286,9 +1289,41 @@ def compute_committee(
 *Note*: This function is unsafe with respect to overflows and underflows.
 
 ```python
-def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+def compute_time_at_slot(genesis_time: Uint64, slot: Slot) -> Uint64:
+    """
+    Return the time in seconds at the start of the given slot.
+    """
+    return Uint64(genesis_time + milliseconds_to_seconds(slot * SLOT_DURATION_MS))
+```
+
+#### `compute_slot_at_time`
+
+```python
+def compute_slot_at_time(genesis_time: Uint64, time: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time``.
+    """
+    return Slot(seconds_to_milliseconds(time - genesis_time) // SLOT_DURATION_MS)
+```
+
+#### `compute_time_at_slot_ms`
+
+```python
+def compute_time_at_slot_ms(genesis_time_ms: Uint64, slot: Slot) -> Uint64:
+    """
+    Return the time in milliseconds at the start of the given slot.
+    """
+    return Uint64(genesis_time_ms + slot * SLOT_DURATION_MS)
+```
+
+#### `compute_slot_at_time_ms`
+
+```python
+def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time_ms``.
+    """
+    return Slot((time_ms - genesis_time_ms) // SLOT_DURATION_MS)
 ```
 
 #### `compute_epoch_at_slot`

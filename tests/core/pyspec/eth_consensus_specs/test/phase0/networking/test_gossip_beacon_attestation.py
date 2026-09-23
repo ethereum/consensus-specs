@@ -83,7 +83,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -149,7 +149,7 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -213,7 +213,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     # Get correct subnet and use a different one
     correct_subnet = get_correct_subnet_for_attestation(spec, state, attestation)
     wrong_subnet = spec.Uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -282,7 +282,9 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to be before the attestation slot (too far in future)
-    attestation_slot_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, attestation.data.slot
+    )
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -356,7 +358,9 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to exactly the boundary (should still be valid)
-    attestation_slot_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, attestation.data.slot
+    )
     current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -427,7 +431,8 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
 
     # Set current time to exactly the boundary (should still be valid)
     attestation_latest_ms = spec.compute_time_at_slot_ms(
-        store, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+        store.genesis_time_ms,
+        spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1),
     )
     current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
@@ -499,7 +504,8 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
 
     # Set current time to just past the expiry boundary
     attestation_latest_ms = spec.compute_time_at_slot_ms(
-        store, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+        store.genesis_time_ms,
+        spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1),
     )
     current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
@@ -566,7 +572,7 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -634,7 +640,7 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -700,7 +706,7 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -773,7 +779,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -870,7 +876,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -958,7 +964,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1030,7 +1036,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1105,7 +1111,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -1202,7 +1208,7 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
 
     yield "finalized_checkpoint", "meta", {"epoch": 0, "root": "0x" + "ef" * 32}
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 

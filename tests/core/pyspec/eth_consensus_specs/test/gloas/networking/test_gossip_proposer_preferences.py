@@ -77,7 +77,7 @@ def test_gossip_proposer_preferences__valid(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -129,7 +129,7 @@ def test_gossip_proposer_preferences__ignore_pre_gloas_epoch(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, spec.Slot(0))
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(0))
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -176,7 +176,7 @@ def test_gossip_proposer_preferences__valid_at_gloas_fork_epoch(spec, state):
     assert proposal_epoch == fork_epoch
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -247,7 +247,7 @@ def test_gossip_proposer_preferences__ignore_slot_before_lookahead(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -302,7 +302,7 @@ def test_gossip_proposer_preferences__valid_at_first_lookahead_slot(spec, state)
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -356,7 +356,7 @@ def test_gossip_proposer_preferences__valid_at_last_lookahead_slot(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -409,7 +409,7 @@ def test_gossip_proposer_preferences__ignore_slot_after_lookahead(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, epoch_start_slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -489,7 +489,7 @@ def test_gossip_proposer_preferences__ignore_outside_lookahead_disparity(spec, s
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store, lookahead_start_slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, lookahead_start_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
@@ -540,7 +540,7 @@ def test_gossip_proposer_preferences__valid_at_lookahead_disparity_edge(spec, st
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = (
-        spec.compute_time_at_slot_ms(store, lookahead_start_slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, lookahead_start_slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -591,7 +591,7 @@ def test_gossip_proposer_preferences__valid_at_slot_start_disparity_edge(spec, s
 
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
-        spec.compute_time_at_slot_ms(store, proposal_slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, proposal_slot)
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     yield "current_time_ms", "meta", int(time_ms)
@@ -640,7 +640,7 @@ def test_gossip_proposer_preferences__ignore_outside_slot_start_disparity(spec, 
     # whose clock is behind, so the preferences are ignored.
     proposal_slot = signed_prefs.message.proposal_slot
     time_ms = (
-        spec.compute_time_at_slot_ms(store, proposal_slot)
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, proposal_slot)
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
@@ -690,7 +690,7 @@ def test_gossip_proposer_preferences__ignore_dependent_block_unseen(spec, state)
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -735,7 +735,7 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -807,7 +807,7 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -852,7 +852,7 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     signed_prefs = build_signed_proposer_preferences(spec, state, valid_signature=False)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -910,7 +910,7 @@ def test_gossip_proposer_preferences__ignore_slot_from_past_epoch(spec, state):
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -971,7 +971,7 @@ def test_gossip_proposer_preferences__ignore_dependent_block_state_unavailable(s
     signed_prefs = build_signed_proposer_preferences(spec, state, dependent_root=dependent_root)
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1040,7 +1040,7 @@ def test_gossip_proposer_preferences__reject_dependent_block_at_lookahead_epoch_
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1104,7 +1104,7 @@ def test_gossip_proposer_preferences__ignore_dependent_block_not_possible(spec, 
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1165,7 +1165,7 @@ def test_gossip_proposer_preferences__valid_dependent_block_is_head(spec, state)
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1242,7 +1242,7 @@ def test_gossip_proposer_preferences__valid_dependent_block_on_fork(spec, state)
     )
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1328,7 +1328,7 @@ def test_gossip_proposer_preferences__valid_dependent_block_across_empty_epochs(
     yield "blocks", "meta", [{"block": get_filename(block)} for block in blocks]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, validation_state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, validation_state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     time_ms += 100
     result, reason = run_validate_gossip(
@@ -1383,7 +1383,7 @@ def test_gossip_proposer_preferences__valid_genesis_dependent_root_in_genesis_ep
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1442,7 +1442,7 @@ def test_gossip_proposer_preferences__reject_non_genesis_dependent_root_in_genes
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1499,7 +1499,7 @@ def test_gossip_proposer_preferences__valid_genesis_dependent_root_at_lookahead_
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
@@ -1559,7 +1559,7 @@ def test_gossip_proposer_preferences__reject_non_genesis_dependent_root_at_looka
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
     yield get_filename(signed_prefs), signed_prefs
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 

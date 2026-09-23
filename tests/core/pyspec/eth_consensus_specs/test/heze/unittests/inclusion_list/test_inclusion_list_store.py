@@ -29,7 +29,7 @@ def advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store):
     """
     slot = spec.compute_start_slot_at_epoch(spec.MIN_SEED_LOOKAHEAD + 1)
     spec.process_slots(state, slot)
-    time_ms = forkchoice_store.genesis_time_ms + slot * spec.config.SLOT_DURATION_MS
+    time_ms = spec.compute_time_at_slot_ms(forkchoice_store.genesis_time_ms, slot)
     spec.on_tick(forkchoice_store, time_ms)
 
 
@@ -344,7 +344,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         assert found_later_assignment
 
         # Advance the fork choice store clock to the new slot.
-        time_ms = forkchoice_store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS
+        time_ms = spec.compute_time_at_slot_ms(forkchoice_store.genesis_time_ms, state.slot)
         spec.on_tick(forkchoice_store, time_ms)
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.

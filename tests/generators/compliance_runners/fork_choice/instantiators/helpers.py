@@ -510,17 +510,14 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     genesis_time = test_data.anchor_state.genesis_time
     test_events = []
 
-    def slot_to_time(slot):
-        return spec.milliseconds_to_seconds(slot * spec.config.SLOT_DURATION_MS) + genesis_time
-
     def add_tick_step(time):
         test_events.append(("tick", time, None))
 
     def add_message_step(kind, message):
         test_events.append((kind, message.payload, message.valid))
 
-    add_tick_step(slot_to_time(test_data.anchor_state.slot))
     slot = test_data.anchor_state.slot
+    add_tick_step(spec.compute_time_at_slot(genesis_time, slot))
 
     def get_seffective_slot(message):
         event_kind, data, _ = message
@@ -550,10 +547,10 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         event_slot = get_seffective_slot(event)
         while slot < event_slot:
             slot += 1
-            add_tick_step(slot_to_time(slot))
+            add_tick_step(spec.compute_time_at_slot(genesis_time, slot))
         add_message_step(event_kind, ProtocolMessage(message, valid))
 
-    if slot is None or slot_to_time(slot) < test_data.store_final_time:
+    if slot is None or spec.compute_time_at_slot(genesis_time, slot) < test_data.store_final_time:
         add_tick_step(test_data.store_final_time)
 
     return test_events

@@ -40,7 +40,7 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0)
@@ -86,7 +86,7 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     store, signed_anchor = get_store_from_state(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
-    current_time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     # Sign with DENEB fork version (the wrong domain under EIP-7044).
