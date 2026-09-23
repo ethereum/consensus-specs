@@ -44,10 +44,12 @@ check needs the payload in hand, so a consensus client performing range sync
 must either download every payload or leave the range unverified.
 
 This specification introduces the **payload request root**, an SSZ commitment
-over the inputs to `engine_newPayload` that the consensus layer either derives
-from its own state or reads from the `ExecutionPayloadBid`. Chaining those roots
-across blocks yields the **payload request chain root**, which lets an entire
-sync range be reconciled between the two layers in a single comparison.
+over a subset of the inputs to `engine_newPayload`: those the consensus layer
+either derives from its own state or reads from the `ExecutionPayloadBid`, plus
+`block_hash`, through which the execution block hash binds every remaining
+payload field. Chaining those roots across blocks yields the **payload request
+chain root**, which lets an entire sync range be reconciled between the two
+layers in a single comparison.
 
 Verification is *deferred*, not delegated. The consensus client still performs
 the correspondence check itself; it simply performs it once at the end of a
@@ -161,7 +163,9 @@ already does.
 #### New `ExecutionPayloadCommitment`
 
 The payload-derived inputs to `engine_newPayload` that the consensus layer holds
-without the payload. Fields appear in their `ExecutionPayload` relative order.
+without the payload. This is a subset of `ExecutionPayload`; the fields it omits
+are bound through `block_hash`. Fields appear in their `ExecutionPayload`
+relative order.
 
 ```python
 class ExecutionPayloadCommitment(ProgressiveContainer):
