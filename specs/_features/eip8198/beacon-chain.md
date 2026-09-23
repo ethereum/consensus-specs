@@ -13,8 +13,8 @@
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
     - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_base_reward_per_increment_at_epoch`](#new-get_base_reward_per_increment_at_epoch)
-    - [New `get_base_reward_at_epoch`](#new-get_base_reward_at_epoch)
+    - [Modified `get_base_reward_per_increment`](#modified-get_base_reward_per_increment)
+    - [Modified `get_base_reward`](#modified-get_base_reward)
     - [Modified `get_flag_index_deltas`](#modified-get_flag_index_deltas)
     - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
     - [Modified `get_activation_churn_limit`](#modified-get_activation_churn_limit)
@@ -138,14 +138,19 @@ def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
 
 ### Beacon state accessors
 
-#### New `get_base_reward_per_increment_at_epoch`
+#### Modified `get_base_reward_per_increment`
 
 ```python
-def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> Gwei:
+def get_base_reward_per_increment(
+    state: BeaconState,
+    # [New in EIP8198]
+    epoch: Epoch,
+) -> Gwei:
     """
     Return the base reward per increment, priced at the slot duration in
     effect at ``epoch``.
     """
+    # [Modified in EIP8198]
     return Gwei(
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
@@ -155,16 +160,22 @@ def get_base_reward_per_increment_at_epoch(state: BeaconState, epoch: Epoch) -> 
     )
 ```
 
-#### New `get_base_reward_at_epoch`
+#### Modified `get_base_reward`
 
 ```python
-def get_base_reward_at_epoch(state: BeaconState, index: ValidatorIndex, epoch: Epoch) -> Gwei:
+def get_base_reward(
+    state: BeaconState,
+    index: ValidatorIndex,
+    # [New in EIP8198]
+    epoch: Epoch,
+) -> Gwei:
     """
     Return the base reward for ``index``, priced at the slot duration in
     effect at ``epoch``.
     """
     increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
-    return increments * get_base_reward_per_increment_at_epoch(state, epoch)
+    # [Modified in EIP8198]
+    return increments * get_base_reward_per_increment(state, epoch)
 ```
 
 #### Modified `get_flag_index_deltas`
@@ -194,7 +205,7 @@ def get_flag_index_deltas(
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in get_eligible_validator_indices(state):
         # [Modified in EIP8198]
-        base_reward = get_base_reward_at_epoch(state, index, previous_epoch)
+        base_reward = get_base_reward(state, index, previous_epoch)
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments
@@ -376,7 +387,7 @@ def process_attestation(
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 # [Modified in EIP8198]
                 proposer_reward_numerator += (
-                    get_base_reward_at_epoch(state, index, data.target.epoch) * weight
+                    get_base_reward(state, index, data.target.epoch) * weight
                 )
                 will_set_new_flag = True
 
@@ -450,8 +461,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     # [Modified in EIP8198]
     total_base_rewards = (
-        get_base_reward_per_increment_at_epoch(state, get_current_epoch(state))
-        * total_active_increments
+        get_base_reward_per_increment(state, get_current_epoch(state)) * total_active_increments
     )
     max_participant_rewards = (
         total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)

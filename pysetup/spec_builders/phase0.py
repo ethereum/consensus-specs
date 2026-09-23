@@ -82,11 +82,10 @@ get_total_active_balance = cache_this(
     lambda state: (state.validators.hash_tree_root(), compute_epoch_at_slot(state.slot)),
     _get_total_active_balance, lru_size=10)
 
-if "get_base_reward" in globals():
-    _get_base_reward = globals()["get_base_reward"]
-    get_base_reward = cache_this(
-        lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
-        _get_base_reward, lru_size=2048)
+_get_base_reward = get_base_reward
+get_base_reward = cache_this(
+    lambda state, index, *args: (state.validators.hash_tree_root(), state.slot, index, *args),
+    _get_base_reward, lru_size=2048)
 
 _get_committee_count_per_slot = get_committee_count_per_slot
 get_committee_count_per_slot = cache_this(

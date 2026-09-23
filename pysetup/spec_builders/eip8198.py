@@ -18,10 +18,3 @@ from eth_consensus_specs.heze import {preset_name} as heze
             "SLOT_DURATION_MS",
             "MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS",
         }
-
-    @classmethod
-    def deprecate_functions(cls) -> set[str]:
-        return {
-            "get_base_reward",
-            "get_base_reward_per_increment",
-        }
