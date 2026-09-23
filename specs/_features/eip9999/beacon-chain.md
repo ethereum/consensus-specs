@@ -44,7 +44,7 @@ check needs the payload in hand, so a consensus client performing range sync
 must either download every payload or leave the range unverified.
 
 This specification introduces the **payload request root**, an SSZ commitment
-over a subset of the inputs to `engine_newPayload`: those the consensus layer
+over a subset of the fields of `NewPayloadRequest`: those the consensus layer
 either derives from its own state or reads from the `ExecutionPayloadBid`, plus
 `block_hash`, through which the execution block hash binds every remaining
 payload field. Chaining those roots across blocks yields the **payload request
