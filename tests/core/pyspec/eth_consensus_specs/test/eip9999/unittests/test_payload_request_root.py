@@ -4,6 +4,8 @@ from eth_consensus_specs.test.context import (
     spec_test,
     with_eip9999_and_later,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def build_payload_commitment(spec):
@@ -283,3 +285,59 @@ def test_execution_requests_reach_the_chain_root(spec, state):
     assert spec.compute_payload_request_chain_root(
         state, bid, empty
     ) != spec.compute_payload_request_chain_root(state, bid, populated)
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_range_sync_without_payloads(spec, state):
+    """
+    Range sync processes beacon blocks and no payload envelopes. Slots whose
+    payload is never revealed produce no execution block, so the accumulator
+    must be untouched by them -- otherwise a consensus client's value would
+    diverge from an execution client that produced nothing for those slots.
+
+    This drives full blocks through the state transition rather than calling
+    the handler directly, so it covers the path a syncing client actually
+    takes.
+    """
+    state.payload_request_chain_root = spec.Bytes32(b"\x07" * 32)
+    before = state.payload_request_chain_root
+
+    for _ in range(4):
+        block = build_empty_block_for_next_slot(spec, state)
+        state_transition_and_sign_block(spec, state, block)
+
+    assert state.payload_request_chain_root == before
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_range_sync_accumulates_over_revealed_payloads(spec, state):
+    """
+    The mirror of the above. Over a run of slots whose payloads were revealed,
+    the accumulator must advance once per payload and arrive at the value an
+    execution client reaches by folding the same roots in the same order.
+
+    Neither side handles a payload here: the consensus layer works from the
+    bids and its own state, which is what makes range sync without envelopes
+    possible.
+    """
+    state.payload_request_chain_root = spec.Bytes32()
+    requests = spec.ExecutionRequests()
+
+    expected = state.payload_request_chain_root
+    for i in range(4):
+        parent_bid = state.latest_execution_payload_bid.copy()
+        parent_bid.block_hash = spec.Hash32(bytes([i + 1]) + b"\x00" * 31)
+        parent_bid.execution_requests_root = spec.hash_tree_root(requests)
+        state.latest_execution_payload_bid = parent_bid
+
+        # An execution client folds the same root from the block it holds.
+        expected = spec.compute_payload_request_chain_root(state, parent_bid, requests)
+
+        block = build_block_with_bid(spec, parent_bid.block_hash, requests)
+        spec.process_parent_execution_payload(state, block)
+
+        assert state.payload_request_chain_root == expected
+
+    assert state.payload_request_chain_root != spec.Bytes32()
