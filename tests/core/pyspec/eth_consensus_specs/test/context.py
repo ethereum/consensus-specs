@@ -153,6 +153,15 @@ def default_balances_electra(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
 
 
+def get_max_activation_churn_limit(spec: Spec):
+    """
+    Return the maximum number of validators that can be activated per epoch.
+    """
+    if is_post_electra(spec):
+        return spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT // spec.MIN_ACTIVATION_BALANCE
+    return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+
+
 def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
@@ -180,7 +189,7 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.Uint64(
-        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+        spec.config.CHURN_LIMIT_QUOTIENT * get_max_activation_churn_limit(spec)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -203,7 +212,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.Uint64(
-        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
+        spec.config.CHURN_LIMIT_QUOTIENT * (get_max_activation_churn_limit(spec) + 2)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 

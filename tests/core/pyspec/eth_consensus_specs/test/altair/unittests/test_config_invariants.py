@@ -2,13 +2,18 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_altair_and_later,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 
 
 @with_altair_and_later
 @spec_state_test
 def test_time(spec, state):
-    assert spec.config.SYNC_MESSAGE_DUE_BPS <= spec.BASIS_POINTS
-    assert spec.config.CONTRIBUTION_DUE_BPS <= spec.BASIS_POINTS
+    if is_post_gloas(spec):
+        assert spec.SYNC_MESSAGE_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+        assert spec.CONTRIBUTION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+    else:
+        assert spec.config.SYNC_MESSAGE_DUE_BPS <= spec.BASIS_POINTS
+        assert spec.config.CONTRIBUTION_DUE_BPS <= spec.BASIS_POINTS
 
 
 @with_altair_and_later
