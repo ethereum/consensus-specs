@@ -84,8 +84,7 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
             # equivocation, but still a viable head competitor
             ptc_due_ms = spec.get_payload_attestation_due_ms()
             late_time_ms = (
-                parent_block.slot * spec.config.SLOT_DURATION_MS
-                + store.genesis_time_ms
+                spec.compute_time_at_slot_ms(store.genesis_time_ms, parent_block.slot)
                 + ptc_due_ms
                 + spec.seconds_to_milliseconds(1)
             )

@@ -56,7 +56,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -64,7 +64,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS,
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot),
         test_steps,
     )
 
@@ -149,7 +149,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
 
     # tick to the prior of the epoch boundary
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
-    current_time_ms = slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -158,7 +158,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
 
     # to next block
     next_epoch(spec, state)
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     check_head_against_root(spec, store, signed_block_y.message.hash_tree_root())
@@ -174,7 +174,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -182,7 +182,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS,
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot),
         test_steps,
     )
 
@@ -249,7 +249,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     attestations_for_y = list(
         get_valid_attestations_at_slot(temp_state, spec, signed_block_y.message.slot)
     )
-    current_time_ms = temp_state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, temp_state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     yield from add_attestations(spec, store, attestations_for_y, test_steps)
     check_head_against_root(spec, store, signed_block_y.message.hash_tree_root())
@@ -267,7 +267,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
         # next epoch
         state = state_b.copy()
         next_epoch(spec, state)
-        current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+        current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         on_tick_and_append_step(spec, store, current_time_ms, test_steps)
 
     # no reorg
@@ -309,7 +309,7 @@ def _run_include_votes_of_another_empty_chain(
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert store.time_ms == current_time_ms
 
@@ -317,7 +317,7 @@ def _run_include_votes_of_another_empty_chain(
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS,
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot),
         test_steps,
     )
 
@@ -444,7 +444,7 @@ def _run_include_votes_of_another_empty_chain(
 
     # to next epoch
     next_epoch(spec, state)
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
 
@@ -476,7 +476,7 @@ def _run_include_votes_of_another_empty_chain(
 
     # to next epoch
     next_epoch(spec, state)
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
 

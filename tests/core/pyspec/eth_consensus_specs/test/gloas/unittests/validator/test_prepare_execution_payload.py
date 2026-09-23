@@ -49,7 +49,7 @@ def _add_block_to_store(spec, state, execution_requests=None):
     """
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     spec.on_tick(store, current_time_ms)
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -64,7 +64,7 @@ def _add_block_to_store(spec, state, execution_requests=None):
             )
 
     signed_block = state_transition_and_sign_block(spec, state, block)
-    block_time_ms = store.genesis_time_ms + signed_block.message.slot * spec.config.SLOT_DURATION_MS
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     spec.on_tick(store, block_time_ms)
     run_on_block(spec, store, signed_block)
     block_root = signed_block.message.hash_tree_root()
@@ -87,7 +87,7 @@ def _advance_to_proposal_slot(spec, state, store):
     proposal_state = state.copy()
     spec.process_slots(proposal_state, proposal_state.slot + 1)
 
-    proposal_time_ms = store.genesis_time_ms + proposal_state.slot * spec.config.SLOT_DURATION_MS
+    proposal_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, proposal_state.slot)
     spec.on_tick(store, proposal_time_ms)
 
     return proposal_state
@@ -289,7 +289,9 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     )
 
     attrs = engine.payload_attributes
-    assert attrs.timestamp == spec.compute_time_at_slot(proposal_state, proposal_state.slot)
+    assert attrs.timestamp == spec.compute_time_at_slot(
+        proposal_state.genesis_time, proposal_state.slot
+    )
     assert attrs.prev_randao == spec.get_randao_mix(
         proposal_state, spec.get_current_epoch(proposal_state)
     )
@@ -304,7 +306,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
 def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     spec.on_tick(store, current_time_ms)
 
     proposal_state = _advance_to_proposal_slot(spec, state, store)

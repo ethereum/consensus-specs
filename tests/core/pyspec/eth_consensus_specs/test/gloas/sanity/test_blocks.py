@@ -116,7 +116,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         prev_randao=committed_bid.prev_randao,
         gas_limit=committed_bid.gas_limit,
         block_hash=committed_bid.block_hash,
-        timestamp=spec.compute_time_at_slot(test_state, test_state.slot),
+        timestamp=spec.compute_time_at_slot(test_state.genesis_time, test_state.slot),
         withdrawals=spec.Withdrawals(data=withdrawals),
         slot_number=test_state.slot,
     )

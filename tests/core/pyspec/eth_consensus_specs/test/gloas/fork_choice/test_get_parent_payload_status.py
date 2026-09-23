@@ -28,7 +28,7 @@ def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
 
-    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     on_tick_and_append_step(spec, store, current_time_ms, test_steps)
 
     # Add a block on top of genesis
