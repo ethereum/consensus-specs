@@ -9,7 +9,7 @@
 - [Modifications in EIP-8198](#modifications-in-eip-8198)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [New `get_data_column_sidecars_retention_start`](#new-get_data_column_sidecars_retention_start)
+    - [New `get_blob_data_retention_start`](#new-get_blob_data_retention_start)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Status v2](#status-v2)
@@ -30,17 +30,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Configs
 
-*[New in EIP8198]*
+| Name                         |                Value |
+| ---------------------------- | -------------------: |
+| `MIN_BLOB_DATA_RETENTION_MS` | `Uint64(1572864000)` |
 
-| Name                                            |             Value | Description                                                             |
-| ----------------------------------------------- | ----------------: | ----------------------------------------------------------------------- |
-| `MIN_SECONDS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `Uint64(1572864)` | Minimum wall-clock duration of the data-column sidecar retention window |
-
-This replaces `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` for EIP-8198. The
-value preserves the previous retention duration: 4,096 epochs of 32 slots at 12
-seconds per slot on mainnet. It MUST be positive and does not change with the
-slot duration. The slot timeline is used to find the epoch containing the
-cutoff, rounding the retained range outward to a whole epoch.
+*Note*: `MIN_BLOB_DATA_RETENTION_MS` replaces
+`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` with the same duration, defined
+in wall-clock time rather than epochs.
 
 ## Modifications in EIP-8198
 
@@ -74,18 +70,17 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### New `get_data_column_sidecars_retention_start`
+#### New `get_blob_data_retention_start`
 
 ```python
-def get_data_column_sidecars_retention_start(current_epoch: Epoch) -> Epoch:
+def get_blob_data_retention_start(current_epoch: Epoch) -> Epoch:
     """
-    Return the earliest epoch of the data column sidecar retention window,
+    Return the earliest epoch of the blob data retention window,
     preserving its wall-clock length across slot duration changes.
     """
-    window_ms = seconds_to_milliseconds(MIN_SECONDS_FOR_DATA_COLUMN_SIDECARS_REQUESTS)
-    current_start_ms = compute_time_at_slot_ms(
-        Uint64(0), compute_start_slot_at_epoch(current_epoch)
-    )
+    window_ms = MIN_BLOB_DATA_RETENTION_MS
+    current_start_slot = compute_start_slot_at_epoch(current_epoch)
+    current_start_ms = compute_time_at_slot_ms(Uint64(0), current_start_slot)
     if current_start_ms < window_ms:
         return GENESIS_EPOCH
     window_start_ms = Uint64(current_start_ms - window_ms)
@@ -104,8 +99,9 @@ Durations defined in slots or epochs MUST use the piecewise timeline
 gossipsub `seen_ttl` is the difference between the start times of
 `current_slot + 2 * SLOTS_PER_EPOCH` and `current_slot`, converted to seconds
 with `milliseconds_to_seconds`. Duty schedulers and the light-client local-clock
-`current_slot` MUST also use this timeline. Durations configured in seconds,
-including data-column sidecar retention, remain fixed in wall-clock time.
+`current_slot` MUST also use this timeline. Durations configured in
+milliseconds, including data-column sidecar retention, remain fixed in
+wall-clock time.
 
 ### The Req/Resp domain
 
@@ -113,18 +109,17 @@ including data-column sidecar retention, remain fixed in wall-clock time.
 
 *[Modified in EIP8198]* The data-column sidecar retention period used to
 interpret `earliest_available_slot` begins at
-`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`.
+`max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`.
 
 #### DataColumnSidecarsByRange v1
 
 *[Modified in EIP8198]* The lower bound of `data_column_serve_range` is replaced
-by
-`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`.
-Clients MUST keep and serve sidecars throughout this range.
+by `max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`. Clients
+MUST keep and serve sidecars throughout this range.
 
 #### DataColumnSidecarsByRoot v1
 
 *[Modified in EIP8198]* `minimum_request_epoch` is replaced by
-`max(get_data_column_sidecars_retention_start(current_epoch), FULU_FORK_EPOCH)`.
-The permission to return `ResourceUnavailable` for older blocks applies to this
+`max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`. The
+permission to return `ResourceUnavailable` for older blocks applies to this
 lower bound.

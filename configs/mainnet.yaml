@@ -227,6 +227,10 @@ MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS: 1
 # 2**13 (= 8,192) bytes
 MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 
+# EIP8198
+# 2**12 * 32 * 12,000 (= 1,572,864,000) milliseconds, ~18 days
+MIN_BLOB_DATA_RETENTION_MS: 1572864000
+
 
 # Scheduling
 # ---------------------------------------------------------------
@@ -238,9 +242,6 @@ BLOB_SCHEDULE:
     MAX_BLOBS_PER_BLOCK: 21
 
 GAS_LIMIT_SCHEDULE: []
-
-# EIP8198 data-column retention (seconds)
-MIN_SECONDS_FOR_DATA_COLUMN_SIDECARS_REQUESTS: 1572864
 
 SLOT_DURATION_SCHEDULE:
   - EPOCH: 0  # December 1, 2020, 12:00:23pm UTC
