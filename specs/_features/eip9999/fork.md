@@ -1,4 +1,4 @@
-# Deferred Payload Verification -- Fork Logic
+# EIP-9999 -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -9,34 +9,33 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to Deferred Payload Verification](#fork-to-deferred-payload-verification)
+- [Fork to EIP-9999](#fork-to-eip-9999)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the process of the Deferred Payload Verification
-upgrade. Only `BeaconState` changes, so the upgrade carries every field across
-unchanged and initializes the new one.
+This document describes the process of the EIP-9999 upgrade. Only `BeaconState`
+changes, so the upgrade carries every field across unchanged and initializes the
+new one.
 
 ## Configuration
 
 Warning: this configuration is not definitive.
 
-| Name                                 | Value                                 |
-| ------------------------------------ | ------------------------------------- |
-| `PAYLOAD_REQUEST_CHAIN_FORK_VERSION` | `Version('0x9c1a1000')`               |
-| `PAYLOAD_REQUEST_CHAIN_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `EIP9999_FORK_VERSION` | `Version('0x9c1a1000')`               |
+| `EIP9999_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to Deferred Payload Verification
+## Fork to EIP-9999
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == PAYLOAD_REQUEST_CHAIN_FORK_EPOCH`, an
-irregular state change is made to upgrade to this feature.
+`compute_epoch_at_slot(state.slot) == EIP9999_FORK_EPOCH`, an irregular state
+change is made to upgrade to this feature.
 
 The upgrade occurs after the completion of the inner loop of `process_slots`
-that sets `state.slot` equal to
-`PAYLOAD_REQUEST_CHAIN_FORK_EPOCH * SLOTS_PER_EPOCH`.
+that sets `state.slot` equal to `EIP9999_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 The payload request chain starts empty at the fork boundary. The first full
 payload after the fork extends `PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, so a
@@ -44,7 +43,7 @@ consensus client reconciling a range that crosses the fork MUST NOT expect the
 execution client to account for pre-fork blocks.
 
 ```python
-def upgrade_to_payload_request_chain(pre: gloas.BeaconState) -> BeaconState:
+def upgrade_to_eip9999(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
 
     post = BeaconState(
@@ -53,8 +52,8 @@ def upgrade_to_payload_request_chain(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [New in DeferredPayloadVerification]
-            current_version=PAYLOAD_REQUEST_CHAIN_FORK_VERSION,
+            # [New in EIP9999]
+            current_version=EIP9999_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,
@@ -99,7 +98,7 @@ def upgrade_to_payload_request_chain(pre: gloas.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        # [New in DeferredPayloadVerification]
+        # [New in EIP9999]
         payload_request_chain_root=PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS,
     )
 

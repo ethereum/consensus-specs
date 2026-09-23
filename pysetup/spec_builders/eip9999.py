@@ -1,10 +1,10 @@
-from pysetup.constants import PAYLOAD_REQUEST_CHAIN
+from pysetup.constants import EIP9999
 
 from .base import BaseSpecBuilder
 
 
-class PayloadRequestChainSpecBuilder(BaseSpecBuilder):
-    fork: str = PAYLOAD_REQUEST_CHAIN
+class EIP9999SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP9999
 
     @classmethod
     def imports(cls, preset_name: str):

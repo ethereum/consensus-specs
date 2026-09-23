@@ -10,11 +10,11 @@ from .constants import (
     EIP8148,
     EIP8205,
     EIP8321,
+    EIP9999,
     ELECTRA,
     FULU,
     GLOAS,
     HEZE,
-    PAYLOAD_REQUEST_CHAIN,
     PHASE0,
 )
 
@@ -32,7 +32,7 @@ PREVIOUS_FORK_OF = {
     EIP8148: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
-    PAYLOAD_REQUEST_CHAIN: GLOAS,
+    EIP9999: GLOAS,
 }
 
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())

@@ -94,7 +94,6 @@ extend-exclude = [
   "tests/core/pyspec/eth_consensus_specs/gloas",
   "tests/core/pyspec/eth_consensus_specs/heze",
   "tests/core/pyspec/eth_consensus_specs/eip*",
-  "tests/core/pyspec/eth_consensus_specs/payload_request_chain",
 ]
 
 [tool.ruff.lint]

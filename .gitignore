@@ -25,7 +25,6 @@ tests/core/pyspec/eth_consensus_specs/fulu/
 tests/core/pyspec/eth_consensus_specs/gloas/
 tests/core/pyspec/eth_consensus_specs/heze/
 tests/core/pyspec/eth_consensus_specs/eip*/
-tests/core/pyspec/eth_consensus_specs/payload_request_chain/
 
 # coverage reports
 .htmlcov

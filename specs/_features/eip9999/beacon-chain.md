@@ -1,4 +1,4 @@
-# Deferred Payload Verification -- The Beacon Chain
+# EIP-9999 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -216,7 +216,7 @@ full payload.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    # [Modified in DeferredPayloadVerification]
+    # [Modified in EIP9999]
     ACTIVE_FIELDS = active_fields(width=47)
 
     genesis_time: Uint64
@@ -284,7 +284,7 @@ class BeaconState(ProgressiveContainer):
     payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
     ptc_window: PayloadTimelinessCommitteeWindow
-    # [New in DeferredPayloadVerification]
+    # [New in EIP9999]
     payload_request_chain_root: Bytes32
 ```
 
@@ -495,7 +495,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     # Parent was FULL -- verify the bid commitment and apply the payload
     assert hash_tree_root(requests) == parent_bid.execution_requests_root
 
-    # [New in DeferredPayloadVerification]
+    # [New in EIP9999]
     # The parent payload is now known to be FULL, so extend the chain with it
     state.payload_request_chain_root = compute_payload_request_chain_root(
         state.payload_request_chain_root,

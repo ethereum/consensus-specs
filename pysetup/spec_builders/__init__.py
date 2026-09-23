@@ -6,11 +6,11 @@ from .eip8025 import EIP8025SpecBuilder
 from .eip8148 import EIP8148SpecBuilder
 from .eip8205 import EIP8205SpecBuilder
 from .eip8321 import EIP8321SpecBuilder
+from .eip9999 import EIP9999SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
 from .gloas import GloasSpecBuilder
 from .heze import HezeSpecBuilder
-from .payload_request_chain import PayloadRequestChainSpecBuilder
 from .phase0 import Phase0SpecBuilder
 
 spec_builders = {
@@ -29,6 +29,6 @@ spec_builders = {
         EIP8148SpecBuilder,
         EIP8205SpecBuilder,
         EIP8321SpecBuilder,
-        PayloadRequestChainSpecBuilder,
+        EIP9999SpecBuilder,
     )
 }

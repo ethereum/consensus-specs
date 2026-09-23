@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_payload_request_chain_and_later,
+    with_eip9999_and_later,
 )
 
 
@@ -40,7 +40,7 @@ def build_request_commitment(spec, payload_commitment):
     )
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_commitment_binds_every_field(spec):
@@ -78,7 +78,7 @@ def test_commitment_binds_every_field(spec):
     assert spec.hash_tree_root(mutated) != base_root
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_block_hash_binds_the_remaining_payload_fields(spec):
@@ -94,7 +94,7 @@ def test_block_hash_binds_the_remaining_payload_fields(spec):
     assert spec.hash_tree_root(tampered) != spec.hash_tree_root(commitment)
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_nesting_keeps_groups_separable(spec):
@@ -105,7 +105,7 @@ def test_nesting_keeps_groups_separable(spec):
     assert spec.hash_tree_root(request.execution_payload) == spec.hash_tree_root(payload_commitment)
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_payload_request_chain_root_is_order_dependent(spec):
@@ -124,7 +124,7 @@ def test_payload_request_chain_root_is_order_dependent(spec):
     assert forward != reverse
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_payload_request_chain_root_extends(spec):
@@ -139,7 +139,7 @@ def test_payload_request_chain_root_extends(spec):
     assert second != first
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_requests_hash_matches_eip7685(spec):
@@ -151,7 +151,7 @@ def test_requests_hash_matches_eip7685(spec):
     assert bytes(spec.compute_requests_hash(encoded)) == expected
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_test
 @single_phase
 def test_requests_list_covers_builder_request_types(spec):
@@ -178,7 +178,7 @@ def test_requests_list_covers_builder_request_types(spec):
     assert spec.compute_requests_hash(encoded) != spec.compute_requests_hash([])
 
 
-@with_payload_request_chain_and_later
+@with_eip9999_and_later
 @spec_state_test
 def test_cl_and_el_paths_agree(spec, state):
     """
