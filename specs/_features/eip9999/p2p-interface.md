@@ -19,25 +19,14 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specifications for
-EIP-9999.
+`ExecutionPayloadEnvelopesByRange v1` serves historical execution payload
+envelopes for backfill. EIP-9999 removes the reason to fetch them, so the method
+is removed rather than left as an obligation a client that skipped the download
+cannot meet.
 
-`ExecutionPayloadEnvelopesByRange v1` exists to serve historical execution
-payload envelopes for backfill. EIP-9999 removes the reason to fetch them: a
-consensus client verifies a synced range against the payload request chain
-rather than against the payloads themselves, so it never needs the envelopes it
-would have requested.
-
-Leaving the method in place while removing its purpose would put the network in
-the worst of both positions. Clients could skip the download, but would still be
-expected to serve it, and a client that skipped could not. The method is
-therefore removed rather than left as an obligation no one can meet.
-
-`ExecutionPayloadEnvelopesByRoot v1` is unaffected. It serves the range
-`[max(GLOAS_FORK_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`,
-so every envelope it returns arrived on gossip and is held locally. It also
-answers a question this EIP does not address — whether a payload was revealed at
-all — which drives payload attestation processing and fork choice.
+`ExecutionPayloadEnvelopesByRoot v1` is unaffected. It is bounded to recent
+epochs, so every envelope it returns arrived on gossip, and it answers a
+question this EIP does not address: whether a payload was revealed.
 
 ## Modifications in EIP-9999
 

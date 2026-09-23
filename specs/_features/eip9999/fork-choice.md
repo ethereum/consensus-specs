@@ -16,22 +16,14 @@
 ## Introduction
 
 `verify_and_notify_new_payload` gains a required `payload_request_chain_root`
-argument, so its existing call site supplies one.
+argument, so its existing call site supplies one. At this point
+`state.payload_request_chain_root` covers every full payload up to and including
+the parent, so extending it with this payload's commitment yields the chain
+through this payload.
 
-At this point `state.payload_request_chain_root` covers every full payload up to
-and including the parent, because `process_parent_execution_payload` folded the
-parent in earlier in this block. Folding this payload's own commitment therefore
-yields the chain **through this payload**, which is what the argument is defined
-to carry. The envelope supplies the execution requests that the commitment
-needs.
-
-A consequence worth noting: the chain is asserted on the live path as well as
-after a range sync, so a node following the head keeps it continuously verified
-rather than only reconciling once.
-
-The per-field consistency checks between the payload and the committed bid are
-retained. They are redundant with the chain assertion whenever the payload is in
-hand, and they localise a failure to a specific field, which the chain cannot.
+The per-field checks against the committed bid are retained. They are redundant
+with the chain assertion whenever the payload is in hand, and they localise a
+failure to a specific field, which the chain cannot.
 
 ## Helpers
 
