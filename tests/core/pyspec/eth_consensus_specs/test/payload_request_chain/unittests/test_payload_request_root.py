@@ -148,3 +148,30 @@ def test_requests_hash_matches_eip7685(spec):
 
     expected = sha256(b"".join(sha256(r).digest() for r in encoded)).digest()
     assert bytes(spec.compute_requests_hash(encoded)) == expected
+
+
+@with_payload_request_chain_and_later
+@spec_test
+@single_phase
+def test_requests_list_covers_builder_request_types(spec):
+    """
+    EIP-8282 builder deposits and exits are committed by the execution header's
+    requests_hash, so the consensus layer's re-derivation must include them.
+    """
+    requests = spec.ExecutionRequests(
+        builder_deposits=spec.BuilderDepositRequests(
+            data=[
+                spec.BuilderDepositRequest(
+                    pubkey=spec.BLSPubkey(b"\x12" * 48),
+                    withdrawal_credentials=spec.Bytes32(b"\x34" * 32),
+                    amount=spec.Gwei(32000000000),
+                    signature=spec.BLSSignature(b"\x56" * 96),
+                )
+            ]
+        ),
+    )
+    encoded = spec.get_execution_requests_list(requests)
+
+    assert len(encoded) == 1
+    assert encoded[0][:1] == spec.BUILDER_DEPOSIT_REQUEST_TYPE
+    assert spec.compute_requests_hash(encoded) != spec.compute_requests_hash([])

@@ -20,6 +20,7 @@
     - [Modified `BeaconState`](#modified-beaconstate)
 - [Helpers](#helpers)
   - [New `compute_execution_payload_commitment`](#new-compute_execution_payload_commitment)
+  - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
   - [New `compute_requests_hash`](#new-compute_requests_hash)
   - [New `compute_new_payload_request_commitment`](#new-compute_new_payload_request_commitment)
   - [New `compute_payload_request_root`](#new-compute_payload_request_root)
@@ -310,6 +311,35 @@ def compute_execution_payload_commitment(
         withdrawals=state.payload_expected_withdrawals,
         slot_number=bid.slot,
     )
+```
+
+### Modified `get_execution_requests_list`
+
+*Note*: `ExecutionRequests` gained `builder_deposits` and `builder_exits` in
+Gloas via [EIP-8282](https://eips.ethereum.org/EIPS/eip-8282), which states that
+the execution layer includes their `0x03` and `0x04` type bytes in the block
+requests list committed by `requests_hash`. The Electra helper predates them and
+emits only the first three types, so it is restated here in full. Without this
+the consensus layer's re-derivation would diverge from the execution header
+whenever a builder deposit or exit occurs.
+
+```python
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
+    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
+        (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
+        (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
+        (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        # [New in Gloas:EIP8282]
+        (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
+        # [New in Gloas:EIP8282]
+        (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
+    ]
+
+    return [
+        request_type + ssz_serialize(request_data)
+        for request_type, request_data in requests
+        if len(request_data) != 0
+    ]
 ```
 
 ### New `compute_requests_hash`
