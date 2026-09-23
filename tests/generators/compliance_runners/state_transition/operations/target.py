@@ -10,9 +10,12 @@ from __future__ import annotations
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     ACCEPTED,
+    capture_observations,
     capture_outcome,
     CAttribute,
+    CConstant,
     CFactor,
+    Context,
     coverage_aspect,
     CPred,
     each,
@@ -24,6 +27,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     union,
 )
 
+from .observation import observe_attributes
+
 
 @coverage_aspect("limits")
 def capture_limits(
@@ -34,12 +39,13 @@ def capture_limits(
     voluntary_exits: CAttribute[int],
     bls_to_execution_changes: CAttribute[int],
     payload_attestations: CAttribute[int],
-    proposer_slashings_limit: CAttribute[int],
-    attester_slashings_limit: CAttribute[int],
-    attestations_limit: CAttribute[int],
-    voluntary_exits_limit: CAttribute[int],
-    bls_to_execution_changes_limit: CAttribute[int],
-    payload_attestations_limit: CAttribute[int],
+    *,
+    proposer_slashings_limit: CConstant[int],
+    attester_slashings_limit: CConstant[int],
+    attestations_limit: CConstant[int],
+    voluntary_exits_limit: CConstant[int],
+    bls_to_execution_changes_limit: CConstant[int],
+    payload_attestations_limit: CConstant[int],
 ):
     deposits_empty: CPred = deposits == 0
     proposer_slashings_within_limit: CFactor = proposer_slashings <= proposer_slashings_limit
@@ -58,23 +64,10 @@ ALL_LIMITS = list(LIMITS.factors)
 GATES = ALL_LIMITS
 
 
-def observe(ctx) -> None:
-    spec, body = ctx.spec, ctx.operation
-    capture_limits(
-        len(body.deposits),
-        len(body.proposer_slashings),
-        len(body.attester_slashings),
-        len(body.attestations),
-        len(body.voluntary_exits),
-        len(body.bls_to_execution_changes),
-        len(body.payload_attestations),
-        int(spec.MAX_PROPOSER_SLASHINGS),
-        int(spec.MAX_ATTESTER_SLASHINGS_ELECTRA),
-        int(spec.MAX_ATTESTATIONS_ELECTRA),
-        int(spec.MAX_VOLUNTARY_EXITS),
-        int(spec.MAX_BLS_TO_EXECUTION_CHANGES),
-        int(spec.MAX_PAYLOAD_ATTESTATIONS),
-    )
+def observe(ctx: Context) -> None:
+    attributes = observe_attributes(ctx)
+    capture_observations(**attributes)
+    capture_limits(**attributes)
 
 
 def _holds(assignment: dict, factor, granularity: str) -> bool | None:
@@ -109,4 +102,18 @@ PROFILES = {
     ).where(FEASIBLE),
 }
 
-TARGET = Target("process_operations", ASPECTS, observe, PROFILES, FEASIBLE)
+TARGET = Target(
+    "process_operations",
+    ASPECTS,
+    observe,
+    PROFILES,
+    FEASIBLE,
+    constants={
+        "proposer_slashings_limit": lambda spec: int(spec.MAX_PROPOSER_SLASHINGS),
+        "attester_slashings_limit": lambda spec: int(spec.MAX_ATTESTER_SLASHINGS_ELECTRA),
+        "attestations_limit": lambda spec: int(spec.MAX_ATTESTATIONS_ELECTRA),
+        "voluntary_exits_limit": lambda spec: int(spec.MAX_VOLUNTARY_EXITS),
+        "bls_to_execution_changes_limit": lambda spec: int(spec.MAX_BLS_TO_EXECUTION_CHANGES),
+        "payload_attestations_limit": lambda spec: int(spec.MAX_PAYLOAD_ATTESTATIONS),
+    },
+)
