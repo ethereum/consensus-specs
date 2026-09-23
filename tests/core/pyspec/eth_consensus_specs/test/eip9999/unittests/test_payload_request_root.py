@@ -160,3 +160,126 @@ def test_chain_binds_position_not_membership(spec, state):
 
     assert first != spec.Bytes32()
     assert second != first
+
+
+def build_block_with_bid(spec, parent_block_hash, requests=None):
+    """A block whose bid claims `parent_block_hash` as its parent payload."""
+    block = spec.BeaconBlock()
+    bid = block.body.signed_execution_payload_bid.message
+    bid.parent_block_hash = parent_block_hash
+    block.body.parent_execution_requests = (
+        requests if requests is not None else spec.ExecutionRequests()
+    )
+    return block
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_chain_does_not_advance_on_an_empty_parent(spec, state):
+    """
+    A bid is processed for every block, but its payload may never be revealed.
+    The execution layer produces no block for such a slot, so the chain must
+    not advance for it -- otherwise the two chains desynchronise on an
+    entirely honest chain.
+    """
+    state.payload_request_chain_root = spec.Bytes32(b"\x07" * 32)
+    before = state.payload_request_chain_root
+
+    # Parent was EMPTY: the bid's parent_block_hash does not match the
+    # committed parent bid's block_hash.
+    parent_bid = state.latest_execution_payload_bid.copy()
+    parent_bid.block_hash = spec.Hash32(b"\x11" * 32)
+    state.latest_execution_payload_bid = parent_bid
+    block = build_block_with_bid(spec, spec.Hash32(b"\x22" * 32))
+
+    spec.process_parent_execution_payload(state, block)
+
+    assert state.payload_request_chain_root == before
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_chain_advances_on_a_full_parent(spec, state):
+    """The mirror of the above: a revealed parent payload does advance it."""
+    state.payload_request_chain_root = spec.Bytes32(b"\x07" * 32)
+    before = state.payload_request_chain_root
+
+    requests = spec.ExecutionRequests()
+    parent_bid = state.latest_execution_payload_bid.copy()
+    parent_bid.block_hash = spec.Hash32(b"\x11" * 32)
+    parent_bid.execution_requests_root = spec.hash_tree_root(requests)
+    state.latest_execution_payload_bid = parent_bid
+
+    # Parent was FULL: the bid names the committed parent bid's block_hash.
+    block = build_block_with_bid(spec, parent_bid.block_hash, requests)
+    expected = spec.compute_payload_request_chain_root(state, parent_bid, requests)
+
+    spec.process_parent_execution_payload(state, block)
+
+    assert state.payload_request_chain_root != before
+    assert state.payload_request_chain_root == expected
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_empty_slots_are_skipped_not_reordered(spec, state):
+    """
+    A run of empty slots between two full payloads must produce the same chain
+    as if they had not occurred. The chain is over execution blocks, not slots.
+    """
+    requests = spec.ExecutionRequests()
+    parent_bid = state.latest_execution_payload_bid.copy()
+    parent_bid.block_hash = spec.Hash32(b"\x11" * 32)
+    parent_bid.execution_requests_root = spec.hash_tree_root(requests)
+    state.latest_execution_payload_bid = parent_bid
+    state.payload_request_chain_root = spec.Bytes32()
+
+    # Three empty parents, then a full one.
+    for _ in range(3):
+        spec.process_parent_execution_payload(
+            state, build_block_with_bid(spec, spec.Hash32(b"\x22" * 32))
+        )
+    spec.process_parent_execution_payload(
+        state, build_block_with_bid(spec, parent_bid.block_hash, requests)
+    )
+    with_empties = state.payload_request_chain_root
+
+    # The same full payload with no empty slots preceding it.
+    state.latest_execution_payload_bid = parent_bid
+    state.payload_request_chain_root = spec.Bytes32()
+    spec.process_parent_execution_payload(
+        state, build_block_with_bid(spec, parent_bid.block_hash, requests)
+    )
+
+    assert state.payload_request_chain_root == with_empties
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_execution_requests_reach_the_chain_root(spec, state):
+    """
+    Requests are the one datum that flows from the execution layer into beacon
+    state, and during sync the consensus layer applies them on a builder's word
+    alone. They must therefore reach the commitment, via the EIP-7685 digest
+    that the execution header carries.
+    """
+    state.payload_request_chain_root = spec.Bytes32()
+    bid = state.latest_execution_payload_bid.copy()
+    bid.slot = state.slot
+
+    empty = spec.ExecutionRequests()
+    populated = spec.ExecutionRequests(
+        withdrawals=spec.WithdrawalRequests(
+            data=[
+                spec.WithdrawalRequest(
+                    source_address=spec.ExecutionAddress(b"\x11" * 20),
+                    validator_pubkey=spec.BLSPubkey(b"\x22" * 48),
+                    amount=spec.Gwei(1),
+                )
+            ]
+        )
+    )
+
+    assert spec.compute_payload_request_chain_root(
+        state, bid, empty
+    ) != spec.compute_payload_request_chain_root(state, bid, populated)
