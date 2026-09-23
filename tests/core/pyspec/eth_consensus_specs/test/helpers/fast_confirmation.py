@@ -339,8 +339,10 @@ class FCRTest:
         participation_rate=100,
         pool_and_disseminate=True,
         attester_indices=None,
+        payload_index=None,
     ):
         assert 0 <= participation_rate <= 100
+        assert payload_index is None or is_post_gloas(self.spec)
 
         # Do not attest if participation is zero
         if participation_rate == 0:
@@ -375,10 +377,11 @@ class FCRTest:
         # Compute payload index post-Gloas
         if is_post_gloas(self.spec):
             block = self.store.blocks[block_root]
-            if slot > block.slot and self.spec.is_payload_verified(self.store, block_root):
-                payload_index = 1
-            else:
-                payload_index = 0
+            if payload_index is None:
+                if slot > block.slot and self.spec.is_payload_verified(self.store, block_root):
+                    payload_index = 1
+                else:
+                    payload_index = 0
         else:
             payload_index = None
 
