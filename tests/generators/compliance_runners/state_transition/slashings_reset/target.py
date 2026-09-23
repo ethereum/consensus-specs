@@ -5,43 +5,39 @@ zero.  The target records the wraparound case and whether the selected slot
 actually contains a value to clear.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    CAttribute,
-    Context,
-    coverage_aspect,
-    CPred,
-    each,
-    Target,
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    coverage_spec,
+    factor,
+    Integer,
 )
 
 from .observation import observe_attributes
 
+destination_index = attribute("destination_index", Integer(min=0))
+destination_value = attribute("destination_value", Integer(min=0))
 
-@coverage_aspect("reset")
-def capture_reset(
-    destination_index: CAttribute[int],
-    destination_value: CAttribute[int],
-):
-    destination_is_first_slot: CPred = destination_index == 0
-    destination_nonzero: CPred = destination_value > 0
-
-
-RESET = capture_reset
+RESET = aspect(
+    "reset",
+    factor("destination_is_first_slot", destination_index == 0),
+    factor("destination_nonzero", destination_value > 0),
+)
 ASPECTS = (RESET,)
+PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
 
+COVERAGE = coverage_spec(
+    "slashings_reset",
+    focus="process_slashings_reset: destination wraparound and value to clear",
+    record="one vector",
+    attributes=(
+        destination_index,
+        destination_value,
+    ),
+    constants=(),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+)
 
-def _observe(ctx: Context) -> None:
-    capture_reset(**observe_attributes(ctx))
-
-
-PROFILES = {
-    "smoke": each(RESET.factors),
-    "normal": RESET.exhaustive(),
-    "standard": RESET.exhaustive(),
-}
-
-
-TARGET = Target("slashings_reset", ASPECTS, _observe, PROFILES)
+TARGET = bind(COVERAGE, observe_attributes=observe_attributes, constants={})

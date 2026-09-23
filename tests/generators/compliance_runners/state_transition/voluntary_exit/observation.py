@@ -36,6 +36,7 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
         w for w in pre.pending_partial_withdrawals if int(w.validator_index) == validator_index
     ]
     return {
+        "post_present": ctx.post is not None,
         "validator_index": validator_index,
         "validator_found": validator_found,
         "current_epoch": current_epoch,
