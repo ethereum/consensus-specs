@@ -13,6 +13,7 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     proposer_index = int(block.proposer_index)
     proposer_found = proposer_index < len(state.validators)
     return {
+        "post_present": ctx.post is not None,
         "proposer_found": proposer_found,
         "block_slot": int(block.slot),
         "state_slot": int(state.slot),

@@ -5,69 +5,69 @@ The operation-processing loops are intentionally out of scope here: each
 This target measures only the deposit prohibition and operation-count limits.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    ACCEPTED,
-    capture_observations,
-    capture_outcome,
-    CAttribute,
-    CConstant,
-    CFactor,
-    Context,
-    coverage_aspect,
-    CPred,
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Boolean,
+    comparison,
+    constant,
+    coverage_spec,
     each,
+    factor,
     fix,
-    nwise,
-    nwise_of,
-    rules,
-    Target,
+    Integer,
     union,
 )
 
 from .observation import observe_attributes
 
+deposits = attribute("deposits", Integer(min=0))
+proposer_slashings = attribute("proposer_slashings", Integer(min=0))
+attester_slashings = attribute("attester_slashings", Integer(min=0))
+attestations = attribute("attestations", Integer(min=0))
+voluntary_exits = attribute("voluntary_exits", Integer(min=0))
+bls_to_execution_changes = attribute("bls_to_execution_changes", Integer(min=0))
+payload_attestations = attribute("payload_attestations", Integer(min=0))
+post_present = attribute("post_present", Boolean())
 
-@coverage_aspect("limits")
-def capture_limits(
-    deposits: CAttribute[int],
-    proposer_slashings: CAttribute[int],
-    attester_slashings: CAttribute[int],
-    attestations: CAttribute[int],
-    voluntary_exits: CAttribute[int],
-    bls_to_execution_changes: CAttribute[int],
-    payload_attestations: CAttribute[int],
-    *,
-    proposer_slashings_limit: CConstant[int],
-    attester_slashings_limit: CConstant[int],
-    attestations_limit: CConstant[int],
-    voluntary_exits_limit: CConstant[int],
-    bls_to_execution_changes_limit: CConstant[int],
-    payload_attestations_limit: CConstant[int],
-):
-    deposits_empty: CPred = deposits == 0
-    proposer_slashings_within_limit: CFactor = proposer_slashings <= proposer_slashings_limit
-    attester_slashings_within_limit: CFactor = attester_slashings <= attester_slashings_limit
-    attestations_within_limit: CFactor = attestations <= attestations_limit
-    voluntary_exits_within_limit: CFactor = voluntary_exits <= voluntary_exits_limit
-    bls_to_execution_changes_within_limit: CFactor = (
-        bls_to_execution_changes <= bls_to_execution_changes_limit
-    )
-    payload_attestations_within_limit: CFactor = payload_attestations <= payload_attestations_limit
+proposer_slashings_limit = constant("proposer_slashings_limit", Integer(min=0))
+attester_slashings_limit = constant("attester_slashings_limit", Integer(min=0))
+attestations_limit = constant("attestations_limit", Integer(min=0))
+voluntary_exits_limit = constant("voluntary_exits_limit", Integer(min=0))
+bls_to_execution_changes_limit = constant("bls_to_execution_changes_limit", Integer(min=0))
+payload_attestations_limit = constant("payload_attestations_limit", Integer(min=0))
 
+LIMITS = aspect(
+    "limits",
+    factor("deposits_empty", deposits == 0),
+    comparison(
+        "proposer_slashings_within_limit", proposer_slashings, proposer_slashings_limit, op="<="
+    ),
+    comparison(
+        "attester_slashings_within_limit", attester_slashings, attester_slashings_limit, op="<="
+    ),
+    comparison("attestations_within_limit", attestations, attestations_limit, op="<="),
+    comparison("voluntary_exits_within_limit", voluntary_exits, voluntary_exits_limit, op="<="),
+    comparison(
+        "bls_to_execution_changes_within_limit",
+        bls_to_execution_changes,
+        bls_to_execution_changes_limit,
+        op="<=",
+    ),
+    comparison(
+        "payload_attestations_within_limit",
+        payload_attestations,
+        payload_attestations_limit,
+        op="<=",
+    ),
+)
 
-LIMITS = capture_limits
-ASPECTS = (LIMITS, capture_outcome)
-ALL_LIMITS = list(LIMITS.factors)
-GATES = ALL_LIMITS
-
-
-def observe(ctx: Context) -> None:
-    attributes = observe_attributes(ctx)
-    capture_observations(**attributes)
-    capture_limits(**attributes)
+OUTCOME = aspect("outcome", factor("accepted", post_present))
+ACCEPTED = OUTCOME["accepted"]
+ASPECTS = (LIMITS, OUTCOME)
+GATES = list(LIMITS.factors)
 
 
 def _holds(assignment: dict, factor, granularity: str) -> bool | None:
@@ -93,21 +93,45 @@ NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 
 PROFILES = {
-    "smoke": each([*ALL_LIMITS, ACCEPTED]).where(FEASIBLE),
-    "normal": (NORMAL * LIMITS.exhaustive()).where(FEASIBLE),
-    "exceptional": (EXCEPTIONAL * nwise(ALL_LIMITS, 2)).where(FEASIBLE),
+    "smoke": each([*LIMITS.declarations, *OUTCOME.declarations]),
+    "normal": NORMAL * LIMITS.exhaustive(),
+    "exceptional": EXCEPTIONAL * LIMITS.nwise(2),
     "standard": union(
-        each([*ALL_LIMITS, ACCEPTED]),
-        nwise_of([LIMITS.each(), capture_outcome.each()], 2),
-    ).where(FEASIBLE),
+        each([*LIMITS.declarations, *OUTCOME.declarations]),
+        LIMITS.each() * OUTCOME.each(),
+    ),
 }
 
-TARGET = Target(
+COVERAGE = coverage_spec(
     "process_operations",
-    ASPECTS,
-    observe,
-    PROFILES,
-    FEASIBLE,
+    focus="deposit prohibition and operation-count assertions in process_operations; operation-processing loops excluded",
+    record="one vector",
+    attributes=(
+        deposits,
+        proposer_slashings,
+        attester_slashings,
+        attestations,
+        voluntary_exits,
+        bls_to_execution_changes,
+        payload_attestations,
+        post_present,
+    ),
+    constants=(
+        proposer_slashings_limit,
+        attester_slashings_limit,
+        attestations_limit,
+        voluntary_exits_limit,
+        bls_to_execution_changes_limit,
+        payload_attestations_limit,
+    ),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    feasible=FEASIBLE,
+)
+
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "proposer_slashings_limit": lambda spec: int(spec.MAX_PROPOSER_SLASHINGS),
         "attester_slashings_limit": lambda spec: int(spec.MAX_ATTESTER_SLASHINGS_ELECTRA),

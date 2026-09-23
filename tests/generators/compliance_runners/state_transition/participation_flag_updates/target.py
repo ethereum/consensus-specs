@@ -5,55 +5,53 @@ current array with zero flags.  The target records validator-set size and the
 contents of both arrays before rotation.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    CAttribute,
-    CConstant,
-    Context,
-    coverage_aspect,
-    CPred,
-    each,
-    Target,
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    constant,
+    coverage_spec,
+    factor,
+    Integer,
 )
 
 from .observation import observe_attributes
 
+validator_count = attribute("validator_count", Integer(min=0))
+previous_nonzero_count = attribute("previous_nonzero_count", Integer(min=0))
+current_nonzero_count = attribute("current_nonzero_count", Integer(min=0))
+minimum_validator_count = constant("minimum_validator_count", Integer(min=0))
 
-@coverage_aspect("participation")
-def capture_participation(
-    validator_count: CAttribute[int],
-    previous_nonzero_count: CAttribute[int],
-    current_nonzero_count: CAttribute[int],
-    *,
-    minimum_validator_count: CConstant[int],
-):
-    validator_set_is_larger: CPred = validator_count > minimum_validator_count
-    previous_has_flags: CPred = previous_nonzero_count > 0
-    current_has_flags: CPred = current_nonzero_count > 0
-
-
-PARTICIPATION = capture_participation
+PARTICIPATION = aspect(
+    "participation",
+    factor("validator_set_is_larger", validator_count > minimum_validator_count),
+    factor("previous_has_flags", previous_nonzero_count > 0),
+    factor("current_has_flags", current_nonzero_count > 0),
+)
 ASPECTS = (PARTICIPATION,)
-
-
-def _observe(ctx: Context) -> None:
-    capture_participation(**observe_attributes(ctx))
-
-
 PROFILES = {
-    "smoke": each(PARTICIPATION.factors),
+    "smoke": PARTICIPATION.each(),
     "normal": PARTICIPATION.exhaustive(),
     "standard": PARTICIPATION.exhaustive(),
 }
 
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "participation_flag_updates",
-    ASPECTS,
-    _observe,
-    PROFILES,
+    focus="process_participation_flag_updates: validator-set size and participation-array contents",
+    record="one vector",
+    attributes=(
+        validator_count,
+        previous_nonzero_count,
+        current_nonzero_count,
+    ),
+    constants=(minimum_validator_count,),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+)
+
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "minimum_validator_count": lambda spec: int(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT)
     },

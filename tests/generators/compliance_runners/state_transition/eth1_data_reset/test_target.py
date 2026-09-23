@@ -5,12 +5,11 @@ import pytest
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
     GRANULARITIES,
-    recording,
     score,
 )
 
 from .observation import observe_attributes
-from .target import capture_reset, TARGET
+from .target import COVERAGE, TARGET
 
 
 def context(current_epoch, vote_count, *, post_present=True):
@@ -30,8 +29,8 @@ def test_adapter_extracts_attributes_without_recording():
 
 
 def test_constants_are_distinct_and_follow_the_selected_spec():
-    assert capture_reset.constants == ("epochs_per_eth1_voting_period",)
-    assert capture_reset.attributes == ("next_epoch", "vote_count")
+    assert tuple(c.name for c in COVERAGE.constants) == ("epochs_per_eth1_voting_period",)
+    assert tuple(a.name for a in COVERAGE.attributes) == ("next_epoch", "vote_count")
     ctx = context(3, 1)
     assert TARGET.observation(ctx)["at_reset_boundary"] is True
     ctx.spec.EPOCHS_PER_ETH1_VOTING_PERIOD = 8
@@ -40,20 +39,13 @@ def test_constants_are_distinct_and_follow_the_selected_spec():
     assert "epochs_per_eth1_voting_period" not in observation
 
 
-def test_capture_requires_constant_binding_and_rejects_override():
-    with recording(), pytest.raises(ValueError, match="unbound constant"):
-        capture_reset(next_epoch=4, vote_count=1)
-    with recording(constants={"epochs_per_eth1_voting_period": 4}) as rec:
-        with pytest.raises(TypeError, match="constants must be bound"):
-            capture_reset(next_epoch=4, vote_count=1, epochs_per_eth1_voting_period=8)
-        capture_reset(next_epoch=4, vote_count=1)
-        assert rec.constants == {"epochs_per_eth1_voting_period": 4}
-        assert rec.attributes == {"next_epoch": 4, "vote_count": 1}
-        with recording(constants={"epochs_per_eth1_voting_period": 8}) as inner:
-            capture_reset(next_epoch=4, vote_count=1)
-            assert inner.factors["at_reset_boundary"] is False
-        capture_reset(next_epoch=4, vote_count=1)
-        assert rec.factors["at_reset_boundary"] is True
+def test_bound_constants_are_validated_and_profiles_require_binding():
+    with pytest.raises(ValueError, match="for_spec"):
+        TARGET.profiles["normal"].run("predicate")
+    with pytest.raises(ValueError, match="outside"):
+        TARGET.for_spec(SimpleNamespace(EPOCHS_PER_ETH1_VOTING_PERIOD=0))
+    target = TARGET.for_spec(context(3, 1).spec)
+    assert target.bound_constants == {"epochs_per_eth1_voting_period": 4}
 
 
 @pytest.mark.parametrize("granularity", GRANULARITIES)
@@ -88,6 +80,7 @@ def test_profiles_cover_all_boundary_and_occupancy_combinations(profile):
         for epoch in (2, 3)
         for count in (0, 1)
     ]
-    report = score(TARGET, records, TARGET.profiles[profile], "predicate")
+    target = TARGET.for_spec(context(3, 1).spec)
+    report = score(target, records, target.profiles[profile], "predicate")
     assert report.total == report.covered == 4
     assert report.uncovered == report.unexpected == []

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 def observe_attributes(ctx: Context) -> dict[str, Any]:
     body = ctx.operation
     return {
+        "post_present": ctx.post is not None,
         "deposits": len(body.deposits),
         "proposer_slashings": len(body.proposer_slashings),
         "attester_slashings": len(body.attester_slashings),

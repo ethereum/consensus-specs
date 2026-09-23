@@ -838,6 +838,8 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
 
 
 def describe(target: Target) -> str:
+    if hasattr(target, "review"):
+        return target.review()
     lines = [f"target {target.name}"]
     for aspect in target.aspects:
         lines.append(f"  aspect {aspect.name}")
