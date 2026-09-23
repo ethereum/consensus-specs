@@ -144,7 +144,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time_ms=genesis_time_ms + SLOT_DURATION_MS * anchor_state.slot,
+        time_ms=compute_time_at_slot_ms(genesis_time_ms, anchor_state.slot),
         genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -304,9 +304,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
-    time_into_slot_ms = (store.time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
     is_current_slot = inclusion_list.slot == current_slot
-    is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
+    is_timely = is_current_slot and get_time_into_slot_ms(store) < get_inclusion_list_due_ms()
 
     # Process the inclusion list
     process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)

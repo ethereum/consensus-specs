@@ -224,7 +224,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time_ms=genesis_time_ms + SLOT_DURATION_MS * anchor_state.slot,
+        time_ms=compute_time_at_slot_ms(genesis_time_ms, anchor_state.slot),
         genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -638,9 +638,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    time_into_slot_ms = (store.time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms()
-    return time_into_slot_ms <= proposer_reorg_cutoff_ms
+    return get_time_into_slot_ms(store) <= get_proposer_reorg_cutoff_ms()
 ```
 
 ##### `is_head_weak`
@@ -892,7 +890,7 @@ def update_latest_messages(
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    time_into_slot_ms = (store.time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
+    time_into_slot_ms = get_time_into_slot_ms(store)
     attestation_threshold_ms = get_attestation_due_ms()
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
@@ -949,10 +947,11 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
 def on_tick(store: Store, time_ms: Uint64) -> None:
     # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
+    tick_slot = compute_slot_at_time_ms(store.genesis_time_ms, time_ms)
     while get_current_slot(store) < tick_slot:
-        previous_time_ms = store.genesis_time_ms + (get_current_slot(store) + 1) * SLOT_DURATION_MS
-        on_tick_per_slot(store, previous_time_ms)
+        next_slot = get_current_slot(store) + 1
+        next_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, next_slot)
+        on_tick_per_slot(store, next_slot_time_ms)
     on_tick_per_slot(store, time_ms)
 ```
 
