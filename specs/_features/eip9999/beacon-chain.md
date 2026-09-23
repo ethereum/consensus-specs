@@ -201,13 +201,6 @@ class NewPayloadRequestCommitment(ProgressiveContainer):
     requests_hash: Hash32
 ```
 
-*Note*: this is a commitment, not a header. Its root is **not** equal to
-`hash_tree_root(NewPayloadRequest)`, and `ExecutionPayloadCommitment`'s root is
-**not** equal to `hash_tree_root(ExecutionPayload)`. Under EIP-7495 equal roots
-would require equal field counts, since `hash_tree_root` of a progressive
-container mixes in its `active_fields` bitvector. Implementations MUST NOT
-substitute one root for the other.
-
 ### Modified containers
 
 #### Modified `BeaconState`
