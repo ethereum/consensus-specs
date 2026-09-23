@@ -136,19 +136,15 @@ their SSZ root is unavailable to a client that has not executed the block, while
 ### Anchoring
 
 `payload_request_chain_root` is part of `BeaconState`, so it is carried by a
-weak-subjectivity checkpoint. A consensus client that checkpoint-syncs trusts
-the anchor's value exactly as it trusts the rest of the anchor state, and
-supplies it to the execution client as the base to fold from. An execution
-client with no chain of its own MUST adopt a supplied base rather than starting
-from `PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, which it could not otherwise
-reproduce.
+weak-subjectivity checkpoint, and a consensus client that checkpoint-syncs holds
+the correct value without having derived it.
 
-`state.payload_request_chain_root` itself is unaffected by this. It is consensus
-state, identical across every node following a chain, and commits to the full
-post-fork history regardless of how a node obtained it. What the seed bounds is
-how much of that history a *comparison* covers, since an execution client can
-only vouch for the range it accumulated over. Everything before that rests on
-weak subjectivity, as it already does.
+The only value a consensus client ever sends is the current one, through the
+payload being delivered. An execution client that holds no accumulator of its
+own has nothing to compare that value against, and MUST adopt it as its own and
+fold forward from there. It cannot instead begin from
+`PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, since the history the value covers is
+history it never held.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
