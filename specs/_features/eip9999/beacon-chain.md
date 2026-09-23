@@ -143,10 +143,12 @@ client with no chain of its own MUST adopt a supplied base rather than starting
 from `PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, which it could not otherwise
 reproduce.
 
-The guarantee is therefore anchored at the checkpoint, not at the fork: the
-chain attests that the beacon chain and the execution chain agree over the range
-since the anchor, and everything before it rests on weak subjectivity, as it
-already does.
+`state.payload_request_chain_root` itself is unaffected by this. It is consensus
+state, identical across every node following a chain, and commits to the full
+post-fork history regardless of how a node obtained it. What the seed bounds is
+how much of that history a *comparison* covers, since an execution client can
+only vouch for the range it accumulated over. Everything before that rests on
+weak subjectivity, as it already does.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
