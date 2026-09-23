@@ -2,6 +2,7 @@ from hashlib import sha256
 
 from eth_consensus_specs.test.context import (
     single_phase,
+    spec_state_test,
     spec_test,
     with_payload_request_chain_and_later,
 )
@@ -175,3 +176,79 @@ def test_requests_list_covers_builder_request_types(spec):
     assert len(encoded) == 1
     assert encoded[0][:1] == spec.BUILDER_DEPOSIT_REQUEST_TYPE
     assert spec.compute_requests_hash(encoded) != spec.compute_requests_hash([])
+
+
+@with_payload_request_chain_and_later
+@spec_state_test
+def test_cl_and_el_paths_agree(spec, state):
+    """
+    The commitment the consensus layer builds from the bid, beacon state and
+    block body must equal the one the execution layer builds from the payload
+    it executed. This is the property the whole mechanism rests on.
+    """
+    requests = spec.ExecutionRequests()
+    state.payload_expected_withdrawals = spec.Withdrawals(
+        data=[
+            spec.Withdrawal(
+                index=spec.WithdrawalIndex(1),
+                validator_index=spec.ValidatorIndex(2),
+                address=spec.ExecutionAddress(b"\x99" * 20),
+                amount=spec.Gwei(42),
+            )
+        ]
+    )
+
+    # --- consensus-layer inputs: bid + state + block body, never the payload
+    bid = state.latest_execution_payload_bid.copy()
+    bid.parent_block_hash = spec.Hash32(b"\xaa" * 32)
+    bid.block_hash = spec.Hash32(b"\x66" * 32)
+    bid.prev_randao = spec.Bytes32(b"\xbb" * 32)
+    bid.gas_limit = spec.Uint64(30000000)
+    bid.slot = state.slot
+    bid.blob_kzg_commitments = spec.BlobKZGCommitments()
+    bid.execution_requests_root = spec.hash_tree_root(requests)
+
+    cl_root = spec.compute_payload_request_root(state, bid, requests)
+
+    # --- execution-layer inputs: the payload it executed, plus its own header
+    payload = spec.ExecutionPayload(
+        parent_hash=bid.parent_block_hash,
+        fee_recipient=spec.ExecutionAddress(),
+        state_root=spec.Bytes32(b"\x11" * 32),
+        receipts_root=spec.Bytes32(b"\x22" * 32),
+        logs_bloom=spec.LogsBloom(b"\x33" * 256),
+        prev_randao=bid.prev_randao,
+        block_number=spec.Uint64(7),
+        gas_limit=bid.gas_limit,
+        gas_used=spec.Uint64(21000),
+        timestamp=spec.compute_time_at_slot(state, bid.slot),
+        extra_data=spec.ExtraData(data=[]),
+        base_fee_per_gas=spec.Uint256(1),
+        block_hash=bid.block_hash,
+        transactions=spec.Transactions(),
+        withdrawals=state.payload_expected_withdrawals,
+        blob_gas_used=spec.Uint64(0),
+        excess_blob_gas=spec.Uint64(0),
+        block_access_list=spec.BlockAccessList(),
+        slot_number=bid.slot,
+    )
+
+    el_commitment = spec.ExecutionPayloadCommitment(
+        parent_hash=payload.parent_hash,
+        prev_randao=payload.prev_randao,
+        gas_limit=payload.gas_limit,
+        timestamp=payload.timestamp,
+        block_hash=payload.block_hash,
+        withdrawals=payload.withdrawals,
+        slot_number=payload.slot_number,
+    )
+    el_root = spec.hash_tree_root(
+        spec.NewPayloadRequestCommitment(
+            execution_payload=el_commitment,
+            versioned_hashes=spec.VersionedHashes(),
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            requests_hash=spec.compute_requests_hash(spec.get_execution_requests_list(requests)),
+        )
+    )
+
+    assert cl_root == el_root
