@@ -64,9 +64,11 @@ def test_basic(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
@@ -75,7 +77,7 @@ def test_basic(spec, state):
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
     # On receiving a block of next epoch
-    store.time = current_time + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH // 1000
+    store.time_ms = current_time_ms + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH
     block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
@@ -95,16 +97,19 @@ def test_on_block_checkpoints(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Run for 1 epoch with full attestations
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -119,7 +124,8 @@ def test_on_block_checkpoints(spec, state):
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -143,9 +149,11 @@ def test_on_block_future_block(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Do NOT tick time to `GENESIS_SLOT + 1` slot
     # Fail receiving block of `GENESIS_SLOT + 1` slot
@@ -164,9 +172,11 @@ def test_on_block_bad_parent_root(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Fail receiving block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
@@ -198,9 +208,11 @@ def test_on_block_before_finalized(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Fork
     another_state = state.copy()
@@ -235,9 +247,11 @@ def test_on_block_finalized_skip_slots(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Fill epoch 0 and the first slot of epoch 1
     state, store, _ = yield from apply_next_slots_with_attestations(
@@ -294,9 +308,11 @@ def test_on_block_finalized_skip_slots_not_in_skip_chain(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Fill epoch 0 and the first slot of epoch 1
     state, store, _ = yield from apply_next_slots_with_attestations(
@@ -362,9 +378,9 @@ def test_new_finalized_slot_is_not_justified_checkpoint_ancestor(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(store.genesis_time)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # ----- Process state
     # Goal: make `store.finalized_checkpoint.epoch == 0` and `store.justified_checkpoint.epoch == 3`
@@ -448,9 +464,11 @@ def test_new_finalized_slot_is_justified_checkpoint_ancestor(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Process state
     next_epoch(spec, state)
@@ -525,27 +543,26 @@ def test_proposer_boost(spec, state):
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
     late_block_cutoff_ms = spec.get_attestation_due_ms()
-    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
-    time = (
-        store.genesis_time
-        + block.slot * spec.config.SLOT_DURATION_MS // 1000
-        + late_block_cutoff
-        - 1
+    late_block_cutoff = spec.milliseconds_to_seconds(late_block_cutoff_ms - 1) + 1
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + block.slot * spec.config.SLOT_DURATION_MS
+        + spec.seconds_to_milliseconds(late_block_cutoff - 1)
     )
 
-    on_tick_and_append_step(spec, store, time, test_steps)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
-    time = (
-        store.genesis_time
-        + block.slot * spec.config.SLOT_DURATION_MS // 1000
-        + spec.config.SLOT_DURATION_MS // 1000
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + block.slot * spec.config.SLOT_DURATION_MS
+        + spec.config.SLOT_DURATION_MS
     )
-    on_tick_and_append_step(spec, store, time, test_steps)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     assert store.proposer_boost_root == spec.Root()
     node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) == 0
@@ -555,20 +572,22 @@ def test_proposer_boost(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on timely arrival at start of boost interval
-    time = store.genesis_time + block.slot * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time) + block.slot * spec.config.SLOT_DURATION_MS
+    )
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
-    time = (
-        store.genesis_time
-        + block.slot * spec.config.SLOT_DURATION_MS // 1000
-        + spec.config.SLOT_DURATION_MS // 1000
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + block.slot * spec.config.SLOT_DURATION_MS
+        + spec.config.SLOT_DURATION_MS
     )
-    on_tick_and_append_step(spec, store, time, test_steps)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     assert store.proposer_boost_root == spec.Root()
     node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) == 0
@@ -604,12 +623,14 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     # Process block on untimely arrival in the same slot
     # Round up to nearest second
     late_block_cutoff_ms = spec.get_attestation_due_ms()
-    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
-    time = (
-        store.genesis_time + block.slot * spec.config.SLOT_DURATION_MS // 1000 + late_block_cutoff
+    late_block_cutoff = spec.milliseconds_to_seconds(late_block_cutoff_ms - 1) + 1
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + block.slot * spec.config.SLOT_DURATION_MS
+        + spec.seconds_to_milliseconds(late_block_cutoff)
     )
 
-    on_tick_and_append_step(spec, store, time, test_steps)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
 
     assert store.proposer_boost_root == spec.Root()
@@ -646,15 +667,14 @@ def test_proposer_boost_is_first_block(spec, state):
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
     late_block_cutoff_ms = spec.get_attestation_due_ms()
-    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
-    time = (
-        store.genesis_time
-        + block_a.slot * spec.config.SLOT_DURATION_MS // 1000
-        + late_block_cutoff
-        - 1
+    late_block_cutoff = spec.milliseconds_to_seconds(late_block_cutoff_ms - 1) + 1
+    time_ms = (
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + block_a.slot * spec.config.SLOT_DURATION_MS
+        + spec.seconds_to_milliseconds(late_block_cutoff - 1)
     )
 
-    on_tick_and_append_step(spec, store, time, test_steps)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_a, test_steps)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
@@ -698,9 +718,11 @@ def test_justification_withholding(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     for _ in range(2):
         next_epoch(spec, state)
@@ -782,9 +804,11 @@ def test_justification_withholding_reverse_order(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     for _ in range(2):
         next_epoch(spec, state)
@@ -865,15 +889,18 @@ def test_justification_update_beginning_of_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -896,8 +923,10 @@ def test_justification_update_beginning_of_epoch(spec, state):
 
     # Tick store to the start of the next epoch
     slot = spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
 
     # Now add the blocks & check that justification update was triggered
@@ -922,15 +951,18 @@ def test_justification_update_end_of_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -954,8 +986,10 @@ def test_justification_update_end_of_epoch(spec, state):
     # Tick store to the last slot of the next epoch
     slot = spec.get_current_slot(store) + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     slot = slot + spec.SLOTS_PER_EPOCH - 1
-    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
 
     # Now add the blocks & check that justification update was triggered
@@ -980,15 +1014,18 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1036,8 +1073,10 @@ def test_incompatible_justification_update_start_of_epoch(spec, state):
 
     # Tick store to the last slot of the next epoch
     slot = another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 8
 
     # Now add the blocks & check that justification update was triggered
@@ -1075,15 +1114,18 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1132,8 +1174,10 @@ def test_incompatible_justification_update_end_of_epoch(spec, state):
     # Tick store to the last slot of the next epoch
     slot = another_state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     slot = slot + spec.SLOTS_PER_EPOCH - 1
-    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 8
 
     # Now add the blocks & check that justification update was triggered
@@ -1170,15 +1214,18 @@ def test_justified_update_not_realized_finality(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1259,15 +1306,18 @@ def test_justified_update_monotonic(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1351,15 +1401,18 @@ def test_justified_update_always_if_better(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1431,15 +1484,18 @@ def test_pull_up_past_epoch_block(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1461,8 +1517,10 @@ def test_pull_up_past_epoch_block(spec, state):
 
     # Tick store to the next epoch
     next_epoch(spec, state)
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
     assert store.finalized_checkpoint.epoch == 2
@@ -1490,15 +1548,18 @@ def test_not_pull_up_current_epoch_block(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1514,8 +1575,10 @@ def test_not_pull_up_current_epoch_block(spec, state):
 
     # Skip to the next epoch
     next_epoch(spec, state)
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(state.slot) == 5
 
     # Create a chain within epoch 5 that contains a justification for epoch 5
@@ -1547,15 +1610,18 @@ def test_pull_up_on_tick(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.seconds_to_milliseconds(store.genesis_time)
+        + state.slot * spec.config.SLOT_DURATION_MS,
         test_steps,
     )
 
@@ -1571,8 +1637,10 @@ def test_pull_up_on_tick(spec, state):
 
     # Skip to the next epoch
     next_epoch(spec, state)
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(state.slot) == 5
 
     # Create a chain within epoch 5 that contains a justification for epoch 5
@@ -1592,8 +1660,10 @@ def test_pull_up_on_tick(spec, state):
 
     # Now tick the store to the next epoch and check that pull-up tip updates were applied
     next_epoch(spec, state)
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + spec.seconds_to_milliseconds(
+        store.genesis_time
+    )
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     assert spec.compute_epoch_at_slot(state.slot) == 6
     assert store.justified_checkpoint.epoch == 5
     # There's no new finality, so no finality updates expected

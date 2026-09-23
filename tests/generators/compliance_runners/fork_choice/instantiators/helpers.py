@@ -511,7 +511,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     test_events = []
 
     def slot_to_time(slot):
-        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
+        return spec.milliseconds_to_seconds(slot * spec.config.SLOT_DURATION_MS) + genesis_time
 
     def add_tick_step(time):
         test_events.append(("tick", time, None))
@@ -657,15 +657,16 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             return False
 
     # record initial tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, store.time_ms, test_steps)
 
     for event in test_events:
         event_kind = event[0]
         if event_kind == "tick":
             _, time, _ = event
-            if time > store.time:
-                on_tick_and_append_step(spec, store, time, test_steps)
-                assert store.time == time
+            time_ms = spec.seconds_to_milliseconds(time)
+            if time_ms > store.time_ms:
+                on_tick_and_append_step(spec, store, time_ms, test_steps)
+                assert store.time_ms == time_ms
         elif event_kind == "block":
             _, signed_block, valid = event
             if valid is None:

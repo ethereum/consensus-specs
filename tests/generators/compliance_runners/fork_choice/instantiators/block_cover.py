@@ -294,20 +294,19 @@ def _debug_run_sanity_checks(
                 run_on_payload_attestation_message(spec, store, ptc_message, valid=True)
 
     for signed_block in signed_blocks:
-        block_time = (
-            anchor_state.genesis_time
-            + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
+        block_time = anchor_state.genesis_time + spec.milliseconds_to_seconds(
+            signed_block.message.slot * spec.config.SLOT_DURATION_MS
         )
-        if block_time > store.time:
-            spec.on_tick(store, block_time)
+        if spec.seconds_to_milliseconds(block_time) > store.time_ms:
+            spec.on_tick(store, spec.seconds_to_milliseconds(block_time))
         debug_add_block(signed_block)
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
-    current_epoch_time = (
-        anchor_state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
+    current_epoch_time = anchor_state.genesis_time + spec.milliseconds_to_seconds(
+        current_epoch_slot * spec.config.SLOT_DURATION_MS
     )
-    if current_epoch_time > store.time:
-        spec.on_tick(store, current_epoch_time)
+    if spec.seconds_to_milliseconds(current_epoch_time) > store.time_ms:
+        spec.on_tick(store, spec.seconds_to_milliseconds(current_epoch_time))
 
     run_sanity_checks(spec, store, model_params, target_block_root)
 
@@ -382,8 +381,8 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     payload_attestations = []
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
-    current_epoch_time = (
-        state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
+    current_epoch_time = state.genesis_time + spec.milliseconds_to_seconds(
+        current_epoch_slot * spec.config.SLOT_DURATION_MS
     )
 
     test_data = FCTestData(
