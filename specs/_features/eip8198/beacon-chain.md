@@ -75,12 +75,11 @@ upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
 proposer preferences. The usual gas-limit adjustment rule applies at the
 transition, so reaching a lower target requires advance coordination.
 
-<!-- list-of-records:slot_duration_schedule[0] -->
+<!-- list-of-records:slot_duration_schedule -->
 
-| Name               |           Value |
-| ------------------ | --------------: |
-| `EPOCH`            |      `Epoch(0)` |
-| `SLOT_DURATION_MS` | `Uint64(12000)` |
+| Epoch | Slot Duration Ms |                             Date |
+| ----: | ---------------: | -------------------------------: |
+|     0 |            12000 | December 1, 2020, 12:00:23pm UTC |
 
 ## Helpers
 
