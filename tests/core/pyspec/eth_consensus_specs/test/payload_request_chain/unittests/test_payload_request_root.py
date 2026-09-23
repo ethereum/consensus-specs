@@ -1,3 +1,5 @@
+from hashlib import sha256
+
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_test,
@@ -31,7 +33,9 @@ def build_request_commitment(spec, payload_commitment):
         execution_payload=payload_commitment,
         versioned_hashes=spec.VersionedHashes(data=[spec.VersionedHash(b"\x01" + b"\xcc" * 31)]),
         parent_beacon_block_root=spec.Root(b"\xdd" * 32),
-        execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        requests_hash=spec.compute_requests_hash(
+            spec.get_execution_requests_list(spec.ExecutionRequests())
+        ),
     )
 
 
@@ -63,7 +67,7 @@ def test_commitment_binds_every_field(spec):
     assert spec.hash_tree_root(mutated) != base_root
 
     mutated = base.copy()
-    mutated.execution_requests_root = spec.Root(b"\x05" * 32)
+    mutated.requests_hash = spec.Hash32(b"\x05" * 32)
     assert spec.hash_tree_root(mutated) != base_root
 
     mutated = base.copy()
@@ -132,3 +136,15 @@ def test_payload_request_chain_root_extends(spec):
 
     assert first != genesis
     assert second != first
+
+
+@with_payload_request_chain_and_later
+@spec_test
+@single_phase
+def test_requests_hash_matches_eip7685(spec):
+    """The CL re-derivation must equal the execution header's commitment."""
+    requests = spec.ExecutionRequests()
+    encoded = spec.get_execution_requests_list(requests)
+
+    expected = sha256(b"".join(sha256(r).digest() for r in encoded)).digest()
+    assert bytes(spec.compute_requests_hash(encoded)) == expected

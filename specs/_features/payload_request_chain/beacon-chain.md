@@ -9,6 +9,8 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
   - [Why `block_hash` suffices for the rest of the payload](#why-block_hash-suffices-for-the-rest-of-the-payload)
+  - [Computable without execution](#computable-without-execution)
+  - [Anchoring](#anchoring)
 - [Constants](#constants)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -18,15 +20,15 @@
     - [Modified `BeaconState`](#modified-beaconstate)
 - [Helpers](#helpers)
   - [New `compute_execution_payload_commitment`](#new-compute_execution_payload_commitment)
+  - [New `compute_requests_hash`](#new-compute_requests_hash)
   - [New `compute_new_payload_request_commitment`](#new-compute_new_payload_request_commitment)
   - [New `compute_payload_request_root`](#new-compute_payload_request_root)
   - [New `compute_payload_request_chain_root`](#new-compute_payload_request_chain_root)
 - [Engine APIs](#engine-apis)
-  - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
-  - [New `get_payload_request_chain_root`](#new-get_payload_request_chain_root)
+  - [New `verify_payload_request_chain_root`](#new-verify_payload_request_chain_root)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Modified `process_execution_payload_bid`](#modified-process_execution_payload_bid)
+    - [Modified `process_parent_execution_payload`](#modified-process_parent_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -56,6 +58,14 @@ the correspondence check itself; it simply performs it once at the end of a
 range rather than once per block. Execution validity remains delegated to the
 execution client exactly as before.
 
+This mechanism is orthogonal to payload validity. It adds no execution-layer
+header field, no execution-layer block validity rule, and no change to what
+makes a payload valid. The chain root is derived metadata that each layer
+maintains while verifying blocks, compared over the engine API. A mismatch means
+the beacon chain committed to something the execution chain does not contain —
+an invalidity of the *beacon* chain, concluded by the consensus client, not of
+any execution block.
+
 This proposal is purely additive. `verify_execution_payload_envelope` keeps its
 existing per-field checks — those already establish correspondence whenever the
 payload is in hand, and the commitment exists for the case where it is not.
@@ -81,12 +91,51 @@ committed to by `block_hash`**, which holds for all current fields. A future
 fork that adds a payload field not covered by the execution block hash MUST also
 add it to `ExecutionPayloadCommitment`, or that field will not be bound.
 
-`versioned_hashes` and `execution_requests_root` are carried explicitly even
-though the block hash commits to the same data, because it does so under
-different schemes — blob hashes inside `transactions_root`, and requests as
-`requests_hash`, an SHA256 digest of the flat encodings rather than the SSZ root
-the bid carries. The consensus layer cannot invert either, so both sides compute
-the SSZ form.
+`versioned_hashes` and `requests_hash` are carried explicitly even though the
+block hash commits to the same data, because it does so under forms the
+consensus layer cannot invert: blob hashes live inside `transactions_root`, and
+requests are committed as `requests_hash`. The consensus layer re-derives
+`requests_hash` from the same `execution_requests_list` it already produces for
+`is_valid_block_hash`, and the execution layer reads it straight from the
+header.
+
+### Computable without execution
+
+Every input is available from block data alone:
+
+| Input                                                                                             | Source                                 |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `parent_hash`, `prev_randao`, `gas_limit`, `timestamp`, `slot_number`, `parent_beacon_block_root` | execution header                       |
+| `block_hash`                                                                                      | the header's own hash                  |
+| `withdrawals`                                                                                     | block body                             |
+| `versioned_hashes`                                                                                | block body, from the blob transactions |
+| `requests_hash`                                                                                   | execution header                       |
+
+No field requires executing the block. An execution client can therefore
+maintain the chain over any range it holds block data for, including blocks
+backfilled after a snap sync that it will never execute. This is deliberately
+weaker than requiring an executed chain, and is what keeps the mechanism usable
+on a freshly bootstrapped node.
+
+This is also why `requests_hash` is used in place of the bid's
+`execution_requests_root`: execution requests are *produced by* execution, so
+their SSZ root is unavailable to a client that has not executed the block, while
+`requests_hash` is a header field.
+
+### Anchoring
+
+`payload_request_chain_root` is part of `BeaconState`, so it is carried by a
+weak-subjectivity checkpoint. A consensus client that checkpoint-syncs trusts
+the anchor's value exactly as it trusts the rest of the anchor state, and
+supplies it to the execution client as the base to fold from. An execution
+client with no chain of its own MUST adopt a supplied base rather than starting
+from `PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS`, which it could not otherwise
+reproduce.
+
+The guarantee is therefore anchored at the checkpoint, not at the fork: the
+chain attests that the beacon chain and the execution chain agree over the range
+since the anchor, and everything before it rests on weak subjectivity, as it
+already does.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -134,7 +183,7 @@ class NewPayloadRequestCommitment(ProgressiveContainer):
     execution_payload: ExecutionPayloadCommitment
     versioned_hashes: VersionedHashes
     parent_beacon_block_root: Root
-    execution_requests_root: Root
+    requests_hash: Hash32
 ```
 
 *Note*: this is a commitment, not a header. Its root is **not** equal to
@@ -250,11 +299,26 @@ def compute_execution_payload_commitment(
     )
 ```
 
+### New `compute_requests_hash`
+
+The [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685) commitment that the
+execution header already stores, re-derived here from the same
+`execution_requests_list` the consensus layer hands the execution layer for
+`is_valid_block_hash`.
+
+```python
+def compute_requests_hash(execution_requests_list: Sequence[bytes]) -> Hash32:
+    """
+    Return the SHA256 commitment over an ordered list of type-prefixed requests.
+    """
+    return Hash32(sha256(b"".join(sha256(request) for request in execution_requests_list)))
+```
+
 ### New `compute_new_payload_request_commitment`
 
 ```python
 def compute_new_payload_request_commitment(
-    state: BeaconState, bid: ExecutionPayloadBid
+    state: BeaconState, bid: ExecutionPayloadBid, requests: ExecutionRequests
 ) -> NewPayloadRequestCommitment:
     """
     Return the ``NewPayloadRequestCommitment`` committed to by ``bid``.
@@ -268,18 +332,20 @@ def compute_new_payload_request_commitment(
         execution_payload=compute_execution_payload_commitment(state, bid),
         versioned_hashes=versioned_hashes,
         parent_beacon_block_root=state.latest_block_header.parent_root,
-        execution_requests_root=bid.execution_requests_root,
+        requests_hash=compute_requests_hash(get_execution_requests_list(requests)),
     )
 ```
 
 ### New `compute_payload_request_root`
 
 ```python
-def compute_payload_request_root(state: BeaconState, bid: ExecutionPayloadBid) -> Root:
+def compute_payload_request_root(
+    state: BeaconState, bid: ExecutionPayloadBid, requests: ExecutionRequests
+) -> Root:
     """
     Return the payload request root committed to by ``bid``.
     """
-    return hash_tree_root(compute_new_payload_request_commitment(state, bid))
+    return hash_tree_root(compute_new_payload_request_commitment(state, bid, requests))
 ```
 
 ### New `compute_payload_request_chain_root`
@@ -300,65 +366,47 @@ def compute_payload_request_chain_root(
 
 ## Engine APIs
 
-### Modified `verify_and_notify_new_payload`
+### New `verify_payload_request_chain_root`
 
-The consensus client MAY assert its expected chain root when delivering a
-payload. This is the reconciliation point after a range sync.
+`engine_newPayload` gains an optional `payloadRequestChainRoot` request
+parameter and a corresponding optional response field. The result is reported
+**separately from `PayloadStatus`**: payload validity is determined by exactly
+today's rules, and this comparison neither strengthens nor weakens it.
 
-When `payload_request_chain_root` is present, the execution client computes the
-payload request root of `new_payload_request`, folds it into the chain it has
-accumulated over the blocks it has executed, and compares the result against the
-supplied value. The supplied value therefore covers the chain **through this
-payload**, not through its parent.
+The execution client folds the payload request root of `new_payload_request`
+into the chain it has accumulated over the ancestry and compares. The supplied
+value therefore covers the chain **through this payload**, not through its
+parent.
 
-If the execution client has not executed every ancestor — for example because
-its state was acquired by snap sync — it cannot compute the chain and MUST
-report that it is still syncing rather than reject the payload. Only a computed
-mismatch is a rejection.
+Three outcomes, and the distinction between the last two is the whole mechanism:
 
-`payload_request_chain_root` is optional so that the method remains backwards
-compatible and so that steady-state operation, where each payload is verified
-individually, carries no additional data.
+- **`True`** — the chains agree. The consensus client MAY consider every block
+  in the range covered by the chain to correspond to the payloads the execution
+  client holds.
+- **`None`** — the execution client does not hold block data for the ancestry,
+  or has no base to fold from, and therefore did not compare. This is not a
+  disagreement. The consensus client continues delivering payloads as its head
+  advances; the comparison resolves once the gap closes.
+- **`False`** — the execution client held the ancestry, compared, and the roots
+  differ. Some bid in the range committed to values the corresponding payload
+  does not carry. The consensus client MUST NOT treat the range as verified and
+  MUST treat its chain as invalid.
+
+A consensus client whose execution client returns `None` simply keeps
+delivering; there is nothing to recover and no divergence to locate. A `False`
+result is terminal for that chain, and ordinary per-payload validation localises
+the offending block through `latestValidHash` as payloads arrive.
 
 ```python
-def verify_and_notify_new_payload(
+def verify_payload_request_chain_root(
     self: ExecutionEngine,
     new_payload_request: NewPayloadRequest,
-    # [New in DeferredPayloadVerification]
-    payload_request_chain_root: Optional[Bytes32] = None,
-) -> bool:
+    payload_request_chain_root: Bytes32,
+) -> Optional[bool]:
     """
-    Return ``True`` if and only if ``new_payload_request`` is valid with respect
-    to ``self.execution_state``, and, when ``payload_request_chain_root`` is
-    present, the execution client's own payload request chain root through this
-    payload equals it.
-    """
-```
-
-After a range sync in which no payload envelopes were downloaded, a consensus
-client holds a `payload_request_chain_root` covering every full payload in the
-range, accumulated purely from beacon blocks. It reconciles that value with the
-execution client the first time it delivers a payload, by passing
-`state.payload_request_chain_root` to `verify_and_notify_new_payload`. A
-negative result means the two layers do not agree on the range: the consensus
-client MUST NOT treat the range as verified, and SHOULD locate the divergence
-with `get_payload_request_chain_root` before discarding state.
-
-### New `get_payload_request_chain_root`
-
-A chained commitment reports *that* two chains diverged, never *where*. This
-method lets a consensus client locate the divergence by binary search over the
-range it synced.
-
-The execution client can only answer for blocks it has **executed**. A block
-whose state was acquired by other means, for example snap sync, has no payload
-request chain root, and the method returns `None`.
-
-```python
-def get_payload_request_chain_root(self: ExecutionEngine, block_hash: Hash32) -> Optional[Bytes32]:
-    """
-    Return the payload request chain root at ``block_hash``, or ``None`` if the
-    block is unknown, not canonical, or has not been executed.
+    Return ``True`` if the execution client's own payload request chain root
+    through ``new_payload_request`` equals ``payload_request_chain_root``,
+    ``False`` if it differs, and ``None`` if the client cannot compare.
     """
 ```
 
@@ -366,73 +414,50 @@ def get_payload_request_chain_root(self: ExecutionEngine, block_hash: Hash32) ->
 
 ### Block processing
 
-#### Modified `process_execution_payload_bid`
+#### Modified `process_parent_execution_payload`
 
-`process_execution_payload_bid` is modified to extend the payload request chain.
-It already runs during range sync with no payload available, and it already runs
-after `process_withdrawals` — so `state.payload_expected_withdrawals` holds the
-withdrawals this slot's payload must honor — and after
-`process_parent_execution_payload`, so `state.latest_block_hash` is current.
+`process_parent_execution_payload` is modified to extend the payload request
+chain. This is the correct point, for two independent reasons.
+
+First, it is where a payload is known to be **FULL**. A bid is processed for
+every block, but its payload may never be revealed; extending the chain when the
+bid is processed would fold in payloads the execution layer never produced,
+desynchronising the two chains on an entirely honest chain. Here the FULL/EMPTY
+determination has already been made.
+
+Second, it is where the parent's `ExecutionRequests` are available, as
+`block.body.parent_execution_requests`.
+
+Every other input is correct at this point in `process_block`, which runs this
+function first: `state.latest_execution_payload_bid` is still the parent's bid,
+`state.payload_expected_withdrawals` still holds the withdrawals that payload
+had to honor (`process_withdrawals` has not yet run for this slot), and
+`state.latest_block_header` is still the parent block's header, so its
+`parent_root` is the parent payload's `parent_beacon_block_root`.
+
+The chain therefore lags the beacon chain by one slot, which matches the
+execution layer's own position.
 
 ```python
-def process_execution_payload_bid(
-    state: BeaconState, signed_bid: SignedExecutionPayloadBid
-) -> None:
-    bid = signed_bid.message
-    builder_index = bid.builder_index
-    amount = bid.value
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
 
-    # For self-builds, amount must be zero regardless of withdrawal credential prefix
-    if builder_index == BUILDER_INDEX_SELF_BUILD:
-        assert amount == 0
-        assert signed_bid.signature == bls.G2_POINT_AT_INFINITY
-    else:
-        # Verify that the builder is active
-        assert is_active_builder(state, builder_index)
-        # Verify that the builder is a payload builder
-        assert state.builders[builder_index].version == PAYLOAD_BUILDER_VERSION
-        # Verify that the builder has funds to cover the bid
-        assert can_builder_cover_bid(state, builder_index, amount)
-        # Verify that the bid signature is valid
-        assert verify_execution_payload_bid_signature(state, signed_bid)
+    if bid.parent_block_hash != parent_bid.block_hash:
+        # Parent was EMPTY -- no execution requests expected
+        assert requests == ExecutionRequests.empty()
+        return
 
-    # Verify commitments are under limit
-    assert (
-        len(bid.blob_kzg_commitments)
-        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
-    )
-
-    # Verify that the bid is for the current slot
-    assert bid.slot == state.slot
-    assert state.slot > GENESIS_SLOT
-    # Verify that the bid is for the right parent block
-    assert bid.parent_block_hash == state.latest_block_hash
-    # Verify that the bid's block hash differs from its parent block hash
-    assert bid.block_hash != bid.parent_block_hash
-    assert bid.parent_block_root == get_block_root_at_slot(state, state.slot - 1)
-    assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
-
-    # Record the pending payment if there is some payment
-    if amount > 0:
-        pending_payment = BuilderPendingPayment(
-            weight=Gwei(0),
-            withdrawal=BuilderPendingWithdrawal(
-                fee_recipient=bid.fee_recipient,
-                amount=amount,
-                builder_index=builder_index,
-            ),
-            proposer_index=get_beacon_proposer_index(state),
-        )
-        state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
-            pending_payment
-        )
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert hash_tree_root(requests) == parent_bid.execution_requests_root
 
     # [New in DeferredPayloadVerification]
-    # Extend the payload request chain with this bid's commitment
+    # The parent payload is now known to be FULL, so extend the chain with it
     state.payload_request_chain_root = compute_payload_request_chain_root(
-        state.payload_request_chain_root, compute_payload_request_root(state, bid)
+        state.payload_request_chain_root,
+        compute_payload_request_root(state, parent_bid, requests),
     )
 
-    # Cache the signed execution payload bid
-    state.latest_execution_payload_bid = bid
+    apply_parent_execution_payload(state, requests)
 ```
