@@ -20,130 +20,106 @@ The loop body itself is covered by ``inactivity_updates_loop``, on vectors with
 exactly one eligible index, where per-validator factors are well defined.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
+from itertools import combinations
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    capture_observations,
-    CAttribute,
-    CConstant,
-    CEnum,
-    CFactor,
-    CGate,
-    Context,
-    count_class,
-    coverage_aspect,
-    CPred,
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Boolean,
+    categorical,
+    choose,
+    comparison,
+    constant,
+    coverage_spec,
     each,
     exhaustive,
-    nwise_of,
-    rules,
-    Target,
+    factor,
+    Integer,
     union,
 )
 
 from .observation import observe_attributes
 
+current_epoch = attribute("current_epoch", Integer(min=0))
+loop_reached = attribute("loop_reached", Boolean())
+any_slashed = attribute("any_slashed", Boolean())
+eligible_count = attribute("eligible_count", Integer(min=0))
+ineligible_count = attribute("ineligible_count", Integer(min=0))
+active_eligible_count = attribute("active_eligible_count", Integer(min=0))
+slashed_count = attribute("slashed_count", Integer(min=0))
+max_slashed_withdrawable = attribute("max_slashed_withdrawable", Integer(min=0))
+previous_epoch_plus_one = attribute("previous_epoch_plus_one", Integer(min=0))
+loop_nonempty = attribute("loop_nonempty", Boolean())
+post_present = attribute("post_present", Boolean())
+participating_count = attribute("participating_count", Integer(min=0))
+zero_score_count = attribute("zero_score_count", Integer(min=0))
+finality_delay = attribute("finality_delay", Integer(min=0))
+changed_score_count = attribute("changed_score_count", Integer(min=0))
+
+genesis_epoch = constant("genesis_epoch", Integer(min=0))
+min_epochs_to_inactivity_penalty = constant("min_epochs_to_inactivity_penalty", Integer(min=0))
 COUNTS = ("ZERO", "ONE", "MANY")
 BRANCH_MIX = ("ALL_INCREMENT", "ALL_DECREMENT", "MIXED")
-
-# --- aspects ------------------------------------------------------------------
-
-
-@coverage_aspect("method")
-def capture_method(
-    current_epoch: CAttribute[int],
-    *,
-    genesis_epoch: CConstant[int],
-):
-    """The guard: the handler returns before the loop at the genesis epoch."""
-    current_after_genesis: CFactor = current_epoch > genesis_epoch
-
-
-@coverage_aspect("eligible")
-def capture_eligible(
-    loop_reached: CGate,
-    any_slashed: CGate,
-    eligible_count: CAttribute[int],
-    ineligible_count: CAttribute[int],
-    active_eligible_count: CAttribute[int],
-    slashed_count: CAttribute[int],
-    max_slashed_withdrawable: CAttribute[int],
-    previous_epoch_plus_one: CAttribute[int],
-):
-    """``is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)``."""
-    if loop_reached:
-        eligible_validators: CEnum[COUNTS] = count_class(eligible_count)
-        has_ineligible_validators: CPred = ineligible_count > 0
-        has_active_eligible: CPred = active_eligible_count > 0
-        has_slashed_validators: CPred = slashed_count > 0
-        if any_slashed:
-            # Over the slashed validators, the maximum withdrawable epoch: the
-            # comparison holds exactly when the slashed disjunct admits someone.
-            slashed_withdrawable_vs_previous: CFactor = (
-                max_slashed_withdrawable > previous_epoch_plus_one
-            )
-
-
-@coverage_aspect("loop")
-def capture_loop(
-    loop_nonempty: CGate,
-    post_present: CGate,
-    eligible_count: CAttribute[int],
-    participating_count: CAttribute[int],
-    zero_score_count: CAttribute[int],
-    finality_delay: CAttribute[int],
-    changed_score_count: CAttribute[int],
-    *,
-    min_epochs_to_inactivity_penalty: CConstant[int],
-):
-    """Loop-wide branch mix and effect."""
-    if loop_nonempty:
-        branch_mix: CEnum[BRANCH_MIX] = (
-            "ALL_INCREMENT"
-            if participating_count == 0
-            else "ALL_DECREMENT"
-            if participating_count == eligible_count
-            else "MIXED"
-        )
-        leaking: CFactor = finality_delay > min_epochs_to_inactivity_penalty
-        has_zero_score_eligible: CPred = zero_score_count > 0
-        if post_present:
-            scores_changed: CPred = changed_score_count > 0
-
-
-METHOD, ELIGIBLE, LOOP = capture_method, capture_eligible, capture_loop
+AFTER_GENESIS = comparison("current_after_genesis", current_epoch, genesis_epoch, op=">")
+METHOD = aspect("method", AFTER_GENESIS)
+ELIGIBLE_COUNT = categorical(
+    "eligible_validators",
+    choose(eligible_count == 0, "ZERO", choose(eligible_count == 1, "ONE", "MANY")),
+    COUNTS,
+    when=AFTER_GENESIS,
+)
+HAS_SLASHED = factor("has_slashed_validators", slashed_count > 0, when=AFTER_GENESIS)
+ELIGIBLE = aspect(
+    "eligible",
+    ELIGIBLE_COUNT,
+    factor("has_ineligible_validators", ineligible_count > 0, when=AFTER_GENESIS),
+    factor("has_active_eligible", active_eligible_count > 0, when=AFTER_GENESIS),
+    HAS_SLASHED,
+    comparison(
+        "slashed_withdrawable_vs_previous",
+        max_slashed_withdrawable,
+        previous_epoch_plus_one,
+        op=">",
+        when=HAS_SLASHED,
+    ),
+)
+LOOP = aspect(
+    "loop",
+    categorical(
+        "branch_mix",
+        choose(
+            participating_count == 0,
+            "ALL_INCREMENT",
+            choose(participating_count == eligible_count, "ALL_DECREMENT", "MIXED"),
+        ),
+        BRANCH_MIX,
+        when=ELIGIBLE_COUNT != "ZERO",
+    ),
+    comparison(
+        "leaking",
+        finality_delay,
+        min_epochs_to_inactivity_penalty,
+        op=">",
+        when=ELIGIBLE_COUNT != "ZERO",
+    ),
+    factor("has_zero_score_eligible", zero_score_count > 0, when=ELIGIBLE_COUNT != "ZERO"),
+    factor(
+        "scores_changed",
+        changed_score_count > 0,
+        when=ELIGIBLE_COUNT != "ZERO",
+        available_when=post_present,
+    ),
+)
 ASPECTS = (METHOD, ELIGIBLE, LOOP)
-ALL_FACTORS = [factor for aspect in ASPECTS for factor in aspect.factors]
-
-ELIGIBLE_GATED = tuple(f.name for f in ELIGIBLE.factors)
+ALL_FACTORS = [f for a in ASPECTS for f in a.declarations]
 LOOP_GATED = tuple(f.name for f in LOOP.factors)
-GATED = ELIGIBLE_GATED + LOOP_GATED
-
-# --- observation --------------------------------------------------------------
-
-
-def observe(ctx: Context) -> None:
-    attributes = observe_attributes(ctx)
-    capture_observations(**attributes)
-    for aspect in (capture_method, capture_eligible, capture_loop):
-        aspect(**{name: attributes[name] for name in aspect.attributes})
-
-
-# --- feasibility --------------------------------------------------------------
-
 _GT = ("GT", "GT_1", "GT_FAR", True)
 
 
 def _epoch_never_before_genesis(a: dict, _g: str) -> bool:
     return a.get("current_after_genesis") not in ("LT", "LT_1", "LT_FAR")
-
-
-def _loop_factors_need_post_genesis(a: dict, g: str) -> bool:
-    value = a.get("current_after_genesis")
-    if value is not None and METHOD["current_after_genesis"].holds(value, g) is False:
-        return not any(name in a for name in GATED)
-    return True
 
 
 def _empty_loop_has_no_body(a: dict, _g: str) -> bool:
@@ -173,67 +149,53 @@ def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
     return value is None or value in _GT
 
 
-def _slashed_boundary_needs_a_slashed_validator(a: dict, _g: str) -> bool:
-    if "slashed_withdrawable_vs_previous" not in a:
-        return True
-    return a.get("has_slashed_validators") is not False
-
-
 FEASIBLE = rules(
     _epoch_never_before_genesis,
-    _loop_factors_need_post_genesis,
     _empty_loop_has_no_body,
     _mixed_branches_need_two_validators,
     _eligible_needs_a_disjunct,
-    _slashed_boundary_needs_a_slashed_validator,
 )
 
-# --- profiles -----------------------------------------------------------------
-
-# An exhaustive formula over a whole aspect would mention every factor in every
-# obligation, and a factor behind a narrower gate then forces that gate true
-# everywhere: an exhaustive `eligible` never asks for a state without a slashed
-# validator. Enumerate the unconditional factors and the gated one separately.
-ELIGIBLE_SHAPE = exhaustive(
-    [
-        ELIGIBLE["eligible_validators"],
-        ELIGIBLE["has_ineligible_validators"],
-        ELIGIBLE["has_active_eligible"],
-        ELIGIBLE["has_slashed_validators"],
-    ]
-)
-SLASHED_BOUNDARY = exhaustive(
-    [
-        ELIGIBLE["eligible_validators"],
-        ELIGIBLE["has_active_eligible"],
-        ELIGIBLE["slashed_withdrawable_vs_previous"],
-    ]
-)
-BRANCHES = exhaustive([LOOP["branch_mix"], LOOP["leaking"], LOOP["has_zero_score_eligible"]])
-EFFECT = exhaustive([LOOP["branch_mix"], LOOP["scores_changed"]])
-
+BRANCHES = exhaustive(LOOP.declarations[:3])
+EFFECT = exhaustive([LOOP.declarations[0], LOOP.declarations[3]])
 PROFILES = {
-    # every value of every factor
-    "smoke": each(ALL_FACTORS).where(FEASIBLE),
-    # the guard on its own
-    "method": METHOD.exhaustive().where(FEASIBLE),
-    # set size against each eligibility disjunct, and the withdrawable boundary
-    "eligible": union(ELIGIBLE_SHAPE, SLASHED_BOUNDARY).where(FEASIBLE),
-    # every branch mix against the leak boundary and against the observed effect
-    "loop": union(BRANCHES, EFFECT).where(FEASIBLE),
-    # each aspect on its own, then aspects pairwise against each other's values
+    "smoke": each(ALL_FACTORS),
+    "method": METHOD.exhaustive(),
+    "eligible": ELIGIBLE.exhaustive(),
+    "loop": union(BRANCHES, EFFECT),
     "standard": union(
-        each(ALL_FACTORS),
-        nwise_of([METHOD.each(), ELIGIBLE.each(), LOOP.each()], 2),
-    ).where(FEASIBLE),
+        each(ALL_FACTORS), *(a.each() * b.each() for a, b in combinations(ASPECTS, 2))
+    ),
 }
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "inactivity_updates",
-    ASPECTS,
-    observe,
-    PROFILES,
-    FEASIBLE,
+    focus="genesis guard, eligible-set shape, and branch mix and effects across loop iterations",
+    record="one vector; loop body details are covered by inactivity_updates_loop",
+    attributes=(
+        current_epoch,
+        loop_reached,
+        any_slashed,
+        eligible_count,
+        ineligible_count,
+        active_eligible_count,
+        slashed_count,
+        max_slashed_withdrawable,
+        previous_epoch_plus_one,
+        loop_nonempty,
+        post_present,
+        participating_count,
+        zero_score_count,
+        finality_delay,
+        changed_score_count,
+    ),
+    constants=(genesis_epoch, min_epochs_to_inactivity_penalty),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    feasible=FEASIBLE,
+)
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "genesis_epoch": lambda spec: int(spec.GENESIS_EPOCH),
         "min_epochs_to_inactivity_penalty": lambda spec: int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),

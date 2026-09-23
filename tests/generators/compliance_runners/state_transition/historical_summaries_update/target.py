@@ -5,53 +5,46 @@ target records the period boundary and whether the summary list already has
 entries before the update.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    CAttribute,
-    CConstant,
-    Context,
-    coverage_aspect,
-    CPred,
-    each,
-    Target,
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    constant,
+    coverage_spec,
+    factor,
+    Integer,
 )
 
 from .observation import observe_attributes
 
+next_epoch = attribute("next_epoch", Integer(min=1))
+summary_count = attribute("summary_count", Integer(min=0))
+epochs_per_historical_root = constant("epochs_per_historical_root", Integer(min=1))
 
-@coverage_aspect("update")
-def capture_update(
-    next_epoch: CAttribute[int],
-    summary_count: CAttribute[int],
-    *,
-    epochs_per_historical_root: CConstant[int],
-):
-    at_update_boundary: CPred = next_epoch % epochs_per_historical_root == 0
-    summaries_nonempty: CPred = summary_count > 0
-
-
-UPDATE = capture_update
+UPDATE = aspect(
+    "update",
+    factor("at_update_boundary", next_epoch % epochs_per_historical_root == 0),
+    factor("summaries_nonempty", summary_count > 0),
+)
 ASPECTS = (UPDATE,)
+PROFILES = {"smoke": UPDATE.each(), "normal": UPDATE.exhaustive(), "standard": UPDATE.exhaustive()}
 
-
-def _observe(ctx: Context) -> None:
-    capture_update(**observe_attributes(ctx))
-
-
-PROFILES = {
-    "smoke": each(UPDATE.factors),
-    "normal": UPDATE.exhaustive(),
-    "standard": UPDATE.exhaustive(),
-}
-
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "historical_summaries_update",
-    ASPECTS,
-    _observe,
-    PROFILES,
+    focus="process_historical_summaries_update: historical-root period boundary and summary-list occupancy",
+    record="one vector",
+    attributes=(
+        next_epoch,
+        summary_count,
+    ),
+    constants=(epochs_per_historical_root,),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+)
+
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "epochs_per_historical_root": lambda spec: (
             int(spec.SLOTS_PER_HISTORICAL_ROOT) // int(spec.SLOTS_PER_EPOCH)
