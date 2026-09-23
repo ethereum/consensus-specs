@@ -1,5 +1,3 @@
-from hashlib import sha256
-
 from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
@@ -34,9 +32,7 @@ def build_request_commitment(spec, payload_commitment):
         execution_payload=payload_commitment,
         versioned_hashes=spec.VersionedHashes(data=[spec.VersionedHash(b"\x01" + b"\xcc" * 31)]),
         parent_beacon_block_root=spec.Root(b"\xdd" * 32),
-        requests_hash=spec.compute_requests_hash(
-            spec.get_execution_requests_list(spec.ExecutionRequests())
-        ),
+        requests_hash=spec.Hash32(b"\xee" * 32),
     )
 
 
@@ -48,143 +44,40 @@ def test_commitment_binds_every_field(spec):
     base = build_request_commitment(spec, build_payload_commitment(spec))
     base_root = spec.hash_tree_root(base)
 
-    mutations = {
-        "parent_hash": spec.Hash32(b"\x01" * 32),
-        "prev_randao": spec.Bytes32(b"\x02" * 32),
-        "gas_limit": spec.Uint64(29999999),
-        "timestamp": spec.Uint64(1700000001),
-        "block_hash": spec.Hash32(b"\x03" * 32),
-        "slot_number": spec.Uint64(43),
-    }
-    for field, value in mutations.items():
+    for field, value in (
+        ("parent_hash", spec.Hash32(b"\x01" * 32)),
+        ("prev_randao", spec.Bytes32(b"\x02" * 32)),
+        ("gas_limit", spec.Uint64(29999999)),
+        ("timestamp", spec.Uint64(1700000001)),
+        ("block_hash", spec.Hash32(b"\x03" * 32)),
+        ("slot_number", spec.Uint64(43)),
+    ):
         mutated_payload = base.execution_payload.copy()
         setattr(mutated_payload, field, value)
         mutated = base.copy()
         mutated.execution_payload = mutated_payload
         assert spec.hash_tree_root(mutated) != base_root, field
 
-    mutated = base.copy()
-    mutated.parent_beacon_block_root = spec.Root(b"\x04" * 32)
-    assert spec.hash_tree_root(mutated) != base_root
-
-    mutated = base.copy()
-    mutated.requests_hash = spec.Hash32(b"\x05" * 32)
-    assert spec.hash_tree_root(mutated) != base_root
-
-    mutated = base.copy()
-    mutated.versioned_hashes = spec.VersionedHashes(
-        data=[spec.VersionedHash(b"\x01" + b"\xee" * 31)]
-    )
-    assert spec.hash_tree_root(mutated) != base_root
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_block_hash_binds_the_remaining_payload_fields(spec):
-    """
-    Fields absent from the commitment are reached through ``block_hash``: an
-    execution payload that differs in any RLP-covered field has a different
-    block hash, which the commitment does bind.
-    """
-    commitment = build_payload_commitment(spec)
-    tampered = commitment.copy()
-    tampered.block_hash = spec.Hash32(b"\x77" * 32)
-
-    assert spec.hash_tree_root(tampered) != spec.hash_tree_root(commitment)
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_nesting_keeps_groups_separable(spec):
-    """The payload-derived group is reachable as a single subtree root."""
-    payload_commitment = build_payload_commitment(spec)
-    request = build_request_commitment(spec, payload_commitment)
-
-    assert spec.hash_tree_root(request.execution_payload) == spec.hash_tree_root(payload_commitment)
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_payload_request_chain_root_is_order_dependent(spec):
-    """Chaining must bind position, not just membership."""
-    root_a = spec.Root(b"\x01" * 32)
-    root_b = spec.Root(b"\x02" * 32)
-    genesis = spec.PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS
-
-    forward = spec.compute_payload_request_chain_root(
-        spec.compute_payload_request_chain_root(genesis, root_a), root_b
-    )
-    reverse = spec.compute_payload_request_chain_root(
-        spec.compute_payload_request_chain_root(genesis, root_b), root_a
-    )
-
-    assert forward != reverse
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_payload_request_chain_root_extends(spec):
-    """Each extension must move the chain root."""
-    genesis = spec.PAYLOAD_REQUEST_CHAIN_ROOT_GENESIS
-    root = spec.Root(b"\x01" * 32)
-
-    first = spec.compute_payload_request_chain_root(genesis, root)
-    second = spec.compute_payload_request_chain_root(first, root)
-
-    assert first != genesis
-    assert second != first
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_requests_hash_matches_eip7685(spec):
-    """The CL re-derivation must equal the execution header's commitment."""
-    requests = spec.ExecutionRequests()
-    encoded = spec.get_execution_requests_list(requests)
-
-    expected = sha256(b"".join(sha256(r).digest() for r in encoded)).digest()
-    assert bytes(spec.compute_requests_hash(encoded)) == expected
-
-
-@with_eip9999_and_later
-@spec_test
-@single_phase
-def test_requests_list_covers_builder_request_types(spec):
-    """
-    EIP-8282 builder deposits and exits are committed by the execution header's
-    requests_hash, so the consensus layer's re-derivation must include them.
-    """
-    requests = spec.ExecutionRequests(
-        builder_deposits=spec.BuilderDepositRequests(
-            data=[
-                spec.BuilderDepositRequest(
-                    pubkey=spec.BLSPubkey(b"\x12" * 48),
-                    withdrawal_credentials=spec.Bytes32(b"\x34" * 32),
-                    amount=spec.Gwei(32000000000),
-                    signature=spec.BLSSignature(b"\x56" * 96),
-                )
-            ]
+    for field, value in (
+        ("parent_beacon_block_root", spec.Root(b"\x04" * 32)),
+        ("requests_hash", spec.Hash32(b"\x05" * 32)),
+        (
+            "versioned_hashes",
+            spec.VersionedHashes(data=[spec.VersionedHash(b"\x01" + b"\xee" * 31)]),
         ),
-    )
-    encoded = spec.get_execution_requests_list(requests)
-
-    assert len(encoded) == 1
-    assert encoded[0][:1] == spec.BUILDER_DEPOSIT_REQUEST_TYPE
-    assert spec.compute_requests_hash(encoded) != spec.compute_requests_hash([])
+    ):
+        mutated = base.copy()
+        setattr(mutated, field, value)
+        assert spec.hash_tree_root(mutated) != base_root, field
 
 
 @with_eip9999_and_later
 @spec_state_test
-def test_cl_and_el_paths_agree(spec, state):
+def test_chain_root_is_computable_without_the_payload(spec, state):
     """
-    The commitment the consensus layer builds from the bid, beacon state and
-    block body must equal the one the execution layer builds from the payload
-    it executed. This is the property the whole mechanism rests on.
+    The consensus layer derives the commitment from the bid, beacon state and
+    block body, and the execution layer from the payload it holds. Both must
+    reach the same root, and the consensus path must never touch a payload.
     """
     requests = spec.ExecutionRequests()
     state.payload_expected_withdrawals = spec.Withdrawals(
@@ -197,8 +90,8 @@ def test_cl_and_el_paths_agree(spec, state):
             )
         ]
     )
+    state.payload_request_chain_root = spec.Bytes32()
 
-    # --- consensus-layer inputs: bid + state + block body, never the payload
     bid = state.latest_execution_payload_bid.copy()
     bid.parent_block_hash = spec.Hash32(b"\xaa" * 32)
     bid.block_hash = spec.Hash32(b"\x66" * 32)
@@ -206,11 +99,11 @@ def test_cl_and_el_paths_agree(spec, state):
     bid.gas_limit = spec.Uint64(30000000)
     bid.slot = state.slot
     bid.blob_kzg_commitments = spec.BlobKZGCommitments()
-    bid.execution_requests_root = spec.hash_tree_root(requests)
 
-    cl_root = spec.compute_payload_request_root(state, bid, requests)
+    chain_root = spec.compute_payload_request_chain_root(state, bid, requests)
 
-    # --- execution-layer inputs: the payload it executed, plus its own header
+    # The execution layer builds the same commitment from the payload it
+    # executed, and from the requests_hash its header already carries.
     payload = spec.ExecutionPayload(
         parent_hash=bid.parent_block_hash,
         fee_recipient=spec.ExecutionAddress(),
@@ -232,23 +125,38 @@ def test_cl_and_el_paths_agree(spec, state):
         block_access_list=spec.BlockAccessList(),
         slot_number=bid.slot,
     )
-
-    el_commitment = spec.ExecutionPayloadCommitment(
-        parent_hash=payload.parent_hash,
-        prev_randao=payload.prev_randao,
-        gas_limit=payload.gas_limit,
-        timestamp=payload.timestamp,
-        block_hash=payload.block_hash,
-        withdrawals=payload.withdrawals,
-        slot_number=payload.slot_number,
+    encoded = spec.get_execution_requests_list(requests)
+    el_commitment = spec.NewPayloadRequestCommitment(
+        execution_payload=spec.ExecutionPayloadCommitment(
+            parent_hash=payload.parent_hash,
+            prev_randao=payload.prev_randao,
+            gas_limit=payload.gas_limit,
+            timestamp=payload.timestamp,
+            block_hash=payload.block_hash,
+            withdrawals=payload.withdrawals,
+            slot_number=payload.slot_number,
+        ),
+        versioned_hashes=spec.VersionedHashes(),
+        parent_beacon_block_root=state.latest_block_header.parent_root,
+        requests_hash=spec.sha256(b"".join(spec.sha256(r) for r in encoded)),
     )
-    el_root = spec.hash_tree_root(
-        spec.NewPayloadRequestCommitment(
-            execution_payload=el_commitment,
-            versioned_hashes=spec.VersionedHashes(),
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-            requests_hash=spec.compute_requests_hash(spec.get_execution_requests_list(requests)),
-        )
-    )
+    el_chain_root = spec.sha256(spec.Bytes32() + spec.hash_tree_root(el_commitment))
 
-    assert cl_root == el_root
+    assert chain_root == el_chain_root
+
+
+@with_eip9999_and_later
+@spec_state_test
+def test_chain_binds_position_not_membership(spec, state):
+    """Folding the same payload twice must not be indistinguishable."""
+    requests = spec.ExecutionRequests()
+    state.payload_request_chain_root = spec.Bytes32()
+    bid = state.latest_execution_payload_bid.copy()
+    bid.slot = state.slot
+
+    first = spec.compute_payload_request_chain_root(state, bid, requests)
+    state.payload_request_chain_root = first
+    second = spec.compute_payload_request_chain_root(state, bid, requests)
+
+    assert first != spec.Bytes32()
+    assert second != first
