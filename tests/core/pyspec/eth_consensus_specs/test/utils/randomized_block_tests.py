@@ -7,6 +7,11 @@ import warnings
 from collections.abc import Callable
 from random import Random
 
+from eth_consensus_specs.test.context import (
+    config_fork_epoch_overrides,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob_tx,
 )
@@ -14,7 +19,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_fulu
+from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -595,6 +600,12 @@ def _compute_statistics(scenario):
 
 
 def run_generated_randomized_test(spec, state, scenario):
+    if is_post_gloas(spec):
+        spec, config = spec_with_config_overrides(
+            get_copy_of_spec(spec), config_fork_epoch_overrides(spec, state)
+        )
+        yield "config", "cfg", config
+
     stats = _compute_statistics(scenario)
     if "setup" not in scenario:
         state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))
