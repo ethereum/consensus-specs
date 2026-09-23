@@ -116,7 +116,7 @@ def test_chain_root_is_computable_without_the_payload(spec, state):
         block_number=spec.Uint64(7),
         gas_limit=bid.gas_limit,
         gas_used=spec.Uint64(21000),
-        timestamp=spec.compute_time_at_slot(state, bid.slot),
+        timestamp=spec.compute_time_at_slot(state.genesis_time, bid.slot),
         extra_data=spec.ExtraData(data=[]),
         base_fee_per_gas=spec.Uint256(1),
         block_hash=bid.block_hash,

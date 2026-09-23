@@ -58,7 +58,7 @@ def verify_execution_payload_envelope(
     # Verify the execution payload is valid
     assert payload.slot_number == state.slot
     assert payload.parent_hash == state.latest_block_hash
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
     # Compute versioned hashes

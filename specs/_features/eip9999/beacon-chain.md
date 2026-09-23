@@ -151,7 +151,7 @@ def compute_payload_request_chain_root(
             parent_hash=bid.parent_block_hash,
             prev_randao=bid.prev_randao,
             gas_limit=bid.gas_limit,
-            timestamp=compute_time_at_slot(state, bid.slot),
+            timestamp=compute_time_at_slot(state.genesis_time, bid.slot),
             block_hash=bid.block_hash,
             withdrawals=state.payload_expected_withdrawals,
             slot_number=bid.slot,
