@@ -1,120 +1,69 @@
-"""Coverage target for the ``process_inactivity_updates`` loop body.
+"""One inactivity-update iteration, observed on a singleton eligible set.
 
-A coverage record is per vector, not per iteration, so per-validator factors are
-only well defined when the loop runs exactly once.  Every factor here is gated
-on ``single_eligible``; vectors with zero or several eligible indices satisfy
-nothing in this target, which is the intended signal — the set-level properties
-are scored by the ``inactivity_updates`` target instead.
-
-The body is two branches over one validator:
-
-    if index in get_unslashed_participating_indices(...):
-        state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
-    else:
-        state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
-    if not is_in_inactivity_leak(state):
-        state.inactivity_scores[index] -= min(
-            INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index]
-        )
-
-Both ``min`` saturations and ``is_in_inactivity_leak``'s own comparison are
-declared as comparison factors, so a ``cmp3`` or ``cmp5`` run demands the
-boundary cases (score exactly zero, score exactly at the recovery rate, finality
-delay exactly at ``MIN_EPOCHS_TO_INACTIVITY_PENALTY``) rather than only the
-two sides of each branch.
-
-Bind ``TARGET.for_spec(spec)`` before enumerating profiles: recovery-boundary
-and score-increase feasibility depend on that spec's configured constants.
+Activation prerequisites are included by conditional coverage formulas. Missing
+post-state data affects observation availability, not factor activation.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    capture_observations,
-    CAttribute,
-    CConstant,
-    CEnum,
-    CFactor,
-    CGate,
-    Context,
-    coverage_aspect,
-    CPred,
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Boolean,
+    categorical,
+    choose,
+    comparison,
+    constant,
+    coverage_spec,
+    derived,
     each,
     exhaustive,
+    factor,
+    Integer,
+    maximum,
     nwise,
-    rules,
-    Target,
     union,
 )
 
 from .observation import observe_attributes
 
-DELTAS = ("DECREASED", "UNCHANGED", "INCREASED")
+single_eligible = attribute("single_eligible", Boolean())
+leak_free = attribute("leak_free", Boolean())
+post_present = attribute("post_present", Boolean())
+score = attribute("score", Integer(min=0))
+post_score = attribute("post_score", Integer(min=0))
+participating = attribute("participating", Boolean())
+slashed = attribute("slashed", Boolean())
+active_in_previous = attribute("active_in_previous", Boolean())
+timely_target_flag = attribute("timely_target_flag", Boolean())
+finality_delay = attribute("finality_delay", Integer(min=0))
+min_epochs_to_inactivity_penalty = constant("min_epochs_to_inactivity_penalty", Integer(min=0))
+bias = constant("bias", Integer(min=1))
+recovery_rate = constant("recovery_rate", Integer(min=0))
 
-# --- aspects ------------------------------------------------------------------
+score_after_participation = derived(
+    "score_after_participation",
+    choose(participating, maximum(0, score - 1), score + bias),
+)
 
-
-@coverage_aspect("body")
-def capture_body(
-    single_eligible: CGate,
-    leak_free: CGate,
-    post_present: CGate,
-    score: CAttribute[int],
-    post_score: CAttribute[int],
-    participating: CAttribute[bool],
-    slashed: CAttribute[bool],
-    active_in_previous: CAttribute[bool],
-    timely_target_flag: CAttribute[bool],
-    finality_delay: CAttribute[int],
-    *,
-    min_epochs_to_inactivity_penalty: CConstant[int],
-    bias: CConstant[int],
-    recovery_rate: CConstant[int],
-):
-    """One iteration of the loop, for the single eligible validator."""
-    if single_eligible:
-        # why the index is eligible at all.  The withdrawable-epoch boundary is
-        # *not* a factor here: an index this loop visits is eligible, so
-        # `previous_epoch + 1 < withdrawable_epoch` already holds for every
-        # slashed one, and the comparison could only ever read GT.  The
-        # boundary lives in the `inactivity_updates` target, over all slashed
-        # validators, where the excluded side of it exists.
-        is_active_in_previous: CPred = active_in_previous
-        is_slashed: CPred = slashed
-        # which branch the participation check takes, and why
-        has_target_flag: CPred = timely_target_flag
-        is_participating: CPred = participating
-        # min(1, score)
-        score_gt_zero: CFactor = score > 0
-        # is_in_inactivity_leak(state)
-        leaking: CFactor = finality_delay > min_epochs_to_inactivity_penalty
-        score_after_participation = max(0, score - 1) if participating else score + bias
-        if leak_free:
-            # min(INACTIVITY_SCORE_RECOVERY_RATE, score)
-            score_vs_recovery_rate: CFactor = score_after_participation > recovery_rate
-        if post_present:
-            score_delta: CEnum[DELTAS] = (
-                "DECREASED"
-                if post_score < score
-                else "UNCHANGED"
-                if post_score == score
-                else "INCREASED"
-            )
-
-
-BODY = capture_body
+ACTIVE = factor("is_active_in_previous", active_in_previous)
+SLASHED = factor("is_slashed", slashed)
+FLAGGED = factor("has_target_flag", timely_target_flag)
+PARTICIPATING = factor("is_participating", participating)
+SCORE = comparison("score_gt_zero", score, 0)
+LEAKING = comparison("leaking", finality_delay, min_epochs_to_inactivity_penalty)
+RECOVERY = comparison(
+    "score_vs_recovery_rate", score_after_participation, recovery_rate, when=~LEAKING
+)
+DELTA = categorical(
+    "score_delta",
+    choose(post_score < score, "DECREASED", choose(post_score == score, "UNCHANGED", "INCREASED")),
+    ("DECREASED", "UNCHANGED", "INCREASED"),
+    available_when=post_present,
+)
+BODY = aspect("body", ACTIVE, SLASHED, FLAGGED, PARTICIPATING, SCORE, LEAKING, RECOVERY, DELTA)
 ASPECTS = (BODY,)
-ALL_FACTORS = list(BODY.factors)
-
-# --- observation --------------------------------------------------------------
-
-
-def observe(ctx: Context) -> None:
-    attributes = observe_attributes(ctx)
-    capture_observations(**attributes)
-    capture_body(**attributes)
-
+ALL_FACTORS = BODY.declarations
 
 # --- feasibility --------------------------------------------------------------
 
@@ -212,52 +161,46 @@ FEASIBLE = rules(
     _leaking_non_participant_gains_score,
 )
 
-# --- profiles -----------------------------------------------------------------
-
-# why the index is in the loop at all
-MEMBERSHIP = exhaustive(
-    [
-        BODY["is_active_in_previous"],
-        BODY["is_slashed"],
-        BODY["has_target_flag"],
-    ]
-)
-# The two branches and both min() saturations. `score_vs_recovery_rate` sits
-# behind the leak-free gate, so a single exhaustive formula over all four
-# factors would mention it in every obligation and never ask for a leaking
-# vector at all; the two halves are enumerated separately instead.
-ARITHMETIC = union(
-    exhaustive([BODY["is_participating"], BODY["score_gt_zero"], BODY["leaking"]]),
-    exhaustive([BODY["is_participating"], BODY["score_gt_zero"], BODY["score_vs_recovery_rate"]]),
-)
-# the observed score change against the branch that produced it
-EFFECTS = each([BODY["score_delta"]]) * each(
-    [BODY["is_participating"], BODY["leaking"], BODY["score_gt_zero"]]
-)
-
+# Coverage choices: activation closure preserves both leaking and recovery branches.
+MEMBERSHIP = exhaustive([ACTIVE, SLASHED, FLAGGED])
+ARITHMETIC = exhaustive([PARTICIPATING, SCORE, LEAKING, RECOVERY])
+EFFECTS = each([DELTA]) * each([PARTICIPATING, LEAKING, SCORE])
 PROFILES = {
-    # every value of every factor
-    "smoke": each(ALL_FACTORS).where(FEASIBLE),
-    # why this index is eligible, exhaustively
-    "membership": MEMBERSHIP.where(FEASIBLE),
-    # both branches and both saturations, exhaustively
-    "arithmetic": ARITHMETIC.where(FEASIBLE),
-    # the post-state effect against the branch that produced it
-    "effects": EFFECTS.where(FEASIBLE),
-    # the focused profiles plus every pair of body factors
-    "standard": union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 2)).where(FEASIBLE),
+    "smoke": each(ALL_FACTORS),
+    "membership": MEMBERSHIP,
+    "arithmetic": ARITHMETIC,
+    "effects": EFFECTS,
+    "standard": union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 2)),
 }
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "inactivity_updates",
-    ASPECTS,
-    observe,
-    PROFILES,
-    FEASIBLE,
+    focus="process_inactivity_updates: loop body",
+    record="one eligible validator in a singleton vector",
+    applicable_when=single_eligible,
+    attributes=(
+        single_eligible,
+        leak_free,
+        post_present,
+        score,
+        post_score,
+        participating,
+        slashed,
+        active_in_previous,
+        timely_target_flag,
+        finality_delay,
+    ),
+    constants=(min_epochs_to_inactivity_penalty, bias, recovery_rate),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    feasible=FEASIBLE,
+    constant_feasibility=constant_feasibility,
+)
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "min_epochs_to_inactivity_penalty": lambda spec: int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),
         "bias": lambda spec: int(spec.config.INACTIVITY_SCORE_BIAS),
         "recovery_rate": lambda spec: int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE),
     },
-    constant_feasibility=constant_feasibility,
 )

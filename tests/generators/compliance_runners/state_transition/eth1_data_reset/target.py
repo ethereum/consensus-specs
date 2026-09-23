@@ -1,61 +1,50 @@
-"""Coverage target for ``process_eth1_data_reset``.
+"""Coverage specification for the ETH1 reset guard and vote-list occupancy."""
 
-The handler has one control-flow condition: ETH1 data votes are reset when the
-next epoch reaches the end of the ETH1 voting period.  Vote-list occupancy is
-also recorded so a reset is measured with both an empty and a populated input.
-
-The capture signature declares the input attributes, its body defines factors,
-and profiles declare their interactions. ``observation.py`` supplies concrete
-attributes from a vector; the binding below connects the two.
-"""
-
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    CAttribute,
-    CConstant,
-    Context,
-    coverage_aspect,
-    CPred,
-    each,
-    Target,
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    constant,
+    coverage_spec,
+    factor,
+    Integer,
 )
 
 from .observation import observe_attributes
 
+next_epoch = attribute("next_epoch", Integer(min=1))
+vote_count = attribute("vote_count", Integer(min=0))
+epochs_per_eth1_voting_period = constant("epochs_per_eth1_voting_period", Integer(min=1))
 
-@coverage_aspect("reset")
-def capture_reset(
-    next_epoch: CAttribute[int],
-    vote_count: CAttribute[int],
-    *,
-    epochs_per_eth1_voting_period: CConstant[int],
-):
-    at_reset_boundary: CPred = next_epoch % epochs_per_eth1_voting_period == 0
-    votes_nonempty: CPred = vote_count > 0
-
-
-RESET = capture_reset
+RESET = aspect(
+    "reset",
+    factor(
+        "at_reset_boundary",
+        next_epoch % epochs_per_eth1_voting_period == 0,
+        description="The next epoch ends the ETH1 voting period.",
+    ),
+    factor(
+        "votes_nonempty",
+        vote_count > 0,
+        description="Resetting a populated list has an observable effect.",
+    ),
+)
 ASPECTS = (RESET,)
+PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
 
-
-def _observe(ctx: Context) -> None:
-    capture_reset(**observe_attributes(ctx))
-
-
-PROFILES = {
-    "smoke": each(RESET.factors),
-    "normal": RESET.exhaustive(),
-    "standard": RESET.exhaustive(),
-}
-
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "eth1_data_reset",
-    ASPECTS,
-    _observe,
-    PROFILES,
+    focus="process_eth1_data_reset: reset guard and vote-list occupancy",
+    record="one vector",
+    attributes=(next_epoch, vote_count),
+    constants=(epochs_per_eth1_voting_period,),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+)
+
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={
         "epochs_per_eth1_voting_period": lambda spec: int(spec.EPOCHS_PER_ETH1_VOTING_PERIOD),
     },
