@@ -43,20 +43,20 @@ coverage = coverage_spec(
 
 Both factors are boolean. Their expressions deliberately do not request
 three-way or five-way comparison abstraction. Both are unconditional:
-`votes_nonempty` matters on either side of the reset guard, so it has no
-`when=` clause.
+`votes_nonempty` matters on either side of the reset guard, so it has no `when=`
+clause.
 
 The exhaustive profiles require these four combinations:
 
 | at_reset_boundary | votes_nonempty |
-| --- | --- |
-| false | false |
-| false | true |
-| true | false |
-| true | true |
+| ----------------- | -------------- |
+| false             | false          |
+| false             | true           |
+| true              | false          |
+| true              | true           |
 
-The adapter in `observation.py` returns only `next_epoch` and `vote_count`.
-A separate binding supplies the constant from a fixed spec:
+The adapter in `observation.py` returns only `next_epoch` and `vote_count`. A
+separate binding supplies the constant from a fixed spec:
 
 ```python
 TARGET = bind(
@@ -70,9 +70,9 @@ TARGET = bind(
 
 The period is supplied by the selected spec/preset, not chosen freely by a
 materializer. Its positive integer domain describes valid observations;
-generation must bind its concrete configured value. Likewise, `next_epoch`
-is the current epoch plus one. That extraction relationship stays in the
-adapter, while the coverage choices stay visible here.
+generation must bind its concrete configured value. Likewise, `next_epoch` is
+the current epoch plus one. That extraction relationship stays in the adapter,
+while the coverage choices stay visible here.
 
 The working capture DSL expresses this distinction with `CConstant[int]` and
 `Target.constants`, whose binding functions receive only the spec. Bindings are
