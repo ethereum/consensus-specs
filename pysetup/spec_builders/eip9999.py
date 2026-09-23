@@ -51,7 +51,7 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def verify_and_notify_new_payload(self: ExecutionEngine,
                                       new_payload_request: NewPayloadRequest,
-                                      payload_request_chain_root: Optional[Bytes32] = None) -> bool:
+                                      payload_request_chain_root: Bytes32) -> bool:
         return True
 
 

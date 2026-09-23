@@ -316,9 +316,16 @@ def compute_payload_request_chain_root(
 
 ### Modified `verify_and_notify_new_payload`
 
-`engine_newPayload` gains an optional `payload_request_chain_root` argument
-carrying the consensus client's chain root **through this payload**. No new
-engine method is introduced.
+`engine_newPayload` gains a `payload_request_chain_root` argument carrying the
+consensus client's chain root **through this payload**. No new engine method is
+introduced.
+
+The argument is **required**, following `parent_beacon_block_root` and
+`execution_requests`, which were likewise added as required parameters of a new
+method version. Compatibility comes from versioning: clients that do not
+implement this EIP continue to use the previous method version. Making the
+argument omissible would instead create a silent downgrade, in which a consensus
+client that never supplies it is never verified and nothing reports that.
 
 Payload validity is determined by exactly today's rules and does not consult the
 argument. The execution client folds this payload's request root into the chain
@@ -330,13 +337,12 @@ it has accumulated over the ancestry and compares:
 - It MUST NOT return `False` on account of the comparison if it does not hold
   that block data, or has no base to fold from. That is not a disagreement, and
   resolves as the consensus client continues delivering payloads. A client with
-  no base adopts the supplied value as its base.
+  no base adopts the supplied value as its base. Inability to compare is a
+  property of the execution client's state, which is why it is reported rather
+  than being a reason to omit the argument.
 - It MUST NOT require the block to have been executed in order to compute the
   request root. Every input is drawn from the execution header or the block
   body.
-
-Omitting the argument leaves behaviour unchanged, so steady-state operation
-carries no additional data and existing consensus clients are unaffected.
 
 *Note*: the boolean here is the consensus client's combined conclusion. On the
 wire the execution client reports payload status and chain status as separate
@@ -349,13 +355,13 @@ def verify_and_notify_new_payload(
     self: ExecutionEngine,
     new_payload_request: NewPayloadRequest,
     # [New in EIP9999]
-    payload_request_chain_root: Optional[Bytes32] = None,
+    payload_request_chain_root: Bytes32,
 ) -> bool:
     """
     Return ``True`` if and only if ``new_payload_request`` is valid with respect
-    to ``self.execution_state``, and ``payload_request_chain_root``, when
-    supplied and comparable, equals the execution client's own chain root
-    through this payload.
+    to ``self.execution_state``, and ``payload_request_chain_root``, when the
+    execution client is able to compare it, equals its own chain root through
+    this payload.
     """
 ```
 
