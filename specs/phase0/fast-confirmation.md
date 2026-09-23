@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Fast Confirmation Rule](#fast-confirmation-rule)
-  - [Constants](#constants)
   - [Configs](#configs)
   - [Helpers](#helpers)
     - [`FastConfirmationStore`](#fastconfirmationstore)
@@ -65,12 +64,6 @@ who believe in the above assumption. If this assumption is broken, confirmed
 blocks can be reorged without any adversarial behavior and without slashing.
 
 ## Fast Confirmation Rule
-
-### Constants
-
-| Name                                            | Value       | Description                                                                                                                                                                                                                                                                                                                     |
-| ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `Uint64(5)` | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
 
 ### Configs
 
