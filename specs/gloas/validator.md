@@ -179,7 +179,11 @@ def get_signed_proposer_preferences(
         fee_recipient=fee_recipient,
         target_gas_limit=target_gas_limit,
     )
-    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(preferences, domain)
     signature = bls.Sign(privkey, signing_root)
     return SignedProposerPreferences(message=preferences, signature=signature)
