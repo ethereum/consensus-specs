@@ -140,6 +140,8 @@ def test_fcr_handles_multiple_consecutive_empty_slots(spec, state):
     second_block = fcr.next_slot_with_block_and_fast_confirmation(
         parent_root=block_after_empty, graffiti="second_block", participation_rate=100
     )
+    # Accumulate more support to ensure make the confirmation pass
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Verify expected final state
     assert fcr.head_root() == second_block

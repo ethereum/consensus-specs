@@ -522,6 +522,9 @@ class FCRTest:
         )
         return int(score), int(safety_threshold)
 
+    def print_root(self, block_root):
+        return f"0x{block_root.hex()[:4]}"
+
     def get_slot_root_info(self, block_root):
         if block_root == self.spec.Root():
             slot = self.spec.GENESIS_SLOT
@@ -532,12 +535,12 @@ class FCRTest:
             graffiti = graffiti_to_str(block.body.graffiti)
 
         if len(graffiti) > 0:
-            return f"{slot}: {str(block_root)[:6]}, '{graffiti}'"
+            return f"{slot}: {self.print_root(block_root)}, '{graffiti}'"
         else:
-            return f"{slot}: {str(block_root)[:6]}"
+            return f"{slot}: {self.print_root(block_root)}"
 
     def get_checkpoint_info(self, checkpoint):
-        return f"{checkpoint.epoch}: {str(checkpoint.root)[:6]}"
+        return f"{checkpoint.epoch}: {self.print_root(checkpoint.root)}"
 
     def print_fast_confirmed_block_tree(self, start_root):
         if not DEBUG:
@@ -549,7 +552,7 @@ class FCRTest:
 
         balance_source = spec.get_current_balance_source(fcr_store)
         total_active_balance = spec.get_total_active_balance(balance_source)
-        one_committee_weight = int(total_active_balance // spec.SLOTS_PER_EPOCH)
+        one_committee_weight = spec.Gwei(int(total_active_balance) // int(spec.SLOTS_PER_EPOCH))
 
         def get_relative_score_and_threshold(block_root):
             score, threshold = self.compute_score_and_threshold(block_root)
