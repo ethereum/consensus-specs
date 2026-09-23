@@ -40,7 +40,7 @@ def test_zero_score_has_exact_recovery_bucket(configuration_name, granularity):
                     "score_vs_recovery_rate": bucket,
                 }.items()
             )
-            assert (assignment in obligations) == (bucket == expected)
+            assert any(assignment <= o for o in obligations) == (bucket == expected)
 
 
 @pytest.mark.parametrize("configuration_name", ["minimal", "mainnet"])
@@ -66,7 +66,7 @@ def test_recovery_bucket_uses_bound_constant(recovery):
             "score_vs_recovery_rate": expected,
         }.items()
     )
-    assert assignment in obligations
+    assert any(assignment <= o for o in obligations)
     for value in BODY["score_vs_recovery_rate"].domain("cmp5"):
         assert target.feasible(
             {

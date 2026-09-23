@@ -5,65 +5,47 @@ The operation vectors provide a ``BeaconBlock`` in
 ``process_block`` are intentionally out of scope.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    ACCEPTED,
-    capture_observations,
-    capture_outcome,
-    CAttribute,
-    CFactor,
-    CGate,
-    Context,
-    coverage_aspect,
-    CPred,
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Boolean,
+    comparison,
+    coverage_spec,
     each,
+    factor,
     fix,
-    nwise,
-    nwise_of,
-    rules,
-    Target,
+    Integer,
     union,
 )
 
 from .observation import observe_attributes
 
+proposer_found = attribute("proposer_found", Boolean())
+block_slot = attribute("block_slot", Integer(min=0))
+state_slot = attribute("state_slot", Integer(min=0))
+latest_header_slot = attribute("latest_header_slot", Integer(min=0))
+proposer_index = attribute("proposer_index", Integer(min=0))
+expected_proposer_index = attribute("expected_proposer_index", Integer(min=0))
+parent_root_match = attribute("parent_root_match", Boolean())
+proposer_slashed = attribute("proposer_slashed", Boolean())
+post_present = attribute("post_present", Boolean())
 
-@coverage_aspect("header")
-def capture_header(
-    proposer_found: CGate,
-    block_slot: CAttribute[int],
-    state_slot: CAttribute[int],
-    latest_header_slot: CAttribute[int],
-    proposer_index: CAttribute[int],
-    expected_proposer_index: CAttribute[int],
-    parent_root_match: CAttribute[bool],
-    proposer_slashed: CAttribute[bool],
-):
-    slot_matches_state: CFactor = block_slot == state_slot
-    slot_is_newer: CFactor = block_slot > latest_header_slot
-    proposer_index_matches: CFactor = proposer_index == expected_proposer_index
-    parent_matches: CPred = parent_root_match
-    if proposer_found:
-        proposer_not_slashed: CPred = not proposer_slashed
+HEADER = aspect(
+    "header",
+    comparison("slot_matches_state", block_slot, state_slot, op="=="),
+    comparison("slot_is_newer", block_slot, latest_header_slot, op=">"),
+    comparison("proposer_index_matches", proposer_index, expected_proposer_index, op="=="),
+    factor("parent_matches", parent_root_match),
+    # Availability of the validator lookup, rather than a coverage dimension.
+    factor("proposer_not_slashed", ~proposer_slashed, available_when=proposer_found),
+)
 
-
-HEADER = capture_header
-ASPECTS = (HEADER, capture_outcome)
-GATES = [
-    HEADER["slot_matches_state"],
-    HEADER["slot_is_newer"],
-    HEADER["proposer_index_matches"],
-    HEADER["parent_matches"],
-    HEADER["proposer_not_slashed"],
-]
-
-
-def observe(ctx: Context) -> None:
-    attributes = observe_attributes(ctx)
-    capture_observations(**attributes)
-    capture_header(**attributes)
+OUTCOME = aspect("outcome", factor("accepted", post_present))
+ACCEPTED = OUTCOME["accepted"]
+ASPECTS = (HEADER, OUTCOME)
+GATES = list(HEADER.factors)
 
 
 def _holds(assignment: dict, factor, granularity: str) -> bool | None:
@@ -89,13 +71,34 @@ NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 
 PROFILES = {
-    "smoke": each([*HEADER.factors, ACCEPTED]).where(FEASIBLE),
-    "normal": (NORMAL * HEADER.exhaustive()).where(FEASIBLE),
-    "exceptional": (EXCEPTIONAL * nwise(HEADER.factors, 2)).where(FEASIBLE),
+    "smoke": each([*HEADER.declarations, *OUTCOME.declarations]),
+    "normal": NORMAL * HEADER.exhaustive(),
+    "exceptional": EXCEPTIONAL * HEADER.nwise(2),
     "standard": union(
-        each([*HEADER.factors, ACCEPTED]),
-        nwise_of([HEADER.each(), capture_outcome.each()], 2),
-    ).where(FEASIBLE),
+        each([*HEADER.declarations, *OUTCOME.declarations]),
+        HEADER.each() * OUTCOME.each(),
+    ),
 }
 
-TARGET = Target("block_header", ASPECTS, observe, PROFILES, FEASIBLE)
+COVERAGE = coverage_spec(
+    "block_header",
+    focus="assertions in process_block_header; signature verification and the rest of process_block excluded",
+    record="one vector",
+    attributes=(
+        proposer_found,
+        block_slot,
+        state_slot,
+        latest_header_slot,
+        proposer_index,
+        expected_proposer_index,
+        parent_root_match,
+        proposer_slashed,
+        post_present,
+    ),
+    constants=(),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    feasible=FEASIBLE,
+)
+
+TARGET = bind(COVERAGE, observe_attributes=observe_attributes, constants={})

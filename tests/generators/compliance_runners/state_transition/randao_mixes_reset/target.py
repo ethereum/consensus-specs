@@ -5,54 +5,49 @@ circular slot.  The target records the destination wraparound and the source
 and destination mix relationship.
 """
 
-# ruff: noqa: F841 - factor declarations are assignments the body never reads
-from __future__ import annotations
-
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    CAttribute,
-    CConstant,
-    Context,
-    coverage_aspect,
-    CPred,
-    each,
-    Target,
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Bytes,
+    constant,
+    coverage_spec,
+    factor,
+    Integer,
 )
 
 from .observation import observe_attributes
 
+destination_index = attribute("destination_index", Integer(min=0))
+source_mix = attribute("source_mix", Bytes(length=32))
+destination_mix = attribute("destination_mix", Bytes(length=32))
+zero_mix = constant("zero_mix", Bytes(length=32))
 
-@coverage_aspect("reset")
-def capture_reset(
-    destination_index: CAttribute[int],
-    source_mix: CAttribute[bytes],
-    destination_mix: CAttribute[bytes],
-    *,
-    zero_mix: CConstant[bytes],
-):
-    destination_is_first_slot: CPred = destination_index == 0
-    source_nonzero: CPred = source_mix != zero_mix
-    source_matches_destination: CPred = source_mix == destination_mix
-
-
-RESET = capture_reset
+RESET = aspect(
+    "reset",
+    factor("destination_is_first_slot", destination_index == 0),
+    factor("source_nonzero", source_mix != zero_mix),
+    factor("source_matches_destination", source_mix == destination_mix),
+)
 ASPECTS = (RESET,)
+PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
 
-
-def _observe(ctx: Context) -> None:
-    capture_reset(**observe_attributes(ctx))
-
-
-PROFILES = {
-    "smoke": each(RESET.factors),
-    "normal": RESET.exhaustive(),
-    "standard": RESET.exhaustive(),
-}
-
-
-TARGET = Target(
+COVERAGE = coverage_spec(
     "randao_mixes_reset",
-    ASPECTS,
-    _observe,
-    PROFILES,
+    focus="process_randao_mixes_reset: destination wraparound and source/destination mix relationship",
+    record="one vector",
+    attributes=(
+        destination_index,
+        source_mix,
+        destination_mix,
+    ),
+    constants=(zero_mix,),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+)
+
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
     constants={"zero_mix": lambda spec: bytes(spec.Root()) if hasattr(spec, "Root") else bytes(32)},
 )
