@@ -4,16 +4,17 @@ The declaration API in `declarations.py` builds expression trees rather than
 parsing or executing capture-function source. It currently powers
 `eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
-`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`,
-and `inactivity_updates_loop`. Other targets continue to use the capture DSL
-and the same scorer.
+`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`, and
+`inactivity_updates_loop`. Other targets continue to use the capture DSL and the
+same scorer.
 
 ## Authoring and review workflow
 
 1. Define the focus, record scope, input attributes, and spec-bound constants.
 2. Define derived quantities, factors, activation, aspects, and profiles.
 3. Review the specification and its bound obligations.
-4. Implement an observation adapter that returns exactly the declared attributes.
+4. Implement an observation adapter that returns exactly the declared
+   attributes.
 5. Implement or refine materialization using observed coverage as feedback.
 
 See `../eth1_data_reset/target.py` for the small example and
@@ -68,8 +69,8 @@ within a specification; aspect grouping does not create namespaces.
 focus all factors are `NA`. The inactivity body currently requires one eligible
 validator; multi-record iteration observation is not implemented.
 
-`when` defines activation in terms of other factors. It supports conjunctions
-of boolean factor tests, negations, and categorical equality/inequality. For a
+`when` defines activation in terms of other factors. It supports conjunctions of
+boolean factor tests, negations, and categorical equality/inequality. For a
 comparison factor, a truth test selects all abstract values where its predicate
 holds. Dependencies must be acyclic. Disjunctions and raw-attribute conditions
 in `when` are rejected; introduce a meaningful controlling factor instead.
