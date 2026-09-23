@@ -558,7 +558,7 @@ def seconds_to_milliseconds(seconds: Uint64) -> Uint64:
 ```python
 def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
     """
-    Convert milliseconds to seconds.
+    Convert milliseconds to seconds, discarding any remainder.
     """
     return milliseconds // 1000
 ```
