@@ -452,10 +452,10 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")
-    next_slot_time = store.genesis_time + spec.milliseconds_to_seconds(
-        (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS
+    next_slot_time_ms = (
+        store.genesis_time_ms + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS
     )
-    on_tick_and_append_step(spec, store, spec.seconds_to_milliseconds(next_slot_time), test_steps)
+    on_tick_and_append_step(spec, store, next_slot_time_ms, test_steps)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield "steps", test_steps

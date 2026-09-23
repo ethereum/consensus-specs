@@ -61,7 +61,7 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        spec.seconds_to_milliseconds(store.genesis_time) + state.slot * spec.config.SLOT_DURATION_MS,
+        store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS,
         new_justified_checkpoint=True
     )
 """
@@ -113,6 +113,5 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        spec.seconds_to_milliseconds(store.genesis_time)
-        + state.slot * spec.config.SLOT_DURATION_MS,
+        store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS,
     )
