@@ -157,6 +157,8 @@ def get_max_activation_churn_limit(spec: Spec):
     """
     Return the maximum number of validators that can be activated per epoch.
     """
+    if is_post_gloas(spec):
+        return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS // spec.MIN_ACTIVATION_BALANCE
     if is_post_electra(spec):
         return spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT // spec.MIN_ACTIVATION_BALANCE
     return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT

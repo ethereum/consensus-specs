@@ -78,8 +78,8 @@ def test_time(spec, state):
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
     check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
     if is_post_gloas(spec):
-        assert spec.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
-        assert spec.AGGREGATE_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+        assert spec.config.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+        assert spec.config.AGGREGATE_DUE_BPS_GLOAS <= spec.BASIS_POINTS
     else:
         assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
         assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
