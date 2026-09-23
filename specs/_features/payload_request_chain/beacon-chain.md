@@ -117,6 +117,19 @@ backfilled after a snap sync that it will never execute. This is deliberately
 weaker than requiring an executed chain, and is what keeps the mechanism usable
 on a freshly bootstrapped node.
 
+Two inputs do require the block **body**: `withdrawals`, and `versioned_hashes`
+via the blob transactions. An execution client should therefore extend the chain
+where the body is validated against the header, not during header validation
+alone, since clients sync headers ahead of bodies.
+
+This is not a meaningful constraint in practice. The chain covers the range from
+the anchor forward, which is the range the node follows live and therefore holds
+bodies for; and [EIP-4444](https://eips.ethereum.org/EIPS/eip-4444) scopes
+execution-layer history pruning to "older than the consensus-layer block
+retention window", so body retention and the anchored range are bounded by the
+same window. Blocks whose bodies have expired are blocks before the anchor,
+which the chain does not cover.
+
 This is also why `requests_hash` is used in place of the bid's
 `execution_requests_root`: execution requests are *produced by* execution, so
 their SSZ root is unavailable to a client that has not executed the block, while
