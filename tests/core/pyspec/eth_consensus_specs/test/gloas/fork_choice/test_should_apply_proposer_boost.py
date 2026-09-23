@@ -82,10 +82,9 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
         else:
             # Added past the PTC deadline -> block_timeliness[PTC] False -> NOT an
             # equivocation, but still a viable head competitor
-            ptc_due_ms = spec.get_payload_attestation_due_ms()
             late_time_ms = (
                 spec.compute_time_at_slot_ms(store.genesis_time_ms, parent_block.slot)
-                + ptc_due_ms
+                + spec.get_payload_attestation_due_ms()
                 + spec.seconds_to_milliseconds(1)
             )
             on_tick_and_append_step(spec, store, late_time_ms, test_steps)
