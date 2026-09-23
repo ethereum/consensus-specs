@@ -34,12 +34,12 @@
 EIP-8198 ("Quick Slots") makes the slot duration schedulable, with a first
 reduction from 12 to 10 seconds intended at the fork epoch. The duration
 schedule records the historical slot lengths. Intra-slot deadlines are
-configured separately for this fork as explicit millisecond values; later forks
-may change the duties and their deadlines independently. The remaining
-duration-dependent parameters are rescaled by the ratio
-`r = get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` to keep
-their wall-clock behavior constant: issuance and churn are per-epoch rates and
-scale by `r`, while the inactivity penalty scales by `r**2` so that the
+configured separately in basis points of the slot duration at
+`EIP8198_FORK_EPOCH`; later forks may change the duties and their deadlines
+independently. The remaining duration-dependent parameters are rescaled by the
+ratio `r = get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` to
+keep their wall-clock behavior constant: issuance and churn are per-epoch rates
+and scale by `r`, while the inactivity penalty scales by `r**2` so that the
 cumulative leak over a fixed wall-clock duration is unchanged. Each formula
 applies the ratio inline rather than pre-computing rounded constants. Epoch- and
 slot-denominated quantities — withdrawability and slashing windows, sync

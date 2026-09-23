@@ -13,12 +13,6 @@ from eth_consensus_specs.heze import {preset_name} as heze
 """
 
     @classmethod
-    def deprecate_constants(cls) -> set[str]:
-        return {
-            "BASIS_POINTS",
-        }
-
-    @classmethod
     def deprecate_config_vars(cls) -> set[str]:
         return {
             "SLOT_DURATION_MS",
@@ -30,5 +24,4 @@ from eth_consensus_specs.heze import {preset_name} as heze
         return {
             "get_base_reward",
             "get_base_reward_per_increment",
-            "get_slot_component_duration_ms",
         }

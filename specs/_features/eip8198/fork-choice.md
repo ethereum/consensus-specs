@@ -10,14 +10,7 @@
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `get_time_into_slot_ms`](#new-get_time_into_slot_ms)
   - [Modified `get_slots_since_genesis`](#modified-get_slots_since_genesis)
-  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
-  - [Modified `get_proposer_reorg_cutoff_ms`](#modified-get_proposer_reorg_cutoff_ms)
-  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
-  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
-  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
-  - [Modified `get_payload_due_ms`](#modified-get_payload_due_ms)
-  - [Modified `get_payload_attestation_due_ms`](#modified-get_payload_attestation_due_ms)
-  - [Modified `get_inclusion_list_due_ms`](#modified-get_inclusion_list_due_ms)
+  - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
   - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
     - [Modified `is_proposing_on_time`](#modified-is_proposing_on_time)
   - [`on_tick` helpers](#on_tick-helpers)
@@ -32,8 +25,10 @@
 ## Introduction
 
 EIP-8198 uses `SLOT_DURATION_SCHEDULE` to map wall-clock time to slots across
-historical slot durations. Deadline helpers return this fork's configured
-millisecond offsets. The store clock gains millisecond precision:
+historical slot durations. Deadline helpers convert the inherited basis-point
+configuration into millisecond offsets using the slot duration at
+`EIP8198_FORK_EPOCH`. Later forks that change slot duration or duty timing MUST
+define their own deadline rules. The store clock gains millisecond precision:
 implementations MUST drive the store with `on_tick_ms`; the whole-second
 `on_tick` remains only as a compatibility adapter.
 
@@ -123,68 +118,15 @@ def get_slots_since_genesis(store: Store) -> int:
     return compute_slot_at_time_ms(store.genesis_time, store.time_ms)
 ```
 
-### Modified `get_attestation_due_ms`
+### Modified `get_slot_component_duration_ms`
 
 ```python
-def get_attestation_due_ms() -> Uint64:
+def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
+    """
+    Calculate a slot component's duration using this fork's slot duration.
+    """
     # [Modified in EIP8198]
-    return ATTESTATION_DUE_MS
-```
-
-### Modified `get_proposer_reorg_cutoff_ms`
-
-```python
-def get_proposer_reorg_cutoff_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return PROPOSER_REORG_CUTOFF_MS
-```
-
-### Modified `get_aggregate_due_ms`
-
-```python
-def get_aggregate_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return AGGREGATE_DUE_MS
-```
-
-### Modified `get_sync_message_due_ms`
-
-```python
-def get_sync_message_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return SYNC_MESSAGE_DUE_MS
-```
-
-### Modified `get_contribution_due_ms`
-
-```python
-def get_contribution_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return CONTRIBUTION_DUE_MS
-```
-
-### Modified `get_payload_due_ms`
-
-```python
-def get_payload_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return PAYLOAD_DUE_MS
-```
-
-### Modified `get_payload_attestation_due_ms`
-
-```python
-def get_payload_attestation_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return PAYLOAD_ATTESTATION_DUE_MS
-```
-
-### Modified `get_inclusion_list_due_ms`
-
-```python
-def get_inclusion_list_due_ms() -> Uint64:
-    # [Modified in EIP8198]
-    return INCLUSION_LIST_DUE_MS
+    return basis_points * get_slot_duration_ms(EIP8198_FORK_EPOCH) // BASIS_POINTS
 ```
 
 ### Proposer head and reorg helpers
