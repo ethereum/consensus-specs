@@ -39,7 +39,6 @@ def recover_dimensions(spec: Any, pre: Any, body: Any, post: Any) -> dict[str, A
             "ACCEPT_EMPTY",
         )
     values["outcome"] = outcome
-    values["accepted"] = outcome == "ACCEPT_EMPTY"
     return values
 
 
