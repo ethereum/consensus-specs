@@ -100,6 +100,7 @@ def get_test_case(spec, test_dir: Path, handler: str):
         "pre": decode_file(spec, test_dir, "pre", spec.BeaconState),
         "operation": decode_optional_operation(spec, test_dir, handler),
         "blocks": decode_blocks(spec, test_dir),
+        "slots": read_yaml(test_dir / "slots.yaml") if (test_dir / "slots.yaml").exists() else None,
         "post": decode_optional_post(spec, test_dir),
     }
 
@@ -149,10 +150,13 @@ def run_test(test_info: StateTransitionTestInfo):
             return
 
         if runner == "sanity":
-            if handler != "blocks":
-                raise ValueError(f"Unsupported sanity handler: {handler}")
-            run_sanity_blocks_case(spec, state, test_case["blocks"], expected_post)
-            return
+            if handler == "blocks":
+                run_sanity_blocks_case(spec, state, test_case["blocks"], expected_post)
+                return
+            if handler == "slots":
+                run_sanity_slots_case(spec, state, test_case["slots"], expected_post)
+                return
+            raise ValueError(f"Unsupported sanity handler: {handler}")
 
         if runner != "operations":
             raise ValueError(f"Unsupported state-transition runner: {runner}")
@@ -193,6 +197,17 @@ def run_sanity_blocks_case(spec, state, blocks, expected_post):
     else:
         run_blocks()
         assert state.hash_tree_root() == expected_post.hash_tree_root()
+
+
+def run_sanity_slots_case(spec, state, slots, expected_post):
+    if slots is None:
+        raise ValueError("sanity/slots case is missing slots.yaml")
+    run_processing_case(
+        spec.process_slots,
+        state,
+        spec.Slot(int(state.slot) + int(slots)),
+        expected_post,
+    )
 
 
 def run_processing_case(process_fn, state, operation, expected_post, extra_args=()):
