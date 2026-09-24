@@ -4,10 +4,12 @@ The declaration API in `declarations.py` builds expression trees rather than
 parsing or executing capture-function source. It currently powers
 `eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
-`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`, and
-`inactivity_updates_loop`. All registered targets use this API. `coverage_dsl.py`
-provides observation abstraction, scoring, vector loading, and the CLI; it no
-longer provides capture decorators or a second formula implementation.
+`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`,
+`inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
+`rewards_and_penalties`, and `proposer_lookahead`. All registered targets use
+this API. `coverage_dsl.py` provides observation abstraction, scoring, vector
+loading, and the CLI; it no longer provides capture decorators or a second
+formula implementation.
 
 ## Authoring and review workflow
 
@@ -136,5 +138,5 @@ covered fewer interactions. Missing post-state only affects observation of
 whose impossibility was invisible to the legacy partial-assignment filtering.
 
 Observations contain exactly the declared attributes and factor values. Outcome
-coverage is explicit: declare a `post_present` attribute and an `accepted` factor
-when needed. The runtime does not inject or overwrite these names.
+coverage is explicit: declare a `post_present` attribute and an `accepted`
+factor when needed. The runtime does not inject or overwrite these names.
