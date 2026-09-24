@@ -149,11 +149,47 @@ def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
     return value is None or value in _GT
 
 
+def _empty_ineligible_set_requires_every_validator(a: dict, _g: str) -> bool:
+    """The genesis state has a fixed 64-validator set in this materializer."""
+    return not (
+        a.get("has_ineligible_validators") is False
+        and a.get("eligible_validators") != "MANY"
+    )
+
+
+def _singleton_zero_score_cannot_change_leak_free(a: dict, _g: str) -> bool:
+    return not (
+        a.get("eligible_validators") == "ONE"
+        and a.get("has_zero_score_eligible") is True
+        and a.get("scores_changed") is True
+        and a.get("leaking") is False
+    )
+
+
+def _slashed_only_eligible_set_only_increments(a: dict, _g: str) -> bool:
+    return not (
+        a.get("has_active_eligible") is False
+        and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
+    )
+
+
+def _slashed_eligible_cannot_all_decrement(a: dict, _g: str) -> bool:
+    return not (
+        a.get("has_slashed_validators") is True
+        and a.get("slashed_withdrawable_vs_previous") in _GT
+        and a.get("branch_mix") == "ALL_DECREMENT"
+    )
+
+
 FEASIBLE = rules(
     _epoch_never_before_genesis,
     _empty_loop_has_no_body,
     _mixed_branches_need_two_validators,
     _eligible_needs_a_disjunct,
+    _empty_ineligible_set_requires_every_validator,
+    _singleton_zero_score_cannot_change_leak_free,
+    _slashed_only_eligible_set_only_increments,
+    _slashed_eligible_cannot_all_decrement,
 )
 
 BRANCHES = exhaustive(LOOP.declarations[:3])
