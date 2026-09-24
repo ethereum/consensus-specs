@@ -9,7 +9,7 @@
 - [Modifications in EIP-8198](#modifications-in-eip-8198)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [New `get_blob_data_retention_start`](#new-get_blob_data_retention_start)
+    - [New `compute_blob_data_retention_start_epoch`](#new-compute_blob_data_retention_start_epoch)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Status v2](#status-v2)
@@ -70,16 +70,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### New `get_blob_data_retention_start`
+#### New `compute_blob_data_retention_start_epoch`
 
 ```python
-def get_blob_data_retention_start(current_epoch: Epoch) -> Epoch:
+def compute_blob_data_retention_start_epoch(epoch: Epoch) -> Epoch:
     """
-    Return the earliest epoch of the blob data retention window,
+    Return the start epoch of the blob data retention window,
     preserving its wall-clock length across slot duration changes.
     """
     window_ms = MIN_BLOB_DATA_RETENTION_MS
-    current_start_slot = compute_start_slot_at_epoch(current_epoch)
+    current_start_slot = compute_start_slot_at_epoch(epoch)
     current_start_ms = compute_time_at_slot_ms(Uint64(0), current_start_slot)
     if current_start_ms < window_ms:
         return GENESIS_EPOCH
@@ -100,26 +100,29 @@ gossipsub `seen_ttl` is the difference between the start times of
 `current_slot + 2 * SLOTS_PER_EPOCH` and `current_slot`, converted to seconds
 with `milliseconds_to_seconds`. Duty schedulers and the light-client local-clock
 `current_slot` MUST also use this timeline. Durations configured in
-milliseconds, including data-column sidecar retention, remain fixed in
+milliseconds, including data column sidecar retention, remain fixed in
 wall-clock time.
 
 ### The Req/Resp domain
 
 #### Status v2
 
-*[Modified in EIP8198]* The data-column sidecar retention period used to
-interpret `earliest_available_slot` begins at
-`max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`.
+**Protocol ID:** `/eth2/beacon_chain/req/status/2/`
+
+*[Modified in EIP8198]* The data column sidecar retention period used to
+determine `earliest_available_slot` begins at epoch
+`max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH)`.
 
 #### DataColumnSidecarsByRange v1
 
-*[Modified in EIP8198]* The lower bound of `data_column_serve_range` is replaced
-by `max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`. Clients
-MUST keep and serve sidecars throughout this range.
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
+
+*[Modified in EIP8198]* The `data_column_serve_range` is modified to
+`[max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH), current_epoch]`.
 
 #### DataColumnSidecarsByRoot v1
 
-*[Modified in EIP8198]* `minimum_request_epoch` is replaced by
-`max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)`. The
-permission to return `ResourceUnavailable` for older blocks applies to this
-lower bound.
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
+
+*[Modified in EIP8198]* The `data_column_serve_range` is modified to
+`[max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH), current_epoch]`.

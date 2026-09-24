@@ -7,7 +7,8 @@
 - [Introduction](#introduction)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Slot timing](#slot-timing)
-  - [Data availability retention](#data-availability-retention)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
+    - [Sidecar retention](#sidecar-retention)
 
 <!-- mdformat-toc end -->
 
@@ -28,11 +29,9 @@ governing each duty. The duration history does not define historical deadlines.
 Duty schedulers MUST keep millisecond precision, since deadlines are not
 generally whole seconds.
 
-### Data availability retention
+### Block and sidecar proposal
 
-The data-column sidecar retention window is defined by
-`MIN_BLOB_DATA_RETENTION_MS`. Validators MUST retain and serve sidecars from
-`max(get_blob_data_retention_start(current_epoch), FULU_FORK_EPOCH)` through the
-current epoch. They MAY prune sidecars from earlier epochs. This replaces the
-inherited epoch-count retention and pruning guidance; see the EIP-8198
-networking document for the time-based cutoff.
+#### Sidecar retention
+
+The data column sidecar retention period is modified to
+`MIN_BLOB_DATA_RETENTION_MS` milliseconds.
