@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import (
     apply_empty_block,
     build_empty_block_for_next_slot,
+    get_proposer_index_maybe,
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
@@ -336,6 +337,71 @@ def test_proposer_boost_correct_head(spec, state):
     on_tick_and_append_step(spec, store, time_ms, test_steps)
     assert store.proposer_boost_root == spec.Root()
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
+    output_head_check(spec, store, test_steps)
+
+    yield "steps", test_steps
+
+
+@with_altair_and_later
+@spec_state_test
+def test_proposer_boost_excludes_slashed_validators(spec, state):
+    # Slash every validator except the block proposers and the slot 1 committee
+    proposer_1 = get_proposer_index_maybe(spec, state, state.slot + 1)
+    proposer_2 = get_proposer_index_maybe(spec, state, state.slot + 2)
+    committee_1 = spec.get_beacon_committee(state, state.slot + 1, spec.CommitteeIndex(0))
+    for index in spec.get_active_validator_indices(state, spec.get_current_epoch(state)):
+        if index not in committee_1 and index not in (proposer_1, proposer_2):
+            state.validators[index].slashed = True
+
+    test_steps = []
+    genesis_state = state.copy()
+
+    # Initialization
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    anchor_root = get_anchor_root(spec, state)
+    check_head_against_root(spec, store, anchor_root)
+    output_head_check(spec, store, test_steps)
+
+    # Build block_1 at slot 1
+    state_1 = genesis_state.copy()
+    block_1 = build_empty_block_for_next_slot(spec, state_1)
+    signed_block_1 = state_transition_and_sign_block(spec, state_1, block_1)
+
+    # Build block_2 at slot 2, a sibling of block_1
+    state_2 = genesis_state.copy()
+    next_slots(spec, state_2, 1)
+    block_2 = build_empty_block_for_next_slot(spec, state_2)
+    signed_block_2 = state_transition_and_sign_block(spec, state_2, block_2)
+
+    # Tick to block_2 slot time, so only block_2 receives the proposer boost
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_2.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
+    yield from add_block(spec, store, signed_block_1, test_steps)
+    yield from add_block(spec, store, signed_block_2, test_steps)
+    assert store.proposer_boost_root == spec.hash_tree_root(block_2)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_2))
+
+    # Attest to block_1 with just enough weight to outweigh the proposer boost
+    effective_balance = state.validators[committee_1[0]].effective_balance
+    participant_num = spec.get_proposer_score(store) // effective_balance + 1
+
+    # This weight would not outweigh a proposer boost that included slashed validators
+    committee_weight = spec.get_total_active_balance(state) // spec.Uint64(spec.SLOTS_PER_EPOCH)
+    assert participant_num * effective_balance < (
+        committee_weight * spec.config.PROPOSER_SCORE_BOOST // 100
+    )
+
+    attestation = get_valid_attestation(
+        spec,
+        state_1,
+        block_1.slot,
+        signed=True,
+        filter_participant_set=lambda participants: list(participants)[:participant_num],
+    )
+    yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
+    check_head_against_root(spec, store, spec.hash_tree_root(block_1))
     output_head_check(spec, store, test_steps)
 
     yield "steps", test_steps
