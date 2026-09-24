@@ -11,10 +11,10 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [New `get_inclusion_list`](#new-get_inclusion_list)
+- [Validator assignments](#validator-assignments)
+  - [Inclusion list committee](#inclusion-list-committee)
+  - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Validator assignments](#validator-assignments)
-    - [Inclusion list committee](#inclusion-list-committee)
-    - [Lookahead](#lookahead)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Signed execution payload bid](#signed-execution-payload-bid)
@@ -64,13 +64,9 @@ def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
 ```
 
-## Beacon chain responsibilities
+## Validator assignments
 
-All validator responsibilities remain unchanged other than those noted below.
-
-### Validator assignments
-
-#### Inclusion list committee
+### Inclusion list committee
 
 A validator may be a member of the new inclusion list committee for a given
 slot. To check for inclusion list committee assignments, use
@@ -97,12 +93,16 @@ def get_inclusion_list_committee_assignment(
     return None
 ```
 
-#### Lookahead
+### Lookahead
 
 `get_inclusion_list_committee_assignment` should be called at the start of each
 epoch to get the assignment for the next epoch (`current_epoch + 1`). A
 validator should plan for future assignments by noting their assigned inclusion
 list committee slot.
+
+## Beacon chain responsibilities
+
+All validator responsibilities remain unchanged other than those noted below.
 
 ### Block and sidecar proposal
 
