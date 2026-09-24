@@ -1025,16 +1025,12 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 
 #### `get_restart_resilient_confirmed_root`
 
-*Notes:*
-
-Client implementation MAY support resilience after a restart using the mechanism
-proposed below. This mechanism is safe as long as the synchrony has been
-maintained for no more than three epochs since the node went offline.
-
-Client implementation MUST run `get_restart_resilient_confirmed_root` after node
-is fully synced.
-
-`get_root_confirmed_before_restart` is implementation dependent.
+*Note*: Implementations MAY use the mechanism below to restore the confirmed
+root after a restart. This mechanism is safe as long as synchrony has been
+maintained for no more than three epochs since the node went offline. If used,
+`get_restart_resilient_confirmed_root` MUST be called once the node is fully
+synced. The body of `get_root_confirmed_before_restart` is implementation
+dependent.
 
 ```python
 def block_should_be_finalized(store: Store, block_root: Root) -> bool:
