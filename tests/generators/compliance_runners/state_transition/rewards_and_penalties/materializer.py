@@ -46,10 +46,14 @@ class RewardsAndPenaltiesMaterializer(Materializer):
             if "in_inactivity_leak" not in vars(solution):
                 leaking = True
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
-        finalized_epoch = max(
-            int(spec.GENESIS_EPOCH),
-            previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
-        ) if leaking else previous_epoch
+        finalized_epoch = (
+            max(
+                int(spec.GENESIS_EPOCH),
+                previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
+            )
+            if leaking
+            else previous_epoch
+        )
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=finalized_epoch, root=pre.finalized_checkpoint.root
         )

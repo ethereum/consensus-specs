@@ -26,10 +26,14 @@ class InactivityUpdatesLoopMaterializer(Materializer):
         pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
         leaking = bool(getattr(solution, "leaking", False))
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
-        finalized_epoch = max(
-            int(spec.GENESIS_EPOCH),
-            previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
-        ) if leaking else previous_epoch
+        finalized_epoch = (
+            max(
+                int(spec.GENESIS_EPOCH),
+                previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
+            )
+            if leaking
+            else previous_epoch
+        )
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=finalized_epoch, root=pre.finalized_checkpoint.root
         )
@@ -39,9 +43,7 @@ class InactivityUpdatesLoopMaterializer(Materializer):
         validator = pre.validators[0]
         requested_delta = getattr(solution, "score_delta", None)
         active = bool(getattr(solution, "is_active_in_previous", True))
-        flagged = bool(
-            getattr(solution, "has_target_flag", requested_delta != "INCREASED")
-        )
+        flagged = bool(getattr(solution, "has_target_flag", requested_delta != "INCREASED"))
         slashed = bool(getattr(solution, "is_slashed", False))
         participating = bool(
             getattr(
@@ -64,9 +66,7 @@ class InactivityUpdatesLoopMaterializer(Materializer):
         if not active:
             slashed = True
         validator.slashed = slashed
-        validator.activation_epoch = (
-            spec.GENESIS_EPOCH if active else spec.FAR_FUTURE_EPOCH
-        )
+        validator.activation_epoch = spec.GENESIS_EPOCH if active else spec.FAR_FUTURE_EPOCH
         validator.exit_epoch = spec.FAR_FUTURE_EPOCH
         validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
         score_gt_zero = bool(getattr(solution, "score_gt_zero", False))
