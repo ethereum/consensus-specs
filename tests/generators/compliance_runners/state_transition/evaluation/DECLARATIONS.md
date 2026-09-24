@@ -5,8 +5,9 @@ parsing or executing capture-function source. It currently powers
 `eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
 `block_header`, `operations`, `voluntary_exit`, `inactivity_updates`, and
-`inactivity_updates_loop`. Other targets continue to use the capture DSL and the
-same scorer.
+`inactivity_updates_loop`. All registered targets use this API. `coverage_dsl.py`
+provides observation abstraction, scoring, vector loading, and the CLI; it no
+longer provides capture decorators or a second formula implementation.
 
 ## Authoring and review workflow
 
@@ -133,3 +134,7 @@ boundary and the ineligible-validator flag; the old manual shape/boundary union
 covered fewer interactions. Missing post-state only affects observation of
 `scores_changed`. Full-configuration feasibility can also prune combinations
 whose impossibility was invisible to the legacy partial-assignment filtering.
+
+Observations contain exactly the declared attributes and factor values. Outcome
+coverage is explicit: declare a `post_present` attribute and an `accepted` factor
+when needed. The runtime does not inject or overwrite these names.
