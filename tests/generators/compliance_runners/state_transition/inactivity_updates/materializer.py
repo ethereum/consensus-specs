@@ -36,7 +36,7 @@ class InactivityUpdatesMaterializer(Materializer):
         slash_eligible = count > 0 and not active_eligible
         if slash_eligible:
             count = max(count, 1)
-        for index, validator in enumerate(pre.validators):
+        for _index, validator in enumerate(pre.validators):
             validator.slashed = False
             validator.activation_epoch = spec.FAR_FUTURE_EPOCH
             validator.exit_epoch = spec.FAR_FUTURE_EPOCH
