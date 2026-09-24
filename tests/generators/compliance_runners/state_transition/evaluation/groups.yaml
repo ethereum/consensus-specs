@@ -26,6 +26,8 @@ all_epoch_processing:
     - effective_balance_updates
     - historical_summaries_update
     - inactivity_updates
+    - justification_and_finalization
+    - proposer_lookahead
     - participation_flag_updates
     - pending_consolidations
     - pending_deposits
@@ -34,6 +36,8 @@ all_epoch_processing:
     - slashings_reset
     - slashings
     - sync_committee_updates
+    - registry_updates
+    - rewards_and_penalties
 
 all_sanity:
   handlers:

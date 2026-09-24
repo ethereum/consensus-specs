@@ -43,10 +43,12 @@ PROCESSORS = {
     "withdrawal_request": "process_withdrawal_request",
     "withdrawals": "process_withdrawals",
     "builder_pending_payments": "process_builder_pending_payments",
+    "justification_and_finalization": "process_justification_and_finalization",
     "eth1_data_reset": "process_eth1_data_reset",
     "effective_balance_updates": "process_effective_balance_updates",
     "historical_summaries_update": "process_historical_summaries_update",
     "inactivity_updates": "process_inactivity_updates",
+    "proposer_lookahead": "process_proposer_lookahead",
     "participation_flag_updates": "process_participation_flag_updates",
     "pending_consolidations": "process_pending_consolidations",
     "pending_deposits": "process_pending_deposits",
@@ -55,6 +57,8 @@ PROCESSORS = {
     "slashings_reset": "process_slashings_reset",
     "slashings": "process_slashings",
     "sync_committee_updates": "process_sync_committee_updates",
+    "registry_updates": "process_registry_updates",
+    "rewards_and_penalties": "process_rewards_and_penalties",
 }
 
 PACKAGE_DIR = Path(__file__).resolve().parent

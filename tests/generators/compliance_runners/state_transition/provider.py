@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from importlib import import_module
 from types import SimpleNamespace
@@ -150,7 +151,11 @@ def _materialize_provider(
     seed: int,
 ) -> tuple[Any, int, str]:
     module = import_module(f".{provider.module}", __package__)
-    _, chosen = module.build_profile(profile)
+    build_profile = module.build_profile
+    if "spec" in inspect.signature(build_profile).parameters:
+        _, chosen = build_profile(profile, spec=spec)
+    else:
+        _, chosen = build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
     materializer.test_provider = provider.name
@@ -191,12 +196,13 @@ def materialize_handler(
             f"case_{index:04d}" for index in range(case_offset, case_offset + generated)
         }
         case_offset += generated
-        print(f"Validating cases from '{provider.name}'")
-        generated_preset_dir = output_dir / preset_name / fork_name
-        if validate_cases(
-            generated_preset_dir, handler, validate_case, selected_cases=selected_cases
-        ):
-            raise RuntimeError(f"validation failed for provider: {provider.name}")
+        if generated:
+            print(f"Validating cases from '{provider.name}'")
+            generated_preset_dir = output_dir / preset_name / fork_name
+            if validate_cases(
+                generated_preset_dir, handler, validate_case, selected_cases=selected_cases
+            ):
+                raise RuntimeError(f"validation failed for provider: {provider.name}")
     return case_offset
 
 

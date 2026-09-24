@@ -131,7 +131,25 @@ def constant_feasibility(constants: dict):
         # even when the partial assignment omits the leaking factor.
         return not (_holds(a, "leaking", g) is False or "score_vs_recovery_rate" in a)
 
-    return rules(zero_score_recovery, leak_free_cannot_gain)
+    def recovery_comparison(a: dict, g: str) -> bool:
+        if "score_vs_recovery_rate" not in a:
+            return True
+        if a.get("score_gt_zero") is False and a.get("is_participating") is False:
+            return a["score_vs_recovery_rate"] == BODY["score_vs_recovery_rate"].abstract(
+                bias - recovery, g
+            )
+        if a.get("score_delta") == "UNCHANGED" and a.get("score_gt_zero") is True:
+            return False
+        if a.get("score_delta") == "UNCHANGED" and a.get("score_gt_zero") is False:
+            expected = (
+                BODY["score_vs_recovery_rate"].abstract(0, g)
+                if a.get("is_participating")
+                else BODY["score_vs_recovery_rate"].abstract(bias - recovery, g)
+            )
+            return a["score_vs_recovery_rate"] == expected
+        return True
+
+    return rules(zero_score_recovery, leak_free_cannot_gain, recovery_comparison)
 
 
 def _participants_never_gain_score(a: dict, _g: str) -> bool:
@@ -151,6 +169,12 @@ def _leaking_non_participant_gains_score(a: dict, g: str) -> bool:
     return a.get("score_delta", "INCREASED") == "INCREASED"
 
 
+def _positive_score_cannot_be_unchanged(a: dict, _g: str) -> bool:
+    return not (
+        a.get("score_gt_zero") is True and a.get("score_delta") == "UNCHANGED"
+    )
+
+
 FEASIBLE = rules(
     _score_is_never_negative,
     _participation_is_unslashed_flagged_and_active,
@@ -159,6 +183,10 @@ FEASIBLE = rules(
     _participants_never_gain_score,
     _zero_score_participant_is_unchanged,
     _leaking_non_participant_gains_score,
+    _positive_score_cannot_be_unchanged,
+    lambda a, g: not (
+        a.get("score_gt_zero") is False and a.get("score_delta") == "DECREASED"
+    ),
 )
 
 # Coverage choices: activation closure preserves both leaking and recovery branches.
