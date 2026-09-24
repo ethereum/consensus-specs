@@ -68,6 +68,7 @@ EPOCH_PROCESSORS = {
     "eth1_data_reset": "process_eth1_data_reset",
     "historical_summaries_update": "process_historical_summaries_update",
     "sync_committee_updates": "process_sync_committee_updates",
+    "proposer_lookahead": "process_proposer_lookahead",
 }
 
 
