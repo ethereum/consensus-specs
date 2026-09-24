@@ -118,7 +118,7 @@ def validate_cases(
 
 def discover_handlers(test_dir: Path) -> list[str]:
     candidates = []
-    for phase in ("operations", "epoch_processing"):
+    for phase in ("operations", "epoch_processing", "sanity"):
         for handler in HANDLERS:
             if list(test_dir.glob(f"**/{phase}/{handler}/**/case_*")):
                 candidates.append((phase, handler))
