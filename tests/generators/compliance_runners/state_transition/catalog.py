@@ -56,10 +56,6 @@ RUNNERS: dict[str, tuple[str, ...]] = {
     "sanity": ("blocks", "slots"),
 }
 HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handlers)
-# PROVIDERS = tuple(
-#     Provider(name=handler, module=handler, runner=runner, handler=handler)
-#     for runner, handlers in RUNNERS.items()
-#     for handler in handlers
 PROVIDERS = (
     Provider("block_header", "block_header", "operations", "block_header"),
     Provider("process_operations", "operations", "sanity", "blocks"),
@@ -86,12 +82,6 @@ PROVIDERS = (
         "consolidation_request",
     ),
     Provider("deposit_request", "deposit_request", "operations", "deposit_request"),
-    # Provider(
-    #     "execution_payload_bid",
-    #     "execution_payload_bid",
-    #     "operations",
-    #     "execution_payload_bid",
-    # ),
     Provider("bid_processing", "bid_processing", "operations", "execution_payload_bid"),
     Provider(
         "parent_execution_payload",
@@ -104,7 +94,6 @@ PROVIDERS = (
     Provider("sync_aggregate", "sync_aggregate", "operations", "sync_aggregate"),
     Provider("voluntary_exit", "voluntary_exit", "operations", "voluntary_exit"),
     Provider("withdrawal_request", "withdrawal_request", "operations", "withdrawal_request"),
-    # Provider("withdrawals", "withdrawals", "operations", "withdrawals"),
     Provider(
         "builder_pending_withdrawal_processing",
         "withdrawal_processing.builder_pending_withdrawal_processing",
