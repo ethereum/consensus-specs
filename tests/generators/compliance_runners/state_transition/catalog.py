@@ -59,6 +59,7 @@ HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handler
 PROVIDERS = (
     Provider("block_header", "block_header", "operations", "block_header"),
     Provider("process_operations", "operations", "sanity", "blocks"),
+    Provider("process_operations_dispatch", "operations_dispatch", "sanity", "blocks"),
     Provider("process_slot", "slot_processing", "sanity", "slots"),
     Provider("attestation", "attestation", "operations", "attestation"),
     Provider("attester_slashing", "attester_slashing", "operations", "attester_slashing"),

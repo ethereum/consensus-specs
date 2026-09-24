@@ -36,6 +36,10 @@ Sanity handlers:
 
 - `blocks`
 
+The `blocks` handler combines assertion-limit vectors with integration vectors
+for nonempty operation lists, dispatch order, payload attestations, and the
+attestation parent-slot argument.
+
 Epoch-processing handlers:
 
 - `builder_pending_payments`
