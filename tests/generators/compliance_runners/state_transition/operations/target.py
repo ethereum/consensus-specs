@@ -1,8 +1,8 @@
 """Coverage target for the assertion slice of Gloas ``process_operations``.
 
-The operation-processing loops are intentionally out of scope here: each
-``for_ops`` call is covered by the corresponding operation handler target.
 This target measures only the deposit prohibition and operation-count limits.
+The sibling ``operations_dispatch`` provider supplies block-level integration
+vectors for the operation-processing loops.
 """
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
