@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from .target import PROFILES, TARGET
+from .target import TARGET
 
 
-def build_profile(name: str):
+def build_profile(name: str, *, spec):
     """Return predicate-level DSL obligations in provider format."""
-    formula = PROFILES["standard" if name == "all" else name]
+    target = TARGET.for_spec(spec)
+    formula = target.profiles["standard" if name == "all" else name]
     obligations = formula.run("predicate")
     records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
     return records, records
