@@ -42,6 +42,11 @@ all_epoch_processing:
 all_sanity:
   handlers:
     - blocks
+    - slots
+
+process_slot:
+  handlers:
+    - slots
 
 # The parent handler is an integration test; the individual handlers provide
 # detailed coverage of the execution requests it dispatches.

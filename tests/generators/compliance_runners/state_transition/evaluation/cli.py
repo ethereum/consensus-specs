@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 PROCESSORS = {
     "block_header": "process_block_header",
     "blocks": "process_operations",
+    "slots": "process_slot",
     "attestation": "process_attestation",
     "attester_slashing": "process_attester_slashing",
     "bls_to_execution_change": "process_bls_to_execution_change",
@@ -99,6 +100,18 @@ def load_slice(path: Path, module_name: str) -> ModuleType:
     return module
 
 
+def run_sanity_slots_slice_case(spec, state, slots: int, process_slot, expected_post) -> None:
+    """Replay a sanity/slots vector with the instrumented ``process_slot``."""
+    target_slot = int(state.slot) + int(slots)
+    while int(state.slot) < target_slot:
+        process_slot(state)
+        if (int(state.slot) + 1) % int(spec.SLOTS_PER_EPOCH) == 0:
+            spec.process_epoch(state)
+        state.slot = spec.Slot(int(state.slot) + 1)
+    if state != expected_post:
+        raise AssertionError("sanity/slots replay does not match post-state")
+
+
 def collect(args: argparse.Namespace) -> None:
     exclusions = load_yaml(PACKAGE_DIR / "exclusions.yaml")["functions"]
     definitions = load_yaml(PACKAGE_DIR / "groups.yaml")
@@ -135,6 +148,15 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
     bls.bls_active = bool(test_case["meta"].get("bls_setting", 0))
     try:
         if case.runner == "sanity":
+            if case.handler == "slots":
+                run_sanity_slots_slice_case(
+                    spec,
+                    test_case["pre"],
+                    test_case["slots"],
+                    processor,
+                    test_case["post"],
+                )
+                return
             test_run.run_sanity_blocks_case(
                 spec,
                 test_case["pre"],
