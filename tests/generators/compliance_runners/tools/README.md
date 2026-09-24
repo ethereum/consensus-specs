@@ -35,12 +35,13 @@ model.exhaustive(["A", "B"], backend="minizinc", solver="gecode")
 Path("conditional.mzn").write_text(model.to_minizinc())
 ```
 
-Run the exported model with `minizinc --solver gecode --all-solutions conditional.mzn`
-or open it in the MiniZinc IDE. Comments map integer encodings to factor names
-and values; zero means inactive. The export enumerates full valid configurations.
-Python projects them onto the requested interactions and adds prerequisites.
-Both backends share that projection, so tests also assert explicit expected
-obligations rather than relying only on backend agreement.
+Run the exported model with
+`minizinc --solver gecode --all-solutions conditional.mzn` or open it in the
+MiniZinc IDE. Comments map integer encodings to factor names and values; zero
+means inactive. The export enumerates full valid configurations. Python projects
+them onto the requested interactions and adds prerequisites. Both backends share
+that projection, so tests also assert explicit expected obligations rather than
+relying only on backend agreement.
 
 Strength counts selected active factors, excluding added prerequisites. If a
 branch has fewer active selected factors than the requested strength, all of
@@ -48,13 +49,13 @@ them are included. If none are active, that branch contributes no obligation.
 This preserves shorter branches during exhaustive enumeration without creating
 an empty obligation for a request selecting only an inactive factor.
 
-Activation conditions are conjunctions of factor/value pairs, recursively
-closed over an acyclic dependency graph. Arbitrary Python predicates and
-disjunctive activation are not supported. `forbidden` is an iterable of
-frozensets of factor/value pairs that cannot hold simultaneously; an empty
-forbidden combination makes the model unsatisfiable. A partial obligation is
-emitted only when it has a valid complete extension. Inactive factors are
-absent, not assigned an ordinary domain value or treated as missing observations.
+Activation conditions are conjunctions of factor/value pairs, recursively closed
+over an acyclic dependency graph. Arbitrary Python predicates and disjunctive
+activation are not supported. `forbidden` is an iterable of frozensets of
+factor/value pairs that cannot hold simultaneously; an empty forbidden
+combination makes the model unsatisfiable. A partial obligation is emitted only
+when it has a valid complete extension. Inactive factors are absent, not
+assigned an ordinary domain value or treated as missing observations.
 
 This first implementation enumerates the entire finite configuration space and
 deduplicates projected obligations. It is intended for small models and semantic
