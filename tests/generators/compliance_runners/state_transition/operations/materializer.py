@@ -8,6 +8,8 @@ from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .witness import complete_obligation, GATES as _GATES
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -45,13 +47,7 @@ _LIMITS = (
         "payload_attestations_within_limit",
     ),
 )
-_GATES = ("deposits_empty",) + tuple(item[3] for item in _LIMITS)
 _DIMS = [*_GATES, "accepted", "outcome"]
-
-
-def _bool(solution: Any, name: str, default: bool = True) -> bool:
-    value = getattr(solution, name, default)
-    return bool(value)
 
 
 class OperationsMaterializer(Materializer):
@@ -71,19 +67,9 @@ class OperationsMaterializer(Materializer):
         pre = self._base_state()
         block = build_empty_block(spec, pre, slot=1)
         body = block.body
-        gates = {name: _bool(solution, name) for name in _GATES}
-        requested_acceptance = getattr(solution, "accepted", None)
-        accepted = (
-            bool(requested_acceptance)
-            if requested_acceptance is not None
-            else all(gates.values())
-        )
-
-        # A partial exceptional obligation must still select a failing gate.
-        # The first unspecified gate is the least surprising deterministic
-        # witness and preserves every explicitly requested value.
-        if not accepted and all(gates.values()):
-            gates[_GATES[0]] = False
+        assignment = complete_obligation(vars(solution))
+        gates = {name: assignment[name] for name in _GATES}
+        accepted = assignment["accepted"]
 
         if not gates["deposits_empty"]:
             body.deposits.append(spec.Deposit())
