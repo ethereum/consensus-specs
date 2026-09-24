@@ -263,17 +263,32 @@ TARGETS = {
     "randao_mixes_reset": "tests.generators.compliance_runners.state_transition.randao_mixes_reset.target",
     "slashings_reset": "tests.generators.compliance_runners.state_transition.slashings_reset.target",
     "sync_committee_updates": "tests.generators.compliance_runners.state_transition.sync_committee_updates.target",
+    "process_slot": "tests.generators.compliance_runners.state_transition.slot_processing.target",
+}
+
+TARGET_HANDLERS = {
+    "process_operations": "blocks",
+    "process_slot": "slots",
 }
 
 
 def load_observations(tests: list[Path], target: Target, preset: str) -> list[Observation]:
     spec = spec_targets[preset]["gloas"]
+    handler = TARGET_HANDLERS.get(target.name, target.name)
     out = []
     for case in test_run.gather_tests(tests):
-        if case.handler != target.name or case.preset != preset or case.fork != "gloas":
+        if case.handler != handler or case.preset != preset or case.fork != "gloas":
             continue
-        tc = test_run.get_test_case(spec, Path(case.test_dir), target.name)
-        obs = target.observation(Context(spec, tc["pre"], tc["operation"], tc["post"], tc["meta"]))
+        tc = test_run.get_test_case(spec, Path(case.test_dir), case.handler)
+        if target.name == "process_slot":
+            operation = tc["slots"]
+        elif target.name == "process_operations":
+            if not tc["blocks"]:
+                raise ValueError(f"sanity/blocks vector has no blocks: {case.test_dir}")
+            operation = tc["blocks"][0].message.body
+        else:
+            operation = tc["operation"]
+        obs = target.observation(Context(spec, tc["pre"], operation, tc["post"], tc["meta"]))
         obs["_case"] = str(case.test_dir)
         out.append(obs)
     if not out:
