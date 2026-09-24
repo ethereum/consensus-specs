@@ -59,9 +59,11 @@ class InactivityUpdatesMaterializer(Materializer):
             # A slashed validator beyond the withdrawable boundary is
             # eligible too. Reuse an existing eligible index where possible
             # so the requested ONE/MANY shape does not gain an extra member.
-            slashed_index = count - 1 if count > 0 and bool(
-                getattr(solution, "slashed_withdrawable_vs_previous", False)
-            ) else len(pre.validators) - 1
+            slashed_index = (
+                count - 1
+                if count > 0 and bool(getattr(solution, "slashed_withdrawable_vs_previous", False))
+                else len(pre.validators) - 1
+            )
             pre.validators[slashed_index].slashed = True
             pre.validators[slashed_index].withdrawable_epoch = (
                 int(spec.get_previous_epoch(pre)) + 2
@@ -70,10 +72,14 @@ class InactivityUpdatesMaterializer(Materializer):
             )
         leaking = bool(getattr(solution, "leaking", False))
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
-        finalized_epoch = max(
-            int(spec.GENESIS_EPOCH),
-            previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
-        ) if leaking else previous_epoch
+        finalized_epoch = (
+            max(
+                int(spec.GENESIS_EPOCH),
+                previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
+            )
+            if leaking
+            else previous_epoch
+        )
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=finalized_epoch, root=pre.finalized_checkpoint.root
         )

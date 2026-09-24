@@ -170,9 +170,7 @@ def _leaking_non_participant_gains_score(a: dict, g: str) -> bool:
 
 
 def _positive_score_cannot_be_unchanged(a: dict, _g: str) -> bool:
-    return not (
-        a.get("score_gt_zero") is True and a.get("score_delta") == "UNCHANGED"
-    )
+    return not (a.get("score_gt_zero") is True and a.get("score_delta") == "UNCHANGED")
 
 
 FEASIBLE = rules(
@@ -184,9 +182,7 @@ FEASIBLE = rules(
     _zero_score_participant_is_unchanged,
     _leaking_non_participant_gains_score,
     _positive_score_cannot_be_unchanged,
-    lambda a, g: not (
-        a.get("score_gt_zero") is False and a.get("score_delta") == "DECREASED"
-    ),
+    lambda a, g: not (a.get("score_gt_zero") is False and a.get("score_delta") == "DECREASED"),
 )
 
 # Coverage choices: activation closure preserves both leaking and recovery branches.

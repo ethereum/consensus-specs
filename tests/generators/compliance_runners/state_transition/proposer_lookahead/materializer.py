@@ -29,9 +29,7 @@ class ProposerLookaheadMaterializer(Materializer):
         slashed_active = bool(getattr(solution, "has_slashed_active_validator", False))
         old_slashed = bool(getattr(solution, "old_lookahead_contains_slashed", False))
         active_candidates = (
-            max(1, slots - 1)
-            if fewer
-            else len(pre.validators) - int(slashed_active or old_slashed)
+            max(1, slots - 1) if fewer else len(pre.validators) - int(slashed_active or old_slashed)
         )
         for i, validator in enumerate(pre.validators):
             validator.slashed = slashed_active and i == active_candidates
@@ -46,9 +44,7 @@ class ProposerLookaheadMaterializer(Materializer):
                 )
         if old_slashed:
             pre.validators[-1].slashed = True
-        pre.slot = spec.Slot(
-            (int(spec.GENESIS_EPOCH) + 1) * slots - 1
-        )
+        pre.slot = spec.Slot((int(spec.GENESIS_EPOCH) + 1) * slots - 1)
         epoch = int(spec.get_current_epoch(pre)) + int(spec.MIN_SEED_LOOKAHEAD) + 1
         new = list(spec.get_beacon_proposer_indices(pre, spec.Epoch(epoch)))
         if repeat is False and fewer:
@@ -60,16 +56,11 @@ class ProposerLookaheadMaterializer(Materializer):
             # validator set can repeat by chance, so search deterministic
             # mixes until this vector realizes the requested no-repeat case.
             mix_index = (
-                epoch
-                + int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-                - int(spec.MIN_SEED_LOOKAHEAD)
-                - 1
+                epoch + int(spec.EPOCHS_PER_HISTORICAL_VECTOR) - int(spec.MIN_SEED_LOOKAHEAD) - 1
             ) % len(pre.randao_mixes)
             found = False
             for candidate in range(256):
-                pre.randao_mixes[mix_index] = spec.Bytes32(
-                    candidate.to_bytes(32, "little")
-                )
+                pre.randao_mixes[mix_index] = spec.Bytes32(candidate.to_bytes(32, "little"))
                 new = list(spec.get_beacon_proposer_indices(pre, spec.Epoch(epoch)))
                 if len(set(new)) == len(new):
                     found = True
@@ -80,9 +71,11 @@ class ProposerLookaheadMaterializer(Materializer):
                 )
         old = list(pre.proposer_lookahead)
         split = len(old) - slots
-        old[split:] = new if bool(getattr(solution, "new_epoch_repeats_old_tail", True)) else [
-            spec.ValidatorIndex((int(index) + 1) % len(pre.validators)) for index in new
-        ]
+        old[split:] = (
+            new
+            if bool(getattr(solution, "new_epoch_repeats_old_tail", True))
+            else [spec.ValidatorIndex((int(index) + 1) % len(pre.validators)) for index in new]
+        )
         if old_slashed:
             old[0] = spec.ValidatorIndex(len(pre.validators) - 1)
         for index, proposer_index in enumerate(old):
