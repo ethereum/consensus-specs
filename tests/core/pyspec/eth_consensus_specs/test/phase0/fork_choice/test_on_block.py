@@ -75,7 +75,7 @@ def test_basic(spec, state):
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
     # On receiving a block of next epoch
-    store.time_ms = current_time_ms + spec.config.SLOT_DURATION_MS * spec.SLOTS_PER_EPOCH
+    store.time_ms = spec.compute_time_at_slot_ms(current_time_ms, spec.SLOTS_PER_EPOCH)
     block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
