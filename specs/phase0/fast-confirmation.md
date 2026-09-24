@@ -378,11 +378,11 @@ def compute_committee_weight_between_slots(
         participants.update(get_slot_committee(store, Slot(slot)))
 
     # Sort out validators not active in the view of a balance source
-    active_participants = {
-        i
-        for i in participants
-        if is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
-    }
+    active_participants: Set[ValidatorIndex] = set()
+    current_epoch = get_current_epoch(balance_source)
+    for index in participants:
+        if is_active_validator(balance_source.validators[index], current_epoch):
+            active_participants.add(index)
 
     # Return total balance of the participants
     return get_total_balance(balance_source, active_participants)
