@@ -152,8 +152,7 @@ def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
 def _empty_ineligible_set_requires_every_validator(a: dict, _g: str) -> bool:
     """The genesis state has a fixed 64-validator set in this materializer."""
     return not (
-        a.get("has_ineligible_validators") is False
-        and a.get("eligible_validators") != "MANY"
+        a.get("has_ineligible_validators") is False and a.get("eligible_validators") != "MANY"
     )
 
 
@@ -168,8 +167,7 @@ def _singleton_zero_score_cannot_change_leak_free(a: dict, _g: str) -> bool:
 
 def _slashed_only_eligible_set_only_increments(a: dict, _g: str) -> bool:
     return not (
-        a.get("has_active_eligible") is False
-        and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
+        a.get("has_active_eligible") is False and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
     )
 
 
