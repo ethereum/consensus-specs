@@ -4,13 +4,16 @@ from eth_consensus_specs.test.context import (
     expect_assertion_error,
     large_validator_set,
     single_phase,
-    spec_state_test,
+    spec_configured_state_test,
+    spec_state_test_with_matching_config,
     spec_test,
     with_custom_state,
     with_gloas_and_later,
+    with_matching_spec_config,
+    with_phases,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
@@ -149,7 +152,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_present(spec, state):
     """
@@ -163,7 +166,7 @@ def test_process_payload_attestation_payload_present(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_not_present(spec, state):
     """
@@ -177,7 +180,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_partial_participation(spec, state):
     """
@@ -202,7 +205,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     """
     Test payload attestation with wrong beacon block root fails
@@ -223,7 +226,7 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_future_slot(spec, state):
     """
     Test payload attestation for future slot fails
@@ -237,7 +240,7 @@ def test_process_payload_attestation_future_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_too_old_slot(spec, state):
     """
     Test payload attestation for slot too far in the past fails
@@ -252,7 +255,7 @@ def test_process_payload_attestation_too_old_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_signature(spec, state):
     """
     Test payload attestation with invalid signature fails
@@ -265,8 +268,40 @@ def test_process_payload_attestation_invalid_signature(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
+@with_phases([GLOAS])
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
+@always_bls
+def test_process_payload_attestation_pre_fork_epoch(spec, state):
+    """
+    A payload attestation signed by validator 0 for the epoch prior to the
+    Gloas fork is invalid, even though the zero-filled previous-epoch PTC
+    makes it appear otherwise valid.
+    """
+    next_epoch(spec, state)
+    state.ptc_window = initialize_ptc_window(spec, state)
+
+    slot = state.slot - 1
+    assert spec.compute_epoch_at_slot(slot) < spec.config.GLOAS_FORK_EPOCH
+    data = spec.PayloadAttestationData(
+        beacon_block_root=state.latest_block_header.parent_root,
+        slot=slot,
+        payload_present=True,
+        blob_data_available=False,
+    )
+    aggregation_bits = spec.PayloadTimelinessCommitteeBits()
+    aggregation_bits[0] = True
+    domain = spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(slot))
+    payload_attestation = spec.PayloadAttestation(
+        aggregation_bits=aggregation_bits,
+        data=data,
+        signature=spec.bls.Sign(privkeys[0], spec.compute_signing_root(data, domain)),
+    )
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
     Test payload attestation with no attesting indices fails
@@ -280,7 +315,7 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     """
@@ -320,6 +355,7 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
 @spec_test
 @always_bls
 @single_phase
+@with_matching_spec_config()
 def test_process_payload_attestation_uses_multiple_committees(spec, state):
     """
     Ensure get_ptc includes all committees for the slot (not just committee 0).
@@ -370,6 +406,7 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
 @spec_test
 @always_bls
 @single_phase
+@with_matching_spec_config()
 def test_process_payload_attestation_sampling_not_capped(spec, state):
     """
     Ensure get_ptc does not stop sampling after active_validator_count // 32

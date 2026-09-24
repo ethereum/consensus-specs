@@ -179,7 +179,11 @@ def get_signed_proposer_preferences(
         fee_recipient=fee_recipient,
         target_gas_limit=target_gas_limit,
     )
-    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(preferences, domain)
     signature = bls.Sign(privkey, signing_root)
     return SignedProposerPreferences(message=preferences, signature=signature)
@@ -355,7 +359,7 @@ def prepare_execution_payload(
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state.genesis_time, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         # [Modified in Gloas:EIP7732]

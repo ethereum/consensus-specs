@@ -1,13 +1,13 @@
 from eth_consensus_specs.test.context import (
     single_phase,
-    spec_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @single_phase
 def test_process_ptc_window__shifts_all_epochs(spec, state):
     """

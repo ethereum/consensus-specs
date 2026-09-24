@@ -82,14 +82,12 @@ def _setup_boost_scenario(spec, state, adjacent, weak, sibling):
         else:
             # Added past the PTC deadline -> block_timeliness[PTC] False -> NOT an
             # equivocation, but still a viable head competitor
-            ptc_due_s = spec.get_payload_attestation_due_ms() // 1000
-            late_time = (
-                parent_block.slot * spec.config.SLOT_DURATION_MS // 1000
-                + store.genesis_time
-                + ptc_due_s
-                + 1
+            late_time_ms = (
+                spec.compute_time_at_slot_ms(store.genesis_time_ms, parent_block.slot)
+                + spec.get_payload_attestation_due_ms()
+                + spec.seconds_to_milliseconds(1)
             )
-            on_tick_and_append_step(spec, store, late_time, test_steps)
+            on_tick_and_append_step(spec, store, late_time_ms, test_steps)
             yield from add_block(spec, store, signed_sibling, test_steps)
 
     # --- make the parent strong if the row requires weak == False ---
