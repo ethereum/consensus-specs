@@ -74,7 +74,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     # processed
     k_slot = spec.compute_start_slot_at_epoch(justified_epoch + 2)
     on_tick_and_append_step(
-        spec, store, store.genesis_time + k_slot * spec.config.SLOT_DURATION_MS // 1000, test_steps
+        spec, store, spec.compute_time_at_slot_ms(store.genesis_time_ms, k_slot), test_steps
     )
 
     # Attest B's FULL variant for every slot of B's epoch after the first
@@ -221,7 +221,7 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
     # processed
     k_slot = spec.compute_start_slot_at_epoch(justified_epoch + 2)
     on_tick_and_append_step(
-        spec, store, store.genesis_time + k_slot * spec.config.SLOT_DURATION_MS // 1000, test_steps
+        spec, store, spec.compute_time_at_slot_ms(store.genesis_time_ms, k_slot), test_steps
     )
 
     # Attest B's FULL variant for every slot of B's epoch after the first
