@@ -1039,9 +1039,9 @@ def block_should_be_finalized(store: Store, block_root: Root) -> bool:
     current_epoch = get_current_store_epoch(store)
 
     if block_slot == compute_start_slot_at_epoch(block_epoch):
-        return Epoch(block_epoch + 2) <= current_epoch
+        return block_epoch + 2 <= current_epoch
     else:
-        return Epoch(block_epoch + 3) <= current_epoch
+        return block_epoch + 3 <= current_epoch
 
 
 def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Root:
