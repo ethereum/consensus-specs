@@ -62,6 +62,16 @@ COVERAGE = coverage_spec(
             )
         )
         and not (a.get("in_inactivity_leak") is True and a.get("has_flag_reward") is True)
+        and not (
+            a.get("has_inactivity_penalty") is True
+            and a.get("has_flag_penalty") is False
+        )
+        and not (
+            a.get("has_eligible_validator") is True
+            and a.get("in_inactivity_leak") is False
+            and a.get("has_flag_reward") is False
+            and a.get("has_flag_penalty") is False
+        )
     ),
 )
 TARGET = bind(
