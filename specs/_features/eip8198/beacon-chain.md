@@ -53,7 +53,7 @@ counts, so their wall-clock spans scale with the slot duration.
 
 ### Slot duration schedule
 
-The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favour
+The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favor
 of `SLOT_DURATION_SCHEDULE`.
 
 *[New in EIP8198]* This schedule MUST list slot durations in strictly increasing
