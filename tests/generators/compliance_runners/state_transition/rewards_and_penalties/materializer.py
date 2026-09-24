@@ -15,7 +15,7 @@ class RewardsAndPenaltiesMaterializer(Materializer):
     runner_name = "epoch_processing"
     handler_name = "rewards_and_penalties"
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list["TestCasePart"]]:
+    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         count = 64
         pre = create_genesis_state(
