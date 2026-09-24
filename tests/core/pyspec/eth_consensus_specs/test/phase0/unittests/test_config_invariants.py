@@ -7,6 +7,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_electra,
+    is_post_gloas,
 )
 
 
@@ -76,8 +77,12 @@ def test_time(spec, state):
     assert spec.SLOTS_PER_HISTORICAL_ROOT % spec.SLOTS_PER_EPOCH == 0
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
     check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
-    assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
-    assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
+    if is_post_gloas(spec):
+        assert spec.config.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+        assert spec.config.AGGREGATE_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+    else:
+        assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
+        assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
 
 
 @with_all_phases
