@@ -19,6 +19,13 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "TERMINAL_BLOCK_HASH",
+            "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "HistoricalBatch",

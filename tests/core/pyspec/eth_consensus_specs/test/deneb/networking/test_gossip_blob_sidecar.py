@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -189,7 +190,11 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     expected_subnet = correct_subnet(spec, blob_sidecar)
-    wrong_subnet = spec.SubnetID((int(expected_subnet) + 1) % spec.config.BLOB_SIDECAR_SUBNET_COUNT)
+    if is_post_electra(spec):
+        subnet_count = spec.config.BLOB_SIDECAR_SUBNET_COUNT_ELECTRA
+    else:
+        subnet_count = spec.config.BLOB_SIDECAR_SUBNET_COUNT
+    wrong_subnet = spec.SubnetID((int(expected_subnet) + 1) % subnet_count)
     result, reason = run_validate_gossip(
         spec,
         seen=seen,

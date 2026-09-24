@@ -143,12 +143,10 @@ def objects_to_spec(
             return value.type_name if value.type_name is not None else "int"
 
     deprecate_config_vars = reduce(
-        lambda names, builder: names.union(builder.deprecate_config_vars()), builders, set()
+        lambda obj, builder: obj.union(builder.deprecate_config_vars()), builders, set()
     )
     config_vars = {
-        name: value
-        for name, value in spec_object.config_vars.items()
-        if name not in deprecate_config_vars
+        k: v for k, v in spec_object.config_vars.items() if k not in deprecate_config_vars
     }
 
     config_spec = "class Configuration(NamedTuple):\n"
