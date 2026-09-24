@@ -1,4 +1,4 @@
-"""Explicit coverage declarations adapted to the existing vector scorer.
+"""Explicit coverage specifications, binding, observation, and review.
 
 Expression trees are defined in the shared coverage_model tool. This adapter
 adds observation, conditional coverage formulas, spec binding, and review text.
@@ -27,7 +27,7 @@ from tests.generators.state_transition.tools.coverage_model import (
     MISSING,
 )
 
-from .coverage_dsl import _merge, Cmp, Enum, Formula, NA, Pred, rules, Target
+from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
 
 __all__ = [
     "Boolean",
@@ -119,12 +119,11 @@ def aspect(name, *factors):
 
 def _abstract(f):
     description = f.description or f.value.render()
-    gate = "" if f.when.op == "literal" and f.when.args[0] is True else f.when.render()
     if f.kind == "comparison":
-        return Cmp(f.name, description, gate, f.op)
+        return Cmp(f.name, description, f.op)
     if f.kind == "enum":
-        return Enum(f.name, description, gate, f.values)
-    return Pred(f.name, description, gate)
+        return Enum(f.name, description, f.values)
+    return Pred(f.name, description)
 
 
 def _conditions(node):
@@ -261,7 +260,7 @@ class Specification:
 coverage_spec = Specification
 
 
-class BoundFormula(Formula):
+class BoundFormula:
     def __init__(self, owner, plan):
         self.owner, self.plan = owner, plan
 
@@ -311,34 +310,35 @@ class BoundFormula(Formula):
         return supported
 
 
-class DeclarationTarget(Target):
+class DeclarationTarget:
     def __init__(self, definition, observer, constants, *, spec=None):
-        super().__init__(
-            definition.name,
-            definition.aspects,
-            lambda ctx: None,
-            definition.profiles,
-            definition.feasible,
-            constants,
-        )
+        self.name = definition.name
+        self.aspects = definition.aspects
+        self.profiles = dict(definition.profiles)
+        self.feasible = definition.feasible
+        self.constants = constants
         self.definition, self.observer = definition, observer
         self._bound_spec = spec
         self._cache = {}
         self.bound_constants = {}
-        # Existing score() explicitly rejects an unbound target with this hook.
-        self.constant_feasibility = definition.constant_feasibility or (
-            lambda constants: definition.feasible
-        )
         if spec is not None:
             self.bound_constants = {name: getter(spec) for name, getter in constants.items()}
             for node in definition.constants:
                 node.domain.validate(self.bound_constants[node.name])
-            self.feasible = rules(
-                definition.feasible, self.constant_feasibility(self.bound_constants)
-            )
+            if definition.constant_feasibility is not None:
+                self.feasible = rules(
+                    definition.feasible, definition.constant_feasibility(self.bound_constants)
+                )
             self.profiles = {
                 name: BoundFormula(self, plan) for name, plan in definition.profiles.items()
             }
+
+    @property
+    def factors(self):
+        return tuple(f for aspect in self.aspects for f in aspect.factors)
+
+    def record(self, observation, granularity):
+        return {f.name: f.value(observation, granularity) for f in self.factors}
 
     def for_spec(self, spec):
         if self._bound_spec is not None:
@@ -405,8 +405,6 @@ class DeclarationTarget(Target):
         return {
             **attributes,
             **{n: NA if v is MISSING else v for n, v in raw.items()},
-            "post_present": ctx.post is not None,
-            "accepted": ctx.post is not None,
         }
 
     def review(self, granularity="predicate", *, examples=3):
