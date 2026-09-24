@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Slot timing](#slot-timing)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Sidecar retention](#sidecar-retention)
 
@@ -21,13 +20,8 @@ validator" to implement EIP-8198.
 
 All validator responsibilities remain unchanged other than those noted below.
 
-### Slot timing
-
-Validators MUST schedule duties against the piecewise timeline given by
-`compute_time_at_slot_ms`, and use the deadline configuration of the fork
-governing each duty. The duration history does not define historical deadlines.
-Duty schedulers MUST keep millisecond precision, since deadlines are not
-generally whole seconds.
+*Note*: Validators MUST schedule duties through the updated
+`get_slot_component_duration_ms`.
 
 ### Block and sidecar proposal
 
