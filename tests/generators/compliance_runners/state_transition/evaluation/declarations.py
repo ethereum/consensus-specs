@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import product
 
-from tests.generators.state_transition.tools import conditional_factors as conditional
-from tests.generators.state_transition.tools.coverage_model import (
+from tests.generators.compliance_runners.tools import conditional_factors as conditional
+from tests.generators.compliance_runners.tools.coverage_model import (
     attribute,
     Boolean,
     Bytes,
