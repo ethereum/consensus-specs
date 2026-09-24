@@ -71,8 +71,13 @@ class OperationsMaterializer(Materializer):
         pre = self._base_state()
         block = build_empty_block(spec, pre, slot=1)
         body = block.body
-        accepted = _bool(solution, "accepted")
         gates = {name: _bool(solution, name) for name in _GATES}
+        requested_acceptance = getattr(solution, "accepted", None)
+        accepted = (
+            bool(requested_acceptance)
+            if requested_acceptance is not None
+            else all(gates.values())
+        )
 
         # A partial exceptional obligation must still select a failing gate.
         # The first unspecified gate is the least surprising deterministic
@@ -112,7 +117,9 @@ class OperationsMaterializer(Materializer):
                     break
 
         claimed = {name: gates[name] for name in _GATES}
-        claimed.update(accepted=post is not None, outcome=outcome)
+        # Keep the requested outcome authoritative. Validation must detect a
+        # transition that does not realize this obligation.
+        claimed.update(accepted=accepted, outcome=outcome)
         meta = {
             "description": f"process_operations: {outcome}",
             "bls_setting": 1,
