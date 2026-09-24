@@ -125,7 +125,6 @@ def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     # [Modified in EIP8198]
-    assert time_ms >= genesis_time_ms
     for entry in reversed(SLOT_DURATION_SCHEDULE):
         entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
         entry_time_ms = compute_time_at_slot_ms(genesis_time_ms, entry_slot)
