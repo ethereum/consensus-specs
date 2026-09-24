@@ -15,7 +15,7 @@ class ProposerLookaheadMaterializer(Materializer):
     runner_name = "epoch_processing"
     handler_name = "proposer_lookahead"
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list["TestCasePart"]]:
+    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         slots = int(spec.SLOTS_PER_EPOCH)
         repeat = getattr(solution, "new_proposers_repeat", None)
