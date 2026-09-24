@@ -6,8 +6,8 @@ parsing or executing capture-function source. It currently powers
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
 `block_header`, `operations`, `voluntary_exit`, `inactivity_updates`,
 `inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
-`rewards_and_penalties`, and `proposer_lookahead`. All registered targets use
-this API. `coverage_dsl.py` provides observation abstraction, scoring, vector
+`rewards_and_penalties`, `proposer_lookahead`, and `process_slot`. These targets
+use this API. `coverage_dsl.py` provides observation abstraction, scoring, vector
 loading, and the CLI; it no longer provides capture decorators or a second
 formula implementation.
 
@@ -22,6 +22,11 @@ formula implementation.
 
 See `../eth1_data_reset/target.py` for the small example and
 `../inactivity_updates_loop/target.py` for conditional arithmetic.
+
+The `process_slot` target consumes `sanity/slots` vectors with `slots.yaml: 1`.
+Its observation adapter expects that slot count as `Context.operation`. It
+records the pre-state inputs to the first slot transition; a multi-slot target
+can later cover sequencing and epoch-boundary interactions.
 
 ```python
 from eth_consensus_specs.test.helpers.specs import spec_targets
