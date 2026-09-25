@@ -43,6 +43,10 @@ FINALIZATION = aspect(
 ASPECTS = (GUARD, JUSTIFICATION, FINALIZATION)
 PROFILES = {
     "smoke": GUARD.each() | JUSTIFICATION.each() | FINALIZATION.each(),
+    "max": GUARD.exhaustive()
+    | JUSTIFICATION.exhaustive()
+    | FINALIZATION.exhaustive()
+    | (JUSTIFICATION.each() * FINALIZATION.each()),
     "normal": JUSTIFICATION.exhaustive() | (JUSTIFICATION.each() * FINALIZATION.each()),
     "standard": GUARD.each()
     | JUSTIFICATION.exhaustive()

@@ -33,6 +33,11 @@ if TYPE_CHECKING:
 Aspects = dict[str, list[str]]
 Rank = Callable[[dict], int]
 
+# Tune how many low-fault signatures the max profile keeps exhaustively.
+MAX_EXHAUSTIVE_FAULTS = 2
+# Tune interaction coverage over all exceptional signatures independently.
+MAX_EXCEPTIONAL_INTERACTION_STRENGTH = 2
+
 
 def _state(rec: dict, dims: list[str]) -> tuple:
     return tuple(rec[d] for d in dims)
@@ -76,6 +81,21 @@ def smoke(recs: list[dict], outcome_aspects: Aspects) -> tuple[int, list[dict]]:
     return cover(recs, {"outcome": ["outcome"]}, 1)
 
 
+def max_profile(recs: list[dict], all_aspects: Aspects) -> tuple[int, list[dict]]:
+    """Keep low-fault signatures and cover remaining exceptional interactions."""
+    normal = filter_faults(recs, 0)
+    exceptional = [rec for rec in recs if rec["_nfaults"] > 0]
+    low_faults = [rec for rec in exceptional if rec["_nfaults"] <= MAX_EXHAUSTIVE_FAULTS]
+    exceptional_dimensions = {dim: [dim] for dims in all_aspects.values() for dim in dims}
+    _, chosen = cover(
+        exceptional,
+        exceptional_dimensions,
+        min(MAX_EXCEPTIONAL_INTERACTION_STRENGTH, len(exceptional_dimensions)),
+        required=low_faults,
+    )
+    return -1, dedup(normal + chosen, all_aspects)
+
+
 def build_profile(
     recs: list[dict],
     name: str,
@@ -94,8 +114,8 @@ def build_profile(
     outcome coverage, exceptional aspects, or coverage strength when they have
     a handler-specific policy.
     """
-    if name == "all":
-        return len(recs), recs
+    if name == "max":
+        return max_profile(recs, all_aspects)
     if name == "smoke":
         return smoke(recs, all_aspects)
     if name == "normal":
@@ -155,12 +175,15 @@ def cover(
     outcome_filter: str | None = None,
     outcome_dim: str = "outcome",
     accept: str | set = "ACCEPT",
+    *,
+    required: list[dict] | None = None,
 ) -> tuple[int, list[dict]]:
     """Greedy t-wise covering set over `aspects` (within an optional outcome slice).
 
     `accept` is the outcome value (or set of values) that count as "normal";
     everything else is "exceptional". Returns (number of feasible t-wise
-    obligations, chosen representatives).
+    obligations, chosen representatives). ``required`` representatives are
+    retained and credited before selecting further cases.
     """
     accept_set = {accept} if isinstance(accept, str) else set(accept)
     names = list(aspects)
@@ -181,7 +204,10 @@ def cover(
         all_obl |= combos
 
     uncovered = set(all_obl)
-    chosen: list[dict] = []
+    chosen = list(required or [])
+    for rec in chosen:
+        proj = tuple(_state(rec, dims) for dims in dims_of)
+        uncovered -= covered_by[proj]
     while uncovered:
         best, best_gain, best_rank = None, 0, 1 << 30
         for proj, combos in covered_by.items():

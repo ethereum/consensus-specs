@@ -32,6 +32,7 @@ ASPECTS = (COMMITTEE,)
 PROFILES = {
     "smoke": COMMITTEE.each(),
     "normal": COMMITTEE.exhaustive(),
+    "max": COMMITTEE.exhaustive(),
     "standard": COMMITTEE.exhaustive(),
 }
 

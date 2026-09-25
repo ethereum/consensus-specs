@@ -97,7 +97,7 @@ help-verbose:
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
 	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
 	@echo "    handler=<handler>      State-transition handler (default: all)"
-	@echo "    profile=<profile>      State-transition profile (smoke, standard, all; default: standard)"
+	@echo "    profile=<profile>      State-transition profile (smoke, standard, max; default: standard)"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo "    group_slice_index=N    0-based shard index for deterministic test-group slicing"

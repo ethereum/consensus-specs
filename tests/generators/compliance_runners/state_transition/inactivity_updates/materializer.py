@@ -29,6 +29,12 @@ class InactivityUpdatesMaterializer(Materializer):
         pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
         requested = str(getattr(solution, "eligible_validators", "ONE"))
         count = {"ZERO": 0, "ONE": 1, "MANY": 2}.get(requested, 1) if after_genesis else 0
+        if (
+            not hasattr(solution, "eligible_validators")
+            and getattr(solution, "has_active_eligible", None) is False
+            and getattr(solution, "has_slashed_validators", None) is False
+        ):
+            count = 0
         if bool(after_genesis) and not bool(getattr(solution, "has_ineligible_validators", True)):
             count = len(pre.validators)
         active_eligible = bool(getattr(solution, "has_active_eligible", count > 0))
@@ -70,7 +76,15 @@ class InactivityUpdatesMaterializer(Materializer):
                 if bool(getattr(solution, "slashed_withdrawable_vs_previous", False))
                 else int(spec.get_previous_epoch(pre)) + 1
             )
-        leaking = bool(getattr(solution, "leaking", False))
+        has_zero_score = bool(getattr(solution, "has_zero_score_eligible", False))
+        scores_changed = bool(getattr(solution, "scores_changed", True))
+        leaking = bool(
+            getattr(
+                solution,
+                "leaking",
+                count == 1 and has_zero_score and scores_changed,
+            )
+        )
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
         finalized_epoch = (
             max(
@@ -88,8 +102,6 @@ class InactivityUpdatesMaterializer(Materializer):
         if branch_mix == "MIXED":
             participating_count = 1
         target_flag = spec.ParticipationFlags(1 << int(spec.TIMELY_TARGET_FLAG_INDEX))
-        has_zero_score = bool(getattr(solution, "has_zero_score_eligible", False))
-        scores_changed = bool(getattr(solution, "scores_changed", True))
         for index in range(count):
             score = 0 if has_zero_score and index == 0 else 1
             if has_zero_score and scores_changed and not leaking and index == 1:
