@@ -30,7 +30,12 @@ RESET = aspect(
     factor("source_matches_destination", source_mix == destination_mix),
 )
 ASPECTS = (RESET,)
-PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
+PROFILES = {
+    "smoke": RESET.each(),
+    "normal": RESET.exhaustive(),
+    "max": RESET.exhaustive(),
+    "standard": RESET.exhaustive(),
+}
 
 COVERAGE = coverage_spec(
     "randao_mixes_reset",

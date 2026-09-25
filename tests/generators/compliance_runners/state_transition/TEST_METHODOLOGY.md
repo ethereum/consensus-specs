@@ -221,7 +221,9 @@ smoke:       one canonical case per outcome
 normal:      nfaults == 0
 exceptional: nfaults == 1 (the usual single-fault profile)
 standard:    normal ∪ exceptional
-all:         every unique solution by coverage signature
+max:         all zero- and up-to-MAX_EXHAUSTIVE_FAULTS signatures plus cases needed for
+             MAX_EXCEPTIONAL_INTERACTION_STRENGTH-wise coverage in enumerated models;
+             explicit stronger normal and bounded exceptional formulas in DSL targets
 ```
 
 One-case-per-outcome frontiers are useful smoke tests, but they are not a

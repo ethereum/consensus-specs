@@ -27,7 +27,12 @@ UPDATE = aspect(
     factor("summaries_nonempty", summary_count > 0),
 )
 ASPECTS = (UPDATE,)
-PROFILES = {"smoke": UPDATE.each(), "normal": UPDATE.exhaustive(), "standard": UPDATE.exhaustive()}
+PROFILES = {
+    "smoke": UPDATE.each(),
+    "normal": UPDATE.exhaustive(),
+    "max": UPDATE.exhaustive(),
+    "standard": UPDATE.exhaustive(),
+}
 
 COVERAGE = coverage_spec(
     "historical_summaries_update",

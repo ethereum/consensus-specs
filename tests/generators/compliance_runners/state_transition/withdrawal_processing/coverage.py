@@ -8,7 +8,7 @@ The withdrawal-processing handler covers two aspect models:
   the builder sweep, and the validator sweep.
 
 This module enumerates each model's feasible space and selects a coverage
-profile (``standard`` = pairwise, ``exhaustive`` = every distinct signature).
+profile (``standard`` = pairwise, ``max`` = shared fault-count selection).
 
 ``materialize_profile`` feeds the chosen solutions of both models to the single
 merged materializer.
@@ -19,7 +19,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from eth_consensus_specs.gloas import minimal as spec
-from tests.generators.compliance_runners.state_transition.aspect_coverage import cover, signature
+from tests.generators.compliance_runners.state_transition.aspect_coverage import (
+    cover,
+    max_profile,
+    signature,
+)
 from tests.generators.compliance_runners.state_transition.materializer.common import (
     solve_all_solutions,
 )
@@ -89,7 +93,6 @@ PROFILES = {
     "normal": 2,
     "standard": 2,
     "exceptional": 1,
-    "all": None,
 }
 
 
@@ -113,7 +116,10 @@ def _pairs(model_path: Path, normalize, aspects: dict) -> list[tuple]:
     seen: dict = {}
     for sol in result:
         rec = normalize(sol)
-        rec["_rank"] = 0
+        # A mismatched parent hash is the only exceptional condition modeled
+        # here. The pending-withdrawal model fixes this predicate to true.
+        rec["_nfaults"] = int(rec["state_latest_block_hash_match"] != "T")
+        rec["_rank"] = rec["_nfaults"]
         seen.setdefault(signature(rec, aspects), (sol, rec))
     return list(seen.values())
 
@@ -124,9 +130,9 @@ def _records(model_path: Path, normalize, aspects: dict) -> list[dict]:
 
 def _build_profile(model_path: Path, normalize, aspects: dict, name: str) -> list[dict]:
     records = _records(model_path, normalize, aspects)
+    if name == "max":
+        return max_profile(records, aspects)[1]
     strength = PROFILES[name]
-    if strength is None:
-        return records
     _, chosen = cover(records, aspects, strength, None)
     return chosen
 

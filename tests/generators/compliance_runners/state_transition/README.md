@@ -70,7 +70,7 @@ handler, profile, or output directory with Make variables:
 make comptests kind=state_transition handler=withdrawals profile=smoke
 make comptests kind=state_transition preset=mainnet
 make comptests kind=state_transition handler=withdrawals seed=12345
-make comptests kind=state_transition profile=all
+make comptests kind=state_transition profile=max
 make comptests kind=state_transition comptests_dir=../compliance-spec-tests/tests
 ```
 
@@ -80,7 +80,10 @@ The supported profiles are:
 - `normal` — cases with no independently failed conditions
 - `exceptional` — single-fault cases
 - `standard` — `normal` plus `exceptional`
-- `all` — every distinct model coverage signature
+- `max` — all normal signatures and exceptional signatures up to
+  `MAX_EXHAUSTIVE_FAULTS` in enumerated models, plus cases needed for
+  `MAX_EXCEPTIONAL_INTERACTION_STRENGTH`-wise exceptional coverage (pairwise by
+  default); DSL providers declare their formulas explicitly
 
 `make comptests` is the supported generation path. The underlying module can
 also be run directly:

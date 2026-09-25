@@ -32,6 +32,7 @@ ASPECTS = (PARTICIPATION,)
 PROFILES = {
     "smoke": PARTICIPATION.each(),
     "normal": PARTICIPATION.exhaustive(),
+    "max": PARTICIPATION.exhaustive(),
     "standard": PARTICIPATION.exhaustive(),
 }
 

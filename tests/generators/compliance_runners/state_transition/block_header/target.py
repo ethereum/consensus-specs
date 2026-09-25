@@ -74,6 +74,7 @@ PROFILES = {
     "smoke": each([*HEADER.declarations, *OUTCOME.declarations]),
     "normal": NORMAL * HEADER.exhaustive(),
     "exceptional": EXCEPTIONAL * HEADER.nwise(2),
+    "max": union(NORMAL * HEADER.exhaustive(), EXCEPTIONAL * HEADER.nwise(2)),
     "standard": union(
         each([*HEADER.declarations, *OUTCOME.declarations]),
         HEADER.each() * OUTCOME.each(),

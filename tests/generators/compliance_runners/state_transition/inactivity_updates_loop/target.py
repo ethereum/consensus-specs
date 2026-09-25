@@ -191,6 +191,7 @@ ARITHMETIC = exhaustive([PARTICIPATING, SCORE, LEAKING, RECOVERY])
 EFFECTS = each([DELTA]) * each([PARTICIPATING, LEAKING, SCORE])
 PROFILES = {
     "smoke": each(ALL_FACTORS),
+    "max": union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 3)),
     "membership": MEMBERSHIP,
     "arithmetic": ARITHMETIC,
     "effects": EFFECTS,

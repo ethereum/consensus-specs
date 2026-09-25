@@ -34,6 +34,7 @@ ROTATION = aspect(
 ASPECTS = (CANDIDATES, ROTATION)
 PROFILES = {
     "smoke": CANDIDATES.each() | ROTATION.each(),
+    "max": CANDIDATES.exhaustive() | ROTATION.exhaustive() | (CANDIDATES.each() * ROTATION.each()),
     "normal": CANDIDATES.nwise(2) | ROTATION.each(),
     "standard": CANDIDATES.nwise(2) | (CANDIDATES.each() * ROTATION.each()),
 }

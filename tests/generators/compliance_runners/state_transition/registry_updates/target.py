@@ -28,6 +28,7 @@ BRANCHES = aspect(
 ASPECTS = (SHAPE, BRANCHES)
 PROFILES = {
     "smoke": SHAPE.each() | BRANCHES.each(),
+    "max": SHAPE.exhaustive() | BRANCHES.exhaustive() | (SHAPE.each() * BRANCHES.each()),
     "normal": SHAPE.each() | BRANCHES.nwise(2),
     "standard": SHAPE.each() | BRANCHES.nwise(2),
 }

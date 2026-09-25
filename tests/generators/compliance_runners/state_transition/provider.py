@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-PROFILES = ("all", "smoke", "normal", "exceptional", "standard")
+PROFILES = ("smoke", "normal", "exceptional", "standard", "max")
 _YAML = YAML(typ="safe")
 
 
@@ -176,6 +176,8 @@ def materialize_handler(
     seed: int = 0,
 ) -> int:
     """Materialize and validate all providers registered for ``handler``."""
+    if profile not in PROFILES:
+        raise ValueError(f"unknown profile: {profile}")
     if spec is None:
         spec = import_module(f"eth_consensus_specs.gloas.{preset_name}")
     providers = providers_for(handler)

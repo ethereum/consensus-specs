@@ -26,7 +26,6 @@ class RegistryUpdatesMaterializer(Materializer):
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=spec.GENESIS_EPOCH, root=pre.finalized_checkpoint.root
         )
-        has_validators = bool(getattr(solution, "has_validators", True))
         requested = {
             name: bool(getattr(solution, name, False))
             for name in (
@@ -36,7 +35,9 @@ class RegistryUpdatesMaterializer(Materializer):
                 "leaves_validator_unchanged",
             )
         }
-        if getattr(solution, "leaves_validator_unchanged", None) is False:
+        all_branches_excluded = all(getattr(solution, name, None) is False for name in requested)
+        has_validators = bool(getattr(solution, "has_validators", not all_branches_excluded))
+        if has_validators and getattr(solution, "leaves_validator_unchanged", None) is False:
             active_branch = next(
                 (name for name, value in requested.items() if value),
                 next(
