@@ -252,6 +252,7 @@ TARGETS = {
     "voluntary_exit": "tests.generators.compliance_runners.state_transition.voluntary_exit.target",
     "process_operations": "tests.generators.compliance_runners.state_transition.operations.target",
     "eth1_data_reset": "tests.generators.compliance_runners.state_transition.eth1_data_reset.target",
+    "effective_balance_updates": "tests.generators.compliance_runners.state_transition.effective_balance_updates.target",
     "justification_and_finalization": "tests.generators.compliance_runners.state_transition.justification_and_finalization.target",
     "registry_updates": "tests.generators.compliance_runners.state_transition.registry_updates.target",
     "rewards_and_penalties": "tests.generators.compliance_runners.state_transition.rewards_and_penalties.target",
