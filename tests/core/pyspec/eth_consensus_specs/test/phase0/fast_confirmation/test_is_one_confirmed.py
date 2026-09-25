@@ -68,9 +68,8 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
     node_b = spec.get_node_for_root(block_b)
     support = spec.get_attestation_score(store, node_b, balance_source)
     proposer_score = spec.compute_proposer_score(balance_source)
-    total_active_balance = spec.get_total_active_balance(balance_source)
-    maximum_support = spec.estimate_committee_weight_between_slots(
-        total_active_balance, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
+    maximum_support = spec.compute_committee_weight_between_slots(
+        store, balance_source, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
     )
     support_discount = spec.get_support_discount(store, balance_source, block_b)
     adversarial_weight = spec.get_adversarial_weight(store, balance_source, block_b)
@@ -134,9 +133,8 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
     node_b = spec.get_node_for_root(block_b)
     support = spec.get_attestation_score(store, node_b, balance_source)
     proposer_score = spec.compute_proposer_score(balance_source)
-    total_active_balance = spec.get_total_active_balance(balance_source)
-    maximum_support = spec.estimate_committee_weight_between_slots(
-        total_active_balance, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
+    maximum_support = spec.compute_committee_weight_between_slots(
+        store, balance_source, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
     )
     support_discount = spec.get_support_discount(store, balance_source, block_b)
     adversarial_weight = spec.get_adversarial_weight(store, balance_source, block_b)
@@ -399,10 +397,9 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     node_b = spec.get_node_for_root(block_b)
     support_b = int(spec.get_attestation_score(store, node_b, balance_source))
     proposer_b = int(spec.compute_proposer_score(balance_source))
-    total_active_balance = spec.get_total_active_balance(balance_source)
     max_support_b = int(
-        spec.estimate_committee_weight_between_slots(
-            total_active_balance, spec.Slot(parent_b.slot + 1), spec.Slot(current_slot - 1)
+        spec.compute_committee_weight_between_slots(
+            store, balance_source, spec.Slot(parent_b.slot + 1), spec.Slot(current_slot - 1)
         )
     )
     adv_b = int(spec.get_adversarial_weight(store, balance_source, block_b))
@@ -807,7 +804,6 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
 
     balance_source = spec.get_current_balance_source(fcr_store)
     current_slot = spec.get_current_slot(store)
-    total_active_balance = spec.get_total_active_balance(balance_source)
 
     # Block should NOT be confirmed (correct adversarial range)
     assert not spec.is_one_confirmed(store, balance_source, block_b), (
@@ -830,8 +826,9 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     node_b = spec.get_node_for_root(block_b)
     support = int(spec.get_attestation_score(store, node_b, balance_source))
     max_support = int(
-        spec.estimate_committee_weight_between_slots(
-            total_active_balance,
+        spec.compute_committee_weight_between_slots(
+            store,
+            balance_source,
             spec.Slot(parent_block.slot + 1),
             spec.Slot(current_slot - 1),
         )
@@ -1068,7 +1065,9 @@ def test_is_one_confirmed_passes_large_validator_slashed(spec, state):
 @with_custom_state(
     balances_fn=(
         lambda spec: _balances_with_large_validators(
-            spec, large_val_indices=[_large_validator_index]
+            spec,
+            large_val_indices=[_large_validator_index],
+            custom_balance=320 * spec.EFFECTIVE_BALANCE_INCREMENT,
         )
     ),
     threshold_fn=default_activation_threshold,
@@ -1076,12 +1075,11 @@ def test_is_one_confirmed_passes_large_validator_slashed(spec, state):
 @spec_test
 @single_phase
 @never_bls
-def test_is_one_confirmed_passes_large_validator_voting_in_empty_slot(spec, state):
+def test_is_one_confirmed_large_validator_voting_in_empty_slot(spec, state):
     """
-    Test with 2048 ETH validator voting during empty slot,
-    this is much larger than the average committee weight in MINIMAL preset,
-    thus the safety threshold for the next slot block becomes Gwei(0)
-    and it is confirmed without any delay.
+    A large validator (320 ETH) voting in an empty slot provides a
+    substantial support discount, but the safety threshold is still high enough
+    and the block requires additional accumulated support before is_one_confirmed passes.
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -1094,24 +1092,27 @@ def test_is_one_confirmed_passes_large_validator_voting_in_empty_slot(spec, stat
     attesters = spec.get_slot_committee(store, fcr.current_slot())
     assert _large_validator_index in attesters
 
-    # Slot 1 is empty, attest
+    # Slot 1 is empty, attest with large validator only
     p_root = fcr.head_root()
-    fcr.attest(attester_indices=[_large_validator_index])
-    fcr.next_slot()
-    fcr.run_fast_confirmation()
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
-    # Slot 2, build a block and confirm
-    b_root = fcr.add_and_apply_block()
-    fcr.attest()
-    fcr.next_slot()
+    # Slot 2, build block B and attest with the slot 2 committee
+    b_root = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-    # Check precondition
+    # Check precondition: large validator still supports parent
     assert store.latest_messages.get(_large_validator_index).root == p_root
-    assert spec.compute_safety_threshold(
-        store, b_root, spec.get_current_balance_source(fcr_store)
-    ) == spec.Gwei(0)
 
-    # The block must be confirmed
+    # At this point (current slot = 3), is_one_confirmed should FAIL
+    balance_source = spec.get_current_balance_source(fcr_store)
+    assert not spec.is_one_confirmed(store, balance_source, b_root)
+
+    # Accumulate additional support over 1 more slot
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=b_root, participation_rate=100)
+
+    # Check precondition: large validator still supports parent
+    assert store.latest_messages.get(_large_validator_index).root == p_root
+
+    # Verify FCR advances confirmed_root
     fcr.run_fast_confirmation()
     assert fcr_store.confirmed_root == b_root
 
@@ -1134,8 +1135,8 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     2. Move to the activationn epoch, validator is not yet active in the balance source.
     3. Check that even with a new validator supporting a parent block during empty slot,
        the confirmation doesn't happen instantly cause the new validator isn't yet active in the balance source.
-    4. Move one epoch forward and do the same, this time the block must be confirmed instantly
-       as the balance of the validator enough to outweigh adversarial budget in the support discount.
+    4. Move one epoch forward and do the same, this time the block must be confirmed if additional support
+       is accumulated.
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -1258,88 +1259,8 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     fcr.attest()
     fcr.next_slot()
 
-    # The block must be confirmed this time
-    fcr.run_fast_confirmation()
-    assert fcr_store.confirmed_root == b_root
-
-    yield from fcr.get_test_artefacts()
-
-
-@only_generator("too slow")
-@with_electra_and_later
-@with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=default_balances,
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
-@never_bls
-def test_is_one_confirmed_passes_with_new_validator_activated_in_head_state(spec, state):
-    """
-    1. Deposit a new validator with enough balance to affect total balance significantly.
-    2. Move to the activationn epoch, validator is not yet active in the balance source,
-       but already active in the head state.
-    3. Check that is_one_confirmed passes, even though it would not pass with the safety threshold
-       computed over the head state because the total balance has significantly shifted.
-    """
-    fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
-
-    # Move to Epoch 2 Slot 1
-    while fcr.current_slot() < 2 * spec.SLOTS_PER_EPOCH + 1:
-        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
-    # Create a block with a large validator deposit
-    new_val_index = len(state.validators)
-    new_val_balance = 8 * spec.MIN_ACTIVATION_BALANCE
-    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    deposit = prepare_deposit_request(
-        spec,
-        new_val_index,
-        new_val_balance,
-        withdrawal_credentials=withdrawal_credentials,
-        signed=True,
-    )
-    fcr.add_and_apply_block(deposit_requests=[deposit])
-    fcr.attest()
-    fcr.next_slot()
-    fcr.run_fast_confirmation()
-
-    # Wait for a new validator to get onboarded
-    while fcr.current_slot() < 10 * spec.SLOTS_PER_EPOCH:
-        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-    assert len(store.block_states[fcr.head_root()].validators) > new_val_index
-
-    # Run to the activation epoch
-    while (
-        fcr.current_epoch()
-        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
-    ):
-        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
-    # Propose and attest with all validators
-    b_root = fcr.add_and_apply_block()
-    fcr.attest(participation_rate=100)
-    fcr.next_slot()
-
-    # Check precondition
-    balance_source = spec.get_current_balance_source(fcr_store)
-    head_state = spec.get_pulled_up_head_state(store)
-    # New validator is not yet active in the balance source
-    assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
-    )
-    # But it is already active in the head state
-    assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
-    )
-    # Compute support with the balance_source
-    support = spec.get_attestation_score(store, spec.get_node_for_root(b_root), balance_source)
-    # Block must be confirmed with a threshold computed over the balance_source
-    assert support > spec.compute_safety_threshold(store, b_root, balance_source)
-    # Block must not be confirmed with a threshold computed over the head_state
-    assert support <= spec.compute_safety_threshold(store, b_root, head_state)
+    # Accumulate more support to confirm a block
+    fcr.attest_and_next_slot_with_fast_confirmation()
 
     # The block must be confirmed
     fcr.run_fast_confirmation()
@@ -1359,7 +1280,7 @@ _consecutive_slots_val_idx = 35
         lambda spec: _balances_with_large_validators(
             spec,
             large_val_indices=[_consecutive_slots_val_idx],
-            custom_balance=352 * spec.EFFECTIVE_BALANCE_INCREMENT,
+            custom_balance=128 * spec.EFFECTIVE_BALANCE_INCREMENT,
         )
     ),
     threshold_fn=default_activation_threshold,
@@ -1367,17 +1288,14 @@ _consecutive_slots_val_idx = 35
 @spec_test
 @single_phase
 @never_bls
-def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive_slots_1(
-    spec, state
-):
+def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_1(spec, state):
     """
     1. Run to the boundary of an epoch in which validator V is assigned to the last slot of the current
        and the first slot of the next epoch.
     2. Leave the first slot of the next epoch empty.
     3. Attest to parent block by the whole committee of the empty slot except for V.
     4. V has already attested to the parent block because it is in the parent's slot committee.
-    5. Ensure V's vote supports parent block by attempting to confirm a block,
-       V's balance is large enough to allow to instantly confirm a block.
+    5. Accumulate more support to confirma block ensuring that V still supports the block's parent.
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -1404,15 +1322,18 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
     fcr.run_fast_confirmation()
 
     # Build block in the next slot and attest to it
-    b_root = fcr.add_and_apply_block()
-    fcr.attest()
-    fcr.next_slot()
+    b_root = fcr.next_slot_with_block_and_fast_confirmation(
+        participation_rate=100, graffiti="b_root"
+    )
+
+    # Run for more slots to accumulate enough support to confirm block b
+    for _ in range(2):
+        fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check that _consecutive_slots_val_idx support parent block
     assert store.latest_messages.get(_consecutive_slots_val_idx).root == p_root
 
     # The block must be confirmed
-    fcr.run_fast_confirmation()
     assert fcr_store.confirmed_root == b_root
 
     yield from fcr.get_test_artefacts()
@@ -1426,7 +1347,7 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
         lambda spec: _balances_with_large_validators(
             spec,
             large_val_indices=[_consecutive_slots_val_idx],
-            custom_balance=352 * spec.EFFECTIVE_BALANCE_INCREMENT,
+            custom_balance=128 * spec.EFFECTIVE_BALANCE_INCREMENT,
         )
     ),
     threshold_fn=default_activation_threshold,
@@ -1434,9 +1355,7 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
 @spec_test
 @single_phase
 @never_bls
-def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive_slots_2(
-    spec, state
-):
+def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_2(spec, state):
     """
     1. Run to the boundary of an epoch in which validator V is assigned to the last slot of the current
        and the first slot of the next epoch.
@@ -1445,8 +1364,7 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
     4. Create a block in the first slot of the next epoch.
     5. Attest to that block by all committee members except for V, V attests to its parent
        as it has a stale view.
-    6. Ensure V's vote supports parent block by attempting to confirm a block,
-       V's balance is large enough to allow to instantly confirm a block.
+    6. Accumulate more support to confirma block ensuring that V still supports the block's parent.
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -1480,12 +1398,396 @@ def test_is_one_confirmed_passes_with_empty_slot_and_attester_in_two_consecutive
     # Attest to parent by _consecutive_slots_val_idx
     fcr.attest(block_root=p_root, attester_indices=[_consecutive_slots_val_idx])
     fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Run for more slots to accumulate enough support to confirm block b
+    for _ in range(2):
+        fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check that _consecutive_slots_val_idx support parent block
     assert store.latest_messages.get(_consecutive_slots_val_idx).root == p_root
 
     # The block must be confirmed
-    fcr.run_fast_confirmation()
     assert fcr_store.confirmed_root == b_root
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(
+        lambda spec: _balances_with_large_validators(
+            spec, large_val_indices=[_large_validator_index]
+        )
+    ),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_is_one_confirmed_passes_with_precise_committee_weight(spec, state):
+    """
+    This test engineers a scenario where the precise committee weight for a
+    two-slot range is about two times lower than the estimated weight would be.
+
+    1. Custom state with one large validator and 63 small validators.
+    2. Run chain to epoch 2.
+    3. Find two consecutive slots in epoch 2 that do NOT contain the large validator.
+    4. Build a chain up to slot s-1, then block B at slot s.
+    5. Attest to B in slot s and s+1 (100% participation).
+    6. Run FCR at slot s+2.
+    7. Assert confirmed block is advanced and old estimate would have failed.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Build through epoch 1 with 100% participation
+    fcr.run_slots_with_blocks_and_fast_confirmation(2 * S, participation_rate=100)
+
+    # Find two consecutive slots in epoch 2 that do not contain the large validator
+    epoch2_start = 2 * S
+    epoch2_end = 3 * S - 1
+    target_s = None
+    for s in range(epoch2_start, epoch2_end):
+        committee_s = spec.get_slot_committee(store, spec.Slot(s))
+        committee_s1 = spec.get_slot_committee(store, spec.Slot(s + 1))
+        if _large_validator_index not in committee_s and _large_validator_index not in committee_s1:
+            target_s = spec.Slot(s)
+            break
+
+    assert target_s is not None
+
+    # Build chain up to slot target_s (parent will be at target_s - 1)
+    while fcr.current_slot() < target_s:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Build block B at slot target_s
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Attest to B at slot target_s + 1 (no new block), then advance and run FCR
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
+
+    # Now current_slot = target_s + 2
+    balance_source = spec.get_current_balance_source(fcr_store)
+
+    # Verify that confirmed_root was advanced to a target block
+    assert fcr_store.confirmed_root == block_b
+
+    # Verify that the old estimate would have produced a higher threshold,
+    # causing the check to fail.
+    node_b = spec.get_node_for_root(block_b)
+    support = spec.get_attestation_score(store, node_b, balance_source)
+    proposer_score = spec.compute_proposer_score(balance_source)
+    total_active_balance = spec.get_total_active_balance(balance_source)
+
+    # Old-style estimate for the same range (2 slots within a single epoch)
+    committee_weight_old = spec.Gwei(int(total_active_balance) // S)
+    old_maximum_support = spec.Gwei(committee_weight_old * 2)
+    old_adversarial_weight = spec.Gwei(
+        int(old_maximum_support) // 100 * spec.config.CONFIRMATION_BYZANTINE_THRESHOLD
+    )
+    old_threshold = (
+        spec.Gwei(old_maximum_support + proposer_score + 2 * old_adversarial_weight) // 2
+    )
+
+    # Support must NOT exceed the old threshold, proving the old logic would fail
+    assert support <= old_threshold, (
+        f"Old estimate would have incorrectly allowed confirmation: "
+        f"support={support}, old_threshold={old_threshold}"
+    )
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(
+        lambda spec: _balances_with_large_validators(
+            spec, large_val_indices=[_large_validator_index]
+        )
+    ),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_is_one_confirmed_fails_with_precise_committee_weight(spec, state):
+    """
+    This test engineers a scenario where the precise committee weight for a
+    three-slot range is lower than the estimated weight would be.
+
+    1. Custom state with one large validator and 63 small validators.
+    2. Run chain through epoch 1 and 2 with 100% participation.
+    3. Find slot s in epoch 3 containing the large validator, with s+1 and s+2
+       also in epoch 3.
+    4. Build block B at slot s and attest with ONLY the large validator.
+    5. Advance 3 slots without additional attestations.
+    6. At slot s+3, assert is_one_confirmed FAILS with precise computation
+       but WOULD PASS with the old uniform estimate.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Build through epoch 1 with 100% participation
+    fcr.run_slots_with_blocks_and_fast_confirmation(2 * S, participation_rate=100)
+
+    # Find a slot in epoch 2 containing the large validator,
+    # with the next two slots also in epoch 2
+    epoch3_start = 3 * S
+    target_s = None
+    for s in range(epoch3_start, epoch3_start + S - 2):
+        committee = spec.get_slot_committee(store, spec.Slot(s))
+        if _large_validator_index in committee:
+            target_s = spec.Slot(s)
+            break
+
+    assert target_s is not None
+
+    # Build up to slot target_s (parent block will be at target_s - 1)
+    while fcr.current_slot() < target_s:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # At slot target_s, build block B and attest with ONLY the large validator
+    block_b = fcr.add_and_apply_block()
+    fcr.attest(block_root=block_b, attester_indices=[_large_validator_index])
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Store a previously confirmed block
+    previosly_confirmed_root = fcr_store.confirmed_root
+
+    # Advance 2 slots without additional attestations
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=0)
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=0)
+
+    # Precise computation: must FAIL; and not advance the confirmed block
+    balance_source = spec.get_current_balance_source(fcr_store)
+    assert not spec.is_one_confirmed(store, balance_source, block_b)
+    assert fcr_store.confirmed_root == previosly_confirmed_root
+
+    # Compute the old estimate threshold to prove it would have passed
+    node_b = spec.get_node_for_root(block_b)
+    support = spec.get_attestation_score(store, node_b, balance_source)
+    proposer_score = spec.compute_proposer_score(balance_source)
+    total_active_balance = spec.get_total_active_balance(balance_source)
+
+    # Old-style estimate for 3 slots within a single epoch
+    old_maximum_support = spec.Gwei(int(total_active_balance) // S * 3)
+    old_adversarial_weight = spec.Gwei(
+        int(old_maximum_support) // 100 * spec.config.CONFIRMATION_BYZANTINE_THRESHOLD
+    )
+    old_threshold = (
+        spec.Gwei(old_maximum_support + proposer_score + 2 * old_adversarial_weight) // 2
+    )
+
+    # Support must exceed the old threshold, proving old logic would pass
+    assert support > old_threshold, (
+        f"Old estimate would have incorrectly failed confirmation: "
+        f"support={support}, old_threshold={old_threshold}"
+    )
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=default_balances,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_is_one_confirmed_fails_inactive_attester_not_in_balance_source(spec, state):
+    """
+    1. Deposit a new validator with large balance.
+    2. Wait for activation in the head state.
+    3. Find a slot where the new validator is in the committee.
+    4. Build block B and attest with the new validator + all-but-one small validators.
+    5. With the real balance_source (new validator inactive): is_one_confirmed FAILS.
+    6. With the head_state (new validator active): is_one_confirmed PASSES.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    # Adance to Epoch 2 with 100% participation
+    while fcr.current_epoch() < 2:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Create a block with a new validator deposit
+    new_val_index = len(state.validators)
+    new_val_balance = 4 * spec.MIN_ACTIVATION_BALANCE
+    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    deposit = prepare_deposit_request(
+        spec,
+        new_val_index,
+        new_val_balance,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+    fcr.add_and_apply_block(deposit_requests=[deposit])
+    fcr.attest()
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Wait for a new validator to get onboarded
+    while fcr.current_slot() < 10 * spec.SLOTS_PER_EPOCH:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert len(store.block_states[fcr.head_root()].validators) > new_val_index
+
+    # Run to the activation epoch
+    while (
+        fcr.current_epoch()
+        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+    ):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert spec.is_active_validator(
+        store.block_states[fcr.head_root()].validators[new_val_index], fcr.current_epoch()
+    )
+
+    # Find a slot in the current epoch where the new validator is in the committee
+    while new_val_index not in spec.get_slot_committee(store, fcr.current_slot()):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Build block B at this slot
+    block_b = fcr.add_and_apply_block()
+
+    # Get the committee and verify the new validator is in it
+    committee_s = spec.get_slot_committee(store, fcr.current_slot())
+    assert new_val_index in committee_s
+
+    # Attest with the new validator + all-but-one of the other committee members
+    small_committee = [i for i in committee_s if i != new_val_index]
+    attesters = small_committee[:-1] + [new_val_index]
+    fcr.attest(block_root=block_b, attester_indices=attesters)
+
+    # Advance to the next slot so attestations are applied
+    fcr.next_slot()
+
+    balance_source = spec.get_current_balance_source(fcr_store)
+    head_state = spec.get_pulled_up_head_state(store)
+
+    # Preconditions: new validator is inactive in balance_source but active in head_state
+    assert not spec.is_active_validator(
+        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+    )
+    assert spec.is_active_validator(
+        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+    )
+
+    # With real balance_source (inactive): FAILs
+    assert not spec.is_one_confirmed(store, balance_source, block_b)
+
+    # With head_state (active): would PASS
+    assert spec.is_one_confirmed(store, head_state, block_b)
+
+    previously_confirmed_root = fcr_store.confirmed_root
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == previously_confirmed_root
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=default_balances,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_is_one_confirmed_passes_inactive_non_attester_not_in_balance_source(spec, state):
+    """
+    1. Deposit a new validator with large balance.
+    2. Wait for activation in the head state.
+    3. Find a slot where the new validator is in the committee.
+    4. Build block B and attest with all committee members EXCEPT the new validator.
+    5. With the real balance_source (new validator inactive): is_one_confirmed PASSES.
+    6. With the head_state (new validator active): is_one_confirmed FAILS.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    # Adance to Epoch 2 with 100% participation
+    while fcr.current_epoch() < 2:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Create a block with a new validator deposit
+    new_val_index = len(state.validators)
+    new_val_balance = 4 * spec.MIN_ACTIVATION_BALANCE
+    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    deposit = prepare_deposit_request(
+        spec,
+        new_val_index,
+        new_val_balance,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+    fcr.add_and_apply_block(deposit_requests=[deposit])
+    fcr.attest()
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Wait for a new validator to get onboarded
+    while fcr.current_slot() < 10 * spec.SLOTS_PER_EPOCH:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert len(store.block_states[fcr.head_root()].validators) > new_val_index
+
+    # Run to the activation epoch
+    while (
+        fcr.current_epoch()
+        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+    ):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert spec.is_active_validator(
+        store.block_states[fcr.head_root()].validators[new_val_index], fcr.current_epoch()
+    )
+
+    # Find a slot in the current epoch where the new validator is in the committee
+    while new_val_index not in spec.get_slot_committee(store, fcr.current_slot()):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Build block B at this slot
+    block_b = fcr.add_and_apply_block(graffiti="target")
+
+    # Get the committee and verify the new validator is in it
+    committee_s = spec.get_slot_committee(store, fcr.current_slot())
+    assert new_val_index in committee_s
+
+    # Attest with all committee members EXCEPT the new validator
+    small_committee = [i for i in committee_s if i != new_val_index]
+    fcr.attest(block_root=block_b, attester_indices=small_committee)
+
+    # Advance to the next slot so attestations are applied
+    fcr.next_slot()
+
+    balance_source = spec.get_current_balance_source(fcr_store)
+    head_state = spec.get_pulled_up_head_state(store)
+
+    # Preconditions: new validator is inactive in balance_source but active in head_state
+    assert not spec.is_active_validator(
+        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+    )
+    assert spec.is_active_validator(
+        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+    )
+
+    # With real balance_source (inactive): should PASS
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == block_b
+
+    # With head_state (active): would FAIL
+    assert not spec.is_one_confirmed(store, head_state, block_b)
 
     yield from fcr.get_test_artefacts()
