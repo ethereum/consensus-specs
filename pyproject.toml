@@ -149,6 +149,19 @@ ignore = [
 "!specs/**" = [
   "ARG", # https://docs.astral.sh/ruff/rules/#flake8-unused-arguments-arg
 ]
+"tests/core/pyspec/eth_consensus_specs/*/{mainnet,minimal}.py" = [
+  "F401",   # https://docs.astral.sh/ruff/rules/unused-import/
+  "FBT003", # https://docs.astral.sh/ruff/rules/boolean-positional-value-in-call/
+  "I001",   # https://docs.astral.sh/ruff/rules/unsorted-imports/
+  "Q000",   # https://docs.astral.sh/ruff/rules/bad-quotes-inline-string/
+  "RUF100", # https://docs.astral.sh/ruff/rules/unused-noqa/
+  "SIM300", # https://docs.astral.sh/ruff/rules/yoda-conditions/
+  "UP006",  # https://docs.astral.sh/ruff/rules/non-pep585-annotation/
+  "UP035",  # https://docs.astral.sh/ruff/rules/deprecated-import/
+  "UP040",  # https://docs.astral.sh/ruff/rules/non-pep695-type-alias/
+  "UP045",  # https://docs.astral.sh/ruff/rules/non-pep604-annotation-optional/
+  "UP047",  # https://docs.astral.sh/ruff/rules/non-pep695-generic-function/
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
