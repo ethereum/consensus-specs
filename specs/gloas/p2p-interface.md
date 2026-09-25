@@ -257,11 +257,9 @@ def compute_min_epochs_for_block_requests() -> Uint64:
     Return the minimum epoch range over which a node must serve blocks.
     """
     # [Modified in Gloas:EIP8061]
-    return Uint64(
-        MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        + (3 * CHURN_LIMIT_QUOTIENT_GLOAS * CONSOLIDATION_CHURN_LIMIT_QUOTIENT)
-        // (2 * (2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS))
-    )
+    numerator = 3 * CHURN_LIMIT_QUOTIENT_GLOAS * CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    denominator = 2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS
+    return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + (numerator // denominator) // 2
 ```
 
 ### Modified `verify_data_column_sidecar_kzg_proofs`
