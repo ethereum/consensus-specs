@@ -13,7 +13,7 @@ from .witness import complete_obligation
 def build_profile(name: str, *, spec):
     """Complete partial obligations and keep one case per realized witness."""
     target = TARGET.for_spec(spec)
-    formula = target.profiles["standard" if name == "all" else name]
+    formula = target.profiles[name]
     obligations = formula.run("predicate")
     records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
     chosen_by_signature = {}

@@ -64,6 +64,7 @@ ASPECTS = (POSITION, CACHES)
 ALL_FACTORS = (*POSITION.declarations, *CACHES.declarations)
 PROFILES = {
     "smoke": POSITION.each() | CACHES.each(),
+    "max": POSITION.each() * CACHES.exhaustive(),
     "normal": POSITION.each() | CACHES.nwise(2) | (POSITION.each() * CACHES.each()),
     "standard": (POSITION.each() * CACHES.exhaustive()),
 }

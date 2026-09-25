@@ -37,6 +37,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     exhaustive,
     factor,
     Integer,
+    nwise,
     union,
 )
 
@@ -165,6 +166,21 @@ def _singleton_zero_score_cannot_change_leak_free(a: dict, _g: str) -> bool:
     )
 
 
+def _stable_scores_require_zero_and_no_leak(a: dict, _g: str) -> bool:
+    if a.get("scores_changed") is not False:
+        return True
+    return a.get("has_zero_score_eligible") is not False and a.get("leaking") not in _GT
+
+
+def _singleton_zero_score_cannot_change_by_decrement(a: dict, _g: str) -> bool:
+    return not (
+        a.get("eligible_validators") == "ONE"
+        and a.get("has_zero_score_eligible") is True
+        and a.get("scores_changed") is True
+        and a.get("branch_mix") == "ALL_DECREMENT"
+    )
+
+
 def _slashed_only_eligible_set_only_increments(a: dict, _g: str) -> bool:
     return not (
         a.get("has_active_eligible") is False and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
@@ -179,6 +195,14 @@ def _slashed_eligible_cannot_all_decrement(a: dict, _g: str) -> bool:
     )
 
 
+def _all_eligible_slashed_cannot_all_decrement(a: dict, _g: str) -> bool:
+    return not (
+        a.get("has_ineligible_validators") is False
+        and a.get("has_slashed_validators") is True
+        and a.get("branch_mix") == "ALL_DECREMENT"
+    )
+
+
 FEASIBLE = rules(
     _epoch_never_before_genesis,
     _empty_loop_has_no_body,
@@ -186,14 +210,18 @@ FEASIBLE = rules(
     _eligible_needs_a_disjunct,
     _empty_ineligible_set_requires_every_validator,
     _singleton_zero_score_cannot_change_leak_free,
+    _stable_scores_require_zero_and_no_leak,
+    _singleton_zero_score_cannot_change_by_decrement,
     _slashed_only_eligible_set_only_increments,
     _slashed_eligible_cannot_all_decrement,
+    _all_eligible_slashed_cannot_all_decrement,
 )
 
 BRANCHES = exhaustive(LOOP.declarations[:3])
 EFFECT = exhaustive([LOOP.declarations[0], LOOP.declarations[3]])
 PROFILES = {
     "smoke": each(ALL_FACTORS),
+    "max": union(METHOD.exhaustive(), ELIGIBLE.exhaustive(), nwise(ALL_FACTORS, 3)),
     "method": METHOD.exhaustive(),
     "eligible": ELIGIBLE.exhaustive(),
     "loop": union(BRANCHES, EFFECT),
