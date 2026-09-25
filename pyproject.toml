@@ -155,7 +155,6 @@ ignore = [
   "I001",   # https://docs.astral.sh/ruff/rules/unsorted-imports/
   "RUF100", # https://docs.astral.sh/ruff/rules/unused-noqa/
   "SIM300", # https://docs.astral.sh/ruff/rules/yoda-conditions/
-  "UP006",  # https://docs.astral.sh/ruff/rules/non-pep585-annotation/
   "UP035",  # https://docs.astral.sh/ruff/rules/deprecated-import/
   "UP040",  # https://docs.astral.sh/ruff/rules/non-pep695-type-alias/
   "UP045",  # https://docs.astral.sh/ruff/rules/non-pep604-annotation-optional/
