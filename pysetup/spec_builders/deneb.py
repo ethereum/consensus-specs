@@ -16,7 +16,7 @@ from eth_consensus_specs.utils import kzg
     @classmethod
     def sundry_functions(cls) -> str:
         return """
-def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> tuple[Sequence[Blob], Sequence[KZGProof]]:
     return [], []
 """
 

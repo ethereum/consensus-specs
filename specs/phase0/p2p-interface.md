@@ -319,13 +319,13 @@ propagation.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: dict[Root, Set[Tuple[bool, ...]]]
+    proposer_slots: Set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, Set[tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    attestation_validator_epochs: Set[tuple[Epoch, ValidatorIndex]]
 ```
 
 #### `compute_fork_version`
@@ -435,8 +435,8 @@ def compute_min_epochs_for_block_requests() -> Uint64:
 
 ```python
 def is_non_strict_superset(
-    seen_bits_set: Set[Tuple[bool, ...]],
-    new_bits: Tuple[bool, ...],
+    seen_bits_set: Set[tuple[bool, ...]],
+    new_bits: tuple[bool, ...],
 ) -> bool:
     """
     Return True if any prior bitset in ``seen_bits_set`` is a non-strict

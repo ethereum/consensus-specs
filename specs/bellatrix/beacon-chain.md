@@ -289,7 +289,7 @@ def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
 `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """

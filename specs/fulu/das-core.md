@@ -270,7 +270,7 @@ following signature:
 <!-- eth_consensus_specs: skip -->
 
 ```python
-def compute_cells_and_kzg_proofs(blob: Blob) -> Tuple[Cells, Proofs]:
+def compute_cells_and_kzg_proofs(blob: Blob) -> tuple[Cells, Proofs]:
     """
     Extend ``blob`` and return all the cells and proofs of the extended blob.
     """
@@ -316,7 +316,7 @@ following signature:
 ```python
 def recover_cells_and_kzg_proofs(
     cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
-) -> Tuple[Cells, Proofs]:
+) -> tuple[Cells, Proofs]:
     """
     Recover all the cells and proofs of an extended blob given at least half of
     its cells.

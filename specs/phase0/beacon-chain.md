@@ -2032,7 +2032,7 @@ def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorInde
 ```python
 def get_attestation_component_deltas(
     state: BeaconState, attestations: Sequence[PendingAttestation]
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Helper with shared logic for use by get source, target, and head deltas functions
     """
@@ -2059,7 +2059,7 @@ def get_attestation_component_deltas(
 ##### Components of attestation deltas
 
 ```python
-def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_source_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for source-vote for each validator.
     """
@@ -2070,7 +2070,7 @@ def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_target_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for target-vote for each validator.
     """
@@ -2081,7 +2081,7 @@ def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_head_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for head-vote for each validator.
     """
@@ -2090,7 +2090,7 @@ def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]
 ```
 
 ```python
-def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return proposer and inclusion delay micro-rewards/penalties for each validator.
     """
@@ -2117,7 +2117,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
 ```
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
     """
@@ -2149,7 +2149,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 ##### `get_attestation_deltas`
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_attestation_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attestation reward/penalty deltas for each validator.
     """
