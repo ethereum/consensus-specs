@@ -1530,9 +1530,10 @@ where `current_epoch` is defined by the current wall-clock time, and clients
 MUST support serving requests of blocks on this range.
 
 *Note*: The epoch range above is based on the current wall-clock time and does
-not account for finality. Clients MUST NOT prune blocks more recent than the
-latest finalized checkpoint, even if outside of this range, as peers need them
-to sync during extended periods of non-finality.
+not account for finality. Clients MUST also keep a record of, and support
+serving, all blocks more recent than their latest finalized checkpoint, even if
+outside of this range, as peers need them to sync during an extended period of
+non-finality.
 
 Peers that are unable to reply to block requests within the
 `compute_min_epochs_for_block_requests()` epoch range SHOULD respond with error
