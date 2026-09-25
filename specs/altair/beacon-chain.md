@@ -456,7 +456,7 @@ def get_attestation_participation_flag_indices(
 ```python
 def get_flag_index_deltas(
     state: BeaconState, flag_index: int
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -486,7 +486,7 @@ def get_flag_index_deltas(
 #### Modified `get_inactivity_penalty_deltas`
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
