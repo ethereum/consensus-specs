@@ -29,7 +29,7 @@ and allows validators to consolidate.
 #### Modified `compute_weak_subjectivity_period`
 
 ```python
-def compute_weak_subjectivity_period(state: BeaconState) -> Uint64:
+def compute_weak_subjectivity_period(state: BeaconState) -> Epoch:
     """
     Returns the weak subjectivity period for the current ``state``.
     This computation takes into account the effect of:

@@ -12,6 +12,7 @@
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
     - [`get_forkchoice_store`](#get_forkchoice_store)
+    - [`get_time_into_slot_ms`](#get_time_into_slot_ms)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
     - [`get_current_store_epoch`](#get_current_store_epoch)
@@ -26,14 +27,15 @@
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
-    - [`filter_block_tree`](#filter_block_tree)
-    - [`get_filtered_block_tree`](#get_filtered_block_tree)
     - [`get_node_children`](#get_node_children)
+    - [`filter_node_tree`](#filter_node_tree)
+    - [`get_filtered_node_tree`](#get_filtered_node_tree)
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`get_latest_message_epoch`](#get_latest_message_epoch)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
@@ -83,8 +85,8 @@ The head block node associated with a `store` is defined as `get_head(store)`.
 At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and
 update `store` by running:
 
-- `on_tick(store, time)` whenever `time > store.time` where `time` is the
-  current Unix time
+- `on_tick(store, time_ms)` whenever `time_ms > store.time_ms` where `time_ms`
+  is the current Unix time in milliseconds
 - `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is
   received
 - `on_attestation(store, attestation)` whenever an attestation `attestation` is
@@ -186,8 +188,8 @@ algorithm. The important fields being tracked are described below:
 ```python
 @dataclass
 class Store:
-    time: Uint64
-    genesis_time: Uint64
+    time_ms: Uint64
+    genesis_time_ms: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -220,15 +222,15 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    proposer_boost_root = Root()
+    genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(genesis_time_ms, anchor_state.slot),
+        genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
-        proposer_boost_root=proposer_boost_root,
+        proposer_boost_root=Root(),
         equivocating_indices=set(),
         blocks={anchor_root: anchor_block.copy()},
         block_states={anchor_root: anchor_state.copy()},
@@ -239,18 +241,25 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
+#### `get_time_into_slot_ms`
+
+```python
+def get_time_into_slot_ms(store: Store) -> Uint64:
+    return store.time_ms - compute_time_at_slot_ms(store.genesis_time_ms, get_current_slot(store))
+```
+
 #### `get_slots_since_genesis`
 
 ```python
-def get_slots_since_genesis(store: Store) -> int:
-    return (store.time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+def get_slots_since_genesis(store: Store) -> Slot:
+    return compute_slot_at_time_ms(store.genesis_time_ms, store.time_ms)
 ```
 
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return GENESIS_SLOT + get_slots_since_genesis(store)
+    return get_slots_since_genesis(store)
 ```
 
 #### `get_current_store_epoch`
@@ -395,28 +404,35 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
         return head_state.current_justified_checkpoint
 ```
 
-#### `filter_block_tree`
-
-*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
-by the recursive logic in this function) MUST set `block_root` to
-`store.justified_checkpoint.root`.
+#### `get_node_children`
 
 ```python
-def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
-    block = store.blocks[block_root]
-    children = [root for root in store.blocks if store.blocks[root].parent_root == block_root]
+def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+    return [
+        ForkChoiceNode(root=root)
+        for root in store.blocks
+        if store.blocks[root].parent_root == node.root
+    ]
+```
+
+#### `filter_node_tree`
+
+```python
+def filter_node_tree(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+    children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
-    # add to filtered block-tree and signal viability to parent.
+    # include this node and those descendants in the filtered node tree.
     if any(children):
-        filter_block_tree_result = [filter_block_tree(store, child, blocks) for child in children]
-        if any(filter_block_tree_result):
-            blocks[block_root] = block
-            return True
-        return False
+        viable_nodes: list[ForkChoiceNode] = []
+        for child in children:
+            viable_nodes.extend(filter_node_tree(store, child))
+        if any(viable_nodes):
+            return viable_nodes + [node]
+        return []
 
     current_epoch = get_current_store_epoch(store)
-    voting_source = get_voting_source(store, block_root)
+    voting_source = get_voting_source(store, node.root)
 
     # The voting source should be either at the same height as the store's justified checkpoint or
     # not more than two epochs ago
@@ -428,7 +444,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
 
     finalized_checkpoint_block = get_checkpoint_block(
         store,
-        block_root,
+        node.root,
         store.finalized_checkpoint.epoch,
     )
 
@@ -437,50 +453,36 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
         or store.finalized_checkpoint.root == finalized_checkpoint_block
     )
 
-    # If expected finalized/justified, add to viable block-tree and signal viability to parent.
+    # If expected finalized/justified, add to viable node tree and signal viability to parent.
     if correct_justified and correct_finalized:
-        blocks[block_root] = block
-        return True
+        return [node]
 
     # Otherwise, branch not viable
-    return False
+    return []
 ```
 
-#### `get_filtered_block_tree`
+#### `get_filtered_node_tree`
 
 ```python
-def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
+def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
     """
-    Retrieve a filtered block tree from ``store``, only returning branches
+    Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
     """
-    base = store.justified_checkpoint.root
-    blocks: Dict[Root, BeaconBlock] = {}
-    filter_block_tree(store, base, blocks)
-    return blocks
-```
-
-#### `get_node_children`
-
-```python
-def get_node_children(
-    store: Store,  # noqa: ARG001
-    blocks: Dict[Root, BeaconBlock],
-    node: ForkChoiceNode,
-) -> Sequence[ForkChoiceNode]:
-    return [ForkChoiceNode(root=root) for root in blocks if blocks[root].parent_root == node.root]
+    base = ForkChoiceNode(root=store.justified_checkpoint.root)
+    return filter_node_tree(store, base)
 ```
 
 #### `get_head`
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
-    # Get filtered block tree that only includes viable branches
-    blocks = get_filtered_block_tree(store)
+    # Get filtered node tree that only includes viable branches
+    nodes = get_filtered_node_tree(store)
     # Execute the LMD-GHOST fork choice
     head = ForkChoiceNode(root=store.justified_checkpoint.root)
     while True:
-        children = get_node_children(store, blocks, head)
+        children = [child for child in get_node_children(store, head) if child in nodes]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
@@ -547,6 +549,16 @@ def seconds_to_milliseconds(seconds: Uint64) -> Uint64:
     if seconds > UINT64_MAX // 1000:
         return UINT64_MAX
     return seconds * 1000
+```
+
+#### `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
+    """
+    Convert milliseconds to seconds, discarding any remainder.
+    """
+    return milliseconds // 1000
 ```
 
 #### `get_slot_component_duration_ms`
@@ -619,10 +631,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms()
-    return time_into_slot_ms <= proposer_reorg_cutoff_ms
+    return get_time_into_slot_ms(store) <= get_proposer_reorg_cutoff_ms()
 ```
 
 ##### `is_head_weak`
@@ -774,11 +783,11 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 ##### `on_tick_per_slot`
 
 ```python
-def on_tick_per_slot(store: Store, time: Uint64) -> None:
+def on_tick_per_slot(store: Store, time_ms: Uint64) -> None:
     previous_slot = get_current_slot(store)
 
     # Update store time
-    store.time = time
+    store.time_ms = time_ms
 
     current_slot = get_current_slot(store)
 
@@ -874,8 +883,7 @@ def update_latest_messages(
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    time_into_slot_ms = get_time_into_slot_ms(store)
     attestation_threshold_ms = get_attestation_due_ms()
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
@@ -929,16 +937,15 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
 #### `on_tick`
 
 ```python
-def on_tick(store: Store, time: Uint64) -> None:
-    # If the ``store.time`` falls behind, while loop catches up slot by slot
+def on_tick(store: Store, time_ms: Uint64) -> None:
+    # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    tick_slot = compute_slot_at_time_ms(store.genesis_time_ms, time_ms)
     while get_current_slot(store) < tick_slot:
-        previous_time = (
-            store.genesis_time + (get_current_slot(store) + 1) * SLOT_DURATION_MS // 1000
-        )
-        on_tick_per_slot(store, previous_time)
-    on_tick_per_slot(store, time)
+        next_slot = get_current_slot(store) + 1
+        next_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, next_slot)
+        on_tick_per_slot(store, next_slot_time_ms)
+    on_tick_per_slot(store, time_ms)
 ```
 
 #### `on_block`

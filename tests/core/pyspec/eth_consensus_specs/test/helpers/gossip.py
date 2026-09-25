@@ -194,6 +194,13 @@ _MESSAGE_INFO = {
         "validation_fn": "validate_proposer_preferences_gossip",
     },
     ###########################################################################
+    # heze
+    ###########################################################################
+    "SignedInclusionList": {
+        "file_prefix": "inclusion_list",
+        "validation_fn": "validate_inclusion_list_gossip",
+    },
+    ###########################################################################
     # eip8025
     ###########################################################################
     "SignedExecutionProofEnvelope": {

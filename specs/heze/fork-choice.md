@@ -112,8 +112,8 @@ inclusion list constraints.
 ```python
 @dataclass
 class Store:
-    time: Uint64
-    genesis_time: Uint64
+    time_ms: Uint64
+    genesis_time_ms: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -142,15 +142,15 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    proposer_boost_root = Root()
+    genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(genesis_time_ms, anchor_state.slot),
+        genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
-        proposer_boost_root=proposer_boost_root,
+        proposer_boost_root=Root(),
         equivocating_indices=set(),
         blocks={anchor_root: anchor_block.copy()},
         block_states={anchor_root: anchor_state.copy()},
@@ -268,6 +268,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
+    # The slot must be within the retention window
+    assert inclusion_list.slot <= current_slot
+    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
+
     # The transactions must be non-empty and not exceed the maximum size
     transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
     assert transactions_size > 0
@@ -275,10 +279,6 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     # Every transaction must be non-empty
     assert all(len(transaction) > 0 for transaction in inclusion_list.transactions)
-
-    # The slot must be within the retention window
-    assert inclusion_list.slot <= current_slot
-    assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
     # The dependent block must be known
     assert inclusion_list.dependent_root in store.blocks
@@ -289,7 +289,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     dependent_slot = compute_shuffling_dependent_slot(epoch)
     assert store.blocks[inclusion_list.dependent_root].slot <= dependent_slot
 
-    # The dependent block must be a possible dependent block for the inclusion list committee lookahead
+    # The dependent block must be a possible dependent block for the committee lookahead
     assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
 
     # Verify the validator is in the inclusion list committee
@@ -304,10 +304,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
     is_current_slot = inclusion_list.slot == current_slot
-    is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
+    is_timely = is_current_slot and get_time_into_slot_ms(store) < get_inclusion_list_due_ms()
 
     # Process the inclusion list
     process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)

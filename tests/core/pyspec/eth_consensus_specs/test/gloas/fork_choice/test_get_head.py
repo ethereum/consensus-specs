@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_test,
     with_custom_state,
     with_gloas_and_later,
+    with_matching_spec_config,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_payload_vote_checks,
@@ -20,6 +21,7 @@ from eth_consensus_specs.test.helpers.payload_attestation import (
 @spec_test
 @with_custom_state(balances_fn=ptc_size_balances, threshold_fn=default_activation_threshold)
 @single_phase
+@with_matching_spec_config()
 def test_get_head_full_payload_tiebreak(spec, state):
     """
     Test that get_head picks the FULL variant of a previous slot payload decision
@@ -64,6 +66,7 @@ def test_get_head_full_payload_tiebreak(spec, state):
 @spec_test
 @with_custom_state(balances_fn=ptc_size_balances, threshold_fn=default_activation_threshold)
 @single_phase
+@with_matching_spec_config()
 def test_get_head_empty_payload_tiebreak(spec, state):
     """
     Test that get_head picks the EMPTY variant of a previous slot payload decision
