@@ -14,6 +14,12 @@ from eth_consensus_specs.electra import {preset_name} as electra
 """
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "BLOB_SIDECAR_SUBNET_COUNT_ELECTRA",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "BlobIdentifier",

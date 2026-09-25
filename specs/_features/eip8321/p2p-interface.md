@@ -49,6 +49,7 @@ class Seen:
     execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    inclusion_list_counts: Counter[Tuple[Slot, Root, ValidatorIndex]]
     # [New in EIP8321]
     randao_commitment_registration_indices: Set[ValidatorIndex]
 ```

@@ -21,6 +21,14 @@ from eth_consensus_specs.deneb import {preset_name} as deneb
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "BLOB_SIDECAR_SUBNET_COUNT",
+            "MAX_BLOBS_PER_BLOCK",
+            "MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "get_validator_activation_churn_limit",

@@ -55,11 +55,12 @@ types:
 
 #### `on_tick` execution step
 
-The parameter that is required for executing `on_tick(store, time)`.
+The parameter that is required for executing `on_tick(store, time_ms)`. Note
+that `tick` is in seconds, while `on_tick` takes milliseconds.
 
 ```yaml
 {
-    tick: int       -- to execute `on_tick(store, time)`.
+    tick: int       -- to execute `on_tick(store, seconds_to_milliseconds(tick))`.
     valid: bool     -- optional, default to `true`.
                        If it's `false`, this execution step is expected to be invalid.
 }
@@ -240,8 +241,8 @@ head: {
     root: string,             -- Encoded 32-byte value from get_head(store).root
     payload_status: int,      -- Gloas and later, the head's payload_status
 }
-time: int                     -- store.time
-genesis_time: int             -- store.genesis_time
+time: int                     -- milliseconds_to_seconds(store.time_ms)
+genesis_time: int             -- milliseconds_to_seconds(store.genesis_time_ms)
 justified_checkpoint: {
     epoch: int,               -- Integer value from store.justified_checkpoint.epoch
     root: string,             -- Encoded 32-byte value from store.justified_checkpoint.root
@@ -252,7 +253,7 @@ finalized_checkpoint: {
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
 viable_for_head_roots_and_weights: [{
-    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks/nodes
+    root: string,             -- Encoded 32-byte value of filtered_node_tree leaf blocks/nodes
     weight: int,              -- Integer value of the weight of the block/node
     payload_status: int,      -- Gloas and later, the payload_status of the node
 }]
