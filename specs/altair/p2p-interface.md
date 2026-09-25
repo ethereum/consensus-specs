@@ -67,7 +67,7 @@ class Syncnets(BitVector):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
+    aggregate_data_roots: dict[Root, Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
@@ -75,7 +75,7 @@ class Seen:
     # [New in Altair]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_contribution_data: dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     # [New in Altair]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
 ```

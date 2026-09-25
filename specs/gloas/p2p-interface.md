@@ -191,13 +191,13 @@ class SignedProposerPreferences(Container):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
+    aggregate_data_roots: dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_contribution_data: dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Gloas:EIP7732]
@@ -205,7 +205,7 @@ class Seen:
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payloads: dict[Hash32, ExecutionPayload]
     # [New in Gloas:EIP7732]
     execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
@@ -213,9 +213,9 @@ class Seen:
     # [New in Gloas:EIP7732]
     execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    best_execution_payload_bid: dict[Tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
-    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    proposer_preferences: dict[Tuple[Slot, Root], ProposerPreferences]
 ```
 
 ### Modified `compute_fork_version`
@@ -409,7 +409,7 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
 def verify_attestation_payload_status(
     store: Store,
     data: AttestationData,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Verify that the attested payload status is consistent with the block's payload.
@@ -664,7 +664,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     signed_aggregate_and_proof: SignedAggregateAndProof,
     current_time_ms: Uint64,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -1171,7 +1171,7 @@ def validate_beacon_attestation_gossip(
     current_time_ms: Uint64,
     subnet_id: SubnetID,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SingleAttestation for gossip propagation on a subnet.

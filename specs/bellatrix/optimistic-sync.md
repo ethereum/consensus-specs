@@ -68,8 +68,8 @@ Let `head: BeaconBlock` be the result of calling of the fork choice algorithm at
 the time of block production. Let `head_block_root: Root` be the root of that
 block.
 
-Let `blocks: Dict[Root, BeaconBlock]` and
-`block_states: Dict[Root, BeaconState]` be the blocks (and accompanying states)
+Let `blocks: dict[Root, BeaconBlock]` and
+`block_states: dict[Root, BeaconState]` be the blocks (and accompanying states)
 that have been verified either completely or optimistically.
 
 Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
@@ -85,8 +85,8 @@ Let `current_slot: Slot` be `compute_slot_at_time(genesis_time, time)` where
 class OptimisticStore:
     optimistic_roots: Set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
 ```
 
 ```python

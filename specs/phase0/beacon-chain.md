@@ -1218,7 +1218,7 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
     for current_round in range(SHUFFLE_ROUND_COUNT):
         round_bytes = uint_to_bytes(Uint8(current_round))
         pivot = bytes_to_uint64(sha256(seed + round_bytes)[0:8]) % index_count
-        source_by_bucket: Dict[Uint64, Bytes32] = {}
+        source_by_bucket: dict[Uint64, Bytes32] = {}
         for i in range(index_count):
             flip = (pivot + index_count - indices[i]) % index_count
             position = max(indices[i], flip)
