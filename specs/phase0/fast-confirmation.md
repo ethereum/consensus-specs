@@ -231,14 +231,14 @@ semantics MUST be preserved.
 committees of epochs starting from `current_epoch - 2`.
 
 ```python
-def get_slot_committee(store: Store, slot: Slot) -> Set[ValidatorIndex]:
+def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
     """
     Return participants of all committees in ``slot``.
     """
     head = get_head(store).root
     shuffling_source = store.block_states[head]
     committees_count = get_committee_count_per_slot(shuffling_source, compute_epoch_at_slot(slot))
-    participants: Set[ValidatorIndex] = set()
+    participants: set[ValidatorIndex] = set()
     for i in range(committees_count):
         participants.update(get_beacon_committee(shuffling_source, slot, CommitteeIndex(i)))
     return participants
@@ -319,7 +319,7 @@ def get_block_support_between_slots(
     Return support of the block by validators assigned to slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    participants: Set[ValidatorIndex] = set()
+    participants: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         participants.update(get_slot_committee(store, Slot(slot)))
 
@@ -453,7 +453,7 @@ def get_equivocation_score(
     Return total weight of equivocating participants of all committees
     in the slots between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    committee_indices: Set[ValidatorIndex] = set()
+    committee_indices: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         committee_indices.update(get_slot_committee(store, Slot(slot)))
 

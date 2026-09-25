@@ -1554,7 +1554,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 #### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
+def get_total_balance(state: BeaconState, indices: set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``.
     ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
@@ -1616,7 +1616,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
 #### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
@@ -1629,7 +1629,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 ```python
 def get_pending_attesting_indices(
     state: BeaconState, attestation: PendingAttestation
-) -> Set[ValidatorIndex]:
+) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices for a ``PendingAttestation``.
     """
@@ -1910,8 +1910,8 @@ def get_matching_head_attestations(
 ```python
 def get_unslashed_attesting_indices(
     state: BeaconState, attestations: Sequence[PendingAttestation]
-) -> Set[ValidatorIndex]:
-    output: Set[ValidatorIndex] = set()
+) -> set[ValidatorIndex]:
+    output: set[ValidatorIndex] = set()
     for a in attestations:
         output = output.union(get_pending_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))
