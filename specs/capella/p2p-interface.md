@@ -34,18 +34,18 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: dict[Root, Set[tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: dict[tuple[Slot, Root, Uint64], Set[tuple[bool, ...]]]
-    sync_message_validator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Capella]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    bls_to_execution_change_indices: set[ValidatorIndex]
 ```
 
 ### Modified `compute_fork_version`
