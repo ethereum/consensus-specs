@@ -45,7 +45,7 @@ from eth_consensus_specs.utils import bls
     @classmethod
     def preparations(cls) -> str:
         return """
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar("SSZObject", bound=SSZType)
 """
 
     @classmethod

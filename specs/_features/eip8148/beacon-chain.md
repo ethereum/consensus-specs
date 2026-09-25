@@ -86,7 +86,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x05')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1("0x05")` |
 
 ### Sweep threshold validation
 

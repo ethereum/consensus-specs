@@ -93,13 +93,13 @@ cross-network replay.
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_PREREGISTRATION` | `DomainType('0x11000000')` |
+| `DOMAIN_PREREGISTRATION` | `DomainType("0x11000000")` |
 
 ### Execution-layer triggered requests
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1('0x05')` |
+| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1("0x05")` |
 
 ## Presets
 

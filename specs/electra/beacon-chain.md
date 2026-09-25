@@ -281,15 +281,15 @@ specification.
 
 | Name                            | Value            | Description                                              |
 | ------------------------------- | ---------------- | -------------------------------------------------------- |
-| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | Withdrawal credential prefix for a compounding validator |
+| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1("0x02")` | Withdrawal credential prefix for a compounding validator |
 
 ### Execution-layer triggered requests
 
 | Name                         | Value            |
 | ---------------------------- | ---------------- |
-| `DEPOSIT_REQUEST_TYPE`       | `Bytes1('0x00')` |
-| `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1('0x01')` |
-| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
+| `DEPOSIT_REQUEST_TYPE`       | `Bytes1("0x00")` |
+| `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1("0x01")` |
+| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1("0x02")` |
 
 ## Presets
 
