@@ -8,7 +8,7 @@ from .target import TARGET
 def build_profile(name: str, *, spec):
     """Return predicate-level obligations in the state-transition provider format."""
     target = TARGET.for_spec(spec)
-    formula = target.profiles["standard" if name == "all" else name]
+    formula = target.profiles[name]
     obligations = formula.run("predicate")
     records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
     return records, records

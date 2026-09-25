@@ -175,6 +175,11 @@ PROFILES = {
     "smoke": each(ALL_FACTORS),
     "normal": NORMAL * (CHURN_ARITHMETIC | EPOCHS.nwise(2)),
     "exceptional": EXCEPTIONAL * nwise(ALL_FACTORS, 2),
+    "max": union(
+        NORMAL
+        * union(EPOCHS.exhaustive(), PENDING.exhaustive(), CHURN_ARITHMETIC, nwise(ALL_FACTORS, 3)),
+        EXCEPTIONAL * nwise(ALL_FACTORS, 2),
+    ),
     "standard": union(
         each(ALL_FACTORS), *(a.each() * b.each() for a, b in combinations(ASPECTS, 2))
     ),

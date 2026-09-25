@@ -116,7 +116,19 @@ class ConsolidationRequestMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        n = _VALIDATOR_COUNT_BY_CHURN_RELATION[_s(sol, "consolidation_churn_to_min_activation")]
+        same = _b(sol, "same_source_target")
+        source_found = _b(sol, "validator_pubkey_found")
+        inactive_source = source_found and _s(sol, "validator_active") != "T"
+        inactive_target = (
+            not same and _s(sol, "target_found") == "T" and _s(sol, "target_active") != "T"
+        )
+        # Churn depends on active effective balance, not validator count. The
+        # source and target below may become inactive, so reserve replacements.
+        n = (
+            _VALIDATOR_COUNT_BY_CHURN_RELATION[_s(sol, "consolidation_churn_to_min_activation")]
+            + inactive_source
+            + inactive_target
+        )
         pre = create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
@@ -136,9 +148,6 @@ class ConsolidationRequestMaterializer(Materializer):
         absent_source = pubkeys[n + absent_source_index]
         absent_target = pubkeys[n + absent_target_index]
         credential_address, other_address = credential_and_other_address(self.rng)
-
-        same = _b(sol, "same_source_target")
-        source_found = _b(sol, "validator_pubkey_found")
 
         # ---- source validator --------------------------------------------------
         if source_found:

@@ -30,7 +30,12 @@ RESET = aspect(
     ),
 )
 ASPECTS = (RESET,)
-PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
+PROFILES = {
+    "smoke": RESET.each(),
+    "normal": RESET.exhaustive(),
+    "max": RESET.exhaustive(),
+    "standard": RESET.exhaustive(),
+}
 
 COVERAGE = coverage_spec(
     "eth1_data_reset",

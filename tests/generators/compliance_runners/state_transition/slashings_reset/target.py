@@ -25,7 +25,12 @@ RESET = aspect(
     factor("destination_nonzero", destination_value > 0),
 )
 ASPECTS = (RESET,)
-PROFILES = {"smoke": RESET.each(), "normal": RESET.exhaustive(), "standard": RESET.exhaustive()}
+PROFILES = {
+    "smoke": RESET.each(),
+    "normal": RESET.exhaustive(),
+    "max": RESET.exhaustive(),
+    "standard": RESET.exhaustive(),
+}
 
 COVERAGE = coverage_spec(
     "slashings_reset",

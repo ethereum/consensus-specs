@@ -34,6 +34,7 @@ DELTAS = aspect(
 ASPECTS = (GUARD, DELTAS)
 PROFILES = {
     "smoke": GUARD.each() | DELTAS.each(),
+    "max": GUARD.exhaustive() | DELTAS.exhaustive() | (GUARD.each() * DELTAS.each()),
     "normal": GUARD.each() | DELTAS.nwise(2),
     "standard": GUARD.each() | DELTAS.nwise(2),
 }

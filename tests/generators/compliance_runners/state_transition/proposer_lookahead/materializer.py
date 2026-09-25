@@ -76,6 +76,18 @@ class ProposerLookaheadMaterializer(Materializer):
             if bool(getattr(solution, "new_epoch_repeats_old_tail", True))
             else [spec.ValidatorIndex((int(index) + 1) % len(pre.validators)) for index in new]
         )
+        if not old_slashed:
+            # The genesis lookahead predates the requested slashing. Remove
+            # references to that validator without changing the tail relation.
+            for position, proposer_index in enumerate(old):
+                if pre.validators[proposer_index].slashed:
+                    replacement = next(
+                        index
+                        for index, validator in enumerate(pre.validators)
+                        if not validator.slashed
+                        and (position < split or index != int(new[position - split]))
+                    )
+                    old[position] = spec.ValidatorIndex(replacement)
         if old_slashed:
             old[0] = spec.ValidatorIndex(len(pre.validators) - 1)
         for index, proposer_index in enumerate(old):
