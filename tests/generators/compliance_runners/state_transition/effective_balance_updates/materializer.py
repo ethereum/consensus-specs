@@ -11,7 +11,14 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = ["scenario", "credential_type", "hysteresis_result", "balance_alignment", "outcome"]
+_DIMS = (
+    "credential_type",
+    "downward_trigger",
+    "upward_trigger",
+    "rounded_vs_cap",
+    "balance_aligned",
+    "outcome",
+)
 _GENESIS_VALIDATOR_COUNT = 64
 _VALIDATOR_INDEX = 0
 
@@ -41,40 +48,20 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         validator = pre.validators[_VALIDATOR_INDEX]
-        increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
-        scenario = str(solution.scenario)
-
-        if scenario == "STABLE_STANDARD":
-            effective_balance = int(spec.MAX_EFFECTIVE_BALANCE)
-            balance = effective_balance
-        elif scenario == "DOWNWARD_STANDARD":
-            effective_balance = int(spec.MAX_EFFECTIVE_BALANCE)
-            balance = effective_balance - increment - 1
-        elif scenario == "UPWARD_STANDARD":
-            effective_balance = 29 * increment
-            balance = 31 * increment + 1
-        elif scenario == "CAPPED_STANDARD":
-            effective_balance = 30 * increment
-            balance = 34 * increment
-        elif scenario == "UPWARD_COMPOUNDING":
+        effective_balance = int(solution.effective_balance)
+        balance = int(solution.balance)
+        if solution.credential_type == "COMPOUNDING":
             validator.withdrawal_credentials = spec.Bytes32(
                 spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
             )
-            effective_balance = 31 * increment
-            balance = 33 * increment + 1
-        else:
-            raise ValueError(f"unknown effective-balance scenario: {scenario}")
 
         validator.effective_balance = spec.Gwei(effective_balance)
         pre.balances[_VALIDATOR_INDEX] = spec.Gwei(balance)
         post = pre.copy()
         spec.process_effective_balance_updates(post)
 
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-            if name != "scenario"
-        }
+        claimed = {name: getattr(solution, name) for name in _DIMS}
+        claimed["granularity"] = solution.granularity
         meta = {
             "description": f"process_effective_balance_updates: {claimed['outcome']}",
             "claimed": claimed,
