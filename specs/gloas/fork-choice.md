@@ -139,10 +139,10 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
+    payload_attributes: PayloadAttributes | None,
     # [New in Gloas:EIP8070]
-    custody_columns: Optional[CustodyColumnBits],
-) -> Optional[PayloadId]: ...
+    custody_columns: CustodyColumnBits | None,
+) -> PayloadId | None: ...
 ```
 
 ## Helpers
@@ -208,9 +208,9 @@ class Store:
     # [New in Gloas:EIP7732]
     payloads: dict[Root, ExecutionPayloadEnvelope]
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: dict[Root, list[Optional[Boolean]]]
+    payload_timeliness_vote: dict[Root, list[Boolean | None]]
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: dict[Root, list[Optional[Boolean]]]
+    payload_data_availability_vote: dict[Root, list[Boolean | None]]
 ```
 
 ### Modified `get_forkchoice_store`

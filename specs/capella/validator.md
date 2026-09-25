@@ -96,7 +96,7 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
     # [Modified in Capella]
     # Removed `pow_chain`
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     # [Modified in Capella]
     # Removed `is_merge_transition_complete` check
     parent_hash = state.latest_execution_payload_header.block_hash

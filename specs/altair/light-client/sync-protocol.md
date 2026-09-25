@@ -193,7 +193,7 @@ class LightClientStore:
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Best available header to switch finalized head to if we see nothing else
-    best_valid_update: Optional[LightClientUpdate]
+    best_valid_update: LightClientUpdate | None
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)

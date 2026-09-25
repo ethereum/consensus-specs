@@ -157,7 +157,6 @@ ignore = [
   "SIM300", # https://docs.astral.sh/ruff/rules/yoda-conditions/
   "UP035",  # https://docs.astral.sh/ruff/rules/deprecated-import/
   "UP040",  # https://docs.astral.sh/ruff/rules/non-pep695-type-alias/
-  "UP045",  # https://docs.astral.sh/ruff/rules/non-pep604-annotation-optional/
   "UP047",  # https://docs.astral.sh/ruff/rules/non-pep695-generic-function/
 ]
 
