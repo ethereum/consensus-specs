@@ -77,7 +77,7 @@ within the context of the current and next epoch.
 ```python
 def get_inclusion_list_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Slot]:
+) -> Slot | None:
     """
     Returns the slot during the requested epoch in which the validator with
     index ``validator_index`` is a member of the inclusion list committee.
@@ -148,7 +148,7 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]

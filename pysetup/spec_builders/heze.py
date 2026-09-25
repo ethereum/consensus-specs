@@ -37,8 +37,8 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes],
-                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None,
+                                  custody_columns: CustodyColumnBits | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:

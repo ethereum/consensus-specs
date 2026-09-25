@@ -50,7 +50,7 @@ class GetPayloadResponse:
 ```python
 def get_pow_block_at_terminal_total_difficulty(
     pow_chain: dict[Hash32, PowBlock],
-) -> Optional[PowBlock]:
+) -> PowBlock | None:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain.values():
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
@@ -69,7 +69,7 @@ def get_pow_block_at_terminal_total_difficulty(
 ### `get_terminal_pow_block`
 
 ```python
-def get_terminal_pow_block(pow_chain: dict[Hash32, PowBlock]) -> Optional[PowBlock]:
+def get_terminal_pow_block(pow_chain: dict[Hash32, PowBlock]) -> PowBlock | None:
     if TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH:
         # Terminal block hash override takes precedence over terminal total difficulty
         if TERMINAL_BLOCK_HASH in pow_chain:
@@ -149,8 +149,8 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
-    pow_chain: Optional[dict[Hash32, PowBlock]] = None,
-) -> Optional[PayloadId]:
+    pow_chain: dict[Hash32, PowBlock] | None = None,
+) -> PayloadId | None:
     if not is_merge_transition_complete(state):
         assert pow_chain is not None
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH
@@ -191,7 +191,7 @@ def prepare_execution_payload(
 
 ```python
 def get_execution_payload(
-    payload_id: Optional[PayloadId], execution_engine: ExecutionEngine
+    payload_id: PayloadId | None, execution_engine: ExecutionEngine
 ) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
