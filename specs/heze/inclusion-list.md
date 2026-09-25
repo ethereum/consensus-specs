@@ -40,8 +40,8 @@ class InclusionListEntry:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[tuple[Slot, Root], dict[ValidatorIndex, InclusionListEntry]]
-    equivocators: DefaultDict[tuple[Slot, Root], set[ValidatorIndex]]
+    inclusion_lists: defaultdict[tuple[Slot, Root], dict[ValidatorIndex, InclusionListEntry]]
+    equivocators: defaultdict[tuple[Slot, Root], set[ValidatorIndex]]
 ```
 
 ## Helpers
