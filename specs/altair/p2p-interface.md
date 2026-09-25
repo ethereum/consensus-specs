@@ -65,19 +65,19 @@ class Syncnets(BitVector):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: dict[Root, Set[Tuple[bool, ...]]]
+    proposer_slots: Set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, Set[tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    attestation_validator_epochs: Set[tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_aggregator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], Set[tuple[bool, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_message_validator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
 ```
 
 ### Modified `compute_fork_version`
