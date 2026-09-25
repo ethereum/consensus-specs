@@ -285,7 +285,7 @@ proposer processes them as follows:
 
 ```python
 def process_sync_committee_contributions(
-    block: BeaconBlock, contributions: Set[SyncCommitteeContribution]
+    block: BeaconBlock, contributions: set[SyncCommitteeContribution]
 ) -> None:
     sync_aggregate = SyncAggregate.empty()
     signatures = []
@@ -393,7 +393,7 @@ subcommittees.
 ```python
 def compute_subnets_for_sync_committee(
     state: BeaconState, validator_index: ValidatorIndex
-) -> Set[SubnetID]:
+) -> set[SubnetID]:
     next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
         next_slot_epoch
@@ -468,7 +468,7 @@ If a validator is selected to aggregate the `SyncCommitteeMessage`s produced on
 a subnet during a given `slot`, they construct an aggregated
 `SyncCommitteeContribution`.
 
-Collect all of the (valid) `sync_committee_messages: Set[SyncCommitteeMessage]`
+Collect all of the (valid) `sync_committee_messages: set[SyncCommitteeMessage]`
 from the `sync_committee_{subnet_id}` gossip during the selected `slot` with an
 equivalent `beacon_block_root` to that of the aggregator. If
 `len(sync_committee_messages) > 0`, the aggregator creates a

@@ -65,19 +65,19 @@ class Syncnets(BitVector):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: dict[Root, Set[tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[tuple[Epoch, ValidatorIndex]]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: dict[tuple[Slot, Root, Uint64], Set[tuple[bool, ...]]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
 ```
 
 ### Modified `compute_fork_version`
