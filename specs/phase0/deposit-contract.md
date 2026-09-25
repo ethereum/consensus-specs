@@ -50,7 +50,7 @@ specification-design purposes.
 | -------------------------- | ---------------------------------------------------------------- |
 | `DEPOSIT_CHAIN_ID`         | `Uint64(1)`                                                      |
 | `DEPOSIT_NETWORK_ID`       | `Uint64(1)`                                                      |
-| `DEPOSIT_CONTRACT_ADDRESS` | `ExecutionAddress('0x00000000219ab540356cBB839Cbe05303d7705Fa')` |
+| `DEPOSIT_CONTRACT_ADDRESS` | `ExecutionAddress("0x00000000219ab540356cBB839Cbe05303d7705Fa")` |
 
 ## Staking deposit contract
 

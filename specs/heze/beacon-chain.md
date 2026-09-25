@@ -70,7 +70,7 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
 
 | Name                              | Value                      |
 | --------------------------------- | -------------------------- |
-| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x10000000')` |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType("0x10000000")` |
 
 ## Presets
 

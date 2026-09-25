@@ -78,7 +78,7 @@ schema revision (`0x01`).
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0F000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType("0x0F000000")` |
 
 ## Containers
 

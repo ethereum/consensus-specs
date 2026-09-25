@@ -559,10 +559,10 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                          | Value                      |
 | ----------------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER`       | `DomainType('0x0B000000')` |
-| `DOMAIN_PTC_ATTESTER`         | `DomainType('0x0C000000')` |
-| `DOMAIN_PROPOSER_PREFERENCES` | `DomainType('0x0D000000')` |
-| `DOMAIN_BUILDER_DEPOSIT`      | `DomainType('0x0E000000')` |
+| `DOMAIN_BEACON_BUILDER`       | `DomainType("0x0B000000")` |
+| `DOMAIN_PTC_ATTESTER`         | `DomainType("0x0C000000")` |
+| `DOMAIN_PROPOSER_PREFERENCES` | `DomainType("0x0D000000")` |
+| `DOMAIN_BUILDER_DEPOSIT`      | `DomainType("0x0E000000")` |
 
 ### Misc
 
@@ -576,7 +576,7 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                        | Value            |
 | --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1("0xB0")` |
 
 ### Builder versions
 
@@ -588,8 +588,8 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
-| `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
+| `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1("0x03")` |
+| `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1("0x04")` |
 
 ## Presets
 
