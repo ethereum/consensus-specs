@@ -246,7 +246,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ### Modified `compute_min_epochs_for_block_requests`
 
 *Note*: `compute_min_epochs_for_block_requests` is modified to use the
-arithmetic from the modified `compute_weak_subjectivity_period` found in the
+arithmetic from `compute_weak_subjectivity_period` found in the
 [weak subjectivity guide](./weak-subjectivity.md). In the worst case of a very
 large validator set, the capped activation churn is negligible, which leaves the
 exit churn (weighted 2/3) and the consolidation churn (weighted 1).
