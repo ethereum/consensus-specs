@@ -298,7 +298,12 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
-    committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
+    unslashed_and_active_indices: Set[ValidatorIndex] = set()
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        if not state.validators[index].slashed:
+            unslashed_and_active_indices.add(index)
+    total_balance = get_total_balance(state, unslashed_and_active_indices)
+    committee_weight = total_balance // Uint64(SLOTS_PER_EPOCH)
     return (committee_weight * committee_percent) // 100
 ```
 
@@ -353,8 +358,7 @@ def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState
 
 ```python
 def compute_proposer_score(state: BeaconState) -> Gwei:
-    committee_weight = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+    return calculate_committee_fraction(state, PROPOSER_SCORE_BOOST)
 ```
 
 #### `get_proposer_score`
