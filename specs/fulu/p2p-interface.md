@@ -125,13 +125,13 @@ class DataColumnsByRootIdentifier(Container):
 class Seen:
     proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
     aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
+    aggregate_data_roots: dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
     attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
     sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_contribution_data: dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
     sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
@@ -139,7 +139,7 @@ class Seen:
     # [New in Fulu:EIP7594]
     data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
     # [New in Fulu]
-    partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
+    partial_data_column_headers: dict[Root, PartialDataColumnHeader]
 ```
 
 ### Modified `compute_fork_version`
@@ -307,7 +307,7 @@ def validate_beacon_block_gossip(
     store: Store,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
