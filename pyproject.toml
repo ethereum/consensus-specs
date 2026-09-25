@@ -153,7 +153,6 @@ ignore = [
   "F401",   # https://docs.astral.sh/ruff/rules/unused-import/
   "FBT003", # https://docs.astral.sh/ruff/rules/boolean-positional-value-in-call/
   "I001",   # https://docs.astral.sh/ruff/rules/unsorted-imports/
-  "Q000",   # https://docs.astral.sh/ruff/rules/bad-quotes-inline-string/
   "RUF100", # https://docs.astral.sh/ruff/rules/unused-noqa/
   "SIM300", # https://docs.astral.sh/ruff/rules/yoda-conditions/
   "UP006",  # https://docs.astral.sh/ruff/rules/non-pep585-annotation/

@@ -20,7 +20,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP8321_FORK_VERSION` | `Version('0xe8321000')`               |
+| `EIP8321_FORK_VERSION` | `Version("0xe8321000")`               |
 | `EIP8321_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-8321

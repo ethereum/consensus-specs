@@ -49,7 +49,7 @@ class ExecutionBranch(Vector[Bytes32]):
 
 | Name                       | Value                                                                |
 | -------------------------- | -------------------------------------------------------------------- |
-| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, "execution_payload")` (= 25) |
 
 ## Containers
 

@@ -599,7 +599,7 @@ def check_yaml_matches_spec(
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
     # NameError is okay; anything more serious will surface elsewhere.
     with contextlib.suppress(NameError):
-        assert yaml[var_name] == repr(eval(updated_value)), (
+        assert ast.literal_eval(yaml[var_name]) == eval(updated_value), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
 
