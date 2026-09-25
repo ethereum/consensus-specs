@@ -49,11 +49,7 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             getattr(
                 solution,
                 "is_participating",
-                active
-                and flagged
-                and not slashed
-                and requested_delta != "INCREASED"
-                and not (requested_delta == "UNCHANGED" and not leaking),
+                active and flagged and not slashed and requested_delta != "INCREASED",
             )
         )
         if participating:

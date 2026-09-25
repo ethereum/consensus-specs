@@ -8,7 +8,7 @@ from .target import TARGET
 def build_profile(name: str, *, spec) -> tuple[int, list[dict]]:
     """Expand a DSL profile into predicate-level operation representatives."""
     target = TARGET.for_spec(spec)
-    formula = target.profiles["standard" if name == "all" else name]
+    formula = target.profiles[name]
     obligations = formula.run("predicate")
     records = [dict(sorted(obligation)) for obligation in sorted(obligations, key=repr)]
     return len(records), records
