@@ -472,7 +472,7 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
 
 
 @with_phases([GLOAS])
-@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1}, activate_at_genesis=True)
 def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
     """A payload attestation for a slot before the Gloas fork is rejected."""
     anchor_state = state.copy()

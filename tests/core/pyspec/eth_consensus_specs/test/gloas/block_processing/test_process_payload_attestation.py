@@ -269,7 +269,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
 
 
 @with_phases([GLOAS])
-@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
+@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1}, activate_at_genesis=True)
 @always_bls
 def test_process_payload_attestation_pre_fork_epoch(spec, state):
     """
