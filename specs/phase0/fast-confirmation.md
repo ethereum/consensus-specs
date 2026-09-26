@@ -1035,13 +1035,8 @@ dependent.
 ```python
 def block_should_be_finalized(store: Store, block_root: Root) -> bool:
     block_slot = get_block_slot(store, block_root)
-    block_epoch = get_block_epoch(store, block_root)
-    current_epoch = get_current_store_epoch(store)
-
-    if block_slot == compute_start_slot_at_epoch(block_epoch):
-        return block_epoch + 2 <= current_epoch
-    else:
-        return block_epoch + 3 <= current_epoch
+    checkpoint_epoch = compute_epoch_at_slot(block_slot + SLOTS_PER_EPOCH - 1)
+    return checkpoint_epoch + 2 <= get_current_store_epoch(store)
 
 
 def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Root:
