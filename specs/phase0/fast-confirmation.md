@@ -43,6 +43,7 @@
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
+    - [`get_restart_resilient_confirmed_root`](#get_restart_resilient_confirmed_root)
   - [Handlers](#handlers)
     - [`on_fast_confirmation`](#on_fast_confirmation)
 
@@ -1020,6 +1021,41 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
         return find_latest_confirmed_descendant(fcr_store, confirmed_root)
     else:
         return confirmed_root
+```
+
+#### `get_restart_resilient_confirmed_root`
+
+*Note*: Implementations MAY use the mechanism below to restore the confirmed
+root after a restart. This mechanism is safe as long as synchrony has been
+maintained for no more than three epochs since the node went offline. If used,
+`get_restart_resilient_confirmed_root` MUST be called once the node is fully
+synced. The body of `get_root_confirmed_before_restart` is implementation
+dependent.
+
+```python
+def block_should_be_finalized(store: Store, block_root: Root) -> bool:
+    block_slot = get_block_slot(store, block_root)
+    checkpoint_epoch = compute_epoch_at_slot(block_slot + SLOTS_PER_EPOCH - 1)
+    return checkpoint_epoch + 2 <= get_current_store_epoch(store)
+
+
+def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Root:
+    store = fcr_store.store
+    root_before_restart = get_root_confirmed_before_restart()
+    root_before_restart_slot = get_block_slot(store, root_before_restart)
+
+    # Recent confirmed block has advanced beyond the block that was confirmed
+    # before the node restart
+    if root_before_restart_slot <= get_block_slot(store, fcr_store.confirmed_root):
+        return fcr_store.confirmed_root
+
+    # If the block is old enough it either has been finalized already or
+    # finality has been delayed which makes block confirmed before restart
+    # unreliable
+    if block_should_be_finalized(store, root_before_restart):
+        return store.finalized_checkpoint.root
+
+    return root_before_restart
 ```
 
 ### Handlers
