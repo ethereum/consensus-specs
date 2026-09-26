@@ -16,6 +16,7 @@
   - [`LightClientUpdate`](#lightclientupdate)
   - [`LightClientFinalityUpdate`](#lightclientfinalityupdate)
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
+- [Dataclasses](#dataclasses)
   - [`LightClientStore`](#lightclientstore)
 - [Helpers](#helpers)
   - [`finalized_root_gindex_at_slot`](#finalized_root_gindex_at_slot)
@@ -181,6 +182,8 @@ class LightClientOptimisticUpdate(Container):
     # Slot at which the aggregate signature was created (untrusted)
     signature_slot: Slot
 ```
+
+## Dataclasses
 
 ### `LightClientStore`
 

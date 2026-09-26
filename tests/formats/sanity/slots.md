@@ -29,7 +29,7 @@ An SSZ-snappy `BeaconState`, the state after applying the transitions.
 
 Also available as `post.ssz_snappy`.
 
-### Processing
+## Processing
 
 The transition with pure time, no blocks, is known as
 `process_slots(state, slot)` in the spec. This runs state-caching (pure slot
