@@ -28,8 +28,10 @@ class SlashingsResetMaterializer(Materializer):
         current_epoch = vector_length - 1 if at_first_slot else 0
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
         destination_index = (current_epoch + 1) % vector_length
+        for index in range(vector_length):
+            pre.slashings[index] = spec.Gwei(self.rng.getrandbits(64))
         pre.slashings[destination_index] = (
-            spec.Gwei(spec.EFFECTIVE_BALANCE_INCREMENT) if destination_nonzero else spec.Gwei(0)
+            spec.Gwei(self.rng.getrandbits(64) or 1) if destination_nonzero else spec.Gwei(0)
         )
 
         post = pre.copy()
