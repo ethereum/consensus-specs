@@ -1466,6 +1466,10 @@ If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 payload envelope in the response.
 
+*Note*: Clients MUST also keep a record of all payload envelopes more recent
+than their latest finalized checkpoint and MUST support serving requests of
+these payload envelopes, even if outside of this range.
+
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
 
