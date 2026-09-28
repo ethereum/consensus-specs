@@ -798,11 +798,11 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
 *Note*: The function `get_attesting_indices` is modified to support EIP7549.
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
     """
-    output: Set[ValidatorIndex] = set()
+    output: set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:

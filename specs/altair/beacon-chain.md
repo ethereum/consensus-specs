@@ -396,7 +396,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(
     state: BeaconState, flag_index: int, epoch: Epoch
-) -> Set[ValidatorIndex]:
+) -> set[ValidatorIndex]:
     """
     Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """

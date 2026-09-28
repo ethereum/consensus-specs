@@ -197,7 +197,7 @@ class Store:
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    equivocating_indices: Set[ValidatorIndex]
+    equivocating_indices: set[ValidatorIndex]
     blocks: dict[Root, BeaconBlock]
     block_states: dict[Root, BeaconState]
     # [Modified in Gloas:EIP7732]
