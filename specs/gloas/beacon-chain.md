@@ -1152,7 +1152,7 @@ def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) ->
 #### New `get_scheduled_gas_limit`
 
 ```python
-def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
+def get_scheduled_gas_limit(epoch: Epoch) -> Uint64 | None:
     """
     Return the scheduled gas limit at a given epoch, if any.
     """

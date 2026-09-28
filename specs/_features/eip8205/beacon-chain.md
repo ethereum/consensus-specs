@@ -268,7 +268,7 @@ post-state.
 #### New `get_stored_preregistration_index`
 
 ```python
-def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> Optional[Uint64]:
+def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> Uint64 | None:
     for index, preregistration in enumerate(state.validator_preregistrations):
         if preregistration.pubkey == pubkey:
             return Uint64(index)
@@ -280,7 +280,7 @@ def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> O
 ```python
 def get_active_preregistration(
     state: BeaconState, pubkey: BLSPubkey
-) -> Optional[StoredPreregistration]:
+) -> StoredPreregistration | None:
     index = get_stored_preregistration_index(state, pubkey)
     if index is None:
         return None

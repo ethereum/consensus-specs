@@ -79,9 +79,9 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
-    custody_columns: Optional[CustodyColumnBits],
-) -> Optional[PayloadId]: ...
+    payload_attributes: PayloadAttributes | None,
+    custody_columns: CustodyColumnBits | None,
+) -> PayloadId | None: ...
 ```
 
 ## Helpers
@@ -127,8 +127,8 @@ class Store:
     latest_messages: dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: dict[Root, Checkpoint]
     payloads: dict[Root, ExecutionPayloadEnvelope]
-    payload_timeliness_vote: dict[Root, list[Optional[Boolean]]]
-    payload_data_availability_vote: dict[Root, list[Optional[Boolean]]]
+    payload_timeliness_vote: dict[Root, list[Boolean | None]]
+    payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in Heze:EIP7805]
     payload_inclusion_list_satisfaction: dict[Root, bool]
 ```

@@ -282,7 +282,7 @@ helper via `get_committee_assignment(state, epoch, validator_index)` where
 ```python
 def get_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
+) -> tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot] | None:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:

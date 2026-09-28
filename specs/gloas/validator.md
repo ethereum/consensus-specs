@@ -61,7 +61,7 @@ the lookahead.
 ```python
 def get_ptc_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Slot]:
+) -> Slot | None:
     """
     Returns the slot during the requested epoch in which the validator with
     index ``validator_index`` is a member of the PTC. Returns None if no
@@ -342,7 +342,7 @@ def prepare_execution_payload(
     # [New in Gloas]
     target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head, get_current_slot(store)):

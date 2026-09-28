@@ -146,7 +146,7 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
