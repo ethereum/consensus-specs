@@ -33,6 +33,19 @@ class BlockHeaderMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
+        header = pre.latest_block_header
+        header.parent_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+        header.state_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+        header.body_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+        header.proposer_index = spec.ValidatorIndex(self.rng.randrange(len(pre.validators)))
+        current_epoch = int(spec.get_current_epoch(pre))
+        mix_index = (
+            current_epoch
+            + int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
+            - int(spec.MIN_SEED_LOOKAHEAD)
+            - 1
+        ) % len(pre.randao_mixes)
+        pre.randao_mixes[mix_index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
         expected_proposer_index = int(spec.get_beacon_proposer_index(pre))
 
         gates = {
@@ -76,9 +89,10 @@ class BlockHeaderMaterializer(Materializer):
         expected_parent_root = spec.hash_tree_root(pre.latest_block_header)
         block.parent_root = expected_parent_root
         if not parent_matches:
-            block.parent_root = spec.Root(b"\xff" * 32)
-            if block.parent_root == expected_parent_root:
-                block.parent_root = spec.Root(b"\x00" * 32)
+            mismatched_parent_root = bytearray(self.rng.getrandbits(256).to_bytes(32, "big"))
+            if mismatched_parent_root == bytes(expected_parent_root):
+                mismatched_parent_root[0] ^= 1
+            block.parent_root = spec.Root(bytes(mismatched_parent_root))
         if not proposer_not_slashed and int(block.proposer_index) < len(pre.validators):
             pre.validators[block.proposer_index].slashed = True
 
