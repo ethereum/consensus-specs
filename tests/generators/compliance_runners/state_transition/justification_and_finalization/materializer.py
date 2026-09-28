@@ -22,6 +22,13 @@ class JustificationAndFinalizationMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
+        pre.previous_justified_checkpoint.root = spec.Root(
+            self.rng.getrandbits(256).to_bytes(32, "big")
+        )
+        pre.current_justified_checkpoint.root = spec.Root(
+            self.rng.getrandbits(256).to_bytes(32, "big")
+        )
+        pre.finalized_checkpoint.root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
         reached = bool(getattr(solution, "past_initial_epochs", True))
         rule = int(getattr(solution, "finalization_path", 0))
         epoch = int(spec.GENESIS_EPOCH) + (2 if reached else 1)
@@ -48,12 +55,18 @@ class JustificationAndFinalizationMaterializer(Materializer):
         previous = bool(getattr(solution, "previous_epoch_supermajority", True))
         current = bool(getattr(solution, "current_epoch_supermajority", True))
         threshold_count = (2 * len(pre.validators) + 2) // 3
+        previous_participants = (
+            set(self.rng.sample(range(len(pre.validators)), threshold_count)) if previous else set()
+        )
+        current_participants = (
+            set(self.rng.sample(range(len(pre.validators)), threshold_count)) if current else set()
+        )
         for i in range(len(pre.validators)):
             pre.previous_epoch_participation[i] = spec.ParticipationFlags(
-                (1 << int(spec.TIMELY_TARGET_FLAG_INDEX)) if previous and i < threshold_count else 0
+                (1 << int(spec.TIMELY_TARGET_FLAG_INDEX)) if i in previous_participants else 0
             )
             pre.current_epoch_participation[i] = spec.ParticipationFlags(
-                (1 << int(spec.TIMELY_TARGET_FLAG_INDEX)) if current and i < threshold_count else 0
+                (1 << int(spec.TIMELY_TARGET_FLAG_INDEX)) if i in current_participants else 0
             )
         bits = type(pre.justification_bits)()
         required = {1: (0, 1), 2: (0,), 3: (0,), 4: ()}.get(rule, ())

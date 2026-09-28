@@ -23,16 +23,16 @@ class RewardsAndPenaltiesMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * count,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
+        any_eligible = bool(getattr(solution, "has_eligible_validator", True))
+        inactivity_penalty = bool(getattr(solution, "has_inactivity_penalty", False))
+        reward = bool(getattr(solution, "has_flag_reward", False))
+        penalty = bool(getattr(solution, "has_flag_penalty", False))
+        leaking = bool(getattr(solution, "in_inactivity_leak", False))
         after_genesis = bool(getattr(solution, "after_genesis", True))
         epoch = int(spec.GENESIS_EPOCH) + (
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) + 2 if after_genesis else 0
         )
         pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
-        leaking = bool(getattr(solution, "in_inactivity_leak", False))
-        reward = bool(getattr(solution, "has_flag_reward", False))
-        penalty = bool(getattr(solution, "has_flag_penalty", False))
-        inactivity_penalty = bool(getattr(solution, "has_inactivity_penalty", False))
-        any_eligible = bool(getattr(solution, "has_eligible_validator", True))
         if (
             not reward
             and not penalty
@@ -45,6 +45,18 @@ class RewardsAndPenaltiesMaterializer(Materializer):
         elif any_eligible and not reward and not penalty and not inactivity_penalty:
             if "in_inactivity_leak" not in vars(solution):
                 leaking = True
+        has_reward_and_penalty = reward and (penalty or inactivity_penalty) and not leaking
+        eligible_count = (
+            self.rng.randint(2, count)
+            if any_eligible and has_reward_and_penalty
+            else self.rng.randint(1, count)
+            if any_eligible
+            else 0
+        )
+        eligible_indices = set(self.rng.sample(range(count), eligible_count))
+        for index, validator in enumerate(pre.validators):
+            if index not in eligible_indices:
+                validator.activation_epoch = spec.FAR_FUTURE_EPOCH
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
         finalized_epoch = (
             max(
@@ -59,11 +71,12 @@ class RewardsAndPenaltiesMaterializer(Materializer):
         )
         all_flags = spec.ParticipationFlags((1 << len(spec.PARTICIPATION_FLAG_WEIGHTS)) - 1)
         zero_flags = spec.ParticipationFlags(0)
+        reward_index = self.rng.choice(sorted(eligible_indices)) if eligible_indices else None
         for i in range(count):
-            if not any_eligible:
-                pre.validators[i].activation_epoch = spec.FAR_FUTURE_EPOCH
             if reward and (penalty or inactivity_penalty) and any_eligible and not leaking:
-                pre.previous_epoch_participation[i] = all_flags if i == 0 else zero_flags
+                pre.previous_epoch_participation[i] = (
+                    all_flags if i == reward_index else zero_flags
+                )
             elif reward and any_eligible and not leaking:
                 # A reward can coexist with no flag penalties when every
                 # eligible validator has all flags; the reward still follows

@@ -20,7 +20,6 @@ _DIMS = (
     "outcome",
 )
 _GENESIS_VALIDATOR_COUNT = 64
-_VALIDATOR_INDEX = 0
 
 
 class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
@@ -36,27 +35,47 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         # Genesis construction needs a larger active set for the Gloas PTC
         # window. The processor under test reads only these lists, so retain a
         # single validator to isolate the loop-body behaviour.
-        validator = state.validators[_VALIDATOR_INDEX]
-        balance = state.balances[_VALIDATOR_INDEX]
+        source_index = self.rng.randrange(len(state.validators))
+        validator = state.validators[source_index]
+        balance = state.balances[source_index]
         state.validators = type(state.validators)()
         state.validators.append(validator)
         state.balances = type(state.balances)()
         state.balances.append(balance)
+
+        for index in range(len(state.randao_mixes)):
+            state.randao_mixes[index] = self.spec.Bytes32(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+        for index in range(len(state.state_roots)):
+            state.state_roots[index] = self.spec.Bytes32(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+            state.block_roots[index] = self.spec.Bytes32(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+        for index in range(len(state.slashings)):
+            state.slashings[index] = self.spec.Gwei(self.rng.getrandbits(64))
         return state
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        validator = pre.validators[_VALIDATOR_INDEX]
+        validator = pre.validators[0]
         effective_balance = int(solution.effective_balance)
         balance = int(solution.balance)
-        if solution.credential_type == "COMPOUNDING":
-            validator.withdrawal_credentials = spec.Bytes32(
-                spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+        prefix = (
+            spec.COMPOUNDING_WITHDRAWAL_PREFIX
+            if solution.credential_type == "COMPOUNDING"
+            else self.rng.choice(
+                (spec.BLS_WITHDRAWAL_PREFIX, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX)
             )
+        )
+        credential_tail = self.rng.getrandbits(31 * 8).to_bytes(31, "big")
+        validator.withdrawal_credentials = spec.Bytes32(prefix + credential_tail)
 
         validator.effective_balance = spec.Gwei(effective_balance)
-        pre.balances[_VALIDATOR_INDEX] = spec.Gwei(balance)
+        pre.balances[0] = spec.Gwei(balance)
         post = pre.copy()
         spec.process_effective_balance_updates(post)
 
