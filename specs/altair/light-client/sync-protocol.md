@@ -100,9 +100,9 @@ class NextSyncCommitteeBranch(Vector[Bytes32]):
 
 | Name                            | Value                                                                        |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54)        |
-| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55)           |
+| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(BeaconState, "finalized_checkpoint", "root")` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, "current_sync_committee")` (= 54)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, "next_sync_committee")` (= 55)           |
 
 ## Presets
 

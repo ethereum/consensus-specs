@@ -548,27 +548,27 @@ specification.
 | `FAR_FUTURE_EPOCH`          | `Epoch(2**64 - 1)`   |
 | `BASE_REWARDS_PER_EPOCH`    | `Uint64(4)`          |
 | `JUSTIFICATION_BITS_LENGTH` | `Uint64(4)`          |
-| `ENDIANNESS`                | `'little'`           |
+| `ENDIANNESS`                | `"little"`           |
 
 ### Withdrawal prefixes
 
 | Name                             | Value            |
 | -------------------------------- | ---------------- |
-| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
+| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1("0x00")` |
+| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1("0x01")` |
 
 ### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |
-| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
-| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
-| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
-| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
-| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
-| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
-| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
-| `DOMAIN_APPLICATION_MASK`    | `DomainType('0x00000001')` |
+| `DOMAIN_BEACON_PROPOSER`     | `DomainType("0x00000000")` |
+| `DOMAIN_BEACON_ATTESTER`     | `DomainType("0x01000000")` |
+| `DOMAIN_RANDAO`              | `DomainType("0x02000000")` |
+| `DOMAIN_DEPOSIT`             | `DomainType("0x03000000")` |
+| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType("0x04000000")` |
+| `DOMAIN_SELECTION_PROOF`     | `DomainType("0x05000000")` |
+| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType("0x06000000")` |
+| `DOMAIN_APPLICATION_MASK`    | `DomainType("0x00000001")` |
 
 *Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in
 `DomainType` for application usage. This means for some `DomainType`
@@ -680,7 +680,7 @@ different configuration.
 | ------------------------------------ | -------------------------------------------- |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `Uint64(2**14)` (= 16,384)                   |
 | `MIN_GENESIS_TIME`                   | `Uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
-| `GENESIS_FORK_VERSION`               | `Version('0x00000000')`                      |
+| `GENESIS_FORK_VERSION`               | `Version("0x00000000")`                      |
 | `GENESIS_DELAY`                      | `Uint64(604800)` (7 days)                    |
 
 ### Time parameters
