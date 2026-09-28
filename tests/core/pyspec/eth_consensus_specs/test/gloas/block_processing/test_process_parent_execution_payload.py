@@ -410,8 +410,8 @@ def test_process_parent_execution_payload__settle_previous_epoch(spec, state):
 @spec_state_test
 def test_process_parent_execution_payload__older_than_previous_epoch(spec, state):
     """
-    Test ``apply_parent_execution_payload`` appends the withdrawal directly when
-    the parent's slot is older than the previous epoch.
+    Test ``apply_parent_execution_payload`` does not pay the builder when the
+    parent's slot is older than the previous epoch.
     """
     builder_index = 0
     value = spec.Gwei(50_000_000)
@@ -428,17 +428,12 @@ def test_process_parent_execution_payload__older_than_previous_epoch(spec, state
     assert spec.compute_epoch_at_slot(parent_bid.slot) < spec.get_previous_epoch(state)
     assert state.builder_pending_payments[previous_epoch_idx] == spec.BuilderPendingPayment()
 
-    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+    pre_pending_withdrawals = state.builder_pending_withdrawals.copy()
     pre_payments = state.builder_pending_payments.copy()
 
     yield from run_parent_execution_payload_processing(spec, state, block)
 
-    # Check we have a pending withdrawal
-    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
-    withdrawal = state.builder_pending_withdrawals[pre_pending_withdrawals_len]
-    assert withdrawal.amount == value
-    assert withdrawal.builder_index == builder_index
-    assert withdrawal.fee_recipient == fee_recipient
+    assert state.builder_pending_withdrawals == pre_pending_withdrawals
 
     # Assert no payment slot is modified
     assert all(

@@ -1773,16 +1773,6 @@ def apply_parent_execution_payload(
     elif parent_epoch == get_previous_epoch(state):
         payment_index = parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
-    elif parent_bid.value > 0:
-        # Parent is older than the previous epoch, its payment entry has been
-        # evicted from builder_pending_payments. Append the withdrawal directly.
-        state.builder_pending_withdrawals.append(
-            BuilderPendingWithdrawal(
-                fee_recipient=parent_bid.fee_recipient,
-                amount=parent_bid.value,
-                builder_index=parent_bid.builder_index,
-            )
-        )
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)

@@ -784,7 +784,7 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
 @spec_state_test
 def test_builder_payment_after_missed_epochs(spec, state):
     """
-    Test that a builder is correctly charged when their canonical payload
+    Test that a builder is not charged when their canonical payload
     is processed after 2+ epochs of missed blocks.
     """
     # Advance to get finalization
@@ -836,9 +836,6 @@ def test_builder_payment_after_missed_epochs(spec, state):
     # process_builder_pending_payments runs at each epoch boundary:
     #   1st boundary: shifts payment from second half to first half
     #   2nd boundary: checks quorum on first half — weight 0 < quorum → evicted
-    # When Block 2 is processed, parent is FULL so apply_parent_execution_payload
-    # runs. Since parent_epoch is older than previous_epoch, payment_index is None.
-    # The fix creates the withdrawal directly from the bid in this case.
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     block_2_slot = spec.compute_start_slot_at_epoch(block_1_epoch + 2) + 1
     block_2 = build_empty_block(spec, state, slot=block_2_slot)
@@ -852,8 +849,8 @@ def test_builder_payment_after_missed_epochs(spec, state):
     parent_slot_index = bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT
     assert state.execution_payload_availability[parent_slot_index]
 
-    # Verify the builder was charged — balance decreased by the bid value
-    assert state.builders[builder_index].balance == pre_builder_balance - value
+    # Verify the builder was not charged
+    assert state.builders[builder_index].balance == pre_builder_balance
 
 
 @with_gloas_and_later
