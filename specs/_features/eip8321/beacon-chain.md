@@ -119,13 +119,13 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
-| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType('0x11000000')` |
+| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType("0x11000000")` |
 
 ### Hash chain
 
 | Name                      | Value                  |
 | ------------------------- | ---------------------- |
-| `HASH_CHAIN_RANDAO_DST`   | `b'HASH_CHAIN_RANDAO'` |
+| `HASH_CHAIN_RANDAO_DST`   | `b"HASH_CHAIN_RANDAO"` |
 | `UNSET_RANDAO_COMMITMENT` | `Bytes32()`            |
 
 ## Presets

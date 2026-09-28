@@ -27,7 +27,7 @@ from dataclasses import (
 )
 from hashlib import sha256 as sha256_hash
 from typing import (
-    Any, Callable, Counter, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
+    Any, Callable, Counter, Sequence, TypeAlias, TypeVar, NamedTuple, Final
 )
 
 from ssz.bitfields import BitList, BitVector
@@ -45,7 +45,7 @@ from eth_consensus_specs.utils import bls
     @classmethod
     def preparations(cls) -> str:
         return """
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar("SSZObject", bound=SSZType)
 """
 
     @classmethod
