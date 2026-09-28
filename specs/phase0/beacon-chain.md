@@ -2007,8 +2007,8 @@ def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> 
 ```
 
 ```python
-def get_finality_delay(state: BeaconState) -> Uint64:
-    return Uint64(get_previous_epoch(state) - state.finalized_checkpoint.epoch)
+def get_finality_delay(state: BeaconState) -> Epoch:
+    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
 ```
 
 ```python
@@ -2136,7 +2136,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], S
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += (
-                    effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT
+                    effective_balance
+                    * Uint64(get_finality_delay(state))
+                    // INACTIVITY_PENALTY_QUOTIENT
                 )
 
     # No rewards associated with inactivity penalties
