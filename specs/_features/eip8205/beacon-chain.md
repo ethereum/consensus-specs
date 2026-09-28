@@ -484,21 +484,8 @@ def apply_parent_execution_payload(
     # [New in EIP8205]
     assert len(requests.preregistrations) <= MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in EIP8205]
-    for_ops(requests.preregistrations, process_preregistration_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -515,6 +502,20 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
+    # [New in EIP8205]
+    for_ops(requests.preregistrations, process_preregistration_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
