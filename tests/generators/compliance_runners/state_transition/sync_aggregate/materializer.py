@@ -46,9 +46,7 @@ class SyncAggregateMaterializer(Materializer):
             "MAJORITY": committee_size // 2 + 1,
             "EMPTY": 0,
         }[level]
-        participant_positions = set(
-            self.rng.sample(range(committee_size), participant_count)
-        )
+        participant_positions = set(self.rng.sample(range(committee_size), participant_count))
         bits = [position in participant_positions for position in range(committee_size)]
         participants = [
             validator_index

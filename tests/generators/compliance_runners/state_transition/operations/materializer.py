@@ -148,7 +148,13 @@ class OperationsMaterializer(Materializer):
             ):
                 header.message.proposer_index = spec.ValidatorIndex(proposer_index)
                 header.message.body_root = type(header.message.body_root)(root)
-        for field in ("signed_header_1", "signed_header_2", "attestation_1", "attestation_2", "message"):
+        for field in (
+            "signed_header_1",
+            "signed_header_2",
+            "attestation_1",
+            "attestation_2",
+            "message",
+        ):
             nested = getattr(operation, field, None)
             if nested is None:
                 continue

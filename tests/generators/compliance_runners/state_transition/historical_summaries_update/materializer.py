@@ -35,12 +35,8 @@ class HistoricalSummariesUpdateMaterializer(Materializer):
             for _ in range(self.rng.randint(1, 4)):
                 pre.historical_summaries.append(
                     spec.HistoricalSummary(
-                        block_summary_root=spec.Root(
-                            self.rng.getrandbits(256).to_bytes(32, "big")
-                        ),
-                        state_summary_root=spec.Root(
-                            self.rng.getrandbits(256).to_bytes(32, "big")
-                        ),
+                        block_summary_root=spec.Root(self.rng.getrandbits(256).to_bytes(32, "big")),
+                        state_summary_root=spec.Root(self.rng.getrandbits(256).to_bytes(32, "big")),
                     )
                 )
 

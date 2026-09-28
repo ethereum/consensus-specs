@@ -31,9 +31,7 @@ class ProposerLookaheadMaterializer(Materializer):
         active_candidates = (
             max(1, slots - 1) if fewer else len(pre.validators) - int(slashed_active or old_slashed)
         )
-        candidate_indices = set(
-            self.rng.sample(range(len(pre.validators)), active_candidates)
-        )
+        candidate_indices = set(self.rng.sample(range(len(pre.validators)), active_candidates))
         remaining_indices = [
             index for index in range(len(pre.validators)) if index not in candidate_indices
         ]
