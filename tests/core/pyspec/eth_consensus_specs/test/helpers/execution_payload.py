@@ -369,7 +369,7 @@ def build_empty_execution_payload(
         else:
             randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
-    timestamp = spec.compute_time_at_slot(state, state.slot)
+    timestamp = spec.compute_time_at_slot(state.genesis_time, state.slot)
 
     payload = spec.ExecutionPayload(
         parent_hash=parent_hash,

@@ -172,9 +172,9 @@ class FCRTest:
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
-        new_time = slot * self.spec.config.SLOT_DURATION_MS // 1000 + self.store.genesis_time
-        self.spec.on_tick(self.store, new_time)
-        self.test_steps.append({"tick": int(new_time)})
+        new_time_ms = self.spec.compute_time_at_slot_ms(self.store.genesis_time_ms, slot)
+        self.spec.on_tick(self.store, new_time_ms)
+        self.test_steps.append({"tick": int(self.spec.milliseconds_to_seconds(new_time_ms))})
 
     def next_slot(self):
         self.tick(self.current_slot() + 1)

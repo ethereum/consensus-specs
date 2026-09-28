@@ -40,6 +40,16 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "AGGREGATE_DUE_BPS",
+            "ATTESTATION_DUE_BPS",
+            "CONTRIBUTION_DUE_BPS",
+            "MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT",
+            "SYNC_MESSAGE_DUE_BPS",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",

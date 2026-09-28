@@ -56,6 +56,13 @@ class NoopExecutionEngine(ExecutionEngine):
 EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "ATTESTATION_PROPAGATION_SLOT_RANGE",
+            "MAX_REQUEST_BLOCKS",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "upgrade_lc_bootstrap_to_capella",

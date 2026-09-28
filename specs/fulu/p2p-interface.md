@@ -368,7 +368,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("invalid proposer signature")
 
     # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+    if execution_payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
         raise GossipReject("incorrect execution payload timestamp")
 
     # [REJECT] The block is from a higher slot than its parent
