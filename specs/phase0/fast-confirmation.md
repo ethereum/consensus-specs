@@ -1044,7 +1044,7 @@ def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Ro
     root_before_restart = get_root_confirmed_before_restart()
     root_before_restart_slot = get_block_slot(store, root_before_restart)
 
-    # Recent confirmed block has advanced beyond the block that was confirmed
+    # Recently confirmed block has advanced beyond the block that was confirmed
     # before the node restart
     if root_before_restart_slot <= get_block_slot(store, fcr_store.confirmed_root):
         return fcr_store.confirmed_root
@@ -1053,6 +1053,11 @@ def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Ro
     # finality has been delayed which makes block confirmed before restart
     # unreliable
     if block_should_be_finalized(store, root_before_restart):
+        return store.finalized_checkpoint.root
+
+    # If a block confirmed before the restart is not canonical,
+    # return the most recent finalized block
+    if not is_ancestor(store, get_head(store), get_node_for_root(root_before_restart)):
         return store.finalized_checkpoint.root
 
     return root_before_restart
