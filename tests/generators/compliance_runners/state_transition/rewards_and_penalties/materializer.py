@@ -74,9 +74,7 @@ class RewardsAndPenaltiesMaterializer(Materializer):
         reward_index = self.rng.choice(sorted(eligible_indices)) if eligible_indices else None
         for i in range(count):
             if reward and (penalty or inactivity_penalty) and any_eligible and not leaking:
-                pre.previous_epoch_participation[i] = (
-                    all_flags if i == reward_index else zero_flags
-                )
+                pre.previous_epoch_participation[i] = all_flags if i == reward_index else zero_flags
             elif reward and any_eligible and not leaking:
                 # A reward can coexist with no flag penalties when every
                 # eligible validator has all flags; the reward still follows

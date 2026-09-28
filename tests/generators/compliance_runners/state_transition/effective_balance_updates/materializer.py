@@ -67,9 +67,7 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         prefix = (
             spec.COMPOUNDING_WITHDRAWAL_PREFIX
             if solution.credential_type == "COMPOUNDING"
-            else self.rng.choice(
-                (spec.BLS_WITHDRAWAL_PREFIX, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX)
-            )
+            else self.rng.choice((spec.BLS_WITHDRAWAL_PREFIX, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX))
         )
         credential_tail = self.rng.getrandbits(31 * 8).to_bytes(31, "big")
         validator.withdrawal_credentials = spec.Bytes32(prefix + credential_tail)
