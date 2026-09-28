@@ -37,10 +37,11 @@ class InactivityUpdatesLoopMaterializer(Materializer):
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=finalized_epoch, root=pre.finalized_checkpoint.root
         )
+        focus_index = self.rng.randrange(len(pre.validators))
         for index, validator in enumerate(pre.validators):
-            if index:
+            if index != focus_index:
                 validator.activation_epoch = spec.FAR_FUTURE_EPOCH
-        validator = pre.validators[0]
+        validator = pre.validators[focus_index]
         requested_delta = getattr(solution, "score_delta", None)
         active = bool(getattr(solution, "is_active_in_previous", True))
         flagged = bool(getattr(solution, "has_target_flag", requested_delta != "INCREASED"))
@@ -94,13 +95,13 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             score = 0
         if not score_gt_zero and "score_gt_zero" in vars(solution):
             score = 0
-        pre.inactivity_scores[0] = score
+        pre.inactivity_scores[focus_index] = score
         if flagged:
-            pre.previous_epoch_participation[0] = spec.ParticipationFlags(
+            pre.previous_epoch_participation[focus_index] = spec.ParticipationFlags(
                 1 << int(spec.TIMELY_TARGET_FLAG_INDEX)
             )
         if participating:
-            pre.previous_epoch_participation[0] = spec.ParticipationFlags(
+            pre.previous_epoch_participation[focus_index] = spec.ParticipationFlags(
                 1 << int(spec.TIMELY_TARGET_FLAG_INDEX)
             )
         post = pre.copy()

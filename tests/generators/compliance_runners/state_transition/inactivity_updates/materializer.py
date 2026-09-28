@@ -42,18 +42,19 @@ class InactivityUpdatesMaterializer(Materializer):
         slash_eligible = count > 0 and not active_eligible
         if slash_eligible:
             count = max(count, 1)
+        eligible_indices = self.rng.sample(range(len(pre.validators)), count)
         for _index, validator in enumerate(pre.validators):
             validator.slashed = False
             validator.activation_epoch = spec.FAR_FUTURE_EPOCH
             validator.exit_epoch = spec.FAR_FUTURE_EPOCH
             validator.withdrawable_epoch = spec.GENESIS_EPOCH
         if active_eligible:
-            for index in range(count):
+            for index in eligible_indices:
                 validator = pre.validators[index]
                 validator.activation_epoch = spec.GENESIS_EPOCH
                 validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
         if slash_eligible:
-            for index in range(count):
+            for index in eligible_indices:
                 validator = pre.validators[index]
                 validator.slashed = True
                 validator.withdrawable_epoch = (
@@ -65,15 +66,22 @@ class InactivityUpdatesMaterializer(Materializer):
             # A slashed validator beyond the withdrawable boundary is
             # eligible too. Reuse an existing eligible index where possible
             # so the requested ONE/MANY shape does not gain an extra member.
-            slashed_index = (
-                count - 1
-                if count > 0 and bool(getattr(solution, "slashed_withdrawable_vs_previous", False))
-                else len(pre.validators) - 1
+            withdrawable_after_previous = bool(
+                getattr(solution, "slashed_withdrawable_vs_previous", False)
             )
+            ineligible_indices = [
+                index for index in range(len(pre.validators)) if index not in eligible_indices
+            ]
+            if count > 0 and withdrawable_after_previous:
+                slashed_index = self.rng.choice(eligible_indices)
+            elif ineligible_indices:
+                slashed_index = self.rng.choice(ineligible_indices)
+            else:
+                slashed_index = self.rng.choice(eligible_indices)
             pre.validators[slashed_index].slashed = True
             pre.validators[slashed_index].withdrawable_epoch = (
                 int(spec.get_previous_epoch(pre)) + 2
-                if bool(getattr(solution, "slashed_withdrawable_vs_previous", False))
+                if withdrawable_after_previous
                 else int(spec.get_previous_epoch(pre)) + 1
             )
         has_zero_score = bool(getattr(solution, "has_zero_score_eligible", False))
@@ -102,14 +110,23 @@ class InactivityUpdatesMaterializer(Materializer):
         if branch_mix == "MIXED":
             participating_count = 1
         target_flag = spec.ParticipationFlags(1 << int(spec.TIMELY_TARGET_FLAG_INDEX))
-        for index in range(count):
-            score = 0 if has_zero_score and index == 0 else 1
-            if has_zero_score and scores_changed and not leaking and index == 1:
+        zero_score_index = eligible_indices[0] if has_zero_score and eligible_indices else None
+        recovered_score_index = (
+            eligible_indices[1]
+            if has_zero_score and scores_changed and not leaking and len(eligible_indices) > 1
+            else None
+        )
+        participating_indices = set(
+            self.rng.sample(eligible_indices, min(participating_count, len(eligible_indices)))
+        )
+        for index in eligible_indices:
+            score = 0 if index == zero_score_index else 1
+            if index == recovered_score_index:
                 score = 1
             if not scores_changed:
                 score = 0
             pre.inactivity_scores[index] = score
-            if index < participating_count and not pre.validators[index].slashed:
+            if index in participating_indices and not pre.validators[index].slashed:
                 pre.previous_epoch_participation[index] = target_flag
         # A leak-free zero score is a stable fixed point; a positive score
         # makes the changed-score obligation true.
