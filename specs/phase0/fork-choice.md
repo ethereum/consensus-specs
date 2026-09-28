@@ -195,13 +195,13 @@ class Store:
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
-    block_timeliness: Dict[Root, bool]
-    checkpoint_states: Dict[Checkpoint, BeaconState]
-    latest_messages: Dict[ValidatorIndex, LatestMessage]
-    unrealized_justifications: Dict[Root, Checkpoint]
+    equivocating_indices: set[ValidatorIndex]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
+    block_timeliness: dict[Root, bool]
+    checkpoint_states: dict[Checkpoint, BeaconState]
+    latest_messages: dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: dict[Root, Checkpoint]
 ```
 
 #### `get_forkchoice_store`
@@ -272,7 +272,7 @@ def get_current_store_epoch(store: Store) -> Epoch:
 #### `compute_slots_since_epoch_start`
 
 ```python
-def compute_slots_since_epoch_start(slot: Slot) -> int:
+def compute_slots_since_epoch_start(slot: Slot) -> Slot:
     return slot - compute_start_slot_at_epoch(compute_epoch_at_slot(slot))
 ```
 
