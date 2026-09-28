@@ -31,13 +31,17 @@ class RandaoMixesResetMaterializer(Materializer):
         source_index = current_epoch % vector_length
         destination_index = (current_epoch + 1) % vector_length
         zero_mix = spec.Bytes32()
-        source_mix = spec.Bytes32(b"\x01" * 32) if source_nonzero else zero_mix
+        for index in range(vector_length):
+            pre.randao_mixes[index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
+        source_value = self.rng.getrandbits(256) or 1
+        source_mix = spec.Bytes32(source_value.to_bytes(32, "big")) if source_nonzero else zero_mix
         if source_matches_destination:
             destination_mix = source_mix
         else:
-            destination_mix = (
-                spec.Bytes32(b"\x02" * 32) if source_nonzero else spec.Bytes32(b"\x01" * 32)
-            )
+            destination_value = self.rng.getrandbits(256) or 1
+            if destination_value == source_value:
+                destination_value = (destination_value + 1) % (1 << 256) or 1
+            destination_mix = spec.Bytes32(destination_value.to_bytes(32, "big"))
         pre.randao_mixes[source_index] = source_mix
         pre.randao_mixes[destination_index] = destination_mix
 
