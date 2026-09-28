@@ -252,7 +252,7 @@ large validator set, the capped activation churn is negligible, which leaves the
 exit churn (weighted 2/3) and the consolidation churn (weighted 1).
 
 ```python
-def compute_min_epochs_for_block_requests() -> Uint64:
+def compute_min_epochs_for_block_requests() -> Epoch:
     """
     Return the minimum epoch range over which a node must serve blocks.
     """
