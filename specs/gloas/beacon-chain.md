@@ -1858,8 +1858,7 @@ def get_builder_balance_after_withdrawals(
 ) -> Gwei:
     validator_index = convert_builder_index_to_validator_index(builder_index)
     withdrawn = Gwei(sum(w.amount for w in withdrawals if w.validator_index == validator_index))
-    balance = state.builders[builder_index].balance
-    return balance - min(balance, withdrawn)
+    return saturating_sub(state.builders[builder_index].balance, withdrawn)
 ```
 
 ##### New `get_builders_sweep_withdrawals`
@@ -1886,7 +1885,7 @@ def get_builders_sweep_withdrawals(
 
         builder = state.builders[builder_index]
         balance = get_builder_balance_after_withdrawals(state, builder_index, all_withdrawals)
-        if builder.withdrawable_epoch <= epoch and balance > 0:
+        if builder.withdrawable_epoch <= epoch and balance != 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
