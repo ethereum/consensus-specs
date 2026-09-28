@@ -42,10 +42,11 @@ class AttesterSlashingMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         scenario = str(solution.scenario)
-        indices = {
-            "VALID_TWO": [0, 1],
-            "VALID_THREE": [0, 1, 2],
-        }.get(scenario, [0])
+        intersection_size = {
+            "VALID_TWO": 2,
+            "VALID_THREE": 3,
+        }.get(scenario, 1)
+        indices = sorted(self.rng.sample(range(len(pre.validators)), intersection_size))
         slashing = get_valid_attester_slashing_by_indices(
             spec, pre, indices, signed_1=True, signed_2=True
         )
@@ -60,7 +61,10 @@ class AttesterSlashingMaterializer(Materializer):
         elif scenario == "INVALID_SECOND_SIGNATURE":
             slashing.attestation_2.signature = spec.BLSSignature()
         elif scenario == "NO_SLASHABLE_INTERSECTION":
-            pre.validators[0].slashed = True
+            for index in set(slashing.attestation_1.attesting_indices).intersection(
+                slashing.attestation_2.attesting_indices
+            ):
+                pre.validators[index].slashed = True
         elif scenario not in {"VALID_ONE", "VALID_TWO", "VALID_THREE"}:
             raise ValueError(f"unknown attester-slashing scenario: {scenario}")
 
