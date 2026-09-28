@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_propos
 from eth_consensus_specs.test.helpers.state import next_slots
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
+    distinct_indices,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -68,7 +71,14 @@ class OperationsDispatchMaterializer(Materializer):
         spec, body = self.spec, block.body
         claimed: dict[str, Any] = {}
         if scenario == "all_lists":
-            for index in (1, 5):
+            (
+                first_slashed_index,
+                second_slashed_index,
+                attester_index,
+                exit_index,
+                bls_change_index,
+            ) = distinct_indices(self.rng, len(pre.validators), 5)
+            for index in (first_slashed_index, second_slashed_index):
                 body.proposer_slashings.append(
                     get_valid_proposer_slashing(
                         spec, pre, slashed_index=index, signed_1=True, signed_2=True
@@ -76,15 +86,15 @@ class OperationsDispatchMaterializer(Materializer):
                 )
             body.attester_slashings.append(
                 get_valid_attester_slashing_by_indices(
-                    spec, pre, [2], slot=int(pre.slot), signed_1=True, signed_2=True
+                    spec, pre, [attester_index], slot=int(pre.slot), signed_1=True, signed_2=True
                 )
             )
             body.attestations.append(
                 get_valid_attestation(spec, pre, slot=int(pre.slot), signed=True)
             )
-            body.voluntary_exits.append(prepare_signed_exits(spec, pre, [3])[0])
+            body.voluntary_exits.append(prepare_signed_exits(spec, pre, [exit_index])[0])
             body.bls_to_execution_changes.append(
-                get_signed_address_change(spec, pre, validator_index=4)
+                get_signed_address_change(spec, pre, validator_index=bls_change_index)
             )
             body.payload_attestations.append(
                 prepare_signed_payload_attestation(
@@ -92,17 +102,24 @@ class OperationsDispatchMaterializer(Materializer):
                 )
             )
         elif scenario == "slash_before_exit":
+            shared_index = self.rng.randrange(len(pre.validators))
             body.proposer_slashings.append(
                 get_valid_proposer_slashing(
-                    spec, pre, slashed_index=1, signed_1=True, signed_2=True
+                    spec, pre, slashed_index=shared_index, signed_1=True, signed_2=True
                 )
             )
-            body.voluntary_exits.append(prepare_signed_exits(spec, pre, [1])[0])
+            body.voluntary_exits.append(prepare_signed_exits(spec, pre, [shared_index])[0])
             claimed["shared_slash_exit"] = True
         elif scenario == "invalid_payload_attestation":
+            mismatched_root = bytearray(self.rng.getrandbits(256).to_bytes(32, "big"))
+            if mismatched_root == bytes(block.parent_root):
+                mismatched_root[0] ^= 1
             body.payload_attestations.append(
                 prepare_signed_payload_attestation(
-                    spec, pre, slot=int(pre.slot), beacon_block_root=spec.Root(b"\xff" * 32)
+                    spec,
+                    pre,
+                    slot=int(pre.slot),
+                    beacon_block_root=spec.Root(bytes(mismatched_root)),
                 )
             )
             claimed["payload_root_matches"] = False
