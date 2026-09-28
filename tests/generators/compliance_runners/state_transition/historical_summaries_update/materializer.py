@@ -27,8 +27,22 @@ class HistoricalSummariesUpdateMaterializer(Materializer):
         period = int(spec.SLOTS_PER_HISTORICAL_ROOT) // int(spec.SLOTS_PER_EPOCH)
         current_epoch = period - 1 if at_update_boundary else 0
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
+        root_count = int(spec.SLOTS_PER_HISTORICAL_ROOT)
+        for index in range(root_count):
+            pre.block_roots[index] = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+            pre.state_roots[index] = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
         if summaries_nonempty:
-            pre.historical_summaries.append(spec.HistoricalSummary())
+            for _ in range(self.rng.randint(1, 4)):
+                pre.historical_summaries.append(
+                    spec.HistoricalSummary(
+                        block_summary_root=spec.Root(
+                            self.rng.getrandbits(256).to_bytes(32, "big")
+                        ),
+                        state_summary_root=spec.Root(
+                            self.rng.getrandbits(256).to_bytes(32, "big")
+                        ),
+                    )
+                )
 
         post = pre.copy()
         spec.process_historical_summaries_update(post)
