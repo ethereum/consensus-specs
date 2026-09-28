@@ -70,14 +70,28 @@ class OperationsMaterializer(Materializer):
         assignment = complete_obligation(vars(solution))
         gates = {name: assignment[name] for name in _GATES}
         accepted = assignment["accepted"]
+        body.graffiti = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
 
         if not gates["deposits_empty"]:
-            body.deposits.append(spec.Deposit())
+            deposit = spec.Deposit()
+            deposit.data.pubkey = spec.BLSPubkey(self._random_bytes(deposit.data.pubkey))
+            deposit.data.withdrawal_credentials = spec.Bytes32(
+                self._random_bytes(deposit.data.withdrawal_credentials)
+            )
+            deposit.data.amount = type(deposit.data.amount)(self.rng.getrandbits(64))
+            deposit.data.signature = spec.BLSSignature(self._random_bytes(deposit.data.signature))
+            for index in range(len(deposit.proof)):
+                deposit.proof[index] = type(deposit.proof[index])(
+                    self._random_bytes(deposit.proof[index])
+                )
+            body.deposits.append(deposit)
         for field, operation_type, limit_name, gate in _LIMITS:
             if not gates[gate]:
                 values = getattr(body, field)
                 for _ in range(int(getattr(spec, limit_name)) + 1):
-                    values.append(getattr(spec, operation_type)())
+                    operation = getattr(spec, operation_type)()
+                    self._randomize_operation(operation)
+                    values.append(operation)
 
         signed_block = spec.SignedBeaconBlock(message=block)
         post = pre.copy()
@@ -119,6 +133,38 @@ class OperationsMaterializer(Materializer):
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
         return meta, parts
+
+    def _random_bytes(self, value: Any) -> bytes:
+        return self.rng.getrandbits(len(value) * 8).to_bytes(len(value), "big")
+
+    def _randomize_operation(self, operation: Any) -> None:
+        spec = self.spec
+        if hasattr(operation, "signed_header_1") and hasattr(operation, "signed_header_2"):
+            proposer_index = self.rng.randrange(64)
+            body_root = self.rng.getrandbits(256).to_bytes(32, "big")
+            for header, root in (
+                (operation.signed_header_1, body_root),
+                (operation.signed_header_2, bytes([body_root[0] ^ 1]) + body_root[1:]),
+            ):
+                header.message.proposer_index = spec.ValidatorIndex(proposer_index)
+                header.message.body_root = type(header.message.body_root)(root)
+        for field in ("signed_header_1", "signed_header_2", "attestation_1", "attestation_2", "message"):
+            nested = getattr(operation, field, None)
+            if nested is None:
+                continue
+            if hasattr(nested, "signature"):
+                nested.signature = type(nested.signature)(self._random_bytes(nested.signature))
+            message = getattr(nested, "message", nested)
+            if hasattr(message, "proposer_index") and not hasattr(operation, "signed_header_1"):
+                message.proposer_index = type(message.proposer_index)(self.rng.randrange(64))
+            if hasattr(message, "validator_index"):
+                message.validator_index = type(message.validator_index)(self.rng.randrange(64))
+            if hasattr(message, "beacon_block_root"):
+                message.beacon_block_root = type(message.beacon_block_root)(
+                    self._random_bytes(message.beacon_block_root)
+                )
+        if hasattr(operation, "signature"):
+            operation.signature = type(operation.signature)(self._random_bytes(operation.signature))
 
 
 MATERIALIZER = OperationsMaterializer
