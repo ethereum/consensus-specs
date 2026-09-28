@@ -50,23 +50,22 @@ def test_gossip_inclusion_list__valid(spec, state):
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -102,22 +101,21 @@ def test_gossip_inclusion_list__ignore_third_message_from_validator(spec, state)
         for i in range(3)
     ]
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     for i, signed_il in enumerate(signed_ils):
         yield get_filename(signed_il), signed_il
-        time_ms += 100
+        current_time_ms += 100
         result, reason = run_validate_gossip(
             spec,
             seen=seen,
             store=store,
             signed_inclusion_list=signed_il,
-            current_time_ms=time_ms,
+            current_time_ms=current_time_ms,
         )
         entry = {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -153,23 +151,22 @@ def test_gossip_inclusion_list__ignore_not_current_slot(spec, state):
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 2))
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 2))
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "inclusion list is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -197,11 +194,10 @@ def test_gossip_inclusion_list__valid_slot_at_lower_disparity(spec, state):
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -209,13 +205,13 @@ def test_gossip_inclusion_list__valid_slot_at_lower_disparity(spec, state):
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -242,12 +238,11 @@ def test_gossip_inclusion_list__ignore_slot_outside_lower_disparity(spec, state)
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -255,13 +250,13 @@ def test_gossip_inclusion_list__ignore_slot_outside_lower_disparity(spec, state)
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "inclusion list is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -289,11 +284,10 @@ def test_gossip_inclusion_list__valid_slot_at_upper_disparity(spec, state):
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -301,13 +295,13 @@ def test_gossip_inclusion_list__valid_slot_at_upper_disparity(spec, state):
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -334,12 +328,11 @@ def test_gossip_inclusion_list__ignore_slot_outside_upper_disparity(spec, state)
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -347,13 +340,13 @@ def test_gossip_inclusion_list__ignore_slot_outside_upper_disparity(spec, state)
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "inclusion list is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -382,23 +375,22 @@ def test_gossip_inclusion_list__ignore_transactions_empty(spec, state):
     signed_il = sign_inclusion_list(spec, state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "inclusion list contains no transactions"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -432,23 +424,22 @@ def test_gossip_inclusion_list__valid_transactions_at_size_limit(spec, state):
     )
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -481,23 +472,22 @@ def test_gossip_inclusion_list__reject_transactions_too_large(spec, state):
     )
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "inclusion list transactions exceed the maximum size"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -536,23 +526,22 @@ def test_gossip_inclusion_list__reject_transactions_too_large_multiple_transacti
     )
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "inclusion list transactions exceed the maximum size"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -585,23 +574,22 @@ def test_gossip_inclusion_list__reject_empty_transaction(spec, state):
     )
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "inclusion list contains an empty transaction"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -631,23 +619,22 @@ def test_gossip_inclusion_list__ignore_dependent_block_unseen(spec, state):
     signed_il = sign_inclusion_list(spec, state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "dependent block has not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -695,23 +682,22 @@ def test_gossip_inclusion_list__ignore_dependent_block_state_unavailable(spec, s
 
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "dependent block failed validation"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -745,23 +731,22 @@ def test_gossip_inclusion_list__reject_dependent_block_at_lookahead_epoch_start(
     signed_il = sign_inclusion_list(spec, state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "dependent block is after the shuffling dependent slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -789,23 +774,22 @@ def test_gossip_inclusion_list__valid_genesis_dependent_root_in_genesis_epoch(sp
     signed_il = get_sample_signed_inclusion_list(spec, store, state)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -834,23 +818,22 @@ def test_gossip_inclusion_list__reject_non_genesis_dependent_root_in_genesis_epo
     signed_il = sign_inclusion_list(spec, state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "dependent block is after the shuffling dependent slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -879,23 +862,22 @@ def test_gossip_inclusion_list__valid_genesis_dependent_root_at_lookahead_epoch(
     signed_il = get_sample_signed_inclusion_list(spec, store, state, slot=inclusion_list_slot)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -926,23 +908,22 @@ def test_gossip_inclusion_list__reject_non_genesis_dependent_root_at_lookahead_e
     signed_il = sign_inclusion_list(spec, genesis_state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "dependent block is after the shuffling dependent slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -977,23 +958,22 @@ def test_gossip_inclusion_list__ignore_dependent_block_not_possible(spec, state)
     signed_il = sign_inclusion_list(spec, dependent_state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "dependent block is not a possible dependent block"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -1031,23 +1011,22 @@ def test_gossip_inclusion_list__valid_dependent_block_is_head(spec, state):
     assert signed_il.message.dependent_root == dependent_root
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -1094,23 +1073,22 @@ def test_gossip_inclusion_list__valid_dependent_block_on_fork(spec, state):
     signed_il = sign_inclusion_list(spec, fork_state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -1170,23 +1148,22 @@ def test_gossip_inclusion_list__valid_dependent_block_across_empty_epochs(spec, 
     assert signed_il.message.dependent_root == dependent_root
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, inclusion_list_slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -1219,23 +1196,22 @@ def test_gossip_inclusion_list__reject_includer_not_in_committee(spec, state):
     signed_il = sign_inclusion_list(spec, state, inclusion_list)
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "includer is not a member of the committee"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,
@@ -1264,23 +1240,22 @@ def test_gossip_inclusion_list__reject_invalid_signature(spec, state):
     signed_il = spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())
     yield get_filename(signed_il), signed_il
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "invalid inclusion list signature"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
             "reason": reason,

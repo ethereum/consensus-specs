@@ -50,7 +50,6 @@ def test_gossip_voluntary_exit__valid(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator to exit
     validator_index = 0
@@ -75,7 +74,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "valid",
             }
@@ -102,7 +101,6 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator to exit
     validator_index = 0
@@ -124,7 +122,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     assert reason is None
     messages.append(
         {
-            "offset_ms": 0,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_exit),
             "expected": "valid",
         }
@@ -143,7 +141,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     assert reason == "already seen voluntary exit for this validator"
     messages.append(
         {
-            "offset_ms": 50,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_exit),
             "expected": "ignore",
             "reason": reason,
@@ -171,7 +169,6 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit with invalid validator index
     invalid_index = len(state.validators) + 100
@@ -199,7 +196,7 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "reject",
                 "reason": reason,
@@ -230,7 +227,6 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index)
@@ -252,7 +248,7 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "reject",
                 "reason": reason,
@@ -283,7 +279,6 @@ def test_gossip_voluntary_exit__ignore_already_initiated_exit(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Create voluntary exit
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index)
@@ -305,7 +300,7 @@ def test_gossip_voluntary_exit__ignore_already_initiated_exit(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "ignore",
                 "reason": reason,
@@ -332,7 +327,6 @@ def test_gossip_voluntary_exit__ignore_epoch_in_future(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator
     validator_index = 0
@@ -358,7 +352,7 @@ def test_gossip_voluntary_exit__ignore_epoch_in_future(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "ignore",
                 "reason": reason,
@@ -385,7 +379,6 @@ def test_gossip_voluntary_exit__ignore_far_future_epoch(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     signed_exit = create_signed_voluntary_exit(
         spec, state, validator_index=0, epoch=spec.FAR_FUTURE_EPOCH
@@ -407,7 +400,7 @@ def test_gossip_voluntary_exit__ignore_far_future_epoch(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "ignore",
                 "reason": reason,
@@ -440,9 +433,8 @@ def test_gossip_voluntary_exit__ignore_before_clock_disparity(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     epoch_start_slot = spec.compute_start_slot_at_epoch(exit_epoch)
-    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
-    current_time_ms = epoch_start_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     result, reason = run_validate_gossip(
         spec,
@@ -459,7 +451,7 @@ def test_gossip_voluntary_exit__ignore_before_clock_disparity(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "ignore",
                 "reason": reason,
@@ -492,9 +484,8 @@ def test_gossip_voluntary_exit__valid_at_clock_disparity(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     epoch_start_slot = spec.compute_start_slot_at_epoch(exit_epoch)
-    epoch_start_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
-    current_time_ms = epoch_start_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, epoch_start_slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     result, reason = run_validate_gossip(
         spec,
@@ -511,7 +502,7 @@ def test_gossip_voluntary_exit__valid_at_clock_disparity(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "valid",
             }
@@ -537,7 +528,6 @@ def test_gossip_voluntary_exit__valid_previous_epoch(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     exit_epoch = spec.get_current_epoch(state) - 1
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0, epoch=exit_epoch)
@@ -558,7 +548,7 @@ def test_gossip_voluntary_exit__valid_previous_epoch(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "valid",
             }
@@ -586,7 +576,6 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator
     validator_index = 0
@@ -611,7 +600,7 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "reject",
                 "reason": reason,
@@ -639,7 +628,6 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     # Pick a validator
     validator_index = 0
@@ -670,7 +658,7 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_exit),
                 "expected": "reject",
                 "reason": reason,

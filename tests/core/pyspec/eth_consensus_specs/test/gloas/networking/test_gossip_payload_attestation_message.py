@@ -84,23 +84,22 @@ def test_gossip_payload_attestation_message__valid(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
         }
@@ -131,10 +130,9 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
     yield get_filename(message), message
 
     # Use a current_time well past the message's slot.
-    time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, state.slot
     ) + spec.seconds_to_milliseconds(1000)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -142,13 +140,13 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -181,11 +179,10 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
 
     # Lower edge: start(slot) - MAXIMUM_GOSSIP_CLOCK_DISPARITY is the earliest
     # time still counted as the current slot.
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -193,13 +190,13 @@ def test_gossip_payload_attestation_message__valid_slot_at_lower_disparity(spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
         }
@@ -229,12 +226,11 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
     )
     yield get_filename(message), message
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -242,13 +238,13 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_lower_disparity
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -281,11 +277,10 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
 
     # Upper edge: start(slot + 1) + MAXIMUM_GOSSIP_CLOCK_DISPARITY is the latest
     # time still counted as the current slot.
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -293,13 +288,13 @@ def test_gossip_payload_attestation_message__valid_slot_at_upper_disparity(spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
         }
@@ -329,12 +324,11 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
     )
     yield get_filename(message), message
 
-    time_ms = (
+    current_time_ms = (
         spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(state.slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -342,13 +336,13 @@ def test_gossip_payload_attestation_message__ignore_slot_outside_upper_disparity
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "payload attestation is not for the current slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -379,41 +373,40 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
         }
     )
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "already seen payload attestation from this validator"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -445,23 +438,22 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "payload attestation's block has not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -490,23 +482,22 @@ def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "payload attestation's slot is pre-gloas"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -535,23 +526,22 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
     message = build_payload_attestation_message(spec, state, state.slot, block_root, outsider)
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "validator is not in the payload timeliness committee"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -582,23 +572,22 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "invalid payload attestation signature"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -637,23 +626,22 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "payload attestation's block failed validation"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -693,23 +681,22 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "validator index out of range"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
@@ -745,23 +732,22 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
     )
     yield get_filename(message), message
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         payload_attestation_message=message,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "payload attestation's block is not at the assigned slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(message),
             "expected": result,
             "reason": reason,
