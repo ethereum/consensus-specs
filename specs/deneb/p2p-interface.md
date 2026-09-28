@@ -167,19 +167,19 @@ class BlobIdentifier(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: dict[Root, Set[Tuple[bool, ...]]]
+    proposer_slots: Set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: Set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, Set[tuple[bool, ...]]]
     voluntary_exit_indices: Set[ValidatorIndex]
     proposer_slashing_indices: Set[ValidatorIndex]
     attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    attestation_validator_epochs: Set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], Set[tuple[bool, ...]]]
+    sync_message_validator_slots: Set[tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [New in Deneb]
-    blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
+    blob_sidecar_tuples: Set[tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
 
 ### Modified `compute_fork_version`

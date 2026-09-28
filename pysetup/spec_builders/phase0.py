@@ -27,7 +27,7 @@ from dataclasses import (
 )
 from hashlib import sha256 as sha256_hash
 from typing import (
-    Any, Callable, Counter, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
+    Any, Callable, Counter, DefaultDict, Set, Sequence, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )
 
 from ssz.bitfields import BitList, BitVector
