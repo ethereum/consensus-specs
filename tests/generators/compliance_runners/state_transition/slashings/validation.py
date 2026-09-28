@@ -16,11 +16,16 @@ if TYPE_CHECKING:
 
 
 _YAML = YAML(typ="safe")
-_VALIDATOR_INDEX = 0
+_RANDOMIZED_VALIDATOR_MARKER = spec.Epoch(spec.GENESIS_EPOCH + 1)
 
 
 def recover_dimensions(pre: Any) -> dict[str, Any]:
-    validator = pre.validators[_VALIDATOR_INDEX]
+    validator_index = next(
+        index
+        for index, candidate in enumerate(pre.validators)
+        if candidate.activation_eligibility_epoch == _RANDOMIZED_VALIDATOR_MARKER
+    )
+    validator = pre.validators[validator_index]
     epoch = spec.get_current_epoch(pre)
     total_active_balance = spec.get_total_active_balance(pre)
     increment = spec.EFFECTIVE_BALANCE_INCREMENT
@@ -50,9 +55,9 @@ def recover_dimensions(pre: Any) -> dict[str, Any]:
         total_slashings = "PARTIAL_TOTAL"
     if penalty == 0:
         penalty_outcome, outcome = "NO_PENALTY", "NO_STATE_CHANGE"
-    elif penalty > pre.balances[_VALIDATOR_INDEX]:
+    elif penalty > pre.balances[validator_index]:
         penalty_outcome, outcome = "UNDERFLOW_TO_ZERO", "BALANCE_ZEROED"
-    elif penalty == pre.balances[_VALIDATOR_INDEX]:
+    elif penalty == pre.balances[validator_index]:
         penalty_outcome, outcome = "FULL_PENALTY", "BALANCE_ZEROED"
     else:
         penalty_outcome, outcome = "PARTIAL_PENALTY", "BALANCE_DECREASED"
