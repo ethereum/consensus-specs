@@ -34,9 +34,15 @@ class ParticipationFlagUpdatesMaterializer(Materializer):
         current_has_flags = bool(getattr(solution, "current_has_flags", True))
         previous = type(pre.previous_epoch_participation)()
         current = type(pre.current_epoch_participation)()
+        previous_flag_index = (
+            self.rng.randrange(validator_count) if previous_has_flags and validator_count else None
+        )
+        current_flag_index = (
+            self.rng.randrange(validator_count) if current_has_flags and validator_count else None
+        )
         for index in range(validator_count):
-            previous.append(flag if previous_has_flags and index == 0 else zero)
-            current.append(flag if current_has_flags and index == 0 else zero)
+            previous.append(flag if index == previous_flag_index else zero)
+            current.append(flag if index == current_flag_index else zero)
         pre.previous_epoch_participation = previous
         pre.current_epoch_participation = current
 
