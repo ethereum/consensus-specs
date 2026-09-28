@@ -24,7 +24,7 @@ _DIMS = [
     "signature_valid",
     "outcome",
 ]
-_VALIDATOR_INDEX = 0
+_VALIDATOR_COUNT = 64
 
 
 class VoluntaryExitMaterializer(Materializer):
@@ -45,8 +45,9 @@ class VoluntaryExitMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         scenario = str(solution.scenario)
+        validator_index = self.rng.randrange(_VALIDATOR_COUNT)
         current_epoch = spec.get_current_epoch(pre)
-        validator = pre.validators[_VALIDATOR_INDEX]
+        validator = pre.validators[validator_index]
         exit_epoch = current_epoch
 
         if scenario == "INACTIVE":
@@ -60,7 +61,7 @@ class VoluntaryExitMaterializer(Materializer):
         elif scenario == "PENDING_WITHDRAWAL":
             pre.pending_partial_withdrawals.append(
                 spec.PendingPartialWithdrawal(
-                    validator_index=spec.ValidatorIndex(_VALIDATOR_INDEX),
+                    validator_index=spec.ValidatorIndex(validator_index),
                     amount=spec.Gwei(1),
                     withdrawable_epoch=spec.Epoch(current_epoch + 1),
                 )
@@ -75,9 +76,9 @@ class VoluntaryExitMaterializer(Materializer):
 
         message = spec.VoluntaryExit(
             epoch=exit_epoch,
-            validator_index=spec.ValidatorIndex(_VALIDATOR_INDEX),
+            validator_index=spec.ValidatorIndex(validator_index),
         )
-        signed_exit = sign_voluntary_exit(spec, pre, message, privkeys[_VALIDATOR_INDEX])
+        signed_exit = sign_voluntary_exit(spec, pre, message, privkeys[validator_index])
         if scenario == "INVALID_SIGNATURE":
             signed_exit.signature = spec.BLSSignature()
 
