@@ -212,10 +212,17 @@ class MarkdownToSpec:
             raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
 
         if parent_class in SCALAR_BASE_CLASSES and isinstance(cls.bases[0], ast.Name):
-            # Scalar aliases are handled as custom types, so that those used in
-            # the types of configurations, presets, and constants are defined
-            # before them in the generated specification.
-            self.spec["custom_types"][class_name] = parent_class
+            if _is_scalar_alias(cls):
+                # Scalar aliases are handled as custom types, so that those used
+                # in the types of configurations, presets, and constants are
+                # defined before them in the generated specification.
+                self.spec["custom_types"][class_name] = parent_class
+                return
+            # A scalar that restricts which values it admits states that rule in
+            # its body, which an alias would drop. Such a type is defined with
+            # the other classes and cannot type a configuration, preset, or
+            # constant.
+            self.spec["ssz_objects"][class_name] = source
             return
         if parent_class in COLLECTION_BASE_CLASSES or parent_class == "ProgressiveContainer":
             # A collection declares its bound in the class body, as `LIMIT`,
@@ -602,6 +609,15 @@ def check_yaml_matches_spec(
         assert yaml[var_name] == repr(eval(updated_value)), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
+
+
+def _is_scalar_alias(cls: ast.ClassDef) -> bool:
+    """Whether a class body says nothing beyond naming the scalar it renames."""
+    return all(
+        isinstance(statement, ast.Pass)
+        or (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant))
+        for statement in cls.body
+    )
 
 
 def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:

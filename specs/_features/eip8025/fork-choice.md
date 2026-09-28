@@ -49,7 +49,7 @@ class Store:
     payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
     payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
     # [New in EIP8025]
-    execution_proofs: Dict[Root, Dict[ProofType, ExecutionProofEnvelope]]
+    execution_proofs: DefaultDict[Root, Dict[ProofType, ExecutionProofEnvelope]]
 ```
 
 ## Store initialization
@@ -83,7 +83,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in EIP8025]
-        execution_proofs={},
+        execution_proofs=defaultdict(dict),
     )
 ```
 
@@ -123,7 +123,5 @@ def on_execution_proof(
     process_execution_proof(state, signed_proof_envelope, payload_envelope, proof_engine)
 
     # Store only proofs that pass downstream verification
-    if beacon_block_root not in store.execution_proofs:
-        store.execution_proofs[beacon_block_root] = {}
     store.execution_proofs[beacon_block_root][proof_envelope.proof_type] = proof_envelope
 ```
