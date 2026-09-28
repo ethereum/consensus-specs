@@ -31,19 +31,30 @@ class ProposerLookaheadMaterializer(Materializer):
         active_candidates = (
             max(1, slots - 1) if fewer else len(pre.validators) - int(slashed_active or old_slashed)
         )
-        for i, validator in enumerate(pre.validators):
-            validator.slashed = slashed_active and i == active_candidates
-            if i >= active_candidates + int(slashed_active):
+        candidate_indices = set(
+            self.rng.sample(range(len(pre.validators)), active_candidates)
+        )
+        remaining_indices = [
+            index for index in range(len(pre.validators)) if index not in candidate_indices
+        ]
+        slashed_active_index = self.rng.choice(remaining_indices) if slashed_active else None
+        old_slashed_index = None
+        if old_slashed:
+            old_slashed_index = slashed_active_index
+            if old_slashed_index is None:
+                old_slashed_index = self.rng.choice(remaining_indices)
+        for index, validator in enumerate(pre.validators):
+            validator.slashed = index in {slashed_active_index, old_slashed_index}
+            if index not in candidate_indices and index != slashed_active_index:
                 validator.activation_epoch = spec.FAR_FUTURE_EPOCH
         if bool(getattr(solution, "new_proposers_repeat", False)):
             # Concentrate all effective balance in one of the candidate
             # validators so proposer selection deterministically repeats it.
-            for i in range(active_candidates):
-                pre.validators[i].effective_balance = spec.Gwei(
-                    spec.MAX_EFFECTIVE_BALANCE if i == 0 else 0
+            repeated_index = self.rng.choice(sorted(candidate_indices))
+            for index in candidate_indices:
+                pre.validators[index].effective_balance = spec.Gwei(
+                    spec.MAX_EFFECTIVE_BALANCE if index == repeated_index else 0
                 )
-        if old_slashed:
-            pre.validators[-1].slashed = True
         pre.slot = spec.Slot((int(spec.GENESIS_EPOCH) + 1) * slots - 1)
         epoch = int(spec.get_current_epoch(pre)) + int(spec.MIN_SEED_LOOKAHEAD) + 1
         new = list(spec.get_beacon_proposer_indices(pre, spec.Epoch(epoch)))
@@ -59,7 +70,9 @@ class ProposerLookaheadMaterializer(Materializer):
                 epoch + int(spec.EPOCHS_PER_HISTORICAL_VECTOR) - int(spec.MIN_SEED_LOOKAHEAD) - 1
             ) % len(pre.randao_mixes)
             found = False
-            for candidate in range(256):
+            start = self.rng.randrange(256)
+            for offset in range(256):
+                candidate = (start + offset) % 256
                 pre.randao_mixes[mix_index] = spec.Bytes32(candidate.to_bytes(32, "little"))
                 new = list(spec.get_beacon_proposer_indices(pre, spec.Epoch(epoch)))
                 if len(set(new)) == len(new):
@@ -89,7 +102,8 @@ class ProposerLookaheadMaterializer(Materializer):
                     )
                     old[position] = spec.ValidatorIndex(replacement)
         if old_slashed:
-            old[0] = spec.ValidatorIndex(len(pre.validators) - 1)
+            assert old_slashed_index is not None
+            old[0] = spec.ValidatorIndex(old_slashed_index)
         for index, proposer_index in enumerate(old):
             pre.proposer_lookahead[index] = proposer_index
         post = pre.copy()

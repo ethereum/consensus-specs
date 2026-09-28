@@ -67,10 +67,9 @@ class RegistryUpdatesMaterializer(Materializer):
         if not has_validators:
             pre.validators = type(pre.validators)()
             pre.balances = type(pre.balances)()
-        index = 0
-        for name, enabled in requested.items():
-            if not enabled:
-                continue
+        enabled_branches = [name for name, enabled in requested.items() if enabled]
+        validator_indices = self.rng.sample(range(len(pre.validators)), len(enabled_branches))
+        for name, index in zip(enabled_branches, validator_indices, strict=True):
             validator = pre.validators[index]
             if name == "queues_validator":
                 validator.activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
@@ -89,7 +88,6 @@ class RegistryUpdatesMaterializer(Materializer):
                 validator.activation_epoch = spec.GENESIS_EPOCH
                 validator.exit_epoch = spec.FAR_FUTURE_EPOCH
                 validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE
-            index += 1
         post = pre.copy()
         spec.process_registry_updates(post)
         claimed = {str(k): v for k, v in vars(solution).items() if not str(k).startswith("_")}
