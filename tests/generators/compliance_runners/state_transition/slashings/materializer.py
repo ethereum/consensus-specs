@@ -73,6 +73,6 @@ class SlashingsMaterializer(Materializer):
         # Spread the same modeled total over a seeded subset of vector slots.
         slot_count = self.rng.randint(1, min(len(state.slashings), total))
         cuts = sorted(self.rng.sample(range(1, total), slot_count - 1)) if slot_count > 1 else []
-        amounts = [right - left for left, right in zip([0, *cuts], [*cuts, total])]
+        amounts = [right - left for left, right in zip([0, *cuts], [*cuts, total], strict=True)]
         for index in self.rng.sample(range(len(state.slashings)), slot_count):
             state.slashings[index] = self.spec.Gwei(amounts.pop())
