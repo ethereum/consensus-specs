@@ -21,7 +21,6 @@ _DIMS = [
     "outcome",
 ]
 _VALIDATOR_COUNT = 64
-_VALIDATOR_INDEX = 0
 
 
 class BLSToExecutionChangeMaterializer(Materializer):
@@ -39,7 +38,11 @@ class BLSToExecutionChangeMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         scenario = str(solution.scenario)
-        index = _VALIDATOR_COUNT if scenario == "OUT_OF_RANGE" else _VALIDATOR_INDEX
+        index = (
+            _VALIDATOR_COUNT + self.rng.randrange(1, _VALIDATOR_COUNT + 1)
+            if scenario == "OUT_OF_RANGE"
+            else self.rng.randrange(_VALIDATOR_COUNT)
+        )
         signed_change = get_signed_address_change(spec, pre, validator_index=index)
 
         if scenario != "OUT_OF_RANGE":

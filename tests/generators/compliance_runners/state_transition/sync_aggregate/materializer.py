@@ -46,8 +46,15 @@ class SyncAggregateMaterializer(Materializer):
             "MAJORITY": committee_size // 2 + 1,
             "EMPTY": 0,
         }[level]
-        bits = [position < participant_count for position in range(committee_size)]
-        participants = committee_indices[:participant_count]
+        participant_positions = set(
+            self.rng.sample(range(committee_size), participant_count)
+        )
+        bits = [position in participant_positions for position in range(committee_size)]
+        participants = [
+            validator_index
+            for position, validator_index in enumerate(committee_indices)
+            if position in participant_positions
+        ]
         signature = compute_aggregate_sync_committee_signature(
             spec, pre, int(pre.slot) - 1, participants
         )
