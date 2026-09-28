@@ -49,7 +49,7 @@ class GetPayloadResponse:
 
 ```python
 def get_pow_block_at_terminal_total_difficulty(
-    pow_chain: Dict[Hash32, PowBlock],
+    pow_chain: dict[Hash32, PowBlock],
 ) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain.values():
@@ -69,7 +69,7 @@ def get_pow_block_at_terminal_total_difficulty(
 ### `get_terminal_pow_block`
 
 ```python
-def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
+def get_terminal_pow_block(pow_chain: dict[Hash32, PowBlock]) -> Optional[PowBlock]:
     if TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH:
         # Terminal block hash override takes precedence over terminal total difficulty
         if TERMINAL_BLOCK_HASH in pow_chain:
@@ -138,7 +138,7 @@ To obtain an execution payload, a block proposer building a block on top of a
      payload (`Hash32()` if none yet finalized)
    - `suggested_fee_recipient` is the value suggested to be used for the
      `fee_recipient` field of the execution payload
-   - `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly
+   - `pow_chain` is a `dict[Hash32, PowBlock]` dictionary that abstractly
      represents all blocks in the PoW chain with block hash as the dictionary
      key
 
@@ -149,7 +149,7 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
-    pow_chain: Optional[Dict[Hash32, PowBlock]] = None,
+    pow_chain: Optional[dict[Hash32, PowBlock]] = None,
 ) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
         assert pow_chain is not None
