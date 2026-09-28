@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Fork to EIP-8198](#fork-to-eip-8198)
 
 <!-- mdformat-toc end -->
@@ -14,13 +14,13 @@
 
 This document describes the process of the EIP-8198 upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP8198_FORK_VERSION` | `Version('0xe8198000')`               |
+| `EIP8198_FORK_VERSION` | `Version("0xe8198000")`               |
 | `EIP8198_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-8198

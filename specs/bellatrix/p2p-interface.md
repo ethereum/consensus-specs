@@ -118,7 +118,7 @@ def validate_beacon_block_gossip(
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     # [New in Bellatrix]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.

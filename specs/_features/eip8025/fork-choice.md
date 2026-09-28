@@ -38,18 +38,18 @@ class Store:
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
-    block_timeliness: Dict[Root, list[bool]]
-    checkpoint_states: Dict[Checkpoint, BeaconState]
-    latest_messages: Dict[ValidatorIndex, LatestMessage]
-    unrealized_justifications: Dict[Root, Checkpoint]
-    payloads: Dict[Root, ExecutionPayloadEnvelope]
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
+    equivocating_indices: set[ValidatorIndex]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
+    block_timeliness: dict[Root, list[bool]]
+    checkpoint_states: dict[Checkpoint, BeaconState]
+    latest_messages: dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: dict[Root, Checkpoint]
+    payloads: dict[Root, ExecutionPayloadEnvelope]
+    payload_timeliness_vote: dict[Root, list[Boolean | None]]
+    payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in EIP8025]
-    execution_proofs: Dict[Root, Dict[ProofType, ExecutionProofEnvelope]]
+    execution_proofs: dict[Root, dict[ProofType, ExecutionProofEnvelope]]
 ```
 
 ## Store initialization

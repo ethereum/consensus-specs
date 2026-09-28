@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
   - [Slot duration schedule](#slot-duration-schedule)
 - [Helpers](#helpers)
   - [Misc](#misc)
@@ -49,7 +49,7 @@ counts, so their wall-clock spans scale with the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
-## Configuration
+## Configs
 
 ### Slot duration schedule
 
@@ -186,7 +186,7 @@ the first epoch after a slot duration change.
 ```python
 def get_flag_index_deltas(
     state: BeaconState, flag_index: int
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -221,7 +221,7 @@ the cumulative penalty over a fixed wall-clock leak duration is unchanged. The
 penalty pays for the previous epoch and is priced at its slot duration.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """

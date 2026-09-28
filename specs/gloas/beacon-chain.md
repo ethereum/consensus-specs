@@ -560,10 +560,10 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                          | Value                      |
 | ----------------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER`       | `DomainType('0x0B000000')` |
-| `DOMAIN_PTC_ATTESTER`         | `DomainType('0x0C000000')` |
-| `DOMAIN_PROPOSER_PREFERENCES` | `DomainType('0x0D000000')` |
-| `DOMAIN_BUILDER_DEPOSIT`      | `DomainType('0x0E000000')` |
+| `DOMAIN_BEACON_BUILDER`       | `DomainType("0x0B000000")` |
+| `DOMAIN_PTC_ATTESTER`         | `DomainType("0x0C000000")` |
+| `DOMAIN_PROPOSER_PREFERENCES` | `DomainType("0x0D000000")` |
+| `DOMAIN_BUILDER_DEPOSIT`      | `DomainType("0x0E000000")` |
 
 ### Misc
 
@@ -577,7 +577,7 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                        | Value            |
 | --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1("0xB0")` |
 
 ### Builder versions
 
@@ -589,8 +589,8 @@ same `Withdrawal` container can be used for validators and builders.
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1('0x03')` |
-| `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1('0x04')` |
+| `BUILDER_DEPOSIT_REQUEST_TYPE` | `Bytes1("0x03")` |
+| `BUILDER_EXIT_REQUEST_TYPE`    | `Bytes1("0x04")` |
 
 ## Presets
 
@@ -1153,7 +1153,7 @@ def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) ->
 #### New `get_scheduled_gas_limit`
 
 ```python
-def get_scheduled_gas_limit(epoch: Epoch) -> Optional[Uint64]:
+def get_scheduled_gas_limit(epoch: Epoch) -> Uint64 | None:
     """
     Return the scheduled gas limit at a given epoch, if any.
     """
@@ -1429,13 +1429,13 @@ def get_indexed_payload_attestation(
 #### New `get_builder_payment_quorum_threshold`
 
 ```python
-def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
+def get_builder_payment_quorum_threshold(state: BeaconState) -> Gwei:
     """
     Calculate the quorum threshold for builder payments.
     """
     per_slot_balance = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+    return quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
 ```
 
 #### New `get_activation_churn_limit`
@@ -1823,7 +1823,7 @@ def get_builder_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
     assert len(prior_withdrawals) <= withdrawals_limit
 
@@ -1869,7 +1869,7 @@ def get_builders_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
@@ -2080,7 +2080,7 @@ def verify_execution_payload_envelope_signature(
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
+    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
