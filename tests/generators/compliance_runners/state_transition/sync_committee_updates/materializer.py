@@ -31,7 +31,11 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
 
         computed_next = spec.get_next_sync_committee(pre)
         alternate = computed_next.copy()
-        alternate.pubkeys[0] = spec.BLSPubkey(b"\x99" * 48)
+        changed_index = self.rng.randrange(len(alternate.pubkeys))
+        changed_pubkey = self.rng.getrandbits(48 * 8).to_bytes(48, "big")
+        if changed_pubkey == bytes(alternate.pubkeys[changed_index]):
+            changed_pubkey = bytes([changed_pubkey[0] ^ 1]) + changed_pubkey[1:]
+        alternate.pubkeys[changed_index] = spec.BLSPubkey(changed_pubkey)
         next_committee = computed_next if computed_next_is_unchanged else alternate
         current = (
             next_committee
