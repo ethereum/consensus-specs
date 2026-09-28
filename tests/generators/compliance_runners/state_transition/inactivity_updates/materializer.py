@@ -116,8 +116,17 @@ class InactivityUpdatesMaterializer(Materializer):
             if has_zero_score and scores_changed and not leaking and len(eligible_indices) > 1
             else None
         )
+        participating_eligible_indices = [
+            index
+            for index in eligible_indices
+            if not pre.validators[index].slashed
+            and spec.is_active_validator(pre.validators[index], spec.get_previous_epoch(pre))
+        ]
         participating_indices = set(
-            self.rng.sample(eligible_indices, min(participating_count, len(eligible_indices)))
+            self.rng.sample(
+                participating_eligible_indices,
+                min(participating_count, len(participating_eligible_indices)),
+            )
         )
         for index in eligible_indices:
             score = 0 if index == zero_score_index else 1
