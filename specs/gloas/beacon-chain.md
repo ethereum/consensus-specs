@@ -1428,13 +1428,13 @@ def get_indexed_payload_attestation(
 #### New `get_builder_payment_quorum_threshold`
 
 ```python
-def get_builder_payment_quorum_threshold(state: BeaconState) -> Uint64:
+def get_builder_payment_quorum_threshold(state: BeaconState) -> Gwei:
     """
     Calculate the quorum threshold for builder payments.
     """
     per_slot_balance = get_total_active_balance(state) // Uint64(SLOTS_PER_EPOCH)
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    return Uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+    return quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
 ```
 
 #### New `get_activation_churn_limit`

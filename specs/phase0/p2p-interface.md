@@ -424,11 +424,11 @@ def compute_attestation_subnet_prefix_bits() -> Uint64:
 #### `compute_min_epochs_for_block_requests`
 
 ```python
-def compute_min_epochs_for_block_requests() -> Uint64:
+def compute_min_epochs_for_block_requests() -> Epoch:
     """
     Return the minimum epoch range over which a node must serve blocks.
     """
-    return Uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
+    return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
 ```
 
 #### `is_non_strict_superset`

@@ -272,7 +272,7 @@ def get_current_store_epoch(store: Store) -> Epoch:
 #### `compute_slots_since_epoch_start`
 
 ```python
-def compute_slots_since_epoch_start(slot: Slot) -> int:
+def compute_slots_since_epoch_start(slot: Slot) -> Slot:
     return slot - compute_start_slot_at_epoch(compute_epoch_at_slot(slot))
 ```
 
