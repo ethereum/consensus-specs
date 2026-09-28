@@ -31,20 +31,35 @@ class SlotProcessingMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         pre.slot = spec.Slot(slot)
+        for ring_index in range(period):
+            pre.state_roots[ring_index] = spec.Bytes32(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+            pre.block_roots[ring_index] = spec.Bytes32(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+            pre.execution_payload_availability[ring_index] = spec.Boolean(
+                bool(self.rng.getrandbits(1))
+            )
         index = slot % period
         next_index = (slot + 1) % period
 
         header_empty = bool(getattr(solution, "header_state_root_empty", True))
-        pre.latest_block_header.state_root = (
-            spec.Bytes32() if header_empty else spec.Bytes32(b"\x01" * 32)
+        header_state_root = self.rng.getrandbits(256).to_bytes(32, "big")
+        if header_state_root == bytes(32):
+            header_state_root = b"\x01" + bytes(31)
+        pre.latest_block_header.state_root = spec.Bytes32(
+            bytes(32) if header_empty else header_state_root
         )
+        state_root_destination = self.rng.getrandbits(256) or 1
+        block_root_destination = self.rng.getrandbits(256) or 1
         pre.state_roots[index] = (
-            spec.Bytes32(b"\x01" * 32)
+            spec.Bytes32(state_root_destination.to_bytes(32, "big"))
             if bool(getattr(solution, "state_root_destination_populated", False))
             else spec.Bytes32()
         )
         pre.block_roots[index] = (
-            spec.Bytes32(b"\x01" * 32)
+            spec.Bytes32(block_root_destination.to_bytes(32, "big"))
             if bool(getattr(solution, "block_root_destination_populated", False))
             else spec.Bytes32()
         )
