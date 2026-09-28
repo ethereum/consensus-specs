@@ -592,7 +592,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
 ### Modified `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
+def get_filtered_node_tree(store: Store) -> list[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.
@@ -611,7 +611,7 @@ def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
 representing *full* and *empty* blocks.
 
 ```python
-def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+def get_node_children(store: Store, node: ForkChoiceNode) -> list[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
         if is_payload_verified(store, node.root):

@@ -61,7 +61,7 @@ def verify_execution_proof(
 ```python
 @dataclass
 class ProofAttributes:
-    proof_types: Sequence[ProofType]
+    proof_types: list[ProofType]
 ```
 
 ### New `request_proofs`

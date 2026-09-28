@@ -282,7 +282,7 @@ helper via `get_committee_assignment(state, epoch, validator_index)` where
 ```python
 def get_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot] | None:
+) -> tuple[list[ValidatorIndex], CommitteeIndex, Slot] | None:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -475,7 +475,7 @@ def is_candidate_block(block: Eth1Block, period_start: Uint64) -> bool:
 ```
 
 ```python
-def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
+def get_eth1_vote(state: BeaconState, eth1_chain: list[Eth1Block]) -> Eth1Data:
     period_start = voting_period_start_time(state)
     # `eth1_chain` abstractly represents all blocks in the eth1 chain sorted by ascending block height
     votes_to_consider = [
@@ -766,7 +766,7 @@ Set `aggregate_attestation.signature = aggregate_signature` where
 `aggregate_signature` is obtained from:
 
 ```python
-def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
+def get_aggregate_signature(attestations: list[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
     return bls.Aggregate(signatures)
 ```

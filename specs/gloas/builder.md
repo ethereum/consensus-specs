@@ -188,8 +188,8 @@ def get_data_column_sidecars(
     # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a beacon block root and the cells/proofs associated with each blob
     in the corresponding payload, assemble the sidecars which can be
@@ -223,8 +223,8 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
     block, assemble the sidecars which can be distributed to peers.

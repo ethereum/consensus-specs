@@ -97,7 +97,7 @@ class GetPayloadResponse:
     block_value: Uint256
     # [Modified in Fulu:EIP7594]
     blobs_bundle: BlobsBundle
-    execution_requests: Sequence[bytes]
+    execution_requests: list[bytes]
 ```
 
 ## Protocols
@@ -112,7 +112,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as list[bytes]) objects.
     """
 ```
 
@@ -135,7 +135,7 @@ of `NUMBER_OF_CUSTODY_GROUPS`.
 
 ```python
 def get_validators_custody_requirement(
-    state: BeaconState, validator_indices: Sequence[ValidatorIndex]
+    state: BeaconState, validator_indices: list[ValidatorIndex]
 ) -> Uint64:
     total_node_balance = sum(
         state.validators[index].effective_balance for index in validator_indices
@@ -234,8 +234,8 @@ def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
     kzg_commitments: BlobKZGCommitments,
     kzg_commitments_inclusion_proof: KZGCommitmentsInclusionProof,
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
     each blob in the block, assemble the sidecars which can be distributed to peers.
@@ -267,8 +267,8 @@ def get_data_column_sidecars(
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a signed block and the cells/proofs associated with each blob in the
     block, assemble the sidecars which can be distributed to peers.
@@ -294,8 +294,8 @@ def get_data_column_sidecars_from_block(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.

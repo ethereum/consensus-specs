@@ -53,7 +53,7 @@ def get_execution_proof_envelope_signature(
 def request_execution_proofs(
     block: BeaconBlock,
     signed_payload_envelope: SignedExecutionPayloadEnvelope,
-    proof_types: Sequence[ProofType],
+    proof_types: list[ProofType],
     proof_engine: ProofEngine,
 ) -> Root:
     """

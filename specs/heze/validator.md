@@ -38,7 +38,7 @@ validator" to implement Heze.
 ```python
 @dataclass
 class GetInclusionListResponse:
-    inclusion_list_transactions: Sequence[Transaction]
+    inclusion_list_transactions: list[Transaction]
 ```
 
 ## Protocols
@@ -60,7 +60,7 @@ of the public mempool.
 ```python
 def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
-    Return inclusion list transactions (as Sequence[Transaction]) object.
+    Return inclusion list transactions (as list[Transaction]) object.
     """
 ```
 
@@ -228,7 +228,7 @@ def get_signed_inclusion_list(
     head_root: Root,
     slot: Slot,
     validator_index: ValidatorIndex,
-    inclusion_list_transactions: Sequence[Transaction],
+    inclusion_list_transactions: list[Transaction],
     privkey: int,
 ) -> SignedInclusionList:
     inclusion_list = InclusionList(

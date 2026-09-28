@@ -580,7 +580,7 @@ class NewPayloadRequest(Container):
 ```python
 @dataclass
 class ExpectedWithdrawals:
-    withdrawals: Sequence[Withdrawal]
+    withdrawals: list[Withdrawal]
     # [New in Electra:EIP7251]
     processed_partial_withdrawals_count: Uint64
     processed_sweep_withdrawals_count: Uint64
@@ -598,7 +598,7 @@ class ExpectedWithdrawals:
 
 ```python
 def compute_proposer_index(
-    state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32
+    state: BeaconState, indices: list[ValidatorIndex], seed: Bytes32
 ) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
@@ -733,7 +733,7 @@ def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> 
 #### New `get_committee_indices`
 
 ```python
-def get_committee_indices(committee_bits: BitVector) -> Sequence[CommitteeIndex]:
+def get_committee_indices(committee_bits: BitVector) -> list[CommitteeIndex]:
     return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
@@ -826,7 +826,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
 8-bit random byte in the effective balance filter.
 
 ```python
-def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+def get_next_sync_committee_indices(state: BeaconState) -> list[ValidatorIndex]:
     """
     Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
@@ -1268,7 +1268,7 @@ def is_valid_block_hash(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
     parent_beacon_block_root: Root,
-    execution_requests_list: Sequence[bytes],
+    execution_requests_list: list[bytes],
 ) -> bool:
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
@@ -1285,7 +1285,7 @@ def notify_new_payload(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
     parent_beacon_block_root: Root,
-    execution_requests_list: Sequence[bytes],
+    execution_requests_list: list[bytes],
 ) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
@@ -1356,8 +1356,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def get_pending_partial_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    prior_withdrawals: Sequence[Withdrawal],
-) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    prior_withdrawals: list[Withdrawal],
+) -> tuple[list[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     withdrawals_limit = min(
         len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
@@ -1403,8 +1403,8 @@ def get_pending_partial_withdrawals(
 def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    prior_withdrawals: Sequence[Withdrawal],
-) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    prior_withdrawals: list[Withdrawal],
+) -> tuple[list[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
@@ -1519,8 +1519,8 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 [EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
 
 ```python
-def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[tuple[Bytes1, List]] = [
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
+    requests: list[tuple[Bytes1, List]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),

@@ -100,7 +100,7 @@ they MAY be pruned.
 ```python
 def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
-) -> Sequence[Transaction]:
+) -> list[Transaction]:
     key = (slot, dependent_root)
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]

@@ -232,10 +232,10 @@ following signature:
 
 ```python
 def verify_cell_kzg_proof_batch(
-    commitments_bytes: Sequence[Bytes48],
-    cell_indices: Sequence[CellIndex],
-    cells: Sequence[Cell],
-    proofs_bytes: Sequence[Bytes48],
+    commitments_bytes: list[Bytes48],
+    cell_indices: list[CellIndex],
+    cells: list[Cell],
+    proofs_bytes: list[Bytes48],
 ) -> bool:
     """
     Return ``True`` if and only if all cells and their proofs match the

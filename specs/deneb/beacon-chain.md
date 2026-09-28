@@ -323,7 +323,7 @@ EIP-7045.
 ```python
 def get_attestation_participation_flag_indices(
     state: BeaconState, data: AttestationData, inclusion_delay: Uint64
-) -> Sequence[int]:
+) -> list[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """

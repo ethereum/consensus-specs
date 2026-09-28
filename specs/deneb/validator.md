@@ -192,8 +192,8 @@ Each `sidecar` is obtained from:
 
 ```python
 def get_blob_sidecars(
-    signed_block: SignedBeaconBlock, blobs: Sequence[Blob], blob_kzg_proofs: Sequence[KZGProof]
-) -> Sequence[BlobSidecar]:
+    signed_block: SignedBeaconBlock, blobs: list[Blob], blob_kzg_proofs: list[KZGProof]
+) -> list[BlobSidecar]:
     block = signed_block.message
     signed_block_header = compute_signed_block_header(signed_block)
     return [

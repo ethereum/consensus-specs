@@ -23,9 +23,7 @@ protocols uses the original format.
 ### `normalize_merkle_branch`
 
 ```python
-def normalize_merkle_branch(
-    branch: Sequence[Bytes32], gindex: GeneralizedIndex
-) -> Sequence[Bytes32]:
+def normalize_merkle_branch(branch: Sequence[Bytes32], gindex: GeneralizedIndex) -> list[Bytes32]:
     depth = floorlog2(gindex)
     num_extra = depth - len(branch)
     return [Bytes32()] * num_extra + [*branch]

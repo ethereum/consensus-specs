@@ -31,7 +31,7 @@ All validator responsibilities remain unchanged other than those noted below.
 preregistration requests.
 
 ```python
-def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+def get_execution_requests(execution_requests_list: list[bytes]) -> ExecutionRequests:
     deposits = DepositRequests()
     withdrawals = WithdrawalRequests()
     consolidations = ConsolidationRequests()

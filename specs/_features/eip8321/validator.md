@@ -62,7 +62,7 @@ block proposed, so the chain must be long enough to outlast the validator; a
 and generating and storing a chain is cheap, so a generous value costs nothing.
 
 ```python
-def compute_hash_chain(chain_secret: Bytes32, length: Uint64) -> Sequence[Bytes32]:
+def compute_hash_chain(chain_secret: Bytes32, length: Uint64) -> list[Bytes32]:
     """
     Return the hash chain ``[c_0, ..., c_length]`` generated from
     ``chain_secret``, where ``c_0`` is the secret itself.
@@ -162,9 +162,7 @@ Set `block.body.hash_chain_reveal = hash_chain_reveal` where `hash_chain_reveal`
 is obtained from:
 
 ```python
-def get_hash_chain_reveal(
-    state: BeaconState, block: BeaconBlock, chain: Sequence[Bytes32]
-) -> Bytes32:
+def get_hash_chain_reveal(state: BeaconState, block: BeaconBlock, chain: list[Bytes32]) -> Bytes32:
     """
     Return the next hash-chain reveal for the proposer of ``block``, where
     ``chain`` is the proposer's locally stored hash chain.

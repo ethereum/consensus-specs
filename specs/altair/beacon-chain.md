@@ -321,7 +321,7 @@ def set_or_append_list(
 #### `get_next_sync_committee_indices`
 
 ```python
-def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+def get_next_sync_committee_indices(state: BeaconState) -> list[ValidatorIndex]:
     """
     Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
@@ -417,7 +417,7 @@ def get_unslashed_participating_indices(
 ```python
 def get_attestation_participation_flag_indices(
     state: BeaconState, data: AttestationData, inclusion_delay: Uint64
-) -> Sequence[int]:
+) -> list[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """
@@ -454,9 +454,7 @@ def get_attestation_participation_flag_indices(
 #### `get_flag_index_deltas`
 
 ```python
-def get_flag_index_deltas(
-    state: BeaconState, flag_index: int
-) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_index_deltas(state: BeaconState, flag_index: int) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -486,7 +484,7 @@ def get_flag_index_deltas(
 #### Modified `get_inactivity_penalty_deltas`
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """

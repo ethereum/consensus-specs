@@ -1831,7 +1831,7 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
 ```
 
 ```python
-def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
+def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> list[SubnetID]:
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 

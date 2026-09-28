@@ -360,8 +360,8 @@ def process_preregistration_expiry(state: BeaconState) -> None:
 ##### Modified `get_execution_requests_list`
 
 ```python
-def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
+    requests: list[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),

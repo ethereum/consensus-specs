@@ -407,7 +407,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 #### `get_node_children`
 
 ```python
-def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+def get_node_children(store: Store, node: ForkChoiceNode) -> list[ForkChoiceNode]:
     return [
         ForkChoiceNode(root=root)
         for root in store.blocks
@@ -418,7 +418,7 @@ def get_node_children(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoice
 #### `filter_node_tree`
 
 ```python
-def filter_node_tree(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceNode]:
+def filter_node_tree(store: Store, node: ForkChoiceNode) -> list[ForkChoiceNode]:
     children = get_node_children(store, node)
 
     # If any children branches contain expected finalized/justified checkpoints,
@@ -464,7 +464,7 @@ def filter_node_tree(store: Store, node: ForkChoiceNode) -> Sequence[ForkChoiceN
 #### `get_filtered_node_tree`
 
 ```python
-def get_filtered_node_tree(store: Store) -> Sequence[ForkChoiceNode]:
+def get_filtered_node_tree(store: Store) -> list[ForkChoiceNode]:
     """
     Retrieve a filtered node tree from ``store``, only returning branches
     whose leaf state's justified/finalized info agrees with that in ``store``.

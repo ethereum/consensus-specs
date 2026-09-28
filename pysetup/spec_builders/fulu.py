@@ -46,7 +46,7 @@ from eth_consensus_specs.electra import {preset_name} as electra
     @classmethod
     def sundry_functions(cls) -> str:
         return """
-def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:
+def retrieve_column_sidecars(beacon_block_root: Root) -> list[DataColumnSidecar]:
     return []
 """
 

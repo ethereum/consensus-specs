@@ -71,7 +71,7 @@ following signature:
 
 ```python
 def verify_blob_kzg_proof_batch(
-    blobs: Sequence[Blob], commitments_bytes: Sequence[Bytes48], proofs_bytes: Sequence[Bytes48]
+    blobs: list[Blob], commitments_bytes: list[Bytes48], proofs_bytes: list[Bytes48]
 ) -> bool:
     """
     Return ``True`` if and only if all blobs and their proofs match the

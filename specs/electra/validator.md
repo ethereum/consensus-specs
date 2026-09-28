@@ -56,7 +56,7 @@ class GetPayloadResponse:
     block_value: Uint256
     blobs_bundle: BlobsBundle
     # [New in Electra]
-    execution_requests: Sequence[bytes]
+    execution_requests: list[bytes]
 ```
 
 ## Containers
@@ -94,7 +94,7 @@ object.
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, Uint256, BlobsBundle, and execution requests (as list[bytes]) objects.
     """
 ```
 
@@ -118,7 +118,7 @@ proposer should run the following function to construct an on chain final
 aggregate from a list of network aggregates with equal `AttestationData`:
 
 ```python
-def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Attestation:
+def compute_on_chain_aggregate(network_aggregates: list[Attestation]) -> Attestation:
     aggregates = sorted(
         network_aggregates, key=lambda a: get_committee_indices(a.committee_bits)[0]
     )
@@ -166,7 +166,7 @@ period is considered finished when a network reaches the point where
 `state.eth1_deposit_index == state.deposit_requests_start_index`.
 
 ```python
-def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Data:
+def get_eth1_vote(state: BeaconState, eth1_chain: list[Eth1Block]) -> Eth1Data:
     # [New in Electra:EIP6110]
     if state.eth1_deposit_index == state.deposit_requests_start_index:
         return state.eth1_data
@@ -221,7 +221,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
    where:
 
 ```python
-def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+def get_execution_requests(execution_requests_list: list[bytes]) -> ExecutionRequests:
     deposits = DepositRequests()
     withdrawals = WithdrawalRequests()
     consolidations = ConsolidationRequests()

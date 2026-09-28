@@ -54,7 +54,7 @@ used to implement it with an external execution engine.
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    inclusion_list_transactions: Sequence[Transaction],
+    inclusion_list_transactions: list[Transaction],
 ) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
@@ -101,7 +101,7 @@ class PayloadAttributes:
     slot_number: Uint64
     target_gas_limit: Uint64
     # [New in Heze:EIP7805]
-    inclusion_list_transactions: Sequence[Transaction]
+    inclusion_list_transactions: list[Transaction]
 ```
 
 ### Modified `Store`

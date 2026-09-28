@@ -1003,7 +1003,7 @@ class NewPayloadRequest(ProgressiveContainer):
 ```python
 @dataclass
 class ExpectedWithdrawals:
-    withdrawals: Sequence[Withdrawal]
+    withdrawals: list[Withdrawal]
     # [New in Gloas:EIP7732]
     processed_builder_withdrawals_count: Uint64
     processed_partial_withdrawals_count: Uint64
@@ -1197,11 +1197,11 @@ def can_builder_cover_bid(
 ```python
 def compute_balance_weighted_selection(
     state: BeaconState,
-    indices: Sequence[ValidatorIndex],
+    indices: list[ValidatorIndex],
     seed: Bytes32,
     size: Uint64,
     shuffle_indices: bool,
-) -> Sequence[ValidatorIndex]:
+) -> list[ValidatorIndex]:
     """
     Return ``size`` indices sampled by effective balance, using ``indices``
     as candidates. If ``shuffle_indices`` is ``True``, candidate indices
@@ -1238,7 +1238,7 @@ sampling process.
 
 ```python
 def compute_proposer_indices(
-    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: list[ValidatorIndex]
 ) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.
@@ -1312,7 +1312,7 @@ def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerInd
 sampling process.
 
 ```python
-def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+def get_next_sync_committee_indices(state: BeaconState) -> list[ValidatorIndex]:
     """
     Return the sync committee indices, with possible duplicates, for the next sync committee.
     """
@@ -1342,7 +1342,7 @@ def get_attestation_participation_flag_indices(
     inclusion_delay: Uint64,
     # [New in Gloas:EIP7732]
     parent_slot: Slot,
-) -> Sequence[int]:
+) -> list[int]:
     """
     Return the flag indices that are satisfied by an attestation.
     """
@@ -1820,8 +1820,8 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
 def get_builder_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    prior_withdrawals: Sequence[Withdrawal],
-) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    prior_withdrawals: list[Withdrawal],
+) -> tuple[list[Withdrawal], WithdrawalIndex, Uint64]:
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
     assert len(prior_withdrawals) <= withdrawals_limit
 
@@ -1854,8 +1854,8 @@ def get_builder_withdrawals(
 def get_builders_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    prior_withdrawals: Sequence[Withdrawal],
-) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    prior_withdrawals: list[Withdrawal],
+) -> tuple[list[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
@@ -1935,7 +1935,7 @@ def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
 ##### Modified `apply_withdrawals`
 
 ```python
-def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> None:
+def apply_withdrawals(state: BeaconState, withdrawals: list[Withdrawal]) -> None:
     for withdrawal in withdrawals:
         # [Modified in Gloas:EIP7732]
         if is_builder_index(withdrawal.validator_index):
@@ -1950,9 +1950,7 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
 ##### New `update_payload_expected_withdrawals`
 
 ```python
-def update_payload_expected_withdrawals(
-    state: BeaconState, withdrawals: Sequence[Withdrawal]
-) -> None:
+def update_payload_expected_withdrawals(state: BeaconState, withdrawals: list[Withdrawal]) -> None:
     state.payload_expected_withdrawals = Withdrawals(data=withdrawals)
 ```
 
@@ -2064,8 +2062,8 @@ def verify_execution_payload_envelope_signature(
 ##### Modified `get_execution_requests_list`
 
 ```python
-def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
+def get_execution_requests_list(execution_requests: ExecutionRequests) -> list[bytes]:
+    requests: list[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),

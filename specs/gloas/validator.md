@@ -134,9 +134,7 @@ If a validator does not broadcast a `SignedProposerPreferences` message, this
 implies that the validator will not accept any trustless bids for that slot.
 
 ```python
-def get_upcoming_proposal_slots(
-    state: BeaconState, validator_index: ValidatorIndex
-) -> Sequence[Slot]:
+def get_upcoming_proposal_slots(state: BeaconState, validator_index: ValidatorIndex) -> list[Slot]:
     """
     Get the future slots within the proposer lookahead for which
     ``validator_index`` is proposing.
@@ -264,7 +262,7 @@ parent's execution payload. The proposer constructs this field as follows:
 deposit requests and builder exit requests.
 
 ```python
-def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+def get_execution_requests(execution_requests_list: list[bytes]) -> ExecutionRequests:
     deposits = DepositRequests()
     withdrawals = WithdrawalRequests()
     consolidations = ConsolidationRequests()
@@ -452,8 +450,8 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
-) -> Sequence[DataColumnSidecar]:
+    cells_and_kzg_proofs: list[tuple[Cells, Proofs]],
+) -> list[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob
     in the corresponding payload, assemble the sidecars which can be

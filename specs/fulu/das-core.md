@@ -202,7 +202,7 @@ class MatrixEntry(Container):
 ### `get_custody_groups`
 
 ```python
-def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence[CustodyIndex]:
+def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> list[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
     # Skip computation if all groups are custodied
@@ -230,7 +230,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
 ### `compute_columns_for_custody_group`
 
 ```python
-def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[ColumnIndex]:
+def compute_columns_for_custody_group(custody_group: CustodyIndex) -> list[ColumnIndex]:
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
     return [
@@ -241,7 +241,7 @@ def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[C
 ### `compute_matrix`
 
 ```python
-def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
+def compute_matrix(blobs: list[Blob]) -> list[MatrixEntry]:
     """
     Return the full, flattened sequence of matrix entries.
 
@@ -279,9 +279,7 @@ def compute_cells_and_kzg_proofs(blob: Blob) -> tuple[Cells, Proofs]:
 ### `recover_matrix`
 
 ```python
-def recover_matrix(
-    partial_matrix: Sequence[MatrixEntry], blob_count: Uint64
-) -> Sequence[MatrixEntry]:
+def recover_matrix(partial_matrix: list[MatrixEntry], blob_count: Uint64) -> list[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.
 
@@ -315,7 +313,7 @@ following signature:
 
 ```python
 def recover_cells_and_kzg_proofs(
-    cell_indices: Sequence[CellIndex], cells: Sequence[Cell]
+    cell_indices: list[CellIndex], cells: list[Cell]
 ) -> tuple[Cells, Proofs]:
     """
     Recover all the cells and proofs of an extended blob given at least half of

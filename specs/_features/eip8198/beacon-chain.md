@@ -184,9 +184,7 @@ the slot duration in effect at that epoch, which differs from the current one in
 the first epoch after a slot duration change.
 
 ```python
-def get_flag_index_deltas(
-    state: BeaconState, flag_index: int
-) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_flag_index_deltas(state: BeaconState, flag_index: int) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -221,7 +219,7 @@ the cumulative penalty over a fixed wall-clock leak duration is unchanged. The
 penalty pays for the previous epoch and is priced at its slot duration.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """

@@ -199,7 +199,7 @@ def is_start_slot_at_epoch(slot: Slot) -> bool:
 ##### `get_ancestor_roots`
 
 ```python
-def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> Sequence[Root]:
+def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> list[Root]:
     """
     Return a list of ancestors of ``block_root`` inclusive until ``terminal_root`` exclusive.
     """

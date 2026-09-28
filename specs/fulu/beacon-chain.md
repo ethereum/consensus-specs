@@ -341,7 +341,7 @@ def compute_fork_digest(
 
 ```python
 def compute_proposer_indices(
-    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: list[ValidatorIndex]
 ) -> ProposerIndices:
     """
     Return the proposer indices for the given ``epoch``.

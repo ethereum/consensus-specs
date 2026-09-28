@@ -1076,9 +1076,9 @@ following functions:
 
 - `def Sign(privkey: int, message: Bytes) -> BLSSignature`
 - `def Verify(pubkey: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
-- `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-- `def FastAggregateVerify(pubkeys: Sequence[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
-- `def AggregateVerify(pubkeys: Sequence[BLSPubkey], messages: Sequence[Bytes], signature: BLSSignature) -> bool`
+- `def Aggregate(signatures: list[BLSSignature]) -> BLSSignature`
+- `def FastAggregateVerify(pubkeys: list[BLSPubkey], message: Bytes, signature: BLSSignature) -> bool`
+- `def AggregateVerify(pubkeys: list[BLSPubkey], messages: list[Bytes], signature: BLSSignature) -> bool`
 - `def KeyValidate(pubkey: BLSPubkey) -> bool`
 
 The above functions are accessed through the `bls` module, e.g. `bls.Verify`.
@@ -1208,7 +1208,7 @@ def is_valid_merkle_branch(
 #### `compute_shuffled_permutation`
 
 ```python
-def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence[Uint64]:
+def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> list[Uint64]:
     """
     Return the full shuffled permutation corresponding to ``seed`` (and ``index_count``).
     """
@@ -1249,7 +1249,7 @@ def compute_shuffled_index(index: Uint64, index_count: Uint64, seed: Bytes32) ->
 
 ```python
 def compute_proposer_index(
-    state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32
+    state: BeaconState, indices: list[ValidatorIndex], seed: Bytes32
 ) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
@@ -1271,8 +1271,8 @@ def compute_proposer_index(
 
 ```python
 def compute_committee(
-    indices: Sequence[ValidatorIndex], seed: Bytes32, index: Uint64, count: Uint64
-) -> Sequence[ValidatorIndex]:
+    indices: list[ValidatorIndex], seed: Bytes32, index: Uint64, count: Uint64
+) -> list[ValidatorIndex]:
     """
     Return the committee corresponding to ``indices``, ``seed``, ``index``, and committee ``count``.
     """
@@ -1466,7 +1466,7 @@ def get_randao_mix(state: BeaconState, epoch: Epoch) -> Bytes32:
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> list[ValidatorIndex]:
     """
     Return the sequence of active validator indices at ``epoch``.
     """
@@ -1524,7 +1524,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
 ```python
 def get_beacon_committee(
     state: BeaconState, slot: Slot, index: CommitteeIndex
-) -> Sequence[ValidatorIndex]:
+) -> list[ValidatorIndex]:
     """
     Return the beacon committee at ``slot`` for ``index``.
     """
@@ -1736,7 +1736,7 @@ configured to avoid this case.
 
 ```python
 def initialize_beacon_state_from_eth1(
-    eth1_block_hash: Hash32, eth1_timestamp: Uint64, deposits: Sequence[Deposit]
+    eth1_block_hash: Hash32, eth1_timestamp: Uint64, deposits: list[Deposit]
 ) -> BeaconState:
     state = BeaconState.empty()
     state.genesis_time = eth1_timestamp + GENESIS_DELAY
@@ -1884,9 +1884,7 @@ def get_matching_source_attestations(
 ```
 
 ```python
-def get_matching_target_attestations(
-    state: BeaconState, epoch: Epoch
-) -> Sequence[PendingAttestation]:
+def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> list[PendingAttestation]:
     return [
         a
         for a in get_matching_source_attestations(state, epoch)
@@ -1895,9 +1893,7 @@ def get_matching_target_attestations(
 ```
 
 ```python
-def get_matching_head_attestations(
-    state: BeaconState, epoch: Epoch
-) -> Sequence[PendingAttestation]:
+def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> list[PendingAttestation]:
     return [
         a
         for a in get_matching_target_attestations(state, epoch)
@@ -1916,7 +1912,7 @@ def get_unslashed_attesting_indices(
 ```
 
 ```python
-def get_attesting_balance(state: BeaconState, attestations: Sequence[PendingAttestation]) -> Gwei:
+def get_attesting_balance(state: BeaconState, attestations: list[PendingAttestation]) -> Gwei:
     """
     Return the combined effective balance of the set of unslashed validators participating in ``attestations``.
     Note: ``get_total_balance`` returns ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
@@ -2017,7 +2013,7 @@ def is_in_inactivity_leak(state: BeaconState) -> bool:
 ```
 
 ```python
-def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+def get_eligible_validator_indices(state: BeaconState) -> list[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
     return [
         ValidatorIndex(index)
@@ -2030,7 +2026,7 @@ def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorInde
 ```python
 def get_attestation_component_deltas(
     state: BeaconState, attestations: Sequence[PendingAttestation]
-) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[list[Gwei], list[Gwei]]:
     """
     Helper with shared logic for use by get source, target, and head deltas functions
     """
@@ -2057,7 +2053,7 @@ def get_attestation_component_deltas(
 ##### Components of attestation deltas
 
 ```python
-def get_source_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_source_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return attester micro-rewards/penalties for source-vote for each validator.
     """
@@ -2068,7 +2064,7 @@ def get_source_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_target_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_target_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return attester micro-rewards/penalties for target-vote for each validator.
     """
@@ -2079,7 +2075,7 @@ def get_target_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_head_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_head_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return attester micro-rewards/penalties for head-vote for each validator.
     """
@@ -2088,7 +2084,7 @@ def get_head_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]
 ```
 
 ```python
-def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inclusion_delay_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return proposer and inclusion delay micro-rewards/penalties for each validator.
     """
@@ -2115,7 +2111,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequ
 ```
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
     """
@@ -2149,7 +2145,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], S
 ##### `get_attestation_deltas`
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_attestation_deltas(state: BeaconState) -> tuple[list[Gwei], list[Gwei]]:
     """
     Return attestation reward/penalty deltas for each validator.
     """
