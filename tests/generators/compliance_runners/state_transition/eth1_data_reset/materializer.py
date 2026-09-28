@@ -29,7 +29,12 @@ class Eth1DataResetMaterializer(Materializer):
         current_epoch = period - 1 if reset else 0
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
         if votes_nonempty:
-            pre.eth1_data_votes.append(spec.Eth1Data())
+            for _ in range(self.rng.randint(1, 4)):
+                vote = spec.Eth1Data()
+                vote.deposit_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+                vote.deposit_count = type(vote.deposit_count)(self.rng.getrandbits(64))
+                vote.block_hash = spec.Hash32(self.rng.getrandbits(256).to_bytes(32, "big"))
+                pre.eth1_data_votes.append(vote)
 
         post = pre.copy()
         spec.process_eth1_data_reset(post)
