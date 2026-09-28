@@ -84,7 +84,7 @@ get_total_active_balance = cache_this(
 
 _get_base_reward = get_base_reward
 get_base_reward = cache_this(
-    lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
+    lambda state, index, *args: (state.validators.hash_tree_root(), state.slot, index, *args),
     _get_base_reward, lru_size=2048)
 
 _get_committee_count_per_slot = get_committee_count_per_slot

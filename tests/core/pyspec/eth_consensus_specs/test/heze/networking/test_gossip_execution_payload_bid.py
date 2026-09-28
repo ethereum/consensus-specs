@@ -42,7 +42,7 @@ def _run_bid_inclusion_list_bits_scenario(
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
     seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (

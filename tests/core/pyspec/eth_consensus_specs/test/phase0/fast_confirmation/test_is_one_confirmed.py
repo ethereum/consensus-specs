@@ -19,6 +19,9 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
     Slashing,
 )
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_gloas,
+)
 
 """
 Test is_one_confirmed
@@ -359,10 +362,10 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     # Verify the discount matches the formula:
     # discount = parent_support_in_empty_slots - adversarial_weight_in_empty_slots
     parent_support_in_empty = int(
-        spec.get_block_support_between_slots(
+        spec.get_node_support_between_slots(
             store,
             balance_source,
-            block_b_data.parent_root,
+            spec.get_ancestor(store, spec.get_node_for_root(block_b), parent_b.slot),
             spec.Slot(parent_b.slot + 1),
             spec.Slot(block_b_data.slot - 1),
         )
@@ -1183,7 +1186,8 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     # Leave that slot empty and attest by all validators
     attesters = spec.get_slot_committee(store, fcr.current_slot())
     assert new_val_index in attesters
-    p_root = fcr.head_root()
+    p_node = fcr.head()
+    p_root = p_node.root
     fcr.attest()
     fcr.next_slot()
     fcr.run_fast_confirmation()
@@ -1197,10 +1201,10 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     # New validator has attested to the parent block
     for idx in attesters:
         assert store.latest_messages.get(idx).root == p_root
-    parent_support_in_empty_slots = spec.get_block_support_between_slots(
+    parent_support_in_empty_slots = spec.get_node_support_between_slots(
         store,
         balance_source,
-        p_root,
+        p_node,
         spec.get_block_slot(store, p_root) + 1,
         spec.Slot(fcr.current_slot() - 1),
     )
@@ -1227,7 +1231,8 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     # Leave that slot empty again and attest by all validators
     attesters = spec.get_slot_committee(store, fcr.current_slot())
     assert new_val_index in attesters
-    p_root = fcr.head_root()
+    p_node = fcr.head()
+    p_root = p_node.root
     fcr.attest(participation_rate=100)
     fcr.next_slot()
     fcr.run_fast_confirmation()
@@ -1241,10 +1246,10 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     # New validator has attested to the parent block
     for idx in attesters:
         assert store.latest_messages.get(idx).root == p_root
-    parent_support_in_empty_slots = spec.get_block_support_between_slots(
+    parent_support_in_empty_slots = spec.get_node_support_between_slots(
         store,
         balance_source,
-        p_root,
+        p_node,
         spec.get_block_slot(store, p_root) + 1,
         spec.Slot(fcr.current_slot() - 1),
     )
@@ -1333,8 +1338,18 @@ def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_
     # Check that _consecutive_slots_val_idx support parent block
     assert store.latest_messages.get(_consecutive_slots_val_idx).root == p_root
 
-    # The block must be confirmed
-    assert fcr_store.confirmed_root == b_root
+    fcr.run_fast_confirmation()
+
+    if is_post_gloas(spec):
+        # In gloas the vote of V in the support of parent
+        # submitted in the parent's slot wouldn't count
+        # into an empty slot support discount because
+        # it supports a PENDING(P) node and not a FULL(P)
+        # node which is a parent node of block B
+        assert fcr_store.confirmed_root == p_root
+    else:
+        # The block must be confirmed, otherwise
+        assert fcr_store.confirmed_root == b_root
 
     yield from fcr.get_test_artefacts()
 

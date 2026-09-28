@@ -77,8 +77,8 @@ optimistically imported blocks which have only received a `NOT_VALIDATED`
 designation from an execution engine (i.e., they are not known to be
 `INVALIDATED` or `VALID`).
 
-Let `current_slot: Slot` be `(time - genesis_time) * 1000 // SLOT_DURATION_MS`
-where `time` is the UNIX time according to the local system clock.
+Let `current_slot: Slot` be `compute_slot_at_time(genesis_time, time)` where
+`time` is the UNIX time according to the local system clock.
 
 ```python
 @dataclass
@@ -371,7 +371,7 @@ verified or the block is older than `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
 These restraints are applied in order to mitigate an attack where a block which
 enables execution (a *transition block*) can reference a junk parent hash. This
 makes it impossible for honest nodes to build atop that block. If an attacker
-exploits a nuance in fork choice `filter_block_tree`, they can, in some rare
+exploits a nuance in fork choice `filter_node_tree`, they can, in some rare
 cases, produce a junk block that out-competes all locally produced blocks for
 the head. This prevents a node from producing a chain of blocks, therefore
 breaking liveness.
