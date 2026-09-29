@@ -264,8 +264,8 @@ comptests: MAYBE_PROFILE := $(if $(profile),--profile $(profile))
 comptests: MAYBE_SEED := $(if $(seed),--seed $(seed))
 comptests: PRESET := $(if $(preset),$(preset),minimal)
 comptests: MAYBE_PARALLEL := $(if $(filter 1,$(threads)),,$(if $(threads),-n $(threads) --dist=worksteal,-n logical --dist=worksteal))
-comptests: _pyspec
-	@$(UV_RUN) pytest \
+comptests: build
+	@uv run pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
 		--comptests-output=$(COMPTESTS_DIR) \
