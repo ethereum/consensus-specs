@@ -1,11 +1,8 @@
 from eth_consensus_specs.test.context import (
-    spec_configured_state_test,
     spec_state_test_with_matching_config,
     with_gloas_and_later,
-    with_phases,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
