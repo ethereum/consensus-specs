@@ -34,7 +34,7 @@ to set `bid.inclusion_claims_root`.
 2. Set `bid.inclusion_claims_root` to
    `hash_tree_root(InclusionListClaims(data=inclusion_list_claims))`, where
    `inclusion_list_claims` is the `inclusionListClaims` field returned by
-   `engine_getPayloadV6`.
+   `engine_getPayloadV7`.
 
 ### Constructing the `SignedExecutionPayloadEnvelope`
 
