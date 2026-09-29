@@ -33,6 +33,12 @@ def advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store):
     spec.on_tick(forkchoice_store, time_ms)
 
 
+def flatten(inclusion_list_transactions):
+    return {
+        transaction for transactions in inclusion_list_transactions for transaction in transactions
+    }
+
+
 @with_heze_and_later
 @spec_state_test
 def test_inclusion_list_store_transaction_uniqueness(spec, state):
@@ -131,11 +137,18 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == {
+        assert flatten(inclusion_list_transactions) == {
             transaction
             for signed_inclusion_list in signed_inclusion_lists
             for transaction in signed_inclusion_list.message.transactions
         }
+        # One list per inclusion list, ordered by validator index and not deduplicated
+        assert inclusion_list_transactions == [
+            signed_inclusion_list.message.transactions
+            for signed_inclusion_list in sorted(
+                signed_inclusion_lists, key=lambda il: il.message.validator_index
+            )
+        ]
 
     run_with_inclusion_list_store(spec, run_func)
 
@@ -165,7 +178,7 @@ def test_inclusion_list_store_by_slot_and_dependent_root__empty_slot(spec, state
             signed_inclusion_list_slot_0.message.dependent_root,
         )
 
-        assert set(inclusion_list_transactions_slot_0) == set(
+        assert flatten(inclusion_list_transactions_slot_0) == set(
             signed_inclusion_list_slot_0.message.transactions
         )
         assert inclusion_list_transactions_slot_1 == []
@@ -226,12 +239,14 @@ def test_inclusion_list_store_by_slot_and_dependent_root__different_dependent_ro
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
             inclusion_list_store, state.slot, inclusion_list_0.dependent_root
         )
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_0.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_0.message.transactions
+        )
 
         fork_inclusion_list_transactions = spec.get_inclusion_list_transactions(
             inclusion_list_store, fork_state.slot, inclusion_list_1.dependent_root
         )
-        assert set(fork_inclusion_list_transactions) == set(
+        assert flatten(fork_inclusion_list_transactions) == set(
             signed_inclusion_list_1.message.transactions
         )
 
@@ -268,7 +283,9 @@ def test_inclusion_list_store_equivocation(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_1.message.transactions
+        )
 
         # The IL committee member equivocates. This will empty all ILs from that equivocator.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
@@ -286,7 +303,9 @@ def test_inclusion_list_store_equivocation(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_4.message.transactions
+        )
 
         # The equivocator equivocates again. This should not affect other ILs.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
@@ -295,7 +314,9 @@ def test_inclusion_list_store_equivocation(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_4.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_4.message.transactions
+        )
 
     run_with_inclusion_list_store(spec, run_func)
 
@@ -359,7 +380,9 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_3.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_3.message.transactions
+        )
 
     run_with_inclusion_list_store(spec, run_func)
 
@@ -391,7 +414,9 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_1.message.transactions
+        )
 
         # Advance time to after the inclusion list due
         inclusion_list_due_ceiling = (
@@ -410,7 +435,9 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
             inclusion_list_store, state.slot, dependent_root
         )
 
-        assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
+        assert flatten(inclusion_list_transactions) == set(
+            signed_inclusion_list_1.message.transactions
+        )
 
         # Any equivocation after the inclusion list due should still be handled.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)

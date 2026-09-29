@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Builder activities](#builder-activities)
   - [Constructing the `SignedExecutionPayloadBid`](#constructing-the-signedexecutionpayloadbid)
+  - [Constructing the `SignedExecutionPayloadEnvelope`](#constructing-the-signedexecutionpayloadenvelope)
 
 <!-- mdformat-toc end -->
 
@@ -19,9 +20,10 @@ builder" to implement Heze.
 
 ### Constructing the `SignedExecutionPayloadBid`
 
-*Note*: The only change made to `SignedExecutionPayloadBid` is to set
+*Note*: The only changes made to `SignedExecutionPayloadBid` are to set
 `bid.inclusion_list_bits` based on the builder's inclusion list view, which
-comprises all valid and non-equivocating inclusion lists they have observed.
+comprises all valid and non-equivocating inclusion lists they have observed, and
+to set `bid.inclusion_claims_root`.
 
 1. Set `bid.inclusion_list_bits` to
    `get_inclusion_list_bits(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, only_timely=False)`,
@@ -29,3 +31,15 @@ comprises all valid and non-equivocating inclusion lists they have observed.
    `get_inclusion_list_committee(state, slot)`, `dependent_root` is
    `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
    `slot` is `bid.slot - 1`, and `store` is the fork choice store.
+2. Set `bid.inclusion_claims_root` to
+   `hash_tree_root(InclusionListClaims(data=inclusion_list_claims))`, where
+   `inclusion_list_claims` is the `inclusionListClaims` field returned by
+   `engine_getPayloadV6`.
+
+### Constructing the `SignedExecutionPayloadEnvelope`
+
+*Note*: The only change made to `SignedExecutionPayloadEnvelope` is to set
+`envelope.inclusion_claims`.
+
+1. Set `envelope.inclusion_claims` to the `InclusionListClaims` committed to by
+   `bid.inclusion_claims_root`.

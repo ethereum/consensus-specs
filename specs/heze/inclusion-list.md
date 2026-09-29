@@ -87,11 +87,13 @@ def process_inclusion_list(
 
 ### New `get_inclusion_list_transactions`
 
-*Note*: `get_inclusion_list_transactions` returns a list of unique transactions
-from all valid and non-equivocating `InclusionList`s for the given `slot` and
-`dependent_root`. When `only_timely` is `True`, only `InclusionList`s received
-in a timely manner on the p2p network are considered; otherwise, timeliness is
-not considered.
+*Note*: `get_inclusion_list_transactions` returns the transactions of each valid
+and non-equivocating `InclusionList` for the given `slot` and `dependent_root`,
+one list per inclusion list, ordered by validator index. Transactions are not
+deduplicated and keep the order of their inclusion list, so that the execution
+engine can meter work per inclusion list. When `only_timely` is `True`, only
+`InclusionList`s received in a timely manner on the p2p network are considered;
+otherwise, timeliness is not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
 `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
@@ -100,25 +102,25 @@ they MAY be pruned.
 ```python
 def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
-) -> Sequence[Transaction]:
+) -> Sequence[Sequence[Transaction]]:
     key = (slot, dependent_root)
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
-    transactions: list[Transaction] = []
-    for validator_index, inclusion_list in inclusion_lists.items():
+    transactions: list[Sequence[Transaction]] = []
+    for validator_index in sorted(inclusion_lists.keys()):
         # Ignore inclusion lists from equivocators
         if validator_index in equivocators:
             continue
 
         # Ignore untimely inclusion lists if only timely ones are requested
+        inclusion_list = inclusion_lists[validator_index]
         if only_timely and not inclusion_list.timely:
             continue
 
-        transactions.extend(inclusion_list.signed_inclusion_list.message.transactions)
+        transactions.append(inclusion_list.signed_inclusion_list.message.transactions)
 
-    # Deduplicate inclusion list transactions. Order does not need to be preserved.
-    return list(set(transactions))
+    return transactions
 ```
 
 ### New `get_inclusion_list_bits`

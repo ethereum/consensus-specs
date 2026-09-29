@@ -53,9 +53,6 @@ categories:
   - title: EIP-8321
     when:
       label: eip8321
-  - title: EIP-8369
-    when:
-      label: eip8369
 
   # Testing
   - title: Testing

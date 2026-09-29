@@ -8,6 +8,7 @@
 - [Configs](#configs)
 - [Helpers](#helpers)
   - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [New `get_inclusion_list`](#new-get_inclusion_list)
@@ -39,6 +40,19 @@ validator" to implement Heze.
 @dataclass
 class GetInclusionListResponse:
     inclusion_list_transactions: Sequence[Transaction]
+```
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse:
+    execution_payload: ExecutionPayload
+    block_value: Uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]
+    # [New in Heze:EIP7805]
+    inclusion_list_claims: Sequence[InclusionListClaim]
 ```
 
 ## Protocols
