@@ -55,26 +55,27 @@ used to implement it with an external execution engine.
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    inclusion_list_transactions: Sequence[Sequence[Transaction]],
+    inclusion_list_transactions: Sequence[Transaction],
+    inclusion_list_membership: Sequence[InclusionListBits],
     inclusion_list_claims: Sequence[InclusionListClaim],
 ) -> bool:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
-    list constraints with respect to ``inclusion_list_transactions`` and
-    ``inclusion_list_claims``.
+    list constraints with respect to ``inclusion_list_transactions``, their
+    ``inclusion_list_membership``, and ``inclusion_list_claims``.
     """
 ```
 
 #### Modified `notify_forkchoice_updated`
 
 *Note*: The only change made is to the `PayloadAttributes` container through the
-addition of `inclusion_list_transactions`. Otherwise,
-`notify_forkchoice_updated` inherits all prior functionality.
+addition of `inclusion_list_transactions` and `inclusion_list_membership`.
+Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
 
 *Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
 not empty, the payload build process MUST produce an execution payload that
 satisfies the inclusion list constraints with respect to
-`inclusion_list_transactions`.
+`inclusion_list_transactions` and `inclusion_list_membership`.
 
 ```python
 def notify_forkchoice_updated(
@@ -91,7 +92,8 @@ def notify_forkchoice_updated(
 
 ### Modified `PayloadAttributes`
 
-`PayloadAttributes` is extended with the `inclusion_list_transactions` field.
+`PayloadAttributes` is extended with the `inclusion_list_transactions` and
+`inclusion_list_membership` fields.
 
 ```python
 @dataclass
@@ -104,7 +106,9 @@ class PayloadAttributes:
     slot_number: Uint64
     target_gas_limit: Uint64
     # [New in Heze:EIP7805]
-    inclusion_list_transactions: Sequence[Sequence[Transaction]]
+    inclusion_list_transactions: Sequence[Transaction]
+    # [New in Heze:EIP7805]
+    inclusion_list_membership: Sequence[InclusionListBits]
 ```
 
 ### Modified `Store`
@@ -196,11 +200,20 @@ def record_payload_inclusion_list_satisfaction(
 ) -> None:
     slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
+    inclusion_list_store = get_inclusion_list_store()
     inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), slot, dependent_root, only_timely=True
+        inclusion_list_store, slot, dependent_root, only_timely=True
+    )
+    inclusion_list_membership = get_inclusion_list_membership(
+        inclusion_list_store,
+        get_inclusion_list_committee(store.block_states[root], slot),
+        slot,
+        dependent_root,
+        inclusion_list_transactions,
+        only_timely=True,
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
-        payload, inclusion_list_transactions, inclusion_list_claims
+        payload, inclusion_list_transactions, inclusion_list_membership, inclusion_list_claims
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```

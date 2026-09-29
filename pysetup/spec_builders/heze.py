@@ -62,7 +62,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_inclusion_list_satisfied(self: ExecutionEngine,
                                     execution_payload: ExecutionPayload,
-                                    inclusion_list_transactions: Sequence[Sequence[Transaction]],
+                                    inclusion_list_transactions: Sequence[Transaction],
+                                    inclusion_list_membership: Sequence[InclusionListBits],
                                     inclusion_list_claims: Sequence[InclusionListClaim]) -> bool:
         return True
 
