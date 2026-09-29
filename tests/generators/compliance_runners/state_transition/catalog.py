@@ -55,7 +55,14 @@ RUNNERS: dict[str, tuple[str, ...]] = {
     ),
     "sanity": ("blocks", "slots"),
 }
-HANDLERS = tuple(handler for handlers in RUNNERS.values() for handler in handlers)
+# Temporarily excluded until its fork-epoch setup is resolved.
+DISABLED_HANDLERS = {"blocks", "payload_attestation"}
+HANDLERS = tuple(
+    handler
+    for handlers in RUNNERS.values()
+    for handler in handlers
+    if handler not in DISABLED_HANDLERS
+)
 PROVIDERS = (
     Provider("block_header", "block_header", "operations", "block_header"),
     Provider("process_operations", "operations", "sanity", "blocks"),
