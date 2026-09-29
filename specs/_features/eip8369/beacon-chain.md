@@ -1,4 +1,4 @@
-# EIP-XXXX -- The Beacon Chain
+# EIP-8369 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -20,8 +20,10 @@
 
 ## Introduction
 
-EIP-XXXX lets a builder claim, for an inclusion list transaction omitted from
-its payload, the payload index at which the omission is evaluated. The builder
+This feature implements the [EIP-7805](https://eips.ethereum.org/EIPS/eip-7805)
+rules for the [EIP-8369](https://eips.ethereum.org/EIPS/eip-8369) eligibility
+profiles. For an inclusion list transaction omitted from its payload, a builder
+may claim the payload index at which the omission is evaluated. The builder
 commits the claims in its bid and reveals them in the payload envelope. The
 execution engine resolves the claims when it checks the inclusion list
 constraints.
@@ -82,7 +84,7 @@ class ExecutionPayloadBid(ProgressiveContainer):
     blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
     inclusion_list_bits: InclusionListBits
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     inclusion_claims_root: Root
 ```
 
@@ -97,6 +99,6 @@ class ExecutionPayloadEnvelope(ProgressiveContainer):
     builder_index: BuilderIndex
     beacon_block_root: Root
     parent_beacon_block_root: Root
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     inclusion_claims: InclusionListClaims
 ```

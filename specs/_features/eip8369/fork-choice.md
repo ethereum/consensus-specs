@@ -1,4 +1,4 @@
-# EIP-XXXX -- Fork Choice
+# EIP-8369 -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -9,7 +9,7 @@
   - [`ExecutionEngine`](#executionengine)
     - [Modified `is_inclusion_list_satisfied`](#modified-is_inclusion_list_satisfied)
 - [Helpers](#helpers)
-  - [New `get_inclusion_list_transactions_by_member`](#new-get_inclusion_list_transactions_by_member)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `record_payload_inclusion_list_satisfaction`](#modified-record_payload_inclusion_list_satisfaction)
   - [Modified `verify_execution_payload_envelope`](#modified-verify_execution_payload_envelope)
 - [Handlers](#handlers)
@@ -19,7 +19,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying EIP-XXXX. The execution
+This is the modification of the fork choice accompanying EIP-8369. The execution
 engine receives the inclusion lists grouped per committee member, together with
 the inclusion list claims revealed in the payload envelope.
 
@@ -33,15 +33,15 @@ the inclusion list claims revealed in the payload envelope.
 
 *Note*: `inclusion_lists` holds one list of transactions per inclusion list, and
 `inclusion_list_claims` is passed unchanged from the payload envelope. The
-execution engine resolves the claims as specified in EIP-XXXX.
+execution engine resolves the claims as specified in EIP-7805.
 
 ```python
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    # [Modified in EIPXXXX]
+    # [Modified in EIP8369]
     inclusion_lists: Sequence[Sequence[Transaction]],
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     inclusion_list_claims: Sequence[InclusionListClaim],
 ) -> bool:
     """
@@ -53,34 +53,23 @@ def is_inclusion_list_satisfied(
 
 ## Helpers
 
-### New `get_inclusion_list_transactions_by_member`
+### Modified `PayloadAttributes`
 
-*Note*: Unlike `get_inclusion_list_transactions`, this function does not
-deduplicate transactions and keeps the transaction order of each inclusion list,
-so that the execution engine can meter work per inclusion list.
+*Note*: `inclusion_list_transactions` is replaced by `inclusion_lists`, which
+holds one list of transactions per inclusion list.
 
 ```python
-def get_inclusion_list_transactions_by_member(
-    store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
-) -> Sequence[Sequence[Transaction]]:
-    key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
-
-    transactions_by_member: list[Sequence[Transaction]] = []
-    for validator_index in sorted(inclusion_lists.keys()):
-        # Ignore inclusion lists from equivocators
-        if validator_index in equivocators:
-            continue
-
-        # Ignore untimely inclusion lists if only timely ones are requested
-        inclusion_list = inclusion_lists[validator_index]
-        if only_timely and not inclusion_list.timely:
-            continue
-
-        transactions_by_member.append(inclusion_list.signed_inclusion_list.message.transactions)
-
-    return transactions_by_member
+@dataclass
+class PayloadAttributes:
+    timestamp: Uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root
+    slot_number: Uint64
+    target_gas_limit: Uint64
+    # [Modified in EIP8369]
+    inclusion_lists: Sequence[Sequence[Transaction]]
 ```
 
 ### Modified `record_payload_inclusion_list_satisfaction`
@@ -90,20 +79,20 @@ def record_payload_inclusion_list_satisfaction(
     store: Store,
     root: Root,
     payload: ExecutionPayload,
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     inclusion_list_claims: Sequence[InclusionListClaim],
     execution_engine: ExecutionEngine,
 ) -> None:
     slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
-    # [Modified in EIPXXXX]
+    # [Modified in EIP8369]
     inclusion_lists = get_inclusion_list_transactions_by_member(
         get_inclusion_list_store(), slot, dependent_root, only_timely=True
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
         payload,
         inclusion_lists,
-        # [New in EIPXXXX]
+        # [New in EIP8369]
         inclusion_list_claims,
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
@@ -136,7 +125,7 @@ def verify_execution_payload_envelope(
     assert payload.gas_limit == bid.gas_limit
     assert payload.block_hash == bid.block_hash
     assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     assert hash_tree_root(envelope.inclusion_claims) == bid.inclusion_claims_root
 
     # Verify the execution payload is valid
@@ -190,7 +179,7 @@ def on_execution_payload_envelope(
         store,
         envelope.beacon_block_root,
         envelope.payload,
-        # [New in EIPXXXX]
+        # [New in EIP8369]
         envelope.inclusion_claims,
         EXECUTION_ENGINE,
     )

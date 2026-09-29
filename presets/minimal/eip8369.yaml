@@ -1,4 +1,4 @@
-# Minimal preset - EIPXXXX
+# Minimal preset - EIP8369
 
 # Inclusion list claims
 # ---------------------------------------------------------------
@@ -7,5 +7,5 @@ MAX_INCLUSION_LIST_CLAIMS: 1024
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 196966
-MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_EIPXXXX: 196966
+# 196,966 bytes, ~192 KiB
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_EIP8369: 196966

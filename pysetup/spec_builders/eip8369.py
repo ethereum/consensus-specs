@@ -1,10 +1,10 @@
-from pysetup.constants import EIPXXXX
+from pysetup.constants import EIP8369
 
 from .base import BaseSpecBuilder
 
 
-class EIPXXXXSpecBuilder(BaseSpecBuilder):
-    fork: str = EIPXXXX
+class EIP8369SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP8369
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -61,4 +61,4 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return {"upgrade_to_heze"}
+        return {"get_inclusion_list_transactions", "upgrade_to_heze"}

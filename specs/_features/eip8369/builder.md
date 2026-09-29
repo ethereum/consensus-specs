@@ -1,4 +1,4 @@
-# EIP-XXXX -- Honest Builder
+# EIP-8369 -- Honest Builder
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -16,7 +16,7 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-builder" to implement EIP-XXXX.
+builder" to implement EIP-8369.
 
 ## Helpers
 
@@ -29,7 +29,7 @@ class GetPayloadResponse:
     block_value: Uint256
     blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     inclusion_list_claims: Sequence[InclusionListClaim]
 ```
 

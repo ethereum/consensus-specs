@@ -96,12 +96,12 @@ eip8321:
       - 'presets/*/eip8321.yaml'
       - 'pysetup/spec_builders/eip8321.py'
 
-eipxxxx:
+eip8369:
   - changed-files:
     - any-glob-to-any-file:
-      - 'specs/_features/eipxxxx/**'
-      - 'presets/*/eipxxxx.yaml'
-      - 'pysetup/spec_builders/eipxxxx.py'
+      - 'specs/_features/eip8369/**'
+      - 'presets/*/eip8369.yaml'
+      - 'pysetup/spec_builders/eip8369.py'
 
 testing:
   - changed-files:

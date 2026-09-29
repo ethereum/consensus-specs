@@ -1,4 +1,4 @@
-# EIP-XXXX -- Fork Logic
+# EIP-8369 -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -6,14 +6,14 @@
 
 - [Introduction](#introduction)
 - [Configs](#configs)
-- [Fork to EIP-XXXX](#fork-to-eip-xxxx)
+- [Fork to EIP-8369](#fork-to-eip-8369)
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the process of the EIP-XXXX upgrade.
+This document describes the process of the EIP-8369 upgrade.
 
 ## Configs
 
@@ -21,19 +21,19 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIPXXXX_FORK_VERSION` | `Version("0xe0000000")` **TBD**       |
-| `EIPXXXX_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| `EIP8369_FORK_VERSION` | `Version("0xe8369000")`               |
+| `EIP8369_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to EIP-XXXX
+## Fork to EIP-8369
 
 ### Upgrading the state
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == EIPXXXX_FORK_EPOCH`, an irregular state
-change is made to upgrade to EIP-XXXX.
+`compute_epoch_at_slot(state.slot) == EIP8369_FORK_EPOCH`, an irregular state
+change is made to upgrade to EIP-8369.
 
 ```python
-def upgrade_to_eipxxxx(pre: heze.BeaconState) -> BeaconState:
+def upgrade_to_eip8369(pre: heze.BeaconState) -> BeaconState:
     epoch = heze.get_current_epoch(pre)
     latest_execution_payload_bid = ExecutionPayloadBid(
         parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
@@ -49,7 +49,7 @@ def upgrade_to_eipxxxx(pre: heze.BeaconState) -> BeaconState:
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
         execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
         inclusion_list_bits=pre.latest_execution_payload_bid.inclusion_list_bits,
-        # [New in EIPXXXX]
+        # [New in EIP8369]
         inclusion_claims_root=hash_tree_root(InclusionListClaims()),
     )
 
@@ -59,8 +59,8 @@ def upgrade_to_eipxxxx(pre: heze.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in EIPXXXX]
-            current_version=EIPXXXX_FORK_VERSION,
+            # [Modified in EIP8369]
+            current_version=EIP8369_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,
@@ -102,7 +102,7 @@ def upgrade_to_eipxxxx(pre: heze.BeaconState) -> BeaconState:
         execution_payload_availability=pre.execution_payload_availability,
         builder_pending_payments=pre.builder_pending_payments,
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
-        # [Modified in EIPXXXX]
+        # [Modified in EIP8369]
         latest_execution_payload_bid=latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,

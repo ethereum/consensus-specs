@@ -1,4 +1,4 @@
-# EIP-XXXX -- Networking
+# EIP-8369 -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -25,7 +25,7 @@
 ## Introduction
 
 This document contains the consensus-layer networking specifications for
-EIP-XXXX.
+EIP-8369.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -36,7 +36,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                            | Value                         |
 | ----------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_EIPXXXX` | `Uint64(196966)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_EIP8369` | `Uint64(196966)` (= ~192 KiB) |
 
 ## Helpers
 
@@ -47,8 +47,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIPXXXX_FORK_EPOCH:
-        return EIPXXXX_FORK_VERSION
+    if epoch >= EIP8369_FORK_EPOCH:
+        return EIP8369_FORK_VERSION
     if epoch >= HEZE_FORK_EPOCH:
         return HEZE_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
@@ -133,7 +133,7 @@ def validate_execution_payload_envelope_gossip(
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
         raise GossipReject("envelope's execution requests root does not match the bid's")
 
-    # [New in EIPXXXX]
+    # [New in EIP8369]
     # [REJECT] The envelope's inclusion claims root matches the bid's inclusion claims root
     if hash_tree_root(envelope.inclusion_claims) != bid.inclusion_claims_root:
         raise GossipReject("envelope's inclusion claims root does not match the bid's")
@@ -162,8 +162,8 @@ def validate_execution_payload_envelope_gossip(
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-The EIP-XXXX fork-digest is introduced to the `context` enum to specify the
-EIP-XXXX beacon block type.
+The EIP-8369 fork-digest is introduced to the `context` enum to specify the
+EIP-8369 beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -178,14 +178,14 @@ EIP-XXXX beacon block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
-| `EIPXXXX_FORK_VERSION`   | `eipxxxx.SignedBeaconBlock`   |
+| `EIP8369_FORK_VERSION`   | `eip8369.SignedBeaconBlock`   |
 
 #### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-The EIP-XXXX fork-digest is introduced to the `context` enum to specify the
-EIP-XXXX beacon block type.
+The EIP-8369 fork-digest is introduced to the `context` enum to specify the
+EIP-8369 beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -200,14 +200,14 @@ EIP-XXXX beacon block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
-| `EIPXXXX_FORK_VERSION`   | `eipxxxx.SignedBeaconBlock`   |
+| `EIP8369_FORK_VERSION`   | `eip8369.SignedBeaconBlock`   |
 
 #### ExecutionPayloadEnvelopesByRange v1
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-EIP-XXXX changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
+EIP-8369 changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
 `inclusion_claims` field. Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
@@ -216,7 +216,7 @@ EIP-XXXX changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
 | ---------------------- | ---------------------------------------- |
 | `GLOAS_FORK_VERSION`   | `gloas.SignedExecutionPayloadEnvelope`   |
 | `HEZE_FORK_VERSION`    | `heze.SignedExecutionPayloadEnvelope`    |
-| `EIPXXXX_FORK_VERSION` | `eipxxxx.SignedExecutionPayloadEnvelope` |
+| `EIP8369_FORK_VERSION` | `eip8369.SignedExecutionPayloadEnvelope` |
 
 #### ExecutionPayloadEnvelopesByRoot v1
 
