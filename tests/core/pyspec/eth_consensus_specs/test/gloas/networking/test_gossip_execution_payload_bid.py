@@ -2080,7 +2080,9 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     )
     yield get_filename(signed_bid), signed_bid
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot) + 100
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot)
+
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
