@@ -1,0 +1,11 @@
+# Mainnet preset - EIPXXXX
+
+# Inclusion list claims
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+MAX_INCLUSION_LIST_CLAIMS: 1024
+
+# Type-specific SSZ bounds
+# ---------------------------------------------------------------
+# 196966
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_EIPXXXX: 196966

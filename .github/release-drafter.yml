@@ -53,6 +53,9 @@ categories:
   - title: EIP-8321
     when:
       label: eip8321
+  - title: EIP-XXXX
+    when:
+      label: eipxxxx
 
   # Testing
   - title: Testing
