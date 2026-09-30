@@ -319,6 +319,7 @@ def _create_lc_finality_update_from_lc_data(
                     finalized_header.spec,
                     attested_header.spec,
                     finalized_header.data,
+                    test.phases,
                 ),
             )
         finality_branch = attested_data.finality_branch
