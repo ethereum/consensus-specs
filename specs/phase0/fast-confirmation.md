@@ -1029,8 +1029,8 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 root after a restart. This mechanism is safe as long as synchrony has been
 maintained for no more than three epochs since the node went offline. If used,
 `get_restart_resilient_confirmed_root` MUST be called once the node is fully
-synced. The body of `get_root_confirmed_before_restart` is implementation
-dependent.
+synced and `on_fast_confirmation` has been called. The body of
+`get_root_confirmed_before_restart` is implementation dependent.
 
 ```python
 def block_should_be_finalized(store: Store, block_root: Root) -> bool:
@@ -1053,12 +1053,12 @@ def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Ro
     # finality has been delayed which makes block confirmed before restart
     # unreliable
     if block_should_be_finalized(store, root_before_restart):
-        return store.finalized_checkpoint.root
+        return fcr_store.confirmed_root
 
     # If a block confirmed before the restart is not canonical,
-    # return the most recent finalized block
+    # return the recently confirmed block
     if not is_ancestor(store, get_head(store), get_node_for_root(root_before_restart)):
-        return store.finalized_checkpoint.root
+        return fcr_store.confirmed_root
 
     return root_before_restart
 ```
