@@ -181,15 +181,11 @@ def tick_and_add_block(
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
-    block_time = (
-        pre_state.genesis_time + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
-    )
-    while store.time < block_time:
-        time = (
-            pre_state.genesis_time
-            + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
-        )
-        on_tick_and_append_step(spec, store, time, test_steps)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
+    while store.time_ms < block_time_ms:
+        next_slot = spec.get_current_slot(store) + 1
+        next_slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, next_slot)
+        on_tick_and_append_step(spec, store, next_slot_time_ms, test_steps)
 
     post_state = yield from add_block(
         spec,
@@ -232,10 +228,11 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
-    min_time_to_include = (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
-    if store.time < min_time_to_include:
-        spec.on_tick(store, min_time_to_include)
-        test_steps.append({"tick": int(min_time_to_include)})
+    min_time_to_include_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, attestation.data.slot + 1
+    )
+    if store.time_ms < min_time_to_include_ms:
+        on_tick_and_append_step(spec, store, min_time_to_include_ms, test_steps)
 
     yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
@@ -306,10 +303,10 @@ def get_payload_attestation_message_file_name(ptc_message):
     return f"payload_attestation_message_{encode_hex(ptc_message.hash_tree_root())}"
 
 
-def on_tick_and_append_step(spec, store, time, test_steps):
-    assert time >= store.time
-    spec.on_tick(store, time)
-    test_steps.append({"tick": int(time)})
+def on_tick_and_append_step(spec, store, time_ms, test_steps):
+    assert time_ms >= store.time_ms
+    spec.on_tick(store, time_ms)
+    test_steps.append({"tick": int(spec.milliseconds_to_seconds(time_ms))})
     output_store_checks(spec, store, test_steps)
 
 
@@ -557,7 +554,7 @@ def output_head_check(spec, store, test_steps):
 
 def get_basic_store_checks(spec, store):
     return {
-        "time": int(store.time),
+        "time": int(spec.milliseconds_to_seconds(store.time_ms)),
         "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
@@ -586,14 +583,16 @@ def get_weighed_node_checks(spec, store, node):
 
 
 def get_viable_for_head_checks(spec, store):
-    filtered_blocks = spec.get_filtered_block_tree(store)
+    filtered_node_tree = spec.get_filtered_node_tree(store)
     root_node = get_fork_choice_node(spec, store.justified_checkpoint.root)
     pending_nodes = [root_node]
     leaves_viable_for_head = []
 
     while len(pending_nodes) > 0:
         node = pending_nodes.pop()
-        children = spec.get_node_children(store, filtered_blocks, node)
+        children = [
+            child for child in spec.get_node_children(store, node) if child in filtered_node_tree
+        ]
         if len(children) == 0:
             leaves_viable_for_head.append(node)
         else:
@@ -707,9 +706,9 @@ def tick_store_to_slot(spec, store, slot, test_steps):
     """
     Tick the store forward to the start of ``slot``.
     """
-    slot_time = store.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
-    if store.time < slot_time:
-        on_tick_and_append_step(spec, store, slot_time, test_steps)
+    slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, slot)
+    if store.time_ms < slot_time_ms:
+        on_tick_and_append_step(spec, store, slot_time_ms, test_steps)
 
 
 def add_signed_empty_block(spec, store, state, test_steps):

@@ -11,6 +11,7 @@ HEZE = "heze"
 EIP7716 = "eip7716"
 EIP8025 = "eip8025"
 EIP8148 = "eip8148"
+EIP8198 = "eip8198"
 EIP8205 = "eip8205"
 EIP8321 = "eip8321"
 

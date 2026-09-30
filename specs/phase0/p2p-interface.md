@@ -22,7 +22,6 @@
     - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
-    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`is_future_slot`](#is_future_slot)
     - [`is_future_epoch`](#is_future_epoch)
     - [`is_within_slot_range`](#is_within_slot_range)
@@ -302,8 +301,8 @@ This section outlines configurations that are used in this specification.
 | `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `Epoch(2**8)` (= 256)                       | Number of epochs on a subnet subscription                                         |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `Slot(32)`                                  | Maximum number of slots during which an attestation can be propagated             |
 | `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `Uint64(500)`                               | Maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                  | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                  | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType("0x00000000")`                  | 4-byte domain for gossip message-id isolation of *invalid* snappy messages        |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType("0x01000000")`                  | 4-byte domain for gossip message-id isolation of *valid* snappy messages          |
 | `SUBNETS_PER_NODE`                   | `Uint64(2)`                                 | Number of long-lived subnets a beacon node should be subscribed to                |
 | `ATTESTATION_SUBNET_COUNT`           | `Uint64(2**6)` (= 64)                       | Number of attestation subnets used in the gossipsub protocol                      |
 | `ATTESTATION_SUBNET_EXTRA_BITS`      | `Uint64(0)`                                 | Number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
@@ -320,13 +319,13 @@ propagation.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
 ```
 
 #### `compute_fork_version`
@@ -357,17 +356,6 @@ def compute_fork_digest(
     return ForkDigest(base_digest[:4])
 ```
 
-#### `compute_time_at_slot_ms`
-
-```python
-def compute_time_at_slot_ms(store: Store, slot: Slot) -> Uint64:
-    """
-    Return the time in milliseconds at the start of the given slot.
-    """
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(store.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
-```
-
 #### `is_future_slot`
 
 ```python
@@ -380,7 +368,7 @@ def is_future_slot(
     Check if the given slot is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < slot_time_ms
 ```
 
@@ -396,9 +384,8 @@ def is_future_epoch(
     Check if the given epoch is in the future
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    time_since_genesis_ms = current_time_ms - store.genesis_time * 1000
-    time_since_genesis_ms += MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    current_time_with_disparity_ms = current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    current_slot = compute_slot_at_time_ms(store.genesis_time_ms, current_time_with_disparity_ms)
     return compute_epoch_at_slot(current_slot) < epoch
 ```
 
@@ -415,10 +402,10 @@ def is_within_slot_range(
     Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
     """
-    start_time_ms = compute_time_at_slot_ms(store, slot)
+    start_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
         return False
-    end_time_ms = compute_time_at_slot_ms(store, slot + slot_range + 1)
+    end_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot + slot_range + 1)
     if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         return False
     return True
@@ -437,19 +424,19 @@ def compute_attestation_subnet_prefix_bits() -> Uint64:
 #### `compute_min_epochs_for_block_requests`
 
 ```python
-def compute_min_epochs_for_block_requests() -> Uint64:
+def compute_min_epochs_for_block_requests() -> Epoch:
     """
     Return the minimum epoch range over which a node must serve blocks.
     """
-    return Uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
+    return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
 ```
 
 #### `is_non_strict_superset`
 
 ```python
 def is_non_strict_superset(
-    seen_bits_set: Set[Tuple[bool, ...]],
-    new_bits: Tuple[bool, ...],
+    seen_bits_set: set[tuple[bool, ...]],
+    new_bits: tuple[bool, ...],
 ) -> bool:
     """
     Return True if any prior bitset in ``seen_bits_set`` is a non-strict
@@ -538,7 +525,7 @@ will be used:
   responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (expiry time for cache of seen message ids, seconds):
-  SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2 // 1000
+  `milliseconds_to_seconds(SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2)`
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
@@ -1542,6 +1529,12 @@ Clients MUST keep a record of signed blocks seen on the epoch range
 where `current_epoch` is defined by the current wall-clock time, and clients
 MUST support serving requests of blocks on this range.
 
+*Note*: The epoch range above is based on the current wall-clock time and does
+not account for finality. Clients MUST also keep a record of all blocks more
+recent than their latest finalized checkpoint and MUST support serving requests
+of these blocks, even if outside of this range, as peers need them to sync
+during an extended period of non-finality.
+
 Peers that are unable to reply to block requests within the
 `compute_min_epochs_for_block_requests()` epoch range SHOULD respond with error
 code `3: ResourceUnavailable`. Such peers that are unable to successfully reply
@@ -2455,8 +2448,8 @@ These checkpoints *in the worst case* (i.e. very large validator set and maximal
 allowed safety decay) must be from the most recent
 `compute_min_epochs_for_block_requests()` epochs, and thus a user must be able
 to block sync to the head from this starting point. Thus, this defines the epoch
-range outside which nodes may prune blocks, and the epoch range that a new node
-syncing from a checkpoint must backfill.
+range outside which nodes may prune finalized blocks, and the epoch range that a
+new node syncing from a checkpoint must backfill.
 
 `compute_min_epochs_for_block_requests()` is calculated using the arithmetic
 from `compute_weak_subjectivity_period` found in the

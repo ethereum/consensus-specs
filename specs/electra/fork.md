@@ -20,7 +20,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                         |
 | ---------------------- | --------------------------------------------- |
-| `ELECTRA_FORK_VERSION` | `Version('0x05000000')`                       |
+| `ELECTRA_FORK_VERSION` | `Version("0x05000000")`                       |
 | `ELECTRA_FORK_EPOCH`   | `Epoch(364032)` (May 7, 2025, 10:05:11am UTC) |
 
 ## Fork to Electra

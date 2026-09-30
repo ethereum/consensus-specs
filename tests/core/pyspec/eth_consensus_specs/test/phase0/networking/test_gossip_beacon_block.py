@@ -53,7 +53,7 @@ def test_gossip_beacon_block__valid_block(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -102,7 +102,7 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     current_time_ms = block_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -159,7 +159,7 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     current_time_ms = block_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield "current_time_ms", "meta", int(current_time_ms)
@@ -210,7 +210,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -309,7 +309,7 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -375,7 +375,7 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -472,7 +472,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -550,7 +550,7 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -633,7 +633,7 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -693,7 +693,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -752,7 +752,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
@@ -817,7 +817,7 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 

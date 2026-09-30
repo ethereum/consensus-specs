@@ -149,9 +149,9 @@ class SyncCommitteePubkeys(Vector[BLSPubkey]):
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
-| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType('0x07000000')` |
-| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
-| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType('0x09000000')` |
+| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType("0x07000000")` |
+| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType("0x08000000")` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType("0x09000000")` |
 
 ### Misc
 
@@ -396,7 +396,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(
     state: BeaconState, flag_index: int, epoch: Epoch
-) -> Set[ValidatorIndex]:
+) -> set[ValidatorIndex]:
     """
     Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
@@ -456,7 +456,7 @@ def get_attestation_participation_flag_indices(
 ```python
 def get_flag_index_deltas(
     state: BeaconState, flag_index: int
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -486,7 +486,7 @@ def get_flag_index_deltas(
 #### Modified `get_inactivity_penalty_deltas`
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
@@ -518,7 +518,7 @@ calculating the proposer reward.
 def slash_validator(
     state: BeaconState,
     slashed_index: ValidatorIndex,
-    whistleblower_index: Optional[ValidatorIndex] = None,
+    whistleblower_index: ValidatorIndex | None = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

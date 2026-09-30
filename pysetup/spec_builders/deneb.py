@@ -16,7 +16,7 @@ from eth_consensus_specs.utils import kzg
     @classmethod
     def sundry_functions(cls) -> str:
         return """
-def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
+def retrieve_blobs_and_proofs(beacon_block_root: Root) -> tuple[Sequence[Blob], Sequence[KZGProof]]:
     return [], []
 """
 
@@ -34,7 +34,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
@@ -54,6 +54,13 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "ATTESTATION_PROPAGATION_SLOT_RANGE",
+            "MAX_REQUEST_BLOCKS",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:

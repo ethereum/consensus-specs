@@ -142,16 +142,21 @@ def objects_to_spec(
         elif isinstance(value, VariableDefinition):
             return value.type_name if value.type_name is not None else "int"
 
+    deprecate_config_vars = reduce(
+        lambda obj, builder: obj.union(builder.deprecate_config_vars()), builders, set()
+    )
+    config_vars = {
+        k: v for k, v in spec_object.config_vars.items() if k not in deprecate_config_vars
+    }
+
     config_spec = "class Configuration(NamedTuple):\n"
     config_spec += "    PRESET_BASE: str\n"
     config_spec += "\n".join(
-        f"    {k}: {format_config_var_param(v)}" for k, v in spec_object.config_vars.items()
+        f"    {k}: {format_config_var_param(v)}" for k, v in config_vars.items()
     )
     config_spec += "\n\n\nconfig = Configuration(\n"
     config_spec += f'    PRESET_BASE="{preset_name}",\n'
-    config_spec += "\n".join(
-        "    " + format_config_var(k, v) for k, v in spec_object.config_vars.items()
-    )
+    config_spec += "\n".join("    " + format_config_var(k, v) for k, v in config_vars.items())
     config_spec += "\n)\n"
 
     def format_constant(name: str, vardef: VariableDefinition) -> str:
@@ -234,7 +239,7 @@ def objects_to_spec(
     spec_strs = [
         imports,
         preparations,
-        f"fork = '{fork}'\n",
+        f'fork = "{fork}"\n',
         # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`
         CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `constants_spec`
@@ -405,7 +410,7 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
         ):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
-            out[k] = f"'{v}'"
+            out[k] = f'"{v}"'
         else:
             out[k] = str(int(v))
     return out

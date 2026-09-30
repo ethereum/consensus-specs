@@ -172,9 +172,9 @@ class FCRTest:
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
-        new_time = slot * self.spec.config.SLOT_DURATION_MS // 1000 + self.store.genesis_time
-        self.spec.on_tick(self.store, new_time)
-        self.test_steps.append({"tick": int(new_time)})
+        new_time_ms = self.spec.compute_time_at_slot_ms(self.store.genesis_time_ms, slot)
+        self.spec.on_tick(self.store, new_time_ms)
+        self.test_steps.append({"tick": int(self.spec.milliseconds_to_seconds(new_time_ms))})
 
     def next_slot(self):
         self.tick(self.current_slot() + 1)
@@ -339,8 +339,10 @@ class FCRTest:
         participation_rate=100,
         pool_and_disseminate=True,
         attester_indices=None,
+        payload_index=None,
     ):
         assert 0 <= participation_rate <= 100
+        assert payload_index is None or is_post_gloas(self.spec)
 
         # Do not attest if participation is zero
         if participation_rate == 0:
@@ -375,10 +377,11 @@ class FCRTest:
         # Compute payload index post-Gloas
         if is_post_gloas(self.spec):
             block = self.store.blocks[block_root]
-            if slot > block.slot and self.spec.is_payload_verified(self.store, block_root):
-                payload_index = 1
-            else:
-                payload_index = 0
+            if payload_index is None:
+                if slot > block.slot and self.spec.is_payload_verified(self.store, block_root):
+                    payload_index = 1
+                else:
+                    payload_index = 0
         else:
             payload_index = None
 

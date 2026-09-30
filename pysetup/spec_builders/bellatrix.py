@@ -21,7 +21,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes8
 ExecutionState = Any
 
 
-def get_pow_block(hash: Hash32) -> Optional[PowBlock]:
+def get_pow_block(hash: Hash32) -> PowBlock | None:
     return PowBlock(block_hash=hash, parent_hash=Hash32(), total_difficulty=Uint256(0))
 
 
@@ -40,7 +40,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
