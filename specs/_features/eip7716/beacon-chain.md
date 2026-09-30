@@ -276,7 +276,7 @@ with a timely source pay the unscaled penalty.
 ```python
 def get_flag_index_deltas(
     state: BeaconState, flag_index: int
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """

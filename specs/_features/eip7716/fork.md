@@ -22,7 +22,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7716_FORK_VERSION` | `Version('0x77160000')`               |
+| `EIP7716_FORK_VERSION` | `Version("0x77160000")`               |
 | `EIP7716_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
