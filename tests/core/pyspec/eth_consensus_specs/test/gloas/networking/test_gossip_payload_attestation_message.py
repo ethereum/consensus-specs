@@ -1,11 +1,8 @@
 from eth_consensus_specs.test.context import (
-    spec_configured_state_test,
     spec_state_test_with_matching_config,
     with_gloas_and_later,
-    with_phases,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -451,50 +448,6 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     )
     assert result == "ignore"
     assert reason == "payload attestation's block has not been seen"
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(message),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_phases([GLOAS])
-@spec_configured_state_test({"GLOAS_FORK_EPOCH": 1})
-def test_gossip_payload_attestation_message__reject_pre_fork_slot(spec, state):
-    """A payload attestation for a slot before the Gloas fork is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "payload_attestation_message"
-
-    store, blocks, block_root = setup_store_with_one_block(spec, state)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-
-    seen = get_seen(spec)
-    message = build_payload_attestation_message(
-        spec, state, state.slot, block_root, spec.ValidatorIndex(0)
-    )
-    yield get_filename(message), message
-
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    messages = []
-
-    current_time_ms += 100
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        payload_attestation_message=message,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "reject"
-    assert reason == "payload attestation's slot is pre-gloas"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),

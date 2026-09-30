@@ -38,6 +38,9 @@ categories:
         - eip7805
 
   # Features
+  - title: EIP-7716
+    when:
+      label: eip7716
   - title: EIP-8025
     when:
       label: eip8025
