@@ -901,14 +901,12 @@ The fields of `ENRForkID` are defined as:
     `state.genesis_validators_root`.
   - `epoch` is the node's current epoch defined by the wall-clock time (not
     necessarily the epoch to which the node is sync).
-- `next_fork_version` is the fork version corresponding to the next planned fork
-  at a future epoch. The fork version will only change for regular forks, _not
-  BPO forks_: if the next planned fork is a BPO fork, `next_fork_version` is
-  `current_fork_version`, even if a regular fork is planned at a later epoch.
-  Note that it is possible for the blob schedule to define a change at the same
-  epoch as a regular fork; this situation would be considered a regular fork. If
-  no future fork is planned, set `next_fork_version = current_fork_version` to
-  signal this fact.
+- `next_fork_version` is the fork version that will be in effect at
+  `next_fork_epoch`: `current_fork_version` if
+  `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
+  `compute_fork_version(next_fork_epoch)`. Because `next_fork_epoch` accounts
+  for BPO forks, it is possible for `next_fork_version` to equal
+  `current_fork_version` even when a future fork is planned.
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
