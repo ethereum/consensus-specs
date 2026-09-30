@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Preset](#preset)
+- [Presets](#presets)
   - [Penalty factor](#penalty-factor)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -44,7 +44,7 @@ takes over as the protocol's correlation pricing mechanism.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
-## Preset
+## Presets
 
 ### Penalty factor
 

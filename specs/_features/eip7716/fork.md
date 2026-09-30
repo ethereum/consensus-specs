@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Configuration](#configuration)
+- [Configs](#configs)
 - [Helper functions](#helper-functions)
   - [New `get_fork_initial_smoothed_offline_balance`](#new-get_fork_initial_smoothed_offline_balance)
 - [Fork to EIP-7716](#fork-to-eip-7716)
@@ -16,7 +16,7 @@
 
 This document describes the process of the EIP-7716 upgrade.
 
-## Configuration
+## Configs
 
 Warning: this configuration is not definitive.
 
