@@ -20,6 +20,7 @@
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `compute_min_epochs_for_block_requests`](#modified-compute_min_epochs_for_block_requests)
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
@@ -189,33 +190,33 @@ class SignedProposerPreferences(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
     # [Modified in Gloas:EIP7732]
-    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payloads: dict[Hash32, ExecutionPayload]
     # [New in Gloas:EIP7732]
-    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
-    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
 ```
 
 ### Modified `compute_fork_version`
@@ -240,6 +241,25 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### Modified `compute_min_epochs_for_block_requests`
+
+*Note*: `compute_min_epochs_for_block_requests` is modified to use the
+arithmetic from `compute_weak_subjectivity_period` found in the
+[weak subjectivity guide](./weak-subjectivity.md). In the worst case of a very
+large validator set, the capped activation churn is negligible, which leaves the
+exit churn (weighted 2/3) and the consolidation churn (weighted 1).
+
+```python
+def compute_min_epochs_for_block_requests() -> Epoch:
+    """
+    Return the minimum epoch range over which a node must serve blocks.
+    """
+    # [Modified in Gloas:EIP8061]
+    numerator = 3 * CHURN_LIMIT_QUOTIENT_GLOAS * CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    denominator = 2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS
+    return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + (numerator // denominator) // 2
 ```
 
 ### Modified `verify_data_column_sidecar_kzg_proofs`
@@ -409,7 +429,7 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
 def verify_attestation_payload_status(
     store: Store,
     data: AttestationData,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Verify that the attested payload status is consistent with the block's payload.
@@ -664,7 +684,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     signed_aggregate_and_proof: SignedAggregateAndProof,
     current_time_ms: Uint64,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -1171,7 +1191,7 @@ def validate_beacon_attestation_gossip(
     current_time_ms: Uint64,
     subnet_id: SubnetID,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SingleAttestation for gossip propagation on a subnet.
@@ -1465,6 +1485,10 @@ Clients MUST support requesting payload envelopes on the epoch range
 If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 payload envelope in the response.
+
+*Note*: Clients MUST also keep a record of all payload envelopes more recent
+than their latest finalized checkpoint and MUST support serving requests of
+these payload envelopes, even if outside of this range.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.

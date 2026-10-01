@@ -22,7 +22,7 @@ including type definitions.
 
 | Name                   | Value                                  |
 | ---------------------- | -------------------------------------- |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `G2_POINT_AT_INFINITY` | `BLSSignature(b"\xc0" + b"\x00" * 95)` |
 
 ## Extensions
 

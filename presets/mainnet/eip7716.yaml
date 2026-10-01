@@ -1,0 +1,10 @@
+# Mainnet preset - EIP7716
+
+# Penalty factor
+# ---------------------------------------------------------------
+# 2**8 (= 256)
+MAX_PENALTY_FACTOR: 256
+# 3 * (MAX_PENALTY_FACTOR - 1)
+PENALTY_SLOPE: 765
+# 2**16 (= 65,536)
+OFFLINE_BALANCE_SMOOTHING_FACTOR: 65536
