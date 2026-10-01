@@ -902,11 +902,11 @@ The fields of `ENRForkID` are defined as:
   - `epoch` is the node's current epoch defined by the wall-clock time (not
     necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version that will be in effect at
-  `next_fork_epoch`: `current_fork_version` if
+  `next_fork_epoch`: `compute_fork_version(epoch)` if
   `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
   `compute_fork_version(next_fork_epoch)`. Because `next_fork_epoch` accounts
-  for BPO forks, it is possible for `next_fork_version` to equal
-  `current_fork_version` even when a future fork is planned.
+  for BPO forks, it is possible for `next_fork_version` to equal the current
+  fork version even when a future fork is planned.
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
