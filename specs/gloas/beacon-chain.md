@@ -128,6 +128,7 @@
       - [New `process_parent_execution_payload`](#new-process_parent_execution_payload)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
+      - [New `get_builder_balance_after_withdrawals`](#new-get_builder_balance_after_withdrawals)
       - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
@@ -1735,8 +1736,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `apply_parent_execution_payload`
 
-*Note*: This function processes the parent's execution requests, queues the
-builder payment, updates payload availability, and updates the latest block
+*Note*: This function queues the builder payment, processes the parent's
+execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
 and by the validator during block production before computing withdrawals.
 
@@ -1754,19 +1755,8 @@ def apply_parent_execution_payload(
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -1783,6 +1773,18 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
@@ -1848,6 +1850,17 @@ def get_builder_withdrawals(
     return withdrawals, withdrawal_index, processed_count
 ```
 
+##### New `get_builder_balance_after_withdrawals`
+
+```python
+def get_builder_balance_after_withdrawals(
+    state: BeaconState, builder_index: BuilderIndex, withdrawals: Sequence[Withdrawal]
+) -> Gwei:
+    validator_index = convert_builder_index_to_validator_index(builder_index)
+    withdrawn = Gwei(sum(w.amount for w in withdrawals if w.validator_index == validator_index))
+    return saturating_sub(state.builders[builder_index].balance, withdrawn)
+```
+
 ##### New `get_builders_sweep_withdrawals`
 
 ```python
@@ -1871,13 +1884,14 @@ def get_builders_sweep_withdrawals(
             break
 
         builder = state.builders[builder_index]
-        if builder.withdrawable_epoch <= epoch and builder.balance > 0:
+        balance = get_builder_balance_after_withdrawals(state, builder_index, all_withdrawals)
+        if builder.withdrawable_epoch <= epoch and balance != 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=convert_builder_index_to_validator_index(builder_index),
                     address=builder.execution_address,
-                    amount=builder.balance,
+                    amount=balance,
                 )
             )
             withdrawal_index += 1
