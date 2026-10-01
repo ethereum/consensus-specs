@@ -351,7 +351,7 @@ def test_proposer_boost_excludes_slashed_validators(spec, state):
     committee_1 = spec.get_beacon_committee(state, state.slot + 1, spec.CommitteeIndex(0))
     for index in spec.get_active_validator_indices(state, spec.get_current_epoch(state)):
         if index not in committee_1 and index not in (proposer_1, proposer_2):
-            state.validators[index].slashed = True
+            spec.slash_validator(state, index)
 
     test_steps = []
     genesis_state = state.copy()
