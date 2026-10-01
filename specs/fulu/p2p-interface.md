@@ -896,20 +896,24 @@ object (`ENRForkID`):
 
 The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
-  - `genesis_validators_root` is the static `Root` found in
-    `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time (not
-    necessarily the epoch to which the node is sync).
+- `fork_digest` is
+  `compute_fork_digest(genesis_validators_root, current_epoch)`.
 - `next_fork_version` is the fork version that will be in effect at
-  `next_fork_epoch`: `compute_fork_version(epoch)` if
+  `next_fork_epoch`: `compute_fork_version(current_epoch)` if
   `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
-  `compute_fork_version(next_fork_epoch)`. Because `next_fork_epoch` accounts
-  for BPO forks, it is possible for `next_fork_version` to equal the current
-  fork version even when a future fork is planned.
+  `compute_fork_version(next_fork_epoch)`.
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
+*Note*: In the definitions above, `genesis_validators_root` is the static `Root`
+found in `state.genesis_validators_root` and `current_epoch` is the node's
+current epoch defined by the wall-clock time (not necessarily the epoch to which
+the node is sync).
+
+*Note*: Because `next_fork_epoch` accounts for BPO forks, it is possible for
+`next_fork_version` to equal the current fork version even when a future fork is
+planned.
 
 #### Custody group count
 
