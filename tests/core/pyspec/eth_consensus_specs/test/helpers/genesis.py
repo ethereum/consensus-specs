@@ -5,6 +5,7 @@ from eth_consensus_specs.test.helpers.constants import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash_with_new_fields,
+    get_empty_inclusion_claims_fields,
     get_execution_payload_header,
 )
 from eth_consensus_specs.test.helpers.forks import (
@@ -183,6 +184,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
             block_hash=spec.Hash32(),
             parent_block_hash=genesis_payload.block_hash,
             execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+            **get_empty_inclusion_claims_fields(spec),
         )
         # Use realistic body root in the latest block header
         genesis_block_body = spec.BeaconBlockBody()

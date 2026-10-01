@@ -5,9 +5,14 @@
 # 2**4 (= 16) validators
 INCLUSION_LIST_COMMITTEE_SIZE: 16
 
+# Inclusion list claims
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+MAX_INCLUSION_LIST_CLAIMS: 1024
+
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 196,934 bytes, ~192 KiB
-MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE: 196934
+# 196,966 bytes, ~192 KiB
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE: 196966
 # 41,112 bytes, ~40 KiB
 MAX_SIGNED_INCLUSION_LIST_SIZE: 41112

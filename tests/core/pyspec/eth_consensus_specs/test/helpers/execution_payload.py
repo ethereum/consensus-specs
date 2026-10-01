@@ -11,9 +11,19 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_deneb,
     is_post_electra,
     is_post_gloas,
+    is_post_heze,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
+
+
+def get_empty_inclusion_claims_fields(spec):
+    """
+    Return the bid field committing to an empty inclusion claims list, if any.
+    """
+    if is_post_heze(spec):
+        return {"inclusion_claims_root": spec.hash_tree_root(spec.InclusionListClaims())}
+    return {}
 
 
 def get_execution_payload_header(spec, execution_payload):
@@ -62,6 +72,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        **get_empty_inclusion_claims_fields(spec),
     )
 
 
@@ -316,6 +327,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        **get_empty_inclusion_claims_fields(spec),
     )
 
 
@@ -440,6 +452,7 @@ def build_state_with_incomplete_transition(spec, state):
             slot=state.slot,
             value=spec.Gwei(0),
             blob_kzg_commitments=spec.BlobKZGCommitments(data=kzgs),
+            **get_empty_inclusion_claims_fields(spec),
         )
         state = build_state_with_execution_payload_bid(spec, state, bid)
     else:
@@ -548,6 +561,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(execution_requests),
+        **get_empty_inclusion_claims_fields(spec),
     )
 
 

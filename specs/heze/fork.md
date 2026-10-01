@@ -50,6 +50,8 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
         # [New in Heze:EIP7805]
         inclusion_list_bits=InclusionListBits(),
+        # [New in Heze:EIP7805]
+        inclusion_claims_root=hash_tree_root(InclusionListClaims()),
     )
 
     post = BeaconState(
