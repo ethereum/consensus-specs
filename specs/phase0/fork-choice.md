@@ -298,7 +298,7 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 
 ```python
 def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
-    unslashed_and_active_indices: Set[ValidatorIndex] = set()
+    unslashed_and_active_indices: set[ValidatorIndex] = set()
     for index in get_active_validator_indices(state, get_current_epoch(state)):
         if not state.validators[index].slashed:
             unslashed_and_active_indices.add(index)
