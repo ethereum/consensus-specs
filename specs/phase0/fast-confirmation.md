@@ -1027,7 +1027,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 
 *Note*: Implementations MAY use the mechanism below to restore the confirmed
 root after a restart. This mechanism is safe as long as synchrony has been
-maintained for no more than three epochs since the node went offline. If used,
+maintained for at least three epochs since the node went offline. If used,
 `get_restart_resilient_confirmed_root` MUST be called once the node is fully
 synced and `on_fast_confirmation` has been called. The body of
 `get_root_confirmed_before_restart` is implementation dependent.
