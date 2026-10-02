@@ -251,9 +251,12 @@ def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
 
     test_vector = events_to_test_vector(events)
+    # The genesis time enables the `equivocation_delay` mutation, which anchors
+    # its randomized delivery times to the delayed block's slot boundaries.
     mops = MutationOps(
         spec.milliseconds_to_seconds(store.time_ms),
         spec.milliseconds_to_seconds(spec.config.SLOT_DURATION_MS),
+        genesis_time=spec.milliseconds_to_seconds(store.genesis_time_ms),
     )
     mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
