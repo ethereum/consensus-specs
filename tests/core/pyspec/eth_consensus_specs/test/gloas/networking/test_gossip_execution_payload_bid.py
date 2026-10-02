@@ -2950,16 +2950,13 @@ def _run_bid_gas_limit_scenario(
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
-    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    # The head block's bid commits to parent_gas_limit, so the envelope's
+    # payload.gas_limit (which gets seeded into seen.execution_payloads)
+    # equals it.
+    store, blocks, parent_root = setup_store_advanced_for_bid(
+        spec, state, head_gas_limit=spec.Uint64(parent_gas_limit)
+    )
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    # Override the parent's bid gas_limit so the envelope's payload.gas_limit
-    # (which gets seeded into seen.execution_payloads) equals our target value.
-    # The state holds the head block's own bid, so a copy is edited and put
-    # back. Editing it in place would change the block's hash tree root, and
-    # the store would no longer know the block the envelope refers to.
-    parent_bid = state.latest_execution_payload_bid.copy()
-    parent_bid.gas_limit = spec.Uint64(parent_gas_limit)
-    state.latest_execution_payload_bid = parent_bid
     head_payload = record_head_payload(spec, state, store, blocks)
     yield "state", anchor_state
     for signed in blocks:
