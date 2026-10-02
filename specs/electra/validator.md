@@ -4,27 +4,28 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Helpers](#helpers)
-  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
+- [Helpers](#helpers)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
-- [Block and sidecar proposal](#block-and-sidecar-proposal)
-  - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-    - [Attester slashings](#attester-slashings)
-    - [Attestations](#attestations)
-    - [Deposits](#deposits)
-    - [Execution requests](#execution-requests)
-  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
-    - [Sidecar](#sidecar)
-- [Attesting](#attesting)
-  - [Construct attestation](#construct-attestation)
-- [Attestation aggregation](#attestation-aggregation)
-  - [Construct aggregate](#construct-aggregate)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Attester slashings](#attester-slashings)
+      - [Attestations](#attestations)
+      - [Deposits](#deposits)
+      - [Execution requests](#execution-requests)
+    - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+      - [Sidecar](#sidecar)
+  - [Attesting](#attesting)
+    - [Construct attestation](#construct-attestation)
+  - [Attestation aggregation](#attestation-aggregation)
+    - [Construct aggregate](#construct-aggregate)
 
 <!-- mdformat-toc end -->
 
@@ -44,20 +45,6 @@ All terminology, constants, functions, and protocol mechanics defined in the
 updated beacon-chain specifications of [Electra](./beacon-chain.md) are
 requisite for this document and used throughout. Please see related beacon-chain
 specifications before continuing and use them as a reference throughout.
-
-## Helpers
-
-### Modified `GetPayloadResponse`
-
-```python
-@dataclass
-class GetPayloadResponse:
-    execution_payload: ExecutionPayload
-    block_value: Uint256
-    blobs_bundle: BlobsBundle
-    # [New in Electra]
-    execution_requests: Sequence[bytes]
-```
 
 ## Containers
 
@@ -82,6 +69,20 @@ class SignedAggregateAndProof(Container):
     signature: BLSSignature
 ```
 
+## Helpers
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse:
+    execution_payload: ExecutionPayload
+    block_value: Uint256
+    blobs_bundle: BlobsBundle
+    # [New in Electra]
+    execution_requests: Sequence[bytes]
+```
+
 ## Protocols
 
 ### `ExecutionEngine`
@@ -98,15 +99,17 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
 ```
 
-## Block and sidecar proposal
+## Beacon chain responsibilities
 
-### Constructing the `BeaconBlockBody`
+### Block and sidecar proposal
 
-#### Attester slashings
+#### Constructing the `BeaconBlockBody`
+
+##### Attester slashings
 
 Changed the max attester slashings size to `MAX_ATTESTER_SLASHINGS_ELECTRA`.
 
-#### Attestations
+##### Attestations
 
 Changed the max attestations size to `MAX_ATTESTATIONS_ELECTRA`.
 
@@ -143,7 +146,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     )
 ```
 
-#### Deposits
+##### Deposits
 
 *[New in Electra:EIP6110]* The expected number of deposits MUST be changed from
 `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)` to the
@@ -204,7 +207,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     )
 ```
 
-#### Execution requests
+##### Execution requests
 
 *[New in Electra]*
 
@@ -259,9 +262,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     )
 ```
 
-### Constructing the `BlobSidecar`s
+#### Constructing the `BlobSidecar`s
 
-#### Sidecar
+##### Sidecar
 
 *[Modified in Electra:EIP7691]*
 
@@ -270,9 +273,9 @@ def compute_subnet_for_blob_sidecar(blob_index: BlobIndex) -> SubnetID:
     return SubnetID(blob_index % BLOB_SIDECAR_SUBNET_COUNT_ELECTRA)
 ```
 
-## Attesting
+### Attesting
 
-### Construct attestation
+#### Construct attestation
 
 The validator creates `attestation` as a `SingleAttestation` container with
 updated field assignments:
@@ -282,9 +285,9 @@ updated field assignments:
   committee.
 - Set `attestation.attester_index` to the index of the validator.
 
-## Attestation aggregation
+### Attestation aggregation
 
-### Construct aggregate
+#### Construct aggregate
 
 - Set `attestation_data.index = 0`.
 - Set `aggregate_attestation.aggregation_bits` to an `AggregationBits` of length

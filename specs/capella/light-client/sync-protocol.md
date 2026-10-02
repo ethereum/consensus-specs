@@ -12,6 +12,7 @@
   - [Modified `LightClientUpdate`](#modified-lightclientupdate)
   - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
   - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
+- [Dataclasses](#dataclasses)
   - [Modified `LightClientStore`](#modified-lightclientstore)
 - [Helpers](#helpers)
   - [`get_lc_execution_root`](#get_lc_execution_root)
@@ -111,6 +112,8 @@ class LightClientOptimisticUpdate(Container):
     sync_aggregate: SyncAggregate
     signature_slot: Slot
 ```
+
+## Dataclasses
 
 ### Modified `LightClientStore`
 

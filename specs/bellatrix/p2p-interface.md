@@ -17,8 +17,9 @@
   - [Messages](#messages)
     - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-- [Gossipsub](#gossipsub)
-  - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
+- [Design decision rationale](#design-decision-rationale)
+  - [Gossipsub](#gossipsub)
+    - [Why was the max gossip message size increased at Bellatrix?](#why-was-the-max-gossip-message-size-increased-at-bellatrix)
   - [Req/Resp](#reqresp)
     - [Why was the max chunk response size increased at Bellatrix?](#why-was-the-max-chunk-response-size-increased-at-bellatrix)
     - [Why allow invalid payloads on the P2P network?](#why-allow-invalid-payloads-on-the-p2p-network)
@@ -263,11 +264,11 @@ the `context` enum to specify Bellatrix block type.
 | `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 
-# Design decision rationale
+## Design decision rationale
 
-## Gossipsub
+### Gossipsub
 
-### Why was the max gossip message size increased at Bellatrix?
+#### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
 field -- `transactions` -- which can validly exceed the `MAX_PAYLOAD_SIZE` limit

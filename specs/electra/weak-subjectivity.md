@@ -6,6 +6,8 @@
 - [Weak Subjectivity Period](#weak-subjectivity-period)
   - [Calculating the Weak Subjectivity Period](#calculating-the-weak-subjectivity-period)
     - [Modified `compute_weak_subjectivity_period`](#modified-compute_weak_subjectivity_period)
+- [Weak Subjectivity Sync](#weak-subjectivity-sync)
+  - [Checking for Stale Weak Subjectivity Checkpoint](#checking-for-stale-weak-subjectivity-checkpoint)
     - [Modified `is_within_weak_subjectivity_period`](#modified-is_within_weak_subjectivity_period)
 
 <!-- mdformat-toc end -->
@@ -54,6 +56,10 @@ A brief reference for what these values look like in practice
 |           10 |                  8,388,608 |                     3,532 |
 |           10 |                 16,777,216 |                     3,532 |
 |           10 |                 33,554,432 |                     3,532 |
+
+## Weak Subjectivity Sync
+
+### Checking for Stale Weak Subjectivity Checkpoint
 
 #### Modified `is_within_weak_subjectivity_period`
 
