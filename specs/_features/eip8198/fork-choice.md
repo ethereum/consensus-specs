@@ -12,11 +12,11 @@
 
 ## Introduction
 
-EIP-8198 uses `SLOT_DURATION_SCHEDULE` to map wall-clock time to slots across
+EIP-8198 uses `get_slot_schedule` to map wall-clock time to slots across
 historical slot durations. Deadline helpers convert the inherited basis-point
-configuration into millisecond offsets using the slot duration at
-`EIP8198_FORK_EPOCH`. Later forks that change slot duration or duty timing MUST
-define their own deadline rules.
+configuration into millisecond offsets using `SLOT_DURATION_MS_EIP8198`. Later
+forks that change slot duration or duty timing MUST define their own deadline
+rules.
 
 *Note*: This specification is built upon [Heze](../../heze/fork-choice.md).
 
@@ -30,5 +30,5 @@ def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
     Calculate a slot component's duration using this fork's slot duration.
     """
     # [Modified in EIP8198]
-    return basis_points * get_slot_duration_ms(EIP8198_FORK_EPOCH) // BASIS_POINTS
+    return basis_points * SLOT_DURATION_MS_EIP8198 // BASIS_POINTS
 ```
