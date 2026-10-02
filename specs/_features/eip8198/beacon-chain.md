@@ -6,9 +6,10 @@
 
 - [Introduction](#introduction)
 - [Configs](#configs)
-  - [Slot duration schedule](#slot-duration-schedule)
+  - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
   - [Misc](#misc)
+    - [New `get_slot_schedule`](#new-get_slot_schedule)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
     - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
@@ -32,7 +33,7 @@
 
 ## Introduction
 
-EIP-8198 ("Quick Slots") makes the slot duration schedulable, with a first
+EIP-8198 ("Quick Slots") makes the slot duration fork-specific, with a first
 reduction from 12 to 10 seconds intended at the fork epoch. The duration
 schedule records the historical slot lengths. Intra-slot deadlines are
 configured separately in basis points of the slot duration at
@@ -51,16 +52,11 @@ counts, so their wall-clock spans scale with the slot duration.
 
 ## Configs
 
-### Slot duration schedule
+### Time parameters
 
-The standalone `SLOT_DURATION_MS` configuration variable is deprecated in favor
-of `SLOT_DURATION_SCHEDULE`.
-
-*[New in EIP8198]* This schedule MUST list slot durations in strictly increasing
-epoch order, beginning at `GENESIS_EPOCH` with the historical slot duration. The
-genesis duration is the baseline for issuance, penalty, and churn calculations.
-Entries contain only an activation epoch and a slot duration; deadline changes
-do not require an entry.
+| Name                       | Value           |
+| -------------------------- | --------------- |
+| `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` |
 
 The slot duration MUST be a positive multiple of `1000`, so that every slot
 boundary has an integer-second timestamp.
@@ -75,15 +71,24 @@ upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
 proposer preferences. The usual gas-limit adjustment rule applies at the
 transition, so reaching a lower target requires advance coordination.
 
-<!-- list-of-records:slot_duration_schedule -->
-
-| Epoch | Slot Duration Ms |                             Date |
-| ----: | ---------------: | -------------------------------: |
-|     0 |            12000 | December 1, 2020, 12:00:23pm UTC |
-
 ## Helpers
 
 ### Misc
+
+#### New `get_slot_schedule`
+
+```python
+def get_slot_schedule() -> Sequence[dict[str, Uint64]]:
+    """
+    Return the slot duration schedule derived from fork configuration.
+    """
+    schedule = [
+        {"EPOCH": GENESIS_EPOCH, "SLOT_DURATION_MS": SLOT_DURATION_MS},
+        {"EPOCH": EIP8198_FORK_EPOCH, "SLOT_DURATION_MS": SLOT_DURATION_MS_EIP8198},
+    ]
+    # Skip unscheduled forks to avoid overflow when converting epochs to slots.
+    return [entry for entry in schedule if entry["EPOCH"] != FAR_FUTURE_EPOCH]
+```
 
 #### New `get_slot_duration_ms`
 
@@ -92,7 +97,7 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     """
     Return the slot duration in effect at ``epoch``.
     """
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
+    for entry in reversed(get_slot_schedule()):
         if epoch >= entry["EPOCH"]:
             break
     return entry["SLOT_DURATION_MS"]
@@ -108,8 +113,8 @@ def compute_time_at_slot_ms(genesis_time_ms: Uint64, slot: Slot) -> Uint64:
     # [Modified in EIP8198]
     end_slot = slot
     time_ms = genesis_time_ms
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+    for entry in reversed(get_slot_schedule()):
+        entry_slot = compute_start_slot_at_epoch(Epoch(entry["EPOCH"]))
         if entry_slot < end_slot:
             slots = end_slot - entry_slot
             time_ms += slots * entry["SLOT_DURATION_MS"]
@@ -125,8 +130,8 @@ def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     # [Modified in EIP8198]
-    for entry in reversed(SLOT_DURATION_SCHEDULE):
-        entry_slot = compute_start_slot_at_epoch(entry["EPOCH"])
+    for entry in reversed(get_slot_schedule()):
+        entry_slot = compute_start_slot_at_epoch(Epoch(entry["EPOCH"]))
         entry_time_ms = compute_time_at_slot_ms(genesis_time_ms, entry_slot)
         if time_ms >= entry_time_ms:
             break
