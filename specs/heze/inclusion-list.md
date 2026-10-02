@@ -32,7 +32,7 @@ These are the inclusion list specifications to implement Heze.
 @dataclass(eq=True, frozen=True)
 class InclusionListEntry:
     signed_inclusion_list: SignedInclusionList
-    timely: Boolean
+    timely: bool
 ```
 
 #### `InclusionListStore`
@@ -40,8 +40,8 @@ class InclusionListEntry:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[ValidatorIndex, InclusionListEntry]]
-    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]]
+    inclusion_lists: defaultdict[tuple[Slot, Root], dict[ValidatorIndex, InclusionListEntry]]
+    equivocators: defaultdict[tuple[Slot, Root], set[ValidatorIndex]]
 ```
 
 ## Helpers

@@ -79,9 +79,9 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
-    custody_columns: Optional[CustodyColumnBits],
-) -> Optional[PayloadId]: ...
+    payload_attributes: PayloadAttributes | None,
+    custody_columns: CustodyColumnBits | None,
+) -> PayloadId | None: ...
 ```
 
 ## Helpers
@@ -112,25 +112,25 @@ inclusion list constraints.
 ```python
 @dataclass
 class Store:
-    time: Uint64
-    genesis_time: Uint64
+    time_ms: Uint64
+    genesis_time_ms: Uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
-    block_timeliness: Dict[Root, list[Boolean]]
-    checkpoint_states: Dict[Checkpoint, BeaconState]
-    latest_messages: Dict[ValidatorIndex, LatestMessage]
-    unrealized_justifications: Dict[Root, Checkpoint]
-    payloads: Dict[Root, ExecutionPayloadEnvelope]
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
+    equivocating_indices: set[ValidatorIndex]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
+    block_timeliness: dict[Root, list[bool]]
+    checkpoint_states: dict[Checkpoint, BeaconState]
+    latest_messages: dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: dict[Root, Checkpoint]
+    payloads: dict[Root, ExecutionPayloadEnvelope]
+    payload_timeliness_vote: dict[Root, list[Boolean | None]]
+    payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: Dict[Root, Boolean]
+    payload_inclusion_list_satisfaction: dict[Root, bool]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -142,20 +142,20 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     anchor_epoch = get_current_epoch(anchor_state)
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
-    proposer_boost_root = Root()
+    genesis_time_ms = seconds_to_milliseconds(anchor_state.genesis_time)
     return Store(
-        time=Uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(genesis_time_ms, anchor_state.slot),
+        genesis_time_ms=genesis_time_ms,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
-        proposer_boost_root=proposer_boost_root,
+        proposer_boost_root=Root(),
         equivocating_indices=set(),
-        blocks={anchor_root: copy(anchor_block)},
-        block_states={anchor_root: copy(anchor_state)},
+        blocks={anchor_root: anchor_block.copy()},
+        block_states={anchor_root: anchor_state.copy()},
         block_timeliness={anchor_root: [True, True]},
-        checkpoint_states={justified_checkpoint: copy(anchor_state)},
+        checkpoint_states={justified_checkpoint: anchor_state.copy()},
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
@@ -190,7 +190,7 @@ def record_payload_inclusion_list_satisfaction(
     payload: ExecutionPayload,
     execution_engine: ExecutionEngine,
 ) -> None:
-    slot = store.blocks[root].slot - Slot(1)
+    slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
     inclusion_list_transactions = get_inclusion_list_transactions(
         get_inclusion_list_store(), slot, dependent_root, only_timely=True
@@ -268,32 +268,44 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
-    # The transactions must not exceed the maximum size
-    transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
-    assert transactions_size <= MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
-
     # The slot must be within the retention window
     assert inclusion_list.slot <= current_slot
     assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
+    # The transactions must be non-empty and not exceed the maximum size
+    transactions_size = sum(len(transaction) for transaction in inclusion_list.transactions)
+    assert transactions_size > 0
+    assert transactions_size <= MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+
+    # Every transaction must be non-empty
+    assert all(len(transaction) > 0 for transaction in inclusion_list.transactions)
+
     # The dependent block must be known
+    assert inclusion_list.dependent_root in store.blocks
     assert inclusion_list.dependent_root in store.block_states
 
+    # The dependent block's slot must not be after the shuffling dependent slot
+    epoch = compute_epoch_at_slot(inclusion_list.slot)
+    dependent_slot = compute_shuffling_dependent_slot(epoch)
+    assert store.blocks[inclusion_list.dependent_root].slot <= dependent_slot
+
+    # The dependent block must be a possible dependent block for the committee lookahead
+    assert is_valid_dependent_root(store, inclusion_list.dependent_root, dependent_slot)
+
     # Verify the validator is in the inclusion list committee
-    dependent_state = copy(store.block_states[inclusion_list.dependent_root])
-    if dependent_state.slot < inclusion_list.slot:
-        process_slots(dependent_state, inclusion_list.slot)
-    committee = get_inclusion_list_committee(dependent_state, inclusion_list.slot)
+    state = store.block_states[inclusion_list.dependent_root].copy()
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(epoch)
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
+    committee = get_inclusion_list_committee(state, inclusion_list.slot)
     assert inclusion_list.validator_index in committee
 
     # Verify the signature
-    assert is_valid_inclusion_list_signature(dependent_state, signed_inclusion_list)
+    assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
     # The inclusion list is timely if it arrives in its slot before the deadline
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
     is_current_slot = inclusion_list.slot == current_slot
-    is_timely = is_current_slot and time_into_slot_ms < get_inclusion_list_due_ms()
+    is_timely = is_current_slot and get_time_into_slot_ms(store) < get_inclusion_list_due_ms()
 
     # Process the inclusion list
     process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)

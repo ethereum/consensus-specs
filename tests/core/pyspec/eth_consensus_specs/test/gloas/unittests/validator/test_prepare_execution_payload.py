@@ -1,6 +1,6 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -8,7 +8,6 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -50,8 +49,8 @@ def _add_block_to_store(spec, state, execution_requests=None):
     """
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    spec.on_tick(store, current_time)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    spec.on_tick(store, current_time_ms)
 
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -65,10 +64,8 @@ def _add_block_to_store(spec, state, execution_requests=None):
             )
 
     signed_block = state_transition_and_sign_block(spec, state, block)
-    block_time = (
-        store.genesis_time + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
-    )
-    spec.on_tick(store, block_time)
+    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
+    spec.on_tick(store, block_time_ms)
     run_on_block(spec, store, signed_block)
     block_root = signed_block.message.hash_tree_root()
 
@@ -90,13 +87,13 @@ def _advance_to_proposal_slot(spec, state, store):
     proposal_state = state.copy()
     spec.process_slots(proposal_state, proposal_state.slot + 1)
 
-    proposal_time = store.genesis_time + proposal_state.slot * spec.config.SLOT_DURATION_MS // 1000
-    spec.on_tick(store, proposal_time)
+    proposal_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, proposal_state.slot)
+    spec.on_tick(store, proposal_time_ms)
 
     return proposal_state
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__extend_payload(spec, state):
     # Give validator[0] 0x01 credentials so the envelope can carry a valid
@@ -174,7 +171,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     assert list(skip_apply_withdrawals) != list(expected_withdrawals)
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__no_payload_verified(spec, state):
     carried_withdrawal = spec.Withdrawal(
@@ -211,7 +208,46 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     assert engine.payload_attributes.withdrawals == carried_withdrawals
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
+@spec_state_test
+def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
+    store, block_root, _ = _setup_full_parent(spec, state)
+
+    # Model a PTC majority that observed the payload but not its blob data.
+    # The locally verified payload remains in the store.
+    store.payload_timeliness_vote[block_root] = [True] * spec.PTC_SIZE
+    unavailable_votes = spec.DATA_AVAILABILITY_TIMELY_THRESHOLD + 1
+    store.payload_data_availability_vote[block_root] = [False] * unavailable_votes + [None] * (
+        spec.PTC_SIZE - unavailable_votes
+    )
+
+    proposal_state = _advance_to_proposal_slot(spec, state, store)
+    head = spec.get_head(store)
+    assert head.root == block_root
+    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
+    assert spec.payload_data_availability(store, block_root, available=False)
+    assert not spec.should_build_on_full(store, head, proposal_state.slot)
+
+    engine = CaptureEngine()
+    parent_bid = proposal_state.latest_execution_payload_bid
+    assert parent_bid.block_hash != parent_bid.parent_block_hash
+
+    payload_id = spec.prepare_execution_payload(
+        store=store,
+        head=head,
+        state=proposal_state,
+        safe_block_hash=spec.Hash32(),
+        finalized_block_hash=spec.Hash32(),
+        suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.Uint64(60_000_000),
+        execution_engine=engine,
+    )
+
+    assert payload_id == SAMPLE_PAYLOAD_ID
+    assert engine.head_block_hash == parent_bid.parent_block_hash
+
+
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -234,7 +270,7 @@ def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, s
     assert proposal_state.hash_tree_root() == state_root_before
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__payload_attributes(spec, state):
     store, _, _ = _setup_full_parent(spec, state)
@@ -253,7 +289,9 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     )
 
     attrs = engine.payload_attributes
-    assert attrs.timestamp == spec.compute_time_at_slot(proposal_state, proposal_state.slot)
+    assert attrs.timestamp == spec.compute_time_at_slot(
+        proposal_state.genesis_time, proposal_state.slot
+    )
     assert attrs.prev_randao == spec.get_randao_mix(
         proposal_state, spec.get_current_epoch(proposal_state)
     )
@@ -263,13 +301,13 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     assert attrs.target_gas_limit == spec.Uint64(60_000_000)
 
 
-@with_phases([GLOAS])
+@with_gloas_and_later
 @spec_state_test
 def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    spec.on_tick(store, current_time)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    spec.on_tick(store, current_time_ms)
 
     proposal_state = _advance_to_proposal_slot(spec, state, store)
 

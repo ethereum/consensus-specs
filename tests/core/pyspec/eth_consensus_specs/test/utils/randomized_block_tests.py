@@ -7,14 +7,20 @@ import warnings
 from collections.abc import Callable
 from random import Random
 
+from eth_consensus_specs.test.context import (
+    config_fork_epoch_overrides,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.blob import (
+    get_max_blob_count,
     get_sample_blob_tx,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_fulu
+from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -138,6 +144,17 @@ def randomize_state_gloas(spec, state, stats, exit_fraction=0.1, slash_fraction=
 
     _add_random_builders(spec, state)
 
+    return scenario_state
+
+
+def randomize_state_heze(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_gloas(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
     return scenario_state
 
 
@@ -296,9 +313,8 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=None):
         rng = Random(3456)
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
-    # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
+        spec, blob_count=rng.randint(0, get_max_blob_count(spec, block.slot)), rng=rng
     )
     block.body.execution_payload.transactions.append(spec.Transaction(data=list(opaque_tx)))
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
@@ -348,6 +364,14 @@ def random_block_gloas(spec, state, signed_blocks, scenario_state, rng=None):
     block.body.payload_attestations = spec.PayloadAttestations(
         data=get_random_payload_attestations(spec, state, rng)
     )
+
+    return block
+
+
+def random_block_heze(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
+    block = random_block_gloas(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block
 
@@ -439,7 +463,7 @@ def _build_random_signed_bid(spec, state, block, rng):
     """Build a random SignedExecutionPayloadBid, using either self-build or a real builder."""
     # Get sample blobs
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
+        spec, blob_count=rng.randint(0, get_max_blob_count(spec, block.slot)), rng=rng
     )
 
     # Find active builders
@@ -576,6 +600,12 @@ def _compute_statistics(scenario):
 
 
 def run_generated_randomized_test(spec, state, scenario):
+    if is_post_gloas(spec):
+        spec, config = spec_with_config_overrides(
+            get_copy_of_spec(spec), config_fork_epoch_overrides(spec, state)
+        )
+        yield "config", "cfg", config
+
     stats = _compute_statistics(scenario)
     if "setup" not in scenario:
         state_randomizer = _resolve_ref(scenario.get("state_randomizer", randomize_state))

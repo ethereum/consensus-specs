@@ -8,7 +8,7 @@ another. These compare by content instead.
 """
 
 from ssz.byte_arrays import ByteVector
-from ssz.merkleization import Root
+from ssz.chunks import Root
 
 
 class BytesN(ByteVector):

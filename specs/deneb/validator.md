@@ -146,13 +146,13 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state.genesis_time, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state).withdrawals,
@@ -198,7 +198,7 @@ def get_blob_sidecars(
     signed_block_header = compute_signed_block_header(signed_block)
     return [
         BlobSidecar(
-            index=index,
+            index=BlobIndex(index),
             blob=blob,
             kzg_commitment=block.body.blob_kzg_commitments[index],
             kzg_proof=blob_kzg_proofs[index],

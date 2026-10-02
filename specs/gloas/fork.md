@@ -26,7 +26,7 @@ Warning: this configuration is not definitive.
 
 | Name                 | Value                                 |
 | -------------------- | ------------------------------------- |
-| `GLOAS_FORK_VERSION` | `Version('0x07000000')`               |
+| `GLOAS_FORK_VERSION` | `Version("0x07000000")`               |
 | `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helpers
@@ -49,9 +49,9 @@ def initialize_ptc_window(
     ptcs = []
     current_epoch = get_current_epoch(state)
     for e in range(1 + MIN_SEED_LOOKAHEAD):
-        epoch = Epoch(current_epoch + e)
+        epoch = current_epoch + e
         start_slot = compute_start_slot_at_epoch(epoch)
-        ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+        ptcs += [compute_ptc(state, start_slot + i) for i in range(SLOTS_PER_EPOCH)]
 
     return PayloadTimelinessCommitteeWindow(data=empty_previous_epoch + ptcs)
 ```
@@ -215,13 +215,16 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             value=Gwei(0),
             execution_payment=Gwei(0),
             blob_kzg_commitments=BlobKZGCommitments(),
-            execution_requests_root=hash_tree_root(ExecutionRequests()),
+            execution_requests_root=hash_tree_root(ExecutionRequests.empty()),
         ),
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
-        ptc_window=initialize_ptc_window(pre),
+        ptc_window=PayloadTimelinessCommitteeWindow(),
     )
+
+    # [New in Gloas:EIP7732]
+    post.ptc_window = initialize_ptc_window(post)
 
     # [New in Gloas:EIP7732]
     onboard_builders_from_pending_deposits(post)

@@ -62,32 +62,13 @@ def build_max_size_signed_execution_payload_bid(spec):
     return spec.SignedExecutionPayloadBid(message=bid, signature=spec.BLSSignature())
 
 
-def build_max_size_data_column_sidecar(spec):
-    column = spec.DataColumn(data=[spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    kzg_proofs = spec.KZGProofs(data=[spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    return spec.DataColumnSidecar(
-        index=spec.ColumnIndex(0),
-        column=spec.DataColumn(data=column),
-        kzg_proofs=spec.KZGProofs(data=kzg_proofs),
-        slot=spec.Slot(0),
-        beacon_block_root=spec.Root(),
-    )
-
-
-def build_max_size_partial_data_column_sidecar(spec):
-    cells_present_bitmap = spec.CellsBitList(data=[True] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    partial_column = spec.DataColumn(data=[spec.Cell()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    kzg_proofs = spec.KZGProofs(data=[spec.KZGProof()] * spec.MAX_BLOB_COMMITMENTS_PER_BLOCK)
-    return spec.PartialDataColumnSidecar(
-        cells_present_bitmap=spec.CellsBitList(data=cells_present_bitmap),
-        partial_column=spec.DataColumn(data=partial_column),
-        kzg_proofs=spec.KZGProofs(data=kzg_proofs),
-    )
-
-
 def build_max_size_signed_inclusion_list(spec):
-    transactions_size = spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
-    transactions = spec.Transactions.of(spec.Transaction(data=list(b"\x00" * transactions_size)))
+    # The largest valid list: MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST one-byte transactions,
+    # each costing its byte plus a 4-byte SSZ offset
+    transaction_count = spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+    transactions = spec.Transactions.of(
+        *[spec.Transaction(data=[0]) for _ in range(transaction_count)]
+    )
     inclusion_list = spec.InclusionList(
         slot=spec.Slot(0),
         validator_index=spec.ValidatorIndex(0),
@@ -97,12 +78,12 @@ def build_max_size_signed_inclusion_list(spec):
     return spec.SignedInclusionList(message=inclusion_list, signature=spec.BLSSignature())
 
 
-def build_max_size_signed_execution_proof(spec):
-    return spec.SignedExecutionProof(
-        message=spec.ExecutionProof(
+def build_max_size_signed_execution_proof_envelope(spec):
+    return spec.SignedExecutionProofEnvelope(
+        message=spec.ExecutionProofEnvelope(
             proof_data=spec.ProofData(data=[0] * spec.MAX_PROOF_SIZE),
             proof_type=spec.ProofType(0),
-            public_input=spec.PublicInput(),
+            beacon_block_root=spec.Root(),
         ),
         validator_index=spec.ValidatorIndex(0),
         signature=spec.BLSSignature(),
@@ -117,14 +98,6 @@ def get_max_attester_slashing_size(spec):
     return spec.MAX_ATTESTER_SLASHING_SIZE
 
 
-def get_max_data_column_sidecar_size(spec):
-    return spec.MAX_DATA_COLUMN_SIDECAR_SIZE
-
-
-def get_max_partial_data_column_sidecar_size(spec):
-    return spec.MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE
-
-
 def get_max_signed_execution_payload_bid_size(spec):
     size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
     if is_post_heze(spec):
@@ -136,5 +109,5 @@ def get_max_signed_inclusion_list_size(spec):
     return spec.MAX_SIGNED_INCLUSION_LIST_SIZE
 
 
-def get_max_signed_execution_proof_size(spec):
-    return spec.MAX_SIGNED_EXECUTION_PROOF_SIZE
+def get_max_signed_execution_proof_envelope_size(spec):
+    return spec.MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE

@@ -65,11 +65,15 @@ def _prepare_state(
     threshold_fn: Callable[[Any], int],
     spec: Spec,
     phases: SpecForks,
+    builder_count: int,
 ):
     balances = balances_fn(spec)
     activation_threshold = threshold_fn(spec)
     state = create_genesis_state(
-        spec=spec, validator_balances=balances, activation_threshold=activation_threshold
+        spec=spec,
+        validator_balances=balances,
+        activation_threshold=activation_threshold,
+        builder_count=builder_count,
     )
     return state
 
@@ -78,14 +82,23 @@ _custom_state_cache_dict = LRU(size=10)
 
 
 def with_custom_state(
-    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
+    balances_fn: Callable[[Any], Sequence[int]],
+    threshold_fn: Callable[[Any], int],
+    builder_count: int = 8,
 ):
     def deco(fn):
         def entry(*args, spec: Spec, phases: SpecForks, **kw):
             # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
-            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
+            key = (
+                spec.fork,
+                spec.config.__hash__(),
+                spec.__file__,
+                balances_fn,
+                threshold_fn,
+                builder_count,
+            )
             if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
+                state = _prepare_state(balances_fn, threshold_fn, spec, phases, builder_count)
                 _custom_state_cache_dict[key] = state
 
             # Take an entry out of the LRU. A state is mutable here, so the test
@@ -140,6 +153,17 @@ def default_balances_electra(spec: Spec):
     return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
 
 
+def get_max_activation_churn_limit(spec: Spec):
+    """
+    Return the maximum number of validators that can be activated per epoch.
+    """
+    if is_post_gloas(spec):
+        return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS // spec.MIN_ACTIVATION_BALANCE
+    if is_post_electra(spec):
+        return spec.config.MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT // spec.MIN_ACTIVATION_BALANCE
+    return spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+
+
 def scaled_churn_balances_min_churn_limit(spec: Spec):
     """
     Helper method to create enough validators to scale the churn limit.
@@ -167,7 +191,7 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.Uint64(
-        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT)
+        spec.config.CHURN_LIMIT_QUOTIENT * get_max_activation_churn_limit(spec)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
@@ -190,7 +214,7 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
         return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.Uint64(
-        spec.config.CHURN_LIMIT_QUOTIENT * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2)
+        spec.config.CHURN_LIMIT_QUOTIENT * (get_max_activation_churn_limit(spec) + 2)
     )
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 

@@ -119,13 +119,13 @@ class RandaoCommitments(ProgressiveList[Bytes32]):
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
-| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType('0x11000000')` |
+| `DOMAIN_RANDAO_COMMITMENT_REGISTRATION` | `DomainType("0x11000000")` |
 
 ### Hash chain
 
 | Name                      | Value                  |
 | ------------------------- | ---------------------- |
-| `HASH_CHAIN_RANDAO_DST`   | `b'HASH_CHAIN_RANDAO'` |
+| `HASH_CHAIN_RANDAO_DST`   | `b"HASH_CHAIN_RANDAO"` |
 | `UNSET_RANDAO_COMMITMENT` | `Bytes32()`            |
 
 ## Presets
@@ -283,7 +283,7 @@ entry per validator.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -369,7 +369,7 @@ from the front.
 
 ```python
 def process_pending_randao_commitments(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     next_pending_commitment = 0
     for pending_commitment in state.pending_randao_commitments:
         if pending_commitment.activation_epoch > next_epoch:
@@ -379,9 +379,7 @@ def process_pending_randao_commitments(state: BeaconState) -> None:
         state.randao_commitments[index] = pending_commitment.commitment
         next_pending_commitment += 1
 
-    state.pending_randao_commitments = PendingRandaoCommitments(
-        data=state.pending_randao_commitments[next_pending_commitment:]
-    )
+    state.pending_randao_commitments = state.pending_randao_commitments[next_pending_commitment:]
 ```
 
 ### Block processing
@@ -505,7 +503,7 @@ def process_randao_commitment_registration(
         PendingRandaoCommitment(
             validator_index=index,
             commitment=registration.commitment,
-            activation_epoch=Epoch(get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY),
+            activation_epoch=get_current_epoch(state) + COMMITMENT_REGISTRATION_DELAY,
         )
     )
 ```

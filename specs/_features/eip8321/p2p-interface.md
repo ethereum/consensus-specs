@@ -31,26 +31,27 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
-    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
-    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
-    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
-    proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
+    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
+    inclusion_list_counts: Counter[tuple[Slot, Root, ValidatorIndex]]
     # [New in EIP8321]
-    randao_commitment_registration_indices: Set[ValidatorIndex]
+    randao_commitment_registration_indices: set[ValidatorIndex]
 ```
 
 ### Modified `compute_fork_version`
@@ -130,6 +131,11 @@ def validate_randao_commitment_registration_gossip(
     """
     registration = signed_registration.message
     index = registration.validator_index
+
+    # [IGNORE] This is the first valid registration received for the validator
+    if index in seen.randao_commitment_registration_indices:
+        raise GossipIgnore("already seen RANDAO commitment registration for this validator")
+
     state = store.block_states[get_head(store).root]
 
     # [IGNORE] The head state has upgraded to EIP-8321
@@ -139,10 +145,6 @@ def validate_randao_commitment_registration_gossip(
     # [REJECT] The validator index is valid
     if index >= len(state.validators):
         raise GossipReject("validator index out of range")
-
-    # [IGNORE] This is the first valid registration received for the validator
-    if index in seen.randao_commitment_registration_indices:
-        raise GossipIgnore("already seen RANDAO commitment registration for this validator")
 
     # [REJECT] The commitment is non-zero
     if registration.commitment == UNSET_RANDAO_COMMITMENT:

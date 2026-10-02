@@ -8,6 +8,10 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 
 
+def get_max_withdrawals(spec):
+    return spec.MAX_WITHDRAWALS_PER_PAYLOAD
+
+
 def check_is_partially_withdrawable_validator(spec, state, validator_index, balance=None):
     """Call ``is_partially_withdrawable_validator`` with the correct arguments for the fork."""
     validator = state.validators[validator_index]

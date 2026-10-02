@@ -11,10 +11,10 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [New `get_inclusion_list`](#new-get_inclusion_list)
+- [Validator assignments](#validator-assignments)
+  - [Inclusion list committee](#inclusion-list-committee)
+  - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-  - [Validator assignments](#validator-assignments)
-    - [Inclusion list committee](#inclusion-list-committee)
-    - [Lookahead](#lookahead)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Signed execution payload bid](#signed-execution-payload-bid)
@@ -64,13 +64,9 @@ def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
 ```
 
-## Beacon chain responsibilities
+## Validator assignments
 
-All validator responsibilities remain unchanged other than those noted below.
-
-### Validator assignments
-
-#### Inclusion list committee
+### Inclusion list committee
 
 A validator may be a member of the new inclusion list committee for a given
 slot. To check for inclusion list committee assignments, use
@@ -81,13 +77,13 @@ within the context of the current and next epoch.
 ```python
 def get_inclusion_list_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Slot]:
+) -> Slot | None:
     """
     Returns the slot during the requested epoch in which the validator with
     index ``validator_index`` is a member of the inclusion list committee.
     Returns None if no assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
@@ -97,12 +93,16 @@ def get_inclusion_list_committee_assignment(
     return None
 ```
 
-#### Lookahead
+### Lookahead
 
 `get_inclusion_list_committee_assignment` should be called at the start of each
 epoch to get the assignment for the next epoch (`current_epoch + 1`). A
 validator should plan for future assignments by noting their assigned inclusion
 list committee slot.
+
+## Beacon chain responsibilities
+
+All validator responsibilities remain unchanged other than those noted below.
 
 ### Block and sidecar proposal
 
@@ -118,7 +118,7 @@ and non-equivocating inclusion lists they have observed.
 - The `bid.inclusion_list_bits` must satisfy
   `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`,
   where `inclusion_list_committee` is
-  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - Slot(1)`,
+  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
   `dependent_root` is
   `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
   and `store` is the fork choice store.
@@ -148,12 +148,12 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
-        state = copy(state)
+        state = state.copy()
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
@@ -164,7 +164,7 @@ def prepare_execution_payload(
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state.genesis_time, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,
@@ -174,10 +174,8 @@ def prepare_execution_payload(
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
             get_inclusion_list_store(),
-            state.slot - Slot(1),
-            get_shuffling_dependent_root(
-                store, head.root, compute_epoch_at_slot(state.slot - Slot(1))
-            ),
+            state.slot - 1,
+            get_shuffling_dependent_root(store, head.root, compute_epoch_at_slot(state.slot - 1)),
             only_timely=False,
         ),
     )
@@ -237,7 +235,7 @@ def get_signed_inclusion_list(
         slot=slot,
         validator_index=validator_index,
         dependent_root=get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(slot)),
-        transactions=inclusion_list_transactions,
+        transactions=Transactions(data=inclusion_list_transactions),
     )
     signature = get_inclusion_list_signature(state, inclusion_list, privkey)
     return SignedInclusionList(message=inclusion_list, signature=signature)

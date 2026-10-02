@@ -58,7 +58,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                    | Value                                                                                     | Description                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments")))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
 ## Configs
 
@@ -123,23 +123,23 @@ class DataColumnsByRootIdentifier(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
     # Removed `blob_sidecar_tuples`
     # [New in Fulu:EIP7594]
-    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    data_column_sidecar_tuples: set[tuple[Slot, ValidatorIndex, ColumnIndex]]
     # [New in Fulu]
-    partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
+    partial_data_column_headers: dict[Root, PartialDataColumnHeader]
 ```
 
 ### Modified `compute_fork_version`
@@ -171,7 +171,7 @@ def compute_max_request_data_column_sidecars() -> Uint64:
     """
     Return the maximum number of data column sidecars in a single request.
     """
-    return Uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
+    return MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS
 ```
 
 ### New `verify_data_column_sidecar`
@@ -299,16 +299,15 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
-`get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
+`get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block`.
 
 ```python
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -316,6 +315,11 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
@@ -329,30 +333,10 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
-
-    # [REJECT] The proposer index is a valid validator index
-    if block.proposer_index >= len(state.validators):
-        raise GossipReject("proposer index out of range")
-
-    # [REJECT] The proposer signature is valid
-    proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
-    signing_root = compute_signing_root(block, domain)
-    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
-        raise GossipReject("invalid proposer signature")
-
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
     # (MAY be queued until parent is retrieved)
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
-
-    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
-        raise GossipReject("incorrect execution payload timestamp")
 
     parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
     if block.parent_root in block_payload_statuses:
@@ -370,6 +354,23 @@ def validate_beacon_block_gossip(
     if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
         raise GossipIgnore("block's parent is valid and its payload is invalid")
 
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
@@ -382,7 +383,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Fulu:EIP7892]
     # [REJECT] The length of KZG commitments is less than or equal to the limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(block.body.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
@@ -414,7 +415,6 @@ network. Sidecars are sent in their entirety.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     sidecar: DataColumnSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -449,6 +449,18 @@ def validate_data_column_sidecar_gossip(
     if block_header.slot <= finalized_slot:
         raise GossipIgnore("sidecar is not from a slot greater than the latest finalized slot")
 
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    parent_root = block_header.parent_root
+    if parent_root not in store.blocks:
+        raise GossipIgnore("sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if parent_root not in store.block_states:
+        raise GossipReject("sidecar's parent failed validation")
+
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The proposer index is a valid validator index
     if block_header.proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
@@ -459,16 +471,6 @@ def validate_data_column_sidecar_gossip(
     signing_root = compute_signing_root(block_header, domain)
     if not bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature):
         raise GossipReject("invalid proposer signature on sidecar block header")
-
-    # [IGNORE] The sidecar's block's parent has been seen
-    # (MAY be queued for processing once the parent block is retrieved)
-    parent_root = block_header.parent_root
-    if parent_root not in store.blocks:
-        raise GossipIgnore("sidecar's parent has not been seen")
-
-    # [REJECT] The sidecar's block's parent passes validation
-    if parent_root not in store.block_states:
-        raise GossipReject("sidecar's parent failed validation")
 
     # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
     if block_header.slot <= store.blocks[parent_root].slot:
@@ -894,20 +896,24 @@ object (`ENRForkID`):
 
 The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
-  - `genesis_validators_root` is the static `Root` found in
-    `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time (not
-    necessarily the epoch to which the node is sync).
-- `next_fork_version` is the fork version corresponding to the next planned fork
-  at a future epoch. The fork version will only change for regular forks, _not
-  BPO forks_. Note that it is possible for the blob schedule to define a change
-  at the same epoch as a regular fork; this situation would be considered a
-  regular fork. If no future fork is planned, set
-  `next_fork_version = current_fork_version` to signal this fact.
+- `fork_digest` is
+  `compute_fork_digest(genesis_validators_root, current_epoch)`.
+- `next_fork_version` is the fork version that will be in effect at
+  `next_fork_epoch`: `compute_fork_version(current_epoch)` if
+  `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
+  `compute_fork_version(next_fork_epoch)`.
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
+*Note*: In the definitions above, `genesis_validators_root` is the static `Root`
+found in `state.genesis_validators_root` and `current_epoch` is the node's
+current epoch defined by the wall-clock time (not necessarily the epoch to which
+the node is sync).
+
+*Note*: Because `next_fork_epoch` accounts for BPO forks, it is possible for
+`next_fork_version` to equal the current fork version even when a future fork is
+planned.
 
 #### Custody group count
 

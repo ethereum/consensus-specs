@@ -86,7 +86,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x05')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1("0x05")` |
 
 ### Sweep threshold validation
 
@@ -296,7 +296,7 @@ item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
 ) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
@@ -317,7 +317,7 @@ def add_validator_to_registry(
 ```python
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validators[index]
-    validator.withdrawal_credentials = (
+    validator.withdrawal_credentials = Bytes32(
         COMPOUNDING_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
     )
     queue_excess_active_balance(state, index)
@@ -367,7 +367,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
+    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
@@ -393,14 +393,14 @@ def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
     # There must be at least one space reserved for validator sweep withdrawals
     assert len(prior_withdrawals) < withdrawals_limit
 
-    processed_count: Uint64 = 0
+    processed_count = Uint64(0)
     withdrawals: list[Withdrawal] = []
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
@@ -422,7 +422,7 @@ def get_validators_sweep_withdrawals(
                     amount=balance,
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
         # [Modified in EIP8148]
         elif is_partially_withdrawable_validator(validator, balance, sweep_threshold):
             withdrawals.append(
@@ -434,9 +434,9 @@ def get_validators_sweep_withdrawals(
                     amount=balance - get_effective_sweep_threshold(validator, sweep_threshold),
                 )
             )
-            withdrawal_index += WithdrawalIndex(1)
+            withdrawal_index += 1
 
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        validator_index = (validator_index + 1) % len(state.validators)
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -541,6 +541,6 @@ def apply_parent_execution_payload(
         )
 
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

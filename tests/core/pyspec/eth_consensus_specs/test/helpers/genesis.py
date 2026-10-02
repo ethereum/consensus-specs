@@ -108,7 +108,7 @@ def get_sample_genesis_execution_payload(spec, eth1_block_hash=None):
     return payload
 
 
-def create_genesis_state(spec, validator_balances, activation_threshold):
+def create_genesis_state(spec, validator_balances, activation_threshold, builder_count=8):
     deposit_root = b"\x42" * 32
 
     eth1_block_hash = b"\xda" * 32
@@ -209,10 +209,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_consolidations = spec.PendingConsolidations()
 
     if is_post_gloas(spec):
-        # TODO(jtraglia): make it so that the builder count is not hardcoded.
         builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
         state.builders = spec.Builders(
-            data=[build_mock_builder(spec, i, builder_balance) for i in range(8)]
+            data=[build_mock_builder(spec, i, builder_balance) for i in range(builder_count)]
         )
         state.execution_payload_availability = spec.ExecutionPayloadAvailability(
             data=[0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]

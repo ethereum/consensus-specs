@@ -59,20 +59,19 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         **kwargs,
     )
@@ -85,7 +84,7 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(attestation),
                 "expected": "reject",
                 "reason": reason,
@@ -121,20 +120,19 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
 
     yield get_filename(attestation), attestation
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         **kwargs,
     )
@@ -147,7 +145,7 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(attestation),
                 "expected": "reject",
                 "reason": reason,

@@ -22,7 +22,7 @@ Warning: this configuration is not definitive.
 
 | Name                | Value                                              |
 | ------------------- | -------------------------------------------------- |
-| `FULU_FORK_VERSION` | `Version('0x06000000')`                            |
+| `FULU_FORK_VERSION` | `Version("0x06000000")`                            |
 | `FULU_FORK_EPOCH`   | `Epoch(411392)` (December 3, 2025, 09:49:11pm UTC) |
 
 ## Helpers
@@ -31,7 +31,7 @@ Warning: this configuration is not definitive.
 
 ```python
 def initialize_proposer_lookahead(
-    state: electra.BeaconState,
+    state: BeaconState,
 ) -> ProposerLookahead:
     """
     Return the proposer indices for the full available lookahead starting from current epoch.
@@ -40,7 +40,7 @@ def initialize_proposer_lookahead(
     current_epoch = get_current_epoch(state)
     lookahead: list[ValidatorIndex] = []
     for i in range(MIN_SEED_LOOKAHEAD + 1):
-        lookahead.extend(get_beacon_proposer_indices(state, Epoch(current_epoch + i)))
+        lookahead.extend(get_beacon_proposer_indices(state, current_epoch + i))
     return ProposerLookahead(data=lookahead)
 ```
 
@@ -106,8 +106,11 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in Fulu:EIP7917]
-        proposer_lookahead=initialize_proposer_lookahead(pre),
+        proposer_lookahead=ProposerLookahead(),
     )
+
+    # [New in Fulu:EIP7917]
+    post.proposer_lookahead = initialize_proposer_lookahead(post)
 
     return post
 ```

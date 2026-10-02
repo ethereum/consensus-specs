@@ -3,7 +3,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob_and_sidecars
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs_for_next_slot,
+    get_data_column_sidecars,
+)
 from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -14,6 +17,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def setup_gloas_sidecar(spec, state, block_in_store=True):
@@ -24,7 +28,9 @@ def setup_gloas_sidecar(spec, state, block_in_store=True):
     """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     if block_in_store:
         block_root = signed_block.message.hash_tree_root()
         store.blocks[block_root] = signed_block.message
@@ -43,7 +49,9 @@ def setup_gloas_failed_block_sidecar(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     pre_state = state.copy()
-    _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
 
     # Corrupt the block so it genuinely fails state transition, mirroring
     # setup_store_with_failed_block but for a blob-carrying block.
@@ -83,17 +91,16 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "ignore"
@@ -101,7 +108,7 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
             "reason": reason,
@@ -141,17 +148,16 @@ def test_gossip_data_column_sidecar__reject_block_failed_validation(spec, state)
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "reject"
@@ -159,7 +165,7 @@ def test_gossip_data_column_sidecar__reject_block_failed_validation(spec, state)
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
             "reason": reason,
@@ -193,18 +199,17 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar.slot)
     messages = []
 
     # The first validation is fully valid and seeds the seen cache.
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "valid"
@@ -212,20 +217,20 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
         }
     )
 
     # The same sidecar received again is ignored as already seen.
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "ignore"
@@ -233,7 +238,7 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
             "reason": reason,
@@ -269,17 +274,16 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "reject"
@@ -287,7 +291,7 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
             "reason": reason,
@@ -324,17 +328,16 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     seen = get_seen(spec)
     correct_subnet = spec.compute_subnet_for_data_column_sidecar(sidecar.index)
 
-    time_ms = spec.compute_time_at_slot_ms(store, sidecar.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "reject"
@@ -342,7 +345,7 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     messages.append(
         {
             "subnet_id": int(correct_subnet),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": result,
             "reason": reason,

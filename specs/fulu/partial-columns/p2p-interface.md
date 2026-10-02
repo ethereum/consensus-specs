@@ -227,7 +227,6 @@ equality check against their local copy as an additional safeguard.
 def validate_partial_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     sidecar: PartialDataColumnSidecar,
     current_time_ms: Uint64,
     group_id: PartialDataColumnGroupID,
@@ -280,6 +279,18 @@ def validate_partial_data_column_sidecar_gossip(
         if block_header.slot <= finalized_slot:
             raise GossipIgnore("header is not from a slot greater than the latest finalized slot")
 
+        # [IGNORE] The header's block's parent has been seen
+        # (MAY be queued for processing once the parent block is retrieved)
+        parent_root = block_header.parent_root
+        if parent_root not in store.blocks:
+            raise GossipIgnore("header's parent has not been seen")
+
+        # [REJECT] The header's block's parent passes validation
+        if parent_root not in store.block_states:
+            raise GossipReject("header's parent failed validation")
+
+        state = store.block_states[get_head(store).root]
+
         # [REJECT] The proposer index is a valid validator index
         if block_header.proposer_index >= len(state.validators):
             raise GossipReject("proposer index out of range")
@@ -290,16 +301,6 @@ def validate_partial_data_column_sidecar_gossip(
         signing_root = compute_signing_root(block_header, domain)
         if not bls.Verify(proposer.pubkey, signing_root, header.signed_block_header.signature):
             raise GossipReject("invalid proposer signature on header")
-
-        # [IGNORE] The header's block's parent has been seen
-        # (MAY be queued for processing once the parent block is retrieved)
-        parent_root = block_header.parent_root
-        if parent_root not in store.blocks:
-            raise GossipIgnore("header's parent has not been seen")
-
-        # [REJECT] The header's block's parent passes validation
-        if parent_root not in store.block_states:
-            raise GossipReject("header's parent failed validation")
 
         # [REJECT] The header is from a higher slot than the header's block's parent
         if block_header.slot <= store.blocks[parent_root].slot:

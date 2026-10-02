@@ -27,7 +27,7 @@ GeneralizedIndex = int
         return """
 def compute_merkle_proof(object: SSZObject,
                          index: GeneralizedIndex) -> list[Bytes32]:
-    return build_proof(object, index)"""
+    return [Bytes32(chunk) for chunk in build_proof(object, index)]"""
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
@@ -61,6 +61,7 @@ def compute_merkle_proof(object: SSZObject,
             "get_matching_head_attestations",
             "get_matching_source_attestations",
             "get_matching_target_attestations",
+            "get_pending_attesting_indices",
             "get_proposer_reward",
             "get_source_deltas",
             "get_target_deltas",

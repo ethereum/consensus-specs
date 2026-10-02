@@ -21,6 +21,7 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
+    - [`NewPayloadRequest`](#newpayloadrequest)
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [`is_merge_transition_complete`](#is_merge_transition_complete)
@@ -32,8 +33,6 @@
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution engine](#execution-engine)
-    - [Request data](#request-data)
-      - [`NewPayloadRequest`](#newpayloadrequest)
     - [Engine APIs](#engine-apis)
     - [`notify_new_payload`](#notify_new_payload)
     - [`is_valid_block_hash`](#is_valid_block_hash)
@@ -247,6 +246,13 @@ class ExecutionPayloadHeader(Container):
     transactions_root: Root
 ```
 
+#### `NewPayloadRequest`
+
+```python
+class NewPayloadRequest(Container):
+    execution_payload: ExecutionPayload
+```
+
 ## Helpers
 
 ### Predicates
@@ -255,14 +261,17 @@ class ExecutionPayloadHeader(Container):
 
 ```python
 def is_merge_transition_complete(state: BeaconState) -> bool:
-    return state.latest_execution_payload_header != ExecutionPayloadHeader()
+    return state.latest_execution_payload_header != ExecutionPayloadHeader.empty()
 ```
 
 #### `is_merge_transition_block`
 
 ```python
 def is_merge_transition_block(state: BeaconState, body: BeaconBlockBody) -> bool:
-    return not is_merge_transition_complete(state) and body.execution_payload != ExecutionPayload()
+    return (
+        not is_merge_transition_complete(state)
+        and body.execution_payload != ExecutionPayload.empty()
+    )
 ```
 
 #### `is_execution_enabled`
@@ -280,7 +289,7 @@ def is_execution_enabled(state: BeaconState, body: BeaconBlockBody) -> bool:
 `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`.
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
@@ -297,7 +306,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
             )
             # [Modified in Bellatrix]
             penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
-            penalties[index] += Gwei(penalty_numerator // penalty_denominator)
+            penalties[index] += penalty_numerator // penalty_denominator
     return rewards, penalties
 ```
 
@@ -312,7 +321,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 def slash_validator(
     state: BeaconState,
     slashed_index: ValidatorIndex,
-    whistleblower_index: Optional[ValidatorIndex] = None,
+    whistleblower_index: ValidatorIndex | None = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -320,9 +329,9 @@ def slash_validator(
     epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     validator = state.validators[slashed_index]
-    validator.slashed = True
+    validator.slashed = Boolean(True)
     validator.withdrawable_epoch = max(
-        validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
+        validator.withdrawable_epoch, epoch + EPOCHS_PER_SLASHINGS_VECTOR
     )
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
     # [Modified in Bellatrix]
@@ -333,25 +342,15 @@ def slash_validator(
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
-    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
+    whistleblower_reward = validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT
+    proposer_reward = whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
+    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
 ```
 
 ## Beacon chain state transition function
 
 ### Execution engine
-
-#### Request data
-
-##### `NewPayloadRequest`
-
-```python
-@dataclass
-class NewPayloadRequest:
-    execution_payload: ExecutionPayload
-```
 
 #### Engine APIs
 
@@ -444,7 +443,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
     # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(execution_payload=payload)
@@ -480,7 +479,7 @@ def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
-        sum(state.slashings)
+        Gwei(sum(state.slashings))
         # [Modified in Bellatrix]
         * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
         total_balance,

@@ -47,23 +47,21 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason_out = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == expected
     assert reason_out == reason
 
     message = {
-        "current_time_ms": int(time_ms),
+        "current_time_ms": int(current_time_ms),
         "message": get_filename(signed_block),
         "expected": result,
     }

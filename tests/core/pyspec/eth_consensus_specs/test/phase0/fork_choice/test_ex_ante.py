@@ -1,6 +1,5 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_to,
     with_altair_and_later,
     with_presets,
 )
@@ -12,8 +11,6 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
     MAINNET,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -60,9 +57,9 @@ def test_ex_ante_vanilla(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -94,8 +91,8 @@ def test_ex_ante_vanilla(spec, state):
     sign_attestation(spec, state_b, attestation)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_c.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -157,9 +154,9 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -176,8 +173,8 @@ def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, st
     signed_block_c = state_transition_and_sign_block(spec, state_c, block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_c.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -235,9 +232,9 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -259,8 +256,8 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_c.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -269,8 +266,8 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
     # Block D received at N+3 - D is head, it has proposer score boost
-    time = state_d.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_d.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_d, test_steps)
     check_head_against_root(spec, store, signed_block_d.message.hash_tree_root())
 
@@ -301,9 +298,9 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -340,8 +337,8 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_c.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -350,8 +347,8 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
     # Attestation_1 received at N+3 — C is head
-    time = state_d.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_d.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_attestation(spec, store, attestation, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -362,8 +359,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     yield "steps", test_steps
 
 
-# TODO(jtraglia): Investigate why this doesn't work with Gloas
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
@@ -387,9 +383,9 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving block A at slot `N`
     yield from _apply_base_block_a(spec, state, store, test_steps)
@@ -411,8 +407,8 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     signed_block_d = state_transition_and_sign_block(spec, state_d, block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_c.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 
@@ -441,10 +437,9 @@ def test_ex_ante_sandwich_with_boost_not_sufficient(spec, state):
     assert spec.get_set_bit_count(attestation.aggregation_bits) == participant_num
     sign_attestation(spec, state_c, attestation)
 
-    # Attestation_1 received at N+3 — B is head because B's attestation_score > C's proposer_score.
-    # (B's proposer_score = C's attestation_score = 0)
-    time = state_d.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, time, test_steps)
+    # Attestation_set_1 received at N+3 — C is head due to its attestation score.
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state_d.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     yield from add_attestation(spec, store, attestation, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
 

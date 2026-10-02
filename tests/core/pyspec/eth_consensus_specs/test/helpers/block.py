@@ -16,7 +16,6 @@ from eth_consensus_specs.test.helpers.forks import (
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.bls import only_with_bls
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
@@ -221,6 +220,6 @@ def get_state_and_beacon_parent_root_at_slot(spec, state, slot):
 
     previous_block_header = state.latest_block_header.copy()
     if previous_block_header.state_root == spec.Root():
-        previous_block_header.state_root = hash_tree_root(state)
-    beacon_parent_root = hash_tree_root(previous_block_header)
+        previous_block_header.state_root = spec.hash_tree_root(state)
+    beacon_parent_root = spec.hash_tree_root(previous_block_header)
     return state, beacon_parent_root

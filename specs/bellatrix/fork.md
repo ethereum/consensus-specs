@@ -18,7 +18,7 @@ This document describes the process of Bellatrix upgrade.
 
 | Name                     | Value                                          |
 | ------------------------ | ---------------------------------------------- |
-| `BELLATRIX_FORK_VERSION` | `Version('0x02000000')`                        |
+| `BELLATRIX_FORK_VERSION` | `Version("0x02000000")`                        |
 | `BELLATRIX_FORK_EPOCH`   | `Epoch(144896)` (Sept 6, 2022, 11:34:47am UTC) |
 
 ## Fork to Bellatrix
@@ -84,7 +84,7 @@ def upgrade_to_bellatrix(pre: altair.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [New in Bellatrix]
-        latest_execution_payload_header=ExecutionPayloadHeader(),
+        latest_execution_payload_header=ExecutionPayloadHeader.empty(),
     )
 
     return post

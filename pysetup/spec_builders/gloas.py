@@ -10,7 +10,6 @@ class GloasSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from ssz.bitfields import ProgressiveBitList
-from ssz.collections import ProgressiveList
 from ssz.container import active_fields, ProgressiveContainer
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
@@ -41,6 +40,16 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "AGGREGATE_DUE_BPS",
+            "ATTESTATION_DUE_BPS",
+            "CONTRIBUTION_DUE_BPS",
+            "MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT",
+            "SYNC_MESSAGE_DUE_BPS",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",
@@ -58,7 +67,14 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
             "initialize_proposer_lookahead",
             "process_execution_payload",
             "retrieve_column_sidecars",
+            "upgrade_lc_bootstrap_to_electra",
+            "upgrade_lc_finality_update_to_electra",
+            "upgrade_lc_header_to_electra",
+            "upgrade_lc_optimistic_update_to_electra",
+            "upgrade_lc_store_to_electra",
+            "upgrade_lc_update_to_electra",
             "upgrade_to_fulu",
+            "verify_data_column_sidecar_inclusion_proof",
             "verify_partial_data_column_header_inclusion_proof",
         }
 
@@ -77,8 +93,8 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes],
-                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None,
+                                  custody_columns: CustodyColumnBits | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
@@ -112,4 +128,11 @@ _get_parent_payload_status = get_parent_payload_status
 get_parent_payload_status = cache_this(
     lambda store, block: block.hash_tree_root(),
     _get_parent_payload_status, lru_size=1024)
+
+_compute_balance_weighted_selection = compute_balance_weighted_selection
+compute_balance_weighted_selection = cache_this(
+    lambda state, indices, seed, size, shuffle_indices: (
+        state.validators.hash_tree_root(), tuple(indices), seed, size, shuffle_indices
+    ),
+    _compute_balance_weighted_selection, lru_size=SLOTS_PER_EPOCH * 6)
 """

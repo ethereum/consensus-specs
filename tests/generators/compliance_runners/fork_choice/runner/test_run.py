@@ -8,7 +8,11 @@ from eth_utils import decode_hex
 from ruamel.yaml import YAML
 from snappy import uncompress
 
-from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.context import (
+    expect_assertion_error,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
@@ -76,6 +80,8 @@ class ComplianceTestInfo(NamedTuple):
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
+    if is_post_gloas(spec):
+        spec, _ = spec_with_config_overrides(get_copy_of_spec(spec), {"GLOAS_FORK_EPOCH": 0})
     meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)
     )
@@ -83,8 +89,8 @@ def run_test(test_info):
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
         if "tick" in step:
-            time = step["tick"]
-            spec.on_tick(store, time)
+            time_ms = spec.seconds_to_milliseconds(step["tick"])
+            spec.on_tick(store, time_ms)
         elif "block" in step:
             block_id = step["block"]
             valid = step.get("valid", True)
@@ -152,7 +158,7 @@ def run_test(test_info):
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
-                    assert store.time == expected_time
+                    assert spec.milliseconds_to_seconds(store.time_ms) == expected_time
                 elif check == "head":
                     head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]

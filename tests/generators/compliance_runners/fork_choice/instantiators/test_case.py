@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_altair_and_later,
+    with_config_overrides,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
@@ -227,6 +228,7 @@ def make_test_context(
 ):
     @with_altair_and_later
     @spec_state_test
+    @with_config_overrides({"GLOAS_FORK_EPOCH": 0})
     def get_spec_test_data_and_events(spec, state):
         test_kind = test_dna_base.kind
         solution = test_dna_base.solution
@@ -252,9 +254,9 @@ def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     # The genesis time enables the `equivocation_delay` mutation, which anchors
     # its randomized delivery times to the delayed block's slot boundaries.
     mops = MutationOps(
-        store.time,
-        spec.config.SLOT_DURATION_MS // 1000,
-        genesis_time=store.genesis_time,
+        spec.milliseconds_to_seconds(store.time_ms),
+        spec.milliseconds_to_seconds(spec.config.SLOT_DURATION_MS),
+        genesis_time=spec.milliseconds_to_seconds(store.genesis_time_ms),
     )
     mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
@@ -334,12 +336,13 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
     scheduler = MessageScheduler(spec, store)
 
     # record first tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, store.time_ms, test_steps)
 
     for kind, data, _ in events:
         if kind == "tick":
             time = data
-            if time > store.time:
+            time_ms = spec.seconds_to_milliseconds(time)
+            if time_ms > store.time_ms:
                 applied_events = scheduler.process_tick(time)
                 if record_recovery_messages:
                     for event_kind, event_data, recovery in applied_events:
@@ -374,11 +377,11 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             raise AssertionError
                 else:
                     raise AssertionError
-                if time > store.time:
+                if time_ms > store.time_ms:
                     # inside a slot
-                    on_tick_and_append_step(spec, store, time, test_steps)
+                    on_tick_and_append_step(spec, store, time_ms, test_steps)
                 else:
-                    assert time == store.time
+                    assert time_ms == store.time_ms
                     output_store_checks(spec, store, test_steps)
         elif kind == "block":
             block = data
@@ -452,11 +455,9 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")
-    next_slot_time = (
-        store.genesis_time
-        + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
-    )
-    on_tick_and_append_step(spec, store, next_slot_time, test_steps)
+    next_slot = spec.get_current_slot(store) + 1
+    next_slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, next_slot)
+    on_tick_and_append_step(spec, store, next_slot_time_ms, test_steps)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield "steps", test_steps

@@ -38,6 +38,7 @@ def prepare_signed_execution_payload_bid(
     blob_kzg_commitments=None,
     prev_randao=None,
     inclusion_list_bits=None,
+    execution_requests_root=None,
     valid_signature=True,
     valid_amount=True,
 ):
@@ -95,6 +96,8 @@ def prepare_signed_execution_payload_bid(
         "value": value,
         "blob_kzg_commitments": blob_kzg_commitments,
     }
+    if execution_requests_root is not None:
+        bid_kwargs["execution_requests_root"] = execution_requests_root
     if is_post_heze(spec) and inclusion_list_bits is not None:
         bid_kwargs["inclusion_list_bits"] = inclusion_list_bits
 

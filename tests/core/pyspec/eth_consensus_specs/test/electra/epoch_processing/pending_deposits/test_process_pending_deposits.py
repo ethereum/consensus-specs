@@ -197,7 +197,7 @@ def test_process_pending_deposits_not_finalized(spec, state):
     # deposit_balance_to_consume was reset to 0
     assert state.deposit_balance_to_consume == 0
     # second deposit was not processed as it hasn't been finalized
-    assert list(state.pending_deposits) == new_pending_deposits[1:]
+    assert state.pending_deposits == new_pending_deposits[1:]
     _check_pending_deposits_induced_new_validators(
         spec, state, pre_validator_count, new_pending_deposits[:1]
     )
@@ -223,9 +223,7 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
     # deposit_balance_to_consume was reset to 0
     assert state.deposit_balance_to_consume == 0
     # no deposits above limit were processed
-    assert (
-        list(state.pending_deposits) == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH :]
-    )
+    assert state.pending_deposits == new_pending_deposits[spec.MAX_PENDING_DEPOSITS_PER_EPOCH :]
     for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH):
         assert state.balances[i] == pre_balances[i] + amount
     for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH, spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):

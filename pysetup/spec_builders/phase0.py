@@ -27,25 +27,25 @@ from dataclasses import (
 )
 from hashlib import sha256 as sha256_hash
 from typing import (
-    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
+    Any, Callable, Counter, Sequence, TypeAlias, TypeVar, NamedTuple, Final
 )
 
 from ssz.bitfields import BitList, BitVector
 from ssz.boolean import Boolean
-from ssz.collections import List, Vector
+from ssz.collections import List, ProgressiveList, Vector
 from ssz.container import Container
 from ssz.ssz_base import SSZType
-from ssz.uint import Byte, Uint8, Uint16, Uint32, Uint64, Uint256
+from ssz.uint import BaseUint as Uint, Byte, Uint8, Uint16, Uint32, Uint64, Uint256
 from eth_consensus_specs.utils.ssz.bytes import (
     Bytes1, Bytes4, Bytes20, Bytes32, Bytes48, Bytes96)
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
+from eth_consensus_specs.utils.ssz.ssz_impl import ssz_deserialize, ssz_serialize
 from eth_consensus_specs.utils import bls
 """
 
     @classmethod
     def preparations(cls) -> str:
         return """
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar("SSZObject", bound=SSZType)
 """
 
     @classmethod
@@ -58,13 +58,13 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
     return Eth1Data(
         deposit_root=block.deposit_root,
         deposit_count=block.deposit_count,
-        block_hash=hash_tree_root(block))
+        block_hash=Hash32(hash_tree_root(block)))
 
 
-def cache_this(key_fn, value_fn, lru_size):  # type: ignore
+def cache_this(key_fn, value_fn, lru_size):
     cache_dict = LRU(size=lru_size)
 
-    def wrapper(*args, **kw):  # type: ignore
+    def wrapper(*args, **kw):
         key = key_fn(*args, **kw)
         if key not in cache_dict:
             cache_dict[key] = value_fn(*args, **kw)
@@ -84,7 +84,7 @@ get_total_active_balance = cache_this(
 
 _get_base_reward = get_base_reward
 get_base_reward = cache_this(
-    lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
+    lambda state, index, *args: (state.validators.hash_tree_root(), state.slot, index, *args),
     _get_base_reward, lru_size=2048)
 
 _get_committee_count_per_slot = get_committee_count_per_slot

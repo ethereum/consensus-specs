@@ -59,18 +59,13 @@ def _assert_envelope_preregistrations_gossip(spec, state, count, expected, reaso
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
-
-    time_ms += 100
     result, reason_out = run_validate_gossip(
-        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason
 
     message = {
-        "current_time_ms": int(time_ms),
         "message": get_filename(signed_envelope),
         "expected": result,
     }

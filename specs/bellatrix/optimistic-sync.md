@@ -68,25 +68,25 @@ Let `head: BeaconBlock` be the result of calling of the fork choice algorithm at
 the time of block production. Let `head_block_root: Root` be the root of that
 block.
 
-Let `blocks: Dict[Root, BeaconBlock]` and
-`block_states: Dict[Root, BeaconState]` be the blocks (and accompanying states)
+Let `blocks: dict[Root, BeaconBlock]` and
+`block_states: dict[Root, BeaconState]` be the blocks (and accompanying states)
 that have been verified either completely or optimistically.
 
-Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
+Let `optimistic_roots: set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have only received a `NOT_VALIDATED`
 designation from an execution engine (i.e., they are not known to be
 `INVALIDATED` or `VALID`).
 
-Let `current_slot: Slot` be `(time - genesis_time) * 1000 // SLOT_DURATION_MS`
-where `time` is the UNIX time according to the local system clock.
+Let `current_slot: Slot` be `compute_slot_at_time(genesis_time, time)` where
+`time` is the UNIX time according to the local system clock.
 
 ```python
 @dataclass
 class OptimisticStore:
-    optimistic_roots: Set[Root]
+    optimistic_roots: set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
 ```
 
 ```python
@@ -105,7 +105,7 @@ def latest_verified_ancestor(opt_store: OptimisticStore, block: BeaconBlock) -> 
 
 ```python
 def is_execution_block(block: BeaconBlock) -> bool:
-    return block.body.execution_payload != ExecutionPayload()
+    return block.body.execution_payload != ExecutionPayload.empty()
 ```
 
 ```python
@@ -223,7 +223,7 @@ parameter. The general approach is as follows:
 | `latestValidHash`       | `invalidBlock`                                                                                                                                |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Execution block hash    | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing the block with payload in question |
-| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question                  |
+| `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload.empty()` in the chain containing a block with payload in question            |
 | `null`                  | Block with payload in question                                                                                                                |
 
 When `latestValidHash` is a meaningful execution block hash but consensus engine
@@ -371,7 +371,7 @@ verified or the block is older than `SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY`.
 These restraints are applied in order to mitigate an attack where a block which
 enables execution (a *transition block*) can reference a junk parent hash. This
 makes it impossible for honest nodes to build atop that block. If an attacker
-exploits a nuance in fork choice `filter_block_tree`, they can, in some rare
+exploits a nuance in fork choice `filter_node_tree`, they can, in some rare
 cases, produce a junk block that out-competes all locally produced blocks for
 the head. This prevents a node from producing a chain of blocks, therefore
 breaking liveness.

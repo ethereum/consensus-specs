@@ -74,8 +74,8 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
-) -> Optional[PayloadId]: ...
+    payload_attributes: PayloadAttributes | None,
+) -> PayloadId | None: ...
 ```
 
 *Note*: The `(head_block_hash, finalized_block_hash)` values of the
@@ -126,9 +126,9 @@ class PowBlock(Container):
 
 ### `get_pow_block`
 
-Let `get_pow_block(block_hash: Hash32) -> Optional[PowBlock]` be the function
-that given the hash of the PoW block returns its data. It may result in `None`
-if the requested block is not yet available.
+Let `get_pow_block(block_hash: Hash32) -> PowBlock | None` be the function that
+given the hash of the PoW block returns its data. It may result in `None` if the
+requested block is not yet available.
 
 *Note*: The `eth_getBlockByHash` JSON-RPC method may be used to pull this
 information from an execution client.
@@ -196,7 +196,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Parent block must be known
     assert block.parent_root in store.block_states
     # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
+    pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 

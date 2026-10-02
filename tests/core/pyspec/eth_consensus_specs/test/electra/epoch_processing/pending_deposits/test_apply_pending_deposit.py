@@ -9,7 +9,10 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block
-from eth_consensus_specs.test.helpers.withdrawals import set_validator_fully_withdrawable
+from eth_consensus_specs.test.helpers.withdrawals import (
+    set_parent_block_full,
+    set_validator_fully_withdrawable,
+)
 
 
 @with_electra_and_later
@@ -544,7 +547,7 @@ def test_apply_pending_deposit_success_top_up_to_withdrawn_validator(spec, state
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+        set_parent_block_full(spec, state)
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0

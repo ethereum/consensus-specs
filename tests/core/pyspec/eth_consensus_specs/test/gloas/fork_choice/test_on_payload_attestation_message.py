@@ -1,6 +1,6 @@
 from eth_consensus_specs.test.context import (
     always_bls,
-    spec_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -60,7 +60,7 @@ def _setup_test(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_unknown_block_root(spec, state):
     """
     Test that messages for an unknown beacon_block_root are rejected.
@@ -94,7 +94,7 @@ def test_on_payload_attestation_message_unknown_block_root(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_slot_mismatch(spec, state):
     """
     Test that a message whose slot doesn't match the block's slot is dropped without error.
@@ -123,7 +123,7 @@ def test_on_payload_attestation_message_slot_mismatch(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_not_ptc_member(spec, state):
     """
     Test that a message from a validator outside the PTC is rejected.
@@ -158,7 +158,7 @@ def test_on_payload_attestation_message_not_ptc_member(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     """
@@ -214,7 +214,7 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_valid(spec, state):
     """
     Test that valid messages update attestations.
@@ -271,7 +271,7 @@ def test_on_payload_attestation_message_valid(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(spec, state):
     """
     Test that two different PTC members voting for the same block update independent vote sets.
@@ -337,7 +337,7 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_on_payload_attestation_message_from_block(spec, state):
     """
     Test that a PayloadAttestation included in a block updates the vote arrays

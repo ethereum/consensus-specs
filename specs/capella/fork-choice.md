@@ -36,8 +36,8 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
-) -> Optional[PayloadId]: ...
+    payload_attributes: PayloadAttributes | None,
+) -> PayloadId | None: ...
 ```
 
 ## Helpers
@@ -93,7 +93,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
+    state = store.block_states[block.parent_root].copy()
     state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block

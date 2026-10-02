@@ -19,18 +19,33 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "TERMINAL_BLOCK_HASH",
+            "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "HistoricalBatch",
         }
 
     @classmethod
+    def deprecate_constants(cls) -> set[str]:
+        return {
+            "SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "get_terminal_pow_block",
+            "is_execution_block",
             "is_execution_enabled",
             "is_merge_transition_block",
             "is_merge_transition_complete",
+            "is_optimistic_candidate_block",
             "process_historical_roots_update",
             "upgrade_to_bellatrix",
             "validate_merge_block",

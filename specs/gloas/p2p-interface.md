@@ -20,13 +20,14 @@
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `compute_min_epochs_for_block_requests`](#modified-compute_min_epochs_for_block_requests)
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
+  - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
-  - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -67,13 +68,13 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 These constants supersede
 [type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
-for the corresponding variable-size libp2p messages.
+for the corresponding variable-size libp2p messages. The bound for
+`DataColumnSidecar` is given by `compute_max_data_column_sidecar_size()`.
 
 | Name                                    | Value                         |
 | --------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `Uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
 
 ## Configs
@@ -189,33 +190,33 @@ class SignedProposerPreferences(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[Boolean, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[Boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
     # [Modified in Gloas:EIP7732]
-    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
+    execution_payloads: dict[Hash32, ExecutionPayload]
     # [New in Gloas:EIP7732]
-    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
-    proposer_preferences: Dict[Tuple[Root, Slot], ProposerPreferences]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
 ```
 
 ### Modified `compute_fork_version`
@@ -240,6 +241,25 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### Modified `compute_min_epochs_for_block_requests`
+
+*Note*: `compute_min_epochs_for_block_requests` is modified to use the
+arithmetic from `compute_weak_subjectivity_period` found in the
+[weak subjectivity guide](./weak-subjectivity.md). In the worst case of a very
+large validator set, the capped activation churn is negligible, which leaves the
+exit churn (weighted 2/3) and the consolidation churn (weighted 1).
+
+```python
+def compute_min_epochs_for_block_requests() -> Epoch:
+    """
+    Return the minimum epoch range over which a node must serve blocks.
+    """
+    # [Modified in Gloas:EIP8061]
+    numerator = 3 * CHURN_LIMIT_QUOTIENT_GLOAS * CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    denominator = 2 * CONSOLIDATION_CHURN_LIMIT_QUOTIENT + 3 * CHURN_LIMIT_QUOTIENT_GLOAS
+    return MIN_VALIDATOR_WITHDRAWABILITY_DELAY + (numerator // denominator) // 2
 ```
 
 ### Modified `verify_data_column_sidecar_kzg_proofs`
@@ -298,6 +318,29 @@ def verify_data_column_sidecar(
     return True
 ```
 
+### New `compute_max_data_column_sidecar_size`
+
+```python
+def compute_max_data_column_sidecar_size() -> Uint64:
+    """
+    Return the maximum size of a serialized ``DataColumnSidecar`` computed
+    using the largest ``max_blobs_per_block`` value from the blob schedule,
+    regardless of whether or not that is the current ``max_blobs_per_block``.
+    """
+    max_blobs = MAX_BLOBS_PER_BLOCK_ELECTRA
+    for entry in BLOB_SCHEDULE:
+        max_blobs = max(max_blobs, entry["MAX_BLOBS_PER_BLOCK"])
+
+    sidecar = DataColumnSidecar(
+        index=ColumnIndex(),
+        column=DataColumn(data=[Cell()] * max_blobs),
+        kzg_proofs=KZGProofs(data=[KZGProof()] * max_blobs),
+        slot=Slot(),
+        beacon_block_root=Root(),
+    )
+    return Uint64(len(ssz_serialize(sidecar)))
+```
+
 ### New `is_current_or_next_slot`
 
 ```python
@@ -311,7 +354,7 @@ def is_current_or_next_slot(
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
     is_current = is_current_slot(store, slot, current_time_ms)
-    is_next = is_current_slot(store, Slot(slot - 1), current_time_ms)
+    is_next = is_current_slot(store, slot - 1, current_time_ms)
     return is_current or is_next
 ```
 
@@ -327,7 +370,7 @@ def is_past_slot(
     Check if the given slot is in the past
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    slot_time_ms = compute_time_at_slot_ms(store, slot)
+    slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot)
     return current_time_ms > slot_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY
 ```
 
@@ -341,7 +384,7 @@ def is_gas_limit_target_compatible(
     Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
     EIP-1559 transition rule from ``parent_gas_limit``.
     """
-    max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+    max_gas_limit_difference = saturating_sub(parent_gas_limit // 1024, 1)
     min_gas_limit = parent_gas_limit - max_gas_limit_difference
     max_gas_limit = parent_gas_limit + max_gas_limit_difference
 
@@ -380,32 +423,13 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     return builds_on_parent_payload
 ```
 
-### New `is_valid_dependent_root`
-
-```python
-def is_valid_dependent_root(store: Store, root: Root, epoch: Epoch) -> bool:
-    """
-    Check if the block with the given ``root`` is a possible dependent block
-    for the given ``epoch``, meaning that on some branch it is, or could
-    become, the latest block prior to the start of the epoch.
-    """
-    epoch_start_slot = compute_start_slot_at_epoch(epoch)
-    for block in store.blocks.values():
-        if block.parent_root == root:
-            if block.slot >= epoch_start_slot:
-                return True
-    if root == get_head(store).root:
-        return True
-    return False
-```
-
 ### New `verify_attestation_payload_status`
 
 ```python
 def verify_attestation_payload_status(
     store: Store,
     data: AttestationData,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Verify that the attested payload status is consistent with the block's payload.
@@ -439,6 +463,8 @@ def verify_attestation_payload_status(
 ```
 
 ### New `verify_block_body_operation_limits`
+
+*Note*: These checks MAY be performed when deserializing `BeaconBlockBody`.
 
 ```python
 def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
@@ -476,6 +502,8 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
 ```
 
 ### New `verify_execution_requests_limits`
+
+*Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
 
 ```python
 def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
@@ -537,7 +565,6 @@ bid carried at `block.body.signed_execution_payload_bid.message`.
 def validate_beacon_block_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     # [Modified in Gloas:EIP7732]
@@ -549,6 +576,11 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
     bid = block.body.signed_execution_payload_bid.message
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
 
     # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
@@ -562,11 +594,6 @@ def validate_beacon_block_gossip(
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
 
-    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
-    proposer_slot_key = (block.slot, block.proposer_index)
-    if proposer_slot_key in seen.proposer_slots:
-        raise GossipIgnore("block is not the first valid block for this slot and proposer")
-
     # [New in Gloas:EIP7688]
     # [REJECT] The block body operation counts are within their limits
     verify_block_body_operation_limits(block.body)
@@ -574,6 +601,17 @@ def validate_beacon_block_gossip(
     # [New in Gloas:EIP7688]
     # [REJECT] The parent execution request counts are within their limits
     verify_execution_requests_limits(block.body.parent_execution_requests)
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's parent passes validation
+    if block.parent_root not in store.block_states:
+        raise GossipReject("block's parent is invalid")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
@@ -585,11 +623,6 @@ def validate_beacon_block_gossip(
     signing_root = compute_signing_root(block, domain)
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
-
-    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until parent is retrieved)
-    if block.parent_root not in store.blocks:
-        raise GossipIgnore("block's parent has not been seen")
 
     # [New in Gloas:EIP7732]
     # [IGNORE] If the parent block is full, the parent payload is valid
@@ -610,7 +643,7 @@ def validate_beacon_block_gossip(
 
     # [Modified in Gloas:EIP7732]
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
-    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
@@ -618,10 +651,6 @@ def validate_beacon_block_gossip(
     # [REJECT] The bid's parent equals the block's parent
     if bid.parent_block_root != block.parent_root:
         raise GossipReject("bid's parent does not equal block's parent")
-
-    # [REJECT] The block's parent passes validation
-    if block.parent_root not in store.block_states:
-        raise GossipReject("block's parent is invalid")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
     parent_state = store.block_states[block.parent_root].copy()
@@ -652,11 +681,10 @@ seen and passes execution-layer validation.
 def validate_beacon_aggregate_and_proof_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_aggregate_and_proof: SignedAggregateAndProof,
     current_time_ms: Uint64,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -676,6 +704,33 @@ def validate_beacon_aggregate_and_proof_gossip(
     if len(committee_indices) != 1:
         raise GossipReject("aggregate committee bits must specify exactly one committee")
     index = committee_indices[0]
+
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+    aggregate_data_root = hash_tree_root(aggregate.data)
+    aggregate_cache_key = (aggregate_data_root, index)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
+    seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
+
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
+    aggregator_index = aggregate_and_proof.aggregator_index
+    target_epoch = aggregate.data.target.epoch
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The committee index is within the expected range
     committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
@@ -706,28 +761,13 @@ def validate_beacon_aggregate_and_proof_gossip(
     if len(attesting_indices) < 1:
         raise GossipReject("aggregate has no participants")
 
-    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
-    aggregate_data_root = hash_tree_root(aggregate.data)
-    aggregate_cache_key = (aggregate_data_root, index)
-    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
-    if is_non_strict_superset(seen_bits, aggregate_bits):
-        raise GossipIgnore("already seen aggregate for this data")
-
-    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
-    aggregator_index = aggregate_and_proof.aggregator_index
-    target_epoch = aggregate.data.target.epoch
-    aggregator_epoch_key = (target_epoch, aggregator_index)
-    if aggregator_epoch_key in seen.aggregator_epochs:
-        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
-
     # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
 
-    # [REJECT] The aggregator's validator index is within the committee
+    # [REJECT] The aggregator is a member of the committee
     if aggregator_index not in committee:
-        raise GossipReject("aggregator index not in committee")
+        raise GossipReject("aggregator is not a member of the committee")
 
     # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
@@ -745,16 +785,6 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [REJECT] The aggregate signature is valid
     if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
         raise GossipReject("invalid aggregate signature")
-
-    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until block is retrieved)
-    block_root = aggregate.data.beacon_block_root
-    if block_root not in store.blocks:
-        raise GossipIgnore("block being voted for has not been seen")
-
-    # [REJECT] The block being voted for passes validation
-    if block_root not in store.block_states:
-        raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
     checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
@@ -787,7 +817,6 @@ This topic is used to propagate execution payload messages as
 def validate_execution_payload_envelope_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_execution_payload_envelope: SignedExecutionPayloadEnvelope,
 ) -> None:
     """
@@ -798,6 +827,11 @@ def validate_execution_payload_envelope_gossip(
     payload = envelope.payload
     block_root = envelope.beacon_block_root
 
+    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
+    envelope_key = (block_root, envelope.builder_index)
+    if envelope_key in seen.execution_payload_envelopes:
+        raise GossipIgnore("already seen envelope for this block root from this builder")
+
     # [IGNORE] The envelope's block root has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
     if block_root not in store.blocks:
@@ -807,10 +841,7 @@ def validate_execution_payload_envelope_gossip(
     if block_root not in store.block_states:
         raise GossipReject("envelope's block failed validation")
 
-    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
-    envelope_key = (block_root, envelope.builder_index)
-    if envelope_key in seen.execution_payload_envelopes:
-        raise GossipIgnore("already seen envelope for this block root from this builder")
+    state = store.block_states[block_root]
 
     # [IGNORE] The envelope is from a slot greater than or equal to the latest finalized slot
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
@@ -860,7 +891,6 @@ This topic is used to propagate signed payload attestation message.
 def validate_payload_attestation_message_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     payload_attestation_message: PayloadAttestationMessage,
     current_time_ms: Uint64,
 ) -> None:
@@ -871,14 +901,18 @@ def validate_payload_attestation_message_gossip(
     data = payload_attestation_message.data
     validator_index = payload_attestation_message.validator_index
 
-    # [IGNORE] The payload attestation's slot is the current slot
-    if not is_current_slot(store, data.slot, current_time_ms):
-        raise GossipIgnore("payload attestation's slot is not the current slot")
+    # [REJECT] The payload attestation's slot is at or after the Gloas fork
+    if compute_epoch_at_slot(data.slot) < GLOAS_FORK_EPOCH:
+        raise GossipReject("payload attestation's slot is pre-gloas")
 
     # [IGNORE] This is the first valid payload attestation from this validator index
     payload_attestation_key = (data.slot, validator_index)
     if payload_attestation_key in seen.payload_attestation_validators:
         raise GossipIgnore("already seen payload attestation from this validator")
+
+    # [IGNORE] The payload attestation's slot is for the current slot
+    if not is_current_slot(store, data.slot, current_time_ms):
+        raise GossipIgnore("payload attestation is not for the current slot")
 
     # [IGNORE] The payload attestation's block has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
@@ -893,6 +927,8 @@ def validate_payload_attestation_message_gossip(
     if store.blocks[data.beacon_block_root].slot != data.slot:
         raise GossipIgnore("payload attestation's block is not at the assigned slot")
 
+    state = store.block_states[get_head(store).root]
+
     # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
@@ -901,7 +937,7 @@ def validate_payload_attestation_message_gossip(
     if validator_index not in get_ptc(state, data.slot):
         raise GossipReject("validator is not in the payload timeliness committee")
 
-    # [REJECT] The signature is valid with respect to the validator's public key
+    # [REJECT] The signature is valid
     validator = state.validators[validator_index]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
@@ -916,16 +952,10 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
-*Note*: The `state` passed to `validate_execution_payload_bid_gossip` is the
-bid's parent block post-state. The function advances it to the bid's slot so
-that builder checks such as `is_active_builder` and `can_builder_cover_bid` are
-evaluated at the bid's slot rather than at the parent's slot.
-
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     signed_execution_payload_bid: SignedExecutionPayloadBid,
     current_time_ms: Uint64,
 ) -> None:
@@ -934,10 +964,6 @@ def validate_execution_payload_bid_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     bid = signed_execution_payload_bid.message
-
-    # [IGNORE] The bid's slot is the current slot or the next slot
-    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
-        raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [IGNORE] This is the first bid for this slot, parent, and builder
     bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
@@ -950,13 +976,17 @@ def validate_execution_payload_bid_gossip(
         if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
             raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
 
-    # [REJECT] The bid is for a higher slot than its parent block
-    if bid.slot <= state.slot:
-        raise GossipReject("bid's slot is not higher than its parent's slot")
+    # [IGNORE] The bid's slot is the current slot or the next slot
+    if not is_current_or_next_slot(store, bid.slot, current_time_ms):
+        raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
         raise GossipReject("bid's execution payment must be zero")
+
+    # [REJECT] The bid's block hash is not equal to its parent block hash
+    if bid.block_hash == bid.parent_block_hash:
+        raise GossipReject("bid's block hash equals its parent block hash")
 
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
@@ -969,20 +999,24 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_root not in store.blocks:
         raise GossipIgnore("bid's parent block root is not a known beacon block")
 
-    # [IGNORE] The state is the bid's parent block post-state
-    parent_block = store.blocks[bid.parent_block_root]
-    header = state.latest_block_header.copy()
-    header.state_root = parent_block.state_root
-    if hash_tree_root(header) != bid.parent_block_root:
-        raise GossipIgnore("state is not the bid's parent block post-state")
+    # [REJECT] The bid is for a higher slot than its parent block
+    if bid.slot <= store.blocks[bid.parent_block_root].slot:
+        raise GossipReject("bid's slot is not higher than its parent's slot")
+
+    # [IGNORE] The bid's parent block has been imported
+    # (MAY be queued until parent is imported)
+    if bid.parent_block_root not in store.block_states:
+        raise GossipIgnore("bid's parent block post-state is unavailable")
+
+    state = store.block_states[bid.parent_block_root]
 
     # [IGNORE] The bid's slot is within the parent's proposer lookahead
-    if proposal_epoch > get_current_epoch(state) + Epoch(MIN_SEED_LOOKAHEAD):
+    if proposal_epoch > get_current_epoch(state) + MIN_SEED_LOOKAHEAD:
         raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
 
     # [IGNORE] The matching proposer preferences have been seen
     dependent_root = get_shuffling_dependent_root(store, bid.parent_block_root, proposal_epoch)
-    prefs_key = (dependent_root, bid.slot)
+    prefs_key = (bid.slot, dependent_root)
     if prefs_key not in seen.proposer_preferences:
         raise GossipIgnore("matching proposer preferences have not been seen")
 
@@ -1011,7 +1045,6 @@ def validate_execution_payload_bid_gossip(
     if bid.prev_randao != get_randao_mix(state, get_current_epoch(state)):
         raise GossipReject("bid's previous randao is incorrect")
 
-    # Advance state
     state = state.copy()
     process_slots(state, bid.slot)
 
@@ -1019,17 +1052,27 @@ def validate_execution_payload_bid_gossip(
     if bid.builder_index >= len(state.builders):
         raise GossipReject("builder index out of range")
 
-    # [IGNORE] The builder can cover the bid
-    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
-        raise GossipIgnore("builder cannot cover bid value")
+    builder = state.builders[bid.builder_index]
+
+    # [REJECT] The builder is a payload builder
+    if builder.version != PAYLOAD_BUILDER_VERSION:
+        raise GossipReject("builder is not a payload builder")
 
     # [REJECT] The builder is active
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
-    # [REJECT] The builder is a payload builder
-    if state.builders[bid.builder_index].version != PAYLOAD_BUILDER_VERSION:
-        raise GossipReject("builder is not a payload builder")
+    # [IGNORE] The builder can cover the bid
+    if not can_builder_cover_bid(state, bid.builder_index, bid.value):
+        raise GossipIgnore("builder cannot cover bid value")
+
+    # [IGNORE] The parent's payload does not try to exit the builder
+    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+        envelope = store.payloads[bid.parent_block_root]
+        for request in envelope.execution_requests.builder_exits:
+            if request.pubkey == builder.pubkey:
+                if request.source_address == builder.execution_address:
+                    raise GossipIgnore("builder may exit")
 
     # [REJECT] The bid signature is valid
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
@@ -1068,9 +1111,14 @@ def validate_proposer_preferences_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     preferences = signed_proposer_preferences.message
-    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+
+    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
+    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
+    if prefs_key in seen.proposer_preferences:
+        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
 
     # [IGNORE] The proposal epoch is after the Gloas upgrade
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
     if proposal_epoch < GLOAS_FORK_EPOCH:
         raise GossipIgnore("proposal epoch is pre-gloas")
 
@@ -1079,9 +1127,8 @@ def validate_proposer_preferences_gossip(
         raise GossipIgnore("proposal slot has already started")
 
     # [IGNORE] The proposer for the proposal slot is known
-    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
-    lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
-    if is_future_slot(store, lookahead_epoch_start_slot, current_time_ms):
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(proposal_epoch)
+    if is_future_slot(store, lookahead_start_slot, current_time_ms):
         raise GossipIgnore("proposer for the proposal slot is not yet known")
 
     # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
@@ -1089,33 +1136,35 @@ def validate_proposer_preferences_gossip(
     if preferences.dependent_root not in store.blocks:
         raise GossipIgnore("dependent block has not been seen")
 
-    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
-    prefs_key = (preferences.dependent_root, preferences.proposal_slot)
-    if prefs_key in seen.proposer_preferences:
-        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
-
     # [IGNORE] The dependent block passes validation
     if preferences.dependent_root not in store.block_states:
         raise GossipIgnore("dependent block failed validation")
 
-    # [REJECT] The dependent root is a valid dependent block for the proposal slot
-    if store.blocks[preferences.dependent_root].slot >= lookahead_epoch_start_slot:
-        raise GossipReject("dependent root is not before the proposer lookahead epoch")
+    # [REJECT] The dependent block's slot is not after the shuffling dependent slot
+    dependent_slot = compute_shuffling_dependent_slot(proposal_epoch)
+    if store.blocks[preferences.dependent_root].slot > dependent_slot:
+        raise GossipReject("dependent block is after the shuffling dependent slot")
 
-    # [IGNORE] The dependent root is a possible dependent block for the lookahead epoch
-    if not is_valid_dependent_root(store, preferences.dependent_root, lookahead_epoch):
-        raise GossipIgnore("dependent root is not a possible dependent block")
+    # [IGNORE] The dependent block is a possible dependent block for the proposer lookahead
+    if not is_valid_dependent_root(store, preferences.dependent_root, dependent_slot):
+        raise GossipIgnore("dependent block is not a possible dependent block")
+
+    state = store.block_states[preferences.dependent_root].copy()
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
 
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
-    lookahead_state = store.block_states[preferences.dependent_root].copy()
-    process_slots(lookahead_state, lookahead_epoch_start_slot)
-    lookahead_index = preferences.proposal_slot - lookahead_epoch_start_slot
-    if lookahead_state.proposer_lookahead[lookahead_index] != preferences.validator_index:
+    lookahead_index = preferences.proposal_slot - lookahead_start_slot
+    if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
         raise GossipReject("validator is not the proposer for the given slot")
 
-    # [REJECT] The signature is valid with respect to the validator's public key
-    validator = lookahead_state.validators[preferences.validator_index]
-    domain = get_domain(lookahead_state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
+    # [REJECT] The signature is valid
+    validator = state.validators[preferences.validator_index]
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(preferences, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")
@@ -1138,12 +1187,11 @@ been seen and passes execution-layer validation.
 def validate_beacon_attestation_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
     attestation: SingleAttestation,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SingleAttestation for gossip propagation on a subnet.
@@ -1154,10 +1202,27 @@ def validate_beacon_attestation_gossip(
     attester_index = attestation.attester_index
     target_epoch = data.target.epoch
 
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
+
     # [New in Gloas:EIP7732]
     # [REJECT] The attestation's data index is 0 or 1
     if data.index > 1:
         raise GossipReject("attestation data index must be 0 or 1")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
 
     # [REJECT] The committee index is within the expected range
     committees_per_slot = get_committee_count_per_slot(state, target_epoch)
@@ -1190,27 +1255,12 @@ def validate_beacon_attestation_gossip(
     if attester_index not in committee:
         raise GossipReject("attester is not a member of the committee")
 
-    # [IGNORE] No other valid attestation seen for this target epoch and validator
-    attestation_epoch_key = (target_epoch, attester_index)
-    if attestation_epoch_key in seen.attestation_validator_epochs:
-        raise GossipIgnore("already seen attestation for this epoch and validator")
-
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
     signing_root = compute_signing_root(data, domain)
     if not bls.Verify(attester.pubkey, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")
-
-    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
-    # (MAY be queued until block is retrieved)
-    block_root = data.beacon_block_root
-    if block_root not in store.blocks:
-        raise GossipIgnore("block being voted for has not been seen")
-
-    # [REJECT] The block being voted for passes validation
-    if block_root not in store.block_states:
-        raise GossipReject("block being voted for failed validation")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block
     target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
@@ -1247,8 +1297,6 @@ the sidecar.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    # [Modified in Gloas:EIP7732]
-    # Removed `state`
     sidecar: DataColumnSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
@@ -1371,6 +1419,17 @@ Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
+Clients MUST respond with execution payload envelopes from their view of the
+current fork choice -- that is, envelopes of payloads that are part of the
+single chain defined by the current head. A payload is part of that chain if the
+next block in the chain builds on it, i.e. the `parent_block_hash` of that
+block's execution payload bid equals the `block_hash` of the payload. For the
+head block, the payload is part of the chain if the head `ForkChoiceNode` has
+`payload_status` equal to `PAYLOAD_STATUS_FULL`. Clients MUST NOT include
+envelopes for blocks whose `ForkChoiceNode` in that chain has `payload_status`
+equal to `PAYLOAD_STATUS_EMPTY`. For slots before the finalization, that chain
+leads to the finalized block reported in the `Status` handshake.
+
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 `beacon_block` referred to by
@@ -1426,6 +1485,10 @@ Clients MUST support requesting payload envelopes on the epoch range
 If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 payload envelope in the response.
+
+*Note*: Clients MUST also keep a record of all payload envelopes more recent
+than their latest finalized checkpoint and MUST support serving requests of
+these payload envelopes, even if outside of this range.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.

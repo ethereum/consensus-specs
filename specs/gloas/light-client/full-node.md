@@ -17,42 +17,13 @@ the Gloas upgrade.
 
 ### Modified `block_to_light_client_header`
 
+*Note*: A pre-Gloas block is turned into a header by the function of its own
+fork, and the result is brought forward with `upgrade_lc_header_to_gloas`. The
+execution block hash and its proof are read from the payload bid, which only a
+Gloas block carries.
+
 ```python
 def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
-    epoch = compute_epoch_at_slot(block.message.slot)
-
-    # [Modified in Gloas:EIP7732]
-    if epoch >= GLOAS_FORK_EPOCH:
-        execution_block_hash = (
-            block.message.body.signed_execution_payload_bid.message.parent_block_hash
-        )
-        execution_branch = ExecutionBranch(
-            data=compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_GLOAS)
-        )
-    elif epoch >= DENEB_FORK_EPOCH:
-        execution_block_hash = block.message.body.execution_payload.block_hash
-        execution_branch = ExecutionBranch(
-            data=normalize_merkle_branch(
-                compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_DENEB),
-                EXECUTION_BLOCK_HASH_GINDEX_GLOAS,
-            )
-        )
-    elif epoch >= CAPELLA_FORK_EPOCH:
-        execution_block_hash = block.message.body.execution_payload.block_hash
-        execution_branch = ExecutionBranch(
-            data=normalize_merkle_branch(
-                compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX),
-                EXECUTION_BLOCK_HASH_GINDEX_GLOAS,
-            )
-        )
-    else:
-        # Note that during fork transitions, `finalized_header` may still point to earlier forks.
-        # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),
-        # it was not included in the corresponding light client data. To ensure compatibility
-        # with legacy data going through `upgrade_lc_header_to_capella`, leave out execution data.
-        execution_block_hash = Hash32()
-        execution_branch = ExecutionBranch()
-
     return LightClientHeader(
         beacon=BeaconBlockHeader(
             slot=block.message.slot,
@@ -61,7 +32,13 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             state_root=block.message.state_root,
             body_root=hash_tree_root(block.message.body),
         ),
-        execution_block_hash=execution_block_hash,
-        execution_branch=ExecutionBranch(data=execution_branch),
+        # [Modified in Gloas:EIP7732]
+        execution_block_hash=(
+            block.message.body.signed_execution_payload_bid.message.parent_block_hash
+        ),
+        # [Modified in Gloas:EIP7732]
+        execution_branch=ExecutionBranch(
+            data=compute_merkle_proof(block.message.body, EXECUTION_BLOCK_HASH_GINDEX_GLOAS)
+        ),
     )
 ```

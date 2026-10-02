@@ -34,22 +34,6 @@ def get_empty_inclusion_list(spec, store, state, slot=None, validator_index=None
     return empty_inclusion_list
 
 
-def get_empty_signed_inclusion_list(
-    spec,
-    store,
-    state,
-    slot=None,
-    validator_index=None,
-):
-    """
-    Build an empty signed inclusion list for ``slot``. Slot must be greater than or equal to the current slot in ``state``.
-    """
-    empty_inclusion_list = get_empty_inclusion_list(spec, store, state, slot, validator_index)
-    signed_inclusion_list = sign_inclusion_list(spec, state, empty_inclusion_list)
-
-    return signed_inclusion_list
-
-
 def get_sample_inclusion_list(
     spec,
     store,
@@ -107,14 +91,13 @@ def get_sample_transactions(spec, max_transaction_size=200, max_transaction_coun
     """
     Build a list of sample transactions.
     """
-    transaction_size = min(
-        max_transaction_size, spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST
+    # Transactions must be non-empty and their total size within the bound
+    transaction_size = max(
+        1, min(max_transaction_size, spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST)
     )
     transaction_count = min(
         max_transaction_count,
-        spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST // transaction_size
-        if transaction_size
-        else spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST,
+        spec.config.MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST // transaction_size,
     )
 
     assert transaction_size >= 0

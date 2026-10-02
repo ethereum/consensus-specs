@@ -93,13 +93,13 @@ cross-network replay.
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_PREREGISTRATION` | `DomainType('0x11000000')` |
+| `DOMAIN_PREREGISTRATION` | `DomainType("0x11000000")` |
 
 ### Execution-layer triggered requests
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1('0x05')` |
+| `PREREGISTRATION_REQUEST_TYPE` | `Bytes1("0x05")` |
 
 ## Presets
 
@@ -268,7 +268,7 @@ post-state.
 #### New `get_stored_preregistration_index`
 
 ```python
-def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> Optional[Uint64]:
+def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> Uint64 | None:
     for index, preregistration in enumerate(state.validator_preregistrations):
         if preregistration.pubkey == pubkey:
             return Uint64(index)
@@ -280,7 +280,7 @@ def get_stored_preregistration_index(state: BeaconState, pubkey: BLSPubkey) -> O
 ```python
 def get_active_preregistration(
     state: BeaconState, pubkey: BLSPubkey
-) -> Optional[StoredPreregistration]:
+) -> StoredPreregistration | None:
     index = get_stored_preregistration_index(state, pubkey)
     if index is None:
         return None
@@ -361,7 +361,7 @@ def process_preregistration_expiry(state: BeaconState) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
+    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
@@ -416,7 +416,7 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
     preregistration = StoredPreregistration(
         pubkey=pubkey,
         withdrawal_credentials=request.withdrawal_credentials,
-        expiry_slot=Slot(state.slot + PREREGISTRATION_EXPIRY_SLOTS),
+        expiry_slot=state.slot + PREREGISTRATION_EXPIRY_SLOTS,
     )
     index = get_stored_preregistration_index(state, pubkey)
     if index is not None:
@@ -517,6 +517,6 @@ def apply_parent_execution_payload(
         )
 
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

@@ -60,19 +60,17 @@ def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
 
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
     subnet_id = get_correct_subnet(spec, state, attestation)
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
     )
@@ -81,7 +79,7 @@ def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,
@@ -141,18 +139,16 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
     )
@@ -161,7 +157,7 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,
@@ -195,18 +191,16 @@ def test_gossip_beacon_attestation__valid_same_slot_index_zero(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
     )
@@ -215,7 +209,7 @@ def test_gossip_beacon_attestation__valid_same_slot_index_zero(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
         }
@@ -287,18 +281,16 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
     )
@@ -307,7 +299,7 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,
@@ -346,18 +338,16 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_NOT_VALIDATED}
@@ -368,7 +358,7 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,
@@ -407,18 +397,16 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_INVALIDATED}
@@ -429,7 +417,7 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,
@@ -468,18 +456,16 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_VALID}
@@ -490,7 +476,7 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
         }
@@ -533,18 +519,16 @@ def test_gossip_beacon_attestation__ignore_payload_status_without_envelope(spec,
     )
     yield get_filename(attestation), attestation
 
-    time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         attestation=attestation,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_VALID}
@@ -555,7 +539,7 @@ def test_gossip_beacon_attestation__ignore_payload_status_without_envelope(spec,
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(attestation),
             "expected": result,
             "reason": reason,

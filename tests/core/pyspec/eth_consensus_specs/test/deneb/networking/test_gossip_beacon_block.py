@@ -4,7 +4,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_deneb_and_later,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
+from eth_consensus_specs.test.helpers.blob import (
+    build_block_with_blobs_for_next_slot,
+    get_max_blob_count,
+)
 from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
@@ -18,9 +21,6 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_seen,
     run_validate_gossip,
     wrap_genesis_block,
-)
-from eth_consensus_specs.test.helpers.state import (
-    state_transition_and_sign_block,
 )
 
 
@@ -44,24 +44,23 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     rng = random.Random(1234)
-    block, _, _, _ = get_block_with_blob(spec, state, rng=rng, blob_count=1)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    block, _, _, _ = build_block_with_blobs_for_next_slot(spec, state, rng=rng)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
@@ -70,7 +69,13 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -94,26 +99,26 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     rng = random.Random(1234)
-    block, _, _, _ = get_block_with_blob(
-        spec, state, rng=rng, blob_count=get_max_blob_count(spec, state) + 1
+    max_blobs = get_max_blob_count(spec, state.slot + 1)
+    block, _, _, _ = build_block_with_blobs_for_next_slot(
+        spec, state, rng=rng, blob_count=max_blobs + 1
     )
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -124,7 +129,7 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,

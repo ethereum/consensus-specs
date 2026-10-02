@@ -20,7 +20,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP8321_FORK_VERSION` | `Version('0xe8321000')`               |
+| `EIP8321_FORK_VERSION` | `Version("0xe8321000")`               |
 | `EIP8321_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-8321
@@ -37,7 +37,7 @@ by broadcasting a `SignedRandaoCommitmentRegistration`.
 
 ```python
 def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
-    epoch = get_current_epoch(pre)
+    epoch = heze.get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,

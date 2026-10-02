@@ -13,3 +13,9 @@ from blake3 import blake3 as blake3_hash
 
 from eth_consensus_specs.heze import {preset_name} as heze
 """
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "upgrade_to_heze",
+        }

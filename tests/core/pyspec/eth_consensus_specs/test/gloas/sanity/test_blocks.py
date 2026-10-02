@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     always_bls,
     GLOAS,
     spec_state_test,
+    spec_state_test_with_matching_config,
     with_gloas_and_later,
     with_phases,
 )
@@ -115,7 +116,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         prev_randao=committed_bid.prev_randao,
         gas_limit=committed_bid.gas_limit,
         block_hash=committed_bid.block_hash,
-        timestamp=spec.compute_time_at_slot(test_state, test_state.slot),
+        timestamp=spec.compute_time_at_slot(test_state.genesis_time, test_state.slot),
         withdrawals=spec.Withdrawals(data=withdrawals),
         slot_number=test_state.slot,
     )
@@ -144,10 +145,9 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     )
 
     engine = spec.NoopExecutionEngine()
-    extra_engines = (spec.NoopProofEngine(),) if hasattr(spec, "NoopProofEngine") else ()
 
     try:
-        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine, *extra_engines)
+        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine)
         return True
     except AssertionError:
         return False
@@ -217,6 +217,7 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
     )
+    block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
 
     yield "pre", pre_state
@@ -273,6 +274,7 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
     )
+    block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
 
     yield "pre", pre_state
@@ -382,7 +384,7 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     """
     Test that payload attestation with wrong beacon_block_root fails.
@@ -467,7 +469,7 @@ def test_invalid_too_many_proposer_slashings(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_payload_attestation_too_old_slot(spec, state):
     """
     Test that payload attestation for slot too far in past fails.
@@ -699,7 +701,7 @@ def test_invalid_too_many_bls_to_execution_changes(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_max_payload_attestations(spec, state):
     rng = Random(3000)
 
@@ -721,7 +723,7 @@ def test_max_payload_attestations(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_invalid_too_many_payload_attestations(spec, state):
     rng = Random(3000)
 
@@ -743,7 +745,7 @@ def test_invalid_too_many_payload_attestations(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_invalid_payload_attestation_invalid_signature(spec, state):
     """

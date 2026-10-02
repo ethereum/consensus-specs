@@ -53,9 +53,10 @@ seen_partial_data_column_headers: [{
     block_root: string,      -- Hex-encoded partial message group root.
     header: string,          -- `PartialDataColumnHeader` file to cache.
 }]
-current_time_ms: int         -- The base time in milliseconds since genesis.
 messages: [{                 -- List of messages to validate in sequence.
-    offset_ms: int,          -- Time offset from current_time_ms when message is received.
+    current_time_ms: int,    -- Optional. The Unix time in milliseconds when the
+                             -- message is received. Present if and only if the
+                             -- validation function takes `current_time_ms`.
     subnet_id: int,          -- Optional. The subnet ID for subnet-scoped topics.
     column_index: int,       -- Optional. The column index for
                              -- `partial_data_column_sidecar` vectors.
@@ -142,12 +143,10 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    `PartialDataColumnHeader` into `seen.partial_data_column_headers` using its
    `block_root`.
 5. Iterate sequentially through `messages`:
-   - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
-     `offset_ms` values are independent and need not be monotonic.
    - Deserialize the message file based on the topic type.
-   - Execute the appropriate validation function, using the store built above
-     and the head state derived from the imported blocks (advanced with empty
-     slots to the current slot where required).
+   - Execute the appropriate validation function using the store built above.
+     - If the validation function takes `current_time_ms`, pass
+       `message.current_time_ms`. Values need not be monotonic.
      - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
        and `data_column_sidecar`, pass `message.subnet_id`.
      - For `partial_data_column_sidecar`, pass the `PartialDataColumnGroupID`

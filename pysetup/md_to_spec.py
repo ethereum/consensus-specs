@@ -307,7 +307,7 @@ class MarkdownToSpec:
             # It is a constant variable or a preset_dep_constant_vars
             else:
                 if name == "ENDIANNESS":
-                    # Deal with mypy Literal typing check
+                    # Deal with Literal typing check
                     value_def = _parse_value(name, value, type_hint="Final")
                 if any(k in value for k in self.preset) or any(
                     k in value for k in self.spec["preset_dep_constant_vars"]
@@ -599,7 +599,7 @@ def check_yaml_matches_spec(
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
     # NameError is okay; anything more serious will surface elsewhere.
     with contextlib.suppress(NameError):
-        assert yaml[var_name] == repr(eval(updated_value)), (
+        assert ast.literal_eval(yaml[var_name]) == eval(updated_value), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
 

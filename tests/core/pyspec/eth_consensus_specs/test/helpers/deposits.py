@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra, is_post_fulu
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
@@ -16,8 +16,14 @@ from eth_consensus_specs.test.helpers.keys import (
 from eth_consensus_specs.test.helpers.state import get_balance
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
-from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
+
+
+def get_max_deposits(spec):
+    # Blocks must not contain any deposits since Fulu
+    if is_post_fulu(spec):
+        return 0
+    return spec.MAX_DEPOSITS
 
 
 def make_withdrawal_credentials(spec, prefix, address_byte):
@@ -76,7 +82,7 @@ def build_deposit(spec, deposit_data_list, pubkey, privkey, amount, withdrawal_c
 
 def deposit_from_context(spec, deposit_data_list, index):
     deposit_data = deposit_data_list[index]
-    root = hash_tree_root(spec.DepositDataList(data=deposit_data_list))
+    root = spec.hash_tree_root(spec.DepositDataList(data=deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [
         len(deposit_data_list).to_bytes(32, "little")

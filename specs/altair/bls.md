@@ -22,7 +22,7 @@ including type definitions.
 
 | Name                   | Value                                  |
 | ---------------------- | -------------------------------------- |
-| `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
+| `G2_POINT_AT_INFINITY` | `BLSSignature(b"\xc0" + b"\x00" * 95)` |
 
 ## Extensions
 
@@ -46,7 +46,7 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     # Ensure that the given inputs are valid pubkeys
     assert all(bls.KeyValidate(pubkey) for pubkey in pubkeys)
 
-    result = copy(pubkeys[0])
+    result = pubkeys[0].copy()
     for pubkey in pubkeys[1:]:
         result += pubkey
     return result

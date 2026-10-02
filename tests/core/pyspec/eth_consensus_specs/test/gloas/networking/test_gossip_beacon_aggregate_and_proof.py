@@ -78,25 +78,25 @@ def test_gossip_beacon_aggregate_and_proof__reject_data_index_too_high(spec, sta
 
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "aggregate data index must be 0 or 1"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
@@ -192,25 +192,25 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "same-slot attestation must attest with index 0"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
@@ -244,25 +244,25 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec,
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "execution payload envelope has not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
@@ -301,18 +301,18 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_NOT_VALIDATED}
         ),
@@ -321,7 +321,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
     assert reason == "attested payload is optimistic"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
@@ -360,18 +360,18 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_INVALIDATED}
         ),
@@ -380,7 +380,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
     assert reason == "attested payload is invalid"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
@@ -419,18 +419,18 @@ def test_gossip_beacon_aggregate_and_proof__valid_payload_validated(spec, state)
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_VALID}
         ),
@@ -439,7 +439,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_payload_validated(spec, state)
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
         }
@@ -482,18 +482,18 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_status_without_envelo
     )
     yield get_filename(signed_agg), signed_agg
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_agg.message.aggregate.data.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_agg.message.aggregate.data.slot
+    )
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        state=state,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_VALID}
         ),
@@ -502,7 +502,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_status_without_envelo
     assert reason == "execution payload envelope has not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": result,
             "reason": reason,
