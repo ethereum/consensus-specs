@@ -120,7 +120,7 @@ def aspect(name, *factors):
 def _abstract(f):
     description = f.description or f.value.render()
     if f.kind == "comparison":
-        return Cmp(f.name, description, f.op)
+        return Cmp(f.name, description, f.op, granularity=f.granularity)
     if f.kind == "enum":
         return Enum(f.name, description, f.values)
     return Pred(f.name, description)
@@ -166,7 +166,7 @@ class Specification:
         aspects,
         profiles,
         applicable_when=True,
-        feasible=lambda a, g: True,
+        feasible=lambda a: True,
         constant_feasibility=None,
     ):
         self.name, self.focus, self.record = name, focus, record
@@ -209,7 +209,7 @@ class Specification:
         ]:
             if any(n.op == "factor" for n in _walk(expr)):
                 raise ValueError("factor references are only supported in activation")
-        self.model("predicate")  # Validate dependencies, including cycles.
+        self.model()  # Validate dependencies, including cycles.
         for plan in self.profiles.values():
             self._validate_plan(plan)
 
@@ -230,7 +230,7 @@ class Specification:
         else:
             raise ValueError(f"unknown formula: {plan.kind}")
 
-    def model(self, granularity):
+    def model(self):
         factors = []
         for f in self.declarations:
             allowed = []
@@ -241,18 +241,18 @@ class Specification:
                     raise ValueError("categorical activation needs an explicit value")
                 values = tuple(
                     v
-                    for v in abstraction.domain(granularity)
+                    for v in abstraction.domain()
                     if (
-                        abstraction.holds(v, granularity) == value
+                        abstraction.holds(v) == value
                         if truth
                         else ((v == value) if op[0] == "==" else (v != value))
                     )
                 )
-                if not truth and value not in abstraction.domain(granularity):
+                if not truth and value not in abstraction.domain():
                     raise ValueError(f"activation value outside domain of {parent.name}")
                 allowed.append((parent.name, values))
             factors.append(
-                conditional.Factor(f.name, _abstract(f).domain(granularity), allowed=tuple(allowed))
+                conditional.Factor(f.name, _abstract(f).domain(), allowed=tuple(allowed))
             )
         return conditional.Model(factors)
 
@@ -264,17 +264,15 @@ class BoundFormula:
     def __init__(self, owner, plan):
         self.owner, self.plan = owner, plan
 
-    def run(self, granularity, *, filtered=True):
-        model, configurations = self.owner._configurations(granularity, filtered)
+    def run(self, *, filtered=True):
+        model, configurations = self.owner._configurations(filtered)
 
         def run(plan):
             if plan.kind == "nwise":
                 return model.project([f.name for f in plan.parts], plan.strength, configurations)
             if plan.kind == "fix":
                 for name, value in plan.parts:
-                    if value not in _abstract(self.owner.definition.by_name[name]).domain(
-                        granularity
-                    ):
+                    if value not in _abstract(self.owner.definition.by_name[name]).domain():
                         raise ValueError(f"invalid fixed value: {name}={value!r}")
                 fixed = frozenset(plan.parts)
                 if not fixed:
@@ -337,8 +335,8 @@ class DeclarationTarget:
     def factors(self):
         return tuple(f for aspect in self.aspects for f in aspect.factors)
 
-    def record(self, observation, granularity):
-        return {f.name: f.value(observation, granularity) for f in self.factors}
+    def record(self, observation):
+        return {f.name: f.value(observation) for f in self.factors}
 
     def for_spec(self, spec):
         if self._bound_spec is not None:
@@ -347,13 +345,13 @@ class DeclarationTarget:
             return self
         return DeclarationTarget(self.definition, self.observer, self.constants, spec=spec)
 
-    def _configurations(self, granularity, filtered):
-        key = (granularity, filtered)
+    def _configurations(self, filtered):
+        key = filtered
         if key not in self._cache:
-            model = self.definition.model(granularity)
+            model = self.definition.model()
             configurations = model.configurations()
             if filtered:
-                configurations = {c for c in configurations if self.feasible(dict(c), granularity)}
+                configurations = {c for c in configurations if self.feasible(dict(c))}
             self._cache[key] = model, configurations
         return self._cache[key]
 
@@ -390,7 +388,7 @@ class DeclarationTarget:
                 elif f.kind == "comparison":
                     Integer().validate(value)
                 else:
-                    _abstract(f).abstract(value, "predicate")
+                    _abstract(f).abstract(value)
             raw[f.name] = value
             return value
 
@@ -398,7 +396,9 @@ class DeclarationTarget:
             value = evaluate(f)
             if value is MISSING:
                 return MISSING
-            return _abstract(f).abstract(value, "predicate")
+            abstraction = _abstract(f)
+            abstract = abstraction.abstract(value)
+            return abstraction.holds(abstract) if f.kind == "comparison" else abstract
 
         for f in self.definition.declarations:
             evaluate(f)
@@ -407,7 +407,7 @@ class DeclarationTarget:
             **{n: NA if v is MISSING else v for n, v in raw.items()},
         }
 
-    def review(self, granularity="predicate", *, examples=3):
+    def review(self, *, examples=3):
         if self._bound_spec is None:
             raise ValueError("bind with for_spec(spec) before review")
         d = self.definition
@@ -432,16 +432,17 @@ class DeclarationTarget:
             lines.append(f"aspect {a.name}")
             for f in a.declarations:
                 lines.append(
-                    f"  {f.name}: {_abstract(f).domain(granularity)}; kind={f.kind}"
+                    f"  {f.name}: {_abstract(f).domain()}; kind={f.kind}"
                     f"{(' ' + f.op + ' 0') if f.kind == 'comparison' else ''}; "
+                    f"{('granularity=' + f.granularity + '; ') if f.kind == 'comparison' else ''}"
                     f"expression={f.value.render()}; when={f.when.render()}; available={f.available_when.render()}"
                 )
                 if f.description:
                     lines.append(f"    reason: {f.description}")
         lines.append("feasibility: Python callbacks (not solver-translated)")
         for name, formula in self.profiles.items():
-            obligations = formula.run(granularity)
-            pruned = formula.run(granularity, filtered=False) - obligations
+            obligations = formula.run()
+            pruned = formula.run(filtered=False) - obligations
             lines.append(f"profile {name}: {len(obligations)} obligations; {len(pruned)} pruned")
             for o in sorted(obligations, key=lambda o: repr(sorted(o)))[:examples]:
                 lines.append(f"  {dict(sorted(o))}")

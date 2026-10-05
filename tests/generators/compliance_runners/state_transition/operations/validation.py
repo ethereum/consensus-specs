@@ -21,7 +21,6 @@ _YAML = YAML(typ="safe")
 def recover_dimensions(spec: Any, pre: Any, body: Any, post: Any) -> dict[str, Any]:
     values = TARGET.record(
         TARGET.observation(Context(spec, pre, body, post, {})),
-        "predicate",
     )
     if not values["deposits_empty"]:
         outcome = "REJECT_DEPOSITS_NONZERO"

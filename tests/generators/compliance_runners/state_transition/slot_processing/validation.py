@@ -23,7 +23,7 @@ def validate_case(case_dir: Path):
     post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     slots = _YAML.load((case_dir / "slots.yaml").read_text())
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
-    actual = TARGET.record(TARGET.observation(Context(spec, pre, slots, post, {})), "predicate")
+    actual = TARGET.record(TARGET.observation(Context(spec, pre, slots, post, {})))
     checks = check_dimensions(claimed, actual)
 
     expected_post = pre.copy()

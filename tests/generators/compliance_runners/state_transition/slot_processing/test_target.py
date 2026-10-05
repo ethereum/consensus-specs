@@ -8,7 +8,6 @@ import pytest
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
-    GRANULARITIES,
     NA,
     score,
 )
@@ -35,8 +34,7 @@ def context(position, *, header_empty, state_populated, block_populated, availab
     return Context(spec, state, slots, None, {})
 
 
-@pytest.mark.parametrize("granularity", GRANULARITIES)
-def test_observation_and_profiles_cover_the_input_product(granularity):
+def test_observation_and_profiles_cover_the_input_product():
     records = []
     for position, header_empty, state_populated, block_populated, available in product(
         (0, 3, 7), (False, True), (False, True), (False, True), (False, True)
@@ -49,7 +47,7 @@ def test_observation_and_profiles_cover_the_input_product(granularity):
             available=available,
         )
         observation = TARGET.observation(ctx)
-        record = TARGET.record(observation, granularity)
+        record = TARGET.record(observation)
         assert record == {
             "ring_position": {0: "FIRST", 3: "MIDDLE", 7: "LAST"}[position],
             "header_state_root_empty": header_empty,
@@ -69,10 +67,10 @@ def test_observation_and_profiles_cover_the_input_product(granularity):
         ).spec
     )
     for formula in target.profiles.values():
-        report = score(target, records, formula, granularity)
+        report = score(target, records, formula)
         assert report.covered == report.total
         assert report.uncovered == report.unexpected == []
-    assert len(target.profiles["standard"].run(granularity)) == 48
+    assert len(target.profiles["standard"].run()) == 48
 
 
 def test_multi_slot_vectors_are_outside_this_target():
@@ -86,7 +84,7 @@ def test_multi_slot_vectors_are_outside_this_target():
             slots=2,
         )
     )
-    assert all(value is NA for value in TARGET.record(observation, "predicate").values())
+    assert all(value is NA for value in TARGET.record(observation).values())
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
@@ -96,4 +94,4 @@ def test_historical_root_period_is_bound_from_preset(preset):
     assert target.bound_constants["slots_per_historical_root"] == int(
         spec.SLOTS_PER_HISTORICAL_ROOT
     )
-    assert target.profiles["standard"].run("predicate")
+    assert target.profiles["standard"].run()

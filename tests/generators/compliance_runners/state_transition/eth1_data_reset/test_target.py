@@ -4,7 +4,6 @@ import pytest
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
-    GRANULARITIES,
     score,
 )
 
@@ -41,23 +40,20 @@ def test_constants_are_distinct_and_follow_the_selected_spec():
 
 def test_bound_constants_are_validated_and_profiles_require_binding():
     with pytest.raises(ValueError, match="for_spec"):
-        TARGET.profiles["normal"].run("predicate")
+        TARGET.profiles["normal"].run()
     with pytest.raises(ValueError, match="outside"):
         TARGET.for_spec(SimpleNamespace(EPOCHS_PER_ETH1_VOTING_PERIOD=0))
     target = TARGET.for_spec(context(3, 1).spec)
     assert target.bound_constants == {"epochs_per_eth1_voting_period": 4}
 
 
-@pytest.mark.parametrize("granularity", GRANULARITIES)
 @pytest.mark.parametrize(("epoch", "boundary"), [(2, False), (3, True), (4, False)])
 @pytest.mark.parametrize("vote_count", [0, 1, 2])
-def test_target_binds_attributes_and_preserves_factor_semantics(
-    granularity, epoch, boundary, vote_count
-):
+def test_target_binds_attributes_and_preserves_factor_semantics(epoch, boundary, vote_count):
     ctx = context(epoch, vote_count)
     observation = TARGET.observation(ctx)
     assert all(observation[name] == value for name, value in observe_attributes(ctx).items())
-    assert TARGET.record(observation, granularity) == {
+    assert TARGET.record(observation) == {
         "at_reset_boundary": boundary,
         "votes_nonempty": vote_count > 0,
     }
@@ -65,7 +61,7 @@ def test_target_binds_attributes_and_preserves_factor_semantics(
 
 def test_rejected_vector_still_has_input_coverage():
     observation = TARGET.observation(context(3, 1, post_present=False))
-    assert TARGET.record(observation, "predicate") == {
+    assert TARGET.record(observation) == {
         "at_reset_boundary": True,
         "votes_nonempty": True,
     }
@@ -74,11 +70,11 @@ def test_rejected_vector_still_has_input_coverage():
 @pytest.mark.parametrize("profile", ["smoke", "normal", "standard"])
 def test_profiles_cover_all_boundary_and_occupancy_combinations(profile):
     records = [
-        TARGET.record(TARGET.observation(context(epoch, count)), "predicate")
+        TARGET.record(TARGET.observation(context(epoch, count)))
         for epoch in (2, 3)
         for count in (0, 1)
     ]
     target = TARGET.for_spec(context(3, 1).spec)
-    report = score(target, records, target.profiles[profile], "predicate")
+    report = score(target, records, target.profiles[profile])
     assert report.total == report.covered == 4
     assert report.uncovered == report.unexpected == []

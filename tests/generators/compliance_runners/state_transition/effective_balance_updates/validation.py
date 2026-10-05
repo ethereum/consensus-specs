@@ -27,9 +27,8 @@ def validate_case(case_dir: Path) -> list[Check]:
     pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
     post = decode(case_dir / "post.ssz_snappy", spec.BeaconState)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
-    granularity = claimed.pop("granularity")
     target = TARGET.for_spec(spec)
-    actual = target.record(target.observation(Context(spec, pre, None, post, {})), granularity)
+    actual = target.record(target.observation(Context(spec, pre, None, post, {})))
     checks = check_dimensions(claimed, actual)
 
     validator = pre.validators[0]

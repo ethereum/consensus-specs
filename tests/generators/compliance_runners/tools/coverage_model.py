@@ -278,10 +278,15 @@ class Factor(Operators):
     when: Expr = Expr("literal", (True,))
     available_when: Expr = Expr("literal", (True,))
     description: str = ""
+    granularity: str = "predicate"
 
     def __post_init__(self):
         if not self.name or self.kind not in ("boolean", "comparison", "enum"):
             raise ValueError("invalid factor name or kind")
+        if self.granularity not in ("predicate", "cmp3", "cmp5"):
+            raise ValueError(f"unknown granularity {self.granularity!r}")
+        if self.kind != "comparison" and self.granularity != "predicate":
+            raise ValueError("granularity is only configurable for comparison factors")
         if self.when.result_type() is not bool or self.available_when.result_type() is not bool:
             raise TypeError("activation and availability must be boolean")
         if self.kind == "boolean" and self.value.result_type() is not bool:
@@ -304,7 +309,17 @@ def factor(name, value, *, when=True, available_when=True, description=""):
     )
 
 
-def comparison(name, lhs, rhs, *, op=">", when=True, available_when=True, description=""):
+def comparison(
+    name,
+    lhs,
+    rhs,
+    *,
+    op=">",
+    granularity="predicate",
+    when=True,
+    available_when=True,
+    description="",
+):
     if op not in ("<", "<=", "==", "!=", ">=", ">"):
         raise ValueError(f"unsupported comparison: {op}")
     return Factor(
@@ -312,6 +327,7 @@ def comparison(name, lhs, rhs, *, op=">", when=True, available_when=True, descri
         expression(lhs) - rhs,
         kind="comparison",
         op=op,
+        granularity=granularity,
         when=expression(when),
         available_when=expression(available_when),
         description=description,

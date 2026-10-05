@@ -119,11 +119,11 @@ LOOP_GATED = tuple(f.name for f in LOOP.factors)
 _GT = ("GT", "GT_1", "GT_FAR", True)
 
 
-def _epoch_never_before_genesis(a: dict, _g: str) -> bool:
+def _epoch_never_before_genesis(a: dict) -> bool:
     return a.get("current_after_genesis") not in ("LT", "LT_1", "LT_FAR")
 
 
-def _empty_loop_has_no_body(a: dict, _g: str) -> bool:
+def _empty_loop_has_no_body(a: dict) -> bool:
     if a.get("eligible_validators") != "ZERO":
         return True
     if any(name in a for name in LOOP_GATED):
@@ -134,11 +134,11 @@ def _empty_loop_has_no_body(a: dict, _g: str) -> bool:
     return a.get("slashed_withdrawable_vs_previous") not in _GT
 
 
-def _mixed_branches_need_two_validators(a: dict, _g: str) -> bool:
+def _mixed_branches_need_two_validators(a: dict) -> bool:
     return not (a.get("eligible_validators") == "ONE" and a.get("branch_mix") == "MIXED")
 
 
-def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
+def _eligible_needs_a_disjunct(a: dict) -> bool:
     """Nobody is eligible without an active validator or a slashed, un-withdrawable one."""
     if a.get("eligible_validators") not in ("ONE", "MANY"):
         return True
@@ -150,14 +150,14 @@ def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
     return value is None or value in _GT
 
 
-def _empty_ineligible_set_requires_every_validator(a: dict, _g: str) -> bool:
+def _empty_ineligible_set_requires_every_validator(a: dict) -> bool:
     """The genesis state has a fixed 64-validator set in this materializer."""
     return not (
         a.get("has_ineligible_validators") is False and a.get("eligible_validators") != "MANY"
     )
 
 
-def _singleton_zero_score_cannot_change_leak_free(a: dict, _g: str) -> bool:
+def _singleton_zero_score_cannot_change_leak_free(a: dict) -> bool:
     return not (
         a.get("eligible_validators") == "ONE"
         and a.get("has_zero_score_eligible") is True
@@ -166,13 +166,13 @@ def _singleton_zero_score_cannot_change_leak_free(a: dict, _g: str) -> bool:
     )
 
 
-def _stable_scores_require_zero_and_no_leak(a: dict, _g: str) -> bool:
+def _stable_scores_require_zero_and_no_leak(a: dict) -> bool:
     if a.get("scores_changed") is not False:
         return True
     return a.get("has_zero_score_eligible") is not False and a.get("leaking") not in _GT
 
 
-def _singleton_zero_score_cannot_change_by_decrement(a: dict, _g: str) -> bool:
+def _singleton_zero_score_cannot_change_by_decrement(a: dict) -> bool:
     return not (
         a.get("eligible_validators") == "ONE"
         and a.get("has_zero_score_eligible") is True
@@ -181,13 +181,13 @@ def _singleton_zero_score_cannot_change_by_decrement(a: dict, _g: str) -> bool:
     )
 
 
-def _slashed_only_eligible_set_only_increments(a: dict, _g: str) -> bool:
+def _slashed_only_eligible_set_only_increments(a: dict) -> bool:
     return not (
         a.get("has_active_eligible") is False and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
     )
 
 
-def _slashed_eligible_cannot_all_decrement(a: dict, _g: str) -> bool:
+def _slashed_eligible_cannot_all_decrement(a: dict) -> bool:
     return not (
         a.get("has_slashed_validators") is True
         and a.get("slashed_withdrawable_vs_previous") in _GT
@@ -195,7 +195,7 @@ def _slashed_eligible_cannot_all_decrement(a: dict, _g: str) -> bool:
     )
 
 
-def _all_eligible_slashed_cannot_all_decrement(a: dict, _g: str) -> bool:
+def _all_eligible_slashed_cannot_all_decrement(a: dict) -> bool:
     return not (
         a.get("has_ineligible_validators") is False
         and a.get("has_slashed_validators") is True

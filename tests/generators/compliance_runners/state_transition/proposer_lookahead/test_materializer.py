@@ -22,7 +22,7 @@ def test_slashed_active_validator_is_absent_from_old_lookahead(tail_matches):
     _, parts = ProposerLookaheadMaterializer(spec).materialize_solution(solution)
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
-    observed = TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})), "predicate")
+    observed = TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})))
     assert observed["has_slashed_active_validator"] is True
     assert observed["fewer_candidates_than_slots"] is True
     assert observed["old_lookahead_contains_slashed"] is False

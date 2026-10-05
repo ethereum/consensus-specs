@@ -6,6 +6,7 @@ import pytest
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
+    Cmp,
     describe,
     GRANULARITIES,
     NA,
@@ -72,18 +73,18 @@ def test_conditional_selection_and_exhaustive_shorter_branch():
         },
     )
     t = bound(d)
-    assert t.profiles["a"].run("predicate") == {obligation(A=False), obligation(A=True)}
-    assert t.profiles["b"].run("predicate") == {
+    assert t.profiles["a"].run() == {obligation(A=False), obligation(A=True)}
+    assert t.profiles["b"].run() == {
         obligation(A=True, B=False),
         obligation(A=True, B=True),
     }
-    assert t.profiles["all"].run("predicate") == {
+    assert t.profiles["all"].run() == {
         obligation(A=False),
         obligation(A=True, B=False),
         obligation(A=True, B=True),
     }
-    assert t.profiles["fixed"].run("predicate") == {obligation(A=True, B=True)}
-    assert t.profiles["conflict"].run("predicate") == set()
+    assert t.profiles["fixed"].run() == {obligation(A=True, B=True)}
+    assert t.profiles["conflict"].run() == set()
 
 
 @pytest.mark.parametrize("granularity", GRANULARITIES)
@@ -92,18 +93,69 @@ def test_comparison_activation_includes_every_valid_prerequisite_bucket(
     granularity, condition_style
 ):
     x = attribute("x", Integer())
-    A = comparison("positive", x, 0)
+    A = comparison("positive", x, 0, granularity=granularity)
     false, true = expression(value=False), expression(value=True)
     condition = {"negation": ~A, "equality": false == A, "inequality": true != A}[condition_style]
     B = factor("child", x == 0, when=condition)
     t = bound(definition((x,), (A, B), {"child": each([B]), "all": exhaustive([A, B])}))
-    positives = {v for v in t.factors[0].domain(granularity) if t.factors[0].holds(v, granularity)}
-    negatives = set(t.factors[0].domain(granularity)) - positives
-    assert t.profiles["child"].run(granularity) == {
+    positives = {v for v in t.factors[0].domain() if t.factors[0].holds(v)}
+    negatives = set(t.factors[0].domain()) - positives
+    assert t.profiles["child"].run() == {
         obligation(positive=v, child=b) for v in negatives for b in (False, True)
     }
     # No arithmetic solver yet: relationships beyond activation need explicit feasibility.
-    assert {obligation(positive=v) for v in positives} <= t.profiles["all"].run(granularity)
+    assert {obligation(positive=v) for v in positives} <= t.profiles["all"].run()
+
+
+def test_mixed_comparison_granularities_preserve_activation_and_profile_domains():
+    x, y = attribute("x", Integer()), attribute("y", Integer())
+    A = comparison("positive", x, 0, granularity="cmp3")
+    B = comparison("zero", y, 0, op="==", granularity="cmp5")
+    C = comparison("nonnegative", x, 0, op=">=")
+    child = factor("child", x > 1, when=A & ~B)
+    t = bound(
+        definition(
+            (x, y),
+            (A, B, C, child),
+            {"smoke": each([A, B, C, child]), "max": exhaustive([A, B, C, child])},
+        )
+    )
+    expected = {"positive": "GT", "zero": "GT_1", "nonnegative": True, "child": True}
+    assert (
+        t.record(t.observation(Context(t._bound_spec, {"x": 2, "y": 1}, None, None, {})))
+        == expected
+    )
+    assert (
+        t.record(t.observation(Context(t._bound_spec, {"x": 2, "y": 0}, None, None, {})))["child"]
+        is NA
+    )
+    assert (
+        t.record(t.observation(Context(t._bound_spec, {"x": 0, "y": 1}, None, None, {})))["child"]
+        is NA
+    )
+    for formula in t.profiles.values():
+        obligations = formula.run()
+        for f in t.factors[:3]:
+            assert {dict(o)[f.name] for o in obligations if f.name in dict(o)} == set(f.domain())
+    assert obligation(positive="GT", zero="GT_1", child=True) in t.profiles["smoke"].run()
+    report = score(t, [expected], t.profiles["max"])
+    assert report.covered == 1
+    assert report.comparison_granularities == {
+        "positive": "cmp3",
+        "zero": "cmp5",
+        "nonnegative": "predicate",
+    }
+    assert "granularity=cmp5" in t.review()
+    with pytest.raises(TypeError):
+        t.profiles["smoke"].run("cmp3")
+
+
+def test_comparison_granularity_is_validated_at_declaration_time():
+    x = attribute("x", Integer())
+    with pytest.raises(ValueError, match="unknown granularity"):
+        comparison("invalid", x, 0, granularity="cmp4")
+    with pytest.raises(ValueError, match="unknown granularity"):
+        Cmp("invalid", op=">", granularity="cmp4")
 
 
 def test_nested_and_mutually_exclusive_activation():
@@ -113,14 +165,12 @@ def test_nested_and_mutually_exclusive_activation():
     C = factor("C", a, when=B)
     D = factor("D", a, when=~A)
     t = bound(definition((a,), (D, C, B, A), {"c": each([C]), "branches": exhaustive([B, D])}))
-    assert t.profiles["c"].run("predicate") == {
-        obligation(A=True, B=True, C=v) for v in (False, True)
+    assert t.profiles["c"].run() == {obligation(A=True, B=True, C=v) for v in (False, True)}
+    assert t.profiles["branches"].run() == {obligation(A=True, B=v) for v in (False, True)} | {
+        obligation(A=False, D=v) for v in (False, True)
     }
-    assert t.profiles["branches"].run("predicate") == {
-        obligation(A=True, B=v) for v in (False, True)
-    } | {obligation(A=False, D=v) for v in (False, True)}
     ctx = Context(t._bound_spec, {"a": False}, None, None, {})
-    record = t.record(t.observation(ctx), "predicate")
+    record = t.record(t.observation(ctx))
     assert record == {"A": False, "B": NA, "C": NA, "D": False}
 
 
@@ -129,7 +179,7 @@ def test_categorical_activation():
     A = categorical("A", choose(a, "ON", "OFF"), ("ON", "OFF"))
     B = factor("B", a, when=A == "ON")
     t = bound(definition((a,), (A, B), {"b": each([B])}))
-    assert t.profiles["b"].run("predicate") == {obligation(A="ON", B=v) for v in (False, True)}
+    assert t.profiles["b"].run() == {obligation(A="ON", B=v) for v in (False, True)}
 
 
 def test_feasibility_checks_complete_extensions_and_preserves_unexpected():
@@ -137,16 +187,16 @@ def test_feasibility_checks_complete_extensions_and_preserves_unexpected():
     A, B = factor("A", a), factor("B", a)
 
     # A=True has no extension, despite neither individual conflict mentioning A alone.
-    def feasible(assignment, granularity):
+    def feasible(assignment):
         return not (assignment.get("A") is True and "B" in assignment)
 
     t = bound(definition((a,), (A, B), {"a": each([A])}, feasible=feasible))
-    assert t.profiles["a"].run("predicate") == {obligation(A=False)}
-    assert t.profiles["a"].run("predicate", filtered=False) == {
+    assert t.profiles["a"].run() == {obligation(A=False)}
+    assert t.profiles["a"].run(filtered=False) == {
         obligation(A=False),
         obligation(A=True),
     }
-    report = score(t, [{"A": True, "B": False}], t.profiles["a"], "predicate")
+    report = score(t, [{"A": True, "B": False}], t.profiles["a"])
     assert report.unexpected == [{"A": True}]
 
 
@@ -161,7 +211,7 @@ def test_applicability_availability_and_missing_values():
         {"active": True, "post": True, "x": NA},
     ):
         assert t.observation(Context(t._bound_spec, attrs, None, None, {}))["A"] is NA
-    assert len(t.profiles["a"].run("predicate")) == 2  # Availability never erases obligations.
+    assert len(t.profiles["a"].run()) == 2  # Availability never erases obligations.
     with pytest.raises(ValueError, match="attributes mismatch"):
         t.observation(Context(t._bound_spec, {"active": False, "post": False}, None, None, {}))
 

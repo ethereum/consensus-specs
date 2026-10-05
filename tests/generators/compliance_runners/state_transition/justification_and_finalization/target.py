@@ -61,7 +61,7 @@ COVERAGE = coverage_spec(
     constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a, _g: (
+    feasible=lambda a: (
         (a.get("finalization_path") not in (1, 2) or a.get("previous_epoch_supermajority") is True)
         and (
             a.get("finalization_path") not in (3, 4)
