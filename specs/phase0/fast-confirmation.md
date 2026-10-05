@@ -1036,8 +1036,9 @@ synced and `on_fast_confirmation` has been called. The body of
 ```python
 def block_should_be_finalized(store: Store, block_root: Root) -> bool:
     block_slot = get_block_slot(store, block_root)
-    checkpoint_epoch = compute_epoch_at_slot(block_slot + SLOTS_PER_EPOCH - 1)
-    return checkpoint_epoch + 2 <= get_current_store_epoch(store)
+    next_checkpoint_epoch = compute_epoch_at_slot(block_slot + SLOTS_PER_EPOCH - 1)
+    earliest_finality_slot = compute_start_slot_at_epoch(next_checkpoint_epoch + 2)
+    return earliest_finality_slot <= get_current_slot(store)
 
 
 def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Root:
