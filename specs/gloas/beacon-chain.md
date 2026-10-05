@@ -1885,7 +1885,7 @@ def get_builders_sweep_withdrawals(
 
         builder = state.builders[builder_index]
         balance = get_builder_balance_after_withdrawals(state, builder_index, all_withdrawals)
-        if builder.withdrawable_epoch <= epoch and balance != 0:
+        if builder.withdrawable_epoch <= epoch and balance > 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
