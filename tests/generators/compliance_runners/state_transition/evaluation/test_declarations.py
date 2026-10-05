@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
-    Context,
     Cmp,
+    Context,
     describe,
     GRANULARITIES,
     NA,
