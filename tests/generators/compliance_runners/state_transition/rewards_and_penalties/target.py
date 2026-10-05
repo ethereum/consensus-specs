@@ -54,7 +54,7 @@ COVERAGE = coverage_spec(
     constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a, _g: (
+    feasible=lambda a: (
         (
             a.get("has_eligible_validator") is not False
             or not any(

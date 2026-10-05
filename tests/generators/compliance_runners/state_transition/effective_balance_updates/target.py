@@ -1,7 +1,5 @@
 """Coverage model for the effective-balance hysteresis and cap boundaries."""
 
-from dataclasses import dataclass
-
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
     aspect,
     attribute,
@@ -15,7 +13,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     factor,
     Integer,
     nwise,
-    Plan,
 )
 
 from .cases import representatives
@@ -44,12 +41,22 @@ CREDENTIAL = aspect(
 )
 GUARDS = aspect(
     "guards",
-    comparison("downward_trigger", balance + downward_threshold, effective_balance, op="<"),
-    comparison("upward_trigger", effective_balance + upward_threshold, balance, op="<"),
+    comparison(
+        "downward_trigger",
+        balance + downward_threshold,
+        effective_balance,
+        op="<",
+        granularity="cmp5",
+    ),
+    comparison(
+        "upward_trigger", effective_balance + upward_threshold, balance, op="<", granularity="cmp5"
+    ),
 )
 RESULT = aspect(
     "result",
-    comparison("rounded_vs_cap", rounded_balance, max_effective_balance, op=">="),
+    comparison(
+        "rounded_vs_cap", rounded_balance, max_effective_balance, op=">=", granularity="cmp5"
+    ),
     factor("balance_aligned", balance == rounded_balance),
     categorical(
         "outcome",
@@ -69,24 +76,11 @@ ASPECTS = (CREDENTIAL, GUARDS, RESULT)
 FACTORS = tuple(f for a in ASPECTS for f in a.declarations)
 
 
-@dataclass(frozen=True)
-class ProfileDefinition:
-    granularity: str | None
-    plan: Plan | None
-
-
-PROFILE_DEFINITIONS = {
-    "smoke": ProfileDefinition("predicate", nwise(FACTORS, 1)),
-    "normal": ProfileDefinition("cmp3", nwise(FACTORS, 2)),
-    "standard": ProfileDefinition("cmp3", nwise(FACTORS, 2)),
-    "max": ProfileDefinition("cmp5", nwise(FACTORS, len(FACTORS))),
-    "exceptional": ProfileDefinition(None, None),
-}
-# The DSL consumes plans; the provider also needs each plan's granularity.
 PROFILES = {
-    name: definition.plan
-    for name, definition in PROFILE_DEFINITIONS.items()
-    if definition.plan is not None
+    "smoke": nwise(FACTORS, 1),
+    "normal": nwise(FACTORS, 2),
+    "standard": nwise(FACTORS, 2),
+    "max": nwise(FACTORS, len(FACTORS)),
 }
 
 
@@ -99,8 +93,8 @@ def constant_feasibility(bound):
         bound["compounding_max"],
     )
 
-    def feasible(assignment, granularity):
-        return tuple(sorted(assignment.items())) in representatives(values, granularity)
+    def feasible(assignment):
+        return tuple(sorted(assignment.items())) in representatives(values)
 
     return feasible
 

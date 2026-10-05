@@ -40,7 +40,7 @@ COVERAGE = coverage_spec(
     attributes=(validator_count, queued_count, ejected_count, activated_count, unchanged_count),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a, _g: (
+    feasible=lambda a: (
         a.get("has_validators") is None
         or a.get("has_validators")
         is any(

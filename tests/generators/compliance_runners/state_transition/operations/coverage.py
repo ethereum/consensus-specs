@@ -14,7 +14,7 @@ def build_profile(name: str, *, spec):
     """Complete partial obligations and keep one case per realized witness."""
     target = TARGET.for_spec(spec)
     formula = target.profiles[name]
-    obligations = formula.run("predicate")
+    obligations = formula.run()
     records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
     chosen_by_signature = {}
     for record in records:

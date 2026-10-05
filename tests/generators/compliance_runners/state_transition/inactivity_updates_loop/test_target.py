@@ -7,7 +7,6 @@ import pytest
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
-    GRANULARITIES,
     score,
 )
 
@@ -22,17 +21,16 @@ def spec_with(recovery=16, bias=4):
 
 
 @pytest.mark.parametrize("configuration_name", ["minimal", "mainnet"])
-@pytest.mark.parametrize("granularity", GRANULARITIES)
-def test_zero_score_has_exact_recovery_bucket(configuration_name, granularity):
+def test_zero_score_has_exact_recovery_bucket(configuration_name):
     spec = spec_targets[configuration_name]["gloas"]
     target = TARGET.for_spec(spec)
-    zero = BODY["score_gt_zero"].abstract(0, granularity)
+    zero = BODY["score_gt_zero"].abstract(0)
     expected = BODY["score_vs_recovery_rate"].abstract(
-        -int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE), granularity
+        -int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE)
     )
     for profile in ("arithmetic", "standard"):
-        obligations = target.profiles[profile].run(granularity)
-        for bucket in BODY["score_vs_recovery_rate"].domain(granularity):
+        obligations = target.profiles[profile].run()
+        for bucket in BODY["score_vs_recovery_rate"].domain():
             assignment = frozenset(
                 {
                     "is_participating": True,
@@ -44,37 +42,35 @@ def test_zero_score_has_exact_recovery_bucket(configuration_name, granularity):
 
 
 @pytest.mark.parametrize("configuration_name", ["minimal", "mainnet"])
-@pytest.mark.parametrize("granularity", GRANULARITIES)
-def test_leak_free_increases_are_not_required(configuration_name, granularity):
+def test_leak_free_increases_are_not_required(configuration_name):
     target = TARGET.for_spec(spec_targets[configuration_name]["gloas"])
     for profile in ("effects", "standard"):
-        obligations = target.profiles[profile].run(granularity)
-        for bucket in BODY["leaking"].domain(granularity):
+        obligations = target.profiles[profile].run()
+        for bucket in BODY["leaking"].domain():
             assignment = frozenset({"leaking": bucket, "score_delta": "INCREASED"}.items())
-            assert (assignment in obligations) == BODY["leaking"].holds(bucket, granularity)
+            assert (assignment in obligations) == BODY["leaking"].holds(bucket)
 
 
 @pytest.mark.parametrize("recovery", [0, 1, 16])
 def test_recovery_bucket_uses_bound_constant(recovery):
     target = TARGET.for_spec(spec_with(recovery=recovery))
-    obligations = target.profiles["arithmetic"].run("cmp5")
-    expected = BODY["score_vs_recovery_rate"].abstract(-recovery, "cmp5")
+    obligations = target.profiles["arithmetic"].run()
+    expected = BODY["score_vs_recovery_rate"].abstract(-recovery)
     assignment = frozenset(
         {
             "is_participating": True,
-            "score_gt_zero": "EQ",
+            "score_gt_zero": BODY["score_gt_zero"].abstract(0),
             "score_vs_recovery_rate": expected,
         }.items()
     )
     assert any(assignment <= o for o in obligations)
-    for value in BODY["score_vs_recovery_rate"].domain("cmp5"):
+    for value in BODY["score_vs_recovery_rate"].domain():
         assert target.feasible(
             {
                 "is_participating": True,
-                "score_gt_zero": "EQ",
+                "score_gt_zero": BODY["score_gt_zero"].abstract(0),
                 "score_vs_recovery_rate": value,
-            },
-            "cmp5",
+            }
         ) == (value == expected)
 
 
@@ -82,23 +78,20 @@ def test_recovery_bucket_uses_bound_constant(recovery):
 def test_increase_pruning_depends_on_bias_and_recovery(recovery, allowed):
     target = TARGET.for_spec(spec_with(recovery=recovery, bias=4))
     assignment = frozenset({"leaking": False, "score_delta": "INCREASED"}.items())
-    assert (assignment in target.profiles["effects"].run("predicate")) is allowed
-    assert (
-        target.feasible({"score_vs_recovery_rate": True, "score_delta": "INCREASED"}, "predicate")
-        is allowed
-    )
+    assert (assignment in target.profiles["effects"].run()) is allowed
+    assert target.feasible({"score_vs_recovery_rate": True, "score_delta": "INCREASED"}) is allowed
 
 
 def test_binding_is_isolated_and_unbound_scoring_is_rejected():
     low = TARGET.for_spec(spec_with(recovery=1))
     high = TARGET.for_spec(spec_with(recovery=16))
     assignment = {"leaking": False, "score_delta": "INCREASED"}
-    assert low.feasible(assignment, "predicate")
-    assert not high.feasible(assignment, "predicate")
-    assert low.feasible(assignment, "predicate")
+    assert low.feasible(assignment)
+    assert not high.feasible(assignment)
+    assert low.feasible(assignment)
     assert TARGET._bound_spec is None
     with pytest.raises(ValueError, match="for_spec"):
-        score(TARGET, [], TARGET.profiles["effects"], "predicate")
+        score(TARGET, [], TARGET.profiles["effects"])
     with pytest.raises(ValueError, match="fresh target"):
         low.for_spec(spec_with())
     with pytest.raises(ValueError, match="observation spec differs"):
@@ -111,5 +104,5 @@ def test_pruned_but_observed_outcome_is_still_reported():
     record.update(
         is_participating=False, leaking=False, score_delta="INCREASED", score_gt_zero=True
     )
-    report = score(target, [record], target.profiles["effects"], "predicate")
+    report = score(target, [record], target.profiles["effects"])
     assert {"leaking": False, "score_delta": "INCREASED"} in report.unexpected

@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 from .cases import constants, representatives
-from .target import PROFILE_DEFINITIONS, TARGET
+from .target import TARGET
 
 
 def build_profile(name: str, *, spec):
-    profile = PROFILE_DEFINITIONS[name]
-    if profile.plan is None:
+    if name == "exceptional":
         return [], []
-    granularity = profile.granularity
     target = TARGET.for_spec(spec)
-    obligations = target.profiles[name].run(granularity)
-    candidates = representatives(constants(spec), granularity)
+    obligations = target.profiles[name].run()
+    candidates = representatives(constants(spec))
     records = []
     for obligation in sorted(obligations, key=repr):
         matching = [key for key in candidates if obligation <= frozenset(key)]
@@ -26,7 +24,6 @@ def build_profile(name: str, *, spec):
                 **dict(key),
                 "effective_balance": effective,
                 "balance": balance,
-                "granularity": granularity,
             }
         )
     records = list({tuple(sorted(record.items())): record for record in records}.values())
