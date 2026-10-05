@@ -141,7 +141,7 @@ class VersionedHashes(List[VersionedHash]):
 
 | Name                         | Value            | Description                                     |
 | ---------------------------- | ---------------- | ----------------------------------------------- |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | Version byte of a blob's versioned hash         |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1("0x01")` | Version byte of a blob's versioned hash         |
 | `BYTES_PER_FIELD_ELEMENT`    | `Uint64(32)`     | Bytes used to encode a BLS scalar field element |
 
 ## Presets
@@ -518,7 +518,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
     # [New in Deneb:EIP4844]
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK

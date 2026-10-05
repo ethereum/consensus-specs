@@ -109,6 +109,9 @@
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
     - [`compute_time_at_slot`](#compute_time_at_slot)
+    - [`compute_slot_at_time`](#compute_slot_at_time)
+    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
+    - [`compute_slot_at_time_ms`](#compute_slot_at_time_ms)
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
@@ -545,27 +548,27 @@ specification.
 | `FAR_FUTURE_EPOCH`          | `Epoch(2**64 - 1)`   |
 | `BASE_REWARDS_PER_EPOCH`    | `Uint64(4)`          |
 | `JUSTIFICATION_BITS_LENGTH` | `Uint64(4)`          |
-| `ENDIANNESS`                | `'little'`           |
+| `ENDIANNESS`                | `"little"`           |
 
 ### Withdrawal prefixes
 
 | Name                             | Value            |
 | -------------------------------- | ---------------- |
-| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
-| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
+| `BLS_WITHDRAWAL_PREFIX`          | `Bytes1("0x00")` |
+| `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1("0x01")` |
 
 ### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |
-| `DOMAIN_BEACON_PROPOSER`     | `DomainType('0x00000000')` |
-| `DOMAIN_BEACON_ATTESTER`     | `DomainType('0x01000000')` |
-| `DOMAIN_RANDAO`              | `DomainType('0x02000000')` |
-| `DOMAIN_DEPOSIT`             | `DomainType('0x03000000')` |
-| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType('0x04000000')` |
-| `DOMAIN_SELECTION_PROOF`     | `DomainType('0x05000000')` |
-| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType('0x06000000')` |
-| `DOMAIN_APPLICATION_MASK`    | `DomainType('0x00000001')` |
+| `DOMAIN_BEACON_PROPOSER`     | `DomainType("0x00000000")` |
+| `DOMAIN_BEACON_ATTESTER`     | `DomainType("0x01000000")` |
+| `DOMAIN_RANDAO`              | `DomainType("0x02000000")` |
+| `DOMAIN_DEPOSIT`             | `DomainType("0x03000000")` |
+| `DOMAIN_VOLUNTARY_EXIT`      | `DomainType("0x04000000")` |
+| `DOMAIN_SELECTION_PROOF`     | `DomainType("0x05000000")` |
+| `DOMAIN_AGGREGATE_AND_PROOF` | `DomainType("0x06000000")` |
+| `DOMAIN_APPLICATION_MASK`    | `DomainType("0x00000001")` |
 
 *Note*: `DOMAIN_APPLICATION_MASK` reserves the rest of the bitspace in
 `DomainType` for application usage. This means for some `DomainType`
@@ -677,7 +680,7 @@ different configuration.
 | ------------------------------------ | -------------------------------------------- |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `Uint64(2**14)` (= 16,384)                   |
 | `MIN_GENESIS_TIME`                   | `Uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
-| `GENESIS_FORK_VERSION`               | `Version('0x00000000')`                      |
+| `GENESIS_FORK_VERSION`               | `Version("0x00000000")`                      |
 | `GENESIS_DELAY`                      | `Uint64(604800)` (7 days)                    |
 
 ### Time parameters
@@ -1215,7 +1218,7 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
     for current_round in range(SHUFFLE_ROUND_COUNT):
         round_bytes = uint_to_bytes(Uint8(current_round))
         pivot = bytes_to_uint64(sha256(seed + round_bytes)[0:8]) % index_count
-        source_by_bucket: Dict[Uint64, Bytes32] = {}
+        source_by_bucket: dict[Uint64, Bytes32] = {}
         for i in range(index_count):
             flip = (pivot + index_count - indices[i]) % index_count
             position = max(indices[i], flip)
@@ -1286,9 +1289,45 @@ def compute_committee(
 *Note*: This function is unsafe with respect to overflows and underflows.
 
 ```python
-def compute_time_at_slot(state: BeaconState, slot: Slot) -> Uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return Uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+def compute_time_at_slot(genesis_time: Uint64, slot: Slot) -> Uint64:
+    """
+    Return the time in seconds at the start of the given slot.
+    """
+    genesis_time_ms = seconds_to_milliseconds(genesis_time)
+    time_ms = compute_time_at_slot_ms(genesis_time_ms, slot)
+    return milliseconds_to_seconds(time_ms)
+```
+
+#### `compute_slot_at_time`
+
+```python
+def compute_slot_at_time(genesis_time: Uint64, time: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time``.
+    """
+    genesis_time_ms = seconds_to_milliseconds(genesis_time)
+    time_ms = seconds_to_milliseconds(time)
+    return compute_slot_at_time_ms(genesis_time_ms, time_ms)
+```
+
+#### `compute_time_at_slot_ms`
+
+```python
+def compute_time_at_slot_ms(genesis_time_ms: Uint64, slot: Slot) -> Uint64:
+    """
+    Return the time in milliseconds at the start of the given slot.
+    """
+    return Uint64(genesis_time_ms + slot * SLOT_DURATION_MS)
+```
+
+#### `compute_slot_at_time_ms`
+
+```python
+def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
+    """
+    Return the slot at Unix time ``time_ms``.
+    """
+    return Slot((time_ms - genesis_time_ms) // SLOT_DURATION_MS)
 ```
 
 #### `compute_epoch_at_slot`
@@ -1342,8 +1381,8 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
 ```python
 def compute_domain(
     domain_type: DomainType,
-    fork_version: Optional[Version] = None,
-    genesis_validators_root: Optional[Root] = None,
+    fork_version: Version | None = None,
+    genesis_validators_root: Root | None = None,
 ) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
@@ -1515,7 +1554,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 #### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
+def get_total_balance(state: BeaconState, indices: set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``.
     ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
@@ -1545,9 +1584,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(
-    state: BeaconState, domain_type: DomainType, epoch: Optional[Epoch] = None
-) -> Domain:
+def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch | None = None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1577,7 +1614,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
 #### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
@@ -1590,7 +1627,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
 ```python
 def get_pending_attesting_indices(
     state: BeaconState, attestation: PendingAttestation
-) -> Set[ValidatorIndex]:
+) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices for a ``PendingAttestation``.
     """
@@ -1650,7 +1687,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 def slash_validator(
     state: BeaconState,
     slashed_index: ValidatorIndex,
-    whistleblower_index: Optional[ValidatorIndex] = None,
+    whistleblower_index: ValidatorIndex | None = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -1871,8 +1908,8 @@ def get_matching_head_attestations(
 ```python
 def get_unslashed_attesting_indices(
     state: BeaconState, attestations: Sequence[PendingAttestation]
-) -> Set[ValidatorIndex]:
-    output: Set[ValidatorIndex] = set()
+) -> set[ValidatorIndex]:
+    output: set[ValidatorIndex] = set()
     for a in attestations:
         output = output.union(get_pending_attesting_indices(state, a))
     return set(filter(lambda index: not state.validators[index].slashed, output))
@@ -1970,8 +2007,8 @@ def get_proposer_reward(state: BeaconState, attesting_index: ValidatorIndex) -> 
 ```
 
 ```python
-def get_finality_delay(state: BeaconState) -> Uint64:
-    return Uint64(get_previous_epoch(state) - state.finalized_checkpoint.epoch)
+def get_finality_delay(state: BeaconState) -> Epoch:
+    return get_previous_epoch(state) - state.finalized_checkpoint.epoch
 ```
 
 ```python
@@ -1993,7 +2030,7 @@ def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorInde
 ```python
 def get_attestation_component_deltas(
     state: BeaconState, attestations: Sequence[PendingAttestation]
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Helper with shared logic for use by get source, target, and head deltas functions
     """
@@ -2020,7 +2057,7 @@ def get_attestation_component_deltas(
 ##### Components of attestation deltas
 
 ```python
-def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_source_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for source-vote for each validator.
     """
@@ -2031,7 +2068,7 @@ def get_source_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_target_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for target-vote for each validator.
     """
@@ -2042,7 +2079,7 @@ def get_target_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei
 ```
 
 ```python
-def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_head_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attester micro-rewards/penalties for head-vote for each validator.
     """
@@ -2051,7 +2088,7 @@ def get_head_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]
 ```
 
 ```python
-def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return proposer and inclusion delay micro-rewards/penalties for each validator.
     """
@@ -2078,7 +2115,7 @@ def get_inclusion_delay_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequ
 ```
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return inactivity reward/penalty deltas for each validator.
     """
@@ -2099,7 +2136,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
             if index not in matching_target_attesting_indices:
                 effective_balance = state.validators[index].effective_balance
                 penalties[index] += (
-                    effective_balance * get_finality_delay(state) // INACTIVITY_PENALTY_QUOTIENT
+                    effective_balance
+                    * Uint64(get_finality_delay(state))
+                    // INACTIVITY_PENALTY_QUOTIENT
                 )
 
     # No rewards associated with inactivity penalties
@@ -2110,7 +2149,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 ##### `get_attestation_deltas`
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_attestation_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return attestation reward/penalty deltas for each validator.
     """

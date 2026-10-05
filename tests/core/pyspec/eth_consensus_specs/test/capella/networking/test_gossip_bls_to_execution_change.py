@@ -20,7 +20,7 @@ def get_capella_fork_time_ms(spec, store):
     Return the current time in milliseconds at the Capella fork epoch.
     """
     capella_slot = spec.compute_start_slot_at_epoch(spec.config.CAPELLA_FORK_EPOCH)
-    return spec.compute_time_at_slot_ms(store, capella_slot)
+    return spec.compute_time_at_slot_ms(store.genesis_time_ms, capella_slot)
 
 
 @with_capella_and_later
@@ -41,7 +41,6 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -58,7 +57,7 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_bls_to_execution_change),
                 "expected": "valid",
             }
@@ -85,7 +84,6 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -98,7 +96,7 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     assert reason is None
     messages.append(
         {
-            "offset_ms": 0,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bls_to_execution_change),
             "expected": "valid",
         }
@@ -115,7 +113,7 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     assert reason == "already seen BLS to execution change for this validator"
     messages.append(
         {
-            "offset_ms": 0,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bls_to_execution_change),
             "expected": "ignore",
             "reason": reason,
@@ -145,7 +143,6 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -162,7 +159,7 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_bls_to_execution_change),
                 "expected": "reject",
                 "reason": reason,
@@ -194,7 +191,6 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -211,7 +207,7 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_bls_to_execution_change),
                 "expected": "reject",
                 "reason": reason,
@@ -244,7 +240,6 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -261,7 +256,7 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_bls_to_execution_change),
                 "expected": "reject",
                 "reason": reason,
@@ -290,7 +285,6 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     current_time_ms = get_capella_fork_time_ms(spec, store)
 
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
         spec,
@@ -307,7 +301,7 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_bls_to_execution_change),
                 "expected": "reject",
                 "reason": reason,

@@ -77,16 +77,18 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -100,7 +102,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "valid",
             }
@@ -144,16 +146,18 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -167,7 +171,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "valid",
             }
@@ -206,18 +210,20 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield get_filename(header_msg), header_msg
     yield get_filename(cells_msg), cells_msg
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
 
     messages = []
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=header_msg,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -226,18 +232,19 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         {
             "group_id": get_filename(group_id),
             "column_index": int(column_index),
-            "offset_ms": 500,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(header_msg),
             "expected": "valid",
         }
     )
 
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=cells_msg,
-        current_time_ms=block_time_ms + 600,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -247,7 +254,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         {
             "group_id": get_filename(group_id),
             "column_index": int(column_index),
-            "offset_ms": 600,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(cells_msg),
             "expected": "valid",
         }
@@ -295,13 +302,14 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     kwargs = {}
     if not is_post_gloas(spec):
+        current_time_ms = spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, signed_block.message.slot
+        )
+        current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
-        kwargs["current_time_ms"] = block_time_ms + 500
+        kwargs["current_time_ms"] = current_time_ms
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -313,20 +321,16 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     assert result == "reject"
     assert reason == "partial message is semantically empty"
 
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 500,
-                "message": get_filename(partial),
-                "expected": result,
-                "reason": reason,
-            }
-        ],
-    )
+    message = {
+        "group_id": get_filename(group_id),
+        "column_index": int(column_index),
+        "message": get_filename(partial),
+        "expected": result,
+        "reason": reason,
+    }
+    if not is_post_gloas(spec):
+        message["current_time_ms"] = int(current_time_ms)
+    yield "messages", "meta", [message]
 
 
 @with_fulu_and_later
@@ -371,13 +375,14 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     partial.partial_column = cells_type(data=list(partial.partial_column) + [spec.Cell()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     kwargs = {}
     if not is_post_gloas(spec):
+        current_time_ms = spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, signed_block.message.slot
+        )
+        current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
-        kwargs["current_time_ms"] = block_time_ms + 500
+        kwargs["current_time_ms"] = current_time_ms
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -389,20 +394,16 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     assert result == "reject"
     assert reason == "number of cells does not match number of set bits"
 
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 500,
-                "message": get_filename(partial),
-                "expected": result,
-                "reason": reason,
-            }
-        ],
-    )
+    message = {
+        "group_id": get_filename(group_id),
+        "column_index": int(column_index),
+        "message": get_filename(partial),
+        "expected": result,
+        "reason": reason,
+    }
+    if not is_post_gloas(spec):
+        message["current_time_ms"] = int(current_time_ms)
+    yield "messages", "meta", [message]
 
 
 @with_fulu_and_later
@@ -447,13 +448,14 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     kwargs = {}
     if not is_post_gloas(spec):
+        current_time_ms = spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, signed_block.message.slot
+        )
+        current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
-        kwargs["current_time_ms"] = block_time_ms + 500
+        kwargs["current_time_ms"] = current_time_ms
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -465,20 +467,16 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     assert result == "reject"
     assert reason == "number of proofs does not match number of set bits"
 
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 500,
-                "message": get_filename(partial),
-                "expected": result,
-                "reason": reason,
-            }
-        ],
-    )
+    message = {
+        "group_id": get_filename(group_id),
+        "column_index": int(column_index),
+        "message": get_filename(partial),
+        "expected": result,
+        "reason": reason,
+    }
+    if not is_post_gloas(spec):
+        message["current_time_ms"] = int(current_time_ms)
+    yield "messages", "meta", [message]
 
 
 @with_all_phases_from_to(FULU, GLOAS)
@@ -514,18 +512,20 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield get_filename(good), good
     yield get_filename(diverging), diverging
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
 
     messages = []
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=good,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -534,18 +534,19 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         {
             "group_id": get_filename(group_id),
             "column_index": int(column_index),
-            "offset_ms": 500,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(good),
             "expected": "valid",
         }
     )
 
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=diverging,
-        current_time_ms=block_time_ms + 600,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -555,7 +556,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         {
             "group_id": get_filename(group_id),
             "column_index": int(column_index),
-            "offset_ms": 600,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(diverging),
             "expected": "reject",
             "reason": reason,
@@ -592,16 +593,18 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -615,7 +618,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -651,16 +654,18 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -674,7 +679,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -709,9 +714,10 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
 
     yield get_filename(partial), partial
 
-    slot_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     column_index = sidecar.index
     result, reason = run_validate_gossip(
@@ -733,7 +739,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "ignore",
                 "reason": reason,
@@ -780,16 +786,16 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block_header.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -803,7 +809,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "ignore",
                 "reason": reason,
@@ -842,16 +848,18 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -865,7 +873,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -902,16 +910,18 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -925,7 +935,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -963,16 +973,18 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -986,7 +998,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "ignore",
                 "reason": reason,
@@ -1037,16 +1049,18 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1060,7 +1074,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -1114,18 +1128,18 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(
-        store, partial.header[0].signed_block_header.message.slot
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, partial.header[0].signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1139,7 +1153,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -1181,16 +1195,18 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     yield "finalized_checkpoint", "meta", {"epoch": 0, "root": "0x" + "ab" * 32}
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1204,7 +1220,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -1240,16 +1256,18 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1263,7 +1281,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -1304,16 +1322,18 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1327,7 +1347,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
                 "reason": reason,
@@ -1362,16 +1382,18 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
 
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=partial,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1385,7 +1407,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "ignore",
                 "reason": reason,
@@ -1425,24 +1447,37 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     yield get_filename(header_msg), header_msg
     yield get_filename(cells_msg), cells_msg
 
-    slot_time_ms = spec.compute_time_at_slot_ms(store, sidecar.signed_block_header.message.slot)
-    current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     column_index = sidecar.index
+    messages = []
 
+    current_time_ms += 1
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=header_msg,
-        current_time_ms=current_time_ms + 1,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
+    messages.append(
+        {
+            "group_id": get_filename(group_id),
+            "column_index": int(column_index),
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(header_msg),
+            "expected": "valid",
+        }
+    )
 
+    current_time_ms -= 1
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -1454,28 +1489,18 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     )
     assert result == "ignore"
     assert reason == "corresponding header is from a future slot"
-
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 1,
-                "message": get_filename(header_msg),
-                "expected": "valid",
-            },
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 0,
-                "message": get_filename(cells_msg),
-                "expected": "ignore",
-                "reason": reason,
-            },
-        ],
+    messages.append(
+        {
+            "group_id": get_filename(group_id),
+            "column_index": int(column_index),
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(cells_msg),
+            "expected": "ignore",
+            "reason": reason,
+        }
     )
+
+    yield "messages", "meta", messages
 
 
 @with_all_phases_from_to(FULU, GLOAS)
@@ -1511,8 +1536,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
 
     block_header = sidecar.signed_block_header.message
     sidecar_epoch = spec.compute_epoch_at_slot(block_header.slot)
-    block_time_ms = spec.compute_time_at_slot_ms(store, block_header.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
 
     block_root = group_id.beacon_block_root
     seen.partial_data_column_headers[block_root] = header
@@ -1540,12 +1564,13 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     )
 
     column_index = sidecar.index
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=cells_msg,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
     )
@@ -1561,7 +1586,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
             {
                 "group_id": get_filename(group_id),
                 "column_index": int(column_index),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(cells_msg),
                 "expected": "ignore",
                 "reason": reason,
@@ -1617,13 +1642,14 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     partial.kzg_proofs = proofs_type(data=list(partial.kzg_proofs) + [spec.KZGProof()])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     kwargs = {}
     if not is_post_gloas(spec):
+        current_time_ms = spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, signed_block.message.slot
+        )
+        current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
-        kwargs["current_time_ms"] = block_time_ms + 500
+        kwargs["current_time_ms"] = current_time_ms
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -1635,20 +1661,16 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     assert result == "reject"
     assert reason == "bitmap length does not match commitments length"
 
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 500,
-                "message": get_filename(partial),
-                "expected": result,
-                "reason": reason,
-            }
-        ],
-    )
+    message = {
+        "group_id": get_filename(group_id),
+        "column_index": int(column_index),
+        "message": get_filename(partial),
+        "expected": result,
+        "reason": reason,
+    }
+    if not is_post_gloas(spec):
+        message["current_time_ms"] = int(current_time_ms)
+    yield "messages", "meta", [message]
 
 
 @with_fulu_and_later
@@ -1695,13 +1717,14 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     partial.kzg_proofs = proofs_type(data=[second, first])
     yield get_filename(partial), partial
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
-
     kwargs = {}
     if not is_post_gloas(spec):
+        current_time_ms = spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, signed_block.message.slot
+        )
+        current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
-        kwargs["current_time_ms"] = block_time_ms + 500
+        kwargs["current_time_ms"] = current_time_ms
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -1713,17 +1736,13 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     assert result == "reject"
     assert reason == "invalid sidecar kzg proofs"
 
-    yield (
-        "messages",
-        "meta",
-        [
-            {
-                "group_id": get_filename(group_id),
-                "column_index": int(column_index),
-                "offset_ms": 500,
-                "message": get_filename(partial),
-                "expected": result,
-                "reason": reason,
-            }
-        ],
-    )
+    message = {
+        "group_id": get_filename(group_id),
+        "column_index": int(column_index),
+        "message": get_filename(partial),
+        "expected": result,
+        "reason": reason,
+    }
+    if not is_post_gloas(spec):
+        message["current_time_ms"] = int(current_time_ms)
+    yield "messages", "meta", [message]

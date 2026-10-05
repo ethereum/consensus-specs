@@ -33,7 +33,7 @@ from eth_consensus_specs.test.helpers.state import (
 
 
 def _seed_bid_context(
-    spec, state, store, head_payload, messages, time_ms, seed_prefs=True, seed_envelope=True
+    spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True, seed_envelope=True
 ):
     """
     Yield and validate the proposer preferences and payload envelope messages
@@ -46,7 +46,7 @@ def _seed_bid_context(
     under test. The expected outcome then does not depend on the order in
     which a client checks independent conditions.
 
-    Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms).
+    Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms).
     """
     seen = get_seen(spec)
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
@@ -57,7 +57,7 @@ def _seed_bid_context(
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
 
     if seed_prefs:
-        time_ms += 50
+        current_time_ms += 50
         signed_prefs = build_signed_proposer_preferences(
             spec,
             state,
@@ -72,20 +72,20 @@ def _seed_bid_context(
             seen=seen,
             store=store,
             signed_proposer_preferences=signed_prefs,
-            current_time_ms=time_ms,
+            current_time_ms=current_time_ms,
         )
         assert result == "valid"
         assert reason is None
         messages.append(
             {
-                "current_time_ms": int(time_ms),
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_prefs),
                 "expected": result,
             }
         )
 
     if seed_envelope:
-        time_ms += 10
+        current_time_ms += 10
         assert head_payload.message.payload.block_hash == parent_block_hash
         yield get_filename(head_payload), head_payload
         result, reason = run_validate_gossip(
@@ -98,13 +98,12 @@ def _seed_bid_context(
         assert reason is None
         messages.append(
             {
-                "current_time_ms": int(time_ms),
                 "message": get_filename(head_payload),
                 "expected": result,
             }
         )
 
-    return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms
+    return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
 
 
 @with_gloas_and_later
@@ -123,12 +122,16 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -143,19 +146,19 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -210,13 +213,19 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     yield "blocks", "meta", blocks_meta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
     proposal_state = parent_state.copy()
     spec.process_slots(proposal_state, state.slot)
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, time_ms)
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from (
+        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, current_time_ms)
     )
     assert spec.get_shuffling_dependent_root(
         store, head_root, spec.compute_epoch_at_slot(proposal_slot)
@@ -238,19 +247,19 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -280,12 +289,16 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -300,19 +313,19 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -337,11 +350,10 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, _, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
+    seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     )
 
     far_slot = spec.Slot(state.slot + 100)
@@ -358,19 +370,19 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -400,17 +412,21 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
     # ms before that places the bid outside the disparity window. The seeding
     # messages are validated shortly before the edge.
     bid_slot = spec.Slot(state.slot + 1)
-    edge_time_ms = (
-        spec.compute_time_at_slot_ms(store, spec.Slot(bid_slot - 1))
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         - 1
     )
-    time_ms = edge_time_ms - 100
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms -= 100
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     assert proposal_slot == bid_slot
 
     signed_bid = build_signed_bid(
@@ -426,19 +442,19 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms = edge_time_ms
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -469,11 +485,10 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
     bid_slot = spec.Slot(state.slot + 1)
     # Lower edge of the disparity window: (bid_slot - 1)'s start minus disparity.
-    time_ms = (
-        spec.compute_time_at_slot_ms(store, spec.Slot(bid_slot - 1))
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
@@ -491,19 +506,18 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -512,7 +526,6 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -532,8 +545,8 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     yield get_filename(signed_bid), signed_bid
 
     # Validate the bid exactly at the lower edge of the disparity window.
-    time_ms = (
-        spec.compute_time_at_slot_ms(store, spec.Slot(proposal_slot - 1))
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot - 1))
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
@@ -541,13 +554,13 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -575,8 +588,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     seen = get_seen(spec)
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
@@ -594,19 +606,18 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -615,7 +626,6 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -635,8 +645,8 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     yield get_filename(signed_bid), signed_bid
 
     # Validate the bid exactly at the upper edge of the disparity window.
-    time_ms = (
-        spec.compute_time_at_slot_ms(store, spec.Slot(proposal_slot + 1))
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
@@ -644,13 +654,13 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -675,12 +685,16 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -697,8 +711,8 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
 
     # Upper edge: (bid_slot + 1)'s start + MAXIMUM_GOSSIP_CLOCK_DISPARITY. One
     # ms past that places the bid outside the disparity window.
-    time_ms = (
-        spec.compute_time_at_slot_ms(store, spec.Slot(proposal_slot + 1))
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot + 1))
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
         + 1
     )
@@ -707,13 +721,13 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's slot is not the current or next slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -743,12 +757,16 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     builder_index = spec.BuilderIndex(0)
     first_bid = build_signed_bid(
@@ -764,19 +782,19 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     )
     yield get_filename(first_bid), first_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=first_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(first_bid),
             "expected": result,
         }
@@ -797,19 +815,19 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     )
     yield get_filename(duplicate_bid), duplicate_bid
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=duplicate_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "already seen valid bid for this slot, parent, and builder"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(duplicate_bid),
             "expected": result,
             "reason": reason,
@@ -839,12 +857,16 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     best_bid = build_signed_bid(
         spec,
@@ -859,19 +881,19 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     )
     yield get_filename(best_bid), best_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=best_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(best_bid),
             "expected": result,
         }
@@ -892,19 +914,19 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     )
     yield get_filename(lower_bid), lower_bid
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=lower_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid is not the highest value bid seen for this slot and parent"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(lower_bid),
             "expected": result,
             "reason": reason,
@@ -935,12 +957,16 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     best_bid = build_signed_bid(
         spec,
@@ -955,19 +981,19 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     )
     yield get_filename(best_bid), best_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=best_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(best_bid),
             "expected": result,
         }
@@ -988,19 +1014,19 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     )
     yield get_filename(equal_bid), equal_bid
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=equal_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid is not the highest value bid seen for this slot and parent"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(equal_bid),
             "expected": result,
             "reason": reason,
@@ -1030,12 +1056,16 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     best_bid = build_signed_bid(
         spec,
@@ -1050,19 +1080,19 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
     )
     yield get_filename(best_bid), best_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=best_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(best_bid),
             "expected": result,
         }
@@ -1083,19 +1113,19 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
     )
     yield get_filename(higher_bid), higher_bid
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=higher_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(higher_bid),
             "expected": result,
         }
@@ -1125,12 +1155,16 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     out_of_range_index = spec.BuilderIndex(len(state.builders))
     signed_bid = build_signed_bid(
@@ -1147,19 +1181,19 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "builder index out of range"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1191,12 +1225,16 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1211,19 +1249,19 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "builder cannot cover bid value"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1249,12 +1287,16 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1270,19 +1312,19 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid's execution payment must be zero"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1306,12 +1348,16 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
         yield get_filename(signed), signed
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     builder_index = spec.BuilderIndex(0)
     # The chain of empty blocks never finalizes, so builder.deposit_epoch (0)
@@ -1331,19 +1377,19 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "builder is not active"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1378,12 +1424,16 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1398,19 +1448,19 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "builder is not a payload builder"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1454,12 +1504,16 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1474,19 +1528,19 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "builder may exit"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1530,12 +1584,16 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1550,19 +1608,19 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -1605,12 +1663,16 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     signed_bid = build_signed_bid(
         spec,
@@ -1625,19 +1687,19 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -1681,12 +1743,16 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
         yield get_filename(signed), signed
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     # The pending payment survives the advance to the bid's slot, which is what
     # blocks the exit that validation assumes.
     advanced_state = store.block_states[parent_root].copy()
@@ -1709,19 +1775,19 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "builder may exit"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1747,12 +1813,16 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     # Overfill blob commitments above the per-epoch limit. The commitments are
     # part of the signed message, so the signature stays valid.
@@ -1774,19 +1844,19 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1816,12 +1886,16 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     # Fill blob commitments to exactly the per-epoch limit.
     max_blobs = spec.get_blob_parameters(
@@ -1843,19 +1917,19 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -1884,12 +1958,16 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     unknown_root = spec.Root(b"\xab" * 32)
     signed_bid = build_signed_bid(
@@ -1905,19 +1983,19 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 100
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block root is not a known beacon block"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -1951,17 +2029,18 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     # The bid targets the head's own slot, so bid.slot == parent.slot.
     assert blocks[-1].message.slot == state.slot
     bid_slot = spec.Slot(state.slot)
-    head_slot_time_ms = spec.compute_time_at_slot_ms(store, bid_slot)
-    time_ms = head_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 200
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 200
     messages = []
-    seen, common_fee, parent_gas_limit, _, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms, seed_prefs=False)
+    seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
+        _seed_bid_context(
+            spec, state, store, head_payload, messages, current_time_ms, seed_prefs=False
+        )
     )
 
     # Seed preferences for the bid's (current) slot, validated while the slot
     # was still upcoming.
-    time_ms += 10
+    current_time_ms += 10
     signed_prefs = build_signed_proposer_preferences(
         spec,
         state,
@@ -1976,13 +2055,13 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
@@ -2001,19 +2080,21 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms = head_slot_time_ms + 100
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot)
+
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid's slot is not higher than its parent's slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2045,11 +2126,19 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms, seed_envelope=False)
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from (
+        _seed_bid_context(
+            spec, state, store, head_payload, messages, current_time_ms, seed_envelope=False
+        )
     )
 
     signed_bid = build_signed_bid(
@@ -2065,19 +2154,19 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block hash is not a known execution payload"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2117,14 +2206,15 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, signed_parent.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, signed_parent.message.slot
+    )
     messages = []
 
     # Make the bid's parent block hash a known execution payload by validating
     # a real envelope for the head block. The pending parent is an empty
     # block, so the bid builds on the same payload.
-    time_ms += 50
+    current_time_ms += 50
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, head_root, head_signed_block
     )
@@ -2136,7 +2226,6 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
         }
@@ -2153,19 +2242,19 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 50
+    current_time_ms += 50
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block post-state is unavailable"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2202,14 +2291,11 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     # Make the parent's execution payload a known payload by validating its
     # envelope, so the bid passes the parent-known checks before the lookahead
     # check.
-    time_ms += 50
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2218,7 +2304,6 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2241,19 +2326,19 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     yield get_filename(signed_bid), signed_bid
 
     # Validate at the bid's own (future) slot so it counts as the current slot.
-    bid_time_ms = spec.compute_time_at_slot_ms(store, future_slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, future_slot)
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=bid_time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's slot is past the parent's proposer lookahead"
     messages.append(
         {
-            "current_time_ms": int(bid_time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2283,14 +2368,13 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     # Make the bid's parent block hash a known execution payload by validating
     # a real envelope for the parent block. Leave seen.proposer_preferences
     # empty.
-    time_ms += 50
+    current_time_ms += 50
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2299,7 +2383,6 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2318,19 +2401,19 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 50
+    current_time_ms += 50
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "matching proposer preferences have not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2357,14 +2440,13 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     bid_fee = spec.ExecutionAddress(b"\xaa" * 20)
     prefs_fee = spec.ExecutionAddress(b"\xbb" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2380,19 +2462,19 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2401,7 +2483,6 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2420,19 +2501,19 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's fee recipient does not match the proposer's preference"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2459,13 +2540,12 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2481,19 +2561,19 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2502,7 +2582,6 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2523,19 +2602,19 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's gas limit is not compatible with the proposer's target"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2562,13 +2641,12 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2584,19 +2662,19 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2605,7 +2683,6 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2630,19 +2707,19 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid's previous randao is incorrect"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2669,13 +2746,12 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2691,19 +2767,19 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2712,7 +2788,6 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2735,19 +2810,19 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid's block hash equals its parent block hash"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2774,13 +2849,12 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2796,19 +2870,19 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -2817,7 +2891,6 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2837,19 +2910,19 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "invalid bid signature"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
@@ -2895,12 +2968,11 @@ def _run_bid_gas_limit_scenario(
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
 
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     signed_prefs = build_signed_proposer_preferences(
         spec,
@@ -2916,19 +2988,19 @@ def _run_bid_gas_limit_scenario(
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     assert head_payload.message.payload.gas_limit == parent_gas_limit
     result, reason = run_validate_gossip(
@@ -2938,7 +3010,6 @@ def _run_bid_gas_limit_scenario(
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -2957,18 +3028,18 @@ def _run_bid_gas_limit_scenario(
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == expected_result
     assert reason == expected_reason
     entry = {
-        "current_time_ms": int(time_ms),
+        "current_time_ms": int(current_time_ms),
         "message": get_filename(signed_bid),
         "expected": result,
     }
@@ -3025,13 +3096,12 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
 
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
-    time_ms += 50
+    current_time_ms += 50
     signed_prefs = build_signed_proposer_preferences(
         spec,
         state,
@@ -3046,19 +3116,19 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3069,7 +3139,6 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
         }
@@ -3099,19 +3168,19 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         signed_prefs.message.target_gas_limit,
     )
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }
@@ -3284,8 +3353,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     assert spec.can_builder_cover_bid(advanced_state, builder_index, bid_value)
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
@@ -3293,7 +3361,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
 
     # The first proposal slot after the parent is the first slot of the next
     # epoch, so validating the bid must advance the state across the boundary.
-    time_ms += 50
+    current_time_ms += 50
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
     assert spec.compute_epoch_at_slot(proposal_slot) == spec.compute_epoch_at_slot(state.slot) + 1
     signed_prefs = build_signed_proposer_preferences(
@@ -3310,19 +3378,19 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
         seen=seen,
         store=store,
         signed_proposer_preferences=signed_prefs,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_prefs),
             "expected": result,
         }
     )
 
-    time_ms += 10
+    current_time_ms += 10
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
@@ -3331,7 +3399,6 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(head_payload),
             "expected": result,
         }
@@ -3350,19 +3417,19 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     )
     yield get_filename(signed_bid), signed_bid
 
-    time_ms += 40
+    current_time_ms += 40
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_bid),
             "expected": result,
         }

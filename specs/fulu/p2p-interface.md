@@ -58,7 +58,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                    | Value                                                                                     | Description                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments")))` (= 4) | <!-- predefined --> Merkle proof index for `blob_kzg_commitments` |
 
 ## Configs
 
@@ -123,23 +123,23 @@ class DataColumnsByRootIdentifier(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
     # [Modified in Fulu:EIP7594]
     # Removed `blob_sidecar_tuples`
     # [New in Fulu:EIP7594]
-    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    data_column_sidecar_tuples: set[tuple[Slot, ValidatorIndex, ColumnIndex]]
     # [New in Fulu]
-    partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
+    partial_data_column_headers: dict[Root, PartialDataColumnHeader]
 ```
 
 ### Modified `compute_fork_version`
@@ -307,7 +307,7 @@ def validate_beacon_block_gossip(
     store: Store,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -368,7 +368,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("invalid proposer signature")
 
     # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+    if execution_payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
         raise GossipReject("incorrect execution payload timestamp")
 
     # [REJECT] The block is from a higher slot than its parent
@@ -896,20 +896,24 @@ object (`ENRForkID`):
 
 The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
-  - `genesis_validators_root` is the static `Root` found in
-    `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time (not
-    necessarily the epoch to which the node is sync).
-- `next_fork_version` is the fork version corresponding to the next planned fork
-  at a future epoch. The fork version will only change for regular forks, _not
-  BPO forks_. Note that it is possible for the blob schedule to define a change
-  at the same epoch as a regular fork; this situation would be considered a
-  regular fork. If no future fork is planned, set
-  `next_fork_version = current_fork_version` to signal this fact.
+- `fork_digest` is
+  `compute_fork_digest(genesis_validators_root, current_epoch)`.
+- `next_fork_version` is the fork version that will be in effect at
+  `next_fork_epoch`: `compute_fork_version(current_epoch)` if
+  `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
+  `compute_fork_version(next_fork_epoch)`.
 - `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
   _or a BPO fork_) is planned. If no future fork is planned, set
   `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
+*Note*: In the definitions above, `genesis_validators_root` is the static `Root`
+found in `state.genesis_validators_root` and `current_epoch` is the node's
+current epoch defined by the wall-clock time (not necessarily the epoch to which
+the node is sync).
+
+*Note*: Because `next_fork_epoch` accounts for BPO forks, it is possible for
+`next_fork_version` to equal the current fork version even when a future fork is
+planned.
 
 #### Custody group count
 

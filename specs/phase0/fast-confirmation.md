@@ -23,7 +23,7 @@
       - [`get_previous_balance_source`](#get_previous_balance_source)
       - [`get_current_balance_source`](#get_current_balance_source)
     - [LMD-GHOST helpers](#lmd-ghost-helpers)
-      - [`get_block_support_between_slots`](#get_block_support_between_slots)
+      - [`get_node_support_between_slots`](#get_node_support_between_slots)
       - [`is_full_validator_set_covered`](#is_full_validator_set_covered)
       - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
       - [`estimate_committee_weight_between_slots`](#estimate_committee_weight_between_slots)
@@ -232,14 +232,14 @@ semantics MUST be preserved.
 committees of epochs starting from `current_epoch - 2`.
 
 ```python
-def get_slot_committee(store: Store, slot: Slot) -> Set[ValidatorIndex]:
+def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
     """
     Return participants of all committees in ``slot``.
     """
     head = get_head(store).root
     shuffling_source = store.block_states[head]
     committees_count = get_committee_count_per_slot(shuffling_source, compute_epoch_at_slot(slot))
-    participants: Set[ValidatorIndex] = set()
+    participants: set[ValidatorIndex] = set()
     for i in range(committees_count):
         participants.update(get_beacon_committee(shuffling_source, slot, CommitteeIndex(i)))
     return participants
@@ -285,7 +285,7 @@ def get_current_balance_source(fcr_store: FastConfirmationStore) -> BeaconState:
 
 #### LMD-GHOST helpers
 
-##### `get_block_support_between_slots`
+##### `get_node_support_between_slots`
 
 *Notes:*
 
@@ -294,10 +294,10 @@ distinguished from votes submitted by that same validator in
 `[start_slot, end_slot]` interval. Due to committee shuffling near epoch
 boundary the following cases are possible:
 
-1. Validator assigned to `start_slot - 1` and `end_slot` votes for `block_root`
-   in `start_slot - 1` but does not vote in `end_slot`.
+1. Validator assigned to `start_slot - 1` and `end_slot` votes for `node` in
+   `start_slot - 1` but does not vote in `end_slot`.
 2. Validator assigned to `start_slot` and `end_slot + 1` misses a vote in
-   `start_slot`, but votes for `block_root` in `end_slot + 1`.
+   `start_slot`, but votes for `node` in `end_slot + 1`.
 
 In both cases the support would count a vote outside of the
 `[start_slot, end_slot]` range. This inaccuracy is acceptable as it does not
@@ -309,18 +309,18 @@ Due to the algorithm logic, maximum distance between `balance_source` and
 of slots are consistent with the `balance_source` validator set.
 
 ```python
-def get_block_support_between_slots(
+def get_node_support_between_slots(
     store: Store,
     balance_source: BeaconState,
-    block_root: Root,
+    node: ForkChoiceNode,
     start_slot: Slot,
     end_slot: Slot,
 ) -> Gwei:
     """
-    Return support of the block by validators assigned to slots
+    Return support of the node by validators assigned to slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    participants: Set[ValidatorIndex] = set()
+    participants: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         participants.update(get_slot_committee(store, Slot(slot)))
 
@@ -339,11 +339,11 @@ def get_block_support_between_slots(
         sum(
             balance_source.validators[i].effective_balance
             for i in unslashed_and_active_indices
-            # Check that validator has voted in the support of the block
+            # Check that validator has voted in the support of the node
             # and has not been slashed
             if (
                 i in store.latest_messages
-                and store.latest_messages[i].root == block_root
+                and get_supported_node(store, store.latest_messages[i]) == node
                 and i not in store.equivocating_indices
             )
         )
@@ -454,7 +454,7 @@ def get_equivocation_score(
     Return total weight of equivocating participants of all committees
     in the slots between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    committee_indices: Set[ValidatorIndex] = set()
+    committee_indices: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         committee_indices.update(get_slot_committee(store, Slot(slot)))
 
@@ -542,10 +542,11 @@ def compute_empty_slot_support_discount(
         return Gwei(0)
 
     # Discount votes supporting the parent block if they are from the committees of empty slots
-    parent_support_in_empty_slots = get_block_support_between_slots(
+    parent_node = get_ancestor(store, get_node_for_root(block_root), parent_block.slot)
+    parent_support_in_empty_slots = get_node_support_between_slots(
         store,
         balance_source,
-        block.parent_root,
+        parent_node,
         parent_block.slot + 1,
         block.slot - 1,
     )

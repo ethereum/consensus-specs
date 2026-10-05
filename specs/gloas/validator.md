@@ -61,7 +61,7 @@ the lookahead.
 ```python
 def get_ptc_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Slot]:
+) -> Slot | None:
     """
     Returns the slot during the requested epoch in which the validator with
     index ``validator_index`` is a member of the PTC. Returns None if no
@@ -342,7 +342,7 @@ def prepare_execution_payload(
     # [New in Gloas]
     target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head, get_current_slot(store)):
@@ -359,7 +359,7 @@ def prepare_execution_payload(
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state.genesis_time, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         # [Modified in Gloas:EIP7732]
@@ -452,7 +452,7 @@ def get_payload_attestation_message_signature(
 ```python
 def get_data_column_sidecars_from_column_sidecar(
     sidecar: DataColumnSidecar,
-    cells_and_kzg_proofs: Sequence[Tuple[Cells, Proofs]],
+    cells_and_kzg_proofs: Sequence[tuple[Cells, Proofs]],
 ) -> Sequence[DataColumnSidecar]:
     """
     Given a data column sidecar and the cells/proofs associated with each blob
