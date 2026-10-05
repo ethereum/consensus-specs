@@ -64,30 +64,30 @@ class Factor:
     name: str
     description: str = ""
 
-    def domain(self, granularity: str) -> tuple:
+    def domain(self) -> tuple:
         raise NotImplementedError
 
-    def abstract(self, raw: Any, granularity: str) -> Any:
+    def abstract(self, raw: Any) -> Any:
         raise NotImplementedError
 
-    def value(self, obs: Observation, granularity: str) -> Any:
+    def value(self, obs: Observation) -> Any:
         raw = obs.get(self.name, NA)
-        return NA if raw is NA else self.abstract(raw, granularity)
+        return NA if raw is NA else self.abstract(raw)
 
-    def holds(self, value: Any, granularity: str) -> bool | None:
+    def holds(self, value: Any) -> bool | None:
         """Truth of the underlying spec predicate for an abstract value, if any."""
         return None
 
 
 @dataclass(frozen=True)
 class Pred(Factor):
-    def domain(self, granularity: str) -> tuple:
+    def domain(self) -> tuple:
         return (True, False)
 
-    def abstract(self, raw: Any, granularity: str) -> Any:
+    def abstract(self, raw: Any) -> Any:
         return bool(raw)
 
-    def holds(self, value: Any, granularity: str) -> bool | None:
+    def holds(self, value: Any) -> bool | None:
         return bool(value)
 
 
@@ -96,24 +96,23 @@ class Cmp(Factor):
     """``lhs op rhs``, observed as the integer ``lhs - rhs``."""
 
     op: str = ""
+    granularity: str = "predicate"
 
-    def _g(self, granularity: str) -> str:
-        g = granularity
-        if g not in GRANULARITIES:
-            raise ValueError(f"unknown granularity {g!r}")
-        return g
+    def __post_init__(self):
+        if self.granularity not in GRANULARITIES:
+            raise ValueError(f"unknown granularity {self.granularity!r}")
 
-    def domain(self, granularity: str) -> tuple:
-        g = self._g(granularity)
+    def domain(self) -> tuple:
+        g = self.granularity
         if g == "predicate":
             return (True, False)
         if g == "cmp3":
             return ("LT", "EQ", "GT")
         return ("LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR")
 
-    def abstract(self, raw: Any, granularity: str) -> Any:
+    def abstract(self, raw: Any) -> Any:
         delta = int(raw)
-        g = self._g(granularity)
+        g = self.granularity
         if g == "predicate":
             return _OPS[self.op](delta)
         if g == "cmp3":
@@ -124,14 +123,14 @@ class Cmp(Factor):
             return "GT_FAR"
         return {-1: "LT_1", 0: "EQ", 1: "GT_1"}[delta]
 
-    def holds(self, value: Any, granularity: str) -> bool | None:
-        if self._g(granularity) == "predicate":
+    def holds(self, value: Any) -> bool | None:
+        if self.granularity == "predicate":
             return bool(value)
         return _OPS[self.op](_CMP_REPRESENTATIVE[value])
 
-    def far(self, value: Any, granularity: str) -> bool | None:
+    def far(self, value: Any) -> bool | None:
         """Whether ``value`` denotes ``|lhs - rhs| > 1``; None if unknowable."""
-        g = self._g(granularity)
+        g = self.granularity
         if g == "predicate":
             return None
         if g == "cmp3":
@@ -143,10 +142,10 @@ class Cmp(Factor):
 class Enum(Factor):
     values: tuple = ()
 
-    def domain(self, granularity: str) -> tuple:
+    def domain(self) -> tuple:
         return self.values
 
-    def abstract(self, raw: Any, granularity: str) -> Any:
+    def abstract(self, raw: Any) -> Any:
         if raw not in self.values:
             raise ValueError(f"{self.name}: {raw!r} not in {self.values}")
         return raw
@@ -154,7 +153,7 @@ class Enum(Factor):
 
 Assignment = dict[str, Any]
 Obligation = frozenset[tuple[str, Any]]
-Feasible = Callable[[Assignment, str], bool]
+Feasible = Callable[[Assignment], bool]
 
 
 def _merge(a: Obligation, b: Obligation) -> Obligation | None:
@@ -168,8 +167,8 @@ def _merge(a: Obligation, b: Obligation) -> Obligation | None:
 def rules(*fns: Feasible) -> Feasible:
     """Conjoin feasibility rules."""
 
-    def feasible(assignment: Assignment, granularity: str) -> bool:
-        return all(fn(assignment, granularity) for fn in fns)
+    def feasible(assignment: Assignment) -> bool:
+        return all(fn(assignment) for fn in fns)
 
     return feasible
 
@@ -192,7 +191,7 @@ class Context:
 @dataclass
 class Report:
     profile: str
-    granularity: str
+    comparison_granularities: dict[str, str]
     total: int
     covered: int
     uncovered: list[dict] = field(default_factory=list)
@@ -205,7 +204,7 @@ class Report:
     def as_dict(self) -> dict:
         return {
             "profile": self.profile,
-            "granularity": self.granularity,
+            "comparison_granularities": self.comparison_granularities,
             "total": self.total,
             "covered": self.covered,
             "percent": self.percent,
@@ -226,18 +225,19 @@ def score(
     target: Target,
     records: Sequence[dict[str, Any]],
     formula: Formula,
-    granularity: str,
     profile: str = "",
 ) -> Report:
     if target._bound_spec is None:
         raise ValueError("bind the target with for_spec(spec) before scoring")
-    wanted = formula.run(granularity)
+    wanted = formula.run()
     covered = {o for o in wanted if any(_satisfied(o, r) for r in records)}
-    pruned = formula.run(granularity, filtered=False) - wanted
+    pruned = formula.run(filtered=False) - wanted
     unexpected = {o for o in pruned if any(_satisfied(o, r) for r in records)}
     return Report(
         profile=profile,
-        granularity=granularity,
+        comparison_granularities={
+            f.name: f.granularity for f in target.factors if isinstance(f, Cmp)
+        },
         total=len(wanted),
         covered=len(covered),
         uncovered=_sorted(wanted - covered),
@@ -319,7 +319,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tests", type=Path, nargs="+", required=True)
     parser.add_argument("--target", choices=sorted(TARGETS), default="voluntary_exit")
     parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
-    parser.add_argument("--granularity", choices=GRANULARITIES, action="append")
     parser.add_argument("--profile", action="append", help="default: every profile")
     parser.add_argument("--max-uncovered", type=int, default=10)
     parser.add_argument(
@@ -339,7 +338,6 @@ def main(argv: list[str] | None = None) -> dict:
     if args.describe:
         print(describe(target))
     observations = load_observations(args.tests, target, args.preset)
-    granularities = args.granularity or list(GRANULARITIES)
     profiles = args.profile or list(target.profiles)
     unknown = set(profiles) - target.profiles.keys()
     if unknown:
@@ -350,19 +348,19 @@ def main(argv: list[str] | None = None) -> dict:
         "preset": args.preset,
         "vectors": len(observations),
         "aspects": {a.name: [f.name for f in a.factors] for a in target.aspects},
-        "granularities": {},
+        "comparison_granularities": {
+            f.name: f.granularity for f in target.factors if isinstance(f, Cmp)
+        },
     }
     print(f"{target.name}/{args.preset}: {len(observations)} vectors")
-    for granularity in granularities:
-        records = [target.record(o, granularity) for o in observations]
-        if args.records:
-            for obs, rec in zip(observations, records, strict=True):
-                print(f"  {Path(obs['_case']).name}: {rec}")
-        print(f"granularity={granularity}")
-        reports = [score(target, records, target.profiles[p], granularity, p) for p in profiles]
-        result["granularities"][granularity] = [r.as_dict() for r in reports]
-        for report in reports:
-            print(_format(report, args.max_uncovered))
+    records = [target.record(o) for o in observations]
+    if args.records:
+        for obs, rec in zip(observations, records, strict=True):
+            print(f"  {Path(obs['_case']).name}: {rec}")
+    reports = [score(target, records, target.profiles[p], profile=p) for p in profiles]
+    result["profiles"] = [r.as_dict() for r in reports]
+    for report in reports:
+        print(_format(report, args.max_uncovered))
     if args.json:
         args.json.write_text(json.dumps(result, indent=2, default=str) + "\n")
     return result

@@ -35,13 +35,13 @@ from tests.generators.compliance_runners.state_transition.inactivity_updates_loo
 )
 
 target = TARGET.for_spec(spec_targets["minimal"]["gloas"])
-print(target.review("cmp5"))
-obligations = target.profiles["arithmetic"].run("cmp5")
+print(target.review())
+obligations = target.profiles["arithmetic"].run()
 ```
 
 The existing coverage CLI binds the selected spec automatically. `--describe`
-shows the declaration review at predicate granularity. Programmatic `review()`
-accepts predicate, cmp3, or cmp5. The review includes domains, bound constants,
+shows the declaration review with each comparison's declared granularity.
+Programmatic `review()` uses the same declarations. The review includes domains, bound constants,
 derived expressions, activation and availability, profile sizes, pruned counts,
 and example obligations with conditional factors included or omitted.
 
@@ -66,10 +66,30 @@ and example obligations with conditional factors included or omitted.
   unsupported operators are rejected. There is no implicit source translation.
 
 `factor` declares a boolean factor. `comparison` stores an integer difference
-and abstracts it at the requested granularity, using `op` for its predicate
-meaning (default `>`). `categorical` declares a finite domain and validates
+and declares its granularity with `granularity="predicate"` (the default),
+`"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
+Granularity is fixed per comparison across all profiles; a target may mix
+granularities across different comparisons. `categorical` declares a finite domain and validates
 observed values against it. Attribute, constant, and factor names must be unique
 within a specification; aspect grouping does not create namespaces.
+
+```python
+boundary = comparison("epoch_boundary", next_epoch, period, op="==", granularity="cmp5")
+```
+
+Enumeration uses `target.profiles[name].run()`, observation abstraction uses
+`target.record(observation)`, and scoring uses `score(target, records, formula)`.
+These functions do not accept a runtime granularity. Feasibility callbacks take
+only the assignment; `holds(value)`, `abstract(raw)`, and `far(value)` use the
+comparison's declaration. Activation always uses predicate truth, including
+for comparisons whose coverage values are cmp3/cmp5 buckets.
+
+The CLI no longer accepts `--granularity`. JSON reports contain a
+`comparison_granularities` mapping and a single `profiles` list, replacing the
+old reports grouped by global granularity. Effective-balance comparisons use
+cmp5 in every profile, and generated claims no longer carry a global
+`granularity` field. Older effective-balance vectors should be regenerated for
+the configured factor domains.
 
 ## Applicability, activation, and availability
 
@@ -112,7 +132,7 @@ preserves the scorer's unexpected-observation check.
 ## Current limits
 
 Enumeration explores the complete finite factor model and caches it per bound
-target and granularity. It is intended for small focus areas. Expression-to-DL,
+target and filtering mode. It is intended for small focus areas. Expression-to-DL,
 UTVPI, or MiniZinc translation and sampling are not implemented. The shared
 conditional-factor tool still supports MiniZinc, but its activation-only export
 must not be mistaken for a translation of the target's expressions or Python

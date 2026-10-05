@@ -14,7 +14,7 @@ def _observed(**obligation):
     _, parts = materializer.materialize_solution(SimpleNamespace(**obligation))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
-    return TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})), "predicate")
+    return TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})))
 
 
 def test_empty_set_with_unchanged_branch_excluded():

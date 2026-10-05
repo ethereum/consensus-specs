@@ -19,7 +19,7 @@ def _observed(materializer, target, **solution):
     _, parts = materializer.materialize_solution(SimpleNamespace(**solution))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
-    return target.record(target.observation(Context(spec, pre, None, post, {})), "predicate")
+    return target.record(target.observation(Context(spec, pre, None, post, {})))
 
 
 def test_partial_obligations_keep_requested_eligibility_and_score_effect():
@@ -59,7 +59,7 @@ def test_stable_participant_keeps_target_flag():
 
 
 def test_max_omits_unrealizable_score_and_branch_combinations():
-    obligations = [dict(item) for item in TARGET.for_spec(spec).profiles["max"].run("predicate")]
+    obligations = [dict(item) for item in TARGET.for_spec(spec).profiles["max"].run()]
     assert all(
         not (
             item.get("scores_changed") is False

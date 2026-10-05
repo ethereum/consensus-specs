@@ -5,19 +5,18 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 
 from .cases import constants, signature
 from .coverage import build_profile, TARGET
-from .target import PROFILE_DEFINITIONS
+from .target import GUARDS, PROFILES, RESULT
 
 
 def test_profiles_cover_their_dsl_obligations():
     target = TARGET.for_spec(spec)
+    assert build_profile("exceptional", spec=spec) == ([], [])
+    assert all(f.granularity == "cmp5" for f in (*GUARDS.factors, RESULT["rounded_vs_cap"]))
     counts = {}
-    for name, profile in PROFILE_DEFINITIONS.items():
-        if profile.plan is None:
-            assert build_profile(name, spec=spec) == ([], [])
-            continue
+    for name in PROFILES:
         records, chosen = build_profile(name, spec=spec)
         assert records == chosen
-        report = score(target, records, target.profiles[name], profile.granularity)
+        report = score(target, records, target.profiles[name])
         assert report.uncovered == []
         assert report.unexpected == []
         counts[name] = len(records)
@@ -27,11 +26,7 @@ def test_profiles_cover_their_dsl_obligations():
 def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
     records, _ = build_profile("max", spec=spec)
     signatures = [
-        {
-            k: v
-            for k, v in record.items()
-            if k not in ("balance", "effective_balance", "granularity")
-        }
+        {k: v for k, v in record.items() if k not in ("balance", "effective_balance")}
         for record in records
     ]
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
@@ -44,7 +39,7 @@ def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
         ("COMPOUNDING", 31 * increment, 33 * increment + 1),
     )
     for witness in old_cases:
-        assert signature(witness, constants(spec), "cmp5") in signatures
+        assert signature(witness, constants(spec)) in signatures
         assert witness in {
             (record["credential_type"], record["effective_balance"], record["balance"])
             for record in records

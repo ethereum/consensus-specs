@@ -122,40 +122,40 @@ GATES = (
 )
 
 
-def _holds(a: dict, f, g) -> bool | None:
-    return None if f.name not in a else f.holds(a[f.name], g)
+def _holds(a: dict, f) -> bool | None:
+    return None if f.name not in a else f.holds(a[f.name])
 
 
-def _far_below(a: dict, f, g: str) -> bool:
+def _far_below(a: dict, f) -> bool:
     """``lhs < rhs`` by more than one, as far as the granularity can tell."""
-    return bool(_holds(a, f, g)) and f.far(a[f.name], g) is not False
+    return bool(_holds(a, f)) and f.far(a[f.name]) is not False
 
 
-def _uninitiated_exit_is_far(a: dict, g: str) -> bool:
-    if _holds(a, EPOCHS["exit_not_initiated"], g) is True and "current_lt_exit" in a:
-        return _far_below(a, EPOCHS["current_lt_exit"], g)
+def _uninitiated_exit_is_far(a: dict) -> bool:
+    if _holds(a, EPOCHS["exit_not_initiated"]) is True and "current_lt_exit" in a:
+        return _far_below(a, EPOCHS["current_lt_exit"])
     return True
 
 
-def _seasoned_is_activated_long_ago(a: dict, g: str) -> bool:
-    if _holds(a, EPOCHS["current_ge_seasoned"], g) is True and "activation_le_current" in a:
-        return _far_below(a, EPOCHS["activation_le_current"], g)
+def _seasoned_is_activated_long_ago(a: dict) -> bool:
+    if _holds(a, EPOCHS["current_ge_seasoned"]) is True and "activation_le_current" in a:
+        return _far_below(a, EPOCHS["activation_le_current"])
     return True
 
 
-def _accepted_iff_all_gates(a: dict, g: str) -> bool:
-    accepted = _holds(a, ACCEPTED, g)
+def _accepted_iff_all_gates(a: dict) -> bool:
+    accepted = _holds(a, ACCEPTED)
     if accepted is None:
         return True
-    gates = [_holds(a, f, g) for f in GATES]
+    gates = [_holds(a, f) for f in GATES]
     if accepted:
         return all(h is not False for h in gates)
     # Rejected, yet every gate is assigned and holds: impossible.
     return not all(h is True for h in gates)
 
 
-def _pending_balance_needs_entries(a: dict, g: str) -> bool:
-    if _holds(a, PENDING["pending_balance_zero"], g) is False:
+def _pending_balance_needs_entries(a: dict) -> bool:
+    if _holds(a, PENDING["pending_balance_zero"]) is False:
         return a.get("matching_pending_entries") != "ZERO"
     return True
 

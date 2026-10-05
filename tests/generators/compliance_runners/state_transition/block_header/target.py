@@ -48,19 +48,15 @@ ASPECTS = (HEADER, OUTCOME)
 GATES = list(HEADER.factors)
 
 
-def _holds(assignment: dict, factor, granularity: str) -> bool | None:
-    return (
-        None
-        if factor.name not in assignment
-        else factor.holds(assignment[factor.name], granularity)
-    )
+def _holds(assignment: dict, factor) -> bool | None:
+    return None if factor.name not in assignment else factor.holds(assignment[factor.name])
 
 
-def _accepted_iff_all_assertions_hold(assignment: dict, granularity: str) -> bool:
-    accepted = _holds(assignment, ACCEPTED, granularity)
+def _accepted_iff_all_assertions_hold(assignment: dict) -> bool:
+    accepted = _holds(assignment, ACCEPTED)
     if accepted is None:
         return True
-    assertions = [_holds(assignment, factor, granularity) for factor in GATES]
+    assertions = [_holds(assignment, factor) for factor in GATES]
     if accepted:
         return all(value is not False for value in assertions)
     return not all(value is True for value in assertions)

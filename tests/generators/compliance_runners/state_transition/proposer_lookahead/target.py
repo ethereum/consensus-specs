@@ -52,7 +52,7 @@ COVERAGE = coverage_spec(
     constants=(slots_per_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a, _g: (
+    feasible=lambda a: (
         a.get("fewer_candidates_than_slots") is not True or a.get("new_proposers_repeat") is True
     ),
 )
