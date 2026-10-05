@@ -59,9 +59,8 @@ def witnesses(values):
                 yield credential, effective, balance
 
 
-def signature(witness, values):
-    from .target import GUARDS, RESULT
-
+def signature(witness, values, comparisons):
+    factors = {factor.name: factor for factor in comparisons}
     credential, effective, balance = witness
     increment, downward, upward, standard_max, compounding_max = values
     maximum = compounding_max if credential == "COMPOUNDING" else standard_max
@@ -77,20 +76,20 @@ def signature(witness, values):
     )
     return {
         "credential_type": credential,
-        "downward_trigger": GUARDS["downward_trigger"].abstract(balance + downward - effective),
-        "upward_trigger": GUARDS["upward_trigger"].abstract(effective + upward - balance),
-        "rounded_vs_cap": RESULT["rounded_vs_cap"].abstract(rounded - maximum),
+        "downward_trigger": factors["downward_trigger"].abstract(balance + downward - effective),
+        "upward_trigger": factors["upward_trigger"].abstract(effective + upward - balance),
+        "rounded_vs_cap": factors["rounded_vs_cap"].abstract(rounded - maximum),
         "balance_aligned": balance == rounded,
         "outcome": outcome,
     }
 
 
 @cache
-def representatives(values):
+def representatives(values, comparisons):
     """One deterministic concrete witness per realizable full DSL assignment."""
     selected = {}
     for witness in witnesses(values):
-        record = signature(witness, values)
+        record = signature(witness, values, comparisons)
         key = tuple(sorted(record.items()))
         selected.setdefault(key, witness)
     return selected
