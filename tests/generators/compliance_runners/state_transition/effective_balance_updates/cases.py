@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from functools import cache
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Cmp
-
 
 def constants(spec):
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
@@ -61,7 +59,9 @@ def witnesses(values):
                 yield credential, effective, balance
 
 
-def signature(witness, values, granularity):
+def signature(witness, values):
+    from .target import GUARDS, RESULT
+
     credential, effective, balance = witness
     increment, downward, upward, standard_max, compounding_max = values
     maximum = compounding_max if credential == "COMPOUNDING" else standard_max
@@ -77,24 +77,20 @@ def signature(witness, values, granularity):
     )
     return {
         "credential_type": credential,
-        "downward_trigger": Cmp("downward_trigger", op="<").abstract(
-            balance + downward - effective, granularity
-        ),
-        "upward_trigger": Cmp("upward_trigger", op="<").abstract(
-            effective + upward - balance, granularity
-        ),
-        "rounded_vs_cap": Cmp("rounded_vs_cap", op=">=").abstract(rounded - maximum, granularity),
+        "downward_trigger": GUARDS["downward_trigger"].abstract(balance + downward - effective),
+        "upward_trigger": GUARDS["upward_trigger"].abstract(effective + upward - balance),
+        "rounded_vs_cap": RESULT["rounded_vs_cap"].abstract(rounded - maximum),
         "balance_aligned": balance == rounded,
         "outcome": outcome,
     }
 
 
 @cache
-def representatives(values, granularity):
+def representatives(values):
     """One deterministic concrete witness per realizable full DSL assignment."""
     selected = {}
     for witness in witnesses(values):
-        record = signature(witness, values, granularity)
+        record = signature(witness, values)
         key = tuple(sorted(record.items()))
         selected.setdefault(key, witness)
     return selected

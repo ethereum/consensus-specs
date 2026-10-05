@@ -24,5 +24,5 @@ def validate_case(case_dir: Path) -> list:
     block = decode(case_dir / "block_header.ssz_snappy", spec.BeaconBlock)
     post = object() if (case_dir / "post.ssz_snappy").exists() else None
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
-    actual = TARGET.record(TARGET.observation(Context(spec, pre, block, post, {})), "predicate")
+    actual = TARGET.record(TARGET.observation(Context(spec, pre, block, post, {})))
     return check_dimensions(claimed, actual)

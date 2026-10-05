@@ -8,7 +8,7 @@ from .target import TARGET
 def build_profile(name: str, *, spec):
     target = TARGET.for_spec(spec)
     formula = target.profiles[name]
-    obligations = formula.run("predicate")
+    obligations = formula.run()
     records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
     return records, records
 

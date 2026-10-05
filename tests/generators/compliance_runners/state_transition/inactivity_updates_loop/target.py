@@ -68,16 +68,16 @@ ALL_FACTORS = BODY.declarations
 # --- feasibility --------------------------------------------------------------
 
 
-def _holds(a: dict, name: str, g: str) -> bool | None:
-    return None if name not in a else BODY[name].holds(a[name], g)
+def _holds(a: dict, name: str) -> bool | None:
+    return None if name not in a else BODY[name].holds(a[name])
 
 
-def _score_is_never_negative(a: dict, _g: str) -> bool:
+def _score_is_never_negative(a: dict) -> bool:
     """``inactivity_scores`` is a ``uint64`` list."""
     return a.get("score_gt_zero") not in ("LT", "LT_1", "LT_FAR")
 
 
-def _participation_is_unslashed_flagged_and_active(a: dict, _g: str) -> bool:
+def _participation_is_unslashed_flagged_and_active(a: dict) -> bool:
     """``get_unslashed_participating_indices``: active, flagged, and not slashed."""
     participating = a.get("is_participating")
     if participating is True:
@@ -96,15 +96,15 @@ def _participation_is_unslashed_flagged_and_active(a: dict, _g: str) -> bool:
     return True
 
 
-def _eligible_needs_a_disjunct(a: dict, _g: str) -> bool:
+def _eligible_needs_a_disjunct(a: dict) -> bool:
     """An index the loop visits is eligible: active, or slashed and not yet withdrawable."""
     return not (a.get("is_active_in_previous") is False and a.get("is_slashed") is False)
 
 
-def _recovery_applies_only_when_leak_free(a: dict, g: str) -> bool:
+def _recovery_applies_only_when_leak_free(a: dict) -> bool:
     if "score_vs_recovery_rate" not in a:
         return True
-    return _holds(a, "leaking", g) is not True
+    return _holds(a, "leaking") is not True
 
 
 def constant_feasibility(constants: dict):
@@ -112,39 +112,39 @@ def constant_feasibility(constants: dict):
     recovery = constants["recovery_rate"]
     bias = constants["bias"]
 
-    def zero_score_recovery(a: dict, g: str) -> bool:
+    def zero_score_recovery(a: dict) -> bool:
         if not (
             a.get("is_participating") is True
-            and _holds(a, "score_gt_zero", g) is False
+            and _holds(a, "score_gt_zero") is False
             and "score_vs_recovery_rate" in a
         ):
             return True
         # A participant starting at zero has intermediate score zero. Abstract
         # the exact delta, preserving the LT_1/LT_FAR distinction at cmp5.
-        expected = BODY["score_vs_recovery_rate"].abstract(-recovery, g)
+        expected = BODY["score_vs_recovery_rate"].abstract(-recovery)
         return a["score_vs_recovery_rate"] == expected
 
-    def leak_free_cannot_gain(a: dict, g: str) -> bool:
+    def leak_free_cannot_gain(a: dict) -> bool:
         if recovery < bias or a.get("score_delta") != "INCREASED":
             return True
         # Mentioning the recovery comparison also implies a leak-free branch,
         # even when the partial assignment omits the leaking factor.
-        return not (_holds(a, "leaking", g) is False or "score_vs_recovery_rate" in a)
+        return not (_holds(a, "leaking") is False or "score_vs_recovery_rate" in a)
 
-    def recovery_comparison(a: dict, g: str) -> bool:
+    def recovery_comparison(a: dict) -> bool:
         if "score_vs_recovery_rate" not in a:
             return True
         if a.get("score_gt_zero") is False and a.get("is_participating") is False:
             return a["score_vs_recovery_rate"] == BODY["score_vs_recovery_rate"].abstract(
-                bias - recovery, g
+                bias - recovery
             )
         if a.get("score_delta") == "UNCHANGED" and a.get("score_gt_zero") is True:
             return False
         if a.get("score_delta") == "UNCHANGED" and a.get("score_gt_zero") is False:
             expected = (
-                BODY["score_vs_recovery_rate"].abstract(0, g)
+                BODY["score_vs_recovery_rate"].abstract(0)
                 if a.get("is_participating")
-                else BODY["score_vs_recovery_rate"].abstract(bias - recovery, g)
+                else BODY["score_vs_recovery_rate"].abstract(bias - recovery)
             )
             return a["score_vs_recovery_rate"] == expected
         return True
@@ -152,24 +152,24 @@ def constant_feasibility(constants: dict):
     return rules(zero_score_recovery, leak_free_cannot_gain, recovery_comparison)
 
 
-def _participants_never_gain_score(a: dict, _g: str) -> bool:
+def _participants_never_gain_score(a: dict) -> bool:
     return not (a.get("is_participating") is True and a.get("score_delta") == "INCREASED")
 
 
-def _zero_score_participant_is_unchanged(a: dict, g: str) -> bool:
-    if not (a.get("is_participating") is True and _holds(a, "score_gt_zero", g) is False):
+def _zero_score_participant_is_unchanged(a: dict) -> bool:
+    if not (a.get("is_participating") is True and _holds(a, "score_gt_zero") is False):
         return True
     return a.get("score_delta", "UNCHANGED") == "UNCHANGED"
 
 
-def _leaking_non_participant_gains_score(a: dict, g: str) -> bool:
+def _leaking_non_participant_gains_score(a: dict) -> bool:
     """Under a leak the increment is the only write, and the bias is positive."""
-    if not (a.get("is_participating") is False and _holds(a, "leaking", g) is True):
+    if not (a.get("is_participating") is False and _holds(a, "leaking") is True):
         return True
     return a.get("score_delta", "INCREASED") == "INCREASED"
 
 
-def _positive_score_cannot_be_unchanged(a: dict, _g: str) -> bool:
+def _positive_score_cannot_be_unchanged(a: dict) -> bool:
     return not (a.get("score_gt_zero") is True and a.get("score_delta") == "UNCHANGED")
 
 
@@ -182,7 +182,7 @@ FEASIBLE = rules(
     _zero_score_participant_is_unchanged,
     _leaking_non_participant_gains_score,
     _positive_score_cannot_be_unchanged,
-    lambda a, g: not (a.get("score_gt_zero") is False and a.get("score_delta") == "DECREASED"),
+    lambda a: not (a.get("score_gt_zero") is False and a.get("score_delta") == "DECREASED"),
 )
 
 # Coverage choices: activation closure preserves both leaking and recovery branches.

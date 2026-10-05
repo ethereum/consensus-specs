@@ -78,7 +78,6 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         spec.process_effective_balance_updates(post)
 
         claimed = {name: getattr(solution, name) for name in _DIMS}
-        claimed["granularity"] = solution.granularity
         meta = {
             "description": f"process_effective_balance_updates: {claimed['outcome']}",
             "claimed": claimed,

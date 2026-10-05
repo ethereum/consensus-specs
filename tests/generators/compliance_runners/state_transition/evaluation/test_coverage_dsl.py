@@ -22,25 +22,27 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
 
 
 def test_cmp_abstraction_and_truth_at_each_granularity():
-    cmp = Cmp("a", op=">=")
+    predicate = Cmp("a", op=">=", granularity="predicate")
+    cmp3 = Cmp("a", op=">=", granularity="cmp3")
+    cmp5 = Cmp("a", op=">=", granularity="cmp5")
     deltas = (-2, -1, 0, 1, 2)
-    assert [cmp.abstract(d, "predicate") for d in deltas] == [False, False, True, True, True]
-    assert [cmp.abstract(d, "cmp3") for d in deltas] == ["LT", "LT", "EQ", "GT", "GT"]
-    assert [cmp.abstract(d, "cmp5") for d in deltas] == ["LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"]
-    assert cmp.value({}, "cmp5") is NA
-    assert cmp.holds("EQ", "cmp3") is True
-    assert cmp.holds("LT_1", "cmp5") is False
-    assert cmp.far("LT_FAR", "cmp5") is True
-    assert cmp.far("LT", "cmp3") is None
+    assert [predicate.abstract(d) for d in deltas] == [False, False, True, True, True]
+    assert [cmp3.abstract(d) for d in deltas] == ["LT", "LT", "EQ", "GT", "GT"]
+    assert [cmp5.abstract(d) for d in deltas] == ["LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"]
+    assert cmp5.value({}) is NA
+    assert cmp3.holds("EQ") is True
+    assert cmp5.holds("LT_1") is False
+    assert cmp5.far("LT_FAR") is True
+    assert cmp3.far("LT") is None
 
 
-def target(*, feasible=lambda a, g: True):
+def target(*, feasible=lambda a: True):
     found, x, flag = (
         attribute("found", Boolean()),
         attribute("x", Integer()),
         attribute("flag", Boolean()),
     )
-    a = comparison("a", x, 0, op=">=", available_when=found)
+    a = comparison("a", x, 0, op=">=", granularity="cmp3", available_when=found)
     b = factor("b", flag, available_when=found)
     definition = coverage_spec(
         "test",
@@ -61,15 +63,15 @@ def test_na_never_satisfies_and_scores_are_exact():
         obs = t.observation(
             Context(t._bound_spec, {"found": found, "x": 0, "flag": True}, None, None, {})
         )
-        records.append(t.record(obs, "cmp3"))
-    report = score(t, records, t.profiles["pairs"], "cmp3")
+        records.append(t.record(obs))
+    report = score(t, records, t.profiles["pairs"])
     assert (report.covered, report.total) == (1, 6)
     assert {"a": "GT", "b": False} in report.uncovered
 
 
 def test_feasibility_prunes_and_flags_unexpected():
-    t = target(feasible=lambda a, g: not (a.get("a") == "LT" and a.get("b") is True))
-    report = score(t, [{"a": "LT", "b": True}], t.profiles["pairs"], "cmp3")
+    t = target(feasible=lambda a: not (a.get("a") == "LT" and a.get("b") is True))
+    report = score(t, [{"a": "LT", "b": True}], t.profiles["pairs"])
     assert (report.covered, report.total) == (0, 5)
     assert report.unexpected == [{"a": "LT", "b": True}]
 
