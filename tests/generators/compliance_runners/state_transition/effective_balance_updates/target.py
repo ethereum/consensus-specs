@@ -74,6 +74,7 @@ RESULT = aspect(
 )
 ASPECTS = (CREDENTIAL, GUARDS, RESULT)
 FACTORS = tuple(f for a in ASPECTS for f in a.declarations)
+COMPARISONS = (*GUARDS.factors, RESULT["rounded_vs_cap"])
 
 
 PROFILES = {
@@ -94,7 +95,7 @@ def constant_feasibility(bound):
     )
 
     def feasible(assignment):
-        return tuple(sorted(assignment.items())) in representatives(values)
+        return tuple(sorted(assignment.items())) in representatives(values, COMPARISONS)
 
     return feasible
 
