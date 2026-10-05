@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .cases import constants, representatives
-from .target import TARGET
+from .target import COMPARISONS, TARGET
 
 
 def build_profile(name: str, *, spec):
@@ -11,7 +11,7 @@ def build_profile(name: str, *, spec):
         return [], []
     target = TARGET.for_spec(spec)
     obligations = target.profiles[name].run()
-    candidates = representatives(constants(spec))
+    candidates = representatives(constants(spec), COMPARISONS)
     records = []
     for obligation in sorted(obligations, key=repr):
         matching = [key for key in candidates if obligation <= frozenset(key)]
