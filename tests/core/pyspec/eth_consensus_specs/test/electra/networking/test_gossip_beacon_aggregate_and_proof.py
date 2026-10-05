@@ -107,38 +107,51 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     yield get_filename(signed_agg_1), signed_agg_1
     yield get_filename(signed_agg_2), signed_agg_2
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation_1.data.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation_1.data.slot)
 
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_aggregate_and_proof=signed_agg_1,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
     assert reason is None
-    messages.append({"offset_ms": 500, "message": get_filename(signed_agg_1), "expected": "valid"})
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_agg_1),
+            "expected": "valid",
+        }
+    )
 
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_aggregate_and_proof=signed_agg_2,
-        current_time_ms=block_time_ms + 600,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
     assert reason is None
-    messages.append({"offset_ms": 600, "message": get_filename(signed_agg_2), "expected": "valid"})
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_agg_2),
+            "expected": "valid",
+        }
+    )
 
     yield "messages", "meta", messages
 
@@ -164,20 +177,20 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, signed_agg.message.aggregate.data.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -188,7 +201,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_agg),
                 "expected": "reject",
                 "reason": reason,
@@ -218,20 +231,20 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, signed_agg.message.aggregate.data.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -242,7 +255,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_agg),
                 "expected": "reject",
                 "reason": reason,
@@ -276,20 +289,20 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
 
     yield get_filename(signed_agg), signed_agg
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, signed_agg.message.aggregate.data.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     kwargs = {}
     if is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_aggregate_and_proof=signed_agg,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -300,7 +313,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_agg),
                 "expected": "reject",
                 "reason": reason,

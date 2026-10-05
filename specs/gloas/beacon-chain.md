@@ -2283,11 +2283,13 @@ def add_builder_to_registry(
 ###### New `process_builder_deposit_request`
 
 *Note*: Builder indices are reusable. When a builder exits, its index may later
-be reassigned to a different builder with a new public key. Any deposit sent to
-an exited builder will be withdrawn to the builder’s execution address. Exited
-builders cannot be reactivated, although a newly registered builder’s public key
-may have previously appeared in the builder set. Implementations that rely on
-caching should account for this behavior.
+be reassigned to a different builder with a new public key. A deposit for an
+exited builder that is still in the registry will be withdrawn by the builders
+sweep to the builder’s execution address. If its index has been reassigned, the
+deposit is instead processed as a new builder registration, which requires a
+valid signature. Exited builders cannot be reactivated, although a newly
+registered builder’s public key may have previously appeared in the builder set.
+Implementations that rely on caching should account for this behavior.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
