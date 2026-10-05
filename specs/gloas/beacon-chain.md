@@ -1857,7 +1857,13 @@ def get_builder_balance_after_withdrawals(
     state: BeaconState, builder_index: BuilderIndex, withdrawals: Sequence[Withdrawal]
 ) -> Gwei:
     validator_index = convert_builder_index_to_validator_index(builder_index)
-    withdrawn = Gwei(sum(w.amount for w in withdrawals if w.validator_index == validator_index))
+    withdrawn = Gwei(
+        sum(
+            withdrawal.amount
+            for withdrawal in withdrawals
+            if withdrawal.validator_index == validator_index
+        )
+    )
     return saturating_sub(state.builders[builder_index].balance, withdrawn)
 ```
 
