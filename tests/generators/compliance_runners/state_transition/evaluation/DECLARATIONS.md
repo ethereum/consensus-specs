@@ -69,6 +69,16 @@ or omitted.
 `factor` declares a boolean factor. `comparison` stores an integer difference
 and declares its granularity with `granularity="predicate"` (the default),
 `"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
+Integer domains also constrain enumeration: comparison buckets that cannot
+intersect the expression's inferred interval are removed. For example, comparing
+`attribute("vote_count", Integer(min=0))` with zero at `cmp5` yields only `EQ`,
+`GT_1`, and `GT_FAR`; `Integer(min=0, max=1)` yields `EQ` and `GT_1`.
+Intervals propagate conservatively through addition, subtraction, `maximum`,
+`choose`, derived expressions, and positive remainder. Bound constants refine
+these intervals per spec. This does not infer correlations between expressions.
+Domain pruning also applies to unfiltered enumeration; feasibility callbacks
+remain a separate filter.
+
 Granularity is fixed per comparison across all profiles; a target may mix
 granularities across different comparisons. `categorical` declares a finite
 domain and validates observed values against it. Attribute, constant, and factor
@@ -78,6 +88,29 @@ namespaces.
 ```python
 boundary = comparison("epoch_boundary", next_epoch, period, op="==", granularity="cmp5")
 ```
+
+`modulo(name, attribute, positive_constant)` declares a categorical coverage
+factor for a remainder, with buckets `ZERO` (0), `ONE` (1), `LAST` (constant−1),
+and `INTERIOR` (2 through constant−2). Every remainder is classified. The modulus
+must be a positive integer literal or a constant whose declared minimum is at
+least one. Periods 1, 2, and 3 omit unreachable buckets: coincident boundaries
+use `ZERO` first, then `ONE`. These domains are refined when the spec is bound.
+Activation uses explicit categorical tests, such as `when=position == "ZERO"`.
+
+```python
+position = modulo("reset_remainder", next_epoch, period)
+nonempty = comparison("votes_nonempty", vote_count, 0, granularity="cmp5")
+```
+
+Two comparisons of `next_epoch % period` against 0 and `period - 1` also benefit
+from the remainder's implicit non-negative upper bound. Use `modulo` for a single
+coverage dimension; the comparison form allows finer distances from each end
+but needs explicit feasibility constraints for relationships between the two.
+
+The ETH1 reset target now uses this modulo factor and a non-negative vote-count
+comparison. Normal/standard/max cover 12 combinations for periods of at least
+four; smoke covers the seven individual bucket obligations. Regenerate older
+vectors, whose boolean factor claims use the previous target schema.
 
 Enumeration uses `target.profiles[name].run()`, observation abstraction uses
 `target.record(observation)`, and scoring uses
