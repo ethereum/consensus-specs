@@ -43,6 +43,7 @@ post_present = attribute("post_present", Boolean())
 
 far_future_epoch = constant("far_future_epoch", Integer(min=0))
 shard_committee_period = constant("shard_committee_period", Integer(min=0))
+balance_increment = constant("balance_increment", Integer(min=1))
 COUNTS = ("ZERO", "ONE", "MANY")
 
 EPOCHS = aspect(
@@ -63,6 +64,7 @@ EPOCHS = aspect(
         current_epoch,
         message_epoch,
         op=">=",
+        granularity="cmp5",
         available_when=validator_found,
     ),
     comparison(
@@ -70,6 +72,7 @@ EPOCHS = aspect(
         current_epoch,
         activation_epoch + shard_committee_period,
         op=">=",
+        granularity="cmp5",
         available_when=validator_found,
     ),
 )
@@ -93,7 +96,12 @@ consumable = derived(
     choose(earliest_exit_epoch < new_exit_epoch, per_epoch_churn, exit_balance_to_consume),
 )
 EXCEEDS = comparison(
-    "balance_gt_consumable", effective_balance, consumable, op=">", available_when=validator_found
+    "balance_gt_consumable",
+    effective_balance,
+    consumable,
+    op=">",
+    granularity="cmp5",
+    available_when=validator_found,
 )
 CHURN = aspect(
     "churn",
@@ -160,6 +168,24 @@ def _pending_balance_needs_entries(a: dict) -> bool:
     return True
 
 
+def constant_feasibility(constants):
+    """Fresh churn is aligned; carried budgets can reflect partial withdrawals."""
+    increment = constants["balance_increment"]
+
+    def feasible(assignment):
+        bucket = assignment.get("balance_gt_consumable")
+        if (
+            increment > 1
+            and assignment.get("earliest_lt_new") is True
+            and bucket in ("LT_1", "GT_1")
+        ):
+            return False
+        # A one-Gwei excess fits in one epoch for any positive churn limit.
+        return not (bucket == "GT_1" and assignment.get("additional_epochs") == "MANY")
+
+    return feasible
+
+
 FEASIBLE = rules(
     _uninitiated_exit_is_far,
     _seasoned_is_activated_long_ago,
@@ -207,10 +233,11 @@ COVERAGE = coverage_spec(
         effective_balance,
         post_present,
     ),
-    constants=(far_future_epoch, shard_committee_period),
+    constants=(far_future_epoch, shard_committee_period, balance_increment),
     aspects=ASPECTS,
     profiles=PROFILES,
     feasible=FEASIBLE,
+    constant_feasibility=constant_feasibility,
 )
 TARGET = bind(
     COVERAGE,
@@ -218,5 +245,6 @@ TARGET = bind(
     constants={
         "far_future_epoch": lambda spec: int(spec.FAR_FUTURE_EPOCH),
         "shard_committee_period": lambda spec: int(spec.config.SHARD_COMMITTEE_PERIOD),
+        "balance_increment": lambda spec: int(spec.EFFECTIVE_BALANCE_INCREMENT),
     },
 )
