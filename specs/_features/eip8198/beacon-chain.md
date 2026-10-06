@@ -348,8 +348,8 @@ def process_attestation(
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)
@@ -469,7 +469,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
 
     # Apply participant and proposer rewards
-    all_pubkeys = [v.pubkey for v in state.validators]
+    all_pubkeys = [validator.pubkey for validator in state.validators]
     committee_indices = [
         ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
     ]
