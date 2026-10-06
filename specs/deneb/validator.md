@@ -198,19 +198,19 @@ def get_blob_sidecars(
     signed_block_header = compute_signed_block_header(signed_block)
     return [
         BlobSidecar(
-            index=BlobIndex(index),
+            index=BlobIndex(i),
             blob=blob,
-            kzg_commitment=block.body.blob_kzg_commitments[index],
-            kzg_proof=blob_kzg_proofs[index],
+            kzg_commitment=block.body.blob_kzg_commitments[i],
+            kzg_proof=blob_kzg_proofs[i],
             signed_block_header=signed_block_header,
             kzg_commitment_inclusion_proof=KZGCommitmentInclusionProof(
                 data=compute_merkle_proof(
                     block.body,
-                    get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", index),
+                    get_generalized_index(BeaconBlockBody, "blob_kzg_commitments", i),
                 )
             ),
         )
-        for index, blob in enumerate(blobs)
+        for i, blob in enumerate(blobs)
     ]
 ```
 

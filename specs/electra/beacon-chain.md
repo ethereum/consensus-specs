@@ -734,7 +734,7 @@ def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> 
 
 ```python
 def get_committee_indices(committee_bits: BitVector) -> Sequence[CommitteeIndex]:
-    return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
+    return [CommitteeIndex(i) for i, bit in enumerate(committee_bits) if bit]
 ```
 
 #### New `get_max_effective_balance`

@@ -358,7 +358,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     Return the next sync committee, with possible pubkey duplicates.
     """
     indices = get_next_sync_committee_indices(state)
-    pubkeys = SyncCommitteePubkeys(data=[state.validators[index].pubkey for index in indices])
+    pubkeys = SyncCommitteePubkeys(data=[state.validators[i].pubkey for i in indices])
     aggregate_pubkey = eth_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```

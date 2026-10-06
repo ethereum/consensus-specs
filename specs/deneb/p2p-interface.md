@@ -661,7 +661,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("aggregation bits length does not match committee size")
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
-    set_bit_indices = [index for index, bit in enumerate(aggregation_bits) if bit]
+    set_bit_indices = [i for i, bit in enumerate(aggregation_bits) if bit]
     participant_index = committee[set_bit_indices[0]]
     attestation_epoch_key = (target_epoch, participant_index)
     if attestation_epoch_key in seen.attestation_validator_epochs:

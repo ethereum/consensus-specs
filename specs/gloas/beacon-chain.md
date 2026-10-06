@@ -1212,7 +1212,7 @@ def compute_balance_weighted_selection(
     MAX_RANDOM_VALUE = 2**16 - 1
     total = Uint64(len(indices))
     assert total > 0
-    effective_balances = [state.validators[index].effective_balance for index in indices]
+    effective_balances = [state.validators[i].effective_balance for i in indices]
     selected: list[ValidatorIndex] = []
     i = Uint64(0)
     while len(selected) < size:
@@ -1298,9 +1298,7 @@ def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerInd
     """
     # [Modified in Gloas:EIP8045]
     indices = [
-        index
-        for index in get_active_validator_indices(state, epoch)
-        if not state.validators[index].slashed
+        i for i in get_active_validator_indices(state, epoch) if not state.validators[i].slashed
     ]
     seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
     return compute_proposer_indices(state, epoch, seed, indices)

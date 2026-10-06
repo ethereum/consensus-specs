@@ -1565,7 +1565,7 @@ def get_total_balance(state: BeaconState, indices: set[ValidatorIndex]) -> Gwei:
     return Gwei(
         max(
             EFFECTIVE_BALANCE_INCREMENT,
-            sum([state.validators[index].effective_balance for index in indices]),
+            sum([state.validators[i].effective_balance for i in indices]),
         )
     )
 ```
@@ -2213,8 +2213,8 @@ def process_registry_updates(state: BeaconState) -> None:
     # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted(
         [
-            index
-            for index, validator in enumerate(state.validators)
+            i
+            for i, validator in enumerate(state.validators)
             if is_eligible_for_activation(state, validator)
         ],
         # Order by the sequence of activation_eligibility_epoch setting and then index

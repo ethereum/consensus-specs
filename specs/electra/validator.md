@@ -134,7 +134,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     committee_indices = [
         get_committee_indices(aggregate.committee_bits)[0] for aggregate in aggregates
     ]
-    committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
+    committee_flags = [(i in committee_indices) for i in range(MAX_COMMITTEES_PER_SLOT)]
     committee_bits = CommitteeBits(data=committee_flags)
 
     return Attestation(
