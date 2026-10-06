@@ -34,8 +34,8 @@ post_present = attribute("post_present", Boolean())
 
 HEADER = aspect(
     "header",
-    comparison("slot_matches_state", block_slot, state_slot, op="=="),
-    comparison("slot_is_newer", block_slot, latest_header_slot, op=">"),
+    comparison("slot_matches_state", block_slot, state_slot, op="==", granularity="cmp5"),
+    comparison("slot_is_newer", block_slot, latest_header_slot, op=">", granularity="cmp5"),
     comparison("proposer_index_matches", proposer_index, expected_proposer_index, op="=="),
     factor("parent_matches", parent_root_match),
     # Availability of the validator lookup, rather than a coverage dimension.
@@ -62,7 +62,15 @@ def _accepted_iff_all_assertions_hold(assignment: dict) -> bool:
     return not all(value is True for value in assertions)
 
 
-FEASIBLE = rules(_accepted_iff_all_assertions_hold)
+def _slot_order_is_reachable(assignment):
+    """latest_header_slot <= state_slot implies block-header delta >= block-state delta."""
+    buckets = ("LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR")
+    match = assignment.get("slot_matches_state")
+    newer = assignment.get("slot_is_newer")
+    return match is None or newer is None or buckets.index(newer) >= buckets.index(match)
+
+
+FEASIBLE = rules(_slot_order_is_reachable, _accepted_iff_all_assertions_hold)
 NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 
