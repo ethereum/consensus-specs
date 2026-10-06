@@ -46,3 +46,37 @@ def test_epoch_remainder_claims_match_materialized_states(module_name, factor_na
         epoch = int(spec.get_current_epoch(pre))
         length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
         assert post.randao_mixes[(epoch + 1) % length] == pre.randao_mixes[epoch % length]
+
+
+@pytest.mark.parametrize(
+    ("module_name", "factor_name", "attribute_name"),
+    [
+        ("historical_summaries_update", "summaries_nonempty", "summary_count"),
+        ("slashings_reset", "destination_nonzero", "destination_value"),
+    ],
+)
+@pytest.mark.parametrize("bucket", ["EQ", "GT_1", "GT_FAR"])
+def test_count_cmp5_claims_match_materialized_values(
+    module_name, factor_name, attribute_name, bucket
+):
+    module = import_module(f".{module_name}.coverage", __package__)
+    records, _ = module.build_profile("standard", spec=spec)
+    record = next(record for record in records if record[factor_name] == bucket)
+    materializer_module = import_module(f".{module_name}.materializer", __package__)
+    materializer = materializer_module.MATERIALIZER(spec)
+    materializer.rng = Random(0)
+    meta, parts = materializer.materialize_solution(SimpleNamespace(**record))
+    encoded = {name: data for name, _, data in parts}
+    target = module.TARGET.for_spec(spec)
+    observation = target.observation(
+        Context(
+            spec,
+            spec.BeaconState.decode_bytes(encoded["pre"]),
+            None,
+            spec.BeaconState.decode_bytes(encoded["post"]),
+            {},
+        )
+    )
+    assert meta["claimed"] == target.record(observation) == record
+    value = observation[attribute_name]
+    assert value == 0 if bucket == "EQ" else value == 1 if bucket == "GT_1" else value >= 2

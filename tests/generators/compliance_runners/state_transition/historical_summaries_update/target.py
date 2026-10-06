@@ -9,9 +9,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
+    comparison,
     constant,
     coverage_spec,
-    factor,
     Integer,
     modulo,
 )
@@ -25,7 +25,7 @@ epochs_per_historical_root = constant("epochs_per_historical_root", Integer(min=
 UPDATE = aspect(
     "update",
     modulo("update_remainder", next_epoch, epochs_per_historical_root),
-    factor("summaries_nonempty", summary_count > 0),
+    comparison("summaries_nonempty", summary_count, 0, granularity="cmp5"),
 )
 ASPECTS = (UPDATE,)
 PROFILES = {

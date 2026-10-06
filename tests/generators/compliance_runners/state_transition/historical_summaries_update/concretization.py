@@ -15,9 +15,9 @@ class ManualConcretizer:
         period = int(spec.SLOTS_PER_HISTORICAL_ROOT) // int(spec.SLOTS_PER_EPOCH)
         position = getattr(abstract_case, "update_remainder", "ZERO")
         next_epoch = modulo_representative(position, period) or period
-        summary_count = (
-            rng.randint(1, 4) if getattr(abstract_case, "summaries_nonempty", True) else 0
-        )
+        summary_count = {"EQ": 0, "GT_1": 1, "GT_FAR": rng.randint(2, 4)}[
+            getattr(abstract_case, "summaries_nonempty", "GT_1")
+        ]
         return {"next_epoch": next_epoch, "summary_count": summary_count}
 
 
