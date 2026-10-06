@@ -31,7 +31,8 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-        destination_index = int(attributes["destination_index"])
+        next_epoch = int(attributes["next_epoch"])
+        destination_index = next_epoch % vector_length
         source_index = (destination_index - 1) % vector_length
         if (
             source_index == destination_index
@@ -40,7 +41,7 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
             raise ValueError(
                 "RANDAO vector is too short to realize distinct source and destination"
             )
-        current_epoch = source_index
+        current_epoch = next_epoch - 1
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
         for index in range(vector_length):
             pre.randao_mixes[index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
@@ -52,9 +53,9 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
         post = pre.copy()
         spec.process_randao_mixes_reset(post)
         claimed = {
-            name: bool(getattr(solution, name))
+            name: getattr(solution, name)
             for name in (
-                "destination_is_first_slot",
+                "destination_position",
                 "source_nonzero",
                 "source_matches_destination",
             )
