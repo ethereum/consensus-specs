@@ -11,6 +11,8 @@ from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
+from .cases import cmp5_bucket
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -50,6 +52,12 @@ def recover_dimensions(pre: Any, signed_exit: Any) -> dict[str, Any]:
         exit_churn_state = "CARRIED_EXHAUSTED"
     else:
         exit_churn_state = "CARRIED_AVAILABLE"
+    churn = int(spec.get_exit_churn_limit(pre))
+    consumable = (
+        churn if pre.earliest_exit_epoch < new_exit_epoch else int(pre.exit_balance_to_consume)
+    )
+    delta = int(validator.effective_balance) - consumable
+    additional = 0 if delta <= 0 else (delta - 1) // churn + 1
     if not validator_active:
         outcome = "REJECT_INACTIVE"
     elif not exit_not_initiated:
@@ -73,6 +81,18 @@ def recover_dimensions(pre: Any, signed_exit: Any) -> dict[str, Any]:
         "no_pending_withdrawal": no_pending_withdrawal,
         "signature_valid": signature_valid,
         "outcome": outcome,
+        "balance_gt_consumable": cmp5_bucket(delta),
+        "churn_additional_epochs": "ZERO"
+        if additional == 0
+        else "ONE"
+        if additional == 1
+        else "MANY",
+        "current_ge_message_epoch": cmp5_bucket(int(current_epoch) - int(message.epoch)),
+        "current_ge_seasoned": cmp5_bucket(
+            int(current_epoch)
+            - int(validator.activation_epoch)
+            - int(spec.config.SHARD_COMMITTEE_PERIOD)
+        ),
     }
 
 
