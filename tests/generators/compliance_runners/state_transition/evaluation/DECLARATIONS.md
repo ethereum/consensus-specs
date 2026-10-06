@@ -115,19 +115,20 @@ four; smoke covers the seven individual bucket obligations. Regenerate older
 vectors, whose boolean factor claims use the previous target schema.
 
 The historical-summary and sync-committee targets use `update_remainder` and
-`period_remainder` respectively. Slashings and RANDAO resets observe `next_epoch`
-and classify `destination_position` against their spec-bound vector length.
-Their adapters still read the source/destination contents at the actual circular
-indices. Slot processing uses the four buckets for `ring_position`, distinguishing
-index 1 from other interior positions. Effective-balance updates replace the
-boolean alignment claim with `balance_remainder`, and concrete witnesses cover
-all rounding buckets around hysteresis and cap boundaries. Regenerate vectors
-for these six targets: the factor names and/or values have changed.
+`period_remainder` respectively. Slashings and RANDAO resets observe
+`next_epoch` and classify `destination_position` against their spec-bound vector
+length. Their adapters still read the source/destination contents at the actual
+circular indices. Slot processing uses the four buckets for `ring_position`,
+distinguishing index 1 from other interior positions. Effective-balance updates
+replace the boolean alignment claim with `balance_remainder`, and concrete
+witnesses cover all rounding buckets around hysteresis and cap boundaries.
+Regenerate vectors for these six targets: the factor names and/or values have
+changed.
 
 `modulo_representative(bucket, period)` in the concretization module chooses a
 concrete remainder for a bucket and rejects buckets that do not exist for that
-period. Epoch generators map remainder zero to a positive multiple of the period,
-so the next epoch remains at least one.
+period. Epoch generators map remainder zero to a positive multiple of the
+period, so the next epoch remains at least one.
 
 Enumeration uses `target.profiles[name].run()`, observation abstraction uses
 `target.record(observation)`, and scoring uses
@@ -191,24 +192,24 @@ implemented. The shared conditional-factor tool still supports MiniZinc, but its
 activation-only export must not be mistaken for a translation of the target's
 expressions or Python feasibility constraints.
 
-Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`.
-For a valid pre-state, the latest header slot cannot exceed the state slot.
-Consequently `block_slot - latest_header_slot >= block_slot - state_slot`;
-feasibility removes bucket pairs that violate this ordering. Both comparisons
-still cover all five buckets across their reachable combinations. An accepted
-header has an `EQ` state-slot match and a `GT_1` or `GT_FAR` latest-header delta.
-A duplicate header can fail the newer-header assertion with an `EQ` delta;
-older-header negative deltas also imply a state-slot mismatch, so the first
-assertion rejects those vectors.
+Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`. For a valid
+pre-state, the latest header slot cannot exceed the state slot. Consequently
+`block_slot - latest_header_slot >= block_slot - state_slot`; feasibility
+removes bucket pairs that violate this ordering. Both comparisons still cover
+all five buckets across their reachable combinations. An accepted header has an
+`EQ` state-slot match and a `GT_1` or `GT_FAR` latest-header delta. A duplicate
+header can fail the newer-header assertion with an `EQ` delta; older-header
+negative deltas also imply a state-slot mismatch, so the first assertion rejects
+those vectors.
 
 Materialization completes partial obligations with the fewest failing gates,
 preserves requested acceptance, and chooses jointly reachable non-negative
 slots. A current-slot latest header retains its zero state-root cache. Blocks
 are initially built for the state slot before their slot is varied for the
 assertion slice, avoiding full slot transitions during witness construction.
-Tests check the first failing assertion, later-gate isolation, and actual profile
-coverage. Proposer-index equality retains predicate granularity. Regenerate
-block-header vectors for the new slot-bucket claims.
+Tests check the first failing assertion, later-gate isolation, and actual
+profile coverage. Proposer-index equality retains predicate granularity.
+Regenerate block-header vectors for the new slot-bucket claims.
 
 The assertion-slice targets `block_header` and `operations` declare an `outcome`
 aspect from the observed `post_present` attribute. Their normal and exceptional
@@ -226,19 +227,19 @@ these buckets to their epoch aspect, with accepted cases covering the nine
 non-negative bucket pairs and exceptional cases preserving assertion ordering.
 Smoke also covers each numeric bucket alongside the existing rejection outcomes.
 The provider enumerates structured Python scenario witnesses instead of the old
-MiniZinc scenario table; churn and pending-withdrawal classifications retain their
-existing behavior. Regenerate voluntary-exit vectors to include the new epoch
-bucket claims. Validation computes both deltas from the signed message and
+MiniZinc scenario table; churn and pending-withdrawal classifications retain
+their existing behavior. Regenerate voluntary-exit vectors to include the new
+epoch bucket claims. Validation computes both deltas from the signed message and
 pre-state, and the declarations expose the same observed buckets.
 
 Voluntary-exit `balance_gt_consumable` uses `cmp5` for the effective balance
-against the available exit budget. Effective balances and fresh churn are aligned
-to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1` buckets
-are infeasible when the increment exceeds one Gwei. Carried budgets can be
-unaligned: partial withdrawal requests consume the same churn budget in arbitrary
-Gwei amounts. The generator realizes those one-Gwei residuals by processing a
-foreign partial withdrawal before the voluntary exit. A `GT_1` excess always fits
-in one additional epoch and cannot require `MANY`.
+against the available exit budget. Effective balances and fresh churn are
+aligned to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1`
+buckets are infeasible when the increment exceeds one Gwei. Carried budgets can
+be unaligned: partial withdrawal requests consume the same churn budget in
+arbitrary Gwei amounts. The generator realizes those one-Gwei residuals by
+processing a foreign partial withdrawal before the voluntary exit. A `GT_1`
+excess always fits in one additional epoch and cannot require `MANY`.
 
 Churn profiles include `balance_gt_consumable` and `churn_additional_epochs`
 (`ZERO`, `ONE`, or `MANY`) alongside the existing budget-state claim. Witnesses
@@ -263,25 +264,26 @@ values explicitly.
 The inactivity loop declares `cmp5` for `score_gt_zero`, `leaking`, and
 `score_vs_recovery_rate`. Recovery remains active only when the leak predicate
 is false, including its below-threshold and equality buckets. Feasibility uses
-concrete witnesses around zero, the leak threshold, and the participation-adjusted
-recovery threshold. These witnesses preserve relationships between score,
-participation, recovery saturation, and the resulting score change. Materialization
-completes partial obligations with a feasible full assignment and selects its
-score/finality-delay witness. Regenerate existing vectors for these three targets:
-the numeric factors now claim comparison buckets rather than booleans.
+concrete witnesses around zero, the leak threshold, and the
+participation-adjusted recovery threshold. These witnesses preserve
+relationships between score, participation, recovery saturation, and the
+resulting score change. Materialization completes partial obligations with a
+feasible full assignment and selects its score/finality-delay witness.
+Regenerate existing vectors for these three targets: the numeric factors now
+claim comparison buckets rather than booleans.
 
-Proposer lookahead declares `fewer_candidates_than_slots` as a `cmp5`
-comparison of the active, unslashed candidate count against `slots_per_epoch`.
-Its witnesses use counts slots−2, slots−1, slots, slots+1, and slots+2.
-Both negative buckets require `new_proposers_repeat=True`: fewer candidates than
-slots cannot supply distinct proposers for every slot. The materializer preserves
-the requested pool size while constructing repeated or distinct proposer lists.
-For distinct lists it searches balance acceptance thresholds across slots, using
-compounding credentials and balances aligned to the spec increment. This avoids
-relying on a rare random permutation for an exact-size mainnet candidate pool.
-The bounded search retries with deterministic RANDAO mixes and verifies its
-result using spec proposer selection. Regenerate older proposer-lookahead vectors,
-whose candidate-count claims were booleans.
+Proposer lookahead declares `fewer_candidates_than_slots` as a `cmp5` comparison
+of the active, unslashed candidate count against `slots_per_epoch`. Its
+witnesses use counts slots−2, slots−1, slots, slots+1, and slots+2. Both
+negative buckets require `new_proposers_repeat=True`: fewer candidates than
+slots cannot supply distinct proposers for every slot. The materializer
+preserves the requested pool size while constructing repeated or distinct
+proposer lists. For distinct lists it searches balance acceptance thresholds
+across slots, using compounding credentials and balances aligned to the spec
+increment. This avoids relying on a rare random permutation for an exact-size
+mainnet candidate pool. The bounded search retries with deterministic RANDAO
+mixes and verifies its result using spec proposer selection. Regenerate older
+proposer-lookahead vectors, whose candidate-count claims were booleans.
 
 The outer `inactivity_updates` target declares the genesis, nonempty-loop, and
 slashed-validator prerequisites as factor dependencies. Single-factor coverage
