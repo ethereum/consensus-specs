@@ -12,6 +12,7 @@
     - [New `is_inclusion_list_satisfied`](#new-is_inclusion_list_satisfied)
     - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
+  - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
@@ -33,9 +34,9 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          | Duration                   |
-| ------------------------ | -------------- | -------------------------- |
-| `INCLUSION_LIST_DUE_BPS` | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
+| Name                     | Value          | Description               |
+| ------------------------ | -------------- | ------------------------- |
+| `INCLUSION_LIST_DUE_BPS` | `Uint64(6667)` | ~67% of the slot duration |
 
 ## Protocols
 
@@ -85,6 +86,17 @@ def notify_forkchoice_updated(
 ```
 
 ## Helpers
+
+### Modified `get_slot_component_duration_ms`
+
+```python
+def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
+    """
+    Calculate a slot component's duration using this fork's slot duration.
+    """
+    # [Modified in Heze:EIP8198]
+    return basis_points * SLOT_DURATION_MS_HEZE // BASIS_POINTS
+```
 
 ### Modified `PayloadAttributes`
 
