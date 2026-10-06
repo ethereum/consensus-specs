@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import random
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import random
 
 
 ConcreteAttributes = Mapping[str, Any]
