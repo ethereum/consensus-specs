@@ -113,6 +113,10 @@ PAYLOAD_ATTESTATION_DUE_BPS: 7500
 # 6667 basis points, ~67% of SLOT_DURATION_MS
 INCLUSION_LIST_DUE_BPS: 6667
 
+# EIP8198
+# 10000 milliseconds
+SLOT_DURATION_MS_EIP8198: 10000
+
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -242,10 +246,6 @@ BLOB_SCHEDULE:
     MAX_BLOBS_PER_BLOCK: 21
 
 GAS_LIMIT_SCHEDULE: []
-
-SLOT_DURATION_SCHEDULE:
-  - EPOCH: 0  # December 1, 2020, 12:00:23pm UTC
-    SLOT_DURATION_MS: 12000
 
 # Fast Confirmation Rule
 # ---------------------------------------------------------------
