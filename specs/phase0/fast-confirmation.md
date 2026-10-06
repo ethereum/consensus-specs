@@ -327,24 +327,26 @@ def get_node_support_between_slots(
     # Keep validators that were active at the balance_source epoch to be consistent
     # with get_total_active_balance() computation, also filter out slashed validators
     unslashed_and_active_indices = [
-        i
-        for i in participants
+        index
+        for index in participants
         if (
-            not balance_source.validators[i].slashed
-            and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
+            not balance_source.validators[index].slashed
+            and is_active_validator(
+                balance_source.validators[index], get_current_epoch(balance_source)
+            )
         )
     ]
 
     return Gwei(
         sum(
-            balance_source.validators[i].effective_balance
-            for i in unslashed_and_active_indices
+            balance_source.validators[index].effective_balance
+            for index in unslashed_and_active_indices
             # Check that validator has voted in the support of the node
             # and has not been slashed
             if (
-                i in store.latest_messages
-                and get_supported_node(store, store.latest_messages[i]) == node
-                and i not in store.equivocating_indices
+                index in store.latest_messages
+                and get_supported_node(store, store.latest_messages[index]) == node
+                and index not in store.equivocating_indices
             )
         )
     )
@@ -461,13 +463,16 @@ def get_equivocation_score(
     # Keep equivocating validators that were active at the balance_source epoch to be consistent
     # with get_total_active_balance() computation
     active_equivocating_indices = [
-        i
-        for i in committee_indices.intersection(store.equivocating_indices)
-        if is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
+        index
+        for index in committee_indices.intersection(store.equivocating_indices)
+        if is_active_validator(balance_source.validators[index], get_current_epoch(balance_source))
     ]
 
     return Gwei(
-        sum(balance_source.validators[i].effective_balance for i in active_equivocating_indices)
+        sum(
+            balance_source.validators[index].effective_balance
+            for index in active_equivocating_indices
+        )
     )
 ```
 
@@ -700,22 +705,22 @@ def get_current_target_score(store: Store) -> Gwei:
     target = get_current_target(store)
     state = get_pulled_up_head_state(store)
     unslashed_and_active_indices = [
-        i
-        for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
+        index
+        for index in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[index].slashed
     ]
     return Gwei(
         sum(
-            state.validators[i].effective_balance
-            for i in unslashed_and_active_indices
+            state.validators[index].effective_balance
+            for index in unslashed_and_active_indices
             if (
-                i in store.latest_messages
-                and i not in store.equivocating_indices
+                index in store.latest_messages
+                and index not in store.equivocating_indices
                 and target
                 == get_checkpoint_for_block(
                     store,
-                    store.latest_messages[i].root,
-                    get_latest_message_epoch(store.latest_messages[i]),
+                    store.latest_messages[index].root,
+                    get_latest_message_epoch(store.latest_messages[index]),
                 )
             )
         )

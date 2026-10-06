@@ -228,6 +228,6 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
     return InclusionListCommittee(
-        data=[indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)]
+        data=[indices[index % len(indices)] for index in range(INCLUSION_LIST_COMMITTEE_SIZE)]
     )
 ```

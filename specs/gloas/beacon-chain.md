@@ -1036,7 +1036,7 @@ def is_valid_indexed_attestation(
     ):
         return False
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
@@ -1105,7 +1105,7 @@ def is_valid_indexed_payload_attestation(
         return False
 
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
@@ -1245,7 +1245,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(start_slot + index)) for index in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         data=[
@@ -1417,7 +1417,9 @@ def get_indexed_payload_attestation(
     slot = payload_attestation.data.slot
     ptc = get_ptc(state, slot)
     bits = payload_attestation.aggregation_bits
-    attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+    attesting_indices = [
+        validator_index for index, validator_index in enumerate(ptc) if bits[index]
+    ]
 
     return IndexedPayloadAttestation(
         attesting_indices=PayloadTimelinessCommitteeIndices(data=sorted(attesting_indices)),
@@ -1640,7 +1642,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -2297,7 +2299,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     if not is_builder_withdrawal_credential(request.withdrawal_credentials):
         return
 
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
@@ -2327,7 +2329,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
 
 ```python
 def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest) -> None:
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         return
 
@@ -2374,8 +2376,8 @@ def process_attestation(
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)
