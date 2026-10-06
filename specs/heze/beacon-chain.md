@@ -25,6 +25,9 @@
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
 
 <!-- mdformat-toc end -->
 
@@ -34,6 +37,8 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7805](https://github.com/ethereum/EIPs/blob/9a345f96c2295a678b0ce33e94d41276ddb3fdef/EIPS/eip-7805.md):
   Fork-choice enforced Inclusion Lists (FOCIL)
+- [EIP-8365](https://github.com/ethereum/EIPs/blob/718595d75a86eafcf6f005c2b79e23ef941381e5/EIPS/eip-8365.md):
+  Disallow new `0x00` validators
 
 *Note*: These EIPs are in draft and may change or be removed. Each link above
 points to the specific version targeted by this specification, which may differ
@@ -228,6 +233,39 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
     return InclusionListCommittee(
-        data=[indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)]
+        data=[indices[index % len(indices)] for index in range(INCLUSION_LIST_COMMITTEE_SIZE)]
     )
+```
+
+## Beacon chain state transition function
+
+### Epoch processing
+
+#### Modified `apply_pending_deposit`
+
+*Note*: Deposits that would create new validators with BLS withdrawal
+credentials are skipped without a refund, including deposits submitted before
+Heze. Top-ups to existing validators are unaffected.
+
+```python
+def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
+    """
+    Applies ``deposit`` to the ``state`` without creating validators with BLS withdrawal credentials.
+    """
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    if deposit.pubkey not in validator_pubkeys:
+        # [New in Heze:EIP8365]
+        # Do not create validators with BLS withdrawal credentials
+        if deposit.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX:
+            return
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(
+            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
+        ):
+            add_validator_to_registry(
+                state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount
+            )
+    else:
+        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+        increase_balance(state, validator_index, deposit.amount)
 ```

@@ -456,7 +456,7 @@ processing, then set the desired threshold.
 def process_set_sweep_threshold_request(
     state: BeaconState, request: SetSweepThresholdRequest
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if request.validator_pubkey not in validator_pubkeys:
         return
 
@@ -487,8 +487,8 @@ def process_set_sweep_threshold_request(
 
 ##### Modified `apply_parent_execution_payload`
 
-*Note*: This function processes the parent's execution requests, queues the
-builder payment, updates payload availability, and updates the latest block
+*Note*: This function queues the builder payment, processes the parent's
+execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
 and by the validator during block production before computing withdrawals.
 
@@ -508,21 +508,8 @@ def apply_parent_execution_payload(
     # [New in EIP8148]
     assert len(requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in EIP8148]
-    for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -539,6 +526,20 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
+    # [New in EIP8148]
+    for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
