@@ -6,7 +6,7 @@ from .target import TARGET
 
 
 def build_profile(name: str, *, spec) -> tuple[int, list[dict]]:
-    """Expand a DSL profile into predicate-level operation representatives."""
+    """Expand a DSL profile into operation representatives at the declared granularities."""
     target = TARGET.for_spec(spec)
     formula = target.profiles[name]
     obligations = formula.run()
