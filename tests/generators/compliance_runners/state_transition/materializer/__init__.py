@@ -10,6 +10,10 @@ from enum import Enum
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.utils.dumper import Dumper
+from tests.generators.compliance_runners.state_transition.concretization import (
+    ConcretizationStrategy,
+    concretize,
+)
 from tests.generators.compliance_runners.gen_base.gen_typing import (
     TestCase,
     TestCasePart,
@@ -158,3 +162,20 @@ class Materializer:
             self.write_case(dumper, output_dir, case_offset + index, solution)
         print(f"Generated {len(representatives)} test cases in {output_dir}")
         return len(representatives)
+
+
+class ConcretizingMaterializer(Materializer):
+    """Materializer that concretizes an abstract case before building it."""
+
+    strategy: ConcretizationStrategy
+
+    def materialize_solution(self, abstract_case: Any) -> tuple[dict, list[TestCasePart]]:
+        attributes = concretize(self.strategy, abstract_case, self.spec, self.rng)
+        return self.materialize_concrete_attributes(abstract_case, attributes)
+
+    def materialize_concrete_attributes(
+        self, abstract_case: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
+        raise NotImplementedError(
+            f"{type(self).__name__} must materialize concrete attributes"
+        )
