@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
-from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
+from eth_consensus_specs.test.helpers.constants import FULU, HEZE, PHASE0
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
@@ -51,8 +51,9 @@ def run_is_candidate_block(spec, eth1_block, period_start, success=True):
 
 def get_min_new_period_epochs(spec):
     return (
-        (spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
-        * 1000
+        spec.seconds_to_milliseconds(
+            spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2
+        )
         // spec.config.SLOT_DURATION_MS
         // spec.Uint64(spec.SLOTS_PER_EPOCH)
     )
@@ -148,7 +149,7 @@ def test_get_epoch_signature(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @spec_state_test
 def test_is_candidate_block(spec, state):
     distance_duration = spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE

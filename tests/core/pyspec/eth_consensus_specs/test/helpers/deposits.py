@@ -6,7 +6,12 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_electra
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_altair,
+    is_post_electra,
+    is_post_fulu,
+    is_post_heze,
+)
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
@@ -20,6 +25,9 @@ from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activat
 
 
 def get_max_deposits(spec):
+    # Blocks must not contain any deposits since Fulu
+    if is_post_fulu(spec):
+        return 0
     return spec.MAX_DEPOSITS
 
 
@@ -220,9 +228,14 @@ def prepare_deposit_request(
     if privkey is None:
         privkey = privkeys[validator_index]
 
-    # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
+        if is_post_heze(spec):
+            withdrawal_credentials = make_withdrawal_credentials(
+                spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\x78"
+            )
+        else:
+            # insecurely use pubkey as withdrawal key if no credentials provided
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     deposit_data = build_deposit_data(
         spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed
@@ -315,9 +328,14 @@ def prepare_pending_deposit(
     if privkey is None:
         privkey = privkeys[validator_index]
 
-    # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
+        if is_post_heze(spec):
+            withdrawal_credentials = make_withdrawal_credentials(
+                spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\x05"
+            )
+        else:
+            # insecurely use pubkey as withdrawal key if no credentials provided
+            withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkey)[1:]
 
     # use GENESIS_SLOT which is always finalized if no slot provided
     if slot is None:
@@ -506,7 +524,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     assert is_post_electra(spec)
 
     # ensure the transition from eth1 bridge is complete
-    state.deposit_requests_start_index = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        state.deposit_requests_start_index = state.eth1_deposit_index
 
     # ensure there is enough churn to apply the deposit
     if pending_deposit.amount > get_activation_churn_limit(spec, state):

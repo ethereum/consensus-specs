@@ -479,7 +479,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
 @spec_state_test
 def test_top_up_to_fully_withdrawn_validator(spec, state):
     """
-    Similar to `teste_process_deposit::test_success_top_up_to_withdrawn_validator` test.
+    Similar to the `test_process_deposit::test_success_top_up_to_withdrawn_validator` test.
     """
     next_withdrawal_validator_index = 0
     validator_index = next_withdrawal_validator_index + 1

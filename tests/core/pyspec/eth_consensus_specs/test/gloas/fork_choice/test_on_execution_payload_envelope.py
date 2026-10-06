@@ -409,7 +409,7 @@ def test_on_execution_payload_envelope_wrong_timestamp(spec, state):
         state,
         block_root,
         signed_block,
-        timestamp=spec.compute_time_at_slot(state, state.slot) + 1,
+        timestamp=spec.compute_time_at_slot(state.genesis_time, state.slot) + 1,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 

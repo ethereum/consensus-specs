@@ -294,20 +294,15 @@ def _debug_run_sanity_checks(
                 run_on_payload_attestation_message(spec, store, ptc_message, valid=True)
 
     for signed_block in signed_blocks:
-        block_time = (
-            anchor_state.genesis_time
-            + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
-        )
-        if block_time > store.time:
-            spec.on_tick(store, block_time)
+        block_time = spec.compute_time_at_slot(anchor_state.genesis_time, signed_block.message.slot)
+        if spec.seconds_to_milliseconds(block_time) > store.time_ms:
+            spec.on_tick(store, spec.seconds_to_milliseconds(block_time))
         debug_add_block(signed_block)
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
-    current_epoch_time = (
-        anchor_state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
-    )
-    if current_epoch_time > store.time:
-        spec.on_tick(store, current_epoch_time)
+    current_epoch_time = spec.compute_time_at_slot(anchor_state.genesis_time, current_epoch_slot)
+    if spec.seconds_to_milliseconds(current_epoch_time) > store.time_ms:
+        spec.on_tick(store, spec.seconds_to_milliseconds(current_epoch_time))
 
     run_sanity_checks(spec, store, model_params, target_block_root)
 
@@ -382,9 +377,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     payload_attestations = []
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
-    current_epoch_time = (
-        state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
-    )
+    current_epoch_time = spec.compute_time_at_slot(state.genesis_time, current_epoch_slot)
 
     test_data = FCTestData(
         meta, anchor_block, anchor_state, blocks, store_final_time=current_epoch_time
@@ -475,10 +468,12 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
     else:
         assert voting_source.epoch + 2 < current_epoch, "block_vse_plus_two_ge_curr_e not satisfied"
 
-    # Ensure the target block is in filtered blocks if it is a leaf and eligible
+    # Ensure the target block is in the filtered node tree if it is a leaf and eligible
     if predicates["block_is_leaf"] and (
         predicates["store_je_eq_zero"]
         or predicates["block_vse_eq_store_je"]
         or predicates["block_vse_plus_two_ge_curr_e"]
     ):
-        assert target_block_root in spec.get_filtered_block_tree(store)
+        filtered_tree = spec.get_filtered_node_tree(store)
+        filtered_roots = [node.root for node in filtered_tree]
+        assert target_block_root in filtered_roots

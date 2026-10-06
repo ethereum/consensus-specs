@@ -40,6 +40,16 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "AGGREGATE_DUE_BPS",
+            "ATTESTATION_DUE_BPS",
+            "CONTRIBUTION_DUE_BPS",
+            "MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT",
+            "SYNC_MESSAGE_DUE_BPS",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",
@@ -83,8 +93,8 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes],
-                                  custody_columns: Optional[CustodyColumnBits]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None,
+                                  custody_columns: CustodyColumnBits | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:

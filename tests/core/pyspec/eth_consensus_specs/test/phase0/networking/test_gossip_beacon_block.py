@@ -53,21 +53,20 @@ def test_gossip_beacon_block__valid_block(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
@@ -76,7 +75,13 @@ def test_gossip_beacon_block__valid_block(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -102,10 +107,8 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    current_time_ms = block_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
-
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     kwargs = (
         {"block_payload_statuses": {}}
@@ -128,7 +131,7 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "ignore",
                 "reason": reason,
@@ -159,10 +162,8 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    current_time_ms = block_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     kwargs = (
         {"block_payload_statuses": {}}
@@ -183,7 +184,13 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 0, "message": get_filename(signed_block), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -210,9 +217,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     # First block should be valid
     kwargs = (
@@ -220,17 +225,24 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
     assert reason is None
-    messages.append({"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"})
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_block),
+            "expected": "valid",
+        }
+    )
 
     # Second block with same proposer/slot should be ignored
     kwargs = (
@@ -238,19 +250,20 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 600,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "ignore"
     assert reason == "block is not the first valid block for this slot and proposer"
     messages.append(
         {
-            "offset_ms": 600,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": "ignore",
             "reason": reason,
@@ -309,21 +322,20 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "ignore"
@@ -334,7 +346,7 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "ignore",
                 "reason": reason,
@@ -375,21 +387,20 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "ignore"
@@ -400,7 +411,7 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "ignore",
                 "reason": reason,
@@ -472,21 +483,20 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -500,7 +510,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_child),
                 "expected": "reject",
                 "reason": reason,
@@ -550,21 +560,20 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -575,7 +584,7 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,
@@ -633,21 +642,20 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -658,7 +666,7 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_child),
                 "expected": "reject",
                 "reason": reason,
@@ -693,21 +701,20 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -718,7 +725,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,
@@ -752,21 +759,20 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -777,7 +783,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,
@@ -817,21 +823,20 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -842,7 +847,7 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,

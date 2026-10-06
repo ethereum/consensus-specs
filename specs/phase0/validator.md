@@ -282,7 +282,7 @@ helper via `get_committee_assignment(state, epoch, validator_index)` where
 ```python
 def get_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
+) -> tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot] | None:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -463,7 +463,7 @@ def voting_period_start_time(state: BeaconState) -> Uint64:
     eth1_voting_period_start_slot = state.slot - state.slot % (
         Uint64(EPOCHS_PER_ETH1_VOTING_PERIOD) * SLOTS_PER_EPOCH
     )
-    return compute_time_at_slot(state, eth1_voting_period_start_slot)
+    return compute_time_at_slot(state.genesis_time, eth1_voting_period_start_slot)
 ```
 
 ```python

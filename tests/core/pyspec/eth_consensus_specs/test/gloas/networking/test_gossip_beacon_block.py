@@ -1,11 +1,13 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_to,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -45,23 +47,22 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
         }
@@ -111,23 +112,22 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
         }
@@ -159,23 +159,22 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "parent payload is not verified"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
             "reason": reason,
@@ -217,23 +216,22 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid does not build on the parent's execution head"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
             "reason": reason,
@@ -266,23 +264,22 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
             "reason": reason,
@@ -312,23 +309,22 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "bid's parent does not equal block's parent"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_block),
             "expected": result,
             "reason": reason,
@@ -368,23 +364,22 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     yield get_filename(signed_child), signed_child
 
     seen = get_seen(spec)
-    time_ms = spec.compute_time_at_slot_ms(store, child.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "block's parent is invalid"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_child),
             "expected": result,
             "reason": reason,
@@ -419,22 +414,21 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
-    time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
     messages = []
 
-    time_ms += 500
+    current_time_ms += 500
     result, reason_out = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == expected
     assert reason_out == reason
     message = {
-        "current_time_ms": int(time_ms),
+        "current_time_ms": int(current_time_ms),
         "message": get_filename(signed_block),
         "expected": result,
     }
@@ -651,7 +645,7 @@ def test_gossip_beacon_block__reject_too_many_attestations(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "reject", "too many attestations")
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_gossip_beacon_block__valid_no_deposits(spec, state):
     """A block with no deposits (the maximum allowed) is valid."""
@@ -662,7 +656,7 @@ def test_gossip_beacon_block__valid_no_deposits(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_gossip_beacon_block__reject_contains_deposits(spec, state):
     """A block that carries any deposits is rejected."""

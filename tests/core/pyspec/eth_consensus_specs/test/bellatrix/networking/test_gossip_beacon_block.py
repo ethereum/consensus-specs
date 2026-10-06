@@ -57,19 +57,18 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
-
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
@@ -78,7 +77,13 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -107,16 +112,15 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, signed_block.message.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses={},
     )
     assert result == "valid"
@@ -125,7 +129,13 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -157,16 +167,15 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses={},
     )
     assert result == "reject"
@@ -177,7 +186,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,
@@ -244,16 +253,15 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec,
             {signed_block.message.hash_tree_root(): PAYLOAD_STATUS_NOT_VALIDATED},
@@ -267,7 +275,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_child),
                 "expected": "reject",
                 "reason": reason,
@@ -335,16 +343,15 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
@@ -355,7 +362,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_child),
                 "expected": "ignore",
                 "reason": reason,
@@ -425,16 +432,15 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
@@ -445,7 +451,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_child),
                 "expected": "ignore",
                 "reason": reason,
@@ -514,16 +520,15 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "valid"
@@ -532,7 +537,13 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_child), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_child),
+                "expected": "valid",
+            }
+        ],
     )
 
 
@@ -596,16 +607,15 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
 
     yield get_filename(signed_child), signed_child
 
-    block_time_ms = spec.compute_time_at_slot_ms(store, child_block.slot)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, child_block.slot)
 
-    yield "current_time_ms", "meta", int(block_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_child,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "valid"
@@ -614,5 +624,11 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     yield (
         "messages",
         "meta",
-        [{"offset_ms": 500, "message": get_filename(signed_child), "expected": "valid"}],
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_child),
+                "expected": "valid",
+            }
+        ],
     )

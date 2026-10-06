@@ -21,6 +21,14 @@ from eth_consensus_specs.deneb import {preset_name} as deneb
         }
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "BLOB_SIDECAR_SUBNET_COUNT",
+            "MAX_BLOBS_PER_BLOCK",
+            "MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "get_validator_activation_churn_limit",
@@ -48,7 +56,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                   head_block_hash: Hash32,
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
-                                  payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
+                                  payload_attributes: PayloadAttributes | None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:

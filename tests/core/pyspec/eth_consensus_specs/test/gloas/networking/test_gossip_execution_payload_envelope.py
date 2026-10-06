@@ -50,11 +50,8 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -62,7 +59,6 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
         }
@@ -94,11 +90,8 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -106,7 +99,6 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     assert reason == "envelope's block has not been seen"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -133,11 +125,8 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -145,13 +134,11 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
         }
     )
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -159,7 +146,6 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     assert reason == "already seen envelope for this block root from this builder"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -187,11 +173,8 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     signed_envelope.message.payload.slot_number = spec.Uint64(state.slot + 1)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -199,7 +182,6 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     assert reason == "block's slot does not match payload's slot number"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -227,11 +209,8 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
     signed_envelope.message.payload.block_hash = spec.Hash32(b"\xcd" * 32)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -239,7 +218,6 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
     assert reason == "payload's block hash does not match the bid's block hash"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -267,11 +245,8 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
     signed_envelope.signature = spec.BLSSignature()
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -279,7 +254,6 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
     assert reason == "invalid envelope signature"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -320,11 +294,8 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -332,7 +303,6 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     assert reason == "envelope is from a slot before the latest finalized slot"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -367,11 +337,8 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -379,7 +346,6 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
     assert reason == "envelope's block failed validation"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -411,11 +377,8 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     signed_envelope.message.builder_index = spec.BuilderIndex(int(bid_builder_index) - 1)
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -423,7 +386,6 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     assert reason == "envelope's builder index does not match the bid's builder index"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -457,11 +419,8 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
@@ -469,7 +428,6 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     assert reason == "envelope's execution requests root does not match the bid's"
     messages.append(
         {
-            "current_time_ms": int(time_ms),
             "message": get_filename(signed_envelope),
             "expected": result,
             "reason": reason,
@@ -512,18 +470,14 @@ def _assert_envelope_requests(spec, state, execution_requests, expected, reason=
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason_out = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason
     message = {
-        "current_time_ms": int(time_ms),
         "message": get_filename(signed_envelope),
         "expected": result,
     }
@@ -560,18 +514,14 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     )
     yield get_filename(signed_envelope), signed_envelope
 
-    time_ms = spec.compute_time_at_slot_ms(store, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    time_ms += 100
     result, reason_out = run_validate_gossip(
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == expected
     assert reason_out == reason
     message = {
-        "current_time_ms": int(time_ms),
         "message": get_filename(signed_envelope),
         "expected": result,
     }

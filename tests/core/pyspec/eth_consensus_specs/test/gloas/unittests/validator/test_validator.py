@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_test,
     with_gloas_and_later,
+    with_matching_spec_config,
     with_state,
 )
 from eth_consensus_specs.test.helpers.state import next_epoch
@@ -47,6 +48,7 @@ def _assert_get_ptc_assignments(spec, state, epoch, assignments):
 @spec_test
 @with_state
 @single_phase
+@with_matching_spec_config()
 def test_get_ptc_assignment__current_epoch_minus_2(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
@@ -59,6 +61,7 @@ def test_get_ptc_assignment__current_epoch_minus_2(spec, state):
 @spec_test
 @with_state
 @single_phase
+@with_matching_spec_config()
 def test_get_ptc_assignment__current_epoch_minus_1(spec, state):
     previous_epoch = spec.get_current_epoch(state)
     previous_assignments = _compute_first_ptc_assignments(spec, state, previous_epoch)
@@ -78,6 +81,7 @@ def test_get_ptc_assignment__current_epoch_minus_1(spec, state):
 @spec_test
 @with_state
 @single_phase
+@with_matching_spec_config()
 def test_get_ptc_assignment__current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
     _run_get_ptc_assignments(spec, state, epoch, valid=True)
@@ -87,6 +91,7 @@ def test_get_ptc_assignment__current_epoch(spec, state):
 @spec_test
 @with_state
 @single_phase
+@with_matching_spec_config()
 def test_get_ptc_assignment__current_epoch_plus_1(spec, state):
     epoch = spec.Epoch(spec.get_current_epoch(state) + 1)
     _run_get_ptc_assignments(spec, state, epoch, valid=True)
@@ -96,6 +101,7 @@ def test_get_ptc_assignment__current_epoch_plus_1(spec, state):
 @spec_test
 @with_state
 @single_phase
+@with_matching_spec_config()
 def test_get_ptc_assignment__current_epoch_plus_2(spec, state):
     epoch = spec.Epoch(spec.get_current_epoch(state) + 2)
     _run_get_ptc_assignments(spec, state, epoch, valid=False)

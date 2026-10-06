@@ -149,9 +149,9 @@ class SyncCommitteePubkeys(Vector[BLSPubkey]):
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
-| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType('0x07000000')` |
-| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType('0x08000000')` |
-| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType('0x09000000')` |
+| `DOMAIN_SYNC_COMMITTEE`                 | `DomainType("0x07000000")` |
+| `DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF` | `DomainType("0x08000000")` |
+| `DOMAIN_CONTRIBUTION_AND_PROOF`         | `DomainType("0x09000000")` |
 
 ### Misc
 
@@ -396,7 +396,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```python
 def get_unslashed_participating_indices(
     state: BeaconState, flag_index: int, epoch: Epoch
-) -> Set[ValidatorIndex]:
+) -> set[ValidatorIndex]:
     """
     Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
     """
@@ -407,7 +407,9 @@ def get_unslashed_participating_indices(
         epoch_participation = state.previous_epoch_participation
     active_validator_indices = get_active_validator_indices(state, epoch)
     participating_indices = [
-        i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)
+        index
+        for index in active_validator_indices
+        if has_flag(epoch_participation[index], flag_index)
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
@@ -456,7 +458,7 @@ def get_attestation_participation_flag_indices(
 ```python
 def get_flag_index_deltas(
     state: BeaconState, flag_index: int
-) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the deltas for a given ``flag_index`` by scanning through the participation flags.
     """
@@ -486,7 +488,7 @@ def get_flag_index_deltas(
 #### Modified `get_inactivity_penalty_deltas`
 
 ```python
-def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
     """
     Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
     """
@@ -518,7 +520,7 @@ calculating the proposer reward.
 def slash_validator(
     state: BeaconState,
     slashed_index: ValidatorIndex,
-    whistleblower_index: Optional[ValidatorIndex] = None,
+    whistleblower_index: ValidatorIndex | None = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -661,7 +663,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
             )
             if bit
         ]
-    previous_slot = max(state.slot, Slot(1)) - 1
+    previous_slot = saturating_sub(state.slot, 1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
     # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
@@ -679,7 +681,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
 
     # Apply participant and proposer rewards
-    all_pubkeys = [v.pubkey for v in state.validators]
+    all_pubkeys = [validator.pubkey for validator in state.validators]
     committee_indices = [
         ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
     ]
@@ -759,13 +761,13 @@ def process_inactivity_updates(state: BeaconState) -> None:
         if index in get_unslashed_participating_indices(
             state, TIMELY_TARGET_FLAG_INDEX, get_previous_epoch(state)
         ):
-            state.inactivity_scores[index] -= min(1, state.inactivity_scores[index])
+            state.inactivity_scores[index] = saturating_sub(state.inactivity_scores[index], 1)
         else:
             state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
         # Decrease the inactivity score of all eligible validators during a leak-free epoch
         if not is_in_inactivity_leak(state):
-            state.inactivity_scores[index] -= min(
-                INACTIVITY_SCORE_RECOVERY_RATE, state.inactivity_scores[index]
+            state.inactivity_scores[index] = saturating_sub(
+                state.inactivity_scores[index], INACTIVITY_SCORE_RECOVERY_RATE
             )
 ```
 

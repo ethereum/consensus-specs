@@ -118,7 +118,7 @@ def validate_beacon_block_gossip(
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
     # [New in Bellatrix]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -186,7 +186,7 @@ def validate_beacon_block_gossip(
     # [New in Bellatrix]
     if is_execution_enabled(state, block.body):
         # [REJECT] The block's execution payload timestamp is correct with respect to the slot
-        if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        if execution_payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
             raise GossipReject("incorrect execution payload timestamp")
 
         # [IGNORE] The block's parent passed validation but its execution payload is invalid

@@ -65,19 +65,19 @@ class Syncnets(BitVector):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
     # [New in Altair]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     # [New in Altair]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
 ```
 
 ### Modified `compute_fork_version`
@@ -318,7 +318,9 @@ def validate_sync_committee_contribution_and_proof_gossip(
     # and aggregate pubkey derived from the participation info in aggregation_bits
     # for the subcommittee specified by the contribution.subcommittee_index
     participant_pubkeys = [
-        subcommittee_pubkeys[i] for i, bit in enumerate(contribution.aggregation_bits) if bit
+        subcommittee_pubkeys[index]
+        for index, bit in enumerate(contribution.aggregation_bits)
+        if bit
     ]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
     signing_root = compute_signing_root(contribution.beacon_block_root, domain)
