@@ -40,3 +40,13 @@ def concretize(
     if not all(isinstance(name, str) for name in attributes):
         raise TypeError(f"{strategy.name}: concrete attribute names must be strings")
     return attributes
+
+
+def modulo_representative(bucket: str, period: int) -> int:
+    """Choose a remainder witness, rejecting coincident or empty buckets."""
+    if type(period) is not int or period < 1:
+        raise ValueError("period must be a positive integer")
+    minimum = {"ZERO": 1, "ONE": 2, "LAST": 3, "INTERIOR": 4}
+    if bucket not in minimum or period < minimum[bucket]:
+        raise ValueError(f"cannot realize modulo bucket {bucket!r} for period {period}")
+    return {"ZERO": 0, "ONE": 1, "LAST": period - 1, "INTERIOR": 2}[bucket]

@@ -9,19 +9,22 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
+    constant,
     coverage_spec,
     factor,
     Integer,
+    modulo,
 )
 
 from .observation import observe_attributes
 
-destination_index = attribute("destination_index", Integer(min=0))
+next_epoch = attribute("next_epoch", Integer(min=1))
+vector_length = constant("vector_length", Integer(min=1))
 destination_value = attribute("destination_value", Integer(min=0))
 
 RESET = aspect(
     "reset",
-    factor("destination_is_first_slot", destination_index == 0),
+    modulo("destination_position", next_epoch, vector_length),
     factor("destination_nonzero", destination_value > 0),
 )
 ASPECTS = (RESET,)
@@ -37,12 +40,16 @@ COVERAGE = coverage_spec(
     focus="process_slashings_reset: destination wraparound and value to clear",
     record="one vector",
     attributes=(
-        destination_index,
+        next_epoch,
         destination_value,
     ),
-    constants=(),
+    constants=(vector_length,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )
 
-TARGET = bind(COVERAGE, observe_attributes=observe_attributes, constants={})
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
+    constants={"vector_length": lambda spec: int(spec.EPOCHS_PER_SLASHINGS_VECTOR)},
+)

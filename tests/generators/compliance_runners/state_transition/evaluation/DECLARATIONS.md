@@ -114,6 +114,21 @@ comparison. Normal/standard/max cover 12 combinations for periods of at least
 four; smoke covers the seven individual bucket obligations. Regenerate older
 vectors, whose boolean factor claims use the previous target schema.
 
+The historical-summary and sync-committee targets use `update_remainder` and
+`period_remainder` respectively. Slashings and RANDAO resets observe `next_epoch`
+and classify `destination_position` against their spec-bound vector length.
+Their adapters still read the source/destination contents at the actual circular
+indices. Slot processing uses the four buckets for `ring_position`, distinguishing
+index 1 from other interior positions. Effective-balance updates replace the
+boolean alignment claim with `balance_remainder`, and concrete witnesses cover
+all rounding buckets around hysteresis and cap boundaries. Regenerate vectors
+for these six targets: the factor names and/or values have changed.
+
+`modulo_representative(bucket, period)` in the concretization module chooses a
+concrete remainder for a bucket and rejects buckets that do not exist for that
+period. Epoch generators map remainder zero to a positive multiple of the period,
+so the next epoch remains at least one.
+
 Enumeration uses `target.profiles[name].run()`, observation abstraction uses
 `target.record(observation)`, and scoring uses
 `score(target, records, formula)`. These functions do not accept a runtime

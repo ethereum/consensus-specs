@@ -31,8 +31,9 @@ class SlashingsResetMaterializer(ConcretizingMaterializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         vector_length = int(spec.EPOCHS_PER_SLASHINGS_VECTOR)
-        destination_index = int(attributes["destination_index"])
-        current_epoch = (destination_index - 1) % vector_length
+        next_epoch = int(attributes["next_epoch"])
+        destination_index = next_epoch % vector_length
+        current_epoch = next_epoch - 1
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
         for index in range(vector_length):
             pre.slashings[index] = spec.Gwei(self.rng.getrandbits(64))
@@ -41,8 +42,8 @@ class SlashingsResetMaterializer(ConcretizingMaterializer):
         post = pre.copy()
         spec.process_slashings_reset(post)
         claimed = {
-            name: bool(getattr(solution, name))
-            for name in ("destination_is_first_slot", "destination_nonzero")
+            name: getattr(solution, name)
+            for name in ("destination_position", "destination_nonzero")
             if hasattr(solution, name)
         }
         meta = {"description": "process_slashings_reset", "claimed": claimed}

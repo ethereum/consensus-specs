@@ -46,3 +46,26 @@ def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
         }
     for guard in ("downward_trigger", "upward_trigger"):
         assert {record[guard] for record in records} == {"LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"}
+
+
+def test_rounding_buckets_have_concrete_witnesses_in_every_profile():
+    increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
+    for profile in PROFILES:
+        records, _ = build_profile(profile, spec=spec)
+        assert {record["balance_remainder"] for record in records} == {
+            "ZERO",
+            "ONE",
+            "LAST",
+            "INTERIOR",
+        }
+        for record in records:
+            remainder = record["balance"] % increment
+            bucket = record["balance_remainder"]
+            if bucket == "ZERO":
+                assert remainder == 0
+            elif bucket == "ONE":
+                assert remainder == 1
+            elif bucket == "LAST":
+                assert remainder == increment - 1
+            else:
+                assert 2 <= remainder <= increment - 2

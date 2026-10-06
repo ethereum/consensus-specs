@@ -37,7 +37,7 @@ def context(position, *, header_empty, state_populated, block_populated, availab
 def test_observation_and_profiles_cover_the_input_product():
     records = []
     for position, header_empty, state_populated, block_populated, available in product(
-        (0, 3, 7), (False, True), (False, True), (False, True), (False, True)
+        (0, 1, 3, 7), (False, True), (False, True), (False, True), (False, True)
     ):
         ctx = context(
             position,
@@ -49,7 +49,7 @@ def test_observation_and_profiles_cover_the_input_product():
         observation = TARGET.observation(ctx)
         record = TARGET.record(observation)
         assert record == {
-            "ring_position": {0: "FIRST", 3: "MIDDLE", 7: "LAST"}[position],
+            "ring_position": {0: "ZERO", 1: "ONE", 3: "INTERIOR", 7: "LAST"}[position],
             "header_state_root_empty": header_empty,
             "state_root_destination_populated": state_populated,
             "block_root_destination_populated": block_populated,
@@ -70,7 +70,7 @@ def test_observation_and_profiles_cover_the_input_product():
         report = score(target, records, formula)
         assert report.covered == report.total
         assert report.uncovered == report.unexpected == []
-    assert len(target.profiles["standard"].run()) == 48
+    assert len(target.profiles["standard"].run()) == 64
 
 
 def test_multi_slot_vectors_are_outside_this_target():

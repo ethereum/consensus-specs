@@ -10,8 +10,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     comparison,
     constant,
     coverage_spec,
-    factor,
     Integer,
+    modulo,
     nwise,
 )
 
@@ -57,7 +57,7 @@ RESULT = aspect(
     comparison(
         "rounded_vs_cap", rounded_balance, max_effective_balance, op=">=", granularity="cmp5"
     ),
-    factor("balance_aligned", balance == rounded_balance),
+    modulo("balance_remainder", balance, increment),
     categorical(
         "outcome",
         choose(

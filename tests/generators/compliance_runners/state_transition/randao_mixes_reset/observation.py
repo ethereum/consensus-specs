@@ -16,7 +16,7 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     source_index = current_epoch % vector_length
     destination_index = next_epoch % vector_length
     return {
-        "destination_index": destination_index,
+        "next_epoch": next_epoch,
         "source_mix": bytes(state.randao_mixes[source_index]),
         "destination_mix": bytes(state.randao_mixes[destination_index]),
     }
