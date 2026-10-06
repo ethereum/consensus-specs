@@ -5,6 +5,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
+    comparison,
     constant,
     coverage_spec,
     factor,
@@ -23,7 +24,9 @@ slots_per_epoch = constant("slots_per_epoch", Integer(min=1))
 CANDIDATES = aspect(
     "candidates",
     factor("has_slashed_active_validator", slashed_active_count > 0),
-    factor("fewer_candidates_than_slots", candidate_count < slots_per_epoch),
+    comparison(
+        "fewer_candidates_than_slots", candidate_count, slots_per_epoch, op="<", granularity="cmp5"
+    ),
     factor("old_lookahead_contains_slashed", old_lookahead_has_slashed),
 )
 ROTATION = aspect(
@@ -53,7 +56,8 @@ COVERAGE = coverage_spec(
     aspects=ASPECTS,
     profiles=PROFILES,
     feasible=lambda a: (
-        a.get("fewer_candidates_than_slots") is not True or a.get("new_proposers_repeat") is True
+        a.get("fewer_candidates_than_slots") not in ("LT_FAR", "LT_1")
+        or a.get("new_proposers_repeat") is True
     ),
 )
 TARGET = bind(
