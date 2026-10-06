@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_eip8321,
     is_post_electra,
     is_post_gloas,
+    is_post_heze,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
@@ -115,7 +116,8 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
     empty_block.proposer_index = proposer_index
-    empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     empty_block.parent_root = parent_block_root
 
     apply_randao_reveal(spec, state, empty_block, proposer_index)
@@ -167,7 +169,8 @@ def build_block_and_payload(
     block = spec.BeaconBlock()
     block.slot = slot
     block.proposer_index = proposer_index
-    block.body.eth1_data.deposit_count = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        block.body.eth1_data.deposit_count = state.eth1_deposit_index
     block.parent_root = parent_block_root
 
     apply_randao_reveal(spec, state, block, proposer_index)

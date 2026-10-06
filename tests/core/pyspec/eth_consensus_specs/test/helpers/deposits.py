@@ -524,7 +524,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     assert is_post_electra(spec)
 
     # ensure the transition from eth1 bridge is complete
-    state.deposit_requests_start_index = state.eth1_deposit_index
+    if not is_post_heze(spec):
+        state.deposit_requests_start_index = state.eth1_deposit_index
 
     # ensure there is enough churn to apply the deposit
     if pending_deposit.amount > get_activation_churn_limit(spec, state):
