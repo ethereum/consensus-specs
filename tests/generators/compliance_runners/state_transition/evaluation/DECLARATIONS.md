@@ -200,6 +200,36 @@ spec-bound constants. The header's proposer slashing check uses `available_when`
 because a missing validator makes the lookup unavailable without introducing a
 new coverage dimension.
 
+Voluntary-exit `current_ge_message_epoch` and `current_ge_seasoned` use `cmp5`.
+Epoch witnesses place the current epoch two epochs before, one before, exactly
+at, one after, and two after each boundary. The provider's scenario profiles add
+these buckets to their epoch aspect, with accepted cases covering the nine
+non-negative bucket pairs and exceptional cases preserving assertion ordering.
+Smoke also covers each numeric bucket alongside the existing rejection outcomes.
+The provider enumerates structured Python scenario witnesses instead of the old
+MiniZinc scenario table; churn and pending-withdrawal classifications retain their
+existing behavior. Regenerate voluntary-exit vectors to include the new epoch
+bucket claims. Validation computes both deltas from the signed message and
+pre-state, and the declarations expose the same observed buckets.
+
+Voluntary-exit `balance_gt_consumable` uses `cmp5` for the effective balance
+against the available exit budget. Effective balances and fresh churn are aligned
+to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1` buckets
+are infeasible when the increment exceeds one Gwei. Carried budgets can be
+unaligned: partial withdrawal requests consume the same churn budget in arbitrary
+Gwei amounts. The generator realizes those one-Gwei residuals by processing a
+foreign partial withdrawal before the voluntary exit. A `GT_1` excess always fits
+in one additional epoch and cannot require `MANY`.
+
+Churn profiles include `balance_gt_consumable` and `churn_additional_epochs`
+(`ZERO`, `ONE`, or `MANY`) alongside the existing budget-state claim. Witnesses
+cover fresh and carried budgets, equality, aligned under/overflow boundaries,
+and multi-epoch overflow; they recalculate the fresh limit when the selected
+effective balance changes total active balance. Larger balances use compounding
+credentials within the effective-balance cap. The DSL's conditional
+`additional_epochs` factor remains inactive when the exit fits the budget.
+Regenerate voluntary-exit vectors to include the new churn claims.
+
 `voluntary_exit` declares `additional_epochs` with `when=EXCEEDS`, so churn
 exhaustiveness includes both within-budget and exceeding-budget branches. The
 `ONE`/`MANY` classification compares the positive excess with one epoch's churn,
