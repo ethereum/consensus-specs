@@ -206,6 +206,21 @@ exhaustiveness includes both within-budget and exceeding-budget branches. The
 which is equivalent to classifying the ceiling division for positive churn.
 Validator lookup and signature availability remain observation gates.
 
+Historical-summary occupancy and the value cleared by slashings reset now use
+`cmp5` comparisons against zero. Their non-negative domains leave `EQ`, `GT_1`,
+and `GT_FAR`, and concretization realizes empty/zero, singleton/one, and larger
+values explicitly.
+
+The inactivity loop declares `cmp5` for `score_gt_zero`, `leaking`, and
+`score_vs_recovery_rate`. Recovery remains active only when the leak predicate
+is false, including its below-threshold and equality buckets. Feasibility uses
+concrete witnesses around zero, the leak threshold, and the participation-adjusted
+recovery threshold. These witnesses preserve relationships between score,
+participation, recovery saturation, and the resulting score change. Materialization
+completes partial obligations with a feasible full assignment and selects its
+score/finality-delay witness. Regenerate existing vectors for these three targets:
+the numeric factors now claim comparison buckets rather than booleans.
+
 The outer `inactivity_updates` target declares the genesis, nonempty-loop, and
 slashed-validator prerequisites as factor dependencies. Single-factor coverage
 therefore includes their prerequisite assignments. Its `eligible` profile now
