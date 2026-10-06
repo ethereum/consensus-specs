@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12, <3.15"
 
 [[package]]
@@ -497,7 +497,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0b3"
+version = "1.7.0b4"
 source = { editable = "." }
 dependencies = [
     { name = "blake3" },
