@@ -18,8 +18,7 @@ class Concretizer(Protocol):
 
     def concretize(
         self, abstract_case: Any, spec: Any, rng: random.Random
-    ) -> ConcreteAttributes:
-        ...
+    ) -> ConcreteAttributes: ...
 
 
 @dataclass(frozen=True)
