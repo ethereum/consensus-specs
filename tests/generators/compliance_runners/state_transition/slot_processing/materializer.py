@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from tests.generators.compliance_runners.state_transition.concretization import (
+    modulo_representative,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -19,12 +22,8 @@ class SlotProcessingMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         period = int(spec.SLOTS_PER_HISTORICAL_ROOT)
-        position = str(getattr(solution, "ring_position", "FIRST"))
-        slot = {
-            "FIRST": 0,
-            "MIDDLE": period // 2,
-            "LAST": period - 1,
-        }[position]
+        position = str(getattr(solution, "ring_position", "ZERO"))
+        slot = modulo_representative(position, period)
         pre = create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,

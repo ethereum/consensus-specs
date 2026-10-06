@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from tests.generators.compliance_runners.state_transition.concretization import (
+    modulo_representative,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 if TYPE_CHECKING:
@@ -22,11 +25,12 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        at_period_boundary = bool(getattr(solution, "at_period_boundary", True))
+        position = getattr(solution, "period_remainder", "ZERO")
         committees_already_match = bool(getattr(solution, "committees_already_match", True))
         computed_next_is_unchanged = bool(getattr(solution, "computed_next_is_unchanged", True))
         period = int(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
-        current_epoch = period - 1 if at_period_boundary else 0
+        next_epoch = modulo_representative(position, period) or period
+        current_epoch = next_epoch - 1
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
 
         computed_next = spec.get_next_sync_committee(pre)
@@ -48,9 +52,9 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
         post = pre.copy()
         spec.process_sync_committee_updates(post)
         claimed = {
-            name: bool(getattr(solution, name))
+            name: getattr(solution, name)
             for name in (
-                "at_period_boundary",
+                "period_remainder",
                 "committees_already_match",
                 "computed_next_is_unchanged",
             )

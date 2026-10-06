@@ -6,14 +6,15 @@ from typing import Any
 
 from tests.generators.compliance_runners.state_transition.concretization import (
     ConcretizationStrategy,
+    modulo_representative,
 )
 
 
 class ManualConcretizer:
     def concretize(self, abstract_case: Any, spec: Any, rng: Any) -> dict[str, int]:
         period = int(spec.SLOTS_PER_HISTORICAL_ROOT) // int(spec.SLOTS_PER_EPOCH)
-        at_boundary = bool(getattr(abstract_case, "at_update_boundary", True))
-        next_epoch = period if at_boundary else 1
+        position = getattr(abstract_case, "update_remainder", "ZERO")
+        next_epoch = modulo_representative(position, period) or period
         summary_count = (
             rng.randint(1, 4) if getattr(abstract_case, "summaries_nonempty", True) else 0
         )

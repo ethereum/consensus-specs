@@ -55,6 +55,15 @@ def witnesses(values):
                 for offset in (-2, -1, 0, 1, 2)
                 if center + offset >= 0
             }
+            # Exercise each rounding bucket near every guard/cap center.
+            balances.update(
+                (center // increment + step) * increment + remainder
+                for center in centers
+                for step in (-1, 0, 1)
+                for remainder in (0, 1, increment - 1, 2)
+                if 0 <= remainder < increment
+                and (center // increment + step) * increment + remainder >= 0
+            )
             for balance in sorted(balances):
                 yield credential, effective, balance
 
@@ -79,7 +88,15 @@ def signature(witness, values, comparisons):
         "downward_trigger": factors["downward_trigger"].abstract(balance + downward - effective),
         "upward_trigger": factors["upward_trigger"].abstract(effective + upward - balance),
         "rounded_vs_cap": factors["rounded_vs_cap"].abstract(rounded - maximum),
-        "balance_aligned": balance == rounded,
+        "balance_remainder": (
+            "ZERO"
+            if balance % increment == 0
+            else "ONE"
+            if balance % increment == 1
+            else "LAST"
+            if balance % increment == increment - 1
+            else "INTERIOR"
+        ),
         "outcome": outcome,
     }
 

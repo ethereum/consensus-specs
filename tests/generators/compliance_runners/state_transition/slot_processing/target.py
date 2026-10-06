@@ -10,12 +10,11 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    categorical,
-    choose,
     constant,
     coverage_spec,
     factor,
     Integer,
+    modulo,
 )
 
 from .observation import observe_attributes
@@ -30,18 +29,10 @@ slots_per_historical_root = constant("slots_per_historical_root", Integer(min=2)
 
 POSITION = aspect(
     "position",
-    categorical(
+    modulo(
         "ring_position",
-        choose(
-            slot % slots_per_historical_root == 0,
-            "FIRST",
-            choose(
-                slot % slots_per_historical_root == slots_per_historical_root - 1,
-                "LAST",
-                "MIDDLE",
-            ),
-        ),
-        ("FIRST", "MIDDLE", "LAST"),
+        slot,
+        slots_per_historical_root,
         description="The write index and the next-slot availability index share a circular buffer.",
     ),
 )
