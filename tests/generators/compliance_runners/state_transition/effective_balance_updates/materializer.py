@@ -16,7 +16,7 @@ _DIMS = (
     "downward_trigger",
     "upward_trigger",
     "rounded_vs_cap",
-    "balance_aligned",
+    "balance_remainder",
     "outcome",
 )
 _GENESIS_VALIDATOR_COUNT = 64

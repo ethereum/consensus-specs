@@ -13,6 +13,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     coverage_spec,
     factor,
     Integer,
+    modulo,
 )
 
 from .observation import observe_attributes
@@ -23,7 +24,7 @@ epochs_per_historical_root = constant("epochs_per_historical_root", Integer(min=
 
 UPDATE = aspect(
     "update",
-    factor("at_update_boundary", next_epoch % epochs_per_historical_root == 0),
+    modulo("update_remainder", next_epoch, epochs_per_historical_root),
     factor("summaries_nonempty", summary_count > 0),
 )
 ASPECTS = (UPDATE,)

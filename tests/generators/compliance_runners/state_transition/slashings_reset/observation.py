@@ -13,6 +13,6 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     next_epoch = int(spec.get_current_epoch(state)) + 1
     destination_index = next_epoch % int(spec.EPOCHS_PER_SLASHINGS_VECTOR)
     return {
-        "destination_index": destination_index,
+        "next_epoch": next_epoch,
         "destination_value": int(state.slashings[destination_index]),
     }
