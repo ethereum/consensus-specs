@@ -37,7 +37,9 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
             source_index == destination_index
             and attributes["source_mix"] != attributes["destination_mix"]
         ):
-            raise ValueError("RANDAO vector is too short to realize distinct source and destination")
+            raise ValueError(
+                "RANDAO vector is too short to realize distinct source and destination"
+            )
         current_epoch = source_index
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
         for index in range(vector_length):
