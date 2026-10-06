@@ -6,7 +6,7 @@ from .target import TARGET
 
 
 def build_profile(name: str, *, spec):
-    """Return predicate-level DSL obligations in provider format."""
+    """Return DSL obligations in provider format."""
     target = TARGET.for_spec(spec)
     formula = target.profiles[name]
     obligations = formula.run()

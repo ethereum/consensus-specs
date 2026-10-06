@@ -25,6 +25,7 @@ from tests.generators.compliance_runners.tools.coverage_model import (
     Integer,
     maximum,
     MISSING,
+    modulo,
 )
 
 from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
@@ -47,6 +48,7 @@ __all__ = [
     "factor",
     "fix",
     "maximum",
+    "modulo",
     "nwise",
     "union",
 ]
@@ -95,10 +97,10 @@ def fix(**values):
 
 
 class Aspect:
-    def __init__(self, name, factors):
+    def __init__(self, name, factors, constants=None):
         self.name = name
         self.declarations = tuple(factors)
-        self.factors = tuple(_abstract(f) for f in self.declarations)
+        self.factors = tuple(_abstract(f, constants) for f in self.declarations)
 
     def __getitem__(self, name):
         return next(f for f in self.factors if f.name == name)
@@ -117,12 +119,22 @@ def aspect(name, *factors):
     return Aspect(name, factors)
 
 
-def _abstract(f):
+def _abstract(f, constants=None):
     description = f.description or f.value.render()
     if f.kind == "comparison":
-        return Cmp(f.name, description, f.op, granularity=f.granularity)
+        bounds = f.value.integer_domain(constants)
+        return Cmp(
+            f.name, description, f.op, granularity=f.granularity, bounds=(bounds.min, bounds.max)
+        )
     if f.kind == "enum":
-        return Enum(f.name, description, f.values)
+        values = f.values
+        if f.modulus is not None:
+            period = f.modulus.integer_domain(constants).max
+            if period is not None:
+                values = tuple(
+                    v for v, minimum in zip(values, (1, 2, 3, 4), strict=True) if period >= minimum
+                )
+        return Enum(f.name, description, values)
     return Pred(f.name, description)
 
 
@@ -230,13 +242,13 @@ class Specification:
         else:
             raise ValueError(f"unknown formula: {plan.kind}")
 
-    def model(self):
+    def model(self, constants=None):
         factors = []
         for f in self.declarations:
             allowed = []
             for condition in _conditions(f.when):
                 parent, value, truth, *op = condition
-                abstraction = _abstract(parent)
+                abstraction = _abstract(parent, constants)
                 if truth and parent.kind == "enum":
                     raise ValueError("categorical activation needs an explicit value")
                 values = tuple(
@@ -248,11 +260,11 @@ class Specification:
                         else ((v == value) if op[0] == "==" else (v != value))
                     )
                 )
-                if not truth and value not in abstraction.domain():
+                if not truth and value not in parent.values:
                     raise ValueError(f"activation value outside domain of {parent.name}")
                 allowed.append((parent.name, values))
             factors.append(
-                conditional.Factor(f.name, _abstract(f).domain(), allowed=tuple(allowed))
+                conditional.Factor(f.name, _abstract(f, constants).domain(), allowed=tuple(allowed))
             )
         return conditional.Model(factors)
 
@@ -272,7 +284,12 @@ class BoundFormula:
                 return model.project([f.name for f in plan.parts], plan.strength, configurations)
             if plan.kind == "fix":
                 for name, value in plan.parts:
-                    if value not in _abstract(self.owner.definition.by_name[name]).domain():
+                    if (
+                        value
+                        not in _abstract(
+                            self.owner.definition.by_name[name], self.owner.bound_constants
+                        ).domain()
+                    ):
                         raise ValueError(f"invalid fixed value: {name}={value!r}")
                 fixed = frozenset(plan.parts)
                 if not fixed:
@@ -327,6 +344,9 @@ class DeclarationTarget:
                 self.feasible = rules(
                     definition.feasible, definition.constant_feasibility(self.bound_constants)
                 )
+            self.aspects = tuple(
+                Aspect(a.name, a.declarations, self.bound_constants) for a in definition.aspects
+            )
             self.profiles = {
                 name: BoundFormula(self, plan) for name, plan in definition.profiles.items()
             }
@@ -348,7 +368,7 @@ class DeclarationTarget:
     def _configurations(self, filtered):
         key = filtered
         if key not in self._cache:
-            model = self.definition.model()
+            model = self.definition.model(self.bound_constants)
             configurations = model.configurations()
             if filtered:
                 configurations = {c for c in configurations if self.feasible(dict(c))}
@@ -388,7 +408,7 @@ class DeclarationTarget:
                 elif f.kind == "comparison":
                     Integer().validate(value)
                 else:
-                    _abstract(f).abstract(value)
+                    _abstract(f, constants).abstract(value)
             raw[f.name] = value
             return value
 
@@ -396,7 +416,7 @@ class DeclarationTarget:
             value = evaluate(f)
             if value is MISSING:
                 return MISSING
-            abstraction = _abstract(f)
+            abstraction = _abstract(f, constants)
             abstract = abstraction.abstract(value)
             return abstraction.holds(abstract) if f.kind == "comparison" else abstract
 
@@ -432,7 +452,7 @@ class DeclarationTarget:
             lines.append(f"aspect {a.name}")
             for f in a.declarations:
                 lines.append(
-                    f"  {f.name}: {_abstract(f).domain()}; kind={f.kind}"
+                    f"  {f.name}: {_abstract(f, self.bound_constants).domain()}; kind={f.kind}"
                     f"{(' ' + f.op + ' 0') if f.kind == 'comparison' else ''}; "
                     f"{('granularity=' + f.granularity + '; ') if f.kind == 'comparison' else ''}"
                     f"expression={f.value.render()}; when={f.when.render()}; available={f.available_when.render()}"
