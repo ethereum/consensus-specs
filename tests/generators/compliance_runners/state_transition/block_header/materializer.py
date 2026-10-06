@@ -8,12 +8,10 @@ from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .witness import complete_obligation, slot_witness
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-
-def _value(solution: Any, name: str, *, default: bool) -> bool:
-    return bool(getattr(solution, name, default))
 
 
 class BlockHeaderMaterializer(Materializer):
@@ -27,12 +25,19 @@ class BlockHeaderMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        state.slot = spec.Slot(1)
         return state
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
+        requested = {
+            str(name): value
+            for name, value in vars(solution).items()
+            if not str(name).startswith("_")
+        }
+        assignment = complete_obligation(requested)
+        state_slot, block_slot, latest_header_slot = slot_witness(assignment)
         pre = self._base_state()
+        pre.slot = spec.Slot(state_slot)
         header = pre.latest_block_header
         header.parent_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
         header.state_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
@@ -48,37 +53,17 @@ class BlockHeaderMaterializer(Materializer):
         pre.randao_mixes[mix_index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
         expected_proposer_index = int(spec.get_beacon_proposer_index(pre))
 
-        gates = {
-            name: _value(solution, name, default=True)
-            for name in (
-                "slot_matches_state",
-                "slot_is_newer",
-                "proposer_index_matches",
-                "parent_matches",
-                "proposer_not_slashed",
-            )
-        }
-        accepted = _value(solution, "accepted", default=True)
-        if not accepted and all(gates.values()):
-            for name in gates:
-                if not hasattr(solution, name):
-                    gates[name] = False
-                    break
-            else:
-                gates["slot_matches_state"] = False
-
-        slot_matches_state = gates["slot_matches_state"]
-        slot_is_newer = gates["slot_is_newer"]
-        proposer_index_matches = gates["proposer_index_matches"]
-        parent_matches = gates["parent_matches"]
-        proposer_not_slashed = gates["proposer_not_slashed"]
-
-        block_slot = int(pre.slot) if slot_matches_state else int(pre.slot) + 1
-        latest_header_slot = block_slot - 1 if slot_is_newer else block_slot
+        proposer_index_matches = assignment["proposer_index_matches"]
+        parent_matches = assignment["parent_matches"]
+        proposer_not_slashed = assignment["proposer_not_slashed"]
         pre.latest_block_header.slot = spec.Slot(latest_header_slot)
+        if latest_header_slot == state_slot:
+            # A header from the current slot has not had its state root filled
+            # by a subsequent process_slot invocation yet.
+            pre.latest_block_header.state_root = spec.Root()
 
         block = build_empty_block(
-            spec, pre, slot=block_slot, proposer_index=expected_proposer_index
+            spec, pre, slot=state_slot, proposer_index=expected_proposer_index
         )
         block.slot = spec.Slot(block_slot)
         block.proposer_index = spec.ValidatorIndex(expected_proposer_index)
@@ -102,19 +87,7 @@ class BlockHeaderMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {
-            name: bool(getattr(solution, name))
-            for name in (
-                "slot_matches_state",
-                "slot_is_newer",
-                "proposer_index_matches",
-                "parent_matches",
-                "proposer_not_slashed",
-                "accepted",
-            )
-            if hasattr(solution, name)
-        }
-        claimed["accepted"] = post is not None
+        claimed = assignment
         meta = {
             "description": f"process_block_header: {'ACCEPT' if post is not None else 'REJECT'}",
             "bls_setting": 0,
