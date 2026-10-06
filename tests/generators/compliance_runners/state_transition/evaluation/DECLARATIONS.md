@@ -191,6 +191,25 @@ implemented. The shared conditional-factor tool still supports MiniZinc, but its
 activation-only export must not be mistaken for a translation of the target's
 expressions or Python feasibility constraints.
 
+Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`.
+For a valid pre-state, the latest header slot cannot exceed the state slot.
+Consequently `block_slot - latest_header_slot >= block_slot - state_slot`;
+feasibility removes bucket pairs that violate this ordering. Both comparisons
+still cover all five buckets across their reachable combinations. An accepted
+header has an `EQ` state-slot match and a `GT_1` or `GT_FAR` latest-header delta.
+A duplicate header can fail the newer-header assertion with an `EQ` delta;
+older-header negative deltas also imply a state-slot mismatch, so the first
+assertion rejects those vectors.
+
+Materialization completes partial obligations with the fewest failing gates,
+preserves requested acceptance, and chooses jointly reachable non-negative
+slots. A current-slot latest header retains its zero state-root cache. Blocks
+are initially built for the state slot before their slot is varied for the
+assertion slice, avoiding full slot transitions during witness construction.
+Tests check the first failing assertion, later-gate isolation, and actual profile
+coverage. Proposer-index equality retains predicate granularity. Regenerate
+block-header vectors for the new slot-bucket claims.
+
 The assertion-slice targets `block_header` and `operations` declare an `outcome`
 aspect from the observed `post_present` attribute. Their normal and exceptional
 profiles fix `accepted` to true and false respectively. Their feasibility rule
