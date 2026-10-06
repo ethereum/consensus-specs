@@ -4,10 +4,11 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
+    comparison,
     constant,
     coverage_spec,
-    factor,
     Integer,
+    modulo,
 )
 
 from .observation import observe_attributes
@@ -18,14 +19,17 @@ epochs_per_eth1_voting_period = constant("epochs_per_eth1_voting_period", Intege
 
 RESET = aspect(
     "reset",
-    factor(
-        "at_reset_boundary",
-        next_epoch % epochs_per_eth1_voting_period == 0,
-        description="The next epoch ends the ETH1 voting period.",
+    modulo(
+        "reset_remainder",
+        next_epoch,
+        epochs_per_eth1_voting_period,
+        description="Exercise the reset boundary, its neighbours, and the period interior.",
     ),
-    factor(
+    comparison(
         "votes_nonempty",
-        vote_count > 0,
+        vote_count,
+        0,
+        granularity="cmp5",
         description="Resetting a populated list has an observable effect.",
     ),
 )

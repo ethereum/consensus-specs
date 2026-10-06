@@ -30,6 +30,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     fix,
     Integer,
     maximum,
+    modulo,
     nwise,
 )
 from tests.generators.compliance_runners.tools.coverage_model import Expr, expression
@@ -315,3 +316,104 @@ def test_bytes_domain_validates_roots_and_rejects_arithmetic():
         bound(d, constants={"zero": lambda spec: bytes(31)})
     with pytest.raises(ValueError, match="nonnegative"):
         Bytes(length=-1)
+
+
+@pytest.mark.parametrize(
+    ("domain", "expected"),
+    [
+        (Integer(min=0), ("EQ", "GT_1", "GT_FAR")),
+        (Integer(min=0, max=1), ("EQ", "GT_1")),
+        (Integer(min=2, max=4), ("GT_FAR",)),
+        (Integer(min=-1, max=1), ("LT_1", "EQ", "GT_1")),
+    ],
+)
+def test_comparison_domains_remove_impossible_buckets(domain, expected):
+    x = attribute("x", domain)
+    A = comparison("count", x, 0, granularity="cmp5")
+    t = bound(definition((x,), (A,), {"all": each([A])}))
+    assert t.factors[0].domain() == expected
+    assert t.profiles["all"].run() == {obligation(count=v) for v in expected}
+    assert t.profiles["all"].run(filtered=False) == t.profiles["all"].run()
+
+
+@pytest.mark.parametrize("op", ["<", "<=", "==", "!=", ">=", ">"])
+@pytest.mark.parametrize("granularity", GRANULARITIES)
+def test_bounded_comparison_domains_match_concrete_values(op, granularity):
+    for lo, hi in ((0, 0), (0, 1), (-4, -2), (-1, 3), (3, 4)):
+        x = attribute("x", Integer(min=lo, max=hi))
+        A = comparison("A", x, 0, op=op, granularity=granularity)
+        t = bound(definition((x,), (A,), {"all": each([A])}))
+        assert set(t.factors[0].domain()) == {t.factors[0].abstract(v) for v in range(lo, hi + 1)}
+
+
+@pytest.mark.parametrize(
+    ("period", "expected"),
+    [
+        (1, ("ZERO",)),
+        (2, ("ZERO", "ONE")),
+        (3, ("ZERO", "ONE", "LAST")),
+        (4, ("ZERO", "ONE", "LAST", "INTERIOR")),
+        (8, ("ZERO", "ONE", "LAST", "INTERIOR")),
+    ],
+)
+def test_modulo_domains_and_observations_follow_bound_constant(period, expected):
+    x = attribute("x", Integer())
+    c = constant("period", Integer(min=1))
+    A = modulo("position", x, c)
+    B = factor("child", x > 0, when=A == "ZERO")
+    d = definition((x,), (A, B), {"all": each([A]), "child": each([B])}, constants=(c,))
+    template = bind(
+        d, observe_attributes=lambda ctx: ctx.pre, constants={"period": lambda spec: spec.period}
+    )
+    t = template.for_spec(SimpleNamespace(period=period))
+    assert t.factors[0].domain() == expected
+    assert t.profiles["all"].run() == {obligation(position=v) for v in expected}
+    assert t.profiles["child"].run() == {
+        obligation(position="ZERO", child=v) for v in (False, True)
+    }
+    records = [
+        t.record(t.observation(Context(t._bound_spec, {"x": i}, None, None, {})))
+        for i in range(-period, 2 * period)
+    ]
+    assert {r["position"] for r in records} == set(expected)
+    assert records[period]["position"] == "ZERO"
+    if period >= 2:
+        assert records[period + 1]["position"] == "ONE"
+    if period >= 3:
+        assert records[2 * period - 1]["position"] == "LAST"
+    if period >= 4:
+        assert records[period + 2]["position"] == "INTERIOR"
+    assert score(t, records, t.profiles["all"]).percent == 100
+    assert str(expected) in t.review()
+    assert t.observation(Context(t._bound_spec, {"x": NA}, None, None, {}))["position"] is NA
+
+
+def test_modulo_literal_and_invalid_moduli():
+    x = attribute("x", Integer(min=0))
+    A = modulo("position", x, 2)
+    assert bound(definition((x,), (A,), {"all": each([A])})).factors[0].domain() == ("ZERO", "ONE")
+    for invalid in (0, -1, x, constant("period", Integer()), True):
+        with pytest.raises(ValueError, match="modulus"):
+            modulo("position", x, invalid)
+
+
+def test_comparison_of_remainder_uses_implicit_bounds_and_bound_constants():
+    x = attribute("x", Integer())
+    c = constant("period", Integer(min=1))
+    zero = comparison("zero", x % c, 0, op="==", granularity="cmp5")
+    last = comparison("last", x % c, c - 1, op="==", granularity="cmp5")
+    d = definition((x,), (zero, last), {"all": each([zero, last])}, constants=(c,))
+    t = bound(d, constants={"period": lambda spec: 4})
+    assert t.factors[0].domain() == ("EQ", "GT_1", "GT_FAR")
+    assert t.factors[1].domain() == ("LT_FAR", "LT_1", "EQ")
+
+
+def test_unreachable_modulo_activation_is_omitted_after_binding():
+    x = attribute("x", Integer())
+    c = constant("period", Integer(min=1))
+    A = modulo("position", x, c)
+    B = factor("child", x > 0, when=A == "LAST")
+    d = definition((x,), (A, B), {"child": each([B])}, constants=(c,))
+    t = bound(d, constants={"period": lambda spec: 2})
+    assert t.profiles["child"].run() == set()
+    assert t.record(t.observation(Context(t._bound_spec, {"x": 1}, None, None, {})))["child"] is NA

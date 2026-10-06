@@ -97,18 +97,41 @@ class Cmp(Factor):
 
     op: str = ""
     granularity: str = "predicate"
+    bounds: tuple = (None, None)
 
     def __post_init__(self):
         if self.granularity not in GRANULARITIES:
             raise ValueError(f"unknown granularity {self.granularity!r}")
 
     def domain(self) -> tuple:
-        g = self.granularity
-        if g == "predicate":
-            return (True, False)
-        if g == "cmp3":
-            return ("LT", "EQ", "GT")
-        return ("LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR")
+        lo, hi = self.bounds
+        intervals = {
+            "LT_FAR": (None, -2),
+            "LT_1": (-1, -1),
+            "EQ": (0, 0),
+            "GT_1": (1, 1),
+            "GT_FAR": (2, None),
+            "LT": (None, -1),
+            "GT": (1, None),
+        }
+        buckets = {
+            "cmp3": ("LT", "EQ", "GT"),
+            "cmp5": ("LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"),
+        }
+
+        def intersects(value):
+            a, b = intervals[value]
+            return not (
+                (hi is not None and a is not None and hi < a)
+                or (lo is not None and b is not None and lo > b)
+            )
+
+        if self.granularity == "predicate":
+            possible = {
+                _OPS[self.op](_CMP_REPRESENTATIVE[v]) for v in buckets["cmp5"] if intersects(v)
+            }
+            return tuple(v for v in (True, False) if v in possible)
+        return tuple(v for v in buckets[self.granularity] if intersects(v))
 
     def abstract(self, raw: Any) -> Any:
         delta = int(raw)
