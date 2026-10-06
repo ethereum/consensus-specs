@@ -1,5 +1,6 @@
 """Regression checks for empty registry-update obligations."""
 
+from random import Random
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
@@ -11,6 +12,7 @@ from .target import TARGET
 
 def _observed(**obligation):
     materializer = RegistryUpdatesMaterializer(spec)
+    materializer.rng = Random(0)
     _, parts = materializer.materialize_solution(SimpleNamespace(**obligation))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
