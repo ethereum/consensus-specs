@@ -176,6 +176,4 @@ class ConcretizingMaterializer(Materializer):
     def materialize_concrete_attributes(
         self, abstract_case: Any, attributes: dict[str, Any]
     ) -> tuple[dict, list[TestCasePart]]:
-        raise NotImplementedError(
-            f"{type(self).__name__} must materialize concrete attributes"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must materialize concrete attributes")
