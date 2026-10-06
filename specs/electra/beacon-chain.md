@@ -281,15 +281,15 @@ specification.
 
 | Name                            | Value            | Description                                              |
 | ------------------------------- | ---------------- | -------------------------------------------------------- |
-| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | Withdrawal credential prefix for a compounding validator |
+| `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1("0x02")` | Withdrawal credential prefix for a compounding validator |
 
 ### Execution-layer triggered requests
 
 | Name                         | Value            |
 | ---------------------------- | ---------------- |
-| `DEPOSIT_REQUEST_TYPE`       | `Bytes1('0x00')` |
-| `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1('0x01')` |
-| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1('0x02')` |
+| `DEPOSIT_REQUEST_TYPE`       | `Bytes1("0x00")` |
+| `WITHDRAWAL_REQUEST_TYPE`    | `Bytes1("0x01")` |
+| `CONSOLIDATION_REQUEST_TYPE` | `Bytes1("0x02")` |
 
 ## Presets
 
@@ -798,19 +798,19 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
 *Note*: The function `get_attesting_indices` is modified to support EIP7549.
 
 ```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
     """
-    output: Set[ValidatorIndex] = set()
+    output: set[ValidatorIndex] = set()
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:
         committee = get_beacon_committee(state, attestation.data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         output = output.union(committee_attesters)
 
@@ -984,7 +984,7 @@ EIP7251.
 def slash_validator(
     state: BeaconState,
     slashed_index: ValidatorIndex,
-    whistleblower_index: Optional[ValidatorIndex] = None,
+    whistleblower_index: ValidatorIndex | None = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -1109,7 +1109,7 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
     """
     Applies ``deposit`` to the ``state``.
     """
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if deposit.pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(
@@ -1168,7 +1168,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -1357,7 +1357,7 @@ def get_pending_partial_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     withdrawals_limit = min(
         len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
@@ -1404,7 +1404,7 @@ def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
@@ -1520,7 +1520,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[Tuple[Bytes1, List]] = [
+    requests: Sequence[tuple[Bytes1, List]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
@@ -1550,7 +1550,7 @@ def process_execution_payload(
     # Verify prev_randao
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
     # [Modified in Electra:EIP7691]
     # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
@@ -1656,8 +1656,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)
@@ -1758,7 +1758,7 @@ def apply_deposit(
     amount: Gwei,
     signature: BLSSignature,
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
@@ -1875,7 +1875,7 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
     ):
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkey exists
     request_pubkey = withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
@@ -1968,7 +1968,7 @@ def is_valid_switch_to_compounding_request(
 
     # Verify pubkey exists
     source_pubkey = consolidation_request.source_pubkey
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if source_pubkey not in validator_pubkeys:
         return False
 
@@ -2001,7 +2001,7 @@ def process_consolidation_request(
     state: BeaconState, consolidation_request: ConsolidationRequest
 ) -> None:
     if is_valid_switch_to_compounding_request(state, consolidation_request):
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         request_source_pubkey = consolidation_request.source_pubkey
         source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
         switch_to_compounding_validator(state, source_index)
@@ -2017,7 +2017,7 @@ def process_consolidation_request(
     if get_consolidation_churn_limit(state) <= MIN_ACTIVATION_BALANCE:
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkeys exists
     request_source_pubkey = consolidation_request.source_pubkey
     request_target_pubkey = consolidation_request.target_pubkey

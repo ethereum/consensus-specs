@@ -27,7 +27,7 @@ from dataclasses import (
 )
 from hashlib import sha256 as sha256_hash
 from typing import (
-    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
+    Any, Callable, Counter, Sequence, TypeAlias, TypeVar, NamedTuple, Final
 )
 
 from ssz.bitfields import BitList, BitVector
@@ -45,7 +45,7 @@ from eth_consensus_specs.utils import bls
     @classmethod
     def preparations(cls) -> str:
         return """
-SSZObject = TypeVar('SSZObject', bound=SSZType)
+SSZObject = TypeVar("SSZObject", bound=SSZType)
 """
 
     @classmethod
@@ -59,6 +59,10 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
         deposit_root=block.deposit_root,
         deposit_count=block.deposit_count,
         block_hash=Hash32(hash_tree_root(block)))
+
+
+def get_root_confirmed_before_restart() -> Root:
+    return Root()
 
 
 def cache_this(key_fn, value_fn, lru_size):
@@ -84,7 +88,7 @@ get_total_active_balance = cache_this(
 
 _get_base_reward = get_base_reward
 get_base_reward = cache_this(
-    lambda state, index: (state.validators.hash_tree_root(), state.slot, index),
+    lambda state, index, *args: (state.validators.hash_tree_root(), state.slot, index, *args),
     _get_base_reward, lru_size=2048)
 
 _get_committee_count_per_slot = get_committee_count_per_slot

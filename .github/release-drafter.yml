@@ -22,28 +22,28 @@ categories:
     when:
       labels:
         - fulu
-        - eip7594
   - title: Gloas
     when:
       labels:
         - gloas
-        - eip7732
-        - eip7843
-        - eip7928
-        - eip8061
   - title: Heze
     when:
       labels:
         - heze
-        - eip7805
 
   # Features
+  - title: EIP-7716
+    when:
+      label: eip7716
   - title: EIP-8025
     when:
       label: eip8025
   - title: EIP-8148
     when:
       label: eip8148
+  - title: EIP-8198
+    when:
+      label: eip8198
   - title: EIP-8205
     when:
       label: eip8205

@@ -40,8 +40,8 @@ class InclusionListEntry:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[ValidatorIndex, InclusionListEntry]]
-    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]]
+    inclusion_lists: defaultdict[tuple[Slot, Root], dict[ValidatorIndex, InclusionListEntry]]
+    equivocators: defaultdict[tuple[Slot, Root], set[ValidatorIndex]]
 ```
 
 ## Helpers
@@ -147,9 +147,7 @@ def get_inclusion_list_bits(
 
         validator_indices.append(validator_index)
 
-    return InclusionListBits(
-        data=[validator_index in validator_indices for validator_index in committee]
-    )
+    return InclusionListBits(data=[index in validator_indices for index in committee])
 ```
 
 ### New `is_inclusion_list_bits_inclusive`

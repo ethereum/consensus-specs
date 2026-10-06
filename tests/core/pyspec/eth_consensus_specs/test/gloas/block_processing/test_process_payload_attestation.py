@@ -4,10 +4,11 @@ from eth_consensus_specs.test.context import (
     expect_assertion_error,
     large_validator_set,
     single_phase,
-    spec_state_test,
+    spec_state_test_with_matching_config,
     spec_test,
     with_custom_state,
     with_gloas_and_later,
+    with_matching_spec_config,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
@@ -149,7 +150,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_present(spec, state):
     """
@@ -163,7 +164,7 @@ def test_process_payload_attestation_payload_present(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_not_present(spec, state):
     """
@@ -177,7 +178,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_partial_participation(spec, state):
     """
@@ -202,7 +203,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     """
     Test payload attestation with wrong beacon block root fails
@@ -223,7 +224,7 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_future_slot(spec, state):
     """
     Test payload attestation for future slot fails
@@ -237,7 +238,7 @@ def test_process_payload_attestation_future_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_too_old_slot(spec, state):
     """
     Test payload attestation for slot too far in the past fails
@@ -252,7 +253,7 @@ def test_process_payload_attestation_too_old_slot(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_signature(spec, state):
     """
     Test payload attestation with invalid signature fails
@@ -266,7 +267,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
     Test payload attestation with no attesting indices fails
@@ -280,7 +281,7 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
 
 
 @with_gloas_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     """
@@ -320,6 +321,7 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
 @spec_test
 @always_bls
 @single_phase
+@with_matching_spec_config()
 def test_process_payload_attestation_uses_multiple_committees(spec, state):
     """
     Ensure get_ptc includes all committees for the slot (not just committee 0).
@@ -370,6 +372,7 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
 @spec_test
 @always_bls
 @single_phase
+@with_matching_spec_config()
 def test_process_payload_attestation_sampling_not_capped(spec, state):
     """
     Ensure get_ptc does not stop sampling after active_validator_count // 32

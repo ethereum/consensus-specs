@@ -75,6 +75,9 @@ belonging to the post fork.
 A SSZ-snappy encoded `BeaconState` according to the specification of the post
 fork, the state after running the block transitions.
 
+If the last block is invalid, this file is absent.
+
 ## Condition
 
-The resulting state should match the expected `post` state.
+The resulting state should match the expected `post` state. If `post` is absent,
+processing the last block must fail validation.

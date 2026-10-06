@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     ForkMeta,
+    get_max_activation_churn_limit,
     with_fork_metas,
     with_presets,
 )
@@ -51,15 +52,13 @@ def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag
     Test if churn limit goes from high to low due to EIP-7514.
     """
     # Create high churn limit
-    mock_activations = (
-        post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT * spec.config.CHURN_LIMIT_QUOTIENT
-    )
+    mock_activations = get_max_activation_churn_limit(post_spec) * spec.config.CHURN_LIMIT_QUOTIENT
     mock_activated_validators(spec, state, mock_activations)
 
     transition_until_fork(spec, state, fork_epoch)
 
     churn_limit_0 = spec.get_validator_churn_limit(state)
-    assert churn_limit_0 > post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    assert churn_limit_0 > get_max_activation_churn_limit(post_spec)
 
     # check pre state
     assert spec.get_current_epoch(state) < fork_epoch

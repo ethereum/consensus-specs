@@ -27,7 +27,7 @@ from eth_consensus_specs.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth_consensus_specs.test.helpers.constants import FULU, MINIMAL, PHASE0
+from eth_consensus_specs.test.helpers.constants import FULU, HEZE, MINIMAL, PHASE0
 from eth_consensus_specs.test.helpers.deposits import prepare_state_and_deposit
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -43,6 +43,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
+    is_post_heze,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
@@ -112,7 +113,8 @@ def test_invalid_same_slot_block_transition(spec, state):
 @spec_state_test
 def test_empty_block_transition(spec, state):
     pre_slot = state.slot
-    pre_eth1_votes = len(state.eth1_data_votes)
+    if not is_post_heze(spec):
+        pre_eth1_votes = len(state.eth1_data_votes)
     pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield "pre", state
@@ -124,7 +126,8 @@ def test_empty_block_transition(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    assert len(state.eth1_data_votes) == pre_eth1_votes + 1
+    if not is_post_heze(spec):
+        assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
@@ -141,7 +144,8 @@ def test_empty_block_transition(spec, state):
 @single_phase
 def test_empty_block_transition_large_validator_set(spec, state):
     pre_slot = state.slot
-    pre_eth1_votes = len(state.eth1_data_votes)
+    if not is_post_heze(spec):
+        pre_eth1_votes = len(state.eth1_data_votes)
     pre_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     yield "pre", state
@@ -153,7 +157,8 @@ def test_empty_block_transition_large_validator_set(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    assert len(state.eth1_data_votes) == pre_eth1_votes + 1
+    if not is_post_heze(spec):
+        assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != pre_mix
 
@@ -187,7 +192,8 @@ def process_and_sign_block_without_header_validations(spec, state, block):
 
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)
-    spec.process_eth1_data(state, block.body)
+    if not is_post_heze(spec):
+        spec.process_eth1_data(state, block.body)
     if is_post_gloas(spec):
         spec.process_operations(state, block.body, parent_slot)
     else:
@@ -1171,7 +1177,7 @@ def test_historical_batch(spec, state):
         assert len(state.historical_roots) == len(pre_historical_roots) + 1
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_consensus(spec, state):
@@ -1212,7 +1218,7 @@ def test_eth1_data_votes_consensus(spec, state):
     assert state.eth1_data_votes[0].block_hash == c
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @with_presets([MINIMAL], reason="suffices to test eth1 data voting without long voting period")
 @spec_state_test
 def test_eth1_data_votes_no_consensus(spec, state):

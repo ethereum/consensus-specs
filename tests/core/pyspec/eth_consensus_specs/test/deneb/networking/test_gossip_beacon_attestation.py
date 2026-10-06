@@ -59,22 +59,26 @@ def prepare_attestation(spec, state, slot):
 
 def epoch_window_open_time(spec, store, attestation_epoch):
     return (
-        spec.compute_time_at_slot_ms(store, spec.compute_start_slot_at_epoch(attestation_epoch))
+        spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, spec.compute_start_slot_at_epoch(attestation_epoch)
+        )
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
 
 
 def epoch_window_close_time(spec, store, attestation_epoch):
     return (
-        spec.compute_time_at_slot_ms(store, spec.compute_start_slot_at_epoch(attestation_epoch + 2))
+        spec.compute_time_at_slot_ms(
+            store.genesis_time_ms, spec.compute_start_slot_at_epoch(attestation_epoch + 2)
+        )
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
 
 
-def build_message(attestation, subnet_id, current_time_ms, offset_ms, expected, reason=None):
+def build_message(attestation, subnet_id, current_time_ms, expected, reason=None):
     message = {
         "subnet_id": int(subnet_id),
-        "offset_ms": int(offset_ms),
+        "current_time_ms": int(current_time_ms),
         "message": get_filename(attestation),
         "expected": expected,
     }
@@ -96,8 +100,7 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
     yield "state", anchor_state
     yield get_filename(attestation), attestation
 
-    current_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot) - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot) - 1
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -116,7 +119,7 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -132,8 +135,7 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     yield "state", anchor_state
     yield get_filename(attestation), attestation
 
-    current_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -152,7 +154,7 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -175,7 +177,6 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_open_time(spec, store, attestation_epoch) - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -197,7 +198,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     yield (
         "messages",
         "meta",
-        [build_message(attestation, subnet_id, current_time_ms, 0, "ignore", reason)],
+        [build_message(attestation, subnet_id, current_time_ms, "ignore", reason)],
     )
 
 
@@ -218,7 +219,6 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_open_time(spec, store, attestation_epoch)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -237,7 +237,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -257,7 +257,6 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, store, attestation_epoch)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -276,7 +275,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -296,7 +295,6 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, store, attestation_epoch) + 1
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -318,7 +316,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
     yield (
         "messages",
         "meta",
-        [build_message(attestation, subnet_id, current_time_ms, 0, "ignore", reason)],
+        [build_message(attestation, subnet_id, current_time_ms, "ignore", reason)],
     )
 
 
@@ -344,8 +342,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     yield "state", anchor_state
     yield get_filename(attestation), attestation
 
-    current_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot) - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot) - 1
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -364,7 +361,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -384,8 +381,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
     yield "state", anchor_state
     yield get_filename(attestation), attestation
 
-    current_time_ms = spec.compute_time_at_slot_ms(store, attestation.data.slot)
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -404,7 +400,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -425,7 +421,6 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, store, attestation_epoch)
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -444,7 +439,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
     assert result == "valid"
     assert reason is None
 
-    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
+    yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, "valid")]
 
 
 @with_deneb_and_later
@@ -465,7 +460,6 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
     yield get_filename(attestation), attestation
 
     current_time_ms = epoch_window_close_time(spec, store, attestation_epoch) + 1
-    yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
@@ -487,5 +481,5 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
     yield (
         "messages",
         "meta",
-        [build_message(attestation, subnet_id, current_time_ms, 0, "ignore", reason)],
+        [build_message(attestation, subnet_id, current_time_ms, "ignore", reason)],
     )

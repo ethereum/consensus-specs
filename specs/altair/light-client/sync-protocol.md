@@ -100,9 +100,9 @@ class NextSyncCommitteeBranch(Vector[Bytes32]):
 
 | Name                            | Value                                                                        |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 105) |
-| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 54)        |
-| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 55)           |
+| `FINALIZED_ROOT_GINDEX`         | `get_generalized_index(BeaconState, "finalized_checkpoint", "root")` (= 105) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX` | `get_generalized_index(BeaconState, "current_sync_committee")` (= 54)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX`    | `get_generalized_index(BeaconState, "next_sync_committee")` (= 55)           |
 
 ## Presets
 
@@ -193,7 +193,7 @@ class LightClientStore:
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # Best available header to switch finalized head to if we see nothing else
-    best_valid_update: Optional[LightClientUpdate]
+    best_valid_update: LightClientUpdate | None
     # Most recent available reasonably-safe header
     optimistic_header: LightClientHeader
     # Max number of active participants in a sync committee (used to calculate safety threshold)
@@ -479,7 +479,7 @@ def validate_light_client_update(
         )
         if bit
     ]
-    fork_version_slot = max(update.signature_slot, Slot(1)) - 1
+    fork_version_slot = saturating_sub(update.signature_slot, 1)
     fork_version = compute_fork_version(compute_epoch_at_slot(fork_version_slot))
     domain = compute_domain(DOMAIN_SYNC_COMMITTEE, fork_version, genesis_validators_root)
     signing_root = compute_signing_root(update.attested_header.beacon, domain)
