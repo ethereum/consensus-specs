@@ -221,6 +221,19 @@ completes partial obligations with a feasible full assignment and selects its
 score/finality-delay witness. Regenerate existing vectors for these three targets:
 the numeric factors now claim comparison buckets rather than booleans.
 
+Proposer lookahead declares `fewer_candidates_than_slots` as a `cmp5`
+comparison of the active, unslashed candidate count against `slots_per_epoch`.
+Its witnesses use counts slots−2, slots−1, slots, slots+1, and slots+2.
+Both negative buckets require `new_proposers_repeat=True`: fewer candidates than
+slots cannot supply distinct proposers for every slot. The materializer preserves
+the requested pool size while constructing repeated or distinct proposer lists.
+For distinct lists it searches balance acceptance thresholds across slots, using
+compounding credentials and balances aligned to the spec increment. This avoids
+relying on a rare random permutation for an exact-size mainnet candidate pool.
+The bounded search retries with deterministic RANDAO mixes and verifies its
+result using spec proposer selection. Regenerate older proposer-lookahead vectors,
+whose candidate-count claims were booleans.
+
 The outer `inactivity_updates` target declares the genesis, nonempty-loop, and
 slashed-validator prerequisites as factor dependencies. Single-factor coverage
 therefore includes their prerequisite assignments. Its `eligible` profile now
