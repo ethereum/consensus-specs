@@ -1109,7 +1109,7 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
     """
     Applies ``deposit`` to the ``state``.
     """
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if deposit.pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(
@@ -1168,7 +1168,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -1758,7 +1758,7 @@ def apply_deposit(
     amount: Gwei,
     signature: BLSSignature,
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
@@ -1875,7 +1875,7 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
     ):
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkey exists
     request_pubkey = withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
@@ -1968,7 +1968,7 @@ def is_valid_switch_to_compounding_request(
 
     # Verify pubkey exists
     source_pubkey = consolidation_request.source_pubkey
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if source_pubkey not in validator_pubkeys:
         return False
 
@@ -2001,7 +2001,7 @@ def process_consolidation_request(
     state: BeaconState, consolidation_request: ConsolidationRequest
 ) -> None:
     if is_valid_switch_to_compounding_request(state, consolidation_request):
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         request_source_pubkey = consolidation_request.source_pubkey
         source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
         switch_to_compounding_validator(state, source_index)
@@ -2017,7 +2017,7 @@ def process_consolidation_request(
     if get_consolidation_churn_limit(state) <= MIN_ACTIVATION_BALANCE:
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkeys exists
     request_source_pubkey = consolidation_request.source_pubkey
     request_target_pubkey = consolidation_request.target_pubkey

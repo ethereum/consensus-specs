@@ -469,7 +469,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
 
     # Apply participant and proposer rewards
-    all_pubkeys = [v.pubkey for v in state.validators]
+    all_pubkeys = [validator.pubkey for validator in state.validators]
     committee_indices = [
         ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
     ]

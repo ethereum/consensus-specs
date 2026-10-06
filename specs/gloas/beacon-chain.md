@@ -1640,7 +1640,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -2297,7 +2297,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     if not is_builder_withdrawal_credential(request.withdrawal_credentials):
         return
 
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
@@ -2327,7 +2327,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
 
 ```python
 def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest) -> None:
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         return
 

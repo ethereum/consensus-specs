@@ -168,7 +168,7 @@ def verify_partial_data_column_sidecar_kzg_proofs(
     Verify the KZG proofs.
     """
     # Get the blob indices from the bitmap
-    blob_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+    blob_indices = [i for i, bit in enumerate(sidecar.cells_present_bitmap) if bit]
 
     # The cell index is the column index for all cells in this column
     cell_indices = [CellIndex(column_index)] * len(blob_indices)

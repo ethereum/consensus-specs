@@ -337,7 +337,7 @@ def payload_timeliness(store: Store, root: Root, timely: bool) -> bool:
     if not is_payload_verified(store, root):
         return not timely
 
-    votes = [bool(v) for v in store.payload_timeliness_vote[root] if v is not None]
+    votes = [bool(vote) for vote in store.payload_timeliness_vote[root] if vote is not None]
     return sum(vote == timely for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
@@ -358,7 +358,7 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
     if not is_payload_verified(store, root):
         return not available
 
-    votes = [bool(v) for v in store.payload_data_availability_vote[root] if v is not None]
+    votes = [bool(vote) for vote in store.payload_data_availability_vote[root] if vote is not None]
     return sum(vote == available for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 

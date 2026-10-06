@@ -1007,7 +1007,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2, strict=True))
+    return Bytes32(byte_1 ^ byte_2 for byte_1, byte_2 in zip(bytes_1, bytes_2, strict=True))
 ```
 
 #### `uint_to_bytes`
@@ -1471,7 +1471,9 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[V
     Return the sequence of active validator indices at ``epoch``.
     """
     return [
-        ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)
+        ValidatorIndex(i)
+        for i, validator in enumerate(state.validators)
+        if is_active_validator(validator, epoch)
     ]
 ```
 
@@ -1670,9 +1672,15 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     # Compute exit queue epoch
-    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
+    exit_epochs = [
+        validator.exit_epoch
+        for validator in state.validators
+        if validator.exit_epoch != FAR_FUTURE_EPOCH
+    ]
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
-    exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
+    exit_queue_churn = len([
+        validator for validator in state.validators if validator.exit_epoch == exit_queue_epoch
+    ])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += 1
 
@@ -1888,9 +1896,9 @@ def get_matching_target_attestations(
     state: BeaconState, epoch: Epoch
 ) -> Sequence[PendingAttestation]:
     return [
-        a
-        for a in get_matching_source_attestations(state, epoch)
-        if a.data.target.root == get_block_root(state, epoch)
+        attestation
+        for attestation in get_matching_source_attestations(state, epoch)
+        if attestation.data.target.root == get_block_root(state, epoch)
     ]
 ```
 
@@ -1899,9 +1907,10 @@ def get_matching_head_attestations(
     state: BeaconState, epoch: Epoch
 ) -> Sequence[PendingAttestation]:
     return [
-        a
-        for a in get_matching_target_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
+        attestation
+        for attestation in get_matching_target_attestations(state, epoch)
+        if attestation.data.beacon_block_root
+        == get_block_root_at_slot(state, attestation.data.slot)
     ]
 ```
 
@@ -2020,10 +2029,10 @@ def is_in_inactivity_leak(state: BeaconState) -> bool:
 def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
     previous_epoch = get_previous_epoch(state)
     return [
-        ValidatorIndex(index)
-        for index, v in enumerate(state.validators)
-        if is_active_validator(v, previous_epoch)
-        or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
+        ValidatorIndex(i)
+        for i, validator in enumerate(state.validators)
+        if is_active_validator(validator, previous_epoch)
+        or (validator.slashed and previous_epoch + 1 < validator.withdrawable_epoch)
     ]
 ```
 
@@ -2099,9 +2108,9 @@ def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequ
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min(
             [
-                a
-                for a in matching_source_attestations
-                if index in get_pending_attesting_indices(state, a)
+                attestation
+                for attestation in matching_source_attestations
+                if index in get_pending_attesting_indices(state, attestation)
             ],
             key=lambda a: a.inclusion_delay,
         )
@@ -2506,7 +2515,7 @@ def apply_deposit(
     amount: Gwei,
     signature: BLSSignature,
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(

@@ -456,7 +456,7 @@ processing, then set the desired threshold.
 def process_set_sweep_threshold_request(
     state: BeaconState, request: SetSweepThresholdRequest
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if request.validator_pubkey not in validator_pubkeys:
         return
 
