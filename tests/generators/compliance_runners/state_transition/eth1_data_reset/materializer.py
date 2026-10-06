@@ -5,17 +5,25 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
+)
+
+from .concretization import STRATEGY
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-class Eth1DataResetMaterializer(Materializer):
+class Eth1DataResetMaterializer(ConcretizingMaterializer):
     runner_name = "epoch_processing"
     handler_name = "eth1_data_reset"
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
+    strategy = STRATEGY
+
+    def materialize_concrete_attributes(
+        self, solution: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = create_genesis_state(
             spec,
@@ -23,18 +31,14 @@ class Eth1DataResetMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
 
-        reset = bool(getattr(solution, "at_reset_boundary", True))
-        votes_nonempty = bool(getattr(solution, "votes_nonempty", True))
-        period = int(spec.EPOCHS_PER_ETH1_VOTING_PERIOD)
-        current_epoch = period - 1 if reset else 0
+        current_epoch = int(attributes["next_epoch"]) - 1
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
-        if votes_nonempty:
-            for _ in range(self.rng.randint(1, 4)):
-                vote = spec.Eth1Data()
-                vote.deposit_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
-                vote.deposit_count = type(vote.deposit_count)(self.rng.getrandbits(64))
-                vote.block_hash = spec.Hash32(self.rng.getrandbits(256).to_bytes(32, "big"))
-                pre.eth1_data_votes.append(vote)
+        for _ in range(int(attributes["vote_count"])):
+            vote = spec.Eth1Data()
+            vote.deposit_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
+            vote.deposit_count = type(vote.deposit_count)(self.rng.getrandbits(64))
+            vote.block_hash = spec.Hash32(self.rng.getrandbits(256).to_bytes(32, "big"))
+            pre.eth1_data_votes.append(vote)
 
         post = pre.copy()
         spec.process_eth1_data_reset(post)

@@ -5,43 +5,45 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
+)
+
+from .concretization import STRATEGY
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-class RandaoMixesResetMaterializer(Materializer):
+class RandaoMixesResetMaterializer(ConcretizingMaterializer):
     runner_name = "epoch_processing"
     handler_name = "randao_mixes_reset"
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
+    strategy = STRATEGY
+
+    def materialize_concrete_attributes(
+        self, solution: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        at_first_slot = bool(getattr(solution, "destination_is_first_slot", True))
-        source_nonzero = bool(getattr(solution, "source_nonzero", True))
-        source_matches_destination = bool(getattr(solution, "source_matches_destination", True))
         vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-        current_epoch = vector_length - 1 if at_first_slot else 0
+        destination_index = int(attributes["destination_index"])
+        source_index = (destination_index - 1) % vector_length
+        if (
+            source_index == destination_index
+            and attributes["source_mix"] != attributes["destination_mix"]
+        ):
+            raise ValueError("RANDAO vector is too short to realize distinct source and destination")
+        current_epoch = source_index
         pre.slot = spec.Slot(current_epoch * int(spec.SLOTS_PER_EPOCH))
-        source_index = current_epoch % vector_length
-        destination_index = (current_epoch + 1) % vector_length
-        zero_mix = spec.Bytes32()
         for index in range(vector_length):
             pre.randao_mixes[index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
-        source_value = self.rng.getrandbits(256) or 1
-        source_mix = spec.Bytes32(source_value.to_bytes(32, "big")) if source_nonzero else zero_mix
-        if source_matches_destination:
-            destination_mix = source_mix
-        else:
-            destination_value = self.rng.getrandbits(256) or 1
-            if destination_value == source_value:
-                destination_value = (destination_value + 1) % (1 << 256) or 1
-            destination_mix = spec.Bytes32(destination_value.to_bytes(32, "big"))
+        source_mix = spec.Bytes32(attributes["source_mix"])
+        destination_mix = spec.Bytes32(attributes["destination_mix"])
         pre.randao_mixes[source_index] = source_mix
         pre.randao_mixes[destination_index] = destination_mix
 
