@@ -1,5 +1,6 @@
 """Regression checks for the larger inactivity-update profile."""
 
+from random import Random
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
@@ -16,6 +17,7 @@ from .target import TARGET
 
 
 def _observed(materializer, target, **solution):
+    materializer.rng = Random(0)
     _, parts = materializer.materialize_solution(SimpleNamespace(**solution))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])

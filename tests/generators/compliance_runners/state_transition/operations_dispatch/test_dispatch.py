@@ -1,16 +1,22 @@
 """Check that block integration vectors distinguish the intended behavior."""
 
+from random import Random
 from types import SimpleNamespace
 
-from eth_consensus_specs.gloas import minimal as spec
+from eth_consensus_specs.gloas import minimal
+from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
 from eth_consensus_specs.utils import bls
 
 from .coverage import build_profile
 from .materializer import OperationsDispatchMaterializer
 
+# These vectors exercise Gloas operations from genesis.
+spec, _ = spec_with_config_overrides(get_copy_of_spec(minimal), {"GLOAS_FORK_EPOCH": 0})
+
 
 def _vector(scenario: str, accepted: bool):
     materializer = OperationsDispatchMaterializer(spec)
+    materializer.rng = Random(0)
     materializer.test_provider = "process_operations_dispatch"
     _, parts = materializer.materialize_solution(
         SimpleNamespace(scenario=scenario, accepted=accepted)
@@ -43,7 +49,8 @@ def test_slash_then_exit_rejects_but_reverse_order_accepts():
         spec.process_proposer_slashing(reversed_state, block.body.proposer_slashings[0])
     finally:
         bls.bls_active = old_bls_active
-    assert reversed_state.validators[1].slashed
+    slashed_index = block.body.proposer_slashings[0].signed_header_1.message.proposer_index
+    assert reversed_state.validators[slashed_index].slashed
 
 
 def test_invalid_payload_attestation_is_the_rejection_cause():
