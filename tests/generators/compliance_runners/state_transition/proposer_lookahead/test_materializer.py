@@ -1,5 +1,6 @@
 """Regression checks for slashed validators in the old lookahead."""
 
+from random import Random
 from types import SimpleNamespace
 
 import pytest
@@ -19,7 +20,9 @@ def test_slashed_active_validator_is_absent_from_old_lookahead(tail_matches):
         old_lookahead_contains_slashed=False,
         new_epoch_repeats_old_tail=tail_matches,
     )
-    _, parts = ProposerLookaheadMaterializer(spec).materialize_solution(solution)
+    materializer = ProposerLookaheadMaterializer(spec)
+    materializer.rng = Random(0)
+    _, parts = materializer.materialize_solution(solution)
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
     observed = TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})))
