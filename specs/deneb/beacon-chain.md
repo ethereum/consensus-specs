@@ -33,6 +33,8 @@
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_validator_activation_churn_limit`](#new-get_validator_activation_churn_limit)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Registry updates](#registry-updates)
   - [Execution engine](#execution-engine)
     - [Engine APIs](#engine-apis)
       - [`is_valid_block_hash`](#is_valid_block_hash)
@@ -44,8 +46,6 @@
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
-  - [Epoch processing](#epoch-processing)
-    - [Registry updates](#registry-updates)
 
 <!-- mdformat-toc end -->
 
@@ -370,6 +370,44 @@ def get_validator_activation_churn_limit(state: BeaconState) -> Uint64:
 
 ## Beacon chain state transition function
 
+### Epoch processing
+
+#### Registry updates
+
+*Note*: The function `process_registry_updates` is modified to utilize
+`get_validator_activation_churn_limit()` to rate limit the activation queue for
+EIP-7514.
+
+```python
+def process_registry_updates(state: BeaconState) -> None:
+    # Process activation eligibility and ejections
+    for index, validator in enumerate(state.validators):
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
+
+        if (
+            is_active_validator(validator, get_current_epoch(state))
+            and validator.effective_balance <= EJECTION_BALANCE
+        ):
+            initiate_validator_exit(state, ValidatorIndex(index))
+
+    # Queue validators eligible for activation and not yet dequeued for activation
+    activation_queue = sorted(
+        [
+            index
+            for index, validator in enumerate(state.validators)
+            if is_eligible_for_activation(state, validator)
+        ],
+        # Order by the sequence of activation_eligibility_epoch setting and then index
+        key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
+    )
+    # Dequeued validators for activation up to activation churn limit
+    # [Modified in Deneb:EIP7514]
+    for index in activation_queue[: get_validator_activation_churn_limit(state)]:
+        validator = state.validators[index]
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+```
+
 ### Execution engine
 
 #### Engine APIs
@@ -590,42 +628,4 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
-```
-
-### Epoch processing
-
-#### Registry updates
-
-*Note*: The function `process_registry_updates` is modified to utilize
-`get_validator_activation_churn_limit()` to rate limit the activation queue for
-EIP-7514.
-
-```python
-def process_registry_updates(state: BeaconState) -> None:
-    # Process activation eligibility and ejections
-    for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):
-            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
-
-        if (
-            is_active_validator(validator, get_current_epoch(state))
-            and validator.effective_balance <= EJECTION_BALANCE
-        ):
-            initiate_validator_exit(state, ValidatorIndex(index))
-
-    # Queue validators eligible for activation and not yet dequeued for activation
-    activation_queue = sorted(
-        [
-            index
-            for index, validator in enumerate(state.validators)
-            if is_eligible_for_activation(state, validator)
-        ],
-        # Order by the sequence of activation_eligibility_epoch setting and then index
-        key=lambda index: (state.validators[index].activation_eligibility_epoch, index),
-    )
-    # Dequeued validators for activation up to activation churn limit
-    # [Modified in Deneb:EIP7514]
-    for index in activation_queue[: get_validator_activation_churn_limit(state)]:
-        validator = state.validators[index]
-        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```

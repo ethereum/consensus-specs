@@ -32,16 +32,16 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Slashings](#slashings)
   - [Execution engine](#execution-engine)
     - [Engine APIs](#engine-apis)
-    - [`notify_new_payload`](#notify_new_payload)
-    - [`is_valid_block_hash`](#is_valid_block_hash)
-    - [`verify_and_notify_new_payload`](#verify_and_notify_new_payload)
+      - [`notify_new_payload`](#notify_new_payload)
+      - [`is_valid_block_hash`](#is_valid_block_hash)
+      - [`verify_and_notify_new_payload`](#verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [`process_execution_payload`](#process_execution_payload)
-  - [Epoch processing](#epoch-processing)
-    - [Slashings](#slashings)
 
 <!-- mdformat-toc end -->
 
@@ -350,6 +350,36 @@ def slash_validator(
 
 ## Beacon chain state transition function
 
+### Epoch processing
+
+#### Slashings
+
+*Note*: The function `process_slashings` is modified to use
+`PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX`.
+
+```python
+def process_slashings(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
+    total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(
+        Gwei(sum(state.slashings))
+        # [Modified in Bellatrix]
+        * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
+        total_balance,
+    )
+    for index, validator in enumerate(state.validators):
+        if (
+            validator.slashed
+            and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
+        ):
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid Uint64 overflow
+            penalty_numerator = (
+                validator.effective_balance // increment * adjusted_total_slashing_balance
+            )
+            penalty = penalty_numerator // total_balance * increment
+            decrease_balance(state, ValidatorIndex(index), penalty)
+```
+
 ### Execution engine
 
 #### Engine APIs
@@ -365,7 +395,7 @@ The body of these functions are implementation dependent. The Engine API may be
 used to implement this and similarly defined functions via an external execution
 engine.
 
-#### `notify_new_payload`
+##### `notify_new_payload`
 
 `notify_new_payload` is a function accessed through the `EXECUTION_ENGINE`
 module which instantiates the `ExecutionEngine` protocol.
@@ -377,7 +407,7 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
     """
 ```
 
-#### `is_valid_block_hash`
+##### `is_valid_block_hash`
 
 ```python
 def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:
@@ -386,7 +416,7 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
     """
 ```
 
-#### `verify_and_notify_new_payload`
+##### `verify_and_notify_new_payload`
 
 ```python
 def verify_and_notify_new_payload(
@@ -465,34 +495,4 @@ def process_execution_payload(
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
     )
-```
-
-### Epoch processing
-
-#### Slashings
-
-*Note*: The function `process_slashings` is modified to use
-`PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX`.
-
-```python
-def process_slashings(state: BeaconState) -> None:
-    epoch = get_current_epoch(state)
-    total_balance = get_total_active_balance(state)
-    adjusted_total_slashing_balance = min(
-        Gwei(sum(state.slashings))
-        # [Modified in Bellatrix]
-        * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
-        total_balance,
-    )
-    for index, validator in enumerate(state.validators):
-        if (
-            validator.slashed
-            and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
-        ):
-            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid Uint64 overflow
-            penalty_numerator = (
-                validator.effective_balance // increment * adjusted_total_slashing_balance
-            )
-            penalty = penalty_numerator // total_balance * increment
-            decrease_balance(state, ValidatorIndex(index), penalty)
 ```

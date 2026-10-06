@@ -10,6 +10,7 @@
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
+  - [`compute_signed_block_header`](#compute_signed_block_header)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
@@ -88,6 +89,8 @@ class GetPayloadResponse:
     # [New in Deneb:EIP4844]
     blobs_bundle: BlobsBundle
 ```
+
+### `compute_signed_block_header`
 
 ```python
 def compute_signed_block_header(signed_block: SignedBeaconBlock) -> SignedBeaconBlockHeader:
