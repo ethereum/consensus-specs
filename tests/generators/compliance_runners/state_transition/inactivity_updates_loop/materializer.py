@@ -7,6 +7,9 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .cases import arithmetic_witnesses
+from .target import BODY, TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -22,85 +25,49 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        epoch = int(spec.GENESIS_EPOCH) + int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) + 2
-        pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
-        leaking = bool(getattr(solution, "leaking", False))
-        previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
-        finalized_epoch = (
-            max(
-                int(spec.GENESIS_EPOCH),
-                previous_epoch - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) - 1,
-            )
-            if leaking
-            else previous_epoch
+        if not hasattr(self, "_target"):
+            self._target = TARGET.for_spec(spec)
+        target = self._target
+        _, configurations = target._configurations(filtered=True)
+        requested = frozenset(
+            (str(k), v) for k, v in vars(solution).items() if not str(k).startswith("_")
         )
+        completions = [c for c in configurations if requested <= c]
+        if not completions:
+            raise ValueError(f"no feasible inactivity-loop completion for {dict(requested)}")
+        assignment = dict(min(completions, key=lambda c: repr(sorted(c))))
+        witnesses = arithmetic_witnesses(
+            int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),
+            int(spec.config.INACTIVITY_SCORE_BIAS),
+            int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE),
+            (BODY["score_gt_zero"], BODY["leaking"], BODY["score_vs_recovery_rate"]),
+        )
+        matches = [
+            (key, value)
+            for key, value in witnesses.items()
+            if frozenset(key) <= frozenset(assignment.items())
+        ]
+        _, (score, delay) = min(matches, key=lambda item: repr(item[0]))
+        epoch = int(spec.GENESIS_EPOCH) + delay + 1
+        pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
-            epoch=finalized_epoch, root=pre.finalized_checkpoint.root
+            epoch=int(spec.get_previous_epoch(pre)) - delay,
+            root=pre.finalized_checkpoint.root,
         )
         focus_index = self.rng.randrange(len(pre.validators))
         for index, validator in enumerate(pre.validators):
             if index != focus_index:
                 validator.activation_epoch = spec.FAR_FUTURE_EPOCH
         validator = pre.validators[focus_index]
-        requested_delta = getattr(solution, "score_delta", None)
-        active = bool(getattr(solution, "is_active_in_previous", True))
-        flagged = bool(getattr(solution, "has_target_flag", requested_delta != "INCREASED"))
-        slashed = bool(getattr(solution, "is_slashed", False))
-        participating = bool(
-            getattr(
-                solution,
-                "is_participating",
-                active and flagged and not slashed and requested_delta != "INCREASED",
-            )
-        )
-        if participating:
-            active, flagged, slashed = True, True, False
-        elif active and flagged:
-            if "is_slashed" in vars(solution) and not slashed:
-                flagged = False
-            else:
-                slashed = True
-        if not active:
-            slashed = True
+        active = assignment["is_active_in_previous"]
+        flagged = assignment["has_target_flag"]
+        slashed = assignment["is_slashed"]
         validator.slashed = slashed
         validator.activation_epoch = spec.GENESIS_EPOCH if active else spec.FAR_FUTURE_EPOCH
         validator.exit_epoch = spec.FAR_FUTURE_EPOCH
         validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
-        score_gt_zero = bool(getattr(solution, "score_gt_zero", False))
-        recovery_comparison = bool(getattr(solution, "score_vs_recovery_rate", False))
-        recovery = int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE)
-        if requested_delta == "INCREASED" and "leaking" not in vars(solution):
-            leaking = True
-            pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
-                epoch=max(
-                    int(spec.GENESIS_EPOCH),
-                    int(spec.get_previous_epoch(pre))
-                    - int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY)
-                    - 1,
-                ),
-                root=pre.finalized_checkpoint.root,
-            )
-        if requested_delta == "UNCHANGED":
-            score = 1 if score_gt_zero else 0
-        elif recovery_comparison:
-            score = max(
-                0,
-                recovery + 2
-                if participating
-                else recovery + 1 - int(spec.config.INACTIVITY_SCORE_BIAS),
-            )
-        elif score_gt_zero or requested_delta in ("DECREASED", "INCREASED"):
-            score = 1
-        else:
-            score = 0
-        if not score_gt_zero and "score_gt_zero" in vars(solution):
-            score = 0
         pre.inactivity_scores[focus_index] = score
         if flagged:
-            pre.previous_epoch_participation[focus_index] = spec.ParticipationFlags(
-                1 << int(spec.TIMELY_TARGET_FLAG_INDEX)
-            )
-        if participating:
             pre.previous_epoch_participation[focus_index] = spec.ParticipationFlags(
                 1 << int(spec.TIMELY_TARGET_FLAG_INDEX)
             )

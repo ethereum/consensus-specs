@@ -9,9 +9,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
+    comparison,
     constant,
     coverage_spec,
-    factor,
     Integer,
     modulo,
 )
@@ -25,7 +25,7 @@ destination_value = attribute("destination_value", Integer(min=0))
 RESET = aspect(
     "reset",
     modulo("destination_position", next_epoch, vector_length),
-    factor("destination_nonzero", destination_value > 0),
+    comparison("destination_nonzero", destination_value, 0, granularity="cmp5"),
 )
 ASPECTS = (RESET,)
 PROFILES = {
