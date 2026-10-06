@@ -180,6 +180,47 @@ class Expr(Operators):
             raise TypeError("integer operands required")
         return bool if self.op in ("<", "<=", ">", ">=") else int
 
+    def integer_domain(self, constants=None):
+        """Conservative interval; correlations between operands are not inferred."""
+        if self.result_type() is not int:
+            raise TypeError("integer expression required")
+        if self.op in ("attribute", "constant"):
+            if self.op == "constant" and constants is not None and self.name in constants:
+                value = constants[self.name]
+                self.domain.validate(value)
+                return Integer(value, value)
+            return self.domain
+        if self.op == "literal":
+            return Integer(self.args[0], self.args[0])
+        if self.op == "derived":
+            return self.args[0].integer_domain(constants)
+        if self.op == "choose":
+            a, b = (arg.integer_domain(constants) for arg in self.args[1:])
+            return Integer(
+                min(a.min, b.min) if a.min is not None and b.min is not None else None,
+                max(a.max, b.max) if a.max is not None and b.max is not None else None,
+            )
+        a, b = (arg.integer_domain(constants) for arg in self.args)
+        if self.op == "%" and b.min is not None and b.min > 0:
+            return Integer(0, b.max - 1 if b.max is not None else None)
+        if self.op == "+":
+            return Integer(
+                a.min + b.min if a.min is not None and b.min is not None else None,
+                a.max + b.max if a.max is not None and b.max is not None else None,
+            )
+        if self.op == "-":
+            return Integer(
+                a.min - b.max if a.min is not None and b.max is not None else None,
+                a.max - b.min if a.max is not None and b.min is not None else None,
+            )
+        if self.op == "max":
+            lower = [v for v in (a.min, b.min) if v is not None]
+            return Integer(
+                max(lower) if lower else None,
+                max(a.max, b.max) if a.max is not None and b.max is not None else None,
+            )
+        return Integer()
+
     def evaluate(self, attributes, constants, factors=None):
         if self.op == "literal":
             return self.args[0]
@@ -279,6 +320,7 @@ class Factor(Operators):
     available_when: Expr = Expr("literal", (True,))
     description: str = ""
     granularity: str = "predicate"
+    modulus: Expr | None = None
 
     def __post_init__(self):
         if not self.name or self.kind not in ("boolean", "comparison", "enum"):
@@ -347,6 +389,35 @@ def categorical(name, value, values, *, when=True, available_when=True, descript
         expression(value),
         kind="enum",
         values=values,
+        when=expression(when),
+        available_when=expression(available_when),
+        description=description,
+    )
+
+
+def modulo(name, lhs, modulus, *, when=True, available_when=True, description=""):
+    """Cover zero, one, last, and interior remainders of a positive constant.
+
+    For periods 1 and 2, coincident boundaries use ZERO and ONE respectively.
+    """
+    modulus = expression(modulus)
+    if modulus.op not in ("literal", "constant") or modulus.result_type() is not int:
+        raise ValueError("modulus must be a positive integer literal or constant")
+    domain = modulus.integer_domain()
+    if domain.min is None or domain.min < 1:
+        raise ValueError("modulus must have a positive integer domain")
+    remainder = expression(lhs) % modulus
+    value = choose(
+        remainder == 0,
+        "ZERO",
+        choose(remainder == 1, "ONE", choose(remainder == modulus - 1, "LAST", "INTERIOR")),
+    )
+    return Factor(
+        name,
+        value,
+        kind="enum",
+        values=("ZERO", "ONE", "LAST", "INTERIOR"),
+        modulus=modulus,
         when=expression(when),
         available_when=expression(available_when),
         description=description,

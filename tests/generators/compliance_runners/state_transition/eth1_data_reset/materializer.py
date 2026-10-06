@@ -43,8 +43,8 @@ class Eth1DataResetMaterializer(ConcretizingMaterializer):
         post = pre.copy()
         spec.process_eth1_data_reset(post)
         claimed = {
-            name: bool(getattr(solution, name))
-            for name in ("at_reset_boundary", "votes_nonempty")
+            name: getattr(solution, name)
+            for name in ("reset_remainder", "votes_nonempty")
             if hasattr(solution, name)
         }
         meta = {
