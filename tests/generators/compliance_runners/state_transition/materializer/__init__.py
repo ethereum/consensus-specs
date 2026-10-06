@@ -10,16 +10,16 @@ from enum import Enum
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.utils.dumper import Dumper
-from tests.generators.compliance_runners.state_transition.concretization import (
-    ConcretizationStrategy,
-    concretize,
-)
 from tests.generators.compliance_runners.gen_base.gen_typing import (
     TestCase,
     TestCasePart,
     TestCaseResult,
 )
 from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
+from tests.generators.compliance_runners.state_transition.concretization import (
+    ConcretizationStrategy,
+    concretize,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

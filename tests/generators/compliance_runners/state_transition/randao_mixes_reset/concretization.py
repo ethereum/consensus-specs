@@ -14,9 +14,7 @@ class ManualConcretizer:
         vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
         destination_is_first_slot = getattr(abstract_case, "destination_is_first_slot", True)
         source_nonzero = getattr(abstract_case, "source_nonzero", True)
-        source_matches_destination = getattr(
-            abstract_case, "source_matches_destination", True
-        )
+        source_matches_destination = getattr(abstract_case, "source_matches_destination", True)
         destination_index = 0 if destination_is_first_slot else 1
         if destination_index >= vector_length:
             raise ValueError("RANDAO vector is too short to realize destination slot")
