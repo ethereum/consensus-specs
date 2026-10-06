@@ -734,7 +734,7 @@ def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> 
 
 ```python
 def get_committee_indices(committee_bits: BitVector) -> Sequence[CommitteeIndex]:
-    return [CommitteeIndex(i) for i, bit in enumerate(committee_bits) if bit]
+    return [CommitteeIndex(index) for index, bit in enumerate(committee_bits) if bit]
 ```
 
 #### New `get_max_effective_balance`
@@ -809,8 +809,8 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
         committee = get_beacon_committee(state, attestation.data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         output = output.union(committee_attesters)
 
@@ -1656,8 +1656,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)

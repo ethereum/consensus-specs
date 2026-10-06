@@ -51,7 +51,7 @@ def initialize_ptc_window(
     for e in range(1 + MIN_SEED_LOOKAHEAD):
         epoch = current_epoch + e
         start_slot = compute_start_slot_at_epoch(epoch)
-        ptcs += [compute_ptc(state, start_slot + i) for i in range(SLOTS_PER_EPOCH)]
+        ptcs += [compute_ptc(state, start_slot + index) for index in range(SLOTS_PER_EPOCH)]
 
     return PayloadTimelinessCommitteeWindow(data=empty_previous_epoch + ptcs)
 ```

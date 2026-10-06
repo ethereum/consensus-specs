@@ -404,7 +404,7 @@ def compute_subnets_for_sync_committee(
 
     target_pubkey = state.validators[validator_index].pubkey
     sync_committee_indices = [
-        i for i, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey
+        index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey
     ]
     return {
         SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))

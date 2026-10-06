@@ -823,9 +823,9 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
             sum(
-                justified_state.validators[i].effective_balance
-                for i in committee
-                if i in store.equivocating_indices
+                justified_state.validators[index].effective_balance
+                for index in committee
+                if index in store.equivocating_indices
             )
         )
 
@@ -969,7 +969,7 @@ def update_latest_messages(
     beacon_block_root = attestation.data.beacon_block_root
     payload_present = attestation.data.index == 1
     non_equivocating_attesting_indices = [
-        i for i in attesting_indices if i not in store.equivocating_indices
+        index for index in attesting_indices if index not in store.equivocating_indices
     ]
     for i in non_equivocating_attesting_indices:
         if i not in store.latest_messages or slot > store.latest_messages[i].slot:

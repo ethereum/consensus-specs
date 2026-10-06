@@ -109,8 +109,8 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     # add validators that are not yet active to pending balance deposits
     pre_activation = sorted(
         [
-            i
-            for i, validator in enumerate(post.validators)
+            index
+            for index, validator in enumerate(post.validators)
             if validator.activation_epoch == FAR_FUTURE_EPOCH
         ],
         key=lambda index: (post.validators[index].activation_eligibility_epoch, index),

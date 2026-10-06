@@ -358,7 +358,7 @@ def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
     Return the next sync committee, with possible pubkey duplicates.
     """
     indices = get_next_sync_committee_indices(state)
-    pubkeys = SyncCommitteePubkeys(data=[state.validators[i].pubkey for i in indices])
+    pubkeys = SyncCommitteePubkeys(data=[state.validators[index].pubkey for index in indices])
     aggregate_pubkey = eth_aggregate_pubkeys(pubkeys)
     return SyncCommittee(pubkeys=pubkeys, aggregate_pubkey=aggregate_pubkey)
 ```
@@ -407,7 +407,9 @@ def get_unslashed_participating_indices(
         epoch_participation = state.previous_epoch_participation
     active_validator_indices = get_active_validator_indices(state, epoch)
     participating_indices = [
-        i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)
+        index
+        for index in active_validator_indices
+        if has_flag(epoch_participation[index], flag_index)
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```

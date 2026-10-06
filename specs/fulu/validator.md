@@ -137,7 +137,9 @@ of `NUMBER_OF_CUSTODY_GROUPS`.
 def get_validators_custody_requirement(
     state: BeaconState, validator_indices: Sequence[ValidatorIndex]
 ) -> Uint64:
-    total_node_balance = sum(state.validators[i].effective_balance for i in validator_indices)
+    total_node_balance = sum(
+        state.validators[index].effective_balance for index in validator_indices
+    )
     count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```

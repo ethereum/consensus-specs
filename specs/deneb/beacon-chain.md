@@ -616,8 +616,8 @@ def process_registry_updates(state: BeaconState) -> None:
     # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted(
         [
-            i
-            for i, validator in enumerate(state.validators)
+            index
+            for index, validator in enumerate(state.validators)
             if is_eligible_for_activation(state, validator)
         ],
         # Order by the sequence of activation_eligibility_epoch setting and then index

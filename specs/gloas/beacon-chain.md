@@ -1036,7 +1036,7 @@ def is_valid_indexed_attestation(
     ):
         return False
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
@@ -1105,7 +1105,7 @@ def is_valid_indexed_payload_attestation(
         return False
 
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
@@ -1212,7 +1212,7 @@ def compute_balance_weighted_selection(
     MAX_RANDOM_VALUE = 2**16 - 1
     total = Uint64(len(indices))
     assert total > 0
-    effective_balances = [state.validators[i].effective_balance for i in indices]
+    effective_balances = [state.validators[index].effective_balance for index in indices]
     selected: list[ValidatorIndex] = []
     i = Uint64(0)
     while len(selected) < size:
@@ -1245,7 +1245,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(start_slot + index)) for index in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         data=[
@@ -1298,7 +1298,9 @@ def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerInd
     """
     # [Modified in Gloas:EIP8045]
     indices = [
-        i for i in get_active_validator_indices(state, epoch) if not state.validators[i].slashed
+        index
+        for index in get_active_validator_indices(state, epoch)
+        if not state.validators[index].slashed
     ]
     seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
     return compute_proposer_indices(state, epoch, seed, indices)
@@ -1415,7 +1417,9 @@ def get_indexed_payload_attestation(
     slot = payload_attestation.data.slot
     ptc = get_ptc(state, slot)
     bits = payload_attestation.aggregation_bits
-    attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+    attesting_indices = [
+        validator_index for index, validator_index in enumerate(ptc) if bits[index]
+    ]
 
     return IndexedPayloadAttestation(
         attesting_indices=PayloadTimelinessCommitteeIndices(data=sorted(attesting_indices)),
@@ -2372,8 +2376,8 @@ def process_attestation(
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)

@@ -966,7 +966,7 @@ def validate_attester_slashing_gossip(
     state = store.block_states[get_head(store).root]
 
     # [REJECT] All validator indices in the first indexed attestation are valid
-    if any(i >= len(state.validators) for i in attestation_1.attesting_indices):
+    if any(index >= len(state.validators) for index in attestation_1.attesting_indices):
         raise GossipReject("validator index out of range in indexed attestation 1")
 
     # [REJECT] The first indexed attestation has valid properties
@@ -974,7 +974,7 @@ def validate_attester_slashing_gossip(
         raise GossipReject("invalid indexed attestation 1")
 
     # [REJECT] All validator indices in the second indexed attestation are valid
-    if any(i >= len(state.validators) for i in attestation_2.attesting_indices):
+    if any(index >= len(state.validators) for index in attestation_2.attesting_indices):
         raise GossipReject("validator index out of range in indexed attestation 2")
 
     # [REJECT] The second indexed attestation has valid properties
@@ -1070,7 +1070,7 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("aggregation bits length does not match committee size")
 
     # [IGNORE] No other valid attestation seen for this target epoch and validator
-    set_bit_indices = [i for i, bit in enumerate(aggregation_bits) if bit]
+    set_bit_indices = [index for index, bit in enumerate(aggregation_bits) if bit]
     participant_index = committee[set_bit_indices[0]]
     attestation_epoch_key = (target_epoch, participant_index)
     if attestation_epoch_key in seen.attestation_validator_epochs:
@@ -1834,7 +1834,7 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
 
 ```python
 def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[SubnetID]:
-    return [compute_subscribed_subnet(node_id, epoch, i) for i in range(SUBNETS_PER_NODE)]
+    return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
 *Note*: When preparing for an upgrade, a node must select and subscribe to
