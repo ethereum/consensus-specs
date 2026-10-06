@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.blob import (
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
+    get_empty_inclusion_claims_fields,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
@@ -502,6 +503,7 @@ def _build_random_signed_bid(spec, state, block, rng):
         execution_payment=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        **get_empty_inclusion_claims_fields(spec),
     )
 
     if use_real_builder:

@@ -13,6 +13,7 @@
   - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
   - [New `process_inclusion_list`](#new-process_inclusion_list)
   - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
+  - [New `get_inclusion_list_membership`](#new-get_inclusion_list_membership)
   - [New `get_inclusion_list_bits`](#new-get_inclusion_list_bits)
   - [New `is_inclusion_list_bits_inclusive`](#new-is_inclusion_list_bits_inclusive)
 
@@ -119,6 +120,42 @@ def get_inclusion_list_transactions(
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
     return list(set(transactions))
+```
+
+### New `get_inclusion_list_membership`
+
+*Note*: `get_inclusion_list_membership` returns, for each of `transactions`, the
+`InclusionListBits` of the committee members whose inclusion list, among those
+considered by `get_inclusion_list_transactions`, carries the transaction. The
+execution engine uses it to meter work per inclusion list.
+
+```python
+def get_inclusion_list_membership(
+    store: InclusionListStore,
+    committee: InclusionListCommittee,
+    slot: Slot,
+    dependent_root: Root,
+    transactions: Sequence[Transaction],
+    only_timely: bool = True,
+) -> Sequence[InclusionListBits]:
+    key = (slot, dependent_root)
+    inclusion_lists = store.inclusion_lists[key]
+    equivocators = store.equivocators[key]
+
+    def carries(validator_index: ValidatorIndex, transaction: Transaction) -> bool:
+        if validator_index not in inclusion_lists or validator_index in equivocators:
+            return False
+        inclusion_list = inclusion_lists[validator_index]
+        if only_timely and not inclusion_list.timely:
+            return False
+        return transaction in inclusion_list.signed_inclusion_list.message.transactions
+
+    return [
+        InclusionListBits(
+            data=[carries(validator_index, transaction) for validator_index in committee]
+        )
+        for transaction in transactions
+    ]
 ```
 
 ### New `get_inclusion_list_bits`

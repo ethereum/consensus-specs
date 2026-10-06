@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    get_empty_inclusion_claims_fields,
 )
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
@@ -317,6 +318,7 @@ def build_signed_bid(
         execution_payment=execution_payment if execution_payment is not None else spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        **get_empty_inclusion_claims_fields(spec),
     )
     if is_post_heze(spec):
         bid.inclusion_list_bits = (

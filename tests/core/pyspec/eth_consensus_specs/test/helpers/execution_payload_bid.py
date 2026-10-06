@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.execution_payload import get_empty_inclusion_claims_fields
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 
@@ -95,6 +96,7 @@ def prepare_signed_execution_payload_bid(
         "slot": slot,
         "value": value,
         "blob_kzg_commitments": blob_kzg_commitments,
+        **get_empty_inclusion_claims_fields(spec),
     }
     if execution_requests_root is not None:
         bid_kwargs["execution_requests_root"] = execution_requests_root

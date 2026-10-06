@@ -17,11 +17,14 @@
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
       - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
+      - [Modified `execution_payload`](#modified-execution_payload)
       - [New `inclusion_list`](#new-inclusion_list)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
+    - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
     - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
 
 <!-- mdformat-toc end -->
@@ -39,7 +42,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196966)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
@@ -281,6 +284,86 @@ def validate_execution_payload_bid_gossip(
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 
+##### Modified `execution_payload`
+
+*Note*: The only change is a check that `envelope.inclusion_claims` matches
+`bid.inclusion_claims_root`.
+
+```python
+def validate_execution_payload_envelope_gossip(
+    seen: Seen,
+    store: Store,
+    signed_execution_payload_envelope: SignedExecutionPayloadEnvelope,
+) -> None:
+    """
+    Validate a SignedExecutionPayloadEnvelope for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    envelope = signed_execution_payload_envelope.message
+    payload = envelope.payload
+    block_root = envelope.beacon_block_root
+
+    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
+    envelope_key = (block_root, envelope.builder_index)
+    if envelope_key in seen.execution_payload_envelopes:
+        raise GossipIgnore("already seen envelope for this block root from this builder")
+
+    # [IGNORE] The envelope's block root has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    if block_root not in store.blocks:
+        raise GossipIgnore("envelope's block has not been seen")
+
+    # [REJECT] The envelope's block passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("envelope's block failed validation")
+
+    state = store.block_states[block_root]
+
+    # [IGNORE] The envelope is from a slot greater than or equal to the latest finalized slot
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if payload.slot_number < finalized_slot:
+        raise GossipIgnore("envelope is from a slot before the latest finalized slot")
+
+    block = store.blocks[block_root]
+    bid = block.body.signed_execution_payload_bid.message
+
+    # [REJECT] The block's slot matches the payload's slot number
+    if block.slot != payload.slot_number:
+        raise GossipReject("block's slot does not match payload's slot number")
+
+    # [REJECT] The envelope is from the builder committed to by the bid
+    if envelope.builder_index != bid.builder_index:
+        raise GossipReject("envelope's builder index does not match the bid's builder index")
+
+    # [REJECT] The payload's block hash matches the bid's block hash
+    if payload.block_hash != bid.block_hash:
+        raise GossipReject("payload's block hash does not match the bid's block hash")
+
+    # [REJECT] The envelope's execution requests root matches the bid's execution requests root
+    if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
+        raise GossipReject("envelope's execution requests root does not match the bid's")
+
+    # [New in Heze:EIP7805]
+    # [REJECT] The envelope's inclusion claims root matches the bid's inclusion claims root
+    if hash_tree_root(envelope.inclusion_claims) != bid.inclusion_claims_root:
+        raise GossipReject("envelope's inclusion claims root does not match the bid's")
+
+    # [REJECT] The execution request counts are within their limits
+    verify_execution_requests_limits(envelope.execution_requests)
+
+    # [REJECT] The number of withdrawals is within the limit
+    if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawals")
+
+    # [REJECT] The envelope signature is valid
+    if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
+        raise GossipReject("invalid envelope signature")
+
+    # Mark this envelope as seen and store its payload
+    seen.execution_payload_envelopes.add(envelope_key)
+    seen.execution_payloads[payload.block_hash] = payload
+```
+
 ##### New `inclusion_list`
 
 This topic is used to propagate signed inclusion list.
@@ -403,6 +486,28 @@ block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
+
+#### ExecutionPayloadEnvelopesByRange v1
+
+**Protocol ID:**
+`/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
+
+Heze changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
+`inclusion_claims` field. Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+| `HEZE_FORK_VERSION`  | `heze.SignedExecutionPayloadEnvelope`  |
+
+#### ExecutionPayloadEnvelopesByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
+
+The response context table is identical to
+[ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1).
 
 #### InclusionListsByIndices v1
 

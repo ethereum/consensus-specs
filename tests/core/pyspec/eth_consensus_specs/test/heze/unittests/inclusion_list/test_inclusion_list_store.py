@@ -422,3 +422,58 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         assert inclusion_list_transactions == []
 
     run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_membership(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        shared, only_0, only_1 = get_sample_transactions(spec, max_transaction_count=3)
+        signed_inclusion_list_0 = get_sample_signed_inclusion_list(
+            spec,
+            forkchoice_store,
+            state,
+            validator_index=inclusion_list_committee[0],
+            transactions=spec.Transactions(data=[shared, only_0]),
+        )
+        signed_inclusion_list_1 = get_sample_signed_inclusion_list(
+            spec,
+            forkchoice_store,
+            state,
+            validator_index=inclusion_list_committee[1],
+            transactions=spec.Transactions(data=[only_1, shared]),
+        )
+        for signed_inclusion_list in (signed_inclusion_list_0, signed_inclusion_list_1):
+            spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
+        dependent_root = signed_inclusion_list_0.message.dependent_root
+
+        transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state.slot, dependent_root
+        )
+        membership = spec.get_inclusion_list_membership(
+            inclusion_list_store, inclusion_list_committee, state.slot, dependent_root, transactions
+        )
+        assert len(membership) == len(transactions) == 3
+
+        # Each bit is set at every committee position held by a carrying member
+        def expected_bits(carriers):
+            return spec.InclusionListBits(
+                data=[validator_index in carriers for validator_index in inclusion_list_committee]
+            )
+
+        member_0 = inclusion_list_committee[0]
+        member_1 = inclusion_list_committee[1]
+        expected = {
+            shared: expected_bits({member_0, member_1}),
+            only_0: expected_bits({member_0}),
+            only_1: expected_bits({member_1}),
+        }
+        for transaction, bits in zip(transactions, membership, strict=True):
+            assert bits == expected[transaction]
+
+    run_with_inclusion_list_store(spec, run_func)
