@@ -13,10 +13,10 @@ from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.proof_engine import MockProofEngine
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
+UNSUPPORTED_LOW_PROOF_TYPE = 0
 TEST_PROOF_TYPE = 1
 ALTERNATE_TEST_PROOF_TYPE = 2
 THIRD_TEST_PROOF_TYPE = 3
-UNSUPPORTED_LOW_PROOF_TYPE = 0
 UNSUPPORTED_HIGH_PROOF_TYPE = 4
 
 
@@ -308,44 +308,60 @@ def test_gossip_rejects_unauthenticated_execution_proofs_without_caching(spec, s
 
 @with_eip8025_and_later
 @spec_state_test
-def test_gossip_rejects_malformed_execution_proof_fields_without_caching(spec, state):
+def test_gossip_rejects_empty_execution_proof_without_caching(spec, state):
     """
-    Reject invalid proof data and proof types without updating the seen cache.
+    Reject empty proof data without updating the seen cache.
     """
     store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b"")
 
-    # Exercise empty proof data and proof types outside the supported set.
-    cases = [
-        (
-            make_signed_execution_proof_envelope(spec, state, block_root, proof_data=b""),
-            "execution proof is empty",
-        ),
-        (
-            make_signed_execution_proof_envelope(
-                spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
-            ),
-            "unexpected execution proof type",
-        ),
-        (
-            make_signed_execution_proof_envelope(
-                spec,
-                state,
-                block_root,
-                prover_index=1,
-                proof_type=UNSUPPORTED_HIGH_PROOF_TYPE,
-            ),
-            "unexpected execution proof type",
-        ),
-    ]
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, signed_proof) == (
+        "reject",
+        "execution proof is empty",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
 
-    for signed_proof, error_message in cases:
-        seen = get_seen(spec)
-        assert validate(spec, seen, store, signed_proof) == (
-            "reject",
-            error_message,
-        )
-        assert seen.execution_proof_roots == {}
-        assert seen.execution_proof_provers == set()
+
+@with_eip8025_and_later
+@spec_state_test
+def test_gossip_rejects_unsupported_low_proof_type_without_caching(spec, state):
+    """
+    Reject a proof type below the supported set without updating the seen cache.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(
+        spec, state, block_root, proof_type=UNSUPPORTED_LOW_PROOF_TYPE
+    )
+
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, signed_proof) == (
+        "reject",
+        "unexpected execution proof type",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_gossip_rejects_unsupported_high_proof_type_without_caching(spec, state):
+    """
+    Reject a proof type above the supported set without updating the seen cache.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(
+        spec, state, block_root, proof_type=UNSUPPORTED_HIGH_PROOF_TYPE
+    )
+
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, signed_proof) == (
+        "reject",
+        "unexpected execution proof type",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
 
 
 @with_eip8025_and_later
