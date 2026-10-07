@@ -47,9 +47,13 @@ def make_signed_execution_proof_envelope(
         proof_type=spec.ProofType(proof_type),
         beacon_block_root=beacon_block_root,
     )
-    signature = spec.get_execution_proof_envelope_signature(
-        state, proof_envelope, privkeys[prover_index]
+    domain = spec.get_domain(
+        state,
+        spec.DOMAIN_EXECUTION_PROOF,
+        spec.compute_epoch_at_slot(state.slot),
     )
+    signing_root = spec.compute_signing_root(proof_envelope, domain)
+    signature = spec.bls.Sign(privkeys[prover_index], signing_root)
     return spec.SignedExecutionProofEnvelope(
         message=proof_envelope,
         validator_index=spec.ValidatorIndex(prover_index),

@@ -37,7 +37,8 @@ Execution proofs are non-consensus artifacts. Verifying or storing one does not
 change beacon-chain state, fork choice, or Gloas payload status.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
-and imports proof types from [proof-engine.md](./proof-engine.md).
+and uses the proof-verification interface from
+[proof-engine.md](./proof-engine.md).
 
 ## Types
 
