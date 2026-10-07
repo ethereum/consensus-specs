@@ -128,6 +128,7 @@
       - [New `process_parent_execution_payload`](#new-process_parent_execution_payload)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
+      - [New `get_builder_balance_after_withdrawals`](#new-get_builder_balance_after_withdrawals)
       - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
@@ -1035,7 +1036,7 @@ def is_valid_indexed_attestation(
     ):
         return False
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
@@ -1104,7 +1105,7 @@ def is_valid_indexed_payload_attestation(
         return False
 
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
@@ -1244,7 +1245,7 @@ def compute_proposer_indices(
     Return the proposer indices for the given ``epoch``.
     """
     start_slot = compute_start_slot_at_epoch(epoch)
-    seeds = [sha256(seed + uint_to_bytes(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+    seeds = [sha256(seed + uint_to_bytes(start_slot + index)) for index in range(SLOTS_PER_EPOCH)]
     # [Modified in Gloas:EIP7732]
     return ProposerIndices(
         data=[
@@ -1416,7 +1417,9 @@ def get_indexed_payload_attestation(
     slot = payload_attestation.data.slot
     ptc = get_ptc(state, slot)
     bits = payload_attestation.aggregation_bits
-    attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+    attesting_indices = [
+        validator_index for index, validator_index in enumerate(ptc) if bits[index]
+    ]
 
     return IndexedPayloadAttestation(
         attesting_indices=PayloadTimelinessCommitteeIndices(data=sorted(attesting_indices)),
@@ -1639,7 +1642,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -1735,8 +1738,8 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `apply_parent_execution_payload`
 
-*Note*: This function processes the parent's execution requests, queues the
-builder payment, updates payload availability, and updates the latest block
+*Note*: This function queues the builder payment, processes the parent's
+execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
 and by the validator during block production before computing withdrawals.
 
@@ -1754,19 +1757,8 @@ def apply_parent_execution_payload(
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -1783,6 +1775,18 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
@@ -1848,6 +1852,23 @@ def get_builder_withdrawals(
     return withdrawals, withdrawal_index, processed_count
 ```
 
+##### New `get_builder_balance_after_withdrawals`
+
+```python
+def get_builder_balance_after_withdrawals(
+    state: BeaconState, builder_index: BuilderIndex, withdrawals: Sequence[Withdrawal]
+) -> Gwei:
+    validator_index = convert_builder_index_to_validator_index(builder_index)
+    withdrawn = Gwei(
+        sum(
+            withdrawal.amount
+            for withdrawal in withdrawals
+            if withdrawal.validator_index == validator_index
+        )
+    )
+    return saturating_sub(state.builders[builder_index].balance, withdrawn)
+```
+
 ##### New `get_builders_sweep_withdrawals`
 
 ```python
@@ -1871,13 +1892,14 @@ def get_builders_sweep_withdrawals(
             break
 
         builder = state.builders[builder_index]
-        if builder.withdrawable_epoch <= epoch and builder.balance > 0:
+        balance = get_builder_balance_after_withdrawals(state, builder_index, all_withdrawals)
+        if builder.withdrawable_epoch <= epoch and balance > 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=convert_builder_index_to_validator_index(builder_index),
                     address=builder.execution_address,
-                    amount=builder.balance,
+                    amount=balance,
                 )
             )
             withdrawal_index += 1
@@ -2277,7 +2299,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     if not is_builder_withdrawal_credential(request.withdrawal_credentials):
         return
 
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
@@ -2307,7 +2329,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
 
 ```python
 def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest) -> None:
-    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.pubkey not in builder_pubkeys:
         return
 
@@ -2354,8 +2376,8 @@ def process_attestation(
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)

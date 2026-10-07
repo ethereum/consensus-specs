@@ -1,9 +1,11 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_to,
     with_electra_and_later,
     with_electra_only,
 )
+from eth_consensus_specs.test.helpers.constants import ELECTRA, HEZE
 from eth_consensus_specs.test.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
@@ -195,7 +197,7 @@ def test_process_deposit_request_set_start_index(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_to(ELECTRA, HEZE)
 @spec_state_test
 def test_process_deposit_request_set_start_index_only_once(spec, state):
     initial_start_index = 1
