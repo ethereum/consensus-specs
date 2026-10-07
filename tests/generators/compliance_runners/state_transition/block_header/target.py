@@ -5,8 +5,8 @@ The operation vectors provide a ``BeaconBlock`` in
 ``process_block`` are intentionally out of scope.
 """
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
     aspect,
     attribute,
     bind,
@@ -48,18 +48,7 @@ ASPECTS = (HEADER, OUTCOME)
 GATES = list(HEADER.factors)
 
 
-def _holds(assignment: dict, factor) -> bool | None:
-    return None if factor.name not in assignment else factor.holds(assignment[factor.name])
-
-
-def _accepted_iff_all_assertions_hold(assignment: dict) -> bool:
-    accepted = _holds(assignment, ACCEPTED)
-    if accepted is None:
-        return True
-    assertions = [_holds(assignment, factor) for factor in GATES]
-    if accepted:
-        return all(value is not False for value in assertions)
-    return not all(value is True for value in assertions)
+CONSTRAINTS = (OUTCOME.ref("accepted") == all_of(*HEADER.declarations),)
 
 
 def _slot_order_is_reachable(assignment):
@@ -70,7 +59,6 @@ def _slot_order_is_reachable(assignment):
     return match is None or newer is None or buckets.index(newer) >= buckets.index(match)
 
 
-FEASIBLE = rules(_slot_order_is_reachable, _accepted_iff_all_assertions_hold)
 NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 
@@ -103,7 +91,8 @@ COVERAGE = coverage_spec(
     constants=(),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=FEASIBLE,
+    constraints=CONSTRAINTS,
+    feasible=_slot_order_is_reachable,
 )
 
 TARGET = bind(COVERAGE, observe_attributes=observe_attributes, constants={})

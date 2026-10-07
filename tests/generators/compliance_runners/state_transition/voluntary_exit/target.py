@@ -2,8 +2,8 @@
 
 from itertools import combinations
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
     aspect,
     attribute,
     bind,
@@ -13,10 +13,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     comparison,
     constant,
     coverage_spec,
+    coverage_value,
     derived,
     each,
     factor,
     fix,
+    implies,
     Integer,
     nwise,
     union,
@@ -116,81 +118,33 @@ CHURN = aspect(
     ),
 )
 OUTCOME = aspect("outcome", factor("accepted", post_present))
-ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (EPOCHS, PENDING, SIGNATURE, CHURN, OUTCOME)
 # The handler's assertion chain: accepted <=> all of these hold.
 GATES = (
-    EPOCHS["activation_le_current"],
-    EPOCHS["current_lt_exit"],
-    EPOCHS["exit_not_initiated"],
-    EPOCHS["current_ge_message_epoch"],
-    EPOCHS["current_ge_seasoned"],
-    PENDING["pending_balance_zero"],
-    SIGNATURE["signature_ok"],
+    EPOCHS.ref("activation_le_current"),
+    EPOCHS.ref("current_lt_exit"),
+    EPOCHS.ref("exit_not_initiated"),
+    EPOCHS.ref("current_ge_message_epoch"),
+    EPOCHS.ref("current_ge_seasoned"),
+    PENDING.ref("pending_balance_zero"),
+    SIGNATURE.ref("signature_ok"),
 )
 
 
-def _holds(a: dict, f) -> bool | None:
-    return None if f.name not in a else f.holds(a[f.name])
-
-
-def _far_below(a: dict, f) -> bool:
-    """``lhs < rhs`` by more than one, as far as the granularity can tell."""
-    return bool(_holds(a, f)) and f.far(a[f.name]) is not False
-
-
-def _uninitiated_exit_is_far(a: dict) -> bool:
-    if _holds(a, EPOCHS["exit_not_initiated"]) is True and "current_lt_exit" in a:
-        return _far_below(a, EPOCHS["current_lt_exit"])
-    return True
-
-
-def _seasoned_is_activated_long_ago(a: dict) -> bool:
-    if _holds(a, EPOCHS["current_ge_seasoned"]) is True and "activation_le_current" in a:
-        return _far_below(a, EPOCHS["activation_le_current"])
-    return True
-
-
-def _accepted_iff_all_gates(a: dict) -> bool:
-    accepted = _holds(a, ACCEPTED)
-    if accepted is None:
-        return True
-    gates = [_holds(a, f) for f in GATES]
-    if accepted:
-        return all(h is not False for h in gates)
-    # Rejected, yet every gate is assigned and holds: impossible.
-    return not all(h is True for h in gates)
-
-
-def _pending_balance_needs_entries(a: dict) -> bool:
-    if _holds(a, PENDING["pending_balance_zero"]) is False:
-        return a.get("matching_pending_entries") != "ZERO"
-    return True
-
-
-def constant_feasibility(constants):
-    """Fresh churn is aligned; carried budgets can reflect partial withdrawals."""
-    increment = constants["balance_increment"]
-
-    def feasible(assignment):
-        bucket = assignment.get("balance_gt_consumable")
-        if (
-            increment > 1
-            and assignment.get("earliest_lt_new") is True
-            and bucket in ("LT_1", "GT_1")
-        ):
-            return False
-        # A one-Gwei excess fits in one epoch for any positive churn limit.
-        return not (bucket == "GT_1" and assignment.get("additional_epochs") == "MANY")
-
-    return feasible
-
-
-FEASIBLE = rules(
-    _uninitiated_exit_is_far,
-    _seasoned_is_activated_long_ago,
-    _accepted_iff_all_gates,
-    _pending_balance_needs_entries,
+CONSTRAINTS = (
+    implies(EPOCHS.ref("exit_not_initiated"), EPOCHS.ref("current_lt_exit")),
+    implies(EPOCHS.ref("current_ge_seasoned"), EPOCHS.ref("activation_le_current")),
+    OUTCOME.ref("accepted") == all_of(*GATES),
+    implies(
+        ~PENDING.ref("pending_balance_zero"), PENDING.ref("matching_pending_entries") != "ZERO"
+    ),
+    # Fresh churn is aligned; carried budgets can reflect partial withdrawals.
+    implies(
+        (balance_increment > 1) & CHURN.ref("earliest_lt_new"),
+        (coverage_value(EXCEEDS) != "LT_1") & (coverage_value(EXCEEDS) != "GT_1"),
+    ),
+    # A one-Gwei excess fits in one epoch for any positive churn limit.
+    implies(coverage_value(EXCEEDS) == "GT_1", CHURN.ref("additional_epochs") != "MANY"),
 )
 
 NORMAL = fix(accepted=True)
@@ -236,8 +190,7 @@ COVERAGE = coverage_spec(
     constants=(far_future_epoch, shard_committee_period, balance_increment),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=FEASIBLE,
-    constant_feasibility=constant_feasibility,
+    constraints=CONSTRAINTS,
 )
 TARGET = bind(
     COVERAGE,

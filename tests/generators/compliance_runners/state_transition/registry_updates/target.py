@@ -1,6 +1,7 @@
 """Coverage of the ordered activation-queue, ejection, and activation branches."""
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    any_of,
     aspect,
     attribute,
     bind,
@@ -40,18 +41,6 @@ COVERAGE = coverage_spec(
     attributes=(validator_count, queued_count, ejected_count, activated_count, unchanged_count),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a: (
-        a.get("has_validators") is None
-        or a.get("has_validators")
-        is any(
-            a.get(name) is True
-            for name in (
-                "queues_validator",
-                "ejects_validator",
-                "activates_validator",
-                "leaves_validator_unchanged",
-            )
-        )
-    ),
+    constraints=(SHAPE.ref("has_validators") == any_of(*BRANCHES.declarations),),
 )
 TARGET = bind(COVERAGE, observe_attributes=observe_attributes)

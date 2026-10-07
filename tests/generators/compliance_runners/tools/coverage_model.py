@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import operator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 class _Missing:
@@ -14,8 +14,16 @@ class _Missing:
 MISSING = _Missing()
 
 
+class Domain:
+    """A set of values; ``value_type`` determines the legal operations."""
+
+    def __or__(self, other):
+        return DomainUnion((self, other))
+
+
 @dataclass(frozen=True)
-class Integer:
+class Integer(Domain):
+    value_type = int
     min: int | None = None
     max: int | None = None
 
@@ -33,18 +41,46 @@ class Integer:
         ):
             raise ValueError(f"{value!r} is outside {self}")
 
+    def values(self, *, limit=1024):
+        if self.min is None or self.max is None or self.max - self.min + 1 > limit:
+            raise ValueError("domain is too large for exact coverage; declare a partition")
+        return tuple(range(self.min, self.max + 1))
+
+    def contains(self, value):
+        value = expression(value)
+        if value.result_type() is not int:
+            raise TypeError("integer expression required")
+        return all_of(
+            *((value >= self.min,) if self.min is not None else ()),
+            *((value <= self.max,) if self.max is not None else ()),
+        )
+
 
 @dataclass(frozen=True)
-class Boolean:
+class Boolean(Domain):
+    value_type = bool
+
     def validate(self, value):
         if type(value) is not bool:
             raise ValueError(f"expected bool, got {value!r}")
 
+    def values(self, *, limit=1024):
+        if limit < 2:
+            raise ValueError("domain is too large for exact coverage")
+        return (True, False)
+
+    def contains(self, value):
+        value = expression(value)
+        if value.result_type() is not bool:
+            raise TypeError("boolean expression required")
+        return expression(value=True)
+
 
 @dataclass(frozen=True)
-class Bytes:
+class Bytes(Domain):
     """Opaque bytes, optionally constrained to a fixed length; equality only."""
 
+    value_type = bytes
     length: int | None = None
 
     def __post_init__(self):
@@ -54,6 +90,89 @@ class Bytes:
     def validate(self, value):
         if type(value) is not bytes or (self.length is not None and len(value) != self.length):
             raise ValueError(f"expected {self}, got {value!r}")
+
+
+@dataclass(frozen=True)
+class Finite(Domain):
+    """An exact finite set, including singleton sentinel domains."""
+
+    members: tuple
+
+    def __post_init__(self):
+        object.__setattr__(self, "members", tuple(self.members))
+        if not self.members or any(type(v) not in (bool, int, str) for v in self.members):
+            raise ValueError("expected a nonempty finite scalar domain")
+        if any(type(v) is not type(self.members[0]) for v in self.members):
+            raise TypeError("finite domain values must have the same type")
+        if len(set(self.members)) != len(self.members):
+            raise ValueError("duplicate finite domain value")
+
+    @property
+    def value_type(self):
+        return type(self.members[0])
+
+    def validate(self, value):
+        if type(value) is not self.value_type or value not in self.members:
+            raise ValueError(f"{value!r} is outside {self}")
+
+    def values(self, *, limit=1024):
+        if len(self.members) > limit:
+            raise ValueError("domain is too large for exact coverage; declare a partition")
+        return self.members
+
+    def contains(self, value):
+        return any_of(*(expression(value) == member for member in self.members))
+
+
+@dataclass(frozen=True)
+class DomainUnion(Domain):
+    parts: tuple
+
+    def __post_init__(self):
+        parts = tuple(
+            p
+            for part in self.parts
+            for p in (part.parts if isinstance(part, DomainUnion) else (part,))
+        )
+        if not parts or any(not isinstance(p, (Integer, Boolean, Finite)) for p in parts):
+            raise TypeError("union requires scalar domains")
+        if any(p.value_type is not parts[0].value_type for p in parts):
+            raise TypeError("union domains must have the same type")
+        object.__setattr__(self, "parts", parts)
+
+    @property
+    def value_type(self):
+        return self.parts[0].value_type
+
+    def validate(self, value):
+        for part in self.parts:
+            try:
+                part.validate(value)
+                return
+            except ValueError:
+                pass
+        raise ValueError(f"{value!r} is outside {self}")
+
+    def values(self, *, limit=1024):
+        values = tuple(dict.fromkeys(v for part in self.parts for v in part.values(limit=limit)))
+        if len(values) > limit:
+            raise ValueError("domain is too large for exact coverage; declare a partition")
+        return values
+
+    def contains(self, value):
+        return any_of(*(part.contains(value) for part in self.parts))
+
+
+def _integer_hull(domain):
+    if isinstance(domain, Integer):
+        return domain
+    if isinstance(domain, Finite):
+        return Integer(min(domain.members), max(domain.members))
+    bounds = tuple(_integer_hull(part) for part in domain.parts)
+    return Integer(
+        min(b.min for b in bounds) if all(b.min is not None for b in bounds) else None,
+        max(b.max for b in bounds) if all(b.max is not None for b in bounds) else None,
+    )
 
 
 class Operators:
@@ -127,7 +246,7 @@ class Expr(Operators):
     op: str
     args: tuple = ()
     name: str = ""
-    domain: Integer | Boolean | Bytes | None = None
+    domain: Domain | None = None
 
     def __post_init__(self):
         arity = {
@@ -138,6 +257,8 @@ class Expr(Operators):
             "choose": 3,
             "literal": 1,
             "factor": 1,
+            "coverage": 1,
+            "present": 1,
             "derived": 1,
             "attribute": 0,
             "constant": 0,
@@ -150,17 +271,24 @@ class Expr(Operators):
 
     def result_type(self):
         if self.op in ("attribute", "constant"):
-            if not isinstance(self.domain, (Integer, Boolean, Bytes)):
+            if not isinstance(self.domain, (Integer, Boolean, Bytes, Finite, DomainUnion)):
                 raise TypeError("unsupported input domain")
-            if isinstance(self.domain, Bytes):
-                return bytes
-            return int if isinstance(self.domain, Integer) else bool
+            return self.domain.value_type
         if self.op == "literal":
             if type(self.args[0]) not in (bool, int, str):
                 raise TypeError("unsupported literal")
             return type(self.args[0])
         if self.op == "factor":
             return self.args[0].value.result_type() if self.args[0].kind == "enum" else bool
+        if self.op == "coverage":
+            f = self.args[0]
+            return (
+                str
+                if f.kind == "comparison" and f.granularity != "predicate"
+                else (f.value.result_type() if f.kind == "enum" else bool)
+            )
+        if self.op == "present":
+            return bool
         types = tuple(arg.result_type() for arg in self.args)
         if self.op == "derived":
             return types[0]
@@ -189,7 +317,7 @@ class Expr(Operators):
                 value = constants[self.name]
                 self.domain.validate(value)
                 return Integer(value, value)
-            return self.domain
+            return _integer_hull(self.domain)
         if self.op == "literal":
             return Integer(self.args[0], self.args[0])
         if self.op == "derived":
@@ -222,6 +350,8 @@ class Expr(Operators):
         return Integer()
 
     def evaluate(self, attributes, constants, factors=None):
+        if self.op in ("coverage", "present"):
+            raise ValueError("coverage and presence references require feasibility evaluation")
         if self.op == "literal":
             return self.args[0]
         if self.op in ("attribute", "constant"):
@@ -261,7 +391,7 @@ class Expr(Operators):
     def inputs(self):
         if self.op in ("attribute", "constant"):
             return (self,)
-        if self.op == "factor":
+        if self.op in ("factor", "coverage", "present"):
             return ()
         return tuple(node for arg in self.args if isinstance(arg, Expr) for node in arg.inputs())
 
@@ -272,6 +402,8 @@ class Expr(Operators):
             return self.name
         if self.op == "factor":
             return self.args[0].name
+        if self.op in ("coverage", "present"):
+            return f"{self.op}({self.args[0].name})"
         if self.op == "~":
             return f"~({self.args[0].render()})"
         if self.op in ("choose", "max"):
@@ -309,6 +441,46 @@ def maximum(left, right):
     return Expr("max", (expression(left), expression(right)))
 
 
+def _junction(op, conditions, *, identity):
+    nodes = tuple(expression(condition) for condition in conditions)
+    if any(node.result_type() is not bool for node in nodes):
+        raise TypeError("boolean operands required")
+    if not nodes:
+        return expression(identity)
+    while len(nodes) > 1:
+        nodes = tuple(
+            Expr(op, (nodes[i], nodes[i + 1])) if i + 1 < len(nodes) else nodes[i]
+            for i in range(0, len(nodes), 2)
+        )
+    return nodes[0]
+
+
+def all_of(*conditions):
+    return _junction("&", conditions, identity=True)
+
+
+def any_of(*conditions):
+    return _junction("|", conditions, identity=False)
+
+
+def implies(condition, consequence):
+    return ~expression(condition) | consequence
+
+
+def coverage_value(declaration):
+    """Reference a factor's abstract value in a feasibility constraint."""
+    if not isinstance(declaration, Factor):
+        raise TypeError("coverage_value requires a factor declaration")
+    return Expr("coverage", (declaration,))
+
+
+def present(declaration):
+    """Whether a factor is included in the abstract configuration."""
+    if not isinstance(declaration, Factor):
+        raise TypeError("present requires a factor declaration")
+    return Expr("present", (declaration,))
+
+
 @dataclass(frozen=True, eq=False)
 class Factor(Operators):
     name: str
@@ -321,6 +493,7 @@ class Factor(Operators):
     description: str = ""
     granularity: str = "predicate"
     modulus: Expr | None = None
+    exact_dimension: bool = False
 
     def __post_init__(self):
         if not self.name or self.kind not in ("boolean", "comparison", "enum"):
@@ -393,6 +566,27 @@ def categorical(name, value, values, *, when=True, available_when=True, descript
         available_when=expression(available_when),
         description=description,
     )
+
+
+def dimension(name, value, *, domain=None, limit=1024, **kwargs):
+    """Cover a finite expression exactly, using its input domain by default."""
+    value = expression(value)
+    if domain is None:
+        if value.op in ("attribute", "constant"):
+            domain = value.domain
+        elif value.result_type() is bool:
+            domain = Boolean()
+        elif value.result_type() is int:
+            domain = value.integer_domain()
+        else:
+            raise ValueError("declare a finite domain for this expression")
+    if domain.value_type is not value.result_type():
+        raise TypeError("coverage domain must match the expression type")
+    if isinstance(domain, Boolean):
+        result = factor(name, value, **kwargs)
+    else:
+        result = categorical(name, value, domain.values(limit=limit), **kwargs)
+    return replace(result, exact_dimension=True)
 
 
 def modulo(name, lhs, modulus, *, when=True, available_when=True, description=""):

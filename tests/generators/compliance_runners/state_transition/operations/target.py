@@ -5,8 +5,8 @@ The sibling ``operations_dispatch`` provider supplies block-level integration
 vectors for the operation-processing loops.
 """
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
     aspect,
     attribute,
     bind,
@@ -67,24 +67,9 @@ LIMITS = aspect(
 OUTCOME = aspect("outcome", factor("accepted", post_present))
 ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (LIMITS, OUTCOME)
-GATES = list(LIMITS.factors)
+GATES = LIMITS.declarations
+CONSTRAINTS = (OUTCOME.ref("accepted") == all_of(*GATES),)
 
-
-def _holds(assignment: dict, factor) -> bool | None:
-    return None if factor.name not in assignment else factor.holds(assignment[factor.name])
-
-
-def _accepted_iff_all_assertions_hold(assignment: dict) -> bool:
-    accepted = _holds(assignment, ACCEPTED)
-    if accepted is None:
-        return True
-    assertions = [_holds(assignment, factor) for factor in GATES]
-    if accepted:
-        return all(value is not False for value in assertions)
-    return not all(value is True for value in assertions)
-
-
-FEASIBLE = rules(_accepted_iff_all_assertions_hold)
 NORMAL = fix(accepted=True)
 EXCEPTIONAL = fix(accepted=False)
 
@@ -123,7 +108,7 @@ COVERAGE = coverage_spec(
     ),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=FEASIBLE,
+    constraints=CONSTRAINTS,
 )
 
 TARGET = bind(
