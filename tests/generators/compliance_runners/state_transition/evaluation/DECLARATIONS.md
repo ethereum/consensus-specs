@@ -203,7 +203,7 @@ comparison reference denotes its predicate truth at every granularity;
 `any_of`, and `implies` compose rules without Python boolean coercion:
 
 ```python
-constraints=(
+constraints = (
     OUTCOME.ref("accepted") == all_of(*HEADER.declarations),
     implies(coverage_value(EXCEEDS) == "GT_1", CHURN.ref("additional_epochs") != "MANY"),
 )
