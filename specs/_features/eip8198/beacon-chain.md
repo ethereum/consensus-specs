@@ -9,7 +9,7 @@
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
   - [Misc](#misc)
-    - [New `get_slot_schedule`](#new-get_slot_schedule)
+    - [New `get_slot_durations`](#new-get_slot_durations)
     - [New `get_slot_duration_ms`](#new-get_slot_duration_ms)
     - [Modified `compute_time_at_slot_ms`](#modified-compute_time_at_slot_ms)
     - [Modified `compute_slot_at_time_ms`](#modified-compute_slot_at_time_ms)
@@ -75,19 +75,21 @@ transition, so reaching a lower target requires advance coordination.
 
 ### Misc
 
-#### New `get_slot_schedule`
+#### New `get_slot_durations`
 
 ```python
-def get_slot_schedule() -> Sequence[dict[str, Uint64]]:
+def get_slot_durations() -> Sequence[tuple[Epoch, Uint64]]:
     """
-    Return the slot duration schedule derived from fork configuration.
+    Return slot durations derived from the configuration.
     """
-    schedule = [
-        {"EPOCH": GENESIS_EPOCH, "SLOT_DURATION_MS": SLOT_DURATION_MS},
-        {"EPOCH": EIP8198_FORK_EPOCH, "SLOT_DURATION_MS": SLOT_DURATION_MS_EIP8198},
+    return [
+        (fork_epoch, slot_duration_ms)
+        for fork_epoch, slot_duration_ms in [
+            (GENESIS_EPOCH, SLOT_DURATION_MS),
+            (EIP8198_FORK_EPOCH, SLOT_DURATION_MS_EIP8198),
+        ]
+        if fork_epoch != FAR_FUTURE_EPOCH
     ]
-    # Skip unscheduled forks to avoid overflow when converting epochs to slots.
-    return [entry for entry in schedule if entry["EPOCH"] != FAR_FUTURE_EPOCH]
 ```
 
 #### New `get_slot_duration_ms`
@@ -97,10 +99,10 @@ def get_slot_duration_ms(epoch: Epoch) -> Uint64:
     """
     Return the slot duration in effect at ``epoch``.
     """
-    for entry in reversed(get_slot_schedule()):
-        if epoch >= entry["EPOCH"]:
-            break
-    return entry["SLOT_DURATION_MS"]
+    for fork_epoch, fork_slot_duration_ms in get_slot_durations():
+        if epoch >= fork_epoch:
+            slot_duration_ms = fork_slot_duration_ms
+    return slot_duration_ms
 ```
 
 #### Modified `compute_time_at_slot_ms`
@@ -113,12 +115,12 @@ def compute_time_at_slot_ms(genesis_time_ms: Uint64, slot: Slot) -> Uint64:
     # [Modified in EIP8198]
     end_slot = slot
     time_ms = genesis_time_ms
-    for entry in reversed(get_slot_schedule()):
-        entry_slot = compute_start_slot_at_epoch(Epoch(entry["EPOCH"]))
-        if entry_slot < end_slot:
-            slots = end_slot - entry_slot
-            time_ms += slots * entry["SLOT_DURATION_MS"]
-            end_slot = entry_slot
+    for fork_epoch, slot_duration_ms in reversed(get_slot_durations()):
+        fork_slot = compute_start_slot_at_epoch(fork_epoch)
+        if fork_slot < end_slot:
+            slots = end_slot - fork_slot
+            time_ms += slots * slot_duration_ms
+            end_slot = fork_slot
     return time_ms
 ```
 
@@ -130,14 +132,16 @@ def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
     Return the slot at Unix time ``time_ms``.
     """
     # [Modified in EIP8198]
-    for entry in reversed(get_slot_schedule()):
-        entry_slot = compute_start_slot_at_epoch(Epoch(entry["EPOCH"]))
-        entry_time_ms = compute_time_at_slot_ms(genesis_time_ms, entry_slot)
-        if time_ms >= entry_time_ms:
-            break
-    time_diff_ms = time_ms - entry_time_ms
-    slots = time_diff_ms // entry["SLOT_DURATION_MS"]
-    return entry_slot + slots
+    for fork_epoch, fork_slot_duration_ms in get_slot_durations():
+        fork_slot = compute_start_slot_at_epoch(fork_epoch)
+        fork_time_ms = compute_time_at_slot_ms(genesis_time_ms, fork_slot)
+        if time_ms >= fork_time_ms:
+            start_slot = fork_slot
+            start_time_ms = fork_time_ms
+            slot_duration_ms = fork_slot_duration_ms
+    time_diff_ms = time_ms - start_time_ms
+    slots = time_diff_ms // slot_duration_ms
+    return start_slot + slots
 ```
 
 ### Beacon state accessors
