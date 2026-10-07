@@ -337,18 +337,20 @@ def get_supported_node(
 ```python
 def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
-        i
-        for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
+        index
+        for index in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[index].slashed
     ]
     return Gwei(
         sum(
-            state.validators[i].effective_balance
-            for i in unslashed_and_active_indices
+            state.validators[index].effective_balance
+            for index in unslashed_and_active_indices
             if (
-                i in store.latest_messages
-                and i not in store.equivocating_indices
-                and is_ancestor(store, get_supported_node(store, store.latest_messages[i]), node)
+                index in store.latest_messages
+                and index not in store.equivocating_indices
+                and is_ancestor(
+                    store, get_supported_node(store, store.latest_messages[index]), node
+                )
             )
         )
     )
@@ -662,9 +664,9 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
             sum(
-                justified_state.validators[i].effective_balance
-                for i in committee
-                if i in store.equivocating_indices
+                justified_state.validators[index].effective_balance
+                for index in committee
+                if index in store.equivocating_indices
             )
         )
 
@@ -873,7 +875,7 @@ def update_latest_messages(
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
     non_equivocating_attesting_indices = [
-        i for i in attesting_indices if i not in store.equivocating_indices
+        index for index in attesting_indices if index not in store.equivocating_indices
     ]
     for i in non_equivocating_attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:

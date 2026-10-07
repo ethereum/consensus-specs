@@ -129,9 +129,11 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
         for b in a.aggregation_bits:
             aggregation_bits.append(b)
 
-    signature = bls.Aggregate([a.signature for a in aggregates])
+    signature = bls.Aggregate([aggregate.signature for aggregate in aggregates])
 
-    committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
+    committee_indices = [
+        get_committee_indices(aggregate.committee_bits)[0] for aggregate in aggregates
+    ]
     committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
     committee_bits = CommitteeBits(data=committee_flags)
 
