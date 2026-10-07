@@ -11,6 +11,9 @@ from itertools import product
 
 from tests.generators.compliance_runners.tools import conditional_factors as conditional
 from tests.generators.compliance_runners.tools.coverage_model import (
+    _BINARY,
+    all_of,
+    any_of,
     attribute,
     Boolean,
     Bytes,
@@ -18,14 +21,20 @@ from tests.generators.compliance_runners.tools.coverage_model import (
     choose,
     comparison,
     constant,
+    coverage_value,
     derived,
+    dimension,
+    DomainUnion,
     Expr,
     expression,
     factor,
+    Finite,
+    implies,
     Integer,
     maximum,
     MISSING,
     modulo,
+    present,
 )
 
 from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
@@ -33,7 +42,11 @@ from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
 __all__ = [
     "Boolean",
     "Bytes",
+    "DomainUnion",
+    "Finite",
     "Integer",
+    "all_of",
+    "any_of",
     "aspect",
     "attribute",
     "bind",
@@ -42,14 +55,18 @@ __all__ = [
     "comparison",
     "constant",
     "coverage_spec",
+    "coverage_value",
     "derived",
+    "dimension",
     "each",
     "exhaustive",
     "factor",
     "fix",
+    "implies",
     "maximum",
     "modulo",
     "nwise",
+    "present",
     "union",
 ]
 
@@ -97,13 +114,19 @@ def fix(**values):
 
 
 class Aspect:
-    def __init__(self, name, factors, constants=None):
+    def __init__(self, name, factors, constants=None, *, applicable=True):
         self.name = name
         self.declarations = tuple(factors)
-        self.factors = tuple(_abstract(f, constants) for f in self.declarations)
+        self.factors = tuple(
+            _abstract(f, constants, applicable=applicable) for f in self.declarations
+        )
 
     def __getitem__(self, name):
         return next(f for f in self.factors if f.name == name)
+
+    def ref(self, name):
+        """Return the symbolic declaration for activation or feasibility."""
+        return next(f for f in self.declarations if f.name == name)
 
     def each(self):
         return each(self.declarations)
@@ -119,8 +142,43 @@ def aspect(name, *factors):
     return Aspect(name, factors)
 
 
-def _abstract(f, constants=None):
+def _constant_factor_value(f, constants):
+    """Evaluate only values whose activation and availability are known true."""
+    if not all(node.op == "constant" and node.name in constants for node in f.value.inputs()):
+        return MISSING
+
+    def truth(parent):
+        value = _constant_factor_value(parent, constants)
+        if value is MISSING:
+            return MISSING
+        if parent.kind == "comparison":
+            return Cmp(parent.name, op=parent.op).abstract(value)
+        return value
+
+    if f.when.evaluate({}, constants, truth) is not True:
+        return MISSING
+    if not all(
+        node.op == "constant" and node.name in constants for node in f.available_when.inputs()
+    ):
+        return MISSING
+    if f.available_when.evaluate({}, constants) is not True:
+        return MISSING
+    return f.value.evaluate({}, constants)
+
+
+def _abstract(f, constants=None, *, applicable=True):
     description = f.description or f.value.render()
+    value = (
+        _constant_factor_value(f, constants)
+        if f.exact_dimension and constants is not None and applicable is True
+        else MISSING
+    )
+    if value is not MISSING:
+        if f.kind == "boolean":
+            return Pred(f.name, description, (value,))
+        if value not in f.values:
+            raise ValueError(f"{f.name}: bound value {value!r} is outside the coverage domain")
+        return Enum(f.name, description, (value,))
     if f.kind == "comparison":
         bounds = f.value.integer_domain(constants)
         return Cmp(
@@ -166,6 +224,48 @@ def _walk(node):
             yield from _walk(arg)
 
 
+def _evaluate_constraint(node, assignment, constants):
+    """Evaluate over abstract values, retaining unknown inactive references.
+
+    Boolean connectives use three-valued logic: a known violation must not be
+    hidden by an inactive reference elsewhere in a conjunction.
+    """
+    if node.op in ("factor", "coverage", "present"):
+        f = node.args[0]
+        if node.op == "present":
+            return f.name in assignment
+        value = assignment.get(f.name, MISSING)
+        if value is MISSING or node.op == "coverage" or f.kind == "enum":
+            return value
+        if f.kind == "boolean":
+            return bool(value)
+        return Cmp(f.name, op=f.op, granularity=f.granularity).holds(value)
+    if node.op in ("literal", "constant"):
+        return node.evaluate({}, constants)
+    first = _evaluate_constraint(node.args[0], assignment, constants)
+    if node.op == "choose":
+        if first is MISSING:
+            return MISSING
+        return _evaluate_constraint(node.args[1 if first else 2], assignment, constants)
+    if node.op in ("&", "|") and first is (node.op == "|"):
+        return first
+    values = [first] + [_evaluate_constraint(arg, assignment, constants) for arg in node.args[1:]]
+    if node.op in ("&", "|"):
+        decisive = node.op == "|"
+        if any(value is decisive for value in values):
+            return decisive
+        if any(value is MISSING for value in values):
+            return MISSING
+        return not decisive
+    if any(value is MISSING for value in values):
+        return MISSING
+    if node.op == "derived":
+        return values[0]
+    if node.op == "~":
+        return not values[0]
+    return _BINARY[node.op](*values)
+
+
 class Specification:
     def __init__(
         self,
@@ -178,6 +278,7 @@ class Specification:
         aspects,
         profiles,
         applicable_when=True,
+        constraints=(),
         feasible=lambda a: True,
         constant_feasibility=None,
     ):
@@ -187,7 +288,8 @@ class Specification:
         self.applicable_when = expression(applicable_when)
         if self.applicable_when.result_type() is not bool:
             raise TypeError("applicability must be boolean")
-        self.feasible, self.constant_feasibility = feasible, constant_feasibility
+        self._feasible_callback, self.constant_feasibility = feasible, constant_feasibility
+        self.constraints = tuple(expression(c) for c in constraints)
         self.declarations = tuple(f for a in self.aspects for f in a.declarations)
         self.by_name = {f.name: f for f in self.declarations}
         inputs = self.attributes + self.constants
@@ -203,7 +305,7 @@ class Specification:
             if node.op != "constant":
                 raise ValueError("constants must be constant declarations")
         for node in inputs:
-            if not isinstance(node.domain, (Integer, Boolean, Bytes)):
+            if not isinstance(node.domain, (Integer, Boolean, Bytes, Finite, DomainUnion)):
                 raise TypeError("unsupported input domain")
         expressions = [self.applicable_when]
         for f in self.declarations:
@@ -219,11 +321,42 @@ class Specification:
         for expr in [self.applicable_when] + [
             e for f in self.declarations for e in (f.value, f.available_when)
         ]:
-            if any(n.op == "factor" for n in _walk(expr)):
+            if any(n.op in ("factor", "coverage", "present") for n in _walk(expr)):
                 raise ValueError("factor references are only supported in activation")
+        for constraint in self.constraints:
+            if constraint.result_type() is not bool:
+                raise TypeError("feasibility constraints must be boolean")
+            for node in _walk(constraint):
+                if node.op == "attribute":
+                    raise ValueError(
+                        "feasibility constraints use factors and constants, not raw attributes"
+                    )
+                if node.op == "constant" and not any(node is c for c in self.constants):
+                    raise ValueError(f"undeclared constraint constant: {node.name}")
+                if node.op in ("factor", "coverage", "present"):
+                    f = node.args[0]
+                    if self.by_name.get(f.name) is not f:
+                        raise ValueError(f"undeclared constraint factor: {f.name}")
         self.model()  # Validate dependencies, including cycles.
         for plan in self.profiles.values():
             self._validate_plan(plan)
+
+    def feasible(self, assignment, constants=None):
+        """Check declared constraints and any concrete-witness callback."""
+        return self._feasible_callback(assignment) and all(
+            _evaluate_constraint(rule, assignment, constants or {}) is not False
+            for rule in self.constraints
+        )
+
+    def _known_applicability(self, constants):
+        if constants is None:
+            return MISSING
+        return self.applicable_when.evaluate(
+            {node.name: MISSING for node in self.attributes}, constants
+        )
+
+    def abstraction(self, f, constants=None):
+        return _abstract(f, constants, applicable=self._known_applicability(constants))
 
     def _validate_plan(self, plan):
         if not isinstance(plan, Plan):
@@ -248,7 +381,7 @@ class Specification:
             allowed = []
             for condition in _conditions(f.when):
                 parent, value, truth, *op = condition
-                abstraction = _abstract(parent, constants)
+                abstraction = self.abstraction(parent, constants)
                 if truth and parent.kind == "enum":
                     raise ValueError("categorical activation needs an explicit value")
                 values = tuple(
@@ -264,7 +397,9 @@ class Specification:
                     raise ValueError(f"activation value outside domain of {parent.name}")
                 allowed.append((parent.name, values))
             factors.append(
-                conditional.Factor(f.name, _abstract(f, constants).domain(), allowed=tuple(allowed))
+                conditional.Factor(
+                    f.name, self.abstraction(f, constants).domain(), allowed=tuple(allowed)
+                )
             )
         return conditional.Model(factors)
 
@@ -286,7 +421,7 @@ class BoundFormula:
                 for name, value in plan.parts:
                     if (
                         value
-                        not in _abstract(
+                        not in self.owner.definition.abstraction(
                             self.owner.definition.by_name[name], self.owner.bound_constants
                         ).domain()
                     ):
@@ -330,7 +465,7 @@ class DeclarationTarget:
         self.name = definition.name
         self.aspects = definition.aspects
         self.profiles = dict(definition.profiles)
-        self.feasible = definition.feasible
+        self.feasible = lambda assignment: definition.feasible(assignment, self.bound_constants)
         self.constants = constants
         self.definition, self.observer = definition, observer
         self._bound_spec = spec
@@ -342,10 +477,16 @@ class DeclarationTarget:
                 node.domain.validate(self.bound_constants[node.name])
             if definition.constant_feasibility is not None:
                 self.feasible = rules(
-                    definition.feasible, definition.constant_feasibility(self.bound_constants)
+                    self.feasible, definition.constant_feasibility(self.bound_constants)
                 )
             self.aspects = tuple(
-                Aspect(a.name, a.declarations, self.bound_constants) for a in definition.aspects
+                Aspect(
+                    a.name,
+                    a.declarations,
+                    self.bound_constants,
+                    applicable=definition._known_applicability(self.bound_constants),
+                )
+                for a in definition.aspects
             )
             self.profiles = {
                 name: BoundFormula(self, plan) for name, plan in definition.profiles.items()
@@ -408,7 +549,7 @@ class DeclarationTarget:
                 elif f.kind == "comparison":
                     Integer().validate(value)
                 else:
-                    _abstract(f, constants).abstract(value)
+                    self.definition.abstraction(f, constants).abstract(value)
             raw[f.name] = value
             return value
 
@@ -416,7 +557,7 @@ class DeclarationTarget:
             value = evaluate(f)
             if value is MISSING:
                 return MISSING
-            abstraction = _abstract(f, constants)
+            abstraction = self.definition.abstraction(f, constants)
             abstract = abstraction.abstract(value)
             return abstraction.holds(abstract) if f.kind == "comparison" else abstract
 
@@ -452,14 +593,18 @@ class DeclarationTarget:
             lines.append(f"aspect {a.name}")
             for f in a.declarations:
                 lines.append(
-                    f"  {f.name}: {_abstract(f, self.bound_constants).domain()}; kind={f.kind}"
+                    f"  {f.name}: {d.abstraction(f, self.bound_constants).domain()}; kind={f.kind}"
                     f"{(' ' + f.op + ' 0') if f.kind == 'comparison' else ''}; "
                     f"{('granularity=' + f.granularity + '; ') if f.kind == 'comparison' else ''}"
                     f"expression={f.value.render()}; when={f.when.render()}; available={f.available_when.render()}"
                 )
                 if f.description:
                     lines.append(f"    reason: {f.description}")
-        lines.append("feasibility: Python callbacks (not solver-translated)")
+        for constraint in d.constraints:
+            lines.append(f"constraint: {constraint.render()}")
+        lines.append(
+            "feasibility: abstract constraints and optional Python callbacks (not solver-translated)"
+        )
         for name, formula in self.profiles.items():
             obligations = formula.run()
             pruned = formula.run(filtered=False) - obligations

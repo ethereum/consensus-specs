@@ -1,16 +1,11 @@
 """Coverage profiles for ``process_randao_mixes_reset``."""
 
-from __future__ import annotations
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
 
 from .target import TARGET
 
-
-def build_profile(name: str, *, spec):
-    target = TARGET.for_spec(spec)
-    formula = target.profiles[name]
-    obligations = formula.run()
-    records = [dict(obligation) for obligation in sorted(obligations, key=repr)]
-    return records, records
-
+build_profile = coverage_profiles(TARGET, empty_profiles=("exceptional",))
 
 __all__ = ("TARGET", "build_profile")
