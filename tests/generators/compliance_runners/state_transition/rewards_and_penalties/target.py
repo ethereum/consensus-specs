@@ -1,6 +1,7 @@
 """Coverage of the genesis guard and the reward/penalty component effects."""
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    any_of,
     aspect,
     attribute,
     bind,
@@ -8,6 +9,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     constant,
     coverage_spec,
     factor,
+    implies,
     Integer,
 )
 
@@ -54,22 +56,14 @@ COVERAGE = coverage_spec(
     constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a: (
-        (
-            a.get("has_eligible_validator") is not False
-            or not any(
-                a.get(name) is True
-                for name in ("has_flag_reward", "has_flag_penalty", "has_inactivity_penalty")
-            )
-        )
-        and not (a.get("in_inactivity_leak") is True and a.get("has_flag_reward") is True)
-        and not (a.get("has_inactivity_penalty") is True and a.get("has_flag_penalty") is False)
-        and not (
-            a.get("has_eligible_validator") is True
-            and a.get("in_inactivity_leak") is False
-            and a.get("has_flag_reward") is False
-            and a.get("has_flag_penalty") is False
-        )
+    constraints=(
+        implies(~DELTAS.ref("has_eligible_validator"), ~any_of(*DELTAS.declarations[2:])),
+        implies(DELTAS.ref("in_inactivity_leak"), ~DELTAS.ref("has_flag_reward")),
+        implies(DELTAS.ref("has_inactivity_penalty"), DELTAS.ref("has_flag_penalty")),
+        implies(
+            DELTAS.ref("has_eligible_validator") & ~DELTAS.ref("in_inactivity_leak"),
+            any_of(DELTAS.ref("has_flag_reward"), DELTAS.ref("has_flag_penalty")),
+        ),
     ),
 )
 TARGET = bind(

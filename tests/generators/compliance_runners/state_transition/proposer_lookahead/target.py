@@ -9,6 +9,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     constant,
     coverage_spec,
     factor,
+    implies,
     Integer,
 )
 
@@ -55,9 +56,10 @@ COVERAGE = coverage_spec(
     constants=(slots_per_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a: (
-        a.get("fewer_candidates_than_slots") not in ("LT_FAR", "LT_1")
-        or a.get("new_proposers_repeat") is True
+    constraints=(
+        implies(
+            CANDIDATES.ref("fewer_candidates_than_slots"), ROTATION.ref("new_proposers_repeat")
+        ),
     ),
 )
 TARGET = bind(

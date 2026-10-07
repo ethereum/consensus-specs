@@ -81,8 +81,10 @@ class Factor:
 
 @dataclass(frozen=True)
 class Pred(Factor):
+    values: tuple = (True, False)
+
     def domain(self) -> tuple:
-        return (True, False)
+        return self.values
 
     def abstract(self, raw: Any) -> Any:
         return bool(raw)

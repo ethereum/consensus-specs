@@ -1,14 +1,11 @@
 """Coverage profiles for Gloas ``process_block_header``."""
 
-from __future__ import annotations
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
 
 from .target import TARGET
 
+build_profile = coverage_profiles(TARGET)
 
-def build_profile(name: str, *, spec) -> tuple[int, list[dict]]:
-    """Expand a DSL profile into operation representatives at the declared granularities."""
-    target = TARGET.for_spec(spec)
-    formula = target.profiles[name]
-    obligations = formula.run()
-    records = [dict(sorted(obligation)) for obligation in sorted(obligations, key=repr)]
-    return len(records), records
+__all__ = ("TARGET", "build_profile")

@@ -4,8 +4,9 @@ Activation prerequisites are included by conditional coverage formulas. Missing
 post-state data affects observation availability, not factor activation.
 """
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
+    any_of,
     aspect,
     attribute,
     bind,
@@ -75,28 +76,10 @@ ALL_FACTORS = BODY.declarations
 # --- feasibility --------------------------------------------------------------
 
 
-def _participation_is_unslashed_flagged_and_active(a: dict) -> bool:
-    """``get_unslashed_participating_indices``: active, flagged, and not slashed."""
-    participating = a.get("is_participating")
-    if participating is True:
-        return not (
-            a.get("is_slashed") is True
-            or a.get("has_target_flag") is False
-            or a.get("is_active_in_previous") is False
-        )
-    if participating is False:
-        # All three conditions met, yet not participating: impossible.
-        return not (
-            a.get("is_slashed") is False
-            and a.get("has_target_flag") is True
-            and a.get("is_active_in_previous") is True
-        )
-    return True
-
-
-def _eligible_needs_a_disjunct(a: dict) -> bool:
-    """An index the loop visits is eligible: active, or slashed and not yet withdrawable."""
-    return not (a.get("is_active_in_previous") is False and a.get("is_slashed") is False)
+CONSTRAINTS = (
+    all_of(ACTIVE, FLAGGED, ~SLASHED) == PARTICIPATING,
+    any_of(ACTIVE, SLASHED),
+)
 
 
 def constant_feasibility(constants: dict):
@@ -130,8 +113,6 @@ def constant_feasibility(constants: dict):
     return feasible
 
 
-FEASIBLE = rules(_participation_is_unslashed_flagged_and_active, _eligible_needs_a_disjunct)
-
 # Coverage choices: activation closure preserves both leaking and recovery branches.
 MEMBERSHIP = exhaustive([ACTIVE, SLASHED, FLAGGED])
 ARITHMETIC = exhaustive([PARTICIPATING, SCORE, LEAKING, RECOVERY])
@@ -164,7 +145,7 @@ COVERAGE = coverage_spec(
     constants=(min_epochs_to_inactivity_penalty, bias, recovery_rate),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=FEASIBLE,
+    constraints=CONSTRAINTS,
     constant_feasibility=constant_feasibility,
 )
 TARGET = bind(

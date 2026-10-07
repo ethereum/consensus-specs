@@ -22,8 +22,9 @@ exactly one eligible index, where per-validator factors are well defined.
 
 from itertools import combinations
 
-from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import rules
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
+    any_of,
     aspect,
     attribute,
     bind,
@@ -36,8 +37,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     each,
     exhaustive,
     factor,
+    implies,
     Integer,
     nwise,
+    present,
     union,
 )
 
@@ -115,106 +118,29 @@ LOOP = aspect(
 )
 ASPECTS = (METHOD, ELIGIBLE, LOOP)
 ALL_FACTORS = [f for a in ASPECTS for f in a.declarations]
-LOOP_GATED = tuple(f.name for f in LOOP.factors)
-_GT = ("GT", "GT_1", "GT_FAR", True)
+HAS_ACTIVE = ELIGIBLE.ref("has_active_eligible")
+HAS_INELIGIBLE = ELIGIBLE.ref("has_ineligible_validators")
+UNWITHDRAWABLE = ELIGIBLE.ref("slashed_withdrawable_vs_previous")
+BRANCH = LOOP.ref("branch_mix")
+LEAKING = LOOP.ref("leaking")
+ZERO_SCORE = LOOP.ref("has_zero_score_eligible")
+CHANGED = LOOP.ref("scores_changed")
 
-
-def _epoch_never_before_genesis(a: dict) -> bool:
-    return a.get("current_after_genesis") not in ("LT", "LT_1", "LT_FAR")
-
-
-def _empty_loop_has_no_body(a: dict) -> bool:
-    if a.get("eligible_validators") != "ZERO":
-        return True
-    if any(name in a for name in LOOP_GATED):
-        return False
-    if a.get("has_active_eligible") is True:
-        return False
-    # A slashed validator past the withdrawable boundary is itself eligible.
-    return a.get("slashed_withdrawable_vs_previous") not in _GT
-
-
-def _mixed_branches_need_two_validators(a: dict) -> bool:
-    return not (a.get("eligible_validators") == "ONE" and a.get("branch_mix") == "MIXED")
-
-
-def _eligible_needs_a_disjunct(a: dict) -> bool:
-    """Nobody is eligible without an active validator or a slashed, un-withdrawable one."""
-    if a.get("eligible_validators") not in ("ONE", "MANY"):
-        return True
-    if a.get("has_active_eligible") is not False:
-        return True
-    if a.get("has_slashed_validators") is False:
-        return False
-    value = a.get("slashed_withdrawable_vs_previous")
-    return value is None or value in _GT
-
-
-def _empty_ineligible_set_requires_every_validator(a: dict) -> bool:
-    """The genesis state has a fixed 64-validator set in this materializer."""
-    return not (
-        a.get("has_ineligible_validators") is False and a.get("eligible_validators") != "MANY"
-    )
-
-
-def _singleton_zero_score_cannot_change_leak_free(a: dict) -> bool:
-    return not (
-        a.get("eligible_validators") == "ONE"
-        and a.get("has_zero_score_eligible") is True
-        and a.get("scores_changed") is True
-        and a.get("leaking") is False
-    )
-
-
-def _stable_scores_require_zero_and_no_leak(a: dict) -> bool:
-    if a.get("scores_changed") is not False:
-        return True
-    return a.get("has_zero_score_eligible") is not False and a.get("leaking") not in _GT
-
-
-def _singleton_zero_score_cannot_change_by_decrement(a: dict) -> bool:
-    return not (
-        a.get("eligible_validators") == "ONE"
-        and a.get("has_zero_score_eligible") is True
-        and a.get("scores_changed") is True
-        and a.get("branch_mix") == "ALL_DECREMENT"
-    )
-
-
-def _slashed_only_eligible_set_only_increments(a: dict) -> bool:
-    return not (
-        a.get("has_active_eligible") is False and a.get("branch_mix") in ("ALL_DECREMENT", "MIXED")
-    )
-
-
-def _slashed_eligible_cannot_all_decrement(a: dict) -> bool:
-    return not (
-        a.get("has_slashed_validators") is True
-        and a.get("slashed_withdrawable_vs_previous") in _GT
-        and a.get("branch_mix") == "ALL_DECREMENT"
-    )
-
-
-def _all_eligible_slashed_cannot_all_decrement(a: dict) -> bool:
-    return not (
-        a.get("has_ineligible_validators") is False
-        and a.get("has_slashed_validators") is True
-        and a.get("branch_mix") == "ALL_DECREMENT"
-    )
-
-
-FEASIBLE = rules(
-    _epoch_never_before_genesis,
-    _empty_loop_has_no_body,
-    _mixed_branches_need_two_validators,
-    _eligible_needs_a_disjunct,
-    _empty_ineligible_set_requires_every_validator,
-    _singleton_zero_score_cannot_change_leak_free,
-    _stable_scores_require_zero_and_no_leak,
-    _singleton_zero_score_cannot_change_by_decrement,
-    _slashed_only_eligible_set_only_increments,
-    _slashed_eligible_cannot_all_decrement,
-    _all_eligible_slashed_cannot_all_decrement,
+CONSTRAINTS = (
+    implies(
+        ELIGIBLE_COUNT == "ZERO",
+        all_of(~any_of(*(present(f) for f in LOOP.declarations)), ~HAS_ACTIVE, ~UNWITHDRAWABLE),
+    ),
+    implies(ELIGIBLE_COUNT == "ONE", BRANCH != "MIXED"),
+    implies(ELIGIBLE_COUNT != "ZERO", any_of(HAS_ACTIVE, HAS_SLASHED & UNWITHDRAWABLE)),
+    # The genesis state has a fixed 64-validator set in this materializer.
+    implies(~HAS_INELIGIBLE, present(ELIGIBLE_COUNT) & (ELIGIBLE_COUNT == "MANY")),
+    implies((ELIGIBLE_COUNT == "ONE") & ZERO_SCORE & CHANGED, LEAKING),
+    implies(~CHANGED, ZERO_SCORE & ~LEAKING),
+    implies((ELIGIBLE_COUNT == "ONE") & ZERO_SCORE & CHANGED, BRANCH != "ALL_DECREMENT"),
+    implies(~HAS_ACTIVE, BRANCH == "ALL_INCREMENT"),
+    implies(HAS_SLASHED & UNWITHDRAWABLE, BRANCH != "ALL_DECREMENT"),
+    implies(~HAS_INELIGIBLE & HAS_SLASHED, BRANCH != "ALL_DECREMENT"),
 )
 
 BRANCHES = exhaustive(LOOP.declarations[:3])
@@ -253,7 +179,7 @@ COVERAGE = coverage_spec(
     constants=(genesis_epoch, min_epochs_to_inactivity_penalty),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=FEASIBLE,
+    constraints=CONSTRAINTS,
 )
 TARGET = bind(
     COVERAGE,

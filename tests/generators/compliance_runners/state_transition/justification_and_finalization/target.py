@@ -1,14 +1,17 @@
 """Coverage of the early return, justification thresholds, and finalization paths."""
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    all_of,
+    any_of,
     aspect,
     attribute,
     bind,
     Boolean,
-    categorical,
     constant,
     coverage_spec,
+    dimension,
     factor,
+    implies,
     Integer,
 )
 
@@ -29,10 +32,9 @@ JUSTIFICATION = aspect(
 )
 FINALIZATION = aspect(
     "finalization",
-    categorical(
+    dimension(
         "finalization_path",
         finalization_rule,
-        (0, 1, 2, 3, 4),
         when=REACHED,
         description=(
             "Last successful finalization rule: none, previous checkpoint at age 3 or 2, "
@@ -61,15 +63,21 @@ COVERAGE = coverage_spec(
     constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
-    feasible=lambda a: (
-        (a.get("finalization_path") not in (1, 2) or a.get("previous_epoch_supermajority") is True)
-        and (
-            a.get("finalization_path") not in (3, 4)
-            or (
-                a.get("previous_epoch_supermajority") is True
-                and a.get("current_epoch_supermajority") is True
-            )
-        )
+    constraints=(
+        implies(
+            any_of(
+                FINALIZATION.ref("finalization_path") == 1,
+                FINALIZATION.ref("finalization_path") == 2,
+            ),
+            JUSTIFICATION.ref("previous_epoch_supermajority"),
+        ),
+        implies(
+            any_of(
+                FINALIZATION.ref("finalization_path") == 3,
+                FINALIZATION.ref("finalization_path") == 4,
+            ),
+            all_of(*JUSTIFICATION.declarations),
+        ),
     ),
 )
 TARGET = bind(
