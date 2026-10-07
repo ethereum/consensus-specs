@@ -115,6 +115,7 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
     - [New `settle_builder_payment`](#new-settle_builder_payment)
+    - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -156,8 +157,6 @@
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Payload attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
-      - [Proposer slashing](#proposer-slashing)
-        - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
 
 <!-- mdformat-toc end -->
 
@@ -1544,6 +1543,44 @@ def settle_builder_payment(state: BeaconState, payment_index: Uint64) -> None:
     state.builder_pending_payments[payment_index] = BuilderPendingPayment.empty()
 ```
 
+#### Modified `slash_validator`
+
+```python
+def slash_validator(
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: ValidatorIndex | None = None,
+) -> None:
+    """
+    Slash the validator with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = Boolean(True)
+    validator.withdrawable_epoch = max(
+        validator.withdrawable_epoch, epoch + EPOCHS_PER_SLASHINGS_VECTOR
+    )
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA
+    decrease_balance(state, slashed_index, slashing_penalty)
+
+    # Apply proposer and whistleblower rewards
+    proposer_index = get_beacon_proposer_index(state)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblower_reward = validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
+    proposer_reward = whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
+
+    # [New in Gloas:EIP7732]
+    # Remove pending builder payments for blocks proposed by the slashed validator
+    for payment_index, payment in enumerate(state.builder_pending_payments):
+        if payment.proposer_index == slashed_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment.empty()
+```
+
 ## Beacon chain state transition function
 
 State transition is fundamentally modified in Gloas. The full state transition
@@ -2460,51 +2497,4 @@ def process_payload_attestation(
     # Verify signature
     indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
-```
-
-##### Proposer slashing
-
-###### Modified `process_proposer_slashing`
-
-```python
-def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
-    header_1 = proposer_slashing.signed_header_1.message
-    header_2 = proposer_slashing.signed_header_2.message
-
-    # Verify header slots match
-    assert header_1.slot == header_2.slot
-    # Verify header proposer indices match
-    assert header_1.proposer_index == header_2.proposer_index
-    # Verify the headers are different
-    assert header_1 != header_2
-    # Verify the proposer is slashable
-    proposer = state.validators[header_1.proposer_index]
-    assert is_slashable_validator(proposer, get_current_epoch(state))
-    # Verify signatures
-    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
-        domain = get_domain(
-            state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
-        )
-        signing_root = compute_signing_root(signed_header.message, domain)
-        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
-
-    # [New in Gloas:EIP7732]
-    # Remove the BuilderPendingPayment corresponding to this proposal if it is
-    # still in the 2-epoch window. Only clear it when the slashed validator is
-    # the proposer associated with the payment; otherwise an unrelated same-slot
-    # equivocation could grief an honest proposer's payment.
-    slot = header_1.slot
-    proposal_epoch = compute_epoch_at_slot(slot)
-    if proposal_epoch == get_current_epoch(state):
-        payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH
-        payment = state.builder_pending_payments[payment_index]
-        if payment.proposer_index == header_1.proposer_index:
-            state.builder_pending_payments[payment_index] = BuilderPendingPayment.empty()
-    elif proposal_epoch == get_previous_epoch(state):
-        payment_index = slot % SLOTS_PER_EPOCH
-        payment = state.builder_pending_payments[payment_index]
-        if payment.proposer_index == header_1.proposer_index:
-            state.builder_pending_payments[payment_index] = BuilderPendingPayment.empty()
-
-    slash_validator(state, header_1.proposer_index)
 ```
