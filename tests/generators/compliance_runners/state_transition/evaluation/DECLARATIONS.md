@@ -54,12 +54,13 @@ or omitted.
 - `Bytes(length=32)` declares opaque roots with validated length. Bytes support
   equality and inequality, not arithmetic or ordering.
 - Domains expose a scalar `value_type`, which determines legal operations.
-  `Finite((value, ...))` declares an exact finite set. Scalar domains of the same
-  type compose with `|`, for example `Integer(0, 255) | Finite((2**64 - 1,))`.
-  Validation preserves the gap between the interval and the sentinel.
-  `domain.contains(expression)` builds a boolean expression from bounds,
-  equalities, and disjunctions. Integer interval inference still uses a
-  conservative hull; it does not prove reachability across domain gaps.
+  `Finite((value, ...))` declares an exact finite set. Scalar domains of the
+  same type compose with `|`, for example
+  `Integer(0, 255) | Finite((2**64 - 1,))`. Validation preserves the gap between
+  the interval and the sentinel. `domain.contains(expression)` builds a boolean
+  expression from bounds, equalities, and disjunctions. Integer interval
+  inference still uses a conservative hull; it does not prove reachability
+  across domain gaps.
 - `constant(name, domain)` declares an input bound from a fixed spec. Binding
   validates its domain and snapshots its value. Start from the unbound target
   template for a different spec or configuration.
@@ -76,18 +77,17 @@ or omitted.
 `factor` declares a boolean factor. `comparison` stores an integer difference
 and declares its granularity with `granularity="predicate"` (the default),
 `"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
-`dimension(name, expression)` covers a small domain exactly. For an attribute
-or constant it reuses that input's declared domain, so an integer attribute
+`dimension(name, expression)` covers a small domain exactly. For an attribute or
+constant it reuses that input's declared domain, so an integer attribute
 declared with `Integer(0, 4)` needs no second enumeration of those five values.
 Boolean domains use the same predicate abstraction as `factor`; other finite
 domains use categorical values. An optional `domain=` supplies the coverage
-domain for a computed expression. Exact enumeration is limited to 1024 values
-by default; use comparison or categorical abstractions for larger domains.
-When a dimension depends only on constants, binding refines its coverage domain
-to the single resulting value if target applicability, activation, and
-availability are known true.
-Otherwise refinement is deferred, preserving lazy evaluation of inactive or
-unavailable values. Fresh bindings are refined independently.
+domain for a computed expression. Exact enumeration is limited to 1024 values by
+default; use comparison or categorical abstractions for larger domains. When a
+dimension depends only on constants, binding refines its coverage domain to the
+single resulting value if target applicability, activation, and availability are
+known true. Otherwise refinement is deferred, preserving lazy evaluation of
+inactive or unavailable values. Fresh bindings are refined independently.
 Integer domains also constrain enumeration: comparison buckets that cannot
 intersect the expression's inferred interval are removed. For example, comparing
 `attribute("vote_count", Integer(min=0))` with zero at `cmp5` yields only `EQ`,
@@ -197,8 +197,8 @@ explicitly include the applicable `leaking` value when requesting recovery.
 
 `constraints=(expression, ...)` declares feasibility over factor references and
 spec-bound constants. `aspect.ref(name)` returns a symbolic declaration;
-`aspect[name]` retains the observation abstraction used by witness adapters.
-A comparison reference denotes its predicate truth at every granularity;
+`aspect[name]` retains the observation abstraction used by witness adapters. A
+comparison reference denotes its predicate truth at every granularity;
 `coverage_value(factor)` explicitly refers to its coverage bucket. `all_of`,
 `any_of`, and `implies` compose rules without Python boolean coercion:
 
@@ -218,8 +218,8 @@ are rejected in these constraints because enumeration supplies abstract factor
 assignments rather than concrete attribute values.
 
 Concrete-witness checks can still use `feasible=` and `constant_feasibility=`.
-Declared constraints and callbacks are conjoined by both the specification's
-and bound target's `feasible()` methods. They filter complete abstract
+Declared constraints and callbacks are conjoined by both the specification's and
+bound target's `feasible()` methods. They filter complete abstract
 configurations before projection, so a partial obligation needs a retained
 complete extension. Unfiltered enumeration preserves the scorer's
 unexpected-observation check. Review output includes the declared constraints.
@@ -228,14 +228,15 @@ unexpected-observation check. Review output includes the declared constraints.
 
 `state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
 for providers that materialize the obligations directly. Its `build_profile`
-requires `spec=` and returns `(obligation_records, representative_records)`;
-the two lists coincide for this adapter. Records have a stable order based on
-sorted factor/value pairs. Providers without rejection cases explicitly pass
+requires `spec=` and returns `(obligation_records, representative_records)`; the
+two lists coincide for this adapter. Records have a stable order based on sorted
+factor/value pairs. Providers without rejection cases explicitly pass
 `empty_profiles=("exceptional",)`; unknown names still fail.
 
-Providers that complete concrete witnesses can use `profile_records(bound_target,
-name)` and retain their own representative selection. Scenario and MiniZinc
-providers retain their existing profile implementations.
+Providers that complete concrete witnesses can use
+`profile_records(bound_target, name)` and retain their own representative
+selection. Scenario and MiniZinc providers retain their existing profile
+implementations.
 
 ## Current limits
 
