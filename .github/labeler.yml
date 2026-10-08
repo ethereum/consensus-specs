@@ -103,6 +103,12 @@ eip8321:
       - 'presets/*/eip8321.yaml'
       - 'pysetup/spec_builders/eip8321.py'
 
+eip9998:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip9998/**'
+      - 'pysetup/spec_builders/eip9998.py'
+
 testing:
   - changed-files:
     - all-globs-to-any-file:

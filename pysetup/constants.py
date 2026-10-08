@@ -14,6 +14,7 @@ EIP8148 = "eip8148"
 EIP8198 = "eip8198"
 EIP8205 = "eip8205"
 EIP8321 = "eip8321"
+EIP9998 = "eip9998"
 
 
 # The helper functions that are used when defining constants

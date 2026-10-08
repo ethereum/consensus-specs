@@ -8,6 +8,7 @@ from .eip8148 import EIP8148SpecBuilder
 from .eip8198 import EIP8198SpecBuilder
 from .eip8205 import EIP8205SpecBuilder
 from .eip8321 import EIP8321SpecBuilder
+from .eip9998 import EIP9998SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
 from .gloas import GloasSpecBuilder
@@ -32,5 +33,6 @@ spec_builders = {
         EIP8198SpecBuilder,
         EIP8205SpecBuilder,
         EIP8321SpecBuilder,
+        EIP9998SpecBuilder,
     )
 }
