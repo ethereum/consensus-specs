@@ -28,6 +28,8 @@ from eth_consensus_specs.test.helpers.gloas.state import (
 )
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 
+GENESIS_ETH1_BLOCK_HASH = b"\xda" * 32
+
 
 def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
@@ -112,7 +114,7 @@ def get_sample_genesis_execution_payload(spec, eth1_block_hash=None):
 def create_genesis_state(spec, validator_balances, activation_threshold, builder_count=8):
     deposit_root = b"\x42" * 32
 
-    eth1_block_hash = b"\xda" * 32
+    eth1_block_hash = GENESIS_ETH1_BLOCK_HASH
     previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
