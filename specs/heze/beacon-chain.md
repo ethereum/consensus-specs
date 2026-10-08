@@ -247,7 +247,11 @@ def is_valid_inclusion_list_signature(
     message = signed_inclusion_list.message
     index = message.validator_index
     pubkey = state.validators[index].pubkey
-    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(message.slot))
+    domain = compute_domain(
+        DOMAIN_INCLUSION_LIST_COMMITTEE,
+        compute_fork_version(compute_epoch_at_slot(message.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(message, domain)
     return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
