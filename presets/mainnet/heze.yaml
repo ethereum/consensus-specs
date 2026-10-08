@@ -7,8 +7,8 @@ INCLUSION_LIST_COMMITTEE_SIZE: 16
 
 # Inclusion list claims
 # ---------------------------------------------------------------
-# 2**10 (= 1,024)
-MAX_INCLUSION_LIST_CLAIMS: 1024
+# 2**12 (= 4,096)
+MAX_INCLUSION_LIST_CLAIMS: 4096
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------

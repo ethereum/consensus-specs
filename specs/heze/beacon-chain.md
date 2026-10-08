@@ -100,7 +100,7 @@ class InclusionListClaims(List[InclusionListClaim]):
 
 | Name                        | Value                     |
 | --------------------------- | ------------------------- |
-| `MAX_INCLUSION_LIST_CLAIMS` | `Uint64(2**10)` (= 1,024) |
+| `MAX_INCLUSION_LIST_CLAIMS` | `Uint64(2**12)` (= 4,096) |
 
 ## Containers
 
