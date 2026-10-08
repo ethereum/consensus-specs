@@ -228,8 +228,10 @@ transactions obtained from `ExecutionEngine` via `get_inclusion_list`.
 def get_inclusion_list_signature(
     state: BeaconState, inclusion_list: InclusionList, privkey: int
 ) -> BLSSignature:
-    domain = get_domain(
-        state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot)
+    domain = compute_domain(
+        DOMAIN_INCLUSION_LIST_COMMITTEE,
+        compute_fork_version(compute_epoch_at_slot(inclusion_list.slot)),
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
