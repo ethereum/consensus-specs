@@ -151,14 +151,14 @@ def create_light_client_update(
 
     # Indicate finality whenever possible
     if finalized_block is not None:
-        if finalized_block.message.slot != GENESIS_SLOT:
+        if attested_state.finalized_checkpoint.root != Bytes32():
             update.finalized_header = block_to_light_client_header(finalized_block)
             assert (
                 hash_tree_root(update.finalized_header.beacon)
                 == attested_state.finalized_checkpoint.root
             )
         else:
-            assert attested_state.finalized_checkpoint.root == Bytes32()
+            assert finalized_block.message.slot == GENESIS_SLOT
         update.finality_branch = FinalityBranch(
             data=compute_merkle_proof(
                 attested_state,
