@@ -60,9 +60,6 @@ HEZE_FORK_EPOCH: 18446744073709551615
 # [customized] EIP8321
 EIP8321_FORK_VERSION: 0xe8321001
 EIP8321_FORK_EPOCH: 18446744073709551615
-# EIP8198
-EIP8198_FORK_VERSION: 0xe8198001
-EIP8198_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -76,42 +73,40 @@ MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: 64
 # [customized] 2**4 (= 16) Eth1 blocks
 ETH1_FOLLOW_DISTANCE: 16
-# 1667 basis points, ~17% of SLOT_DURATION_MS
+# 1667 basis points, ~17% of the slot duration
 PROPOSER_REORG_CUTOFF_BPS: 1667
-# 3333 basis points, ~33% of SLOT_DURATION_MS
+# 3333 basis points, ~33% of the slot duration
 ATTESTATION_DUE_BPS: 3333
-# 6667 basis points, ~67% of SLOT_DURATION_MS
+# 6667 basis points, ~67% of the slot duration
 AGGREGATE_DUE_BPS: 6667
 
 # Altair
-# 3333 basis points, ~33% of SLOT_DURATION_MS
+# 3333 basis points, ~33% of the slot duration
 SYNC_MESSAGE_DUE_BPS: 3333
-# 6667 basis points, ~67% of SLOT_DURATION_MS
+# 6667 basis points, ~67% of the slot duration
 CONTRIBUTION_DUE_BPS: 6667
 
 # Gloas
 # [customized] 2**1 (= 2) epochs
 MIN_BUILDER_WITHDRAWABILITY_DELAY: 2
-# 2500 basis points, 25% of SLOT_DURATION_MS
+# 2500 basis points, 25% of the slot duration
 ATTESTATION_DUE_BPS_GLOAS: 2500
-# 5000 basis points, 50% of SLOT_DURATION_MS
+# 5000 basis points, 50% of the slot duration
 AGGREGATE_DUE_BPS_GLOAS: 5000
-# 2500 basis points, 25% of SLOT_DURATION_MS
+# 2500 basis points, 25% of the slot duration
 SYNC_MESSAGE_DUE_BPS_GLOAS: 2500
-# 5000 basis points, 50% of SLOT_DURATION_MS
+# 5000 basis points, 50% of the slot duration
 CONTRIBUTION_DUE_BPS_GLOAS: 5000
-# 5000 basis points, 50% of SLOT_DURATION_MS
+# 5000 basis points, 50% of the slot duration
 PAYLOAD_DUE_BPS: 5000
-# 7500 basis points, 75% of SLOT_DURATION_MS
+# 7500 basis points, 75% of the slot duration
 PAYLOAD_ATTESTATION_DUE_BPS: 7500
 
 # Heze
-# 6667 basis points, ~67% of SLOT_DURATION_MS
-INCLUSION_LIST_DUE_BPS: 6667
-
-# EIP8198
 # 5000 milliseconds
-SLOT_DURATION_MS_EIP8198: 5000
+SLOT_DURATION_MS_HEZE: 5000
+# 6667 basis points, ~67% of the slot duration
+INCLUSION_LIST_DUE_BPS: 6667
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -228,7 +223,6 @@ MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS: 1
 # 2**13 (= 8,192) bytes
 MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 
-# EIP8198
 # 2**12 * 8 * 6,000 (= 196,608,000) milliseconds, ~2.3 days
 MIN_BLOB_DATA_RETENTION_MS: 196608000
 

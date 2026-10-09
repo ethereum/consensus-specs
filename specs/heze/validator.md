@@ -16,6 +16,7 @@
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
+    - [Sidecar retention](#sidecar-retention)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Eth1 data](#eth1-data)
       - [Deposits](#deposits)
@@ -106,7 +107,17 @@ list committee slot.
 
 All validator responsibilities remain unchanged other than those noted below.
 
+*[Modified in Heze:EIP8198]*
+
+*Note*: Validators MUST schedule duties through the updated
+`get_slot_component_duration_ms`.
+
 ### Block and sidecar proposal
+
+#### Sidecar retention
+
+The data column sidecar retention period is modified to
+`MIN_BLOB_DATA_RETENTION_MS` milliseconds.
 
 #### Constructing the `BeaconBlockBody`
 

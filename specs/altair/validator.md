@@ -99,10 +99,10 @@ class SyncSubcommitteeBits(BitVector):
 
 ### Time parameters
 
-| Name                   | Value          | Duration                   |
-| ---------------------- | -------------- | -------------------------- |
-| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | ~33% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
+| Name                   | Value          | Description               |
+| ---------------------- | -------------- | ------------------------- |
+| `SYNC_MESSAGE_DUE_BPS` | `Uint64(3333)` | ~33% of the slot duration |
+| `CONTRIBUTION_DUE_BPS` | `Uint64(6667)` | ~67% of the slot duration |
 
 ## Containers
 
