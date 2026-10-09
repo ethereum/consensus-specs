@@ -1,4 +1,4 @@
-# EIP-9998 -- Proof Engine
+# EIP-8440 -- Proof Engine
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 

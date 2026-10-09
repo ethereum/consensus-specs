@@ -1,4 +1,4 @@
-# EIP-9998 -- Recursive Guest Program
+# EIP-8440 -- Recursive Guest Program
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 

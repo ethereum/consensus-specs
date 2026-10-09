@@ -1,10 +1,10 @@
-from pysetup.constants import EIP9998
+from pysetup.constants import EIP8440
 
 from .base import BaseSpecBuilder
 
 
-class EIP9998SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP9998
+class EIP8440SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP8440
 
     @classmethod
     def imports(cls, preset_name: str):

@@ -1,4 +1,4 @@
-# EIP-9998 -- Fork Choice
+# EIP-8440 -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -51,7 +51,7 @@ class Store:
     payloads: dict[Root, ExecutionPayloadEnvelope]
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     execution_proofs: defaultdict[Root, dict[ProofType, ExecutionProof]]
 ```
 
@@ -62,7 +62,7 @@ class Store:
 ```python
 def on_execution_proof(
     store: Store,
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
 ) -> None:
@@ -70,7 +70,7 @@ def on_execution_proof(
     Verify and store a received execution proof.
     """
     proof = signed_proof.message
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     head_block_root = proof.head_block_root
 
     # The corresponding beacon block must be known and consensus-valid
@@ -81,7 +81,7 @@ def on_execution_proof(
     # Only one verified proof is stored for each beacon block and proof type
     assert proof.proof_type not in store.execution_proofs.get(head_block_root, {})
 
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     process_execution_proof(state, signed_proof, proof_engine)
 
     # Store only proofs that pass downstream verification

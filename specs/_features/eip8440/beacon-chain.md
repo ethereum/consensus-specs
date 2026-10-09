@@ -1,4 +1,4 @@
-# EIP-9998 -- The Beacon Chain
+# EIP-8440 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -43,9 +43,9 @@ The recursive guest program is defined in
 class PublicInput(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=4)
 
-    # [New in EIP9998]
+    # [New in EIP8440]
     origin_block_root: Root
-    # [New in EIP9998]
+    # [New in EIP8440]
     head_block_root: Root
     chain_id: Uint64
     schema_id: Uint16
@@ -61,11 +61,11 @@ and it can only be produced for a successful validation.
 class ExecutionProof(Container):
     proof_data: ProofData
     proof_type: ProofType
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     # Removed `public_input`
-    # [New in EIP9998]
+    # [New in EIP8440]
     origin_block_root: Root
-    # [New in EIP9998]
+    # [New in EIP8440]
     head_block_root: Root
 ```
 
@@ -116,17 +116,17 @@ def verify_signed_execution_proof(
 ```python
 def process_execution_proof(
     state: BeaconState,
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     signed_proof: SignedExecutionProof,
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     # Removed `payload_envelope`
     proof_engine: ProofEngine,
 ) -> None:
     """
     Authenticate and verify a signed execution proof.
     """
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     verify_signed_execution_proof(state, signed_proof)
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     assert proof_engine.verify_execution_proof(signed_proof.message)
 ```

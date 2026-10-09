@@ -1,4 +1,4 @@
-from eth_consensus_specs.test.helpers.forks import is_post_eip9998, is_post_heze
+from eth_consensus_specs.test.helpers.forks import is_post_eip8440, is_post_heze
 
 
 def build_max_size_attestation(spec):
@@ -79,7 +79,7 @@ def build_max_size_signed_inclusion_list(spec):
 
 
 def build_max_size_signed_execution_proof(spec):
-    if is_post_eip9998(spec):
+    if is_post_eip8440(spec):
         return spec.SignedExecutionProof(
             message=spec.ExecutionProof(
                 proof_data=spec.ProofData(data=[0] * spec.MAX_PROOF_SIZE),
@@ -121,6 +121,6 @@ def get_max_signed_inclusion_list_size(spec):
 
 
 def get_max_signed_execution_proof_size(spec):
-    if is_post_eip9998(spec):
+    if is_post_eip8440(spec):
         return spec.MAX_SIGNED_EXECUTION_PROOF_SIZE
     return spec.MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE

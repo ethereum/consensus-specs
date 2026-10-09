@@ -6,7 +6,7 @@ from eth_consensus_specs.test.context import (
     always_bls,
     expect_assertion_error,
     spec_state_test,
-    with_eip9998_and_later,
+    with_eip8440_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_block_and_payload
 from eth_consensus_specs.test.helpers.execution_payload import (
@@ -120,7 +120,7 @@ def expected_new_payload_request(spec, target):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_base_step_starts_recursion_at_target(spec, state):
     """
@@ -139,7 +139,7 @@ def test_base_step_starts_recursion_at_target(spec, state):
     assert execution_engine.new_payload_requests == [expected_new_payload_request(spec, target)]
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_from_adjacent_full_block(spec, state):
     """
@@ -159,7 +159,7 @@ def test_recursive_step_from_adjacent_full_block(spec, state):
     assert execution_engine.new_payload_requests == [expected_new_payload_request(spec, target)]
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_across_empty_blocks_and_missed_slot(spec, state):
     """
@@ -185,7 +185,7 @@ def test_recursive_step_across_empty_blocks_and_missed_slot(spec, state):
     assert public_input == expected_public_input(spec, origin.root, target)
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_rejects_skipped_full_payload(spec, state):
     """
@@ -205,7 +205,7 @@ def test_recursive_step_rejects_skipped_full_payload(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_rejects_payload_not_applied_by_target(spec, state):
     """
@@ -225,7 +225,7 @@ def test_recursive_step_rejects_payload_not_applied_by_target(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_rejects_mismatched_previous_state(spec, state):
     """
@@ -254,7 +254,7 @@ def test_recursive_step_rejects_mismatched_previous_state(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_rejects_invalid_previous_proof(spec, state):
     """
@@ -272,7 +272,7 @@ def test_recursive_step_rejects_invalid_previous_proof(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_step_input_shape_is_enforced(spec, state):
     """
@@ -298,7 +298,7 @@ def test_step_input_shape_is_enforced(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_step_rejects_invalid_payload(spec, state):
     """
@@ -313,7 +313,7 @@ def test_step_rejects_invalid_payload(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_step_rejects_envelope_inconsistent_with_state(spec, state):
     """
@@ -356,7 +356,7 @@ def test_step_rejects_envelope_inconsistent_with_state(spec, state):
         run_with(mutate)
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 @always_bls
 def test_step_rejects_invalid_envelope_signature(spec, state):
@@ -376,7 +376,7 @@ def test_step_rejects_invalid_envelope_signature(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_step_rejects_execution_requests_over_limit(spec, state):
     """
@@ -395,7 +395,7 @@ def test_step_rejects_execution_requests_over_limit(spec, state):
         )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_recursive_step_rejects_parent_head_as_target(spec, state):
     """
@@ -412,7 +412,7 @@ def test_recursive_step_rejects_parent_head_as_target(spec, state):
     )
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_step_rejects_withdrawals_over_limit(spec, state):
     """

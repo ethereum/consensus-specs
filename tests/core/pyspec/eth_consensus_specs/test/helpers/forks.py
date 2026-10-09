@@ -7,7 +7,7 @@ from .constants import (
     EIP8148,
     EIP8205,
     EIP8321,
-    EIP9998,
+    EIP8440,
     ELECTRA,
     FULU,
     GLOAS,
@@ -81,8 +81,8 @@ def is_post_eip8321(spec):
     return is_post_fork(spec.fork, EIP8321)
 
 
-def is_post_eip9998(spec):
-    return is_post_fork(spec.fork, EIP9998)
+def is_post_eip8440(spec):
+    return is_post_fork(spec.fork, EIP8440)
 
 
 def has_explicit_fork_version(spec, fork) -> bool:

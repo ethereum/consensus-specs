@@ -10,7 +10,7 @@ from eth_consensus_specs.test.helpers.constants import EIP8025
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_eip9998
+from eth_consensus_specs.test.helpers.forks import is_post_eip8440
 from eth_consensus_specs.test.helpers.gossip import get_seen, run_validate_gossip
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.proof_engine import MockProofEngine
@@ -46,7 +46,7 @@ def make_signed_execution_proof(
     proof_type=TEST_PROOF_TYPE,
     origin_block_root=None,
 ):
-    if is_post_eip9998(spec):
+    if is_post_eip8440(spec):
         if origin_block_root is None:
             origin_block_root = beacon_block_root
         # Recursive proofs gossip the execution proof itself
@@ -81,7 +81,7 @@ def make_signed_execution_proof(
 def validate(spec, seen, store, signed_proof, proof_engine=None):
     if proof_engine is None:
         proof_engine = MockProofEngine()
-    signed_proof_arg = "signed_proof" if is_post_eip9998(spec) else "signed_proof_envelope"
+    signed_proof_arg = "signed_proof" if is_post_eip8440(spec) else "signed_proof_envelope"
     return run_validate_gossip(
         spec,
         seen=seen,
@@ -92,13 +92,13 @@ def validate(spec, seen, store, signed_proof, proof_engine=None):
 
 
 def get_invalid_signed_proof_reason(spec):
-    if is_post_eip9998(spec):
+    if is_post_eip8440(spec):
         return "signed execution proof is invalid"
     return "execution proof envelope is invalid"
 
 
 def get_proof_engine_input(spec, store, signed_proof):
-    if is_post_eip9998(spec):
+    if is_post_eip8440(spec):
         return signed_proof.message
     proof_envelope = signed_proof.message
     state = store.block_states[proof_envelope.beacon_block_root]
@@ -500,7 +500,7 @@ def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof(spec, state, block_root)
 
-    # The handler requires the block, its post-state, and, before EIP-9998, its
+    # The handler requires the block, its post-state, and, before EIP-8440, its
     # execution payload.
     block = store.blocks.pop(block_root)
     proof_engine = MockProofEngine()
@@ -511,7 +511,7 @@ def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.block_states[block_root] = block_state
 
-    if not is_post_eip9998(spec):
+    if not is_post_eip8440(spec):
         payload = store.payloads.pop(block_root)
         expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
         store.payloads[block_root] = payload

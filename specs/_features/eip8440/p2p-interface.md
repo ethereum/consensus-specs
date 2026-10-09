@@ -1,8 +1,8 @@
-# EIP-9998 -- Networking
+# EIP-8440 -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
-This document contains the networking specifications for EIP-9998.
+This document contains the networking specifications for EIP-8440.
 
 *Note*: This specification is built upon
 [EIP-8025](../eip8025/p2p-interface.md).
@@ -46,7 +46,7 @@ This topic is used to propagate `SignedExecutionProof` messages.
 def validate_execution_proof_gossip(
     seen: Seen,
     store: Store,
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
 ) -> None:
@@ -64,7 +64,7 @@ def validate_execution_proof_gossip(
     if proof.proof_type not in get_supported_proof_types():
         raise GossipReject("unexpected execution proof type")
 
-    # [Modified in EIP9998]
+    # [Modified in EIP8440]
     head_block_root = proof.head_block_root
 
     # [IGNORE] The proof's beacon block has been seen
@@ -89,7 +89,7 @@ def validate_execution_proof_gossip(
             "proof already seen from this prover for this beacon block and proof type"
         )
 
-    # [New in EIP9998]
+    # [New in EIP8440]
     # [IGNORE] The proof's beacon block has been validated
     if head_block_root not in store.block_states:
         raise GossipIgnore("execution proof's beacon block has not been validated")
@@ -98,7 +98,7 @@ def validate_execution_proof_gossip(
 
     # [REJECT] The signed execution proof passes validation
     try:
-        # [Modified in EIP9998]
+        # [Modified in EIP8440]
         verify_signed_execution_proof(state, signed_proof)
     except AssertionError:
         raise GossipReject("signed execution proof is invalid") from None

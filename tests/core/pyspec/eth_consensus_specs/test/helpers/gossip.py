@@ -215,7 +215,7 @@ _MESSAGE_INFO = {
         "validation_fn": "validate_randao_commitment_registration_gossip",
     },
     ###########################################################################
-    # eip9998
+    # eip8440
     ###########################################################################
     "SignedExecutionProof": {
         "file_prefix": "execution_proof",

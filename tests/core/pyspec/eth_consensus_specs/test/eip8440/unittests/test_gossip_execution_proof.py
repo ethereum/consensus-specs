@@ -2,7 +2,7 @@ from eth_consensus_specs.test.context import (
     always_bls,
     expect_assertion_error,
     spec_state_test,
-    with_eip9998_and_later,
+    with_eip8440_and_later,
 )
 from eth_consensus_specs.test.eip8025.unittests.test_gossip_execution_proof import (
     make_signed_execution_proof,
@@ -14,7 +14,7 @@ from eth_consensus_specs.test.helpers.gossip import get_seen
 from eth_consensus_specs.test.helpers.proof_engine import MockProofEngine
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_execution_proof_is_keyed_by_head_block_root(spec, state):
     """
@@ -34,7 +34,7 @@ def test_execution_proof_is_keyed_by_head_block_root(spec, state):
     }
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 @always_bls
 def test_verify_signed_execution_proof(spec, state):
@@ -50,7 +50,7 @@ def test_verify_signed_execution_proof(spec, state):
     expect_assertion_error(lambda: spec.verify_signed_execution_proof(block_state, signed_proof))
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_execution_proof_does_not_require_payload(spec, state):
     """
@@ -74,7 +74,7 @@ def test_execution_proof_does_not_require_payload(spec, state):
     }
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_gossip_ignores_proof_for_unvalidated_block(spec, state):
     """
@@ -95,7 +95,7 @@ def test_gossip_ignores_proof_for_unvalidated_block(spec, state):
     assert seen.execution_proof_provers == set()
 
 
-@with_eip9998_and_later
+@with_eip8440_and_later
 @spec_state_test
 def test_gossip_applies_cheap_checks_before_state_lookup(spec, state):
     """
