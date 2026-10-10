@@ -11,9 +11,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Boolean,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
 )
 
 from .observation import observe_attributes
@@ -25,9 +25,9 @@ epochs_per_sync_committee_period = constant("epochs_per_sync_committee_period", 
 
 COMMITTEE = aspect(
     "committee",
-    modulo("period_remainder", next_epoch, epochs_per_sync_committee_period),
-    factor("committees_already_match", current_matches_next),
-    factor("computed_next_is_unchanged", computed_next_matches_existing),
+    dimension("period_remainder", modulo_boundary(next_epoch, epochs_per_sync_committee_period)),
+    dimension("committees_already_match", current_matches_next),
+    dimension("computed_next_is_unchanged", computed_next_matches_existing),
 )
 ASPECTS = (COMMITTEE,)
 PROFILES = {

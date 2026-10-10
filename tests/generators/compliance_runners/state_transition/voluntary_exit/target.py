@@ -8,15 +8,16 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    categorical,
     choose,
+    cmp5,
     comparison,
     constant,
+    count,
     coverage_spec,
     coverage_value,
     derived,
+    dimension,
     each,
-    factor,
     fix,
     implies,
     Integer,
@@ -60,49 +61,42 @@ EPOCHS = aspect(
     comparison(
         "current_lt_exit", current_epoch, exit_epoch, op="<", available_when=validator_found
     ),
-    factor("exit_not_initiated", exit_epoch == far_future_epoch, available_when=validator_found),
-    comparison(
-        "current_ge_message_epoch",
-        current_epoch,
-        message_epoch,
-        op=">=",
-        granularity="cmp5",
+    dimension(
+        "exit_not_initiated",
+        exit_epoch == far_future_epoch,
         available_when=validator_found,
     ),
-    comparison(
+    dimension(
+        "current_ge_message_epoch",
+        cmp5(current_epoch, message_epoch, op=">="),
+        available_when=validator_found,
+    ),
+    dimension(
         "current_ge_seasoned",
-        current_epoch,
-        activation_epoch + shard_committee_period,
-        op=">=",
-        granularity="cmp5",
+        cmp5(current_epoch, activation_epoch + shard_committee_period, op=">="),
         available_when=validator_found,
     ),
 )
 PENDING = aspect(
     "pending",
-    factor("pending_balance_zero", pending_balance == 0),
-    categorical(
-        "matching_pending_entries",
-        choose(matching_pending == 0, "ZERO", choose(matching_pending == 1, "ONE", "MANY")),
-        COUNTS,
-    ),
-    categorical(
-        "foreign_pending_entries", choose(foreign_pending == 0, "ZERO", "SOME"), ("ZERO", "SOME")
+    dimension("pending_balance_zero", pending_balance == 0),
+    dimension("matching_pending_entries", count(matching_pending)),
+    dimension(
+        "foreign_pending_entries",
+        choose(foreign_pending == 0, "ZERO", "SOME"),
     ),
 )
 SIGNATURE = aspect(
-    "signature", factor("signature_ok", signature_valid, available_when=validator_found)
+    "signature",
+    dimension("signature_ok", signature_valid, available_when=validator_found),
 )
 consumable = derived(
     "consumable",
     choose(earliest_exit_epoch < new_exit_epoch, per_epoch_churn, exit_balance_to_consume),
 )
-EXCEEDS = comparison(
+EXCEEDS = dimension(
     "balance_gt_consumable",
-    effective_balance,
-    consumable,
-    op=">",
-    granularity="cmp5",
+    cmp5(effective_balance, consumable, op=">"),
     available_when=validator_found,
 )
 CHURN = aspect(
@@ -110,14 +104,13 @@ CHURN = aspect(
     comparison("earliest_lt_new", earliest_exit_epoch, new_exit_epoch, op="<"),
     EXCEEDS,
     # For a positive excess, ceil(excess / churn) is one iff excess <= churn.
-    categorical(
+    dimension(
         "additional_epochs",
         choose(effective_balance - consumable <= per_epoch_churn, "ONE", "MANY"),
-        ("ONE", "MANY"),
         when=EXCEEDS,
     ),
 )
-OUTCOME = aspect("outcome", factor("accepted", post_present))
+OUTCOME = aspect("outcome", dimension("accepted", post_present))
 ASPECTS = (EPOCHS, PENDING, SIGNATURE, CHURN, OUTCOME)
 # The handler's assertion chain: accepted <=> all of these hold.
 GATES = (

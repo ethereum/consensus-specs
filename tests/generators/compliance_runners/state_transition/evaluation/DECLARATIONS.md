@@ -71,15 +71,41 @@ or omitted.
   boolean operations evaluate only the required branch. Expression types are
   checked at declaration time; concrete domains are checked at binding and
   observation time.
+- Ordered alternatives can be written as
+  `choose((condition1, value1), (condition2, value2), fallback)`.
+  The first true condition wins; later conditions and unselected values are
+  skipped. Alternating condition/value arguments and the original three-argument
+  form still work. Flat choices lower to
+  the same expression trees as nested choices.
 - Python `and`, `or`, `not`, chained comparisons, arbitrary callables, and
   unsupported operators are rejected. There is no implicit source translation.
 
 `factor` declares a boolean factor. `comparison` stores an integer difference
 and declares its granularity with `granularity="predicate"` (the default),
 `"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
+Targets also support the mapping syntax used in the sibling checkout:
+`dimension(name, identity(predicate))`,
+`dimension(name, cmp5(lhs, rhs, op="<"))`,
+`dimension(name, predicate(lhs, rhs, op="=="))`,
+`dimension(name, identity(value, domain=Finite(values)))`,
+`dimension(name, count(value))`, and
+`dimension(name, modulo_boundary(lhs, period))`.
+These forms lower to the existing boolean, comparison, categorical, and modulo
+declarations, preserving activation, availability, and coverage domains.
+`count` uses `ZERO`, `ONE`, and `MANY`. The optional `op` on `cmp5` preserves
+predicate meaning in constraints and activation without changing its five buckets.
+Mapping forms accept `when`, `available_when`, and `description` on `dimension`;
+an explicit coverage domain belongs on `identity`.
+
 `dimension(name, expression)` covers a small domain exactly. For an attribute or
-constant it reuses that input's declared domain, so an integer attribute
-declared with `Integer(0, 4)` needs no second enumeration of those five values.
+constant it reuses that input's declared domain. Boolean expressions infer a
+boolean coverage domain. `choose` expressions infer the union of their branch
+domains, preserving gaps and deduplicating values in branch order; an `identity`
+wrapper or explicit `Finite` domain is optional. For example,
+`dimension("credential_type", choose(is_compounding, "COMPOUNDING", "STANDARD"))`
+covers both labels. Inference obeys the same enumeration limit as explicit domains.
+An integer attribute declared with `Integer(0, 4)` therefore needs no second
+enumeration of those five values.
 Boolean domains use the same predicate abstraction as `factor`; other finite
 domains use categorical values. An optional `domain=` supplies the coverage
 domain for a computed expression. Exact enumeration is limited to 1024 values by

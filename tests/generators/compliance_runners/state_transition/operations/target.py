@@ -14,8 +14,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     comparison,
     constant,
     coverage_spec,
+    dimension,
     each,
-    factor,
     fix,
     Integer,
     union,
@@ -41,7 +41,7 @@ payload_attestations_limit = constant("payload_attestations_limit", Integer(min=
 
 LIMITS = aspect(
     "limits",
-    factor("deposits_empty", deposits == 0),
+    dimension("deposits_empty", deposits == 0),
     comparison(
         "proposer_slashings_within_limit", proposer_slashings, proposer_slashings_limit, op="<="
     ),
@@ -64,7 +64,7 @@ LIMITS = aspect(
     ),
 )
 
-OUTCOME = aspect("outcome", factor("accepted", post_present))
+OUTCOME = aspect("outcome", dimension("accepted", post_present))
 ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (LIMITS, OUTCOME)
 GATES = LIMITS.declarations

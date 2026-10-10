@@ -12,9 +12,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Boolean,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
 )
 
 from .observation import observe_attributes
@@ -29,23 +29,22 @@ slots_per_historical_root = constant("slots_per_historical_root", Integer(min=2)
 
 POSITION = aspect(
     "position",
-    modulo(
+    dimension(
         "ring_position",
-        slot,
-        slots_per_historical_root,
+        modulo_boundary(slot, slots_per_historical_root),
         description="The write index and the next-slot availability index share a circular buffer.",
     ),
 )
 CACHES = aspect(
     "caches",
-    factor(
+    dimension(
         "header_state_root_empty",
         header_root_zero,
         description="Only an empty latest block-header state root is filled in.",
     ),
-    factor("state_root_destination_populated", state_root_slot_nonzero),
-    factor("block_root_destination_populated", block_root_slot_nonzero),
-    factor(
+    dimension("state_root_destination_populated", state_root_slot_nonzero),
+    dimension("block_root_destination_populated", block_root_slot_nonzero),
+    dimension(
         "next_payload_available_before_clear",
         next_payload_available,
         description="Clearing a true availability bit changes the state.",

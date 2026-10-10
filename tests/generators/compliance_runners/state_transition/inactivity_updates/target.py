@@ -29,14 +29,14 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    categorical,
     choose,
     comparison,
     constant,
+    count,
     coverage_spec,
+    dimension,
     each,
     exhaustive,
-    factor,
     implies,
     Integer,
     nwise,
@@ -68,18 +68,13 @@ COUNTS = ("ZERO", "ONE", "MANY")
 BRANCH_MIX = ("ALL_INCREMENT", "ALL_DECREMENT", "MIXED")
 AFTER_GENESIS = comparison("current_after_genesis", current_epoch, genesis_epoch, op=">")
 METHOD = aspect("method", AFTER_GENESIS)
-ELIGIBLE_COUNT = categorical(
-    "eligible_validators",
-    choose(eligible_count == 0, "ZERO", choose(eligible_count == 1, "ONE", "MANY")),
-    COUNTS,
-    when=AFTER_GENESIS,
-)
-HAS_SLASHED = factor("has_slashed_validators", slashed_count > 0, when=AFTER_GENESIS)
+ELIGIBLE_COUNT = dimension("eligible_validators", count(eligible_count), when=AFTER_GENESIS)
+HAS_SLASHED = dimension("has_slashed_validators", slashed_count > 0, when=AFTER_GENESIS)
 ELIGIBLE = aspect(
     "eligible",
     ELIGIBLE_COUNT,
-    factor("has_ineligible_validators", ineligible_count > 0, when=AFTER_GENESIS),
-    factor("has_active_eligible", active_eligible_count > 0, when=AFTER_GENESIS),
+    dimension("has_ineligible_validators", ineligible_count > 0, when=AFTER_GENESIS),
+    dimension("has_active_eligible", active_eligible_count > 0, when=AFTER_GENESIS),
     HAS_SLASHED,
     comparison(
         "slashed_withdrawable_vs_previous",
@@ -91,14 +86,13 @@ ELIGIBLE = aspect(
 )
 LOOP = aspect(
     "loop",
-    categorical(
+    dimension(
         "branch_mix",
         choose(
-            participating_count == 0,
-            "ALL_INCREMENT",
-            choose(participating_count == eligible_count, "ALL_DECREMENT", "MIXED"),
+            (participating_count == 0, "ALL_INCREMENT"),
+            (participating_count == eligible_count, "ALL_DECREMENT"),
+            "MIXED",
         ),
-        BRANCH_MIX,
         when=ELIGIBLE_COUNT != "ZERO",
     ),
     comparison(
@@ -108,8 +102,8 @@ LOOP = aspect(
         op=">",
         when=ELIGIBLE_COUNT != "ZERO",
     ),
-    factor("has_zero_score_eligible", zero_score_count > 0, when=ELIGIBLE_COUNT != "ZERO"),
-    factor(
+    dimension("has_zero_score_eligible", zero_score_count > 0, when=ELIGIBLE_COUNT != "ZERO"),
+    dimension(
         "scores_changed",
         changed_score_count > 0,
         when=ELIGIBLE_COUNT != "ZERO",

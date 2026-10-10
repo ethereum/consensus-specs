@@ -12,9 +12,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Bytes,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
 )
 
 from .observation import observe_attributes
@@ -27,9 +27,9 @@ zero_mix = constant("zero_mix", Bytes(length=32))
 
 RESET = aspect(
     "reset",
-    modulo("destination_position", next_epoch, vector_length),
-    factor("source_nonzero", source_mix != zero_mix),
-    factor("source_matches_destination", source_mix == destination_mix),
+    dimension("destination_position", modulo_boundary(next_epoch, vector_length)),
+    dimension("source_nonzero", source_mix != zero_mix),
+    dimension("source_matches_destination", source_mix == destination_mix),
 )
 ASPECTS = (RESET,)
 PROFILES = {

@@ -11,15 +11,14 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    categorical,
     choose,
-    comparison,
+    cmp5,
     constant,
     coverage_spec,
     derived,
+    dimension,
     each,
     exhaustive,
-    factor,
     Integer,
     maximum,
     nwise,
@@ -48,25 +47,22 @@ score_after_participation = derived(
     choose(participating, maximum(0, score - 1), score + bias),
 )
 
-ACTIVE = factor("is_active_in_previous", active_in_previous)
-SLASHED = factor("is_slashed", slashed)
-FLAGGED = factor("has_target_flag", timely_target_flag)
-PARTICIPATING = factor("is_participating", participating)
-SCORE = comparison("score_gt_zero", score, 0, granularity="cmp5")
-LEAKING = comparison(
-    "leaking", finality_delay, min_epochs_to_inactivity_penalty, granularity="cmp5"
+ACTIVE = dimension("is_active_in_previous", active_in_previous)
+SLASHED = dimension("is_slashed", slashed)
+FLAGGED = dimension("has_target_flag", timely_target_flag)
+PARTICIPATING = dimension("is_participating", participating)
+SCORE = dimension("score_gt_zero", cmp5(score, 0))
+LEAKING = dimension("leaking", cmp5(finality_delay, min_epochs_to_inactivity_penalty))
+RECOVERY = dimension(
+    "score_vs_recovery_rate", cmp5(score_after_participation, recovery_rate), when=~LEAKING
 )
-RECOVERY = comparison(
-    "score_vs_recovery_rate",
-    score_after_participation,
-    recovery_rate,
-    when=~LEAKING,
-    granularity="cmp5",
-)
-DELTA = categorical(
+DELTA = dimension(
     "score_delta",
-    choose(post_score < score, "DECREASED", choose(post_score == score, "UNCHANGED", "INCREASED")),
-    ("DECREASED", "UNCHANGED", "INCREASED"),
+    choose(
+        (post_score < score, "DECREASED"),
+        (post_score == score, "UNCHANGED"),
+        "INCREASED",
+    ),
     available_when=post_present,
 )
 BODY = aspect("body", ACTIVE, SLASHED, FLAGGED, PARTICIPATING, SCORE, LEAKING, RECOVERY, DELTA)
