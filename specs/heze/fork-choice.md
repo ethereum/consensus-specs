@@ -51,6 +51,13 @@ used to implement it with an external execution engine.
 
 #### New `is_inclusion_list_satisfied`
 
+The execution engine evaluates the supplied transaction, membership and claim
+lists for this call, even if it has already validated the execution payload. The
+consensus layer MUST pass the committed claims unchanged, including their order
+and any duplicates; claim interpretation is an execution layer rule. Different
+beacon blocks may commit different claims for the same execution payload, so
+satisfaction MUST NOT be cached by execution block hash alone.
+
 ```python
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,

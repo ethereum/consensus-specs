@@ -477,3 +477,55 @@ def test_inclusion_list_store_membership(spec, state):
             assert bits == expected[transaction]
 
     run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_test
+@single_phase
+def test_membership_repeated_positions_timeliness_and_equivocation(spec):
+    store = spec.get_inclusion_list_store()
+    slot = spec.Slot(1)
+    root = spec.Root(b"\x11" * 32)
+    committee = spec.InclusionListCommittee(
+        data=[i % 3 for i in range(spec.INCLUSION_LIST_COMMITTEE_SIZE)]
+    )
+    shared, first, late = [spec.Transaction(data=[i]) for i in range(1, 4)]
+
+    def record(member, transactions, timely=True, dependent_root=root):
+        spec.process_inclusion_list(
+            store,
+            spec.SignedInclusionList(
+                message=spec.InclusionList(
+                    slot=slot,
+                    validator_index=member,
+                    dependent_root=dependent_root,
+                    transactions=spec.Transactions(data=transactions),
+                )
+            ),
+            timely,
+        )
+
+    record(0, [shared, first, shared])
+    record(1, [shared])
+    record(2, [late], timely=False)
+    # A list under a different dependent root must not contribute membership.
+    record(2, [first], dependent_root=spec.Root(b"\x22" * 32))
+
+    def check(only_timely, expected):
+        transactions = spec.get_inclusion_list_transactions(store, slot, root, only_timely)
+        assert set(transactions) == set(expected)
+        # Membership follows the caller's transaction order, not store insertion order.
+        transactions.reverse()
+        memberships = spec.get_inclusion_list_membership(
+            store, committee, slot, root, transactions, only_timely
+        )
+        for transaction, bits in zip(transactions, memberships, strict=True):
+            assert bits == spec.InclusionListBits(
+                data=[member in expected[transaction] for member in committee]
+            )
+
+    check(only_timely=True, expected={shared: {0, 1}, first: {0}})
+    check(only_timely=False, expected={shared: {0, 1}, first: {0}, late: {2}})
+    record(0, [first])
+    check(only_timely=True, expected={shared: {1}})
+    check(only_timely=False, expected={shared: {1}, late: {2}})

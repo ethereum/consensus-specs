@@ -30,8 +30,13 @@ When optimistically importing a block:
   function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
   An `INVALIDATED` response MUST return `False`.
 
-When a block transitions from `NOT_VALIDATED` -> `VALID`, the response from the
-execution engine also indicates whether the block's execution payload satisfies
-the inclusion list constraints. The consensus engine MUST record the result for
-that block. The recorded inclusion list satisfaction of its ancestors remains
-unchanged.
+For each optimistically imported beacon block, the consensus engine MUST retain
+the inclusion list transactions, membership and revealed claims supplied for its
+check. When its payload transitions from `NOT_VALIDATED` to `VALID`, it MUST
+repeat `engine_newPayloadV6` with those exact inputs and record the returned
+inclusion list satisfaction for that beacon block. `engine_forkchoiceUpdatedV5`
+does not return this verdict: different beacon blocks may carry the same
+execution payload with different claims or local inclusion list views. The
+recorded inclusion list satisfaction of its ancestors remains unchanged. The
+retained inputs MAY be discarded after the verdict is recorded or the block is
+invalidated or pruned from fork choice.

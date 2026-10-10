@@ -127,7 +127,10 @@ def get_inclusion_list_transactions(
 *Note*: `get_inclusion_list_membership` returns, for each of `transactions`, the
 `InclusionListBits` of the committee members whose inclusion list, among those
 considered by `get_inclusion_list_transactions`, carries the transaction. The
-execution engine uses it to meter work per inclusion list.
+execution engine uses it to meter work per inclusion list. Transactions and
+membership MUST be derived from the same inclusion list view. If a validator
+holds several committee positions, its transactions have every corresponding bit
+set.
 
 ```python
 def get_inclusion_list_membership(
@@ -142,20 +145,19 @@ def get_inclusion_list_membership(
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
-    def carries(validator_index: ValidatorIndex, transaction: Transaction) -> bool:
+    membership: dict[Transaction, InclusionListBits] = {}
+    for position, validator_index in enumerate(committee):
         if validator_index not in inclusion_lists or validator_index in equivocators:
-            return False
+            continue
         inclusion_list = inclusion_lists[validator_index]
         if only_timely and not inclusion_list.timely:
-            return False
-        return transaction in inclusion_list.signed_inclusion_list.message.transactions
+            continue
+        for transaction in inclusion_list.signed_inclusion_list.message.transactions:
+            if transaction not in membership:
+                membership[transaction] = InclusionListBits()
+            membership[transaction][position] = Boolean(True)
 
-    return [
-        InclusionListBits(
-            data=[carries(validator_index, transaction) for validator_index in committee]
-        )
-        for transaction in transactions
-    ]
+    return [membership[transaction] for transaction in transactions]
 ```
 
 ### New `get_inclusion_list_bits`

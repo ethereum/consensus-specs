@@ -118,6 +118,12 @@ list committee slot.
 
 All validator responsibilities remain unchanged other than those noted below.
 
+Inclusion claims are checked after payload reveal, through
+`on_execution_payload_envelope`. Beacon block voting and payload timeliness
+attestations retain the Gloas duties; inclusion list satisfaction determines
+whether fork choice extends the revealed payload in the following slot via
+`should_extend_payload`.
+
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
