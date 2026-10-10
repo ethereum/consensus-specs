@@ -1,0 +1,380 @@
+# Explicit coverage declarations
+
+The declaration API in `declarations.py` builds expression trees rather than
+parsing or executing capture-function source. It currently powers
+`eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
+`randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
+`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`,
+`inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
+`rewards_and_penalties`, `proposer_lookahead`, and `process_slot`. These targets
+use this API. `coverage_dsl.py` provides observation abstraction, scoring,
+vector loading, and the CLI; it no longer provides capture decorators or a
+second formula implementation.
+
+## Authoring and review workflow
+
+1. Define the focus, record scope, input attributes, and spec-bound constants.
+2. Define derived quantities, factors, activation, aspects, and profiles.
+3. Review the specification and its bound obligations.
+4. Implement an observation adapter that returns exactly the declared
+   attributes.
+5. Implement or refine materialization using observed coverage as feedback.
+
+See `../eth1_data_reset/target.py` for the small example and
+`../inactivity_updates_loop/target.py` for conditional arithmetic.
+
+The `process_slot` target consumes `sanity/slots` vectors with `slots.yaml: 1`.
+Its observation adapter expects that slot count as `Context.operation`. It
+records the pre-state inputs to the first slot transition; a multi-slot target
+can later cover sequencing and epoch-boundary interactions.
+
+```python
+from eth_consensus_specs.test.helpers.specs import spec_targets
+from tests.generators.compliance_runners.state_transition.inactivity_updates_loop.target import (
+    TARGET,
+)
+
+target = TARGET.for_spec(spec_targets["minimal"]["gloas"])
+print(target.review())
+obligations = target.profiles["arithmetic"].run()
+```
+
+The existing coverage CLI binds the selected spec automatically. `--describe`
+shows the declaration review with each comparison's declared granularity.
+Programmatic `review()` uses the same declarations. The review includes domains,
+bound constants, derived expressions, activation and availability, profile
+sizes, pruned counts, and example obligations with conditional factors included
+or omitted.
+
+## Expressions and inputs
+
+- `attribute(name, Integer(...))` or `attribute(name, Boolean())` declares a
+  per-record input. A missing key is an adapter error; an explicit `NA` value
+  means an unavailable observation.
+- `Bytes(length=32)` declares opaque roots with validated length. Bytes support
+  equality and inequality, not arithmetic or ordering.
+- Domains expose a scalar `value_type`, which determines legal operations.
+  `Finite((value, ...))` declares an exact finite set. Scalar domains of the
+  same type compose with `|`, for example
+  `Integer(0, 255) | Finite((2**64 - 1,))`. Validation preserves the gap between
+  the interval and the sentinel. `domain.contains(expression)` builds a boolean
+  expression from bounds, equalities, and disjunctions. Integer interval
+  inference still uses a conservative hull; it does not prove reachability
+  across domain gaps.
+- `constant(name, domain)` declares an input bound from a fixed spec. Binding
+  validates its domain and snapshots its value. Start from the unbound target
+  template for a different spec or configuration.
+- `derived(name, expression)` names a reusable expression. It does not add an
+  input that the adapter must supply.
+- Supported expressions are integer addition, subtraction and remainder;
+  comparisons; boolean `&`, `|`, `~`; `maximum`; and `choose`. `choose` and
+  boolean operations evaluate only the required branch. Expression types are
+  checked at declaration time; concrete domains are checked at binding and
+  observation time.
+- Ordered alternatives can be written as
+  `choose((condition1, value1), (condition2, value2), fallback)`.
+  The first true condition wins; later conditions and unselected values are
+  skipped. Alternating condition/value arguments and the original three-argument
+  form still work. Flat choices lower to
+  the same expression trees as nested choices.
+- Python `and`, `or`, `not`, chained comparisons, arbitrary callables, and
+  unsupported operators are rejected. There is no implicit source translation.
+
+`factor` declares a boolean factor. `comparison` stores an integer difference
+and declares its granularity with `granularity="predicate"` (the default),
+`"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
+Targets also support the mapping syntax used in the sibling checkout:
+`dimension(name, identity(predicate))`,
+`dimension(name, cmp5(lhs, rhs, op="<"))`,
+`dimension(name, predicate(lhs, rhs, op="=="))`,
+`dimension(name, identity(value, domain=Finite(values)))`,
+`dimension(name, count(value))`, and
+`dimension(name, modulo_boundary(lhs, period))`.
+These forms lower to the existing boolean, comparison, categorical, and modulo
+declarations, preserving activation, availability, and coverage domains.
+`count` uses `ZERO`, `ONE`, and `MANY`. The optional `op` on `cmp5` preserves
+predicate meaning in constraints and activation without changing its five buckets.
+Mapping forms accept `when`, `available_when`, and `description` on `dimension`;
+an explicit coverage domain belongs on `identity`.
+
+`dimension(name, expression)` covers a small domain exactly. For an attribute or
+constant it reuses that input's declared domain. Boolean expressions infer a
+boolean coverage domain. `choose` expressions infer the union of their branch
+domains, preserving gaps and deduplicating values in branch order; an `identity`
+wrapper or explicit `Finite` domain is optional. For example,
+`dimension("credential_type", choose(is_compounding, "COMPOUNDING", "STANDARD"))`
+covers both labels. Inference obeys the same enumeration limit as explicit domains.
+An integer attribute declared with `Integer(0, 4)` therefore needs no second
+enumeration of those five values.
+Boolean domains use the same predicate abstraction as `factor`; other finite
+domains use categorical values. An optional `domain=` supplies the coverage
+domain for a computed expression. Exact enumeration is limited to 1024 values by
+default; use comparison or categorical abstractions for larger domains. When a
+dimension depends only on constants, binding refines its coverage domain to the
+single resulting value if target applicability, activation, and availability are
+known true. Otherwise refinement is deferred, preserving lazy evaluation of
+inactive or unavailable values. Fresh bindings are refined independently.
+Integer domains also constrain enumeration: comparison buckets that cannot
+intersect the expression's inferred interval are removed. For example, comparing
+`attribute("vote_count", Integer(min=0))` with zero at `cmp5` yields only `EQ`,
+`GT_1`, and `GT_FAR`; `Integer(min=0, max=1)` yields `EQ` and `GT_1`. Intervals
+propagate conservatively through addition, subtraction, `maximum`, `choose`,
+derived expressions, and positive remainder. Bound constants refine these
+intervals per spec. This does not infer correlations between expressions. Domain
+pruning also applies to unfiltered enumeration; feasibility callbacks remain a
+separate filter.
+
+Granularity is fixed per comparison across all profiles; a target may mix
+granularities across different comparisons. `categorical` declares a finite
+domain and validates observed values against it. Attribute, constant, and factor
+names must be unique within a specification; aspect grouping does not create
+namespaces.
+
+```python
+boundary = comparison("epoch_boundary", next_epoch, period, op="==", granularity="cmp5")
+```
+
+`modulo(name, attribute, positive_constant)` declares a categorical coverage
+factor for a remainder, with buckets `ZERO` (0), `ONE` (1), `LAST` (constant−1),
+and `INTERIOR` (2 through constant−2). Every remainder is classified. The
+modulus must be a positive integer literal or a constant whose declared minimum
+is at least one. Periods 1, 2, and 3 omit unreachable buckets: coincident
+boundaries use `ZERO` first, then `ONE`. These domains are refined when the spec
+is bound. Activation uses explicit categorical tests, such as
+`when=position == "ZERO"`.
+
+```python
+position = modulo("reset_remainder", next_epoch, period)
+nonempty = comparison("votes_nonempty", vote_count, 0, granularity="cmp5")
+```
+
+Two comparisons of `next_epoch % period` against 0 and `period - 1` also benefit
+from the remainder's implicit non-negative upper bound. Use `modulo` for a
+single coverage dimension; the comparison form allows finer distances from each
+end but needs explicit feasibility constraints for relationships between the
+two.
+
+The ETH1 reset target now uses this modulo factor and a non-negative vote-count
+comparison. Normal/standard/max cover 12 combinations for periods of at least
+four; smoke covers the seven individual bucket obligations. Regenerate older
+vectors, whose boolean factor claims use the previous target schema.
+
+The historical-summary and sync-committee targets use `update_remainder` and
+`period_remainder` respectively. Slashings and RANDAO resets observe
+`next_epoch` and classify `destination_position` against their spec-bound vector
+length. Their adapters still read the source/destination contents at the actual
+circular indices. Slot processing uses the four buckets for `ring_position`,
+distinguishing index 1 from other interior positions. Effective-balance updates
+replace the boolean alignment claim with `balance_remainder`, and concrete
+witnesses cover all rounding buckets around hysteresis and cap boundaries.
+Regenerate vectors for these six targets: the factor names and/or values have
+changed.
+
+`modulo_representative(bucket, period)` in the concretization module chooses a
+concrete remainder for a bucket and rejects buckets that do not exist for that
+period. Epoch generators map remainder zero to a positive multiple of the
+period, so the next epoch remains at least one.
+
+Enumeration uses `target.profiles[name].run()`, observation abstraction uses
+`target.record(observation)`, and scoring uses
+`score(target, records, formula)`. These functions do not accept a runtime
+granularity. Feasibility callbacks take only the assignment; `holds(value)`,
+`abstract(raw)`, and `far(value)` use the comparison's declaration. Activation
+always uses predicate truth, including for comparisons whose coverage values are
+cmp3/cmp5 buckets.
+
+The CLI no longer accepts `--granularity`. JSON reports contain a
+`comparison_granularities` mapping and a single `profiles` list, replacing the
+old reports grouped by global granularity. Effective-balance comparisons use
+cmp5 in every profile, and generated claims no longer carry a global
+`granularity` field. Older effective-balance vectors should be regenerated for
+the configured factor domains.
+
+## Applicability, activation, and availability
+
+`applicable_when` defines whether the focus exists in a record. Outside that
+focus all factors are `NA`. The inactivity body currently requires one eligible
+validator; multi-record iteration observation is not implemented.
+
+`when` defines activation in terms of other factors. It supports conjunctions of
+boolean factor tests, negations, and categorical equality/inequality. For a
+comparison factor, a truth test selects all abstract values where its predicate
+holds. Dependencies must be acyclic. Disjunctions and raw-attribute conditions
+in `when` are rejected; introduce a meaningful controlling factor instead.
+
+`available_when` describes observation availability (for example, the presence
+of a post-state). It can depend on attributes and constants. It suppresses
+observation but does not remove coverage obligations. This prevents missing
+post-state data from being mistaken for complete coverage.
+
+## Conditional formulas
+
+`each`, `nwise`, and `exhaustive` select factors. Activation prerequisites are
+added recursively and do not count toward strength. If fewer selected factors
+are active in a branch, all active selected factors are included; if none are
+active, that branch contributes no obligation. `fix` also adds prerequisites.
+Union (`|`) and product (`*`) compose these formulas.
+
+For B active only when A is true, selecting B alone requires both B values with
+A=true. Exhaustive selection of A and B additionally includes A=false. The
+inactivity arithmetic profile therefore no longer needs the manual union that
+worked around conditional factors in the capture DSL. Its obligations now
+explicitly include the applicable `leaking` value when requesting recovery.
+
+`constraints=(expression, ...)` declares feasibility over factor references and
+spec-bound constants. `aspect.ref(name)` returns a symbolic declaration;
+`aspect[name]` retains the observation abstraction used by witness adapters. A
+comparison reference denotes its predicate truth at every granularity;
+`coverage_value(factor)` explicitly refers to its coverage bucket. `all_of`,
+`any_of`, and `implies` compose rules without Python boolean coercion:
+
+```python
+constraints = (
+    OUTCOME.ref("accepted") == all_of(*HEADER.declarations),
+    implies(coverage_value(EXCEEDS) == "GT_1", CHURN.ref("additional_epochs") != "MANY"),
+)
+```
+
+Inactive references are unknown. A known false constraint rejects a
+configuration; an unknown constraint leaves it eligible. Boolean connectives
+preserve known violations even when another operand is unknown. `present(f)`
+tests inclusion explicitly. This evaluation is conservative for inactive
+references, not a solver check for a joint concrete extension. Raw attributes
+are rejected in these constraints because enumeration supplies abstract factor
+assignments rather than concrete attribute values.
+
+Concrete-witness checks can still use `feasible=` and `constant_feasibility=`.
+Declared constraints and callbacks are conjoined by both the specification's and
+bound target's `feasible()` methods. They filter complete abstract
+configurations before projection, so a partial obligation needs a retained
+complete extension. Unfiltered enumeration preserves the scorer's
+unexpected-observation check. Review output includes the declared constraints.
+
+## Provider adapters
+
+`state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
+for providers that materialize the obligations directly. Its `build_profile`
+requires `spec=` and returns `(obligation_records, representative_records)`; the
+two lists coincide for this adapter. Records have a stable order based on sorted
+factor/value pairs. Providers without rejection cases explicitly pass
+`empty_profiles=("exceptional",)`; unknown names still fail.
+
+Providers that complete concrete witnesses can use
+`profile_records(bound_target, name)` and retain their own representative
+selection. Scenario and MiniZinc providers retain their existing profile
+implementations.
+
+## Current limits
+
+Enumeration explores the complete finite factor model and caches it per bound
+target and filtering mode. It is intended for small focus areas.
+Expression-to-DL, UTVPI, or MiniZinc translation and sampling are not
+implemented. The shared conditional-factor tool still supports MiniZinc, but its
+activation-only export must not be mistaken for a translation of the target's
+expressions or Python feasibility constraints.
+
+Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`. For a valid
+pre-state, the latest header slot cannot exceed the state slot. Consequently
+`block_slot - latest_header_slot >= block_slot - state_slot`; feasibility
+removes bucket pairs that violate this ordering. Both comparisons still cover
+all five buckets across their reachable combinations. An accepted header has an
+`EQ` state-slot match and a `GT_1` or `GT_FAR` latest-header delta. A duplicate
+header can fail the newer-header assertion with an `EQ` delta; older-header
+negative deltas also imply a state-slot mismatch, so the first assertion rejects
+those vectors.
+
+Materialization completes partial obligations with the fewest failing gates,
+preserves requested acceptance, and chooses jointly reachable non-negative
+slots. A current-slot latest header retains its zero state-root cache. Blocks
+are initially built for the state slot before their slot is varied for the
+assertion slice, avoiding full slot transitions during witness construction.
+Tests check the first failing assertion, later-gate isolation, and actual
+profile coverage. Proposer-index equality retains predicate granularity.
+Regenerate block-header vectors for the new slot-bucket claims.
+
+The assertion-slice targets `block_header` and `operations` declare an `outcome`
+aspect from the observed `post_present` attribute. Their normal and exceptional
+profiles fix `accepted` to true and false respectively. Their feasibility rule
+assumes acceptance exactly when every assertion in the slice holds; failures in
+excluded processing are outside this coverage model. Operation-count limits are
+spec-bound constants. The header's proposer slashing check uses `available_when`
+because a missing validator makes the lookup unavailable without introducing a
+new coverage dimension.
+
+Voluntary-exit `current_ge_message_epoch` and `current_ge_seasoned` use `cmp5`.
+Epoch witnesses place the current epoch two epochs before, one before, exactly
+at, one after, and two after each boundary. The provider's scenario profiles add
+these buckets to their epoch aspect, with accepted cases covering the nine
+non-negative bucket pairs and exceptional cases preserving assertion ordering.
+Smoke also covers each numeric bucket alongside the existing rejection outcomes.
+The provider enumerates structured Python scenario witnesses instead of the old
+MiniZinc scenario table; churn and pending-withdrawal classifications retain
+their existing behavior. Regenerate voluntary-exit vectors to include the new
+epoch bucket claims. Validation computes both deltas from the signed message and
+pre-state, and the declarations expose the same observed buckets.
+
+Voluntary-exit `balance_gt_consumable` uses `cmp5` for the effective balance
+against the available exit budget. Effective balances and fresh churn are
+aligned to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1`
+buckets are infeasible when the increment exceeds one Gwei. Carried budgets can
+be unaligned: partial withdrawal requests consume the same churn budget in
+arbitrary Gwei amounts. The generator realizes those one-Gwei residuals by
+processing a foreign partial withdrawal before the voluntary exit. A `GT_1`
+excess always fits in one additional epoch and cannot require `MANY`.
+
+Churn profiles include `balance_gt_consumable` and `churn_additional_epochs`
+(`ZERO`, `ONE`, or `MANY`) alongside the existing budget-state claim. Witnesses
+cover fresh and carried budgets, equality, aligned under/overflow boundaries,
+and multi-epoch overflow; they recalculate the fresh limit when the selected
+effective balance changes total active balance. Larger balances use compounding
+credentials within the effective-balance cap. The DSL's conditional
+`additional_epochs` factor remains inactive when the exit fits the budget.
+Regenerate voluntary-exit vectors to include the new churn claims.
+
+`voluntary_exit` declares `additional_epochs` with `when=EXCEEDS`, so churn
+exhaustiveness includes both within-budget and exceeding-budget branches. The
+`ONE`/`MANY` classification compares the positive excess with one epoch's churn,
+which is equivalent to classifying the ceiling division for positive churn.
+Validator lookup and signature availability remain observation gates.
+
+Historical-summary occupancy and the value cleared by slashings reset now use
+`cmp5` comparisons against zero. Their non-negative domains leave `EQ`, `GT_1`,
+and `GT_FAR`, and concretization realizes empty/zero, singleton/one, and larger
+values explicitly.
+
+The inactivity loop declares `cmp5` for `score_gt_zero`, `leaking`, and
+`score_vs_recovery_rate`. Recovery remains active only when the leak predicate
+is false, including its below-threshold and equality buckets. Feasibility uses
+concrete witnesses around zero, the leak threshold, and the
+participation-adjusted recovery threshold. These witnesses preserve
+relationships between score, participation, recovery saturation, and the
+resulting score change. Materialization completes partial obligations with a
+feasible full assignment and selects its score/finality-delay witness.
+Regenerate existing vectors for these three targets: the numeric factors now
+claim comparison buckets rather than booleans.
+
+Proposer lookahead declares `fewer_candidates_than_slots` as a `cmp5` comparison
+of the active, unslashed candidate count against `slots_per_epoch`. Its
+witnesses use counts slots−2, slots−1, slots, slots+1, and slots+2. Both
+negative buckets require `new_proposers_repeat=True`: fewer candidates than
+slots cannot supply distinct proposers for every slot. The materializer
+preserves the requested pool size while constructing repeated or distinct
+proposer lists. For distinct lists it searches balance acceptance thresholds
+across slots, using compounding credentials and balances aligned to the spec
+increment. This avoids relying on a rare random permutation for an exact-size
+mainnet candidate pool. The bounded search retries with deterministic RANDAO
+mixes and verifies its result using spec proposer selection. Regenerate older
+proposer-lookahead vectors, whose candidate-count claims were booleans.
+
+The outer `inactivity_updates` target declares the genesis, nonempty-loop, and
+slashed-validator prerequisites as factor dependencies. Single-factor coverage
+therefore includes their prerequisite assignments. Its `eligible` profile now
+covers the full conditional aspect, including interactions between the slashed
+boundary and the ineligible-validator flag; the old manual shape/boundary union
+covered fewer interactions. Missing post-state only affects observation of
+`scores_changed`. Full-configuration feasibility can also prune combinations
+whose impossibility was invisible to the legacy partial-assignment filtering.
+
+Observations contain exactly the declared attributes and factor values. Outcome
+coverage is explicit: declare a `post_present` attribute and an `accepted`
+factor when needed. The runtime does not inject or overwrite these names.

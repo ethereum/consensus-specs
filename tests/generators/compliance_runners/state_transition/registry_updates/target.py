@@ -1,0 +1,46 @@
+"""Coverage of the ordered activation-queue, ejection, and activation branches."""
+
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    any_of,
+    aspect,
+    attribute,
+    bind,
+    coverage_spec,
+    dimension,
+    Integer,
+)
+
+from .observation import observe_attributes
+
+validator_count = attribute("validator_count", Integer(min=0))
+queued_count = attribute("queued_count", Integer(min=0))
+ejected_count = attribute("ejected_count", Integer(min=0))
+activated_count = attribute("activated_count", Integer(min=0))
+unchanged_count = attribute("unchanged_count", Integer(min=0))
+
+SHAPE = aspect("shape", dimension("has_validators", validator_count > 0))
+BRANCHES = aspect(
+    "branches",
+    dimension("queues_validator", queued_count > 0),
+    dimension("ejects_validator", ejected_count > 0),
+    dimension("activates_validator", activated_count > 0),
+    dimension("leaves_validator_unchanged", unchanged_count > 0),
+)
+ASPECTS = (SHAPE, BRANCHES)
+PROFILES = {
+    "smoke": SHAPE.each() | BRANCHES.each(),
+    "max": SHAPE.exhaustive() | BRANCHES.exhaustive() | (SHAPE.each() * BRANCHES.each()),
+    "normal": SHAPE.each() | BRANCHES.nwise(2),
+    "standard": SHAPE.each() | BRANCHES.nwise(2),
+}
+
+COVERAGE = coverage_spec(
+    "registry_updates",
+    focus="process_registry_updates: ordered per-validator queue, ejection, activation, and no-op branches",
+    record="one vector; branch factors mean at least one validator takes that branch",
+    attributes=(validator_count, queued_count, ejected_count, activated_count, unchanged_count),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    constraints=(SHAPE.ref("has_validators") == any_of(*BRANCHES.declarations),),
+)
+TARGET = bind(COVERAGE, observe_attributes=observe_attributes)

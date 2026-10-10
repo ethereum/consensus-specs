@@ -1,0 +1,67 @@
+"""Coverage of lookahead inputs and the active, unslashed candidate pool."""
+
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    aspect,
+    attribute,
+    bind,
+    Boolean,
+    cmp5,
+    constant,
+    coverage_spec,
+    dimension,
+    implies,
+    Integer,
+)
+
+from .observation import observe_attributes
+
+candidate_count = attribute("candidate_count", Integer(min=1))
+slashed_active_count = attribute("slashed_active_count", Integer(min=0))
+old_lookahead_has_slashed = attribute("old_lookahead_has_slashed", Boolean())
+new_proposers_have_duplicate = attribute("new_proposers_have_duplicate", Boolean())
+old_tail_equals_new = attribute("old_tail_equals_new", Boolean())
+slots_per_epoch = constant("slots_per_epoch", Integer(min=1))
+
+CANDIDATES = aspect(
+    "candidates",
+    dimension("has_slashed_active_validator", slashed_active_count > 0),
+    dimension("fewer_candidates_than_slots", cmp5(candidate_count, slots_per_epoch, op="<")),
+    dimension("old_lookahead_contains_slashed", old_lookahead_has_slashed),
+)
+ROTATION = aspect(
+    "rotation",
+    dimension("new_proposers_repeat", new_proposers_have_duplicate),
+    dimension("new_epoch_repeats_old_tail", old_tail_equals_new),
+)
+ASPECTS = (CANDIDATES, ROTATION)
+PROFILES = {
+    "smoke": CANDIDATES.each() | ROTATION.each(),
+    "max": CANDIDATES.exhaustive() | ROTATION.exhaustive() | (CANDIDATES.each() * ROTATION.each()),
+    "normal": CANDIDATES.nwise(2) | ROTATION.each(),
+    "standard": CANDIDATES.nwise(2) | (CANDIDATES.each() * ROTATION.each()),
+}
+COVERAGE = coverage_spec(
+    "proposer_lookahead",
+    focus="process_proposer_lookahead: slashed exclusion, proposer repetition, and old/new epoch relationship",
+    record="one vector",
+    attributes=(
+        candidate_count,
+        slashed_active_count,
+        old_lookahead_has_slashed,
+        new_proposers_have_duplicate,
+        old_tail_equals_new,
+    ),
+    constants=(slots_per_epoch,),
+    aspects=ASPECTS,
+    profiles=PROFILES,
+    constraints=(
+        implies(
+            CANDIDATES.ref("fewer_candidates_than_slots"), ROTATION.ref("new_proposers_repeat")
+        ),
+    ),
+)
+TARGET = bind(
+    COVERAGE,
+    observe_attributes=observe_attributes,
+    constants={"slots_per_epoch": lambda spec: int(spec.SLOTS_PER_EPOCH)},
+)
