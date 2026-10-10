@@ -5,10 +5,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    comparison,
+    cmp5,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     implies,
     Integer,
 )
@@ -24,16 +24,14 @@ slots_per_epoch = constant("slots_per_epoch", Integer(min=1))
 
 CANDIDATES = aspect(
     "candidates",
-    factor("has_slashed_active_validator", slashed_active_count > 0),
-    comparison(
-        "fewer_candidates_than_slots", candidate_count, slots_per_epoch, op="<", granularity="cmp5"
-    ),
-    factor("old_lookahead_contains_slashed", old_lookahead_has_slashed),
+    dimension("has_slashed_active_validator", slashed_active_count > 0),
+    dimension("fewer_candidates_than_slots", cmp5(candidate_count, slots_per_epoch, op="<")),
+    dimension("old_lookahead_contains_slashed", old_lookahead_has_slashed),
 )
 ROTATION = aspect(
     "rotation",
-    factor("new_proposers_repeat", new_proposers_have_duplicate),
-    factor("new_epoch_repeats_old_tail", old_tail_equals_new),
+    dimension("new_proposers_repeat", new_proposers_have_duplicate),
+    dimension("new_epoch_repeats_old_tail", old_tail_equals_new),
 )
 ASPECTS = (CANDIDATES, ROTATION)
 PROFILES = {

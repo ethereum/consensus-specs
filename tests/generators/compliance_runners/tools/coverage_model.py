@@ -433,8 +433,26 @@ def derived(name, value):
     return Expr("derived", (expression(value),), name=name)
 
 
-def choose(condition, yes, no):
-    return Expr("choose", tuple(map(expression, (condition, yes, no))))
+def choose(condition, yes, no=MISSING, *branches):
+    """Choose the first matching branch, with a final fallback.
+
+    Accepts ``choose((condition, value), ..., fallback)`` or alternating
+    conditions and values. The three-argument form and its keyword arguments
+    remain supported.
+    """
+    values = (condition, yes) if no is MISSING else (condition, yes, no, *branches)
+    if isinstance(condition, tuple):
+        if isinstance(values[-1], tuple):
+            raise ValueError("choose requires a final fallback after its pairs")
+        if any(not isinstance(pair, tuple) or len(pair) != 2 for pair in values[:-1]):
+            raise ValueError("choose requires (condition, value) pairs")
+        values = tuple(item for pair in values[:-1] for item in pair) + (values[-1],)
+    elif no is MISSING or len(branches) % 2:
+        raise ValueError("choose requires condition/value pairs and a final fallback")
+    result = expression(values[-1])
+    for i in range(len(values) - 3, -1, -2):
+        result = Expr("choose", (expression(values[i]), expression(values[i + 1]), result))
+    return result
 
 
 def maximum(left, right):
@@ -568,18 +586,82 @@ def categorical(name, value, values, *, when=True, available_when=True, descript
     )
 
 
+@dataclass(frozen=True)
+class Mapping:
+    """An unnamed coverage view, applied by ``dimension``."""
+
+    kind: str
+    operands: tuple
+    domain: Domain | None = None
+    op: str = ">"
+
+
+def identity(value, *, domain=None):
+    return Mapping("identity", (expression(value),), domain=domain)
+
+
+def cmp5(lhs, rhs, *, op=">"):
+    """Five distance buckets with an explicit predicate meaning for constraints."""
+    return Mapping("cmp5", (expression(lhs), expression(rhs)), op=op)
+
+
+def predicate(lhs, rhs, *, op=">"):
+    """Boolean coverage of an integer comparison, retaining its raw difference."""
+    return Mapping("predicate", (expression(lhs), expression(rhs)), op=op)
+
+
+def count(value):
+    value = expression(value)
+    return identity(
+        choose((value == 0, "ZERO"), (value == 1, "ONE"), "MANY"),
+        domain=Finite(("ZERO", "ONE", "MANY")),
+    )
+
+
+def modulo_boundary(lhs, modulus):
+    return Mapping("modulo", (expression(lhs), expression(modulus)))
+
+
+def _dimension_domain(value, limit):
+    if value.op in ("attribute", "constant"):
+        return value.domain
+    if value.result_type() is bool:
+        return Boolean()
+    if value.op == "literal":
+        return Finite((value.args[0],))
+    if value.op == "derived":
+        return _dimension_domain(value.args[0], limit)
+    if value.op == "choose":
+        values = tuple(
+            dict.fromkeys(
+                member
+                for branch in value.args[1:]
+                for member in _dimension_domain(branch, limit).values(limit=limit)
+            )
+        )
+        domain = Finite(values)
+        domain.values(limit=limit)
+        return domain
+    if value.result_type() is int:
+        return value.integer_domain()
+    raise ValueError("declare a finite domain for this expression")
+
+
 def dimension(name, value, *, domain=None, limit=1024, **kwargs):
     """Cover a finite expression exactly, using its input domain by default."""
+    if isinstance(value, Mapping):
+        if domain is not None:
+            raise ValueError("declare the coverage domain on the mapping")
+        if value.kind in ("predicate", "cmp5"):
+            return comparison(name, *value.operands, op=value.op, granularity=value.kind, **kwargs)
+        if value.kind == "modulo":
+            return modulo(name, *value.operands, **kwargs)
+        if value.kind != "identity":
+            raise ValueError(f"unsupported mapping: {value.kind}")
+        domain, value = value.domain, value.operands[0]
     value = expression(value)
     if domain is None:
-        if value.op in ("attribute", "constant"):
-            domain = value.domain
-        elif value.result_type() is bool:
-            domain = Boolean()
-        elif value.result_type() is int:
-            domain = value.integer_domain()
-        else:
-            raise ValueError("declare a finite domain for this expression")
+        domain = _dimension_domain(value, limit)
     if domain.value_type is not value.result_type():
         raise TypeError("coverage domain must match the expression type")
     if isinstance(domain, Boolean):
@@ -602,9 +684,10 @@ def modulo(name, lhs, modulus, *, when=True, available_when=True, description=""
         raise ValueError("modulus must have a positive integer domain")
     remainder = expression(lhs) % modulus
     value = choose(
-        remainder == 0,
-        "ZERO",
-        choose(remainder == 1, "ONE", choose(remainder == modulus - 1, "LAST", "INTERIOR")),
+        (remainder == 0, "ZERO"),
+        (remainder == 1, "ONE"),
+        (remainder == modulus - 1, "LAST"),
+        "INTERIOR",
     )
     return Factor(
         name,
