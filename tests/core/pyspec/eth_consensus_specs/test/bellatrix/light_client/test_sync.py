@@ -14,8 +14,8 @@ from eth_consensus_specs.test.helpers.constants import (
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.light_client_sync import (
-    run_lc_sync_test_multi_fork,
-    run_lc_sync_test_single_fork,
+    run_light_client_sync_test_multi_fork,
+    run_light_client_sync_test_single_fork,
 )
 
 
@@ -30,7 +30,7 @@ from eth_consensus_specs.test.helpers.light_client_sync import (
 @with_matching_spec_config(emitted_fork=CAPELLA)
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_fork(spec, phases, state):
-    yield from run_lc_sync_test_single_fork(spec, phases, state, CAPELLA)
+    yield from run_light_client_sync_test_single_fork(spec, phases, state, CAPELLA)
 
 
 @with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB])
@@ -45,7 +45,7 @@ def test_capella_fork(spec, phases, state):
 @with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_deneb_fork(spec, phases, state):
-    yield from run_lc_sync_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
+    yield from run_light_client_sync_test_multi_fork(spec, phases, state, CAPELLA, DENEB)
 
 
 @with_phases(phases=[BELLATRIX], other_phases=[CAPELLA, DENEB, ELECTRA])
@@ -61,4 +61,4 @@ def test_capella_deneb_fork(spec, phases, state):
 @with_matching_spec_config(emitted_fork=ELECTRA)
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_electra_fork(spec, phases, state):
-    yield from run_lc_sync_test_multi_fork(spec, phases, state, CAPELLA, ELECTRA)
+    yield from run_light_client_sync_test_multi_fork(spec, phases, state, CAPELLA, ELECTRA)
