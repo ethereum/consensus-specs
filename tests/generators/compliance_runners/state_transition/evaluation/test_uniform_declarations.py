@@ -31,6 +31,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     factor,
     Finite,
     fix,
+    identity,
     implies,
     Integer,
     present,
@@ -205,14 +206,19 @@ def test_nonrejecting_declaration_providers_share_the_empty_exceptional_profile(
     ("domain", "value"),
     [
         (Integer(0, 4), 2),
+        (Boolean(), True),
         (Boolean(), False),
         (Finite(("first", "last")), "last"),
         (Integer(0, 4) | Finite((2**64 - 1,)), 2**64 - 1),
     ],
 )
-def test_constant_dimensions_refine_to_the_bound_value(domain, value):
+@pytest.mark.parametrize("form", ["direct", "identity", "identity_domain"])
+def test_constant_dimensions_refine_to_the_bound_value(domain, value, form):
     k = constant("k", domain)
-    d = dimension("constant_value", k)
+    value_expression = (
+        k if form == "direct" else identity(k, domain=domain if form == "identity_domain" else None)
+    )
+    d = dimension("constant_value", value_expression)
     template = target((), (d,), constants=(k,), bindings={"k": lambda spec: spec.k})
     t = template.for_spec(SimpleNamespace(k=value))
     assert t.profiles["all"].run() == {frozenset({("constant_value", value)})}
@@ -220,6 +226,21 @@ def test_constant_dimensions_refine_to_the_bound_value(domain, value):
     report = score(t, [t.record(observation)], t.profiles["all"])
     assert report.percent == 100
     assert d.values == (() if d.kind == "boolean" else domain.values())
+
+
+def test_identity_boolean_domain_supports_predicate_activation():
+    flag = attribute("flag", Boolean())
+    enabled = dimension("enabled", identity(flag, domain=Boolean()))
+    child = dimension("child", identity(~flag, domain=Boolean()), when=enabled)
+    t = target((flag,), (enabled, child)).for_spec(object())
+    assert t.profiles["all"].run() == {
+        frozenset({("enabled", False)}),
+        frozenset({("enabled", True), ("child", False)}),
+        frozenset({("enabled", True), ("child", True)}),
+    }
+    for value in (True, False):
+        obs = t.observation(Context(t._bound_spec, {"flag": value}, None, None, {}))
+        assert t.record(obs) == {"enabled": value, "child": False if value else NA}
 
 
 def test_constant_expression_dimensions_refine_independently_per_binding():

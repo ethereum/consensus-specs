@@ -11,7 +11,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     bind,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     Integer,
 )
 
@@ -24,9 +24,9 @@ minimum_validator_count = constant("minimum_validator_count", Integer(min=0))
 
 PARTICIPATION = aspect(
     "participation",
-    factor("validator_set_is_larger", validator_count > minimum_validator_count),
-    factor("previous_has_flags", previous_nonzero_count > 0),
-    factor("current_has_flags", current_nonzero_count > 0),
+    dimension("validator_set_is_larger", validator_count > minimum_validator_count),
+    dimension("previous_has_flags", previous_nonzero_count > 0),
+    dimension("current_has_flags", current_nonzero_count > 0),
 )
 ASPECTS = (PARTICIPATION,)
 PROFILES = {

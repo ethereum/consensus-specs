@@ -20,18 +20,25 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Bytes,
     categorical,
     choose,
+    cmp5,
     comparison,
     constant,
+    count,
     coverage_spec,
     derived,
+    dimension,
     each,
     exhaustive,
     factor,
+    Finite,
     fix,
+    identity,
     Integer,
     maximum,
     modulo,
+    modulo_boundary,
     nwise,
+    predicate,
 )
 from tests.generators.compliance_runners.tools.coverage_model import Expr, expression
 
@@ -56,6 +63,156 @@ def bound(definition, **kwargs):
     return bind(definition, observe_attributes=lambda ctx: ctx.pre, **kwargs).for_spec(
         SimpleNamespace()
     )
+
+
+def test_mapping_views_preserve_conditional_obligations_and_observation():
+    enabled = attribute("enabled_input", Boolean())
+    x = attribute("x", Integer(0, 2))
+    E = dimension("enabled", identity(enabled))
+    # Predicate meaning differs from the default > even though coverage uses cmp5.
+    C = dimension("small", cmp5(x, 1, op="<"), when=E)
+    N = dimension("count", count(x), when=C, available_when=enabled)
+    d = definition((enabled, x), (E, C, N), {"all": exhaustive([E, C, N])})
+    t = bound(d)
+    assert t.profiles["all"].run() == {
+        obligation(enabled=False),
+        obligation(enabled=True, small="EQ"),
+        obligation(enabled=True, small="GT_1"),
+        *(obligation(enabled=True, small="LT_1", count=v) for v in ("ZERO", "ONE", "MANY")),
+    }
+    for value, bucket, label in ((0, "LT_1", "ZERO"), (1, "EQ", NA), (2, "GT_1", NA)):
+        obs = t.observation(
+            Context(t._bound_spec, {"enabled_input": True, "x": value}, None, None, {})
+        )
+        assert t.record(obs) == {"enabled": True, "small": bucket, "count": label}
+
+
+@pytest.mark.parametrize(
+    ("period", "expected"),
+    [(1, ("ZERO",)), (2, ("ZERO", "ONE")), (4, ("ZERO", "ONE", "LAST", "INTERIOR"))],
+)
+def test_mapping_modulo_preserves_bound_domains(period, expected):
+    x = attribute("x", Integer(min=0))
+    modulus = constant("period", Integer(min=1))
+    position = dimension("position", modulo_boundary(x, modulus))
+    d = definition((x,), (position,), {"all": exhaustive([position])}, constants=(modulus,))
+    t = bound(d, constants={"period": lambda spec: period})
+    assert t.profiles["all"].run() == {obligation(position=v) for v in expected}
+    for value, label in enumerate(("ZERO", "ONE", "INTERIOR", "LAST")[:period]):
+        obs = t.observation(Context(t._bound_spec, {"x": value}, None, None, {}))
+        assert t.record(obs) == {"position": label}
+
+
+def test_identity_mapping_uses_explicit_categorical_domain():
+    flag = attribute("flag", Boolean())
+    label = dimension("label", identity(choose(flag, "ON", "OFF"), domain=Finite(("ON", "OFF"))))
+    t = bound(definition((flag,), (label,), {"all": exhaustive([label])}))
+    assert t.profiles["all"].run() == {obligation(label="ON"), obligation(label="OFF")}
+    with pytest.raises(TypeError, match="coverage domain"):
+        dimension("bad", identity(flag, domain=Finite((0, 1))))
+    with pytest.raises(ValueError, match="domain on the mapping"):
+        dimension("bad", identity(flag), domain=Boolean())
+
+
+def test_dimension_infers_choose_labels_and_boolean_domains():
+    flag = attribute("flag", Boolean())
+    label = dimension("label", choose(flag, "COMPOUNDING", "STANDARD"))
+    enabled = dimension("enabled", ~flag)
+    t = bound(definition((flag,), (label, enabled), {"all": exhaustive([label, enabled])}))
+    assert t.profiles["all"].run() == {
+        obligation(label=name, enabled=value)
+        for name in ("COMPOUNDING", "STANDARD")
+        for value in (True, False)
+    }
+    for flag_value, name in ((True, "COMPOUNDING"), (False, "STANDARD")):
+        obs = t.observation(Context(t._bound_spec, {"flag": flag_value}, None, None, {}))
+        assert t.record(obs) == {"label": name, "enabled": not flag_value}
+
+
+def test_choose_domain_preserves_gaps_duplicates_and_limits():
+    flag = attribute("flag", Boolean())
+    choice = choose((flag, 1), (~flag, 100), 1)
+    label = dimension("label", choice)
+    t = bound(definition((flag,), (label,), {"all": exhaustive([label])}))
+    assert t.profiles["all"].run() == {obligation(label=1), obligation(label=100)}
+    with pytest.raises(ValueError, match="too large"):
+        dimension("bad", choice, limit=1)
+    unbounded = attribute("unbounded", Integer())
+    with pytest.raises(ValueError, match="partition"):
+        dimension("bad", choose(flag, unbounded, 1))
+
+
+@pytest.mark.parametrize(("value", "expected"), [(0, "ZERO"), (1, "ONE"), (2, "MANY")])
+@pytest.mark.parametrize("form", ["flat", "paired"])
+def test_flat_choose_preserves_branch_order_and_fallback(value, expected, form):
+    x = attribute("x", Integer(min=0))
+    # Conditions overlap at zero, so the first branch must win.
+    choice = (
+        choose(x == 0, "ZERO", x <= 1, "ONE", "MANY")
+        if form == "flat"
+        else choose((x == 0, "ZERO"), (x <= 1, "ONE"), "MANY")
+    )
+    assert choice.evaluate({"x": value}, {}) == expected
+
+
+def test_flat_choose_preserves_lazy_evaluation_and_type_checks():
+    missing = attribute("missing", Boolean())
+    skipped = attribute("skipped", Integer())
+    assert choose(expression(value=True), 1, missing, skipped, skipped).evaluate({}, {}) == 1
+    assert (
+        choose(expression(value=False), skipped, expression(value=True), 2, skipped).evaluate(
+            {}, {}
+        )
+        == 2
+    )
+    assert choose(condition=False, yes=1, no=2).evaluate({}, {}) == 2
+    with pytest.raises(ValueError, match="final fallback"):
+        choose(expression(value=True), 1, expression(value=False), 2)
+    with pytest.raises(TypeError, match="matching branch types"):
+        choose(expression(value=True), 1, expression(value=False), "wrong type", 2)
+    with pytest.raises(TypeError, match="boolean condition"):
+        choose(expression(value=True), 1, 0, 2, 3)
+
+
+def test_paired_choose_preserves_lazy_evaluation_and_validates_pairs():
+    missing = attribute("missing", Boolean())
+    skipped = attribute("skipped", Integer())
+    yes, no = expression(value=True), expression(value=False)
+    assert choose((yes, 1), (missing, skipped), skipped).evaluate({}, {}) == 1
+    assert choose((no, skipped), (yes, 2), skipped).evaluate({}, {}) == 2
+    assert choose((no, skipped), 3).evaluate({}, {}) == 3
+    with pytest.raises(ValueError, match="final fallback"):
+        choose((yes, 1), (no, 2))
+    with pytest.raises(ValueError, match="pairs"):
+        choose((yes, 1), (no,), 2)
+    with pytest.raises(ValueError, match="pairs"):
+        choose((yes, 1), no, 2)
+    with pytest.raises(TypeError, match="matching branch types"):
+        choose((yes, 1), (no, "wrong type"), 2)
+
+
+@pytest.mark.parametrize(
+    ("op", "expected"),
+    [
+        ("<", (True, False, False)),
+        ("<=", (True, True, False)),
+        ("==", (False, True, False)),
+        ("!=", (True, False, True)),
+        (">=", (False, True, True)),
+        (">", (False, False, True)),
+    ],
+)
+def test_predicate_mapping_preserves_raw_comparison_and_boolean_coverage(op, expected):
+    x = attribute("x", Integer(-1, 1))
+    P = dimension("matches", predicate(x, 0, op=op))
+    t = bound(definition((x,), (P,), {"all": exhaustive([P])}))
+    assert t.profiles["all"].run() == {obligation(matches=True), obligation(matches=False)}
+    for value, truth in zip((-1, 0, 1), expected, strict=True):
+        obs = t.observation(Context(t._bound_spec, {"x": value}, None, None, {}))
+        assert obs["matches"] == value
+        assert t.record(obs) == {"matches": truth}
+    with pytest.raises(ValueError, match="unsupported comparison"):
+        dimension("bad", predicate(x, 0, op="invalid"))
 
 
 def test_conditional_selection_and_exhaustive_shorter_branch():
