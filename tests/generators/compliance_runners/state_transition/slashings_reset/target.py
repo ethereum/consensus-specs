@@ -9,11 +9,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
-    comparison,
+    cmp5,
     constant,
     coverage_spec,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
 )
 
 from .observation import observe_attributes
@@ -24,8 +25,8 @@ destination_value = attribute("destination_value", Integer(min=0))
 
 RESET = aspect(
     "reset",
-    modulo("destination_position", next_epoch, vector_length),
-    comparison("destination_nonzero", destination_value, 0, granularity="cmp5"),
+    dimension("destination_position", modulo_boundary(next_epoch, vector_length)),
+    dimension("destination_nonzero", cmp5(destination_value, 0)),
 )
 ASPECTS = (RESET,)
 PROFILES = {

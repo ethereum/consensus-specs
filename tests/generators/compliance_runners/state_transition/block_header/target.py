@@ -11,12 +11,13 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    comparison,
+    cmp5,
     coverage_spec,
+    dimension,
     each,
-    factor,
     fix,
     Integer,
+    predicate,
     union,
 )
 
@@ -34,15 +35,17 @@ post_present = attribute("post_present", Boolean())
 
 HEADER = aspect(
     "header",
-    comparison("slot_matches_state", block_slot, state_slot, op="==", granularity="cmp5"),
-    comparison("slot_is_newer", block_slot, latest_header_slot, op=">", granularity="cmp5"),
-    comparison("proposer_index_matches", proposer_index, expected_proposer_index, op="=="),
-    factor("parent_matches", parent_root_match),
+    dimension("slot_matches_state", cmp5(block_slot, state_slot, op="==")),
+    dimension("slot_is_newer", cmp5(block_slot, latest_header_slot, op=">")),
+    dimension(
+        "proposer_index_matches", predicate(proposer_index, expected_proposer_index, op="==")
+    ),
+    dimension("parent_matches", parent_root_match),
     # Availability of the validator lookup, rather than a coverage dimension.
-    factor("proposer_not_slashed", ~proposer_slashed, available_when=proposer_found),
+    dimension("proposer_not_slashed", ~proposer_slashed, available_when=proposer_found),
 )
 
-OUTCOME = aspect("outcome", factor("accepted", post_present))
+OUTCOME = aspect("outcome", dimension("accepted", post_present))
 ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (HEADER, OUTCOME)
 GATES = list(HEADER.factors)

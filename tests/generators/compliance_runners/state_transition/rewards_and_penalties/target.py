@@ -8,7 +8,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Boolean,
     constant,
     coverage_spec,
-    factor,
+    dimension,
     implies,
     Integer,
 )
@@ -23,15 +23,15 @@ flag_penalty = attribute("flag_penalty", Boolean())
 inactivity_penalty = attribute("inactivity_penalty", Boolean())
 genesis_epoch = constant("genesis_epoch", Integer(min=0))
 
-REACHED = factor("after_genesis", current_epoch > genesis_epoch)
+REACHED = dimension("after_genesis", current_epoch > genesis_epoch)
 GUARD = aspect("guard", REACHED)
 DELTAS = aspect(
     "deltas",
-    factor("has_eligible_validator", eligible_count > 0, when=REACHED),
-    factor("in_inactivity_leak", leaking, when=REACHED),
-    factor("has_flag_reward", flag_reward, when=REACHED),
-    factor("has_flag_penalty", flag_penalty, when=REACHED),
-    factor("has_inactivity_penalty", inactivity_penalty, when=REACHED),
+    dimension("has_eligible_validator", eligible_count > 0, when=REACHED),
+    dimension("in_inactivity_leak", leaking, when=REACHED),
+    dimension("has_flag_reward", flag_reward, when=REACHED),
+    dimension("has_flag_penalty", flag_penalty, when=REACHED),
+    dimension("has_inactivity_penalty", inactivity_penalty, when=REACHED),
 )
 ASPECTS = (GUARD, DELTAS)
 PROFILES = {

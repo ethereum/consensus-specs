@@ -9,11 +9,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     aspect,
     attribute,
     bind,
-    comparison,
+    cmp5,
     constant,
     coverage_spec,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
 )
 
 from .observation import observe_attributes
@@ -24,8 +25,8 @@ epochs_per_historical_root = constant("epochs_per_historical_root", Integer(min=
 
 UPDATE = aspect(
     "update",
-    modulo("update_remainder", next_epoch, epochs_per_historical_root),
-    comparison("summaries_nonempty", summary_count, 0, granularity="cmp5"),
+    dimension("update_remainder", modulo_boundary(next_epoch, epochs_per_historical_root)),
+    dimension("summaries_nonempty", cmp5(summary_count, 0)),
 )
 ASPECTS = (UPDATE,)
 PROFILES = {

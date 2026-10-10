@@ -6,7 +6,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     coverage_spec,
-    factor,
+    dimension,
     Integer,
 )
 
@@ -18,13 +18,13 @@ ejected_count = attribute("ejected_count", Integer(min=0))
 activated_count = attribute("activated_count", Integer(min=0))
 unchanged_count = attribute("unchanged_count", Integer(min=0))
 
-SHAPE = aspect("shape", factor("has_validators", validator_count > 0))
+SHAPE = aspect("shape", dimension("has_validators", validator_count > 0))
 BRANCHES = aspect(
     "branches",
-    factor("queues_validator", queued_count > 0),
-    factor("ejects_validator", ejected_count > 0),
-    factor("activates_validator", activated_count > 0),
-    factor("leaves_validator_unchanged", unchanged_count > 0),
+    dimension("queues_validator", queued_count > 0),
+    dimension("ejects_validator", ejected_count > 0),
+    dimension("activates_validator", activated_count > 0),
+    dimension("leaves_validator_unchanged", unchanged_count > 0),
 )
 ASPECTS = (SHAPE, BRANCHES)
 PROFILES = {

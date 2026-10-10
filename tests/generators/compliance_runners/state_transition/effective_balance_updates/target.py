@@ -5,13 +5,13 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     attribute,
     bind,
     Boolean,
-    categorical,
     choose,
-    comparison,
+    cmp5,
     constant,
     coverage_spec,
+    dimension,
     Integer,
-    modulo,
+    modulo_boundary,
     nwise,
 )
 
@@ -33,43 +33,27 @@ compounding_max = constant("compounding_max", Integer(min=1))
 
 CREDENTIAL = aspect(
     "credential",
-    categorical(
+    dimension(
         "credential_type",
         choose(is_compounding, "COMPOUNDING", "STANDARD"),
-        ("STANDARD", "COMPOUNDING"),
     ),
 )
 GUARDS = aspect(
     "guards",
-    comparison(
-        "downward_trigger",
-        balance + downward_threshold,
-        effective_balance,
-        op="<",
-        granularity="cmp5",
-    ),
-    comparison(
-        "upward_trigger", effective_balance + upward_threshold, balance, op="<", granularity="cmp5"
-    ),
+    dimension("downward_trigger", cmp5(balance + downward_threshold, effective_balance, op="<")),
+    dimension("upward_trigger", cmp5(effective_balance + upward_threshold, balance, op="<")),
 )
 RESULT = aspect(
     "result",
-    comparison(
-        "rounded_vs_cap", rounded_balance, max_effective_balance, op=">=", granularity="cmp5"
-    ),
-    modulo("balance_remainder", balance, increment),
-    categorical(
+    dimension("rounded_vs_cap", cmp5(rounded_balance, max_effective_balance, op=">=")),
+    dimension("balance_remainder", modulo_boundary(balance, increment)),
+    dimension(
         "outcome",
         choose(
-            post_effective_balance == effective_balance,
-            "UNCHANGED",
-            choose(
-                post_effective_balance == max_effective_balance,
-                "EFFECTIVE_BALANCE_CAPPED",
-                "EFFECTIVE_BALANCE_UPDATED",
-            ),
+            (post_effective_balance == effective_balance, "UNCHANGED"),
+            (post_effective_balance == max_effective_balance, "EFFECTIVE_BALANCE_CAPPED"),
+            "EFFECTIVE_BALANCE_UPDATED",
         ),
-        ("UNCHANGED", "EFFECTIVE_BALANCE_UPDATED", "EFFECTIVE_BALANCE_CAPPED"),
     ),
 )
 ASPECTS = (CREDENTIAL, GUARDS, RESULT)

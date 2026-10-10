@@ -10,7 +10,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     constant,
     coverage_spec,
     dimension,
-    factor,
     implies,
     Integer,
 )
@@ -23,12 +22,12 @@ current_support = attribute("current_support", Boolean())
 finalization_rule = attribute("finalization_rule", Integer(min=0, max=4))
 genesis_epoch = constant("genesis_epoch", Integer(min=0))
 
-REACHED = factor("past_initial_epochs", current_epoch > genesis_epoch + 1)
+REACHED = dimension("past_initial_epochs", current_epoch > genesis_epoch + 1)
 GUARD = aspect("guard", REACHED)
 JUSTIFICATION = aspect(
     "justification",
-    factor("previous_epoch_supermajority", previous_support, when=REACHED),
-    factor("current_epoch_supermajority", current_support, when=REACHED),
+    dimension("previous_epoch_supermajority", previous_support, when=REACHED),
+    dimension("current_epoch_supermajority", current_support, when=REACHED),
 )
 FINALIZATION = aspect(
     "finalization",
