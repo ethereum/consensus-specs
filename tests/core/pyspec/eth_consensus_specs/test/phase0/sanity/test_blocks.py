@@ -39,7 +39,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_capella,
-    is_post_eip8025,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -183,12 +182,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     )
     if is_post_bellatrix(spec) and not is_post_gloas(spec):
         if is_post_capella(spec) or spec.is_execution_enabled(state, block.body):
-            if is_post_eip8025(spec):
-                spec.process_execution_payload(
-                    state, block.body, spec.EXECUTION_ENGINE, spec.PROOF_ENGINE
-                )
-            else:
-                spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
+            spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
 
     # Perform rest of process_block transitions
     spec.process_randao(state, block.body)
@@ -749,6 +743,83 @@ def test_multiple_attester_slashings_partial_overlap(spec, state):
     yield "post", state
 
     check_attester_slashing_effect(spec, pre_state, state, full_indices)
+
+
+@with_all_phases
+@spec_state_test
+def test_invalid_proposer_and_attester_slashings_same_validator(spec, state):
+    """
+    Test that a block containing a proposer slashing and an attester slashing
+    of the same validator is invalid. Proposer slashings are processed first,
+    so the validator is already slashed when the attester slashing is
+    processed. The attester slashing then slashes no one, which fails the
+    ``slashed_any`` check in ``process_attester_slashing``.
+    """
+    proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
+    slashed_index = proposer_slashing.signed_header_1.message.proposer_index
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [slashed_index], signed_1=True, signed_2=True
+    )
+    assert not state.validators[slashed_index].slashed
+
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.proposer_slashings.append(proposer_slashing)
+    block.body.attester_slashings.append(attester_slashing)
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_and_attester_slashings_partial_overlap(spec, state):
+    """
+    Test that a block containing a proposer slashing of one validator and an
+    attester slashing of that validator and another is valid. Proposer
+    slashings are processed first, so the attester slashing only slashes the
+    other validator and the overlapping validator is slashed once. Because the
+    attester slashing still slashes someone, it passes the ``slashed_any``
+    check in ``process_attester_slashing``.
+    """
+    # copy for later balance lookups.
+    pre_state = state.copy()
+
+    block = build_empty_block_for_next_slot(spec, state)
+    active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    indices = [index for index in active_indices if index != block.proposer_index]
+    other_index = indices[0]
+    overlap_index = indices[-1]
+
+    proposer_slashing = get_valid_proposer_slashing(
+        spec, state, slashed_index=overlap_index, signed_1=True, signed_2=True
+    )
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [other_index, overlap_index], signed_1=True, signed_2=True
+    )
+    block.body.proposer_slashings.append(proposer_slashing)
+    block.body.attester_slashings.append(attester_slashing)
+
+    assert not state.validators[other_index].slashed
+    assert not state.validators[overlap_index].slashed
+
+    yield "pre", state
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    check_proposer_slashing_effect(spec, pre_state, state, overlap_index, block)
+    check_attester_slashing_effect(spec, pre_state, state, [other_index])
+    slashings_index = spec.get_current_epoch(state) % spec.EPOCHS_PER_SLASHINGS_VECTOR
+    assert state.slashings[slashings_index] == (
+        pre_state.slashings[slashings_index]
+        + pre_state.validators[other_index].effective_balance
+        + pre_state.validators[overlap_index].effective_balance
+    )
 
 
 @with_all_phases
