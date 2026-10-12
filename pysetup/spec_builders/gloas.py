@@ -131,8 +131,9 @@ get_parent_payload_status = cache_this(
 
 _compute_balance_weighted_selection = compute_balance_weighted_selection
 compute_balance_weighted_selection = cache_this(
-    lambda state, indices, seed, size, shuffle_indices: (
-        state.validators.hash_tree_root(), tuple(indices), seed, size, shuffle_indices
+    lambda state, indices, seed, size, shuffle_indices, exclude_slashed=False: (
+        state.validators.hash_tree_root(), tuple(indices), seed, size, shuffle_indices,
+        exclude_slashed
     ),
     _compute_balance_weighted_selection, lru_size=SLOTS_PER_EPOCH * 6)
 """

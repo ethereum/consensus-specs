@@ -102,7 +102,6 @@
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
     - [New `compute_ptc`](#new-compute_ptc)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
@@ -1201,16 +1200,21 @@ def compute_balance_weighted_selection(
     seed: Bytes32,
     size: Uint64,
     shuffle_indices: bool,
+    exclude_slashed: bool = False,
 ) -> Sequence[ValidatorIndex]:
     """
     Return ``size`` indices sampled by effective balance, using ``indices``
     as candidates. If ``shuffle_indices`` is ``True``, candidate indices
     are themselves sampled from ``indices`` by shuffling it, otherwise
-    ``indices`` is traversed in order. The returned list can contain duplicates.
+    ``indices`` is traversed in order. If ``exclude_slashed`` is ``True``,
+    slashed candidates are rejected when drawn. The returned list can contain
+    duplicates.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     total = Uint64(len(indices))
     assert total > 0
+    if exclude_slashed:
+        assert any(not state.validators[index].slashed for index in indices)
     effective_balances = [state.validators[index].effective_balance for index in indices]
     selected: list[ValidatorIndex] = []
     i = Uint64(0)
@@ -1224,7 +1228,8 @@ def compute_balance_weighted_selection(
         weight = effective_balances[next_index] * MAX_RANDOM_VALUE
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         threshold = MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
-        if weight >= threshold:
+        is_excluded = exclude_slashed and state.validators[indices[next_index]].slashed
+        if not is_excluded and weight >= threshold:
             selected.append(indices[next_index])
         i += 1
     return selected
@@ -1234,7 +1239,9 @@ def compute_balance_weighted_selection(
 
 *Note*: `compute_proposer_indices` is modified to use
 `compute_balance_weighted_selection` as a helper for the balance-weighted
-sampling process.
+sampling process. Slashed validators are rejected as they are drawn rather than
+filtered out of `indices`, so a slashing does not reshuffle the remaining
+candidates.
 
 ```python
 def compute_proposer_indices(
@@ -1254,6 +1261,8 @@ def compute_proposer_indices(
                 seed,
                 size=Uint64(1),
                 shuffle_indices=True,
+                # [New in Gloas:EIP8045]
+                exclude_slashed=True,
             )[0]
             for seed in seeds
         ]
@@ -1283,27 +1292,6 @@ def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
 ```
 
 ### Beacon state accessors
-
-#### Modified `get_beacon_proposer_indices`
-
-*Note*: `get_beacon_proposer_indices` is modified to exclude slashed validators
-from the candidate pool before invoking `compute_proposer_indices`, so the newly
-computed proposer indices only contain active and unslashed validators.
-
-```python
-def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerIndices:
-    """
-    Return the proposer indices for the given ``epoch``.
-    """
-    # [Modified in Gloas:EIP8045]
-    indices = [
-        index
-        for index in get_active_validator_indices(state, epoch)
-        if not state.validators[index].slashed
-    ]
-    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
-    return compute_proposer_indices(state, epoch, seed, indices)
-```
 
 #### Modified `get_next_sync_committee_indices`
 
