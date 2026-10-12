@@ -118,7 +118,7 @@ def _get_ptc_from_indices(spec, state, slot, indices):
         spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
     )
     return spec.compute_balance_weighted_selection(
-        state, indices, seed, size=spec.PTC_SIZE, shuffle_indices=False
+        state, indices, seed, size=spec.PTC_SIZE, shuffle_indices=False, exclude_slashed=False
     )
 
 

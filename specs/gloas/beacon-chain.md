@@ -1200,7 +1200,7 @@ def compute_balance_weighted_selection(
     seed: Bytes32,
     size: Uint64,
     shuffle_indices: bool,
-    exclude_slashed: bool = False,
+    exclude_slashed: bool,
 ) -> Sequence[ValidatorIndex]:
     """
     Return ``size`` indices sampled by effective balance, using ``indices``
@@ -1286,7 +1286,7 @@ def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
         indices.extend(committee)
     return PayloadTimelinessCommittee(
         data=compute_balance_weighted_selection(
-            state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+            state, indices, seed, size=PTC_SIZE, shuffle_indices=False, exclude_slashed=False
         )
     )
 ```
@@ -1308,7 +1308,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     indices = get_active_validator_indices(state, epoch)
     return compute_balance_weighted_selection(
-        state, indices, seed, size=SYNC_COMMITTEE_SIZE, shuffle_indices=True
+        state, indices, seed, size=SYNC_COMMITTEE_SIZE, shuffle_indices=True, exclude_slashed=False
     )
 ```
 
