@@ -34,9 +34,9 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          | Description               |
-| ------------------------ | -------------- | ------------------------- |
-| `INCLUSION_LIST_DUE_BPS` | `Uint64(6667)` | ~67% of the slot duration |
+| Name                     | Value          | Description              |
+| ------------------------ | -------------- | ------------------------ |
+| `INCLUSION_LIST_DUE_BPS` | `Uint64(7500)` | 75% of the slot duration |
 
 ## Protocols
 

@@ -109,8 +109,8 @@ PAYLOAD_ATTESTATION_DUE_BPS: 7500
 # Heze
 # 10000 milliseconds
 SLOT_DURATION_MS_HEZE: 10000
-# 6667 basis points, ~67% of the slot duration
-INCLUSION_LIST_DUE_BPS: 6667
+# 7500 basis points, ~75% of the slot duration
+INCLUSION_LIST_DUE_BPS: 7500
 
 # Validator cycle
 # ---------------------------------------------------------------
