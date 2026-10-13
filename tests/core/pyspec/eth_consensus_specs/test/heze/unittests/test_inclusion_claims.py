@@ -69,9 +69,7 @@ def test_nonempty_inclusion_claims_commitment(spec, state):
         )
 
 
-@with_heze_and_later
-@spec_state_test
-def test_unsatisfied_inclusion_claims_preserve_payload_validity(spec, state):
+def run_incomplete_inclusion_verdict(spec, state, verdict):
     store, _, signed_envelope = setup_claimed_envelope(spec, state)
     envelope = signed_envelope.message
     root = envelope.beacon_block_root
@@ -107,7 +105,7 @@ def test_unsatisfied_inclusion_claims_preserve_payload_validity(spec, state):
                     spec.InclusionListBits(data=[member == committee[0] for member in committee])
                 ]
                 assert claims == envelope.inclusion_claims
-                return False
+                return verdict
 
         engine = RecordingEngine()
         previous_engine = spec.EXECUTION_ENGINE
@@ -118,12 +116,31 @@ def test_unsatisfied_inclusion_claims_preserve_payload_validity(spec, state):
             spec.EXECUTION_ENGINE = previous_engine
         assert engine.called
         assert store.payloads[root] == envelope
-        assert not store.payload_inclusion_list_satisfaction[root]
+        assert store.payload_inclusion_list_satisfaction[root] is verdict
         assert not spec.is_payload_inclusion_list_satisfied(store, root)
         store.time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot + 1)
         assert not spec.should_extend_payload(store, root)
+        if verdict is None:
+            other_root = spec.Root(b"\x77" * 32)
+            store.payload_inclusion_list_satisfaction[other_root] = None
+            # The adapter records the resolved verdict only for this block.
+            store.payload_inclusion_list_satisfaction[root] = True
+            assert spec.is_payload_inclusion_list_satisfied(store, root)
+            assert store.payload_inclusion_list_satisfaction[other_root] is None
 
     run_with_inclusion_list_store(spec, run)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_unsatisfied_inclusion_preserves_payload_validity(spec, state):
+    run_incomplete_inclusion_verdict(spec, state, verdict=False)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_pending_inclusion_preserves_payload_validity(spec, state):
+    run_incomplete_inclusion_verdict(spec, state, verdict=None)
 
 
 @with_heze_and_later

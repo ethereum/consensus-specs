@@ -38,7 +38,8 @@ class NoopExecutionEngine(ExecutionEngine):
                                   safe_block_hash: Hash32,
                                   finalized_block_hash: Hash32,
                                   payload_attributes: PayloadAttributes | None,
-                                  custody_columns: CustodyColumnBits | None) -> PayloadId | None:
+                                  custody_columns: CustodyColumnBits | None,
+                                  inclusion_list_context_id: Bytes32 | None = None) -> PayloadId | None:
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
@@ -64,7 +65,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                     execution_payload: ExecutionPayload,
                                     inclusion_list_transactions: Sequence[Transaction],
                                     inclusion_list_membership: Sequence[InclusionListBits],
-                                    inclusion_list_claims: Sequence[InclusionListClaim]) -> bool:
+                                    inclusion_list_claims: Sequence[InclusionListClaim]) -> bool | None:
         return True
 
 

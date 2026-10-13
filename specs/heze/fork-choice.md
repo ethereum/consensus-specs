@@ -58,6 +58,15 @@ and any duplicates; claim interpretation is an execution layer rule. Different
 beacon blocks may commit different claims for the same execution payload, so
 satisfaction MUST NOT be cached by execution block hash alone.
 
+The Engine API adapter MUST associate the `inclusionListContextId` returned by
+`engine_newPayloadV6` with the beacon block and the exact inputs supplied for its
+check. It retrieves pending results using `engine_getInclusionListStatusV1`, or
+`engine_forkchoiceUpdatedV5` with that identifier when updating the corresponding
+head. Unknown or evicted contexts require resubmission of the retained inputs.
+A completed result updates only the associated beacon block's
+`payload_inclusion_list_satisfaction`; it MUST NOT be applied to ancestors or
+other blocks merely sharing its execution hash.
+
 ```python
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
@@ -65,19 +74,23 @@ def is_inclusion_list_satisfied(
     inclusion_list_transactions: Sequence[Transaction],
     inclusion_list_membership: Sequence[InclusionListBits],
     inclusion_list_claims: Sequence[InclusionListClaim],
-) -> bool:
+) -> bool | None:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
     list constraints with respect to ``inclusion_list_transactions``, their
     ``inclusion_list_membership``, and ``inclusion_list_claims``.
+    Return ``None`` while execution validation or inclusion checking is pending.
     """
 ```
 
 #### Modified `notify_forkchoice_updated`
 
-*Note*: The only change made is to the `PayloadAttributes` container through the
-addition of `inclusion_list_transactions` and `inclusion_list_membership`.
-Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
+`PayloadAttributes` adds `inclusion_list_transactions` and
+`inclusion_list_membership` for the child build. The optional
+`inclusion_list_context_id` selects the head's inclusion check independently.
+The Engine API adapter records its returned verdict as described above. On an
+unknown-context error it MUST resubmit the retained inputs and retry forkchoice;
+this error does not apply the requested forkchoice update.
 
 *Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
 not empty, the payload build process MUST produce an execution payload that
@@ -92,6 +105,7 @@ def notify_forkchoice_updated(
     finalized_block_hash: Hash32,
     payload_attributes: PayloadAttributes | None,
     custody_columns: CustodyColumnBits | None,
+    inclusion_list_context_id: Bytes32 | None = None,
 ) -> PayloadId | None: ...
 ```
 
@@ -144,7 +158,7 @@ class Store:
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: dict[Root, bool]
+    payload_inclusion_list_satisfaction: dict[Root, bool | None]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -186,10 +200,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 satisfying the inclusion list constraints SHOULD NOT be marked as unsatisfied
 even if their associated `InclusionList`s have subsequently been pruned.
 
-*Note*: A `NOT_VALIDATED` payload is optimistically recorded as satisfying the
-inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
-`VALID`, whether the payload satisfies the inclusion list constraints MUST be
-recorded according to the
+*Note*: A pending inclusion check is recorded as `None`, including when
+execution is already `VALID`. It does not permit extending the payload. Deferred
+results MUST be recorded according to the
 [Optimistic sync](./optimistic-sync.md#new-how-to-track-inclusion-list-satisfaction)
 specification.
 
@@ -241,7 +254,7 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return store.payload_inclusion_list_satisfaction[root]
+    return store.payload_inclusion_list_satisfaction[root] is True
 ```
 
 ### Modified `should_extend_payload`
