@@ -29,3 +29,8 @@ comprises all valid and non-equivocating inclusion lists they have observed.
    `get_inclusion_list_committee(state, slot)`, `dependent_root` is
    `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
    `slot` is `bid.slot - 1`, and `store` is the fork choice store.
+
+*Note*: Bids received before the inclusion list deadline of `bid.slot - 1`, i.e.
+`get_inclusion_list_due_ms()` into that slot, are ignored on the
+`execution_payload_bid` topic. Builders should broadcast their bids after that
+deadline.
