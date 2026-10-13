@@ -3,8 +3,9 @@
 from itertools import combinations
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
-    all_of,
     aspect,
+    assertion,
+    assertion_set,
     attribute,
     bind,
     Boolean,
@@ -18,10 +19,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     derived,
     dimension,
     each,
-    fix,
     implies,
     Integer,
     nwise,
+    predicate,
     union,
 )
 
@@ -51,27 +52,27 @@ COUNTS = ("ZERO", "ONE", "MANY")
 
 EPOCHS = aspect(
     "epochs",
-    comparison(
+    assertion(
         "activation_le_current",
-        activation_epoch,
-        current_epoch,
-        op="<=",
+        predicate(activation_epoch, current_epoch, op="<="),
         available_when=validator_found,
     ),
-    comparison(
-        "current_lt_exit", current_epoch, exit_epoch, op="<", available_when=validator_found
+    assertion(
+        "current_lt_exit",
+        predicate(current_epoch, exit_epoch, op="<"),
+        available_when=validator_found,
     ),
-    dimension(
+    assertion(
         "exit_not_initiated",
         exit_epoch == far_future_epoch,
         available_when=validator_found,
     ),
-    dimension(
+    assertion(
         "current_ge_message_epoch",
         cmp5(current_epoch, message_epoch, op=">="),
         available_when=validator_found,
     ),
-    dimension(
+    assertion(
         "current_ge_seasoned",
         cmp5(current_epoch, activation_epoch + shard_committee_period, op=">="),
         available_when=validator_found,
@@ -79,7 +80,7 @@ EPOCHS = aspect(
 )
 PENDING = aspect(
     "pending",
-    dimension("pending_balance_zero", pending_balance == 0),
+    assertion("pending_balance_zero", pending_balance == 0),
     dimension("matching_pending_entries", count(matching_pending)),
     dimension(
         "foreign_pending_entries",
@@ -88,7 +89,7 @@ PENDING = aspect(
 )
 SIGNATURE = aspect(
     "signature",
-    dimension("signature_ok", signature_valid, available_when=validator_found),
+    assertion("signature_ok", signature_valid, available_when=validator_found),
 )
 consumable = derived(
     "consumable",
@@ -112,22 +113,14 @@ CHURN = aspect(
 )
 OUTCOME = aspect("outcome", dimension("accepted", post_present))
 ASPECTS = (EPOCHS, PENDING, SIGNATURE, CHURN, OUTCOME)
-# The handler's assertion chain: accepted <=> all of these hold.
-GATES = (
-    EPOCHS.ref("activation_le_current"),
-    EPOCHS.ref("current_lt_exit"),
-    EPOCHS.ref("exit_not_initiated"),
-    EPOCHS.ref("current_ge_message_epoch"),
-    EPOCHS.ref("current_ge_seasoned"),
-    PENDING.ref("pending_balance_zero"),
-    SIGNATURE.ref("signature_ok"),
+ASSERTIONS = assertion_set(
+    EPOCHS, PENDING, SIGNATURE, observed=OUTCOME.ref("accepted"), complete=True
 )
 
 
 CONSTRAINTS = (
     implies(EPOCHS.ref("exit_not_initiated"), EPOCHS.ref("current_lt_exit")),
     implies(EPOCHS.ref("current_ge_seasoned"), EPOCHS.ref("activation_le_current")),
-    OUTCOME.ref("accepted") == all_of(*GATES),
     implies(
         ~PENDING.ref("pending_balance_zero"), PENDING.ref("matching_pending_entries") != "ZERO"
     ),
@@ -140,18 +133,19 @@ CONSTRAINTS = (
     implies(coverage_value(EXCEEDS) == "GT_1", CHURN.ref("additional_epochs") != "MANY"),
 )
 
-NORMAL = fix(accepted=True)
-EXCEPTIONAL = fix(accepted=False)
 ALL_FACTORS = [f for a in ASPECTS for f in a.declarations]
 CHURN_ARITHMETIC = CHURN.exhaustive()
 PROFILES = {
     "smoke": each(ALL_FACTORS),
-    "normal": NORMAL * (CHURN_ARITHMETIC | EPOCHS.nwise(2)),
-    "exceptional": EXCEPTIONAL * nwise(ALL_FACTORS, 2),
+    "normal": ASSERTIONS.normal(CHURN_ARITHMETIC | EPOCHS.nwise(2)),
+    "exceptional": ASSERTIONS.exceptional(nwise(ALL_FACTORS, 2), faults=1),
     "max": union(
-        NORMAL
-        * union(EPOCHS.exhaustive(), PENDING.exhaustive(), CHURN_ARITHMETIC, nwise(ALL_FACTORS, 3)),
-        EXCEPTIONAL * nwise(ALL_FACTORS, 2),
+        ASSERTIONS.normal(
+            union(
+                EPOCHS.exhaustive(), PENDING.exhaustive(), CHURN_ARITHMETIC, nwise(ALL_FACTORS, 3)
+            )
+        ),
+        ASSERTIONS.exceptional(nwise(ALL_FACTORS, 2)),
     ),
     "standard": union(
         each(ALL_FACTORS), *(a.each() * b.each() for a, b in combinations(ASPECTS, 2))
@@ -184,6 +178,7 @@ COVERAGE = coverage_spec(
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=CONSTRAINTS,
+    assertions=ASSERTIONS,
 )
 TARGET = bind(
     COVERAGE,

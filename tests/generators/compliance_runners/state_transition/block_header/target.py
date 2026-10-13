@@ -6,8 +6,9 @@ The operation vectors provide a ``BeaconBlock`` in
 """
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
-    all_of,
     aspect,
+    assertion,
+    assertion_set,
     attribute,
     bind,
     Boolean,
@@ -15,7 +16,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     coverage_spec,
     dimension,
     each,
-    fix,
     Integer,
     predicate,
     union,
@@ -35,23 +35,21 @@ post_present = attribute("post_present", Boolean())
 
 HEADER = aspect(
     "header",
-    dimension("slot_matches_state", cmp5(block_slot, state_slot, op="==")),
-    dimension("slot_is_newer", cmp5(block_slot, latest_header_slot, op=">")),
-    dimension(
+    assertion("slot_matches_state", cmp5(block_slot, state_slot, op="==")),
+    assertion("slot_is_newer", cmp5(block_slot, latest_header_slot, op=">")),
+    assertion(
         "proposer_index_matches", predicate(proposer_index, expected_proposer_index, op="==")
     ),
-    dimension("parent_matches", parent_root_match),
+    assertion("parent_matches", parent_root_match),
     # Availability of the validator lookup, rather than a coverage dimension.
-    dimension("proposer_not_slashed", ~proposer_slashed, available_when=proposer_found),
+    assertion("proposer_not_slashed", ~proposer_slashed, available_when=proposer_found),
 )
 
 OUTCOME = aspect("outcome", dimension("accepted", post_present))
-ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (HEADER, OUTCOME)
-GATES = list(HEADER.factors)
 
 
-CONSTRAINTS = (OUTCOME.ref("accepted") == all_of(*HEADER.declarations),)
+ASSERTIONS = assertion_set(HEADER, observed=OUTCOME.ref("accepted"), complete=True)
 
 
 def _slot_order_is_reachable(assignment):
@@ -62,14 +60,11 @@ def _slot_order_is_reachable(assignment):
     return match is None or newer is None or buckets.index(newer) >= buckets.index(match)
 
 
-NORMAL = fix(accepted=True)
-EXCEPTIONAL = fix(accepted=False)
-
 PROFILES = {
     "smoke": each([*HEADER.declarations, *OUTCOME.declarations]),
-    "normal": NORMAL * HEADER.exhaustive(),
-    "exceptional": EXCEPTIONAL * HEADER.nwise(2),
-    "max": union(NORMAL * HEADER.exhaustive(), EXCEPTIONAL * HEADER.nwise(2)),
+    "normal": ASSERTIONS.normal(HEADER.exhaustive()),
+    "exceptional": ASSERTIONS.exceptional(HEADER.nwise(2), faults=1),
+    "max": union(ASSERTIONS.normal(HEADER.exhaustive()), ASSERTIONS.exceptional(HEADER.nwise(2))),
     "standard": union(
         each([*HEADER.declarations, *OUTCOME.declarations]),
         HEADER.each() * OUTCOME.each(),
@@ -94,7 +89,7 @@ COVERAGE = coverage_spec(
     constants=(),
     aspects=ASPECTS,
     profiles=PROFILES,
-    constraints=CONSTRAINTS,
+    assertions=ASSERTIONS,
     feasible=_slot_order_is_reachable,
 )
 

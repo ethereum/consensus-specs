@@ -221,6 +221,7 @@ class Report:
     covered: int
     uncovered: list[dict] = field(default_factory=list)
     unexpected: list[dict] = field(default_factory=list)
+    outcome_mismatches: list[dict] = field(default_factory=list)
 
     @property
     def percent(self) -> float | None:
@@ -235,6 +236,7 @@ class Report:
             "percent": self.percent,
             "uncovered": self.uncovered,
             "unexpected": self.unexpected,
+            "outcome_mismatches": self.outcome_mismatches,
         }
 
 
@@ -255,9 +257,19 @@ def score(
     if target._bound_spec is None:
         raise ValueError("bind the target with for_spec(spec) before scoring")
     wanted = formula.run()
-    covered = {o for o in wanted if any(_satisfied(o, r) for r in records)}
+    covered = formula.covered(records)
     pruned = formula.run(filtered=False) - wanted
-    unexpected = {o for o in pruned if any(_satisfied(o, r) for r in records)}
+    unexpected = formula.covered(records, filtered=False) & pruned
+    assertions = target.definition.assertions
+    mismatches = [
+        {
+            "record": i,
+            "observed_accepted": r[assertions.observed.name],
+            "expected_accepted": assertions.evaluate(r, target.bound_constants).expected_accepted,
+        }
+        for i, r in enumerate(records)
+        if assertions is not None and not assertions.agrees(r, target.bound_constants)
+    ]
     return Report(
         profile=profile,
         comparison_granularities={
@@ -267,6 +279,7 @@ def score(
         covered=len(covered),
         uncovered=_sorted(wanted - covered),
         unexpected=_sorted(unexpected),
+        outcome_mismatches=mismatches,
     )
 
 
@@ -336,6 +349,8 @@ def _format(report: Report, max_uncovered: int) -> str:
         lines.append(f"      ... {len(report.uncovered) - max_uncovered} more")
     for item in report.unexpected:
         lines.append(f"      UNEXPECTED (pruned as infeasible, yet observed) {item}")
+    for item in report.outcome_mismatches:
+        lines.append(f"      OUTCOME MISMATCH {item}")
     return "\n".join(lines)
 
 
@@ -382,6 +397,12 @@ def main(argv: list[str] | None = None) -> dict:
     if args.records:
         for obs, rec in zip(observations, records, strict=True):
             print(f"  {Path(obs['_case']).name}: {rec}")
+            if (result_summary := target.assertion_result(rec)) is not None:
+                print(
+                    f"    expected_accepted={result_summary.expected_accepted}; "
+                    f"fault_count={result_summary.fault_count}; "
+                    f"failed={result_summary.failed}; unknown={result_summary.unknown}"
+                )
     reports = [score(target, records, target.profiles[p], profile=p) for p in profiles]
     result["profiles"] = [r.as_dict() for r in reports]
     for report in reports:

@@ -2,7 +2,7 @@
 
 from functools import cache
 
-from .target import COVERAGE, GATES, HEADER
+from .target import ASSERTIONS, COVERAGE, HEADER
 
 BUCKET_DELTAS = {"LT_FAR": -2, "LT_1": -1, "EQ": 0, "GT_1": 1, "GT_FAR": 2}
 
@@ -28,7 +28,7 @@ def complete_obligation(obligation):
     return min(
         candidates,
         key=lambda assignment: (
-            sum(not gate.holds(assignment[gate.name]) for gate in GATES),
+            ASSERTIONS.evaluate(assignment).fault_count,
             repr(sorted(assignment.items())),
         ),
     ).copy()

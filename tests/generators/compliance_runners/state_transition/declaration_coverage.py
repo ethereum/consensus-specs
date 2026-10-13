@@ -5,7 +5,7 @@ from __future__ import annotations
 
 def profile_records(target, name: str) -> list[dict]:
     """Expand a bound profile in a stable order, independent of set iteration."""
-    obligations = target.profiles[name].run()
+    obligations = target.profiles[name].generation_obligations()
     return [
         dict(items)
         for items in sorted((tuple(sorted(obligation)) for obligation in obligations), key=repr)
