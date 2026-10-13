@@ -704,19 +704,12 @@ def test_gossip_partial_data_column_sidecar__reject_too_many_commitments(spec, s
     yield get_filename(signed_anchor), signed_anchor
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
-    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state)
+    max_blobs = get_max_blob_count(spec, state.slot + 1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, blob_count=max_blobs + 1)
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
-    # Pad commitments past the blob limit. The check precedes the inclusion
-    # proof check, so we don't need a consistent block here.
-    header = partial.header[0]
-    max_blobs = get_max_blob_count(spec, header.signed_block_header.message.slot)
-    extra_blobs = max_blobs + 1 - len(header.kzg_commitments)
-    header.kzg_commitments = spec.BlobKZGCommitments(
-        data=list(header.kzg_commitments) + [spec.KZGCommitment()] * extra_blobs
-    )
     group_id = make_partial_data_column_group_id(spec, sidecar)
     yield get_filename(group_id), group_id
 
