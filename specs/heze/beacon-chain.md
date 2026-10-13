@@ -129,11 +129,11 @@ class SignedInclusionList(Container):
 ```python
 class InclusionListClaim(Container):
     transaction_hash: Bytes32
-    transaction_index: Uint64
+    evaluation_index: Uint64
 ```
 
 `transaction_hash` is the Keccak-256 hash of the exact EIP-2718 transaction
-bytes. `transaction_index` identifies the state before that payload transaction;
+bytes. `evaluation_index` identifies the state before that payload transaction;
 the payload's transaction count identifies its end. The execution layer handles
 duplicate, unmatched and out-of-range claims as specified in EIP-7805. They do
 not invalidate the envelope.

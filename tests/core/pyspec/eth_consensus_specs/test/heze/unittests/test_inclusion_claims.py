@@ -25,7 +25,7 @@ def setup_claimed_envelope(spec, state):
         data=[
             spec.InclusionListClaim(transaction_hash=spec.Bytes32(b"\x11" * 32)),
             spec.InclusionListClaim(
-                transaction_hash=spec.Bytes32(b"\x11" * 32), transaction_index=2**64 - 1
+                transaction_hash=spec.Bytes32(b"\x11" * 32), evaluation_index=2**64 - 1
             ),
         ]
     )
