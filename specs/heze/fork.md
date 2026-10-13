@@ -51,7 +51,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         # [New in Heze:EIP7805]
         inclusion_list_bits=InclusionListBits(),
         # [New in Heze:EIP7805]
-        inclusion_claims_root=hash_tree_root(InclusionListClaims()),
+        omission_claims_root=hash_tree_root(OmissionClaims()),
     )
 
     post = BeaconState(

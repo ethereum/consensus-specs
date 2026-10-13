@@ -21,16 +21,16 @@ from eth_consensus_specs.test.helpers.state import state_transition_and_sign_blo
 def setup_claimed_envelope(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
     # Duplicate hashes and a maximum index are EL inputs, not CL validity errors.
-    claims = spec.InclusionListClaims(
+    claims = spec.OmissionClaims(
         data=[
-            spec.InclusionListClaim(transaction_hash=spec.Bytes32(b"\x11" * 32)),
-            spec.InclusionListClaim(
+            spec.OmissionClaim(transaction_hash=spec.Bytes32(b"\x11" * 32)),
+            spec.OmissionClaim(
                 transaction_hash=spec.Bytes32(b"\x11" * 32), evaluation_index=2**64 - 1
             ),
         ]
     )
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.signed_execution_payload_bid.message.inclusion_claims_root = spec.hash_tree_root(
+    block.body.signed_execution_payload_bid.message.omission_claims_root = spec.hash_tree_root(
         claims
     )
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -38,29 +38,29 @@ def setup_claimed_envelope(spec, state):
     store.blocks[root] = signed_block.message
     store.block_states[root] = state.copy()
     envelope = build_signed_execution_payload_envelope(spec, state, root, signed_block).message
-    envelope.inclusion_claims = claims
+    envelope.omission_claims = claims
     signed_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
     return store, signed_block, signed_envelope
 
 
 @with_heze_and_later
 @spec_state_test
-def test_nonempty_inclusion_claims_commitment(spec, state):
+def test_nonempty_omission_claims_commitment(spec, state):
     store, signed_block, signed_envelope = setup_claimed_envelope(spec, state)
     spec.validate_execution_payload_envelope_gossip(get_seen(spec), store, signed_envelope)
     spec.verify_execution_payload_envelope(state, signed_envelope, spec.NoopExecutionEngine())
 
-    committed = signed_envelope.message.inclusion_claims
+    committed = signed_envelope.message.omission_claims
     altered_lists = [
-        spec.InclusionListClaims(),
-        spec.InclusionListClaims(data=list(reversed(committed))),
-        spec.InclusionListClaims(data=[committed[0]]),
+        spec.OmissionClaims(),
+        spec.OmissionClaims(data=list(reversed(committed))),
+        spec.OmissionClaims(data=[committed[0]]),
     ]
     for altered in altered_lists:
         envelope = signed_envelope.message.copy()
-        envelope.inclusion_claims = altered
+        envelope.omission_claims = altered
         altered_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
-        with pytest.raises(spec.GossipReject, match="inclusion claims root"):
+        with pytest.raises(spec.GossipReject, match="omission claims root"):
             spec.validate_execution_payload_envelope_gossip(get_seen(spec), store, altered_envelope)
         expect_assertion_error(
             lambda altered_envelope=altered_envelope: spec.verify_execution_payload_envelope(
@@ -104,7 +104,7 @@ def run_incomplete_inclusion_verdict(spec, state, verdict):
                 assert membership == [
                     spec.InclusionListBits(data=[member == committee[0] for member in committee])
                 ]
-                assert claims == envelope.inclusion_claims
+                assert claims == envelope.omission_claims
                 return verdict
 
         engine = RecordingEngine()
@@ -146,13 +146,13 @@ def test_pending_inclusion_preserves_payload_validity(spec, state):
 @with_heze_and_later
 @spec_test
 @single_phase
-def test_inclusion_claims_ssz_limit(spec):
-    claims = spec.InclusionListClaims(
-        data=[spec.InclusionListClaim()] * spec.MAX_INCLUSION_LIST_CLAIMS
+def test_omission_claims_ssz_limit(spec):
+    claims = spec.OmissionClaims(
+        data=[spec.OmissionClaim()] * spec.MAX_OMISSION_CLAIMS
     )
-    assert len(claims.encode_bytes()) == 40 * spec.MAX_INCLUSION_LIST_CLAIMS
-    assert spec.InclusionListClaims.decode_bytes(claims.encode_bytes()) == claims
+    assert len(claims.encode_bytes()) == 40 * spec.MAX_OMISSION_CLAIMS
+    assert spec.OmissionClaims.decode_bytes(claims.encode_bytes()) == claims
     with pytest.raises(ValueError, match="holds at most"):
-        spec.InclusionListClaims(
-            data=[spec.InclusionListClaim()] * (spec.MAX_INCLUSION_LIST_CLAIMS + 1)
+        spec.OmissionClaims(
+            data=[spec.OmissionClaim()] * (spec.MAX_OMISSION_CLAIMS + 1)
         )

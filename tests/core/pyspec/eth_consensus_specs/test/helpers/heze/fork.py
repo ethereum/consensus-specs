@@ -92,8 +92,8 @@ def run_fork_test(post_spec, pre_state):
     assert post_state.fork.current_version == post_spec.config.HEZE_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
     assert (
-        post_state.latest_execution_payload_bid.inclusion_claims_root
-        == post_spec.hash_tree_root(post_spec.InclusionListClaims())
+        post_state.latest_execution_payload_bid.omission_claims_root
+        == post_spec.hash_tree_root(post_spec.OmissionClaims())
     )
 
     yield "post", post_state

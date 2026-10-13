@@ -73,12 +73,12 @@ def is_inclusion_list_satisfied(
     execution_payload: ExecutionPayload,
     inclusion_list_transactions: Sequence[Transaction],
     inclusion_list_membership: Sequence[InclusionListBits],
-    inclusion_list_claims: Sequence[InclusionListClaim],
+    omission_claims: Sequence[OmissionClaim],
 ) -> bool | None:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
     list constraints with respect to ``inclusion_list_transactions``, their
-    ``inclusion_list_membership``, and ``inclusion_list_claims``.
+    ``inclusion_list_membership``, and ``omission_claims``.
     Return ``None`` while execution validation or inclusion checking is pending.
     """
 ```
@@ -215,7 +215,7 @@ def record_payload_inclusion_list_satisfaction(
     store: Store,
     root: Root,
     payload: ExecutionPayload,
-    inclusion_list_claims: Sequence[InclusionListClaim],
+    omission_claims: Sequence[OmissionClaim],
     execution_engine: ExecutionEngine,
 ) -> None:
     slot = store.blocks[root].slot - 1
@@ -233,7 +233,7 @@ def record_payload_inclusion_list_satisfaction(
         only_timely=True,
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
-        payload, inclusion_list_transactions, inclusion_list_membership, inclusion_list_claims
+        payload, inclusion_list_transactions, inclusion_list_membership, omission_claims
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```
@@ -309,7 +309,7 @@ def verify_execution_payload_envelope(
     assert payload.block_hash == bid.block_hash
     assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
     # [New in Heze:EIP7805]
-    assert hash_tree_root(envelope.inclusion_claims) == bid.inclusion_claims_root
+    assert hash_tree_root(envelope.omission_claims) == bid.omission_claims_root
 
     # Verify the execution payload is valid
     assert payload.slot_number == state.slot
@@ -428,7 +428,7 @@ def on_execution_payload_envelope(
         store,
         envelope.beacon_block_root,
         envelope.payload,
-        envelope.inclusion_claims,
+        envelope.omission_claims,
         EXECUTION_ENGINE,
     )
 

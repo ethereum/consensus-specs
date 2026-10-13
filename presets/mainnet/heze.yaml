@@ -5,10 +5,10 @@
 # 2**4 (= 16) validators
 INCLUSION_LIST_COMMITTEE_SIZE: 16
 
-# Inclusion list claims
+# Omission claims
 # ---------------------------------------------------------------
 # 2**12 (= 4,096)
-MAX_INCLUSION_LIST_CLAIMS: 4096
+MAX_OMISSION_CLAIMS: 4096
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------

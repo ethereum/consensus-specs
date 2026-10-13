@@ -18,8 +18,8 @@ from eth_consensus_specs.test.helpers.gossip import (
 
 @with_heze_and_later
 @spec_state_test
-def test_gossip_execution_payload_envelope__reject_inclusion_claims_root_mismatch(spec, state):
-    """An envelope whose inclusion claims root does not match the bid's is rejected."""
+def test_gossip_execution_payload_envelope__reject_omission_claims_root_mismatch(spec, state):
+    """An envelope whose omission claims root does not match the bid's is rejected."""
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
@@ -34,8 +34,8 @@ def test_gossip_execution_payload_envelope__reject_inclusion_claims_root_mismatc
     envelope = build_signed_execution_payload_envelope(
         spec, state, block_root, signed_block
     ).message
-    envelope.inclusion_claims = spec.InclusionListClaims(
-        data=[spec.InclusionListClaim(transaction_hash=spec.Bytes32(b"\x11" * 32))]
+    envelope.omission_claims = spec.OmissionClaims(
+        data=[spec.OmissionClaim(transaction_hash=spec.Bytes32(b"\x11" * 32))]
     )
     signed_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
     yield get_filename(signed_envelope), signed_envelope
@@ -49,7 +49,7 @@ def test_gossip_execution_payload_envelope__reject_inclusion_claims_root_mismatc
         spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
     )
     assert result == "reject"
-    assert reason == "envelope's inclusion claims root does not match the bid's"
+    assert reason == "envelope's omission claims root does not match the bid's"
     messages.append(
         {
             "current_time_ms": int(time_ms),

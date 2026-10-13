@@ -286,8 +286,8 @@ def validate_execution_payload_bid_gossip(
 
 ##### Modified `execution_payload`
 
-*Note*: The only change is a check that `envelope.inclusion_claims` matches
-`bid.inclusion_claims_root`.
+*Note*: The only change is a check that `envelope.omission_claims` matches
+`bid.omission_claims_root`.
 
 ```python
 def validate_execution_payload_envelope_gossip(
@@ -344,9 +344,9 @@ def validate_execution_payload_envelope_gossip(
         raise GossipReject("envelope's execution requests root does not match the bid's")
 
     # [New in Heze:EIP7805]
-    # [REJECT] The envelope's inclusion claims root matches the bid's inclusion claims root
-    if hash_tree_root(envelope.inclusion_claims) != bid.inclusion_claims_root:
-        raise GossipReject("envelope's inclusion claims root does not match the bid's")
+    # [REJECT] The envelope's omission claims root matches the bid's omission claims root
+    if hash_tree_root(envelope.omission_claims) != bid.omission_claims_root:
+        raise GossipReject("envelope's omission claims root does not match the bid's")
 
     # [REJECT] The execution request counts are within their limits
     verify_execution_requests_limits(envelope.execution_requests)
@@ -493,7 +493,7 @@ block type.
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
 Heze changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
-`inclusion_claims` field. Per `fork_version = compute_fork_version(epoch)`:
+`omission_claims` field. Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 

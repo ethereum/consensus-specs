@@ -52,7 +52,7 @@ class GetPayloadResponse:
     blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
     # [New in Heze:EIP7805]
-    inclusion_list_claims: Sequence[InclusionListClaim]
+    omission_claims: Sequence[OmissionClaim]
 ```
 
 ## Protocols
@@ -118,7 +118,7 @@ list committee slot.
 
 All validator responsibilities remain unchanged other than those noted below.
 
-Inclusion claims are checked after payload reveal, through
+Omission claims are checked after payload reveal, through
 `on_execution_payload_envelope`. Beacon block voting and payload timeliness
 attestations retain the Gloas duties; inclusion list satisfaction determines
 whether fork choice extends the revealed payload in the following slot via

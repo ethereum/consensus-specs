@@ -65,7 +65,7 @@ class NoopExecutionEngine(ExecutionEngine):
                                     execution_payload: ExecutionPayload,
                                     inclusion_list_transactions: Sequence[Transaction],
                                     inclusion_list_membership: Sequence[InclusionListBits],
-                                    inclusion_list_claims: Sequence[InclusionListClaim]) -> bool | None:
+                                    omission_claims: Sequence[OmissionClaim]) -> bool | None:
         return True
 
 

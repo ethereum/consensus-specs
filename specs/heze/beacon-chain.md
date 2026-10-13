@@ -8,17 +8,17 @@
 - [Types](#types)
   - [New `InclusionListBits`](#new-inclusionlistbits)
   - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
-  - [New `InclusionListClaims`](#new-inclusionlistclaims)
+  - [New `OmissionClaims`](#new-omissionclaims)
 - [Constants](#constants)
   - [Domains](#domains)
 - [Presets](#presets)
   - [Inclusion list committee](#inclusion-list-committee)
-  - [Inclusion list claims](#inclusion-list-claims)
+  - [Omission claims](#omission-claims)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
     - [`SignedInclusionList`](#signedinclusionlist)
-    - [`InclusionListClaim`](#inclusionlistclaim)
+    - [`OmissionClaim`](#omissionclaim)
   - [Modified containers](#modified-containers)
     - [`ExecutionPayloadBid`](#executionpayloadbid)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
@@ -69,15 +69,15 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
     LENGTH = INCLUSION_LIST_COMMITTEE_SIZE
 ```
 
-### New `InclusionListClaims`
+### New `OmissionClaims`
 
 ```python
-class InclusionListClaims(List[InclusionListClaim]):
+class OmissionClaims(List[OmissionClaim]):
     """
-    The inclusion list claims committed to by a payload bid.
+    The omission claims committed to by a payload bid.
     """
 
-    LIMIT = MAX_INCLUSION_LIST_CLAIMS
+    LIMIT = MAX_OMISSION_CLAIMS
 ```
 
 ## Constants
@@ -96,11 +96,11 @@ class InclusionListClaims(List[InclusionListClaim]):
 | ------------------------------- | --------------------- |
 | `INCLUSION_LIST_COMMITTEE_SIZE` | `Uint64(2**4)` (= 16) |
 
-### Inclusion list claims
+### Omission claims
 
-| Name                        | Value                     |
-| --------------------------- | ------------------------- |
-| `MAX_INCLUSION_LIST_CLAIMS` | `Uint64(2**12)` (= 4,096) |
+| Name                  | Value                     |
+| --------------------- | ------------------------- |
+| `MAX_OMISSION_CLAIMS` | `Uint64(2**12)` (= 4,096) |
 
 ## Containers
 
@@ -124,10 +124,10 @@ class SignedInclusionList(Container):
     signature: BLSSignature
 ```
 
-#### `InclusionListClaim`
+#### `OmissionClaim`
 
 ```python
-class InclusionListClaim(Container):
+class OmissionClaim(Container):
     transaction_hash: Bytes32
     evaluation_index: Uint64
 ```
@@ -161,7 +161,7 @@ class ExecutionPayloadBid(ProgressiveContainer):
     # [New in Heze:EIP7805]
     inclusion_list_bits: InclusionListBits
     # [New in Heze:EIP7805]
-    inclusion_claims_root: Root
+    omission_claims_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -185,7 +185,7 @@ class ExecutionPayloadEnvelope(ProgressiveContainer):
     beacon_block_root: Root
     parent_beacon_block_root: Root
     # [New in Heze:EIP7805]
-    inclusion_claims: InclusionListClaims
+    omission_claims: OmissionClaims
 ```
 
 #### `SignedExecutionPayloadEnvelope`
