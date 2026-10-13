@@ -49,7 +49,7 @@ class ExecutionBranch(Vector[Bytes32]):
 
 | Name                       | Value                                                                |
 | -------------------------- | -------------------------------------------------------------------- |
-| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
+| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, "execution_payload")` (= 25) |
 
 ## Containers
 
@@ -122,7 +122,7 @@ class LightClientStore:
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Capella]
-    best_valid_update: Optional[LightClientUpdate]
+    best_valid_update: LightClientUpdate | None
     # [Modified in Capella]
     optimistic_header: LightClientHeader
     previous_max_active_participants: Uint64

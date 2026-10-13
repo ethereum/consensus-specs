@@ -17,6 +17,8 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Eth1 data](#eth1-data)
+      - [Deposits](#deposits)
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [ExecutionPayload](#executionpayload)
   - [Inclusion list proposal](#inclusion-list-proposal)
@@ -77,7 +79,7 @@ within the context of the current and next epoch.
 ```python
 def get_inclusion_list_committee_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
-) -> Optional[Slot]:
+) -> Slot | None:
     """
     Returns the slot during the requested epoch in which the validator with
     index ``validator_index`` is a member of the inclusion list committee.
@@ -107,6 +109,18 @@ All validator responsibilities remain unchanged other than those noted below.
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
+
+##### Eth1 data
+
+*[Modified in Heze:EIP8015]*
+
+*Note*: The `eth1_data` field is removed from `BeaconBlockBody`.
+
+##### Deposits
+
+*[Modified in Heze:EIP8015]*
+
+*Note*: The `deposits` field is removed from `BeaconBlockBody`.
 
 ##### Signed execution payload bid
 
@@ -148,7 +162,7 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     target_gas_limit: Uint64,
     execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
+) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head, get_current_slot(store)):
         envelope = store.payloads[head.root]
@@ -214,8 +228,10 @@ transactions obtained from `ExecutionEngine` via `get_inclusion_list`.
 def get_inclusion_list_signature(
     state: BeaconState, inclusion_list: InclusionList, privkey: int
 ) -> BLSSignature:
-    domain = get_domain(
-        state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot)
+    domain = compute_domain(
+        DOMAIN_INCLUSION_LIST_COMMITTEE,
+        compute_fork_version(compute_epoch_at_slot(inclusion_list.slot)),
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)

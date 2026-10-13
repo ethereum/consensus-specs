@@ -169,6 +169,9 @@ lint: sync
 	@uv run ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
 	@uv run ruff format --preview --quiet $(CURDIR)/specs
 	@$(MAKE) --no-print-directory --assume-old=sync build
+	@uv run ruff check --quiet \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
+		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py
 	@uv run ty check --no-progress \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/mainnet.py \
 		$(PYSPEC_DIR)/eth_consensus_specs/*/minimal.py

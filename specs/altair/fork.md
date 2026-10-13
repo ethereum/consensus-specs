@@ -19,7 +19,7 @@ the Altair upgrade, introducing light client support and other improvements.
 
 | Name                  | Value                                         |
 | --------------------- | --------------------------------------------- |
-| `ALTAIR_FORK_VERSION` | `Version('0x01000000')`                       |
+| `ALTAIR_FORK_VERSION` | `Version("0x01000000")`                       |
 | `ALTAIR_FORK_EPOCH`   | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
 
 ## Fork to Altair
@@ -63,7 +63,9 @@ def translate_participation(
         epoch_participation = state.previous_epoch_participation
         committee = get_beacon_committee(state, data.slot, data.index)
         attesting_indices = {
-            index for i, index in enumerate(committee) if attestation.aggregation_bits[i]
+            validator_index
+            for index, validator_index in enumerate(committee)
+            if attestation.aggregation_bits[index]
         }
         for index in attesting_indices:
             for flag_index in participation_flag_indices:

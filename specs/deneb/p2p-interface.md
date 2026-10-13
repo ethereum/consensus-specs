@@ -57,7 +57,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                   | Value                                                                                                                                     | Description                                                                 |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` | `Uint64(floorlog2(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments")) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK))` (= 17) | <!-- predefined --> Merkle proof depth for `blob_kzg_commitments` list item |
 
 ## Configs
 
@@ -167,19 +167,19 @@ class BlobIdentifier(Container):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[Root, set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
     # [New in Deneb]
-    blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
+    blob_sidecar_tuples: set[tuple[Slot, ValidatorIndex, BlobIndex]]
 ```
 
 ### Modified `compute_fork_version`
@@ -307,7 +307,7 @@ def validate_beacon_block_gossip(
     store: Store,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: Uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus],
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.

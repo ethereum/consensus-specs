@@ -68,11 +68,11 @@ Let `head: BeaconBlock` be the result of calling of the fork choice algorithm at
 the time of block production. Let `head_block_root: Root` be the root of that
 block.
 
-Let `blocks: Dict[Root, BeaconBlock]` and
-`block_states: Dict[Root, BeaconState]` be the blocks (and accompanying states)
+Let `blocks: dict[Root, BeaconBlock]` and
+`block_states: dict[Root, BeaconState]` be the blocks (and accompanying states)
 that have been verified either completely or optimistically.
 
-Let `optimistic_roots: Set[Root]` be the set of `hash_tree_root(block)` for all
+Let `optimistic_roots: set[Root]` be the set of `hash_tree_root(block)` for all
 optimistically imported blocks which have only received a `NOT_VALIDATED`
 designation from an execution engine (i.e., they are not known to be
 `INVALIDATED` or `VALID`).
@@ -83,10 +83,10 @@ Let `current_slot: Slot` be `compute_slot_at_time(genesis_time, time)` where
 ```python
 @dataclass
 class OptimisticStore:
-    optimistic_roots: Set[Root]
+    optimistic_roots: set[Root]
     head_block_root: Root
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
 ```
 
 ```python

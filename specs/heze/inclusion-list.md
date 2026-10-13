@@ -40,8 +40,8 @@ class InclusionListEntry:
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[ValidatorIndex, InclusionListEntry]]
-    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]]
+    inclusion_lists: defaultdict[tuple[Slot, Root], dict[ValidatorIndex, InclusionListEntry]]
+    equivocators: defaultdict[tuple[Slot, Root], set[ValidatorIndex]]
 ```
 
 ## Helpers
@@ -102,8 +102,8 @@ def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
 ) -> Sequence[Transaction]:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     transactions: list[Transaction] = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -132,8 +132,8 @@ def get_inclusion_list_bits(
     only_timely: bool = True,
 ) -> InclusionListBits:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     validator_indices = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -147,9 +147,7 @@ def get_inclusion_list_bits(
 
         validator_indices.append(validator_index)
 
-    return InclusionListBits(
-        data=[validator_index in validator_indices for validator_index in committee]
-    )
+    return InclusionListBits(data=[index in validator_indices for index in committee])
 ```
 
 ### New `is_inclusion_list_bits_inclusive`

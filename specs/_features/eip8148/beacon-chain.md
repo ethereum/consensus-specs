@@ -86,7 +86,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x05')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1("0x05")` |
 
 ### Sweep threshold validation
 
@@ -111,7 +111,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=47)
+    ACTIVE_FIELDS = active_fields(width=47, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -121,9 +121,6 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -141,7 +138,6 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -367,7 +363,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
+    requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
@@ -393,7 +389,7 @@ def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
     epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
@@ -456,7 +452,7 @@ processing, then set the desired threshold.
 def process_set_sweep_threshold_request(
     state: BeaconState, request: SetSweepThresholdRequest
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if request.validator_pubkey not in validator_pubkeys:
         return
 
@@ -487,8 +483,8 @@ def process_set_sweep_threshold_request(
 
 ##### Modified `apply_parent_execution_payload`
 
-*Note*: This function processes the parent's execution requests, queues the
-builder payment, updates payload availability, and updates the latest block
+*Note*: This function queues the builder payment, processes the parent's
+execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
 and by the validator during block production before computing withdrawals.
 
@@ -508,21 +504,8 @@ def apply_parent_execution_payload(
     # [New in EIP8148]
     assert len(requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in EIP8148]
-    for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -539,6 +522,20 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
+    # [New in EIP8148]
+    for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)

@@ -31,9 +31,9 @@ Req/Resp protocol is defined.
 
 ### Type-specific SSZ bounds
 
-| Name                                       | Value                        |
-| ------------------------------------------ | ---------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` (= ~4 MiB) |
+| Name                                       | Value             |
+| ------------------------------------------ | ----------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` |
 
 ## Helpers
 
@@ -42,28 +42,28 @@ Req/Resp protocol is defined.
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
-    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
-    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
-    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
-    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
+    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in EIP8025]
-    execution_proof_roots: Dict[Root, Set[Root]]
+    execution_proof_roots: dict[Root, set[Root]]
     # [New in EIP8025]
-    execution_proof_provers: Set[Tuple[Root, ProofType, ValidatorIndex]]
+    execution_proof_provers: set[tuple[Root, ProofType, ValidatorIndex]]
 ```
 
 ## The gossip domain: gossipsub
@@ -88,7 +88,25 @@ def validate_execution_proof_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     proof_envelope = signed_proof_envelope.message
+
+    # [REJECT] The proof data is non-empty
+    if len(proof_envelope.proof_data) == 0:
+        raise GossipReject("execution proof is empty")
+
+    # [REJECT] The proof type is supported
+    if proof_envelope.proof_type not in get_supported_proof_types():
+        raise GossipReject("unexpected execution proof type")
+
     beacon_block_root = proof_envelope.beacon_block_root
+
+    # [IGNORE] The proof's beacon block has been seen
+    if beacon_block_root not in store.blocks:
+        raise GossipIgnore("execution proof's beacon block has not been seen")
+
+    # [IGNORE] No valid proof is known for this beacon block and proof type
+    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
+        raise GossipIgnore("verified proof already known for this beacon block and proof type")
+
     proof_root = hash_tree_root(proof_envelope)
 
     # [IGNORE] The proof has not already been processed
@@ -103,33 +121,16 @@ def validate_execution_proof_gossip(
             "proof already seen from this prover for this beacon block and proof type"
         )
 
-    # [IGNORE] The proof's beacon block has been seen
-    if beacon_block_root not in store.blocks:
-        raise GossipIgnore("execution proof's beacon block has not been seen")
-
-    # [REJECT] The proof's beacon block has passed consensus validation
-    if beacon_block_root not in store.block_states:
-        raise GossipReject("execution proof's beacon block failed validation")
-
-    state = store.block_states[beacon_block_root]
-
     # [IGNORE] The proof's execution payload is available
     if beacon_block_root not in store.payloads:
         raise GossipIgnore("execution proof's payload is unavailable")
 
+    state = store.block_states[beacon_block_root]
     payload_envelope = store.payloads[beacon_block_root]
-
-    # [IGNORE] No valid proof is known for this beacon block and proof type
-    if proof_envelope.proof_type in store.execution_proofs.get(beacon_block_root, {}):
-        raise GossipIgnore("verified proof already known for this beacon block and proof type")
 
     # [REJECT] The execution proof envelope passes validation
     try:
-        verify_execution_proof_envelope(
-            state,
-            signed_proof_envelope,
-            payload_envelope,
-        )
+        verify_execution_proof_envelope(state, signed_proof_envelope)
     except AssertionError:
         raise GossipReject("execution proof envelope is invalid") from None
 

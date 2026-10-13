@@ -141,7 +141,7 @@ class VersionedHashes(List[VersionedHash]):
 
 | Name                         | Value            | Description                                     |
 | ---------------------------- | ---------------- | ----------------------------------------------- |
-| `VERSIONED_HASH_VERSION_KZG` | `Bytes1('0x01')` | Version byte of a blob's versioned hash         |
+| `VERSIONED_HASH_VERSION_KZG` | `Bytes1("0x01")` | Version byte of a blob's versioned hash         |
 | `BYTES_PER_FIELD_ELEMENT`    | `Uint64(32)`     | Bytes used to encode a BLS scalar field element |
 
 ## Presets

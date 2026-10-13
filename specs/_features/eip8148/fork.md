@@ -20,7 +20,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP8148_FORK_VERSION` | `Version('0xe8148000')`               |
+| `EIP8148_FORK_VERSION` | `Version("0xe8148000")`               |
 | `EIP8148_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-8148
@@ -49,9 +49,6 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        eth1_data=pre.eth1_data,
-        eth1_data_votes=pre.eth1_data_votes,
-        eth1_deposit_index=pre.eth1_deposit_index,
         validators=pre.validators,
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
@@ -69,7 +66,6 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
-        deposit_requests_start_index=pre.deposit_requests_start_index,
         deposit_balance_to_consume=pre.deposit_balance_to_consume,
         exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,

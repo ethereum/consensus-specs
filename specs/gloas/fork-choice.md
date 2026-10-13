@@ -139,10 +139,10 @@ def notify_forkchoice_updated(
     head_block_hash: Hash32,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
-    payload_attributes: Optional[PayloadAttributes],
+    payload_attributes: PayloadAttributes | None,
     # [New in Gloas:EIP8070]
-    custody_columns: Optional[CustodyColumnBits],
-) -> Optional[PayloadId]: ...
+    custody_columns: CustodyColumnBits | None,
+) -> PayloadId | None: ...
 ```
 
 ## Helpers
@@ -197,20 +197,20 @@ class Store:
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    equivocating_indices: Set[ValidatorIndex]
-    blocks: Dict[Root, BeaconBlock]
-    block_states: Dict[Root, BeaconState]
+    equivocating_indices: set[ValidatorIndex]
+    blocks: dict[Root, BeaconBlock]
+    block_states: dict[Root, BeaconState]
     # [Modified in Gloas:EIP7732]
-    block_timeliness: Dict[Root, list[bool]]
-    checkpoint_states: Dict[Checkpoint, BeaconState]
-    latest_messages: Dict[ValidatorIndex, LatestMessage]
-    unrealized_justifications: Dict[Root, Checkpoint]
+    block_timeliness: dict[Root, list[bool]]
+    checkpoint_states: dict[Checkpoint, BeaconState]
+    latest_messages: dict[ValidatorIndex, LatestMessage]
+    unrealized_justifications: dict[Root, Checkpoint]
     # [New in Gloas:EIP7732]
-    payloads: Dict[Root, ExecutionPayloadEnvelope]
+    payloads: dict[Root, ExecutionPayloadEnvelope]
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, list[Optional[Boolean]]]
+    payload_timeliness_vote: dict[Root, list[Boolean | None]]
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, list[Optional[Boolean]]]
+    payload_data_availability_vote: dict[Root, list[Boolean | None]]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -337,7 +337,7 @@ def payload_timeliness(store: Store, root: Root, timely: bool) -> bool:
     if not is_payload_verified(store, root):
         return not timely
 
-    votes = [bool(v) for v in store.payload_timeliness_vote[root] if v is not None]
+    votes = [bool(vote) for vote in store.payload_timeliness_vote[root] if vote is not None]
     return sum(vote == timely for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
@@ -358,7 +358,7 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
     if not is_payload_verified(store, root):
         return not available
 
-    votes = [bool(v) for v in store.payload_data_availability_vote[root] if v is not None]
+    votes = [bool(vote) for vote in store.payload_data_availability_vote[root] if vote is not None]
     return sum(vote == available for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
@@ -823,9 +823,9 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
             sum(
-                justified_state.validators[i].effective_balance
-                for i in committee
-                if i in store.equivocating_indices
+                justified_state.validators[index].effective_balance
+                for index in committee
+                if index in store.equivocating_indices
             )
         )
 
@@ -969,7 +969,7 @@ def update_latest_messages(
     beacon_block_root = attestation.data.beacon_block_root
     payload_present = attestation.data.index == 1
     non_equivocating_attesting_indices = [
-        i for i in attesting_indices if i not in store.equivocating_indices
+        index for index in attesting_indices if index not in store.equivocating_indices
     ]
     for i in non_equivocating_attesting_indices:
         if i not in store.latest_messages or slot > store.latest_messages[i].slot:

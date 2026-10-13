@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     always_bls,
     default_activation_threshold,
     single_phase,
-    spec_state_test,
+    spec_state_test_with_matching_config,
     spec_test,
     with_custom_state,
     with_heze_and_later,
@@ -86,7 +86,7 @@ def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
 
 
 @with_heze_and_later
-@spec_state_test
+@spec_state_test_with_matching_config
 @always_bls
 def test_get_inclusion_list_signature(spec, state):
     forkchoice_store = get_genesis_forkchoice_store(spec, state)

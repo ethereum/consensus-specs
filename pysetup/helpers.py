@@ -239,7 +239,7 @@ def objects_to_spec(
     spec_strs = [
         imports,
         preparations,
-        f"fork = '{fork}'\n",
+        f'fork = "{fork}"\n',
         # The helper functions that some SSZ containers require. Need to be defined before `custom_type_dep_constants`
         CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS,
         # The constants that some SSZ containers require. Need to be defined before `constants_spec`
@@ -410,7 +410,7 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
         ):
             # Represent byte data with string, to avoid misinterpretation as big-endian int.
             # Everything except PRESET_BASE and CONFIG_NAME is either byte data or an integer.
-            out[k] = f"'{v}'"
+            out[k] = f'"{v}"'
         else:
             out[k] = str(int(v))
     return out

@@ -111,7 +111,7 @@ def create_light_client_update(
     block: SignedBeaconBlock,
     attested_state: BeaconState,
     attested_block: SignedBeaconBlock,
-    finalized_block: Optional[SignedBeaconBlock],
+    finalized_block: SignedBeaconBlock | None,
 ) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
     assert (

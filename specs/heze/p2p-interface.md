@@ -13,6 +13,7 @@
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -71,26 +72,26 @@ class SignedInclusionLists(List[SignedInclusionList]):
 ```python
 @dataclass
 class Seen:
-    proposer_slots: Set[Tuple[Slot, ValidatorIndex]]
-    aggregator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[bool, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[Epoch, ValidatorIndex]]
-    sync_contribution_aggregator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    sync_contribution_data: Dict[Tuple[Slot, Root, Uint64], Set[Tuple[bool, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, Uint64]]
-    bls_to_execution_change_indices: Set[ValidatorIndex]
-    data_column_sidecar_tuples: Set[Tuple[Root, ColumnIndex]]
-    execution_payloads: Dict[Hash32, ExecutionPayload]
-    execution_payload_envelopes: Set[Tuple[Root, BuilderIndex]]
-    payload_attestation_validators: Set[Tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: Set[Tuple[Slot, Hash32, Root, BuilderIndex]]
-    best_execution_payload_bid: Dict[Tuple[Slot, Hash32, Root], Gwei]
-    proposer_preferences: Dict[Tuple[Slot, Root], ProposerPreferences]
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
+    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
+    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
-    inclusion_list_counts: Counter[Tuple[Slot, Root, ValidatorIndex]]
+    inclusion_list_counts: Counter[tuple[Slot, Root, ValidatorIndex]]
 ```
 
 ### Modified `compute_fork_version`
@@ -117,6 +118,42 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### Modified `verify_block_body_operation_limits`
+
+*Note*: `verify_block_body_operation_limits` removes the check that
+`body.deposits` is empty.
+
+```python
+def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
+    """
+    Verify that each block body operation count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The proposer slashing count is within the limit
+    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [REJECT] The attester slashing count is within the limit
+    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [REJECT] The attestation count is within the limit
+    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [REJECT] The voluntary exit count is within the limit
+    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [REJECT] The payload attestation count is within the limit
+    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
 ```
 
 ## The gossip domain: gossipsub
