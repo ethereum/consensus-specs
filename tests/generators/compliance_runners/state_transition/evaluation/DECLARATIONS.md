@@ -378,3 +378,69 @@ whose impossibility was invisible to the legacy partial-assignment filtering.
 Observations contain exactly the declared attributes and factor values. Outcome
 coverage is explicit: declare a `post_present` attribute and an `accepted`
 factor when needed. The runtime does not inject or overwrite these names.
+
+## Assertions, outcomes, and fault-limited profiles
+
+Use `assertion(name, expression, ...)` for predicates that must hold for normal
+behavior. It accepts the same boolean expressions, predicate/`cmp5` mappings,
+activation (`when`), and observation availability (`available_when`) as
+`dimension`. A failed comparison contributes one fault regardless of its
+boundary bucket. Ordinary dimensions do not contribute faults.
+
+```python
+CHECKS = aspect(
+    "checks",
+    assertion("slot_matches", cmp5(block_slot, state_slot, op="==")),
+    assertion("parent_matches", parent_root_match),
+)
+OUTCOME = aspect("outcome", dimension("accepted", post_present))
+ASSERTIONS = assertion_set(CHECKS, observed=OUTCOME.ref("accepted"), complete=True)
+PROFILES = {
+    "normal": ASSERTIONS.normal(CHECKS.exhaustive()),
+    "exceptional": ASSERTIONS.exceptional(CHECKS.each(), faults=1),
+    "multiple": ASSERTIONS.exceptional(CHECKS.nwise(2), faults=(2, 3)),
+    "all_faults": ASSERTIONS.exceptional(CHECKS.nwise(2)),
+}
+# Pass assertions=ASSERTIONS to coverage_spec(...).
+```
+
+An assertion set collects assertion declarations from the supplied aspects
+(ignoring ordinary dimensions), or accepts individual assertions directly.
+`faults(plan, minimum=0, maximum=None)` supplies a general inclusive fault range.
+Normal profiles require exactly zero faults; exceptional profiles require at
+least one. Scoped plans compose using the existing product and union operators.
+Limits apply to complete configurations **before** projection and to the actual
+records scored against each branch. A matching projection from a record outside
+the branch's fault range earns no coverage. These restrictions also apply when
+computing unexpected/infeasible observations.
+
+`target.assertion_result(record)` returns `failed`, `unknown`, `fault_count`, and
+`expected_accepted`. The observed `accepted` dimension continues to come from
+`post_present`; it is never replaced by the prediction. Inactive assertions
+contribute no fault. An applicable but unavailable assertion leaves the exact
+fault count unknown (`None`), and cannot satisfy a finite upper fault bound.
+A known failure predicts rejection even if another assertion is unknown;
+otherwise unknown assertions leave the prediction unknown.
+
+Set `complete=True` only when the assertions fully characterize acceptance in
+the target scope. The default `complete=False` allows rejection after all
+modeled assertions pass, for example when the operations count-limit slice
+passes but subsequent operation processing fails. A known failed assertion
+still rules out acceptance. The assertion set supplies this feasibility rule;
+there is no need for a manual `accepted == all_of(...)` constraint. Scoring
+reports outcome disagreements separately in `Report.outcome_mismatches`,
+including the zero-based record index and both outcomes, even when the chosen
+coverage formula does not select the outcome dimension. `--records` displays
+assertion summaries, and `--describe` displays assertion membership and limits.
+
+Generation adapters should use `generation_obligations()` (as `profile_records`
+does), rather than treating scoped `run()` projections as unrestricted witness
+requests. It completes scoped obligations within their permitted configurations,
+so a downstream witness cannot add extra faults. Unscoped obligations remain
+partial. For incomplete slices, completion prefers agreement with the predicted
+outcome when the obligation permits it; this is a generation preference, not an
+assumption about all observed executions.
+
+The migrated block-header, operations, and voluntary-exit targets use single-fault
+`exceptional` profiles. Their `max` profiles retain unrestricted exceptional
+coverage, including combinations where dependencies force multiple failures.
