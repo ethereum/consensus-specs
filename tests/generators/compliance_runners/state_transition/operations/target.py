@@ -6,18 +6,18 @@ vectors for the operation-processing loops.
 """
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
-    all_of,
     aspect,
+    assertion,
+    assertion_set,
     attribute,
     bind,
     Boolean,
-    comparison,
     constant,
     coverage_spec,
     dimension,
     each,
-    fix,
     Integer,
+    predicate,
     union,
 )
 
@@ -41,43 +41,40 @@ payload_attestations_limit = constant("payload_attestations_limit", Integer(min=
 
 LIMITS = aspect(
     "limits",
-    dimension("deposits_empty", deposits == 0),
-    comparison(
-        "proposer_slashings_within_limit", proposer_slashings, proposer_slashings_limit, op="<="
+    assertion("deposits_empty", deposits == 0),
+    assertion(
+        "proposer_slashings_within_limit",
+        predicate(proposer_slashings, proposer_slashings_limit, op="<="),
     ),
-    comparison(
-        "attester_slashings_within_limit", attester_slashings, attester_slashings_limit, op="<="
+    assertion(
+        "attester_slashings_within_limit",
+        predicate(attester_slashings, attester_slashings_limit, op="<="),
     ),
-    comparison("attestations_within_limit", attestations, attestations_limit, op="<="),
-    comparison("voluntary_exits_within_limit", voluntary_exits, voluntary_exits_limit, op="<="),
-    comparison(
+    assertion("attestations_within_limit", predicate(attestations, attestations_limit, op="<=")),
+    assertion(
+        "voluntary_exits_within_limit", predicate(voluntary_exits, voluntary_exits_limit, op="<=")
+    ),
+    assertion(
         "bls_to_execution_changes_within_limit",
-        bls_to_execution_changes,
-        bls_to_execution_changes_limit,
-        op="<=",
+        predicate(bls_to_execution_changes, bls_to_execution_changes_limit, op="<="),
     ),
-    comparison(
+    assertion(
         "payload_attestations_within_limit",
-        payload_attestations,
-        payload_attestations_limit,
-        op="<=",
+        predicate(payload_attestations, payload_attestations_limit, op="<="),
     ),
 )
 
 OUTCOME = aspect("outcome", dimension("accepted", post_present))
-ACCEPTED = OUTCOME["accepted"]
 ASPECTS = (LIMITS, OUTCOME)
-GATES = LIMITS.declarations
-CONSTRAINTS = (OUTCOME.ref("accepted") == all_of(*GATES),)
+# Later operation processing can reject a block even if these limits hold.
+ASSERTIONS = assertion_set(LIMITS, observed=OUTCOME.ref("accepted"), complete=False)
 
-NORMAL = fix(accepted=True)
-EXCEPTIONAL = fix(accepted=False)
 
 PROFILES = {
     "smoke": each([*LIMITS.declarations, *OUTCOME.declarations]),
-    "normal": NORMAL * LIMITS.exhaustive(),
-    "exceptional": EXCEPTIONAL * LIMITS.nwise(2),
-    "max": union(NORMAL * LIMITS.exhaustive(), EXCEPTIONAL * LIMITS.nwise(2)),
+    "normal": ASSERTIONS.normal(LIMITS.exhaustive()),
+    "exceptional": ASSERTIONS.exceptional(LIMITS.nwise(2), faults=1),
+    "max": union(ASSERTIONS.normal(LIMITS.exhaustive()), ASSERTIONS.exceptional(LIMITS.nwise(2))),
     "standard": union(
         each([*LIMITS.declarations, *OUTCOME.declarations]),
         LIMITS.each() * OUTCOME.each(),
@@ -108,7 +105,7 @@ COVERAGE = coverage_spec(
     ),
     aspects=ASPECTS,
     profiles=PROFILES,
-    constraints=CONSTRAINTS,
+    assertions=ASSERTIONS,
 )
 
 TARGET = bind(

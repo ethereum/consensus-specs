@@ -6,7 +6,7 @@ adds observation, conditional coverage formulas, spec binding, and review text.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from itertools import product
 
 from tests.generators.compliance_runners.tools import conditional_factors as conditional
@@ -29,6 +29,7 @@ from tests.generators.compliance_runners.tools.coverage_model import (
     DomainUnion,
     Expr,
     expression,
+    Factor,
     factor,
     Finite,
     identity,
@@ -45,6 +46,7 @@ from tests.generators.compliance_runners.tools.coverage_model import (
 from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
 
 __all__ = [
+    "AssertionSet",
     "Boolean",
     "Bytes",
     "DomainUnion",
@@ -53,6 +55,8 @@ __all__ = [
     "all_of",
     "any_of",
     "aspect",
+    "assertion",
+    "assertion_set",
     "attribute",
     "bind",
     "categorical",
@@ -152,6 +156,120 @@ def aspect(name, *factors):
     return Aspect(name, factors)
 
 
+@dataclass(frozen=True, eq=False)
+class Assertion(Factor):
+    """A dimension whose predicate must hold for normal behavior."""
+
+
+def assertion(name, value, **kwargs):
+    declaration = dimension(name, value, **kwargs)
+    if declaration.kind not in ("boolean", "comparison"):
+        raise TypeError("assertions require a boolean predicate or comparison mapping")
+    return Assertion(**{f.name: getattr(declaration, f.name) for f in fields(Factor)})
+
+
+@dataclass(frozen=True)
+class AssertionResult:
+    failed: tuple[str, ...]
+    unknown: tuple[str, ...]
+
+    @property
+    def fault_count(self):
+        """Exact count, or None if any applicable assertion is unavailable."""
+        return None if self.unknown else len(self.failed)
+
+    @property
+    def expected_accepted(self):
+        if self.failed:
+            return False
+        return None if self.unknown else True
+
+
+class AssertionSet:
+    """Shared assertion semantics, independent of observed execution outcome.
+
+    ``complete`` means these assertions fully characterize acceptance within
+    the declared target scope. Otherwise passing them predicts only that this
+    slice passes; a rejected execution is not necessarily a mismatch.
+    """
+
+    def __init__(self, *members, observed=None, complete=False):
+        declarations = tuple(
+            f
+            for member in members
+            for f in (member.declarations if isinstance(member, Aspect) else (member,))
+            if isinstance(f, Assertion)
+        )
+        if not declarations or len({f.name for f in declarations}) != len(declarations):
+            raise ValueError("assertion sets need nonempty, unique assertion declarations")
+        if any(not isinstance(m, (Aspect, Assertion)) for m in members):
+            raise TypeError("assertion sets accept assertions and aspects")
+        if observed is not None and (
+            not isinstance(observed, Factor) or observed.kind != "boolean"
+        ):
+            raise TypeError("observed outcome must be a boolean dimension")
+        self.declarations = declarations
+        self.observed = observed
+        self.complete = complete
+
+    def evaluate(self, assignment, constants=None):
+        assignment = {k: v for k, v in assignment.items() if v is not NA and v is not MISSING}
+        failed, unknown = [], []
+        for f in self.declarations:
+            active = _evaluate_constraint(f.when, assignment, constants or {})
+            if active is False:
+                continue
+            value = _evaluate_constraint(expression(f), assignment, constants or {})
+            if active is MISSING or value is MISSING:
+                unknown.append(f.name)
+            elif value is False:
+                failed.append(f.name)
+        return AssertionResult(tuple(failed), tuple(unknown))
+
+    def agrees(self, assignment, constants=None):
+        expected = self.evaluate(assignment, constants).expected_accepted
+        observed = assignment.get(self.observed.name, NA) if self.observed is not None else NA
+        if observed is NA or observed is MISSING or expected is None:
+            return True
+        return observed == expected if self.complete or expected is False else True
+
+    def faults(self, plan, *, minimum=0, maximum=None):
+        """Restrict both configuration enumeration and scoring to a fault range."""
+        if (
+            type(minimum) is not int
+            or minimum < 0
+            or (maximum is not None and (type(maximum) is not int or maximum < minimum))
+        ):
+            raise ValueError("fault limits must be nonnegative integers with minimum <= maximum")
+        return Plan("faults", (self, plan, minimum, maximum))
+
+    def normal(self, plan):
+        return self.faults(plan, maximum=0)
+
+    def exceptional(self, plan, *, faults=None):
+        if faults is None:
+            return self.faults(plan, minimum=1)
+        if type(faults) is int:
+            minimum = maximum = faults
+        else:
+            minimum, maximum = faults
+        if minimum < 1:
+            raise ValueError("exceptional profiles require at least one fault")
+        return self.faults(plan, minimum=minimum, maximum=maximum)
+
+
+assertion_set = AssertionSet
+
+
+def _within_faults(scope, assignment, constants):
+    assertions, minimum, maximum = scope
+    result = assertions.evaluate(assignment, constants)
+    # An unknown assertion cannot establish an exact count or an upper bound.
+    return len(result.failed) >= minimum and (
+        maximum is None or (not result.unknown and len(result.failed) <= maximum)
+    )
+
+
 def _constant_factor_value(f, constants):
     """Evaluate only values whose activation and availability are known true."""
     if not all(node.op == "constant" and node.name in constants for node in f.value.inputs()):
@@ -245,6 +363,8 @@ def _evaluate_constraint(node, assignment, constants):
         if node.op == "present":
             return f.name in assignment
         value = assignment.get(f.name, MISSING)
+        if value is NA:
+            value = MISSING
         if value is MISSING or node.op == "coverage" or f.kind == "enum":
             return value
         if f.kind == "boolean":
@@ -289,6 +409,7 @@ class Specification:
         profiles,
         applicable_when=True,
         constraints=(),
+        assertions=None,
         feasible=lambda a: True,
         constant_feasibility=None,
     ):
@@ -302,6 +423,16 @@ class Specification:
         self.constraints = tuple(expression(c) for c in constraints)
         self.declarations = tuple(f for a in self.aspects for f in a.declarations)
         self.by_name = {f.name: f for f in self.declarations}
+        self.assertions = assertions
+        if assertions is not None:
+            if not isinstance(assertions, AssertionSet):
+                raise TypeError("assertions must be an assertion set")
+            for f in (
+                *assertions.declarations,
+                *((assertions.observed,) if assertions.observed is not None else ()),
+            ):
+                if self.by_name.get(f.name) is not f:
+                    raise ValueError("assertion set references undeclared factor")
         inputs = self.attributes + self.constants
         names = [i.name for i in inputs] + [f.name for f in self.declarations]
         if len(names) != len(set(names)):
@@ -353,9 +484,13 @@ class Specification:
 
     def feasible(self, assignment, constants=None):
         """Check declared constraints and any concrete-witness callback."""
-        return self._feasible_callback(assignment) and all(
-            _evaluate_constraint(rule, assignment, constants or {}) is not False
-            for rule in self.constraints
+        return (
+            (self.assertions is None or self.assertions.agrees(assignment, constants))
+            and self._feasible_callback(assignment)
+            and all(
+                _evaluate_constraint(rule, assignment, constants or {}) is not False
+                for rule in self.constraints
+            )
         )
 
     def _known_applicability(self, constants):
@@ -379,6 +514,11 @@ class Specification:
             for name, _ in plan.parts:
                 if name not in self.by_name:
                     raise ValueError(f"unknown fixed factor: {name}")
+        elif plan.kind == "faults":
+            assertions, inner, _, _ = plan.parts
+            if assertions is not self.assertions:
+                raise ValueError("profile uses an unregistered assertion set")
+            self._validate_plan(inner)
         elif plan.kind in ("union", "product"):
             for p in plan.parts:
                 self._validate_plan(p)
@@ -420,9 +560,98 @@ coverage_spec = Specification
 class BoundFormula:
     def __init__(self, owner, plan):
         self.owner, self.plan = owner, plan
+        self._compiled_cache = {}
+
+    def _branches(self, plan):
+        """Distribute scoped union/product branches, preserving record restrictions."""
+        if plan.kind == "faults":
+            assertions, inner, minimum, maximum = plan.parts
+            return [
+                (p, (*scopes, (assertions, minimum, maximum)))
+                for p, scopes in self._branches(inner)
+            ]
+        if plan.kind == "union":
+            return [branch for p in plan.parts for branch in self._branches(p)]
+        if plan.kind == "product":
+            return [
+                (
+                    Plan("product", tuple(p for p, _ in parts)),
+                    tuple(s for _, scopes in parts for s in scopes),
+                )
+                for parts in product(*(self._branches(p) for p in plan.parts))
+            ]
+        return [(plan, ())]
+
+    def _scoped(self, filtered=True):
+        _, configurations = self.owner._configurations(filtered)
+        for plan, scopes in self._branches(self.plan):
+            selected = (
+                {
+                    c
+                    for c in configurations
+                    if all(_within_faults(s, dict(c), self.owner.bound_constants) for s in scopes)
+                }
+                if scopes
+                else configurations
+            )
+            yield plan, scopes, selected
+
+    def _compiled(self, filtered=True):
+        if filtered not in self._compiled_cache:
+            self._compiled_cache[filtered] = [
+                (scopes, configurations, self._run(plan, configurations))
+                for plan, scopes, configurations in self._scoped(filtered)
+            ]
+        return self._compiled_cache[filtered]
 
     def run(self, *, filtered=True):
-        model, configurations = self.owner._configurations(filtered)
+        return set().union(*(obligations for _, _, obligations in self._compiled(filtered)))
+
+    def covered(self, records, *, filtered=True):
+        covered = set()
+        for scopes, _, obligations in self._compiled(filtered):
+            eligible = [
+                r
+                for r in records
+                if all(_within_faults(s, r, self.owner.bound_constants) for s in scopes)
+            ]
+            covered.update(
+                o
+                for o in obligations
+                if any(all(r.get(n, NA) is not NA and r[n] == v for n, v in o) for r in eligible)
+            )
+        return covered
+
+    def generation_obligations(self):
+        """Preserve scope restrictions for adapters consuming plain dictionaries.
+
+        A scoped projection is completed within its branch so downstream witness
+        selection cannot introduce additional faults. Unscoped plans stay compact.
+        """
+        result = set()
+        for scopes, configurations, obligations in self._compiled():
+            if not scopes:
+                result.update(obligations)
+                continue
+            assertions = self.owner.definition.assertions
+
+            def preference(configuration, assertions=assertions):
+                values = dict(configuration)
+                expected = assertions.evaluate(values, self.owner.bound_constants).expected_accepted
+                observed = (
+                    values.get(assertions.observed.name)
+                    if assertions.observed is not None
+                    else expected
+                )
+                return observed != expected, repr(sorted(configuration))
+
+            ordered = sorted(configurations, key=preference)
+            for o in obligations:
+                result.add(next(c for c in ordered if o <= c))
+        return result
+
+    def _run(self, selected_plan, configurations):
+        model, _ = self.owner._configurations(filtered=False)
 
         def run(plan):
             if plan.kind == "nwise":
@@ -452,7 +681,7 @@ class BoundFormula:
                 }
             return result
 
-        obligations = run(self.plan)
+        obligations = run(selected_plan)
         # Product/fix may introduce conflicts or force an inactive factor.
         # Index projections by their selected names instead of scanning all
         # configurations separately for every obligation.
@@ -508,6 +737,12 @@ class DeclarationTarget:
 
     def record(self, observation):
         return {f.name: f.value(observation) for f in self.factors}
+
+    def assertion_result(self, record):
+        """Expected outcome and faults computed independently of observed acceptance."""
+        if self.definition.assertions is None:
+            return None
+        return self.definition.assertions.evaluate(record, self.bound_constants)
 
     def for_spec(self, spec):
         if self._bound_spec is not None:
@@ -603,19 +838,31 @@ class DeclarationTarget:
             lines.append(f"aspect {a.name}")
             for f in a.declarations:
                 lines.append(
-                    f"  {f.name}: {d.abstraction(f, self.bound_constants).domain()}; kind={f.kind}"
+                    f"  {'assertion ' if isinstance(f, Assertion) else ''}{f.name}: {d.abstraction(f, self.bound_constants).domain()}; kind={f.kind}"
                     f"{(' ' + f.op + ' 0') if f.kind == 'comparison' else ''}; "
                     f"{('granularity=' + f.granularity + '; ') if f.kind == 'comparison' else ''}"
                     f"expression={f.value.render()}; when={f.when.render()}; available={f.available_when.render()}"
                 )
                 if f.description:
                     lines.append(f"    reason: {f.description}")
+        if d.assertions is not None:
+            lines.append(
+                f"assertions: {[f.name for f in d.assertions.declarations]}; complete={d.assertions.complete}"
+            )
+            if d.assertions.observed is not None:
+                lines.append(
+                    f"observed outcome: {d.assertions.observed.name}; expected outcome: assertion predicate truth"
+                )
         for constraint in d.constraints:
             lines.append(f"constraint: {constraint.render()}")
         lines.append(
             "feasibility: abstract constraints and optional Python callbacks (not solver-translated)"
         )
         for name, formula in self.profiles.items():
+            for _, scopes in formula._branches(formula.plan):
+                if scopes:
+                    limits = [(minimum, maximum) for _, minimum, maximum in scopes]
+                    lines.append(f"profile {name} branch fault limits (inclusive): {limits}")
             obligations = formula.run()
             pruned = formula.run(filtered=False) - obligations
             lines.append(f"profile {name}: {len(obligations)} obligations; {len(pruned)} pruned")

@@ -1,5 +1,7 @@
 """Epoch witnesses for voluntary-exit boundary coverage."""
 
+from .target import ASSERTIONS
+
 BUCKET_DELTAS = {"LT_FAR": -2, "LT_1": -1, "EQ": 0, "GT_1": 1, "GT_FAR": 2}
 SCENARIOS = (
     "VALID",
@@ -62,8 +64,29 @@ def scenario_record(period, scenario, message_bucket, seasoned_bucket):
         ("signature_valid", "REJECT_SIGNATURE"),
     )
     record["outcome"] = next((outcome for gate, outcome in gates if not record[gate]), "ACCEPT")
-    record["_rank"] = record["_nfaults"] = int(record["outcome"] != "ACCEPT")
+    assertions = ASSERTIONS.evaluate(assertion_record(record))
+    if assertions.unknown:
+        raise ValueError(f"scenario witness lacks assertion values: {assertions.unknown}")
+    record["_rank"] = record["_nfaults"] = assertions.fault_count
     return record
+
+
+def assertion_record(record):
+    """Translate scenario witnesses to the shared assertion dimensions.
+
+    The materializer sets exit_epoch to current_epoch + 1 for ALREADY_EXITED,
+    and leaves it at FAR_FUTURE_EPOCH otherwise. Thus current_lt_exit holds
+    even for the already-initiated exit scenario.
+    """
+    return {
+        "activation_le_current": record["validator_active"],
+        "current_lt_exit": True,
+        "exit_not_initiated": record["exit_not_initiated"],
+        "current_ge_message_epoch": record["current_ge_message_epoch"],
+        "current_ge_seasoned": record["current_ge_seasoned"],
+        "pending_balance_zero": record["no_pending_withdrawal"],
+        "signature_ok": record["signature_valid"],
+    }
 
 
 def churn_witnesses(spec, *, active=True):
