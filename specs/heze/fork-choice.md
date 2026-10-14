@@ -51,19 +51,21 @@ used to implement it with an external execution engine.
 
 #### New `is_inclusion_list_satisfied`
 
-The execution engine evaluates the supplied separate ILs and claim list for
-this call, even if it has already validated the execution payload. The
-consensus layer MUST pass the committed claims unchanged, including their order
-and any duplicates; claim interpretation is an execution layer rule. Different
-beacon blocks may commit different claims for the same execution payload, so
+The execution engine evaluates the supplied separate ILs and claim list for this
+call, even if it has already validated the execution payload. The consensus
+layer MUST pass the committed claims unchanged, including their order and any
+duplicates; claim interpretation is an execution layer rule. Different beacon
+blocks may commit different claims for the same execution payload, so
 satisfaction MUST NOT be cached by execution block hash alone.
 
-The Engine API adapter MUST retain the exact `engine_newPayloadV6` inputs for
-each beacon block with a pending check and repeat that call until completion or
-abandonment of the block. It MUST NOT substitute a later IL view. A completed
-result updates only the associated beacon block's
-`payload_inclusion_list_satisfaction`; it MUST NOT be applied to ancestors or
-other blocks merely sharing its execution hash.
+The Engine API adapter MUST associate the returned `inclusionCheckId` with this
+beacon block and frozen IL view, and poll `engine_getInclusionListVerdictV1`
+until completion or abandonment. It retains the original inputs for recovery
+from `Unknown inclusion check`; only recovery or pending execution requires
+resubmitting `engine_newPayloadV6`. It MUST NOT substitute a later IL view. A
+completed result updates only the associated beacon block's
+`payload_inclusion_list_satisfaction`, not other blocks sharing its execution
+hash. The adapter owns identifiers; they are not consensus commitments.
 
 ```python
 def is_inclusion_list_satisfied(
@@ -83,7 +85,7 @@ def is_inclusion_list_satisfied(
 
 `PayloadAttributes` adds separate `inclusion_lists` for the child build.
 Forkchoice updates report execution validity only; inclusion results are
-retrieved by repeating `engine_newPayloadV6` with the original inputs.
+retrieved with `engine_getInclusionListVerdictV1`.
 
 *Note*: The payload build process MUST satisfy the inclusion constraints for
 `payload_attributes.inclusion_lists`.
@@ -189,8 +191,10 @@ satisfying the inclusion list constraints SHOULD NOT be marked as unsatisfied
 even if their associated `InclusionList`s have subsequently been pruned.
 
 *Note*: A pending inclusion check is recorded as `None`, including when
-execution is already `VALID`. It does not permit extending the payload. Deferred
-results MUST be recorded according to the
+execution is already `VALID`. It does not permit extending the payload; the
+[proposer fallback](./validator.md#block-and-sidecar-proposal) applies at the
+proposal-slot parent decision. Deferred results MUST be recorded according to
+the
 [Optimistic sync](./optimistic-sync.md#new-how-to-track-inclusion-list-satisfaction)
 specification.
 
@@ -266,6 +270,10 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 ```
 
 ### Modified `verify_execution_payload_envelope`
+
+*Note*: The only addition is the omission-claims root assertion. The complete
+function is retained because the executable specification replaces functions as
+a whole.
 
 ```python
 def verify_execution_payload_envelope(

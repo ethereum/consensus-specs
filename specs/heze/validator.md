@@ -126,6 +126,19 @@ whether fork choice extends the revealed payload in the following slot via
 
 ### Block and sidecar proposal
 
+Proposers SHOULD poll a revealed parent payload's pending inclusion check before
+selecting their parent at the start of the proposal slot. If it remains pending
+at that decision, they MUST use the empty-payload branch and proceed with the
+scheduled proposal, selecting a bid or local build for that parent. They MUST
+NOT extend an unchecked payload or delay the proposal waiting for a verdict. A
+result arriving later updates fork choice but cannot change an already signed
+proposal.
+
+This fallback preserves beacon-chain progress, but slow checks can discard an
+honest execution payload. Before activation, full-pipeline benchmarks must show
+that the selected work caps fit the extension-decision window, including indexed
+state reconstruction and any required re-execution.
+
 #### Constructing the `BeaconBlockBody`
 
 ##### Signed execution payload bid
@@ -170,7 +183,9 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head, get_current_slot(store)):
+    # [New in Heze:EIP7805]
+    inclusion_satisfied = store.payload_inclusion_list_satisfaction.get(head.root, True)
+    if should_build_on_full(store, head, get_current_slot(store)) and inclusion_satisfied is True:
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = state.copy()

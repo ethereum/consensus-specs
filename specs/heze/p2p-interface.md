@@ -10,7 +10,9 @@
 - [Configs](#configs)
 - [Types](#types)
   - [New `SignedInclusionLists`](#new-signedinclusionlists)
+  - [Payload size allowance](#payload-size-allowance)
 - [Helpers](#helpers)
+  - [Modified `max_message_size`](#modified-max_message_size)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -67,7 +69,25 @@ class SignedInclusionLists(List[SignedInclusionList]):
     LIMIT = MAX_REQUEST_INCLUSION_LIST
 ```
 
+### Payload size allowance
+
+Heze omission claims add at most `40 * MAX_OMISSION_CLAIMS + 4` bytes (160 KiB
+plus an SSZ offset) to a signed execution payload envelope. Define
+`MAX_PAYLOAD_SIZE_HEZE = MAX_PAYLOAD_SIZE + 40 * MAX_OMISSION_CLAIMS + 4`. For
+Heze messages and RPC chunks, use this uncompressed limit wherever the inherited
+networking specification applies `MAX_PAYLOAD_SIZE`. The gossipsub
+compressed-message bound must accommodate it as well. Type-specific limits,
+including the pre-deduplication IL transaction-byte bound, still apply.
+
 ## Helpers
+
+### Modified `max_message_size`
+
+```python
+def max_message_size() -> Uint64:
+    max_payload_size = MAX_PAYLOAD_SIZE + 40 * MAX_OMISSION_CLAIMS + 4
+    return max(max_compressed_len(max_payload_size) + 1024, Uint64(1024 * 1024))
+```
 
 ### Modified `Seen`
 

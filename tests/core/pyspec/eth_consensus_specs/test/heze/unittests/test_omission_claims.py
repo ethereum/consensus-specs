@@ -146,12 +146,60 @@ def test_pending_inclusion_preserves_payload_validity(spec, state):
 @spec_test
 @single_phase
 def test_omission_claims_ssz_limit(spec):
-    claims = spec.OmissionClaims(
-        data=[spec.OmissionClaim()] * spec.MAX_OMISSION_CLAIMS
-    )
+    claims = spec.OmissionClaims(data=[spec.OmissionClaim()] * spec.MAX_OMISSION_CLAIMS)
     assert len(claims.encode_bytes()) == 40 * spec.MAX_OMISSION_CLAIMS
     assert spec.OmissionClaims.decode_bytes(claims.encode_bytes()) == claims
     with pytest.raises(ValueError, match="holds at most"):
-        spec.OmissionClaims(
-            data=[spec.OmissionClaim()] * (spec.MAX_OMISSION_CLAIMS + 1)
+        spec.OmissionClaims(data=[spec.OmissionClaim()] * (spec.MAX_OMISSION_CLAIMS + 1))
+
+
+@with_heze_and_later
+@spec_test
+@single_phase
+def test_omission_claims_network_size_allowance(spec):
+    empty = spec.SignedExecutionPayloadEnvelope()
+    full = empty.copy()
+    full.message.omission_claims = spec.OmissionClaims(
+        data=[spec.OmissionClaim()] * spec.MAX_OMISSION_CLAIMS
+    )
+    assert len(full.encode_bytes()) - len(empty.encode_bytes()) == 40 * spec.MAX_OMISSION_CLAIMS
+    expanded_limit = spec.config.MAX_PAYLOAD_SIZE + 40 * spec.MAX_OMISSION_CLAIMS + 4
+    assert spec.max_message_size() >= spec.max_compressed_len(expanded_limit) + 1024
+
+
+@with_heze_and_later
+@spec_state_test
+def test_pending_verdict_local_build_uses_empty_parent(spec, state):
+    store, _, signed_envelope = setup_claimed_envelope(spec, state)
+    root = signed_envelope.message.beacon_block_root
+    store.payloads[root] = signed_envelope.message
+    store.payload_inclusion_list_satisfaction[root] = None
+    spec.process_slots(state, state.slot + 1)
+    store.time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+
+    class RecordingEngine(spec.NoopExecutionEngine):
+        head_block_hash = None
+
+        def notify_forkchoice_updated(self, **kwargs):
+            self.head_block_hash = kwargs["head_block_hash"]
+
+    engine = RecordingEngine()
+    previous_should_build = spec.should_build_on_full
+    spec.should_build_on_full = lambda *args: True
+    try:
+        run_with_inclusion_list_store(
+            spec,
+            lambda: spec.prepare_execution_payload(
+                store,
+                spec.ForkChoiceNode(root=root, payload_status=spec.PAYLOAD_STATUS_FULL),
+                state,
+                spec.Hash32(),
+                spec.Hash32(),
+                spec.ExecutionAddress(),
+                spec.Uint64(30_000_000),
+                engine,
+            ),
         )
+    finally:
+        spec.should_build_on_full = previous_should_build
+    assert engine.head_block_hash == state.latest_execution_payload_bid.parent_block_hash
