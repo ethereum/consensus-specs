@@ -10,6 +10,9 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    materializer_record,
+)
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
     load_observations,
@@ -17,34 +20,47 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     score,
 )
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+from tests.generators.compliance_runners.tools.conditional_factors import Model
 
 from . import validation
 from .coverage import build_profile
 from .materializer import _DIMS, ProposerSlashingMaterializer
 from .target import TARGET
-from .witness import assignment_from_legacy, materializer_record
 
 PROFILES = ("smoke", "normal", "exceptional", "standard", "max")
+
+
+@pytest.fixture(scope="module")
+def minizinc_available():
+    minizinc = pytest.importorskip("minizinc")
+    if minizinc.default_driver is None:
+        pytest.skip("MiniZinc executable unavailable")
+    try:
+        minizinc.Solver.lookup("gecode")
+    except LookupError:
+        pytest.skip("Gecode unavailable")
 
 
 def signature(record):
     return tuple((name, record[name]) for name in _DIMS)
 
 
+def assignment(record):
+    return {name: record[name] for name in _DIMS if record[name] != "NA"}
+
+
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_full_space_and_max_profile_completeness(preset):
+def test_full_space_and_max_profile_completeness(preset, minizinc_available):
     spec = spec_targets[preset]["gloas"]
     target = TARGET.for_spec(spec)
     configurations = target._configurations(filtered=True)[1]
     # Counts established by the completed migration comparison.
     assert len(configurations) == 1610
-    records = [materializer_record(dict(c)) for c in configurations]
+    native = TARGET.for_spec(spec, backend="minizinc")
+    assert native._configurations(filtered=True)[1] == configurations
+    records = [materializer_record(target, dict(c)) for c in configurations]
     _, generated = build_profile("max", spec=spec)
-    low_faults = {
-        signature(r)
-        for r in records
-        if r["_nfaults"] <= 2
-    }
+    low_faults = {signature(r) for r in records if r["_nfaults"] <= 2}
     assert len(low_faults) == 360
     assert {signature(r) for r in generated} == low_faults
     assert Counter(r["_nfaults"] for r in generated) == {0: 20, 1: 80, 2: 260}
@@ -53,20 +69,37 @@ def test_full_space_and_max_profile_completeness(preset):
         return {
             tuple((name, r[name]) for name in pair)
             for r in records
-            if not r["state_effected"]
+            if not r["accepted"]
             for pair in combinations(_DIMS, 2)
         }
 
     assert exceptional_pairs(generated) == exceptional_pairs(records)
-    report = score(target, [assignment_from_legacy(r) for r in generated], target.profiles["max"])
+    report = score(target, [assignment(r) for r in generated], target.profiles["max"])
     assert report.covered == report.total
     assert not report.unexpected
     assert not report.outcome_mismatches
+    for name in PROFILES:
+        expected = [
+            materializer_record(target, dict(c))
+            for c in target.profiles[name].generation_obligations(complete=True)
+        ]
+        _, actual = build_profile(name, spec=spec)
+        assert {tuple(sorted(r.items())) for r in actual} == {
+            tuple(sorted(r.items())) for r in expected
+        }
+
+
+def test_provider_uses_native_configuration_generation(monkeypatch, minizinc_available):
+    def forbidden(*args, **kwargs):
+        pytest.fail("provider used Python configuration enumeration")
+
+    monkeypatch.setattr(Model, "configurations", forbidden)
+    assert build_profile("standard", spec=spec_targets["minimal"]["gloas"])[1]
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
 def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
-    preset, monkeypatch
+    preset, monkeypatch, minizinc_available
 ):
     spec = spec_targets[preset]["gloas"]
     monkeypatch.setattr(validation, "spec", spec)
@@ -82,13 +115,13 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
         operation = spec.ProposerSlashing.decode_bytes(encoded["proposer_slashing"])
         post = spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None
         observed = target.record(target.observation(Context(spec, pre, operation, post, {})))
-        expected = assignment_from_legacy(witness)
+        expected = assignment(witness)
         assert {k: v for k, v in observed.items() if v is not NA} == expected
         result = target.assertion_result(observed)
         assert result.fault_count == witness["_nfaults"] == meta["claimed"]["fault_count"]
         assert result.expected_accepted == observed["accepted"] == (post is not None)
         assert not result.unknown
-        recovered = validation.recover(pre, operation)
+        recovered = validation.recover(pre, operation, post)
         assert all(recovered[n] == meta["claimed"][n] for n in _DIMS)
         observed_by_signature[signature(witness)] = observed
     for profile in PROFILES:
@@ -106,6 +139,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
 
 def test_mismatched_proposers_use_first_proposer_key_for_both_signatures(monkeypatch):
     spec = spec_targets["minimal"]["gloas"]
+    monkeypatch.setattr(validation, "spec", spec)
 
     target = TARGET.for_spec(spec)
     configuration = next(
@@ -113,7 +147,7 @@ def test_mismatched_proposers_use_first_proposer_key_for_both_signatures(monkeyp
         for c in target._configurations(filtered=True)[1]
         if target.assertion_result(dict(c)).failed == ("proposers_match",)
     )
-    witness = materializer_record(configuration)
+    witness = materializer_record(target, configuration)
     materializer = ProposerSlashingMaterializer(spec)
     materializer.rng = Random(7)
     monkeypatch.setattr(bls, "bls_active", False)
@@ -139,6 +173,11 @@ def test_mismatched_proposers_use_first_proposer_key_for_both_signatures(monkeyp
     h2.signature = spec.BLSSignature()
     observed = target.record(target.observation(Context(spec, pre, operation, None, {})))
     assert target.assertion_result(observed).failed == ("proposers_match", "signature_2_valid")
+    recovered = validation.recover(pre, operation)
+    assert recovered["signature_1_valid"] is True
+    assert recovered["signature_2_valid"] is False
+    assert recovered["proposers_match"] is False
+    assert bls.bls_active is False
 
 
 def test_missing_validator_is_unknown_and_post_is_not_predicted():
@@ -158,7 +197,9 @@ def test_missing_validator_is_unknown_and_post_is_not_predicted():
     assert observed["signature_1_valid"] is NA
 
 
-def test_case_validation_checks_observed_outcome_and_fault_count(tmp_path, monkeypatch):
+def test_case_validation_checks_observed_outcome_and_fault_count(
+    tmp_path, monkeypatch, minizinc_available
+):
 
     spec = spec_targets["minimal"]["gloas"]
 
@@ -204,7 +245,7 @@ def test_absent_pending_payment_is_not_reported_as_a_clearing_effect():
     materializer = ProposerSlashingMaterializer(spec)
     materializer.rng = Random(124)
     _, parts = materializer.materialize_solution(
-        SimpleNamespace(**materializer_record(configuration))
+        SimpleNamespace(**materializer_record(target, configuration))
     )
     encoded = {name: data for name, _, data in parts}
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
