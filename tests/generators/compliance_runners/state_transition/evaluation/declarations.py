@@ -420,7 +420,7 @@ class Specification:
         applicable_when=True,
         constraints=(),
         assertions=None,
-        feasible=lambda a: True,
+        feasible=None,
         constant_feasibility=None,
     ):
         self.name, self.focus, self.record = name, focus, record
@@ -507,7 +507,7 @@ class Specification:
         """Check declared constraints and any concrete-witness callback."""
         return (
             (self.assertions is None or self.assertions.agrees(assignment, constants))
-            and self._feasible_callback(assignment)
+            and (self._feasible_callback is None or self._feasible_callback(assignment))
             and all(
                 _evaluate_constraint(rule, assignment, constants or {}) is not False
                 for rule in self.constraints
@@ -619,11 +619,47 @@ class BoundFormula:
 
     def _compiled(self, filtered=True):
         if filtered not in self._compiled_cache:
-            self._compiled_cache[filtered] = [
-                (scopes, configurations, self._run(plan, configurations))
-                for plan, scopes, configurations in self._scoped(filtered)
-            ]
+            if self.owner.backend == "minizinc":
+                backend = self.owner._solver_backend()
+                self._compiled_cache[filtered] = [
+                    (
+                        scopes,
+                        configurations := backend.configurations(filtered=filtered, scopes=scopes),
+                        backend.obligations(plan, configurations),
+                    )
+                    for plan, scopes in self._solver_branches()
+                ]
+            else:
+                self._compiled_cache[filtered] = [
+                    (scopes, configurations, self._run(plan, configurations))
+                    for plan, scopes, configurations in self._scoped(filtered)
+                ]
         return self._compiled_cache[filtered]
+
+    def _solver_branches(self):
+        groups = {}
+        for plan, scopes in self._branches(self.plan):
+            groups.setdefault(scopes, []).append(plan)
+        return [(union(*parts), scopes) for scopes, parts in groups.items()]
+
+    def to_minizinc(self, *, filtered=True):
+        """Export feasibility and projection sources for each distinct fault scope.
+
+        Projection sources embed the solved finite rows from their feasibility
+        stage. Exporting them therefore requires the selected MiniZinc solver.
+        """
+        from .minizinc_backend import Projection  # noqa: PLC0415 - optional backend
+
+        backend = self.owner._solver_backend()
+        return tuple(
+            {
+                "feasibility": backend.configuration_source(filtered=filtered, scopes=scopes),
+                "coverage": Projection(
+                    backend.model, backend.configurations(filtered=filtered, scopes=scopes)
+                ).source(plan),
+            }
+            for plan, scopes in self._solver_branches()
+        )
 
     def run(self, *, filtered=True):
         return set().union(*(obligations for _, _, obligations in self._compiled(filtered)))
@@ -730,7 +766,12 @@ class BoundFormula:
 
 
 class DeclarationTarget:
-    def __init__(self, definition, observer, constants, *, spec=None):
+    def __init__(
+        self, definition, observer, constants, *, spec=None, backend="python", solver="gecode"
+    ):
+        if backend not in ("python", "minizinc"):
+            raise ValueError(f"unknown backend: {backend}")
+        self.backend, self.solver = backend, solver
         self.name = definition.name
         self.aspects = definition.aspects
         self.profiles = dict(definition.profiles)
@@ -774,22 +815,51 @@ class DeclarationTarget:
             return None
         return self.definition.assertions.evaluate(record, self.bound_constants)
 
-    def for_spec(self, spec):
+    def for_spec(self, spec, *, backend=None, solver=None):
         if self._bound_spec is not None:
             if self._bound_spec is not spec:
                 raise ValueError("bind a fresh target template to use a different spec")
+            if (backend is not None and backend != self.backend) or (
+                solver is not None and solver != self.solver
+            ):
+                raise ValueError(
+                    "bind a fresh target template to use a different backend or solver"
+                )
             return self
-        return DeclarationTarget(self.definition, self.observer, self.constants, spec=spec)
+        return DeclarationTarget(
+            self.definition,
+            self.observer,
+            self.constants,
+            spec=spec,
+            backend=self.backend if backend is None else backend,
+            solver=self.solver if solver is None else solver,
+        )
 
     def _configurations(self, filtered):
         key = filtered
         if key not in self._cache:
             model = self.definition.model(self.bound_constants)
-            configurations = model.configurations()
-            if filtered:
-                configurations = {c for c in configurations if self.feasible(dict(c))}
+            if self.backend == "minizinc":
+                configurations = self._solver_backend().configurations(filtered=filtered)
+            else:
+                configurations = model.configurations()
+                if filtered:
+                    configurations = {c for c in configurations if self.feasible(dict(c))}
             self._cache[key] = model, configurations
         return self._cache[key]
+
+    def _solver_backend(self):
+        from .minizinc_backend import Backend  # noqa: PLC0415 - optional backend
+
+        if not hasattr(self, "_minizinc_backend"):
+            self._minizinc_backend = Backend(self)
+        return self._minizinc_backend
+
+    def to_minizinc(self, *, filtered=True):
+        """Export finite feasibility, including explicit legacy-callback tables."""
+        if self._bound_spec is None:
+            raise ValueError("bind the target with for_spec(spec) before exporting")
+        return self._solver_backend().configuration_source(filtered=filtered)
 
     def observation(self, ctx):
         if self._bound_spec is None:
@@ -886,7 +956,9 @@ class DeclarationTarget:
         for constraint in d.constraints:
             lines.append(f"constraint: {constraint.render()}")
         lines.append(
-            "feasibility: abstract constraints and optional Python callbacks (not solver-translated)"
+            "feasibility: MiniZinc constraints and optional callback tables"
+            if self.backend == "minizinc"
+            else "feasibility: abstract constraints and optional Python callbacks"
         )
         for name, formula in self.profiles.items():
             for _, scopes in formula._branches(formula.plan):

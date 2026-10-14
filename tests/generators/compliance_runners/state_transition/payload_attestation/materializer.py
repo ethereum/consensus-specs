@@ -68,17 +68,14 @@ class PayloadAttestationMaterializer(Materializer):
             slot=slot,
             beacon_block_root=root,
             attesting_indices=attesting_indices,
-            valid_signature=nonempty and _s(sol, "signature_valid") == "T",
+            valid_signature=nonempty and _b(sol, "signature_valid"),
         )
         post = pre.copy()
         try:
             spec.process_payload_attestation(post, operation)
         except (AssertionError, IndexError):
             post = None
-        claimed = {
-            name: (_b(sol, name) if isinstance(getattr(sol, name), bool) else _s(sol, name))
-            for name in _DIMS
-        }
+        claimed = {name: getattr(sol, name) for name in (*_DIMS, "accepted")}
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("payload_attestation", "ssz", operation.encode_bytes()),

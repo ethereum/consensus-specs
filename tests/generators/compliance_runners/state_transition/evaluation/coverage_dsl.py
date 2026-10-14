@@ -286,6 +286,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "payload_attestation": "tests.generators.compliance_runners.state_transition.payload_attestation.target",
     "proposer_slashing": "tests.generators.compliance_runners.state_transition.proposer_slashing.target",
     "block_header": "tests.generators.compliance_runners.state_transition.block_header.target",
     "voluntary_exit": "tests.generators.compliance_runners.state_transition.voluntary_exit.target",
@@ -360,6 +361,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tests", type=Path, nargs="+", required=True)
     parser.add_argument("--target", choices=sorted(TARGETS), default="voluntary_exit")
     parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
+    parser.add_argument("--backend", choices=("python", "minizinc"), default="python")
+    parser.add_argument("--solver", default="gecode", help="MiniZinc solver (default: gecode)")
     parser.add_argument("--profile", action="append", help="default: every profile")
     parser.add_argument("--max-uncovered", type=int, default=10)
     parser.add_argument(
@@ -375,7 +378,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> dict:
     args = parse_args(argv)
     target: Target = import_module(TARGETS[args.target]).TARGET
-    target = target.for_spec(spec_targets[args.preset]["gloas"])
+    target = target.for_spec(
+        spec_targets[args.preset]["gloas"], backend=args.backend, solver=args.solver
+    )
     if args.describe:
         print(describe(target))
     observations = load_observations(args.tests, target, args.preset)
