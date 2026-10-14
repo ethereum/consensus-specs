@@ -14,7 +14,9 @@ In addition to single-valued `requires`, `Factor.allowed` accepts conjunctions
 of `(parent_name, allowed_values)` conditions. This represents, for example,
 activation on either `LT` or `EQ` for a comparison factor. An empty allowed set
 disables the child. `Model.project` projects already filtered complete
-configurations, retaining recursive prerequisites.
+configurations, retaining recursive prerequisites. Passing `complete=True` to
+`nwise` or `exhaustive` selects a complete configuration for each obligation
+instead of returning only its projection. Inactive dimensions remain absent.
 
 ```python
 from pathlib import Path
@@ -30,10 +32,20 @@ model = Model(
 
 model.nwise(["B"], 1)  # {A=True, B=False}, {A=True, B=True}
 model.nwise(["A"], 1)  # {A=False}, {A=True}
+model.nwise(["A"], 1, complete=True)  # {A=False}, {A=True, B=False}
 model.exhaustive(["A", "B"])  # {A=False}, plus both active B cases
 model.exhaustive(["A", "B"], backend="minizinc", solver="gecode")
 Path("conditional.mzn").write_text(model.to_minizinc())
 ```
+
+`Model.complete(obligations, configurations=None, preference=None, ...)` also
+completes existing partial obligations. By default it enumerates configurations
+with the requested backend and breaks ties deterministically. A caller can
+supply already filtered, complete configurations and a preference key; completion
+then stays within that supplied scope without enumerating again. The declaration
+adapter uses this path to preserve assertion fault bounds, prefer consistent
+acceptance and fewer faults, and retain explicit requested values. Impossible
+obligations raise `ValueError` rather than being silently altered or dropped.
 
 Run the exported model with
 `minizinc --solver gecode --all-solutions conditional.mzn` or open it in the

@@ -16,7 +16,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from . import build_profile
 from .materializer import BlockHeaderMaterializer
 from .target import HEADER, TARGET
-from .witness import BUCKET_DELTAS, complete_obligation
+from .witness import BUCKET_DELTAS
 
 BUCKETS = tuple(BUCKET_DELTAS)
 REACHABLE_PAIRS = [(match, newer) for i, match in enumerate(BUCKETS) for newer in BUCKETS[i:]]
@@ -80,14 +80,15 @@ def test_joint_slot_boundaries(preset, match, newer):
 )
 def test_later_assertions_remain_isolated(gate):
     spec = spec_targets["minimal"]["gloas"]
-    assignment = complete_obligation(
-        {
-            "slot_matches_state": "EQ",
-            "slot_is_newer": "GT_1",
-            gate: False,
-            "accepted": False,
-        }
-    )
+    assignment = {
+        "slot_matches_state": "EQ",
+        "slot_is_newer": "GT_1",
+        "proposer_index_matches": True,
+        "parent_matches": True,
+        "proposer_not_slashed": True,
+        "accepted": False,
+        gate: False,
+    }
     meta, pre, block, post = materialize(spec, assignment)
     target = TARGET.for_spec(spec)
     actual = target.record(target.observation(Context(spec, pre, block, post, {})))
@@ -102,32 +103,21 @@ def test_later_assertions_remain_isolated(gate):
 
 
 def test_impossible_pairs_and_contradictory_acceptance_are_rejected():
+    target = TARGET.for_spec(spec_targets["minimal"]["gloas"])
     for match, newer in product(BUCKETS, repeat=2):
         if (match, newer) not in REACHABLE_PAIRS:
-            with pytest.raises(ValueError, match="no feasible"):
-                complete_obligation({"slot_matches_state": match, "slot_is_newer": newer})
-    with pytest.raises(ValueError, match="no feasible"):
-        complete_obligation({"slot_matches_state": "GT_1", "accepted": True})
-    with pytest.raises(ValueError, match="no feasible"):
-        complete_obligation(
-            {
-                name: (
-                    "EQ"
-                    if name == "slot_matches_state"
-                    else "GT_1"
-                    if name == "slot_is_newer"
-                    else True
-                )
-                for name in (
-                    "slot_matches_state",
-                    "slot_is_newer",
-                    "proposer_index_matches",
-                    "parent_matches",
-                    "proposer_not_slashed",
-                )
-            }
-            | {"accepted": False}
-        )
+            assert not target.feasible({"slot_matches_state": match, "slot_is_newer": newer})
+    assert not target.feasible({"slot_matches_state": "GT_1", "accepted": True})
+    assert not target.feasible(
+        {
+            "slot_matches_state": "EQ",
+            "slot_is_newer": "GT_1",
+            "proposer_index_matches": True,
+            "parent_matches": True,
+            "proposer_not_slashed": True,
+            "accepted": False,
+        }
+    )
 
 
 @pytest.mark.parametrize("profile", ["smoke", "normal", "exceptional", "standard", "max"])

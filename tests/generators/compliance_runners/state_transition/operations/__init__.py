@@ -10,9 +10,8 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 
 from .materializer import MATERIALIZER
 from .target import TARGET
-from .witness import complete_obligation
 
-build_profile = coverage_profiles(TARGET, witness=complete_obligation)
+build_profile = coverage_profiles(TARGET, complete=True)
 recover_dimensions, validate_case = target_validator(
     TARGET,
     operation_name="blocks_0",
