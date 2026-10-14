@@ -4,7 +4,7 @@ from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import score
 
 from .cases import constants, signature
-from .coverage import build_profile, TARGET
+from . import TARGET, build_profile
 from .target import COMPARISONS, PROFILES
 
 

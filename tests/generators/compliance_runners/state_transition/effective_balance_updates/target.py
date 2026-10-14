@@ -23,6 +23,7 @@ effective_balance = attribute("effective_balance", Integer(min=0))
 rounded_balance = attribute("rounded_balance", Integer(min=0))
 max_effective_balance = attribute("max_effective_balance", Integer(min=0))
 is_compounding = attribute("is_compounding", Boolean())
+post_present = attribute("post_present", Boolean())
 post_effective_balance = attribute("post_effective_balance", Integer(min=0))
 
 increment = constant("increment", Integer(min=1))
@@ -54,6 +55,7 @@ RESULT = aspect(
             (post_effective_balance == max_effective_balance, "EFFECTIVE_BALANCE_CAPPED"),
             "EFFECTIVE_BALANCE_UPDATED",
         ),
+        available_when=post_present,
     ),
 )
 ASPECTS = (CREDENTIAL, GUARDS, RESULT)
