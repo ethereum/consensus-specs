@@ -1,7 +1,17 @@
-"""Coverage target and provider API for the inactivity-update loop body."""
+"""Declaration-based provider for inactivity updates loop."""
 
-from .coverage import build_profile
+from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
+from tests.generators.compliance_runners.state_transition.declaration_validation import (
+    target_validator,
+)
+
 from .materializer import MATERIALIZER
-from .validation import validate_case
+from .target import TARGET
 
-__all__ = ("MATERIALIZER", "build_profile", "validate_case")
+build_profile = coverage_profiles(TARGET)
+recover, validate_case = target_validator(TARGET, spec=lambda: spec, require_post=True)
+
+__all__ = ("MATERIALIZER", "TARGET", "build_profile", "recover", "validate_case")
