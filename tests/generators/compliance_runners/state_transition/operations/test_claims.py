@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from eth_consensus_specs.gloas import minimal as spec
 
 from .materializer import OperationsMaterializer
-from .validation import validate_case
+from . import validate_case
 
 
 def _write_case(tmp_path, **obligation):
