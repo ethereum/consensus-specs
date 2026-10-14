@@ -4,7 +4,7 @@ The declaration API in `declarations.py` builds expression trees rather than
 parsing or executing capture-function source. It currently powers
 `eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
-`block_header`, `operations`, `voluntary_exit`, `inactivity_updates`,
+`block_header`, `operations`, `voluntary_exit`, `proposer_slashing`, `inactivity_updates`,
 `inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
 `rewards_and_penalties`, `proposer_lookahead`, and `process_slot`. These targets
 use this API. `coverage_dsl.py` provides observation abstraction, scoring,
@@ -444,3 +444,38 @@ assumption about all observed executions.
 The migrated block-header, operations, and voluntary-exit targets use single-fault
 `exceptional` profiles. Their `max` profiles retain unrestricted exceptional
 coverage, including combinations where dependencies force multiple failures.
+
+
+### Proposer-slashing migration
+
+`proposer_slashing/target.py` covers eight assertion predicates: matching slots,
+matching proposer indices, distinct headers, the three slashability predicates,
+and two signatures. Both signatures use the first header's proposer key, as
+specified, even when an earlier assertion would reject. Exit initiation is an
+ordinary branch: an exited validator remains slashable until withdrawability.
+The payment window, matching payment proposer, and exit-churn variant are also
+ordinary dimensions. Churn is active only for accepted slashings that initiate
+an exit; payment clearing is observed from the post-state only for accepted
+slashings inside the payment window with a populated pre-state payment. Empty
+payment entries do not supply clearing-effect coverage. Missing validator data
+remains unknown.
+
+The provider now completes declaration obligations within each profile's fault
+scope and adapts them to the existing concrete materializer. Metadata records
+both the predicted fault count and claimed acceptance. The observer derives
+assertion truth from the actual headers, proposer state, and BLS signatures;
+acceptance is observed independently from post-state presence. Case validation
+checks these observations against metadata and reports expected/observed
+acceptance disagreements.
+
+The completed migration comparison established equivalence with the former
+MiniZinc handler model across all 1,610 feasible signatures under both presets;
+that model has been removed. Regression tests retain the configuration counts
+and check profile completeness against the declaration space. The `max` profile
+retains all 360 signatures with at most two faults (20 normal, 80 with one fault,
+260 with two), which also cover every exceptional pair in the full space.
+`normal` retains 20 representatives. `smoke` and `exceptional` now cover
+individual declaration dimensions in addition to rejection categories; their
+representative counts need not equal the old outcome-only selections. Tests
+materialize every `max` witness under both presets and score every profile's
+representatives against the resulting observations.

@@ -12,29 +12,37 @@ from tests.generators.compliance_runners.state_transition.aspects.base import _t
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_churn import (
     queue_churn_variant,
 )
-from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context, NA
+from tests.generators.compliance_runners.state_transition.provider import (
+    Check,
+    check_dimensions,
+    decode,
+)
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+
+from .target import TARGET
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.generators.compliance_runners.state_transition.provider import Check
 
 _YAML = YAML(typ="safe")
 
 
-def _check_valid(pre: Any, signed: Any) -> str:
+def _check_valid(pre: Any, signed: Any, proposer_index: int) -> str:
     domain = spec.get_domain(
         pre,
         spec.DOMAIN_BEACON_PROPOSER,
         spec.compute_epoch_at_slot(signed.message.slot),
     )
-    return _to_bool(
-        bls.Verify(
-            pre.validators[signed.message.proposer_index].pubkey,
-            spec.compute_signing_root(signed.message, domain),
-            signed.signature,
-        )
-    ).name
+    with bls_enabled():
+        return _to_bool(
+            bls.Verify(
+                pre.validators[proposer_index].pubkey,
+                spec.compute_signing_root(signed.message, domain),
+                signed.signature,
+            )
+        ).name
 
 
 def recover(pre: Any, slashing: Any) -> dict[str, Any]:
@@ -62,8 +70,8 @@ def recover(pre: Any, slashing: Any) -> dict[str, Any]:
         "slots_match": m1.slot == m2.slot,
         "proposers_match": m1.proposer_index == m2.proposer_index,
         "headers_different": m1 != m2,
-        "signature_1_valid": _check_valid(pre, h1),
-        "signature_2_valid": _check_valid(pre, h2),
+        "signature_1_valid": _check_valid(pre, h1, m1.proposer_index),
+        "signature_2_valid": _check_valid(pre, h2, m1.proposer_index),
         "proposer_slashed": bool(proposer.slashed),
         "proposer_activated": proposer.activation_epoch <= current,
         "proposer_withdrawable": proposer.withdrawable_epoch <= current,
@@ -114,4 +122,27 @@ def validate_case(case_dir: Path) -> list[Check]:
     operation = decode(case_dir / "proposer_slashing.ssz_snappy", spec.ProposerSlashing)
     claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
     actual = recover(pre, operation)
-    return check_dimensions(claimed, actual)
+    post_path = case_dir / "post.ssz_snappy"
+    post = decode(post_path, spec.BeaconState) if post_path.exists() else None
+    target = TARGET.for_spec(spec)
+    record = target.record(target.observation(Context(spec, pre, operation, post, {})))
+    summary = target.assertion_result(record)
+    actual.update(
+        accepted=record["accepted"],
+        state_effected=record["accepted"],
+        fault_count=summary.fault_count,
+        pending_payment_cleared=False
+        if record["pending_payment_cleared"] is NA
+        else record["pending_payment_cleared"],
+    )
+    checks = check_dimensions(claimed, actual)
+    if summary.expected_accepted is not None:
+        checks.append(
+            Check(
+                "assertion_outcome",
+                summary.expected_accepted,
+                record["accepted"],
+                "ok" if summary.expected_accepted == record["accepted"] else "mismatch",
+            )
+        )
+    return checks
