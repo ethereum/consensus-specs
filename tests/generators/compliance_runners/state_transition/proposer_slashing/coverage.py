@@ -1,49 +1,27 @@
-"""Coverage profiles for Gloas ``process_proposer_slashing``."""
+"""Declaration profiles with complete, fault-scoped proposer-slashing witnesses."""
 
-from __future__ import annotations
-
-from pathlib import Path
-
-from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    build_profile as _build_profile,
-    enumerate_signatures,
-)
-
-from .materializer import _DIMS
-
-INPUT_ASPECTS = {
-    "headers": ["slots_match", "proposers_match", "headers_different"],
-    "proposer_slashability": [
-        "proposer_slashed",
-        "proposer_activated",
-        "proposer_withdrawable",
-        "proposer_exited",
-    ],
-    "signatures": ["signature_1_valid", "signature_2_valid"],
-    "pending_payment": ["payment_window", "payment_proposer_matches"],
-    "queue_churn": ["churn_variant"],
-}
-OUTCOME_ASPECT = {"outcome": ["outcome", "pending_payment_cleared", "state_effected"]}
-ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-MODEL = Path(__file__).parent / "models" / "handler_proposer_slashing.mzn"
+from .target import TARGET
+from .witness import materializer_record
 
 
-def _nfaults(r: dict) -> int:
+def build_profile(name, *, spec):
+    target = TARGET.for_spec(spec)
+    formula = target.profiles[name]
+    chosen = set()
+    # Complete within each compiled branch, retaining its fault restrictions.
+    # Prefer fewer faults so max's low-fault witnesses also cover higher-order
+    # exceptional projections wherever possible.
+    for _, configurations, obligations in formula._compiled():
+        ordered = sorted(
+            configurations,
+            key=lambda c: (target.assertion_result(dict(c)).fault_count, repr(sorted(c))),
+        )
+        for obligation in obligations:
+            chosen.add(next(c for c in ordered if obligation <= c))
     return (
-        int(not r["slots_match"])
-        + int(not r["proposers_match"])
-        + int(not r["headers_different"])
-        + int(r["proposer_slashed"])
-        + int(not r["proposer_activated"])
-        + int(r["proposer_withdrawable"])
-        + int(r["signature_1_valid"] != "T")
-        + int(r["signature_2_valid"] != "T")
+        [dict(o) for o in sorted(formula.run(), key=lambda o: repr(sorted(o)))],
+        [materializer_record(dict(c)) for c in sorted(chosen, key=lambda c: repr(sorted(c)))],
     )
 
 
-def _recs():
-    return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
-
-
-def build_profile(name):
-    return _build_profile(_recs(), name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
+__all__ = ("TARGET", "build_profile")

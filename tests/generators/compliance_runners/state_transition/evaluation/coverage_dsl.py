@@ -286,6 +286,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "proposer_slashing": "tests.generators.compliance_runners.state_transition.proposer_slashing.target",
     "block_header": "tests.generators.compliance_runners.state_transition.block_header.target",
     "voluntary_exit": "tests.generators.compliance_runners.state_transition.voluntary_exit.target",
     "process_operations": "tests.generators.compliance_runners.state_transition.operations.target",

@@ -1,4 +1,4 @@
-"""Aspect-based compliance runner for Gloas proposer slashings."""
+"""Declaration-based compliance runner for Gloas proposer slashings."""
 
 from .coverage import build_profile
 from .materializer import ProposerSlashingMaterializer

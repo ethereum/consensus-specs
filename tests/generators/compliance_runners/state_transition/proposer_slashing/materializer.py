@@ -1,4 +1,4 @@
-"""Materialize aspect-model solutions for Gloas ``process_proposer_slashing``."""
+"""Materialize declaration witnesses for Gloas ``process_proposer_slashing``."""
 
 from __future__ import annotations
 
@@ -14,6 +14,10 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
     distinct_indices,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+
+from .target import ASSERTIONS
+from .witness import assignment_from_legacy
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -59,16 +63,17 @@ class ProposerSlashingMaterializer(Materializer):
         state.slot = self.spec.Slot(EPOCHS_PAST_GENESIS * self.spec.SLOTS_PER_EPOCH)
         return state
 
-    def _sign(self, state: Any, header: Any, valid: bool) -> Any:
+    def _sign(self, state: Any, header: Any, valid: bool, proposer_index: int) -> Any:
         if not valid:
             return self.spec.SignedBeaconBlockHeader(message=header)
         domain = self.spec.get_domain(
             state, self.spec.DOMAIN_BEACON_PROPOSER, self.spec.compute_epoch_at_slot(header.slot)
         )
-        signature = bls.Sign(
-            pubkey_to_privkey[state.validators[header.proposer_index].pubkey],
-            self.spec.compute_signing_root(header, domain),
-        )
+        with bls_enabled():
+            signature = bls.Sign(
+                pubkey_to_privkey[state.validators[proposer_index].pubkey],
+                self.spec.compute_signing_root(header, domain),
+            )
         return self.spec.SignedBeaconBlockHeader(message=header, signature=signature)
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
@@ -128,8 +133,12 @@ class ProposerSlashingMaterializer(Materializer):
             body_root=body_root,
         )
         slashing = spec.ProposerSlashing(
-            signed_header_1=self._sign(pre, h1, _s(sol, "signature_1_valid") == "T"),
-            signed_header_2=self._sign(pre, h2, _s(sol, "signature_2_valid") == "T"),
+            signed_header_1=self._sign(
+                pre, h1, _s(sol, "signature_1_valid") == "T", proposer_index
+            ),
+            signed_header_2=self._sign(
+                pre, h2, _s(sol, "signature_2_valid") == "T", proposer_index
+            ),
         )
         if window != "OLD":
             index = (int(spec.SLOTS_PER_EPOCH) if window == "CURRENT" else 0) + slot_1 % int(
@@ -149,12 +158,15 @@ class ProposerSlashingMaterializer(Materializer):
             )
         post = pre.copy()
         try:
-            spec.process_proposer_slashing(post, slashing)
+            with bls_enabled():
+                spec.process_proposer_slashing(post, slashing)
         except (AssertionError, IndexError):
             post = None
         claimed = {
             n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
         }
+        summary = ASSERTIONS.evaluate(assignment_from_legacy(claimed))
+        claimed.update(fault_count=summary.fault_count, accepted=claimed["state_effected"])
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("proposer_slashing", "ssz", slashing.encode_bytes()),
