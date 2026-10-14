@@ -89,10 +89,13 @@ def validate_cases(
             case_validate = validate_case[test_provider]
         else:
             case_validate = validate_case
-        # Validators historically imported the minimal spec at module scope.
-        # Replace that binding so validation follows each case's preset.
-        case_validate.__globals__["spec"] = case_spec
-        result = case_validate(case_dir)
+        # Generic validators accept the case's preset explicitly. Legacy
+        # validators still import a spec binding that must be replaced.
+        if hasattr(case_validate, "for_spec"):
+            result = case_validate.for_spec(case_spec, case_dir)
+        else:
+            case_validate.__globals__["spec"] = case_spec
+            result = case_validate(case_dir)
         if isinstance(result, tuple):
             checks, errors = result
         else:
@@ -101,7 +104,12 @@ def validate_cases(
         total_mm += len(mismatches)
         total_err += len(errors)
         status = "OK" if not mismatches and not errors else "FAIL"
-        outcome = next((check.claimed for check in checks if check.dimension == "outcome"), "?")
+        outcome = next((check.claimed for check in checks if check.dimension == "outcome"), None)
+        if outcome is None:
+            accepted = next(
+                (check.claimed for check in checks if check.dimension == "accepted"), None
+            )
+            outcome = "ACCEPT" if accepted is True else "REJECT" if accepted is False else "?"
         print(f"{case_dir.name}: {status}  [{outcome}]")
         for check in mismatches:
             print(f"    dim {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
