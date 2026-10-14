@@ -48,6 +48,17 @@ or omitted.
 
 ## Expressions and inputs
 
+`coverage_spec` infers attributes and constants when their lists are omitted.
+It traverses aspect values, activation and availability expressions, target
+applicability, and constraints. Repeated references to the same declaration are
+collected once in first-reference order; distinct declarations with the same
+name still raise an error. Constant getters must still be supplied to `bind`.
+
+Explicit `attributes=` and `constants=` lists retain their existing validation
+and can include inputs not referenced by the expressions. Keep explicit lists
+for constants used only by Python callbacks, such as `constant_feasibility`, or
+extra attributes supplied by an observer. Those callbacks are not inspected.
+
 - `attribute(name, Integer(...))` or `attribute(name, Boolean())` declares a
   per-record input. A missing key is an adapter error; an explicit `NA` value
   means an unavailable observation.

@@ -40,11 +40,6 @@ COVERAGE = coverage_spec(
     "historical_summaries_update",
     focus="process_historical_summaries_update: historical-root period boundary and summary-list occupancy",
     record="one vector",
-    attributes=(
-        next_epoch,
-        summary_count,
-    ),
-    constants=(epochs_per_historical_root,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )

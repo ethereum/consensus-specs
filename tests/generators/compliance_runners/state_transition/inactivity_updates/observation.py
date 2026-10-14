@@ -38,7 +38,6 @@ class Slice:
     participating: frozenset[int]
     finality_delay: int
     min_epochs_to_inactivity_penalty: int
-    leak_free: bool
     bias: int
     recovery_rate: int
 
@@ -141,7 +140,6 @@ def recover(ctx: Context) -> Slice:
         participating=participating,
         finality_delay=int(spec.get_finality_delay(pre)),
         min_epochs_to_inactivity_penalty=int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),
-        leak_free=not bool(spec.is_in_inactivity_leak(pre)),
         bias=int(spec.config.INACTIVITY_SCORE_BIAS),
         recovery_rate=int(spec.config.INACTIVITY_SCORE_RECOVERY_RATE),
     )
@@ -151,15 +149,12 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     sl = recover(ctx)
     return {
         "current_epoch": sl.current_epoch,
-        "loop_reached": sl.loop_reached,
-        "any_slashed": sl.slashed_count > 0,
         "eligible_count": len(sl.eligible),
         "ineligible_count": sl.ineligible_count,
         "active_eligible_count": sl.active_eligible_count,
         "slashed_count": sl.slashed_count,
         "max_slashed_withdrawable": sl.max_slashed_withdrawable,
         "previous_epoch_plus_one": sl.previous_epoch + 1,
-        "loop_nonempty": sl.loop_reached and len(sl.eligible) > 0,
         "post_present": sl.post is not None,
         "participating_count": sl.participating_count,
         "zero_score_count": sl.zero_score_count,
