@@ -36,22 +36,35 @@ def validate_record(target, ctx, claimed):
     return checks
 
 
-def target_validator(target, *, operation_name, operation_type, spec):
+def target_validator(
+    target, *, operation_name=None, operation_type=None, spec, require_post=False
+):
     """Build recovery and on-disk validation using a provider's spec getter."""
+
+    if (operation_name is None) != (operation_type is None):
+        raise ValueError("operation_name and operation_type must be set together")
 
     def recover(pre, operation, post=None):
         return recover_record(target, Context(spec(), pre, operation, post, {}))[2]
 
     def validate_file(case_spec, case_dir):
         pre = decode(case_dir / "pre.ssz_snappy", case_spec.BeaconState)
-        operation = decode(
-            case_dir / f"{operation_name}.ssz_snappy", getattr(case_spec, operation_type)
+        operation = (
+            decode(
+                case_dir / f"{operation_name}.ssz_snappy", getattr(case_spec, operation_type)
+            )
+            if operation_name is not None
+            else None
         )
         post_path = case_dir / "post.ssz_snappy"
-        post = decode(post_path, case_spec.BeaconState) if post_path.exists() else None
+        post_exists = post_path.exists()
+        post = decode(post_path, case_spec.BeaconState) if post_exists else None
         metadata = YAML(typ="safe").load((case_dir / "dimensions.yaml").read_text())
         ctx = Context(case_spec, pre, operation, post, metadata)
-        return validate_record(target, ctx, metadata["claimed"])
+        checks = validate_record(target, ctx, metadata["claimed"])
+        if require_post and not post_exists:
+            checks.append(Check("post_state_present", True, False, "mismatch"))
+        return checks
 
     def validate_case(case_dir):
         return validate_file(spec(), case_dir)
