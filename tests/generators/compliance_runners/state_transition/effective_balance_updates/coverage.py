@@ -11,7 +11,6 @@ from .target import COMPARISONS, TARGET
 
 build_profile = coverage_profiles(
     TARGET,
-    empty_profiles=("exceptional",),
     candidates=lambda spec: candidate_records(constants(spec), COMPARISONS),
 )
 

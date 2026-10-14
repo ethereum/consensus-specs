@@ -50,7 +50,6 @@ def profile_records(target, name: str, *, complete=False) -> list[dict]:
 def coverage_profiles(
     target,
     *,
-    empty_profiles=(),
     complete=False,
     witness=None,
     candidates=None,
@@ -60,7 +59,8 @@ def coverage_profiles(
 ):
     """Expose declaration profiles through the provider's ``build_profile`` API.
 
-    Providers without rejection cases explicitly list ``exceptional`` as empty.
+    An omitted ``exceptional`` profile returns empty records. Other missing
+    profile names raise an error.
     ``complete`` requests full abstract assignments within each formula branch.
     ``witness(record)`` converts assignments to materializer records; alternatively,
     ``candidates(spec)`` supplies concrete records to match against obligations.
@@ -69,16 +69,13 @@ def coverage_profiles(
     ``materializer`` selects the generic adapter for all target dimensions,
     completing assignments and adding assertion fault metadata automatically.
     """
-    empty_profiles = frozenset(empty_profiles)
-    if empty_profiles & target.profiles.keys():
-        raise ValueError("empty profiles must not override declared profiles")
     if witness is not None and candidates is not None:
         raise ValueError("choose either a witness adapter or concrete candidates")
     if materializer and (witness is not None or candidates is not None):
         raise ValueError("choose either the generic materializer adapter or a custom adapter")
 
     def build_profile(name: str, *, spec) -> tuple[list[dict], list[dict]]:
-        if name in empty_profiles:
+        if name == "exceptional" and name not in target.profiles:
             return [], []
         bound = target.for_spec(spec, backend=backend, solver=solver)
         records = profile_records(bound, name, complete=complete or materializer)

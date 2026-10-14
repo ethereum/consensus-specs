@@ -167,11 +167,11 @@ def test_invalid_feasibility_declarations_fail_early(invalid):
         target((flag,), (f,), constraints=(bad,))
 
 
-def test_provider_adapter_has_stable_records_and_explicit_empty_profiles():
+def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_profile():
     x = attribute("x", Integer(0, 2))
     t = target((x,), (dimension("value", x),))
     spec = object()
-    build_profile = coverage_profiles(t, empty_profiles=("exceptional",))
+    build_profile = coverage_profiles(t)
     expected = [{"value": 0}, {"value": 1}, {"value": 2}]
     assert build_profile("all", spec=spec) == (expected, expected)
     assert coverage_profiles(t, complete=True)("all", spec=spec) == (expected, expected)
@@ -179,8 +179,20 @@ def test_provider_adapter_has_stable_records_and_explicit_empty_profiles():
     assert build_profile("exceptional", spec=spec) == ([], [])
     with pytest.raises(KeyError):
         build_profile("typo", spec=spec)
-    with pytest.raises(ValueError, match="override"):
-        coverage_profiles(t, empty_profiles=("all",))
+    with pytest.raises(KeyError):
+        build_profile("normal", spec=spec)
+    value = dimension("value", x)
+    declared = bind(
+        coverage_spec(
+            "declared_exceptional",
+            focus="declared profiles take precedence",
+            record="one observation",
+            aspects=(aspect("values", value),),
+            profiles={"exceptional": exhaustive((value,))},
+        ),
+        observe_attributes=lambda ctx: ctx.pre,
+    )
+    assert coverage_profiles(declared)("exceptional", spec=spec) == (expected, expected)
 
 
 def test_inputs_are_inferred_from_values_availability_applicability_and_constraints():
