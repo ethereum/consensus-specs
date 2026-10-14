@@ -146,7 +146,7 @@ and non-equivocating inclusion lists they have observed.
 ##### ExecutionPayload
 
 `prepare_execution_payload` is updated from the Gloas specification to provide
-the inclusion list transactions and their membership.
+separate inclusion lists.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
@@ -187,8 +187,12 @@ def prepare_execution_payload(
     dependent_root = get_shuffling_dependent_root(
         store, head.root, compute_epoch_at_slot(inclusion_list_slot)
     )
-    inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), inclusion_list_slot, dependent_root, only_timely=False
+    inclusion_lists = get_inclusion_lists(
+        get_inclusion_list_store(),
+        get_inclusion_list_committee(state, inclusion_list_slot),
+        inclusion_list_slot,
+        dependent_root,
+        only_timely=False,
     )
 
     # Set the forkchoice head and initiate the payload build process
@@ -201,16 +205,7 @@ def prepare_execution_payload(
         slot_number=state.slot,
         target_gas_limit=target_gas_limit,
         # [New in Heze:EIP7805]
-        inclusion_list_transactions=inclusion_list_transactions,
-        # [New in Heze:EIP7805]
-        inclusion_list_membership=get_inclusion_list_membership(
-            get_inclusion_list_store(),
-            get_inclusion_list_committee(state, inclusion_list_slot),
-            inclusion_list_slot,
-            dependent_root,
-            inclusion_list_transactions,
-            only_timely=False,
-        ),
+        inclusion_lists=inclusion_lists,
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=head_block_hash,

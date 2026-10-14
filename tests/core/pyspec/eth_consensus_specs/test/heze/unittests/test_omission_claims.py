@@ -97,12 +97,11 @@ def run_incomplete_inclusion_verdict(spec, state, verdict):
         class RecordingEngine(spec.NoopExecutionEngine):
             called = False
 
-            def is_inclusion_list_satisfied(self, payload, transactions, membership, claims):
+            def is_inclusion_list_satisfied(self, payload, inclusion_lists, claims):
                 self.called = True
                 assert payload == envelope.payload
-                assert transactions == [transaction]
-                assert membership == [
-                    spec.InclusionListBits(data=[member == committee[0] for member in committee])
+                assert inclusion_lists == [
+                    [transaction] if member == committee[0] else [] for member in committee
                 ]
                 assert claims == envelope.omission_claims
                 return verdict

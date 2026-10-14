@@ -51,19 +51,17 @@ used to implement it with an external execution engine.
 
 #### New `is_inclusion_list_satisfied`
 
-The execution engine evaluates the supplied transaction, membership and claim
-lists for this call, even if it has already validated the execution payload. The
+The execution engine evaluates the supplied separate ILs and claim list for
+this call, even if it has already validated the execution payload. The
 consensus layer MUST pass the committed claims unchanged, including their order
 and any duplicates; claim interpretation is an execution layer rule. Different
 beacon blocks may commit different claims for the same execution payload, so
 satisfaction MUST NOT be cached by execution block hash alone.
 
-The Engine API adapter MUST associate the `inclusionListContextId` returned by
-`engine_newPayloadV6` with the beacon block and the exact inputs supplied for its
-check. It retrieves pending results using `engine_getInclusionListStatusV1`, or
-`engine_forkchoiceUpdatedV5` with that identifier when updating the corresponding
-head. Unknown or evicted contexts require resubmission of the retained inputs.
-A completed result updates only the associated beacon block's
+The Engine API adapter MUST retain the exact `engine_newPayloadV6` inputs for
+each beacon block with a pending check and repeat that call until completion or
+abandonment of the block. It MUST NOT substitute a later IL view. A completed
+result updates only the associated beacon block's
 `payload_inclusion_list_satisfaction`; it MUST NOT be applied to ancestors or
 other blocks merely sharing its execution hash.
 
@@ -71,31 +69,24 @@ other blocks merely sharing its execution hash.
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    inclusion_list_transactions: Sequence[Transaction],
-    inclusion_list_membership: Sequence[InclusionListBits],
+    inclusion_lists: Sequence[Sequence[Transaction]],
     omission_claims: Sequence[OmissionClaim],
 ) -> bool | None:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
-    list constraints with respect to ``inclusion_list_transactions``, their
-    ``inclusion_list_membership``, and ``omission_claims``.
+    list constraints with respect to ``inclusion_lists`` and ``omission_claims``.
     Return ``None`` while execution validation or inclusion checking is pending.
     """
 ```
 
 #### Modified `notify_forkchoice_updated`
 
-`PayloadAttributes` adds `inclusion_list_transactions` and
-`inclusion_list_membership` for the child build. The optional
-`inclusion_list_context_id` selects the head's inclusion check independently.
-The Engine API adapter records its returned verdict as described above. On an
-unknown-context error it MUST resubmit the retained inputs and retry forkchoice;
-this error does not apply the requested forkchoice update.
+`PayloadAttributes` adds separate `inclusion_lists` for the child build.
+Forkchoice updates report execution validity only; inclusion results are
+retrieved by repeating `engine_newPayloadV6` with the original inputs.
 
-*Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
-not empty, the payload build process MUST produce an execution payload that
-satisfies the inclusion list constraints with respect to
-`inclusion_list_transactions` and `inclusion_list_membership`.
+*Note*: The payload build process MUST satisfy the inclusion constraints for
+`payload_attributes.inclusion_lists`.
 
 ```python
 def notify_forkchoice_updated(
@@ -105,7 +96,6 @@ def notify_forkchoice_updated(
     finalized_block_hash: Hash32,
     payload_attributes: PayloadAttributes | None,
     custody_columns: CustodyColumnBits | None,
-    inclusion_list_context_id: Bytes32 | None = None,
 ) -> PayloadId | None: ...
 ```
 
@@ -113,8 +103,8 @@ def notify_forkchoice_updated(
 
 ### Modified `PayloadAttributes`
 
-`PayloadAttributes` is extended with the `inclusion_list_transactions` and
-`inclusion_list_membership` fields.
+`PayloadAttributes` is extended with `inclusion_lists`, ordered by committee
+position with an empty list where no applicable IL is available.
 
 ```python
 @dataclass
@@ -127,9 +117,7 @@ class PayloadAttributes:
     slot_number: Uint64
     target_gas_limit: Uint64
     # [New in Heze:EIP7805]
-    inclusion_list_transactions: Sequence[Transaction]
-    # [New in Heze:EIP7805]
-    inclusion_list_membership: Sequence[InclusionListBits]
+    inclusion_lists: Sequence[Sequence[Transaction]]
 ```
 
 ### Modified `Store`
@@ -221,19 +209,15 @@ def record_payload_inclusion_list_satisfaction(
     slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
     inclusion_list_store = get_inclusion_list_store()
-    inclusion_list_transactions = get_inclusion_list_transactions(
-        inclusion_list_store, slot, dependent_root, only_timely=True
-    )
-    inclusion_list_membership = get_inclusion_list_membership(
+    inclusion_lists = get_inclusion_lists(
         inclusion_list_store,
         get_inclusion_list_committee(store.block_states[root], slot),
         slot,
         dependent_root,
-        inclusion_list_transactions,
         only_timely=True,
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
-        payload, inclusion_list_transactions, inclusion_list_membership, omission_claims
+        payload, inclusion_lists, omission_claims
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```

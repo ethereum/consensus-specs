@@ -13,7 +13,7 @@
   - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
   - [New `process_inclusion_list`](#new-process_inclusion_list)
   - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
-  - [New `get_inclusion_list_membership`](#new-get_inclusion_list_membership)
+  - [New `get_inclusion_lists`](#new-get_inclusion_lists)
   - [New `get_inclusion_list_bits`](#new-get_inclusion_list_bits)
   - [New `is_inclusion_list_bits_inclusive`](#new-is_inclusion_list_bits_inclusive)
 
@@ -122,42 +122,38 @@ def get_inclusion_list_transactions(
     return list(set(transactions))
 ```
 
-### New `get_inclusion_list_membership`
+### New `get_inclusion_lists`
 
-*Note*: `get_inclusion_list_membership` returns, for each of `transactions`, the
-`InclusionListBits` of the committee members whose inclusion list, among those
-considered by `get_inclusion_list_transactions`, carries the transaction. The
-execution engine uses it to meter work per inclusion list. Transactions and
-membership MUST be derived from the same inclusion list view. If a validator
-holds several committee positions, its transactions have every corresponding bit
-set.
+Return one transaction list per committee position from the same selected IL
+view. Missing, equivocating or excluded untimely lists produce empty entries.
+A validator holding several positions contributes the same list at each.
+Preserve transaction order and duplicates; the execution engine performs the
+per-list budget fill and may deduplicate verification work internally.
 
 ```python
-def get_inclusion_list_membership(
+def get_inclusion_lists(
     store: InclusionListStore,
     committee: InclusionListCommittee,
     slot: Slot,
     dependent_root: Root,
-    transactions: Sequence[Transaction],
     only_timely: bool = True,
-) -> Sequence[InclusionListBits]:
+) -> Sequence[Sequence[Transaction]]:
     key = (slot, dependent_root)
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
 
-    membership: dict[Transaction, InclusionListBits] = {}
-    for position, validator_index in enumerate(committee):
-        if validator_index not in inclusion_lists or validator_index in equivocators:
-            continue
-        inclusion_list = inclusion_lists[validator_index]
-        if only_timely and not inclusion_list.timely:
-            continue
-        for transaction in inclusion_list.signed_inclusion_list.message.transactions:
-            if transaction not in membership:
-                membership[transaction] = InclusionListBits()
-            membership[transaction][position] = Boolean(True)
-
-    return [membership[transaction] for transaction in transactions]
+    result: list[list[Transaction]] = []
+    for validator_index in committee:
+        entry = inclusion_lists.get(validator_index)
+        if (
+            entry is None
+            or validator_index in equivocators
+            or (only_timely and not entry.timely)
+        ):
+            result.append([])
+        else:
+            result.append(list(entry.signed_inclusion_list.message.transactions))
+    return result
 ```
 
 ### New `get_inclusion_list_bits`

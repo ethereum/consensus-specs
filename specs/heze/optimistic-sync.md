@@ -24,18 +24,18 @@ list satisfaction. It extends the
 #### New How to track inclusion list satisfaction
 
 For each beacon block with a pending inclusion check, the consensus engine MUST
-retain the context identifier and exact inclusion list transactions, membership
-and revealed claims submitted to the execution engine. It records `None` in
-`store.payload_inclusion_list_satisfaction` while either execution validation or
+retain the exact `engine_newPayloadV6` inputs, including the separate ILs and
+revealed claims. It records `None` in
+`store.payload_inclusion_list_satisfaction` while execution validation or
 inclusion checking is pending, including when execution is already `VALID`.
 An `INVALIDATED` execution response records `False`.
 
-The consensus engine MUST retrieve deferred results through
-`engine_getInclusionListStatusV1`, or through `engine_forkchoiceUpdatedV5` when
-selecting the associated execution block as head. On `-38007: Unknown inclusion context`, it MUST repeat `engine_newPayloadV6` with the retained inputs and use
-the returned identifier. It MUST NOT reconstruct those inputs from a later
-inclusion list view. A completed verdict is recorded only for the associated
-beacon block; ancestors and other blocks sharing its execution hash are unchanged.
+The consensus engine MUST repeat `engine_newPayloadV6` with the retained inputs
+until it obtains a completed verdict or abandons the block. It MUST NOT
+reconstruct those inputs from a later IL view. A completed verdict is recorded
+only for the associated beacon block; ancestors and other blocks sharing its
+execution hash are unchanged. Forkchoice responses report execution validity
+only and do not complete inclusion checks.
 
 Pending checks do not prevent optimistic import, but MUST NOT be treated as
 satisfied for payload extension or validator duties requiring inclusion
