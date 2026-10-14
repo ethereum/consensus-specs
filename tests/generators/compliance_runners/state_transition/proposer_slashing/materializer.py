@@ -16,30 +16,13 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-from .target import ASSERTIONS
-from .witness import assignment_from_legacy
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-_DIMS = [
-    "slots_match",
-    "proposers_match",
-    "headers_different",
-    "signature_1_valid",
-    "signature_2_valid",
-    "proposer_slashed",
-    "proposer_activated",
-    "proposer_withdrawable",
-    "proposer_exited",
-    "churn_variant",
-    "payment_window",
-    "payment_proposer_matches",
-    "pending_payment_cleared",
-    "state_effected",
-    "outcome",
-]
+_DIMS = [f.name for f in TARGET.factors]
 
 
 def _s(sol: Any, name: str) -> str:
@@ -81,13 +64,13 @@ class ProposerSlashingMaterializer(Materializer):
         current = int(spec.get_current_epoch(pre))
         proposer_index, foreign_index = distinct_indices(self.rng, len(pre.validators), 2)
         proposer = pre.validators[proposer_index]
-        proposer.slashed = _b(sol, "proposer_slashed")
+        proposer.slashed = not _b(sol, "proposer_not_slashed")
         proposer.activation_epoch = spec.Epoch(0 if _b(sol, "proposer_activated") else current + 1)
         proposer.exit_epoch = spec.Epoch(
-            current if _b(sol, "proposer_exited") else spec.FAR_FUTURE_EPOCH
+            current if _b(sol, "exit_initiated") else spec.FAR_FUTURE_EPOCH
         )
         proposer.withdrawable_epoch = spec.Epoch(
-            current if _b(sol, "proposer_withdrawable") else spec.FAR_FUTURE_EPOCH
+            spec.FAR_FUTURE_EPOCH if _b(sol, "proposer_not_withdrawable") else current
         )
 
         variant = _s(sol, "churn_variant")
@@ -133,12 +116,8 @@ class ProposerSlashingMaterializer(Materializer):
             body_root=body_root,
         )
         slashing = spec.ProposerSlashing(
-            signed_header_1=self._sign(
-                pre, h1, _s(sol, "signature_1_valid") == "T", proposer_index
-            ),
-            signed_header_2=self._sign(
-                pre, h2, _s(sol, "signature_2_valid") == "T", proposer_index
-            ),
+            signed_header_1=self._sign(pre, h1, _b(sol, "signature_1_valid"), proposer_index),
+            signed_header_2=self._sign(pre, h2, _b(sol, "signature_2_valid"), proposer_index),
         )
         if window != "OLD":
             index = (int(spec.SLOTS_PER_EPOCH) if window == "CURRENT" else 0) + slot_1 % int(
@@ -153,7 +132,7 @@ class ProposerSlashingMaterializer(Materializer):
                     builder_index=spec.BuilderIndex(self.rng.randrange(64)),
                 ),
                 proposer_index=spec.ValidatorIndex(
-                    proposer_index if _s(sol, "payment_proposer_matches") == "T" else foreign_index
+                    proposer_index if _b(sol, "payment_proposer_matches") else foreign_index
                 ),
             )
         post = pre.copy()
@@ -162,11 +141,10 @@ class ProposerSlashingMaterializer(Materializer):
                 spec.process_proposer_slashing(post, slashing)
         except (AssertionError, IndexError):
             post = None
-        claimed = {
-            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
-        }
-        summary = ASSERTIONS.evaluate(assignment_from_legacy(claimed))
-        claimed.update(fault_count=summary.fault_count, accepted=claimed["state_effected"])
+        claimed = {name: getattr(sol, name) for name in _DIMS}
+        target = TARGET.for_spec(spec)
+        summary = target.assertion_result({n: v for n, v in claimed.items() if v != "NA"})
+        claimed["fault_count"] = summary.fault_count
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("proposer_slashing", "ssz", slashing.encode_bytes()),
@@ -174,7 +152,7 @@ class ProposerSlashingMaterializer(Materializer):
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
         meta = {
-            "description": f"process_proposer_slashing: {claimed['outcome']}",
+            "description": f"process_proposer_slashing: {'ACCEPT' if claimed['accepted'] else 'REJECT'}",
             "bls_setting": 1,
             "claimed": claimed,
         }
