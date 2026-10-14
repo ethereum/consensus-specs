@@ -622,28 +622,37 @@ class BoundFormula:
             )
         return covered
 
-    def generation_obligations(self):
+    def generation_obligations(self, *, complete=False):
         """Preserve scope restrictions for adapters consuming plain dictionaries.
 
         A scoped projection is completed within its branch so downstream witness
-        selection cannot introduce additional faults. Unscoped plans stay compact.
+        selection cannot introduce additional faults. Unscoped plans stay compact
+        unless ``complete`` requests full assignments, preferring fewer faults.
         """
         result = set()
         for scopes, configurations, obligations in self._compiled():
-            if not scopes:
+            if not scopes and not complete:
                 result.update(obligations)
                 continue
             assertions = self.owner.definition.assertions
 
             def preference(configuration, assertions=assertions):
+                if assertions is None:
+                    return False, (False, 0), repr(sorted(configuration))
                 values = dict(configuration)
-                expected = assertions.evaluate(values, self.owner.bound_constants).expected_accepted
+                summary = assertions.evaluate(values, self.owner.bound_constants)
+                expected = summary.expected_accepted
                 observed = (
                     values.get(assertions.observed.name)
                     if assertions.observed is not None
                     else expected
                 )
-                return observed != expected, repr(sorted(configuration))
+                faults = (
+                    (summary.fault_count is None, summary.fault_count or 0)
+                    if complete
+                    else (False, 0)
+                )
+                return observed != expected, faults, repr(sorted(configuration))
 
             ordered = sorted(configurations, key=preference)
             for o in obligations:

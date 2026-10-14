@@ -15,16 +15,16 @@ def test_profiles_cover_their_dsl_obligations():
     counts = {}
     for name in PROFILES:
         records, chosen = build_profile(name, spec=spec)
-        assert records == chosen
-        report = score(target, records, target.profiles[name])
+        assert records
+        report = score(target, chosen, target.profiles[name])
         assert report.uncovered == []
         assert report.unexpected == []
-        counts[name] = len(records)
+        counts[name] = len(chosen)
     assert counts["max"] > counts["standard"] > 5
 
 
 def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
-    records, _ = build_profile("max", spec=spec)
+    _, records = build_profile("max", spec=spec)
     signatures = [
         {k: v for k, v in record.items() if k not in ("balance", "effective_balance")}
         for record in records
@@ -51,7 +51,7 @@ def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
 def test_rounding_buckets_have_concrete_witnesses_in_every_profile():
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
     for profile in PROFILES:
-        records, _ = build_profile(profile, spec=spec)
+        _, records = build_profile(profile, spec=spec)
         assert {record["balance_remainder"] for record in records} == {
             "ZERO",
             "ONE",

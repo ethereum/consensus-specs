@@ -169,12 +169,43 @@ def test_provider_adapter_has_stable_records_and_explicit_empty_profiles():
     build_profile = coverage_profiles(t, empty_profiles=("exceptional",))
     expected = [{"value": 0}, {"value": 1}, {"value": 2}]
     assert build_profile("all", spec=spec) == (expected, expected)
+    assert coverage_profiles(t, complete=True)("all", spec=spec) == (expected, expected)
     assert profile_records(t.for_spec(spec), "all") == expected
     assert build_profile("exceptional", spec=spec) == ([], [])
     with pytest.raises(KeyError):
         build_profile("typo", spec=spec)
     with pytest.raises(ValueError, match="override"):
         coverage_profiles(t, empty_profiles=("all",))
+
+
+def test_provider_adapter_matches_concrete_candidates_and_reports_missing_witnesses():
+    x = attribute("x", Integer(0, 2))
+    t = target((x,), (dimension("value", x),))
+    spec = object()
+    candidates = [{"value": n, "balance": n + 10} for n in (2, 0, 1)]
+    duplicate = {"value": 0, "balance": 20}
+    build_profile = coverage_profiles(t, candidates=lambda bound_spec: [duplicate, *candidates])
+    records, chosen = build_profile("all", spec=spec)
+    assert records == [{"value": 0}, {"value": 1}, {"value": 2}]
+    assert chosen == sorted(candidates, key=lambda r: r["value"])
+    reversed_profile = coverage_profiles(
+        t, candidates=lambda bound_spec: [*reversed(candidates), duplicate]
+    )
+    assert reversed_profile("all", spec=spec) == (records, chosen)
+    missing = coverage_profiles(t, candidates=lambda bound_spec: candidates[:1])
+    with pytest.raises(ValueError, match="no concrete witness"):
+        missing("all", spec=spec)
+    with pytest.raises(ValueError, match="either"):
+        coverage_profiles(t, witness=dict, candidates=lambda bound_spec: candidates)
+
+
+def test_provider_adapter_deduplicates_converted_witnesses():
+    x = attribute("x", Integer(0, 2))
+    t = target((x,), (dimension("value", x),))
+    build_profile = coverage_profiles(t, witness=lambda record: {"bucket": record["value"] // 2})
+    records, chosen = build_profile("all", spec=object())
+    assert len(records) == 3
+    assert chosen == [{"bucket": 0}, {"bucket": 1}]
 
 
 @pytest.mark.parametrize(

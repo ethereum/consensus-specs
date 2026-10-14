@@ -121,6 +121,21 @@ def test_scoped_generation_preserves_fault_budget():
         assert report.unexpected == report.outcome_mismatches == []
 
 
+def test_complete_generation_prefers_fewer_faults_and_retains_branch_scopes():
+    target = example()
+    for name in ("all", "mixed", "single", "double"):
+        formula = target.profiles[name]
+        records = [dict(o) for o in formula.generation_obligations(complete=True)]
+        assert all(set(r) == {"positive", "valid", "accepted"} for r in records)
+        report = score(target, records, formula)
+        assert report.covered == report.total
+        assert report.unexpected == report.outcome_mismatches == []
+        if name == "all":
+            assert max(target.assertion_result(r).fault_count for r in records) == 1
+        if name == "mixed":
+            assert {target.assertion_result(r).fault_count for r in records} == {0, 2}
+
+
 def test_unknown_is_not_zero_faults_but_known_failure_still_predicts_rejection():
     target = example()
     checks = target.definition.assertions
