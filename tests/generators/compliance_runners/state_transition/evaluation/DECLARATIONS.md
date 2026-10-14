@@ -276,7 +276,7 @@ Providers can use the same adapter for concrete witnesses:
 - `complete=True` completes every obligation within its formula branch, retaining
   fault restrictions and preferring fewer faults.
 - `witness(record)` converts a generation assignment to a materializer record,
-  as used by proposer slashing and operations.
+  as used by operations.
 - `candidates(spec)` supplies concrete records containing factor values and
   materializer inputs, as used by effective-balance updates. The adapter selects
   the first matching candidate in stable factor order and reports missing
@@ -295,19 +295,46 @@ be combined with `witness` or `candidates`. The same conversion is available as
 `materializer_record(bound_target, assignment)`.
 `profile_records(bound_target, name, complete=False)` is also available for
 custom adapters. `coverage_profiles(..., backend="minizinc", solver="gecode")`
-selects native declaration compilation, as used by the payload-attestation
-provider. Omitting these options preserves the target's existing defaults.
+selects native declaration compilation, as used by payload attestation,
+voluntary exit, and proposer slashing. Omitting these options preserves the target's existing defaults.
 Scenario and remaining handwritten MiniZinc providers retain their existing profile
 implementations.
+
+## Shared validation
+
+`state_transition/declaration_validation.py` provides
+`target_validator(TARGET, operation_name="voluntary_exit",
+operation_type="SignedVoluntaryExit", spec=lambda: spec)`. It returns generic
+`recover` and `validate_case` functions. Case validation decodes pre, operation,
+and optional post, projects `TARGET.observation()` through `TARGET.record()`,
+encodes inactive dimensions as `"NA"`, and compares claimed fields. The provider
+runner injects each case's preset explicitly, including for these closures.
+
+Materializers emit canonical target dimensions using native values and `"NA"`
+for inactive dimensions. Validation compares these fields directly, with no
+provider-specific metadata mapping. Proposer slashing consumes completed target
+assignments. Voluntary exit also generates complete assignments directly from
+its target through MiniZinc. Its materializer selects aligned effective balances
+and churn budgets from the abstract churn dimensions; generation records carry
+no scenario names or concrete numeric hints.
+
+The shared validator also recovers `fault_count` from assertions when claimed.
+It checks observed acceptance against known assertion outcomes, respecting
+`AssertionSet.complete`: incomplete sets can predict rejection but cannot
+require acceptance. Unknown assertions remain unknown, and post-state presence
+supplies actual acceptance rather than predicted outcomes. Unknown claimed
+fields produce mismatches instead of being silently ignored.
 
 ## Current limits
 
 Enumeration explores the complete finite factor model and caches it per bound
 target and filtering mode. It is intended for small focus areas.
-Expression-to-DL, UTVPI, or MiniZinc translation and sampling are not
-implemented. The shared conditional-factor tool still supports MiniZinc, but its
-activation-only export must not be mistaken for a translation of the target's
-expressions or Python feasibility constraints.
+Expression-to-DL or UTVPI translation and sampling are not implemented.
+The optional MiniZinc backend translates finite domains, activation, abstract
+feasibility constraints, assertion consistency, fault scopes, and coverage
+formulas. Raw observation expressions and Python feasibility callbacks are not
+source-translated; callbacks supply explicit finite compatibility tables.
+The shared conditional-factor tool's standalone export covers activation only.
 
 Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`. For a valid
 pre-state, the latest header slot cannot exceed the state slot. Consequently
@@ -338,28 +365,30 @@ because a missing validator makes the lookup unavailable without introducing a
 new coverage dimension.
 
 Voluntary-exit `current_ge_message_epoch` and `current_ge_seasoned` use `cmp5`.
-Epoch witnesses place the current epoch two epochs before, one before, exactly
-at, one after, and two after each boundary. The provider's scenario profiles add
-these buckets to their epoch aspect, with accepted cases covering the nine
-non-negative bucket pairs and exceptional cases preserving assertion ordering.
-Smoke also covers each numeric bucket alongside the existing rejection outcomes.
-The provider enumerates structured Python scenario witnesses instead of the old
-MiniZinc scenario table; churn and pending-withdrawal classifications retain
-their existing behavior. Regenerate voluntary-exit vectors to include the new
-epoch bucket claims. Validation computes both deltas from the signed message and
-pre-state, and the declarations expose the same observed buckets.
+Epoch witnesses realize two epochs before, one before, exactly at, one after,
+and two after each boundary. MiniZinc compiles the target's feasibility rules,
+assertion fault scopes, and coverage formulas. Normal and exceptional profiles
+use the declaration assertion set; pending-loop coverage includes zero, one,
+and many matching entries, foreign entries, and actual acceptance. A future
+activation is at least `SHARD_COMMITTEE_PERIOD + 1` epochs short of seasoning,
+so unactivated validators cannot have only a one-epoch seasoning deficit when
+the period is positive. The declared feasibility rule excludes that impossible
+combination. Validation recovers the same dimensions from pre, signed exit,
+and optional post. Regenerate vectors to obtain the declaration-based profiles.
 
 Voluntary-exit `balance_gt_consumable` uses `cmp5` for the effective balance
 against the available exit budget. Effective balances and fresh churn are
 aligned to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1`
 buckets are infeasible when the increment exceeds one Gwei. Carried budgets can
 be unaligned: partial withdrawal requests consume the same churn budget in
-arbitrary Gwei amounts. The generator realizes those one-Gwei residuals by
-processing a foreign partial withdrawal before the voluntary exit. A `GT_1`
+arbitrary Gwei amounts. When foreign pending entries are requested, the materializer realizes those
+one-Gwei residuals by processing a foreign partial withdrawal before the
+voluntary exit. Otherwise it sets a carried budget directly, keeping the
+pending-entry shape independent of the churn dimensions. A `GT_1`
 excess always fits in one additional epoch and cannot require `MANY`.
 
-Churn profiles include `balance_gt_consumable` and `churn_additional_epochs`
-(`ZERO`, `ONE`, or `MANY`) alongside the existing budget-state claim. Witnesses
+Churn profiles include `earliest_lt_new`, `balance_gt_consumable`, and the
+conditional `additional_epochs` (`ONE` or `MANY`). Witnesses
 cover fresh and carried budgets, equality, aligned under/overflow boundaries,
 and multi-epoch overflow; they recalculate the fresh limit when the selected
 effective balance changes total active balance. Larger balances use compounding
@@ -563,8 +592,10 @@ slashings inside the payment window with a populated pre-state payment. Empty
 payment entries do not supply clearing-effect coverage. Missing validator data
 remains unknown.
 
-The provider now completes declaration obligations within each profile's fault
-scope and adapts them to the existing concrete materializer. Metadata records
+The provider uses MiniZinc to translate target feasibility rules, assertion
+fault scopes, and coverage formulas. It completes declaration obligations
+within each profile's scope and supplies canonical target dimensions directly
+to the materializer. Metadata records
 both the predicted fault count and claimed acceptance. The observer derives
 assertion truth from the actual headers, proposer state, and BLS signatures;
 acceptance is observed independently from post-state presence. Case validation
@@ -574,7 +605,9 @@ acceptance disagreements.
 The completed migration comparison established equivalence with the former
 MiniZinc handler model across all 1,610 feasible signatures under both presets;
 that model has been removed. Regression tests retain the configuration counts
-and check profile completeness against the declaration space. The `max` profile
+and compare native configurations and complete profile witnesses against the
+Python reference backend. A generation guard rejects Python configuration
+enumeration to verify the provider actually uses MiniZinc. The `max` profile
 retains all 360 signatures with at most two faults (20 normal, 80 with one fault,
 260 with two), which also cover every exceptional pair in the full space.
 `normal` retains 20 representatives. `smoke` and `exceptional` now cover
