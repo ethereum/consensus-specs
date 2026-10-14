@@ -352,6 +352,16 @@ def _walk(node):
             yield from _walk(arg)
 
 
+def _collect_inputs(expressions, kind):
+    """Collect declarations by identity in first-reference order."""
+    inputs = {}
+    for expr in expressions:
+        for node in expr.inputs():
+            if node.op == kind:
+                inputs.setdefault(id(node), node)
+    return tuple(inputs.values())
+
+
 def _evaluate_constraint(node, assignment, constants):
     """Evaluate over abstract values, retaining unknown inactive references.
 
@@ -403,8 +413,8 @@ class Specification:
         *,
         focus,
         record,
-        attributes,
-        constants=(),
+        attributes=None,
+        constants=None,
         aspects,
         profiles,
         applicable_when=True,
@@ -414,7 +424,6 @@ class Specification:
         constant_feasibility=None,
     ):
         self.name, self.focus, self.record = name, focus, record
-        self.attributes, self.constants = tuple(attributes), tuple(constants)
         self.aspects, self.profiles = tuple(aspects), dict(profiles)
         self.applicable_when = expression(applicable_when)
         if self.applicable_when.result_type() is not bool:
@@ -422,6 +431,20 @@ class Specification:
         self._feasible_callback, self.constant_feasibility = feasible, constant_feasibility
         self.constraints = tuple(expression(c) for c in constraints)
         self.declarations = tuple(f for a in self.aspects for f in a.declarations)
+        expressions = [self.applicable_when]
+        for f in self.declarations:
+            expressions.extend((f.value, f.when, f.available_when))
+        input_expressions = [*expressions, *self.constraints]
+        self.attributes = (
+            _collect_inputs(input_expressions, "attribute")
+            if attributes is None
+            else tuple(attributes)
+        )
+        self.constants = (
+            _collect_inputs(input_expressions, "constant")
+            if constants is None
+            else tuple(constants)
+        )
         self.by_name = {f.name: f for f in self.declarations}
         self.assertions = assertions
         if assertions is not None:
@@ -448,9 +471,7 @@ class Specification:
         for node in inputs:
             if not isinstance(node.domain, (Integer, Boolean, Bytes, Finite, DomainUnion)):
                 raise TypeError("unsupported input domain")
-        expressions = [self.applicable_when]
         for f in self.declarations:
-            expressions.extend((f.value, f.when, f.available_when))
             for parent, *_ in _conditions(f.when):
                 if self.by_name.get(parent.name) is not parent:
                     raise ValueError("undeclared activation factor")

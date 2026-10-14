@@ -44,14 +44,6 @@ COVERAGE = coverage_spec(
     "proposer_lookahead",
     focus="process_proposer_lookahead: slashed exclusion, proposer repetition, and old/new epoch relationship",
     record="one vector",
-    attributes=(
-        candidate_count,
-        slashed_active_count,
-        old_lookahead_has_slashed,
-        new_proposers_have_duplicate,
-        old_tail_equals_new,
-    ),
-    constants=(slots_per_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=(

@@ -37,7 +37,6 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     ]
     return {
         "post_present": ctx.post is not None,
-        "validator_index": validator_index,
         "validator_found": validator_found,
         "current_epoch": current_epoch,
         "message_epoch": message_epoch,

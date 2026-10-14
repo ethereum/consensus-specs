@@ -58,8 +58,6 @@ COVERAGE = coverage_spec(
     "justification_and_finalization",
     focus="process_justification_and_finalization: epoch guard, two 2/3 thresholds, four finalization rules",
     record="one vector",
-    attributes=(current_epoch, previous_support, current_support, finalization_rule),
-    constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=(
