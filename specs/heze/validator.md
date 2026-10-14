@@ -124,18 +124,13 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### Signed execution payload bid
 
-*Note*: The only change made to `signed_execution_payload_bid` is to require
-that `bid.inclusion_list_bits` must satisfy `is_inclusion_list_bits_inclusive()`
-with respect to the proposer's inclusion list view, which comprises all valid
-and non-equivocating inclusion lists they have observed.
-
-- The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`,
-  where `inclusion_list_committee` is
-  `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
-  `dependent_root` is
-  `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
-  and `store` is the fork choice store.
+*Note*: A proposer should do their best to select a bid for which
+`is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`
+returns `True`, where `inclusion_list_committee` is
+`get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
+`dependent_root` is
+`get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
+and `store` is the fork choice store.
 
 ##### ExecutionPayload
 
