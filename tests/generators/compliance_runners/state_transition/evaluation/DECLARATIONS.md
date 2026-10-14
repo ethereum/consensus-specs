@@ -267,8 +267,9 @@ unexpected-observation check. Review output includes the declared constraints.
 for providers that materialize the obligations directly. Its `build_profile`
 requires `spec=` and returns `(obligation_records, representative_records)`; the
 two lists coincide when materializing obligations directly. Records have a stable
-order based on sorted factor/value pairs. Providers without rejection cases
-explicitly pass `empty_profiles=("exceptional",)`; unknown names still fail.
+order based on sorted factor/value pairs. When `TARGET.profiles` omits `exceptional`, the adapter returns empty records
+for that profile. Declared profiles are evaluated normally; other missing names
+still fail.
 
 Providers can use the same adapter for concrete witnesses:
 
