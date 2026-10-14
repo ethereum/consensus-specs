@@ -123,6 +123,11 @@ CONSTRAINTS = (
     implies(
         ~PENDING.ref("pending_balance_zero"), PENDING.ref("matching_pending_entries") != "ZERO"
     ),
+    # A future activation is at least period + 1 epochs short of seasoning.
+    implies(
+        (shard_committee_period >= 1) & ~EPOCHS.ref("activation_le_current"),
+        coverage_value(EPOCHS.ref("current_ge_seasoned")) == "LT_FAR",
+    ),
     # Fresh churn is aligned; carried budgets can reflect partial withdrawals.
     implies(
         (balance_increment > 1) & CHURN.ref("earliest_lt_new"),

@@ -1,4 +1,4 @@
-"""Aspect-based compliance generator for ``process_voluntary_exit``."""
+"""Declaration-based compliance generator for ``process_voluntary_exit``."""
 
 from .coverage import build_profile
 from .materializer import VoluntaryExitMaterializer
