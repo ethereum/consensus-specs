@@ -39,23 +39,30 @@ def validate_record(target, ctx, claimed):
 def target_validator(
     target, *, operation_name=None, operation_type=None, spec, require_post=False
 ):
-    """Build recovery and on-disk validation using a provider's spec getter."""
+    """Build recovery and on-disk validation using a provider's spec getter.
 
-    if (operation_name is None) != (operation_type is None):
-        raise ValueError("operation_name and operation_type must be set together")
+    Typed operations are decoded from ``<operation_name>.ssz_snappy``. When a
+    name is supplied without a type, the operation is read from YAML instead.
+    """
+
+    if operation_type is not None and operation_name is None:
+        raise ValueError("operation_type requires operation_name")
 
     def recover(pre, operation, post=None):
         return recover_record(target, Context(spec(), pre, operation, post, {}))[2]
 
     def validate_file(case_spec, case_dir):
         pre = decode(case_dir / "pre.ssz_snappy", case_spec.BeaconState)
-        operation = (
-            decode(
+        if operation_name is None:
+            operation = None
+        elif operation_type is None:
+            operation = YAML(typ="safe").load(
+                (case_dir / f"{operation_name}.yaml").read_text()
+            )
+        else:
+            operation = decode(
                 case_dir / f"{operation_name}.ssz_snappy", getattr(case_spec, operation_type)
             )
-            if operation_name is not None
-            else None
-        )
         post_path = case_dir / "post.ssz_snappy"
         post_exists = post_path.exists()
         post = decode(post_path, case_spec.BeaconState) if post_exists else None
