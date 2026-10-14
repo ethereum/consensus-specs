@@ -1,37 +1,8 @@
-"""Joint slot and assertion witnesses for block-header obligations."""
+"""Concrete slot witnesses for complete block-header assignments."""
 
-from functools import cache
-
-from .target import ASSERTIONS, COVERAGE, HEADER
+from .target import HEADER
 
 BUCKET_DELTAS = {"LT_FAR": -2, "LT_1": -1, "EQ": 0, "GT_1": 1, "GT_FAR": 2}
-
-
-@cache
-def _configurations():
-    return tuple(
-        dict(configuration)
-        for configuration in COVERAGE.model().configurations()
-        if COVERAGE.feasible(dict(configuration))
-    )
-
-
-def complete_obligation(obligation):
-    """Preserve requested values and prefer the fewest failing assertions."""
-    candidates = [
-        assignment
-        for assignment in _configurations()
-        if all(assignment.get(name) == value for name, value in obligation.items())
-    ]
-    if not candidates:
-        raise ValueError(f"no feasible block-header completion for {obligation}")
-    return min(
-        candidates,
-        key=lambda assignment: (
-            ASSERTIONS.evaluate(assignment).fault_count,
-            repr(sorted(assignment.items())),
-        ),
-    ).copy()
 
 
 def slot_witness(assignment):

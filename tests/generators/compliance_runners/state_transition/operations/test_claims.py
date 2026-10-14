@@ -3,15 +3,23 @@
 from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    BoundFormula,
+    fix,
+)
 
-from .materializer import OperationsMaterializer
 from . import validate_case
+from .materializer import OperationsMaterializer
+from .target import TARGET
 
 
 def _write_case(tmp_path, **obligation):
+    target = TARGET.for_spec(spec)
+    completed = BoundFormula(target, fix(**obligation)).generation_obligations(complete=True)
+    assert len(completed) == 1
     materializer = OperationsMaterializer(spec)
     materializer.test_provider = "process_operations"
-    materializer.materialize_reps(tmp_path, [SimpleNamespace(**obligation)])
+    materializer.materialize_reps(tmp_path, [SimpleNamespace(**dict(next(iter(completed))))])
     return tmp_path / "minimal/gloas/sanity/blocks/main/case_0000"
 
 

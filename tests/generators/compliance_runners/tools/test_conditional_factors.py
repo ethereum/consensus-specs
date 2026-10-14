@@ -172,3 +172,60 @@ def test_contradictory_activation_preserves_parent_branches(backend):
         obligation(A=False),
         obligation(A=True),
     }
+
+
+def test_complete_projections_cover_obligations_and_omit_inactive_factors(backend):
+    model = Model([*example().factors, Factor("C", (0, 1))])
+    configurations = model.configurations(backend=backend)
+    projected = model.nwise(["A", "B"], 1, backend=backend)
+    completed = model.nwise(["A", "B"], 1, backend=backend, complete=True)
+    assert completed <= configurations
+    assert all(any(o <= c for c in completed) for o in projected)
+    assert all("C" in dict(c) and ("B" in dict(c)) == dict(c)["A"] for c in completed)
+    assert model.exhaustive(["A"], backend=backend, complete=True) == model.complete(
+        model.exhaustive(["A"], backend=backend), configurations
+    )
+
+
+def test_completion_respects_scoped_configurations_and_preference(backend, monkeypatch):
+    model = Model([*example().factors, Factor("C", (0, 1))])
+    scoped = {c for c in model.configurations(backend=backend) if dict(c)["A"]}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("completion re-enumerated instead of using the supplied scope")
+
+    monkeypatch.setattr(model, "configurations", forbidden)
+    obligations = [obligation(A=True), obligation(B=True)]
+
+    def preferred(c):
+        return -dict(c)["C"]
+
+    completed = model.complete(obligations, scoped, preference=preferred)
+    assert completed == {obligation(A=True, B=False, C=1), obligation(A=True, B=True, C=1)}
+    assert (
+        model.complete(obligations, sorted(scoped, key=repr, reverse=True), preference=preferred)
+        == completed
+    )
+    with pytest.raises(ValueError, match="no feasible completion"):
+        model.complete([obligation(A=False)], scoped)
+
+
+def test_complete_can_enumerate_its_own_witnesses(backend):
+    assert example().complete([obligation(B=True)], backend=backend) == {obligation(A=True, B=True)}
+
+
+@pytest.mark.parametrize(
+    "partial",
+    [obligation(A=False, B=True), obligation(A=1), obligation(B=0), obligation(unknown=True)],
+)
+def test_completion_rejects_infeasible_and_invalid_values(partial):
+    with pytest.raises(ValueError, match=r"no feasible completion|unknown factor/value"):
+        example().complete([partial])
+
+
+def test_completion_handles_empty_obligations_and_missing_extensions():
+    model = example()
+    assert model.complete([]) == set()
+    assert model.complete([frozenset()]) == {obligation(A=False)}
+    with pytest.raises(ValueError, match="no feasible completion"):
+        model.complete([frozenset()], set())

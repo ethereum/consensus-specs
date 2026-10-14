@@ -5,17 +5,25 @@ from types import SimpleNamespace
 import pytest
 
 from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import score
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    BoundFormula,
+    fix,
+)
 
 from . import build_profile
 from .materializer import OperationsMaterializer
-from .witness import complete_obligation, GATES
+from .target import LIMITS, TARGET
+
+GATES = tuple(f.name for f in LIMITS.factors)
 
 
-@pytest.mark.parametrize("profile", ["smoke", "normal", "exceptional", "standard"])
+@pytest.mark.parametrize("profile", ["smoke", "normal", "exceptional", "standard", "max"])
 def test_completed_witnesses_cover_each_obligation_once(profile):
     obligations, witnesses = build_profile(profile, spec=spec)
     signatures = [tuple(witness.items()) for witness in witnesses]
     assert len(signatures) == len(set(signatures))
+    assert all(set(witness) == {*GATES, "accepted"} for witness in witnesses)
     assert all(witness["accepted"] is all(witness[gate] for gate in GATES) for witness in witnesses)
     assert all(
         any(
@@ -23,12 +31,23 @@ def test_completed_witnesses_cover_each_obligation_once(profile):
         )
         for obligation in obligations
     )
+    target = TARGET.for_spec(spec)
+    report = score(target, witnesses, target.profiles[profile])
+    assert report.covered == report.total
+    assert not report.unexpected
+    assert not report.outcome_mismatches
 
 
 def test_rejection_completion_preserves_explicit_true_gate():
-    witness = complete_obligation({"accepted": False, "deposits_empty": True})
+    target = TARGET.for_spec(spec)
+    completed = BoundFormula(
+        target, fix(accepted=False, deposits_empty=True)
+    ).generation_obligations(complete=True)
+    assert len(completed) == 1
+    witness = dict(next(iter(completed)))
     assert witness["deposits_empty"] is True
-    assert witness["proposer_slashings_within_limit"] is False
+    assert target.assertion_result(witness).fault_count == 1
+    assert witness["accepted"] is False
 
 
 def test_smoke_materialization_has_no_duplicate_inputs(tmp_path):

@@ -8,7 +8,7 @@ from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from .witness import complete_obligation, GATES as _GATES
+from .target import LIMITS
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -66,9 +66,8 @@ class OperationsMaterializer(Materializer):
         pre = self._base_state()
         block = build_empty_block(spec, pre, slot=1)
         body = block.body
-        assignment = complete_obligation(vars(solution))
-        gates = {name: assignment[name] for name in _GATES}
-        accepted = assignment["accepted"]
+        gates = {f.name: getattr(solution, f.name) for f in LIMITS.factors}
+        accepted = solution.accepted
         body.graffiti = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
 
         if not gates["deposits_empty"]:
@@ -115,7 +114,7 @@ class OperationsMaterializer(Materializer):
                     }[gate]
                     break
 
-        claimed = {name: gates[name] for name in _GATES}
+        claimed = {name: gates[name] for name in gates}
         # Keep the requested outcome authoritative. Validation must detect a
         # transition that does not realize this obligation.
         claimed["accepted"] = accepted

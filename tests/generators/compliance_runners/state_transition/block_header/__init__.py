@@ -12,7 +12,7 @@ from .materializer import BlockHeaderMaterializer
 from .target import TARGET
 
 MATERIALIZER = BlockHeaderMaterializer
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="minizinc", complete=True)
 recover, validate_case = target_validator(
     TARGET,
     operation_name="block_header",

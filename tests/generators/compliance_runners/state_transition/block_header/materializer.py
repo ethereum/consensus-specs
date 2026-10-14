@@ -8,7 +8,8 @@ from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from .witness import complete_obligation, slot_witness
+from .target import TARGET
+from .witness import slot_witness
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -29,12 +30,7 @@ class BlockHeaderMaterializer(Materializer):
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        requested = {
-            str(name): value
-            for name, value in vars(solution).items()
-            if not str(name).startswith("_")
-        }
-        assignment = complete_obligation(requested)
+        assignment = {f.name: getattr(solution, f.name) for f in TARGET.factors}
         state_slot, block_slot, latest_header_slot = slot_witness(assignment)
         pre = self._base_state()
         pre.slot = spec.Slot(state_slot)

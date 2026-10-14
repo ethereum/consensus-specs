@@ -111,16 +111,67 @@ class Model:
                 configurations.add(configuration)
         return configurations
 
+    def complete(
+        self,
+        obligations,
+        configurations=None,
+        *,
+        preference=None,
+        backend="python",
+        solver="gecode",
+    ):
+        """Choose a deterministic complete extension for each obligation.
+
+        Inactive factors remain absent. Callers may supply already validated,
+        scoped configurations and a preference key (for example fault count).
+        Without configurations, enumerate this model using the selected backend.
+        Unsupported obligations raise rather than silently changing their values.
+        """
+        configurations = (
+            self.configurations(backend=backend, solver=solver)
+            if configurations is None
+            else configurations
+        )
+        ordered = sorted(
+            configurations,
+            key=lambda c: (
+                preference(c) if preference is not None else 0,
+                repr(sorted(c)),
+            ),
+        )
+        result = set()
+        for obligation in obligations:
+            obligation = frozenset(obligation)
+            for name, value in obligation:
+                if name not in self._by_name or not any(
+                    type(value) is type(v) and value == v for v in self._by_name[name].values
+                ):
+                    raise ValueError(f"unknown factor/value: {(name, value)!r}")
+            witness = next((c for c in ordered if obligation <= c), None)
+            if witness is None:
+                raise ValueError(f"no feasible completion for {dict(sorted(obligation))}")
+            result.add(witness)
+        return result
+
     def nwise(
-        self, selected: Iterable[str], strength: int, *, backend="python", solver="gecode"
+        self,
+        selected: Iterable[str],
+        strength: int,
+        *,
+        backend="python",
+        solver="gecode",
+        complete=False,
     ) -> set[Obligation]:
         """Cover n active selected factors, or all if fewer exist in a branch.
 
         Prerequisites do not count toward strength. Branches with no active
         selected factors produce no obligation. Unrelated completion values are
-        existential witnesses and never appear in the result.
+        existential witnesses and never appear in the result unless ``complete``
+        requests a full configuration for each projected obligation.
         """
-        return self.project(selected, strength, self.configurations(backend=backend, solver=solver))
+        configurations = self.configurations(backend=backend, solver=solver)
+        obligations = self.project(selected, strength, configurations)
+        return self.complete(obligations, configurations) if complete else obligations
 
     def project(self, selected, strength, configurations):
         """Project already validated configurations, adding activation prerequisites."""
@@ -147,11 +198,11 @@ class Model:
         return obligations
 
     def exhaustive(
-        self, selected: Iterable[str], *, backend="python", solver="gecode"
+        self, selected: Iterable[str], *, backend="python", solver="gecode", complete=False
     ) -> set[Obligation]:
         """Enumerate every feasible branch over the selected factors."""
         names = self._selection(selected)
-        return self.nwise(names, len(names), backend=backend, solver=solver)
+        return self.nwise(names, len(names), backend=backend, solver=solver, complete=complete)
 
     def to_minizinc(self) -> str:
         """Export a standalone, reviewable model; enumerate with --all-solutions.
