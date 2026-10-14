@@ -11,7 +11,7 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 from .materializer import MATERIALIZER
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="minizinc")
 recover, validate_case = target_validator(TARGET, spec=lambda: spec, require_post=True)
 
 __all__ = ("MATERIALIZER", "TARGET", "build_profile", "recover", "validate_case")
