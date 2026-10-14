@@ -7,6 +7,7 @@ import pytest
 
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
     coverage_profiles,
+    materializer_record,
     profile_records,
 )
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
@@ -17,6 +18,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
     all_of,
     aspect,
+    assertion,
+    assertion_set,
     attribute,
     bind,
     Boolean,
@@ -28,6 +31,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     coverage_value,
     derived,
     dimension,
+    each,
     exhaustive,
     factor,
     Finite,
@@ -285,6 +289,89 @@ def test_provider_adapter_deduplicates_converted_witnesses():
     records, chosen = build_profile("all", spec=object())
     assert len(records) == 3
     assert chosen == [{"bucket": 0}, {"bucket": 1}]
+
+
+def materializer_target():
+    age = attribute("age", Integer(0, 2))
+    ok = attribute("ok", Boolean())
+    flag = attribute("flag", Boolean())
+    gate = comparison("gate", age, 1, op=">=", granularity="cmp5")
+    check = assertion("check", ok, when=gate)
+    raw = dimension("raw", flag)
+    definition = coverage_spec(
+        "materializer",
+        focus="generic adaptation",
+        record="one vector",
+        aspects=(aspect("a", gate, check, raw),),
+        profiles={"each": each((gate, check, raw))},
+        assertions=assertion_set(check),
+    )
+    return bind(definition, observe_attributes=lambda ctx: {})
+
+
+def test_generic_materializer_record_uses_comparison_activation_and_fault_counts():
+    bound = materializer_target().for_spec(object())
+    assert materializer_record(bound, {"gate": "LT_1", "raw": False}) == {
+        "gate": "LT_1",
+        "check": "NA",
+        "raw": False,
+        "_nfaults": 0,
+        "_rank": 0,
+    }
+    assert materializer_record(bound, {"gate": "EQ", "check": False, "raw": True}) == {
+        "gate": "EQ",
+        "check": False,
+        "raw": True,
+        "_nfaults": 1,
+        "_rank": 1,
+    }
+    assert materializer_record(
+        bound,
+        {"gate": "GT_1", "check": True, "raw": False},
+    ) == {"gate": "GT_1", "check": True, "raw": False, "_nfaults": 0, "_rank": 0}
+    # An active missing observation must not be encoded as inactive.
+    for record in ({"gate": "EQ", "raw": False}, {"gate": "EQ", "check": NA, "raw": False}):
+        with pytest.raises(ValueError, match="missing active dimension: check"):
+            materializer_record(bound, record)
+
+
+def test_generic_materializer_profiles_complete_unscoped_obligations():
+    template = materializer_target()
+    spec = object()
+    bound = template.for_spec(spec)
+    build_profile = coverage_profiles(template, materializer=True)
+    records, chosen = build_profile("each", spec=spec)
+    assert all(bound.assertion_result(r).fault_count is not None for r in records)
+    assert {r["check"] for r in chosen} == {"NA", True, False}
+    assert all(type(r["raw"]) is bool for r in chosen)
+    report = score(bound, records, bound.profiles["each"])
+    assert report.covered == report.total
+    assert not report.unexpected
+    flag = attribute("flag", Boolean())
+    ordinary = target((flag,), (dimension("raw", flag),)).for_spec(object())
+    assert materializer_record(ordinary, {"raw": False}) == {
+        "raw": False,
+        "_nfaults": 0,
+        "_rank": 0,
+    }
+
+
+def test_generic_materializer_rejects_unknown_fault_count():
+    flag = attribute("flag", Boolean())
+    parent = dimension("parent", flag)
+    child = dimension("child", flag, when=parent)
+    check = assertion("check", flag, when=child)
+    definition = coverage_spec(
+        "unknown",
+        focus="unknown assertion activation",
+        record="one vector",
+        aspects=(aspect("a", parent, child, check),),
+        profiles={"each": each((parent, child, check))},
+        assertions=assertion_set(check),
+    )
+    bound = bind(definition, observe_attributes=lambda ctx: {}).for_spec(object())
+    with pytest.raises(ValueError, match="unknown assertions"):
+        materializer_record(bound, {"parent": False})
 
 
 @pytest.mark.parametrize(

@@ -284,8 +284,19 @@ Providers can use the same adapter for concrete witnesses:
 The two witness options are mutually exclusive. The adapter deduplicates the
 representative list by sorted record contents; the first return value remains
 the generation obligations. Coverage scoring should use the representatives.
+For materializers that consume coverage dimensions directly, use
+`coverage_profiles(TARGET, materializer=True)`.
+This completes assignments and infers inactive fields from the target's
+activation model, encoding them as `"NA"`. All target dimensions are included and active values retain their native types. `_nfaults` and `_rank`
+come from the bound assertion set, or are zero without assertions. Missing
+active fields and unknown fault counts raise errors. The generic adapter cannot
+be combined with `witness` or `candidates`. The same conversion is available as
+`materializer_record(bound_target, assignment)`.
 `profile_records(bound_target, name, complete=False)` is also available for
-custom adapters. Scenario and MiniZinc providers retain their existing profile
+custom adapters. `coverage_profiles(..., backend="minizinc", solver="gecode")`
+selects native declaration compilation, as used by the payload-attestation
+provider. Omitting these options preserves the target's existing defaults.
+Scenario and remaining handwritten MiniZinc providers retain their existing profile
 implementations.
 
 ## Current limits
@@ -470,6 +481,72 @@ The migrated block-header, operations, and voluntary-exit targets use single-fau
 `exceptional` profiles. Their `max` profiles retain unrestricted exceptional
 coverage, including combinations where dependencies force multiple failures.
 
+
+### Optional MiniZinc enumeration
+
+Existing targets can select the shared conditional-factor MiniZinc backend at
+binding time:
+
+```python
+target = TARGET.for_spec(spec, backend="minizinc", solver="gecode")
+obligations = target.profiles["normal"].run()
+witnesses = target.profiles["normal"].generation_obligations(complete=True)
+model = target.definition.model(target.bound_constants)
+activation_source = model.to_minizinc()
+feasibility_source = target.to_minizinc()
+profile_sources = target.profiles["normal"].to_minizinc()
+```
+
+The coverage scoring CLI accepts `--backend minizinc` and `--solver gecode`.
+Python remains the default; MiniZinc and the selected solver are required only
+when that backend enumerates configurations or exports profile models. Bind the original target template
+again to change the backend, solver, or spec; bound targets retain their own
+caches.
+
+This backend translates finite dimension domains and conditional activation,
+encoding inactive dimensions as zero and omitting them from decoded assignments.
+Declarative feasibility constraints, assertion/outcome consistency, and profile
+fault bounds are compiled into MiniZinc. Inactive references preserve the
+declarations' three-valued semantics: a known false constraint rejects a row,
+while an unknown constraint does not. Constant-only expressions are folded
+before emission, including comparisons of large spec constants.
+
+Coverage uses a second MiniZinc stage over the solved finite configurations.
+MiniZinc set comprehensions implement `each`, `nwise`, exhaustive projection,
+recursive prerequisites, fixed obligations, unions, and compatible products.
+Products merge independently supported leaf obligations, then require a common
+complete extension; this preserves short conditional branches. Unions with
+different fault restrictions retain separate scoped models. The solver
+enumerates the encoded obligations themselves, avoiding duplicate solutions
+for unrelated completions. Python decodes the results, chooses deterministic
+witnesses, and independently observes and scores vectors.
+
+Legacy `feasible=` and `constant_feasibility=` callbacks are not source
+translated. They evaluate the finite rows produced by native feasibility, then
+their accepted rows become an explicit MiniZinc compatibility table. Targets
+without callbacks do not call Python feasibility or projection functions.
+`filtered=False` omits both declarative and callback feasibility while retaining
+activation and profile fault scopes, preserving unexpected-observation scoring.
+
+`target.to_minizinc()` exports feasibility. A bound profile's `to_minizinc()`
+returns a tuple of dictionaries, each with `feasibility` and `coverage` sources
+for one fault scope; the coverage source embeds rows solved from that scope.
+The shared conditional model's `to_minizinc()` still exports only activation.
+
+This remains a reference implementation that enumerates complete finite
+configurations before projection, not a scalable search over large state
+spaces. Mixed-radix obligation encodings and nonconstant numeric expressions
+must fit Gecode's signed integer range; oversized models fail explicitly.
+No concrete state construction or raw observation expression is translated.
+
+`test_minizinc_backend.py` compares raw and feasible configurations, every
+feasible profile, deterministic witnesses, covered obligations, and outcomes
+for all registered targets under minimal and mainnet. Unfiltered profile/report
+comparisons are restricted to smaller raw spaces. Small explicit cases also
+check three-valued constraints, independent product witnesses, unknown fault
+counts, missing outcomes, arithmetic, and independently executable exports.
+The native-path test fails if Python feasibility, projection, or scope
+evaluation is used during MiniZinc obligation generation.
 
 ### Proposer-slashing migration
 

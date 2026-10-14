@@ -1,4 +1,4 @@
-"""Aspect-based compliance runner for Gloas payload attestations."""
+"""Declaration-based compliance runner for Gloas payload attestations."""
 
 from .coverage import build_profile
 from .materializer import PayloadAttestationMaterializer
