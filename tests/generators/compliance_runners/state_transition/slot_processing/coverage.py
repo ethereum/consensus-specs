@@ -6,6 +6,6 @@ from tests.generators.compliance_runners.state_transition.declaration_coverage i
 
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET, empty_profiles=("exceptional",))
+build_profile = coverage_profiles(TARGET)
 
 __all__ = ("TARGET", "build_profile")
