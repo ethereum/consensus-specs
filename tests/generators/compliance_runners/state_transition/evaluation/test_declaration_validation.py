@@ -102,3 +102,29 @@ def test_factory_and_provider_follow_case_spec(tmp_path, monkeypatch):
     monkeypatch.setitem(provider.RUNNER_BY_HANDLER, "fake", "operations")
     monkeypatch.setattr(provider, "_spec_for_case", lambda path: alternate)
     assert provider.validate_cases(tmp_path, "fake", validator) == 0
+
+
+def test_provider_rejects_missing_required_post_state(tmp_path, monkeypatch):
+    case = tmp_path / "operations" / "fake" / "main" / "case_0000"
+    case.mkdir(parents=True)
+    (case / "dimensions.yaml").write_text("claimed: {}\n")
+    case_spec = SimpleNamespace(limit=1, BeaconState=object())
+    monkeypatch.setitem(provider.RUNNER_BY_HANDLER, "fake", "operations")
+    monkeypatch.setattr(provider, "_spec_for_case", lambda path: case_spec)
+    monkeypatch.setattr(
+        declaration_validation,
+        "decode",
+        lambda path, sedes: {"enabled": True, "value": True},
+    )
+    _, validator = target_validator(
+        target(complete=False), spec=lambda: case_spec, require_post=True
+    )
+
+    checks = validator(case)
+    missing_post = next(check for check in checks if check.dimension == "post_state_present")
+    assert (missing_post.claimed, missing_post.actual, missing_post.status) == (
+        True,
+        False,
+        "mismatch",
+    )
+    assert provider.validate_cases(tmp_path, "fake", validator) == 1
