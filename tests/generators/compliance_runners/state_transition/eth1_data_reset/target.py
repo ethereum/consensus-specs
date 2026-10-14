@@ -43,8 +43,6 @@ COVERAGE = coverage_spec(
     "eth1_data_reset",
     focus="process_eth1_data_reset: reset guard and vote-list occupancy",
     record="one vector",
-    attributes=(next_epoch, vote_count),
-    constants=(epochs_per_eth1_voting_period,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )

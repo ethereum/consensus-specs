@@ -45,15 +45,6 @@ COVERAGE = coverage_spec(
     "rewards_and_penalties",
     focus="process_rewards_and_penalties: genesis guard, eligible set, leak, and nonzero delta sources",
     record="one vector; delta factors mean at least one validator receives that component",
-    attributes=(
-        current_epoch,
-        eligible_count,
-        leaking,
-        flag_reward,
-        flag_penalty,
-        inactivity_penalty,
-    ),
-    constants=(genesis_epoch,),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=(

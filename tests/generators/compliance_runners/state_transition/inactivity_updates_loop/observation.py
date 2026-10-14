@@ -26,7 +26,6 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
         timely_target_flag = sl.has_timely_target_flag(index)
     return {
         "single_eligible": single_eligible,
-        "leak_free": sl.leak_free,
         "post_present": sl.post is not None,
         "score": score,
         "post_score": post_score,

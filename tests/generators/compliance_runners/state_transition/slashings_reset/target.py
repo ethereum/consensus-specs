@@ -40,11 +40,6 @@ COVERAGE = coverage_spec(
     "slashings_reset",
     focus="process_slashings_reset: destination wraparound and value to clear",
     record="one vector",
-    attributes=(
-        next_epoch,
-        destination_value,
-    ),
-    constants=(vector_length,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )

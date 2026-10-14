@@ -47,15 +47,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
 from .observation import observe_attributes
 
 current_epoch = attribute("current_epoch", Integer(min=0))
-loop_reached = attribute("loop_reached", Boolean())
-any_slashed = attribute("any_slashed", Boolean())
 eligible_count = attribute("eligible_count", Integer(min=0))
 ineligible_count = attribute("ineligible_count", Integer(min=0))
 active_eligible_count = attribute("active_eligible_count", Integer(min=0))
 slashed_count = attribute("slashed_count", Integer(min=0))
 max_slashed_withdrawable = attribute("max_slashed_withdrawable", Integer(min=0))
 previous_epoch_plus_one = attribute("previous_epoch_plus_one", Integer(min=0))
-loop_nonempty = attribute("loop_nonempty", Boolean())
 post_present = attribute("post_present", Boolean())
 participating_count = attribute("participating_count", Integer(min=0))
 zero_score_count = attribute("zero_score_count", Integer(min=0))
@@ -153,24 +150,6 @@ COVERAGE = coverage_spec(
     "inactivity_updates",
     focus="genesis guard, eligible-set shape, and branch mix and effects across loop iterations",
     record="one vector; loop body details are covered by inactivity_updates_loop",
-    attributes=(
-        current_epoch,
-        loop_reached,
-        any_slashed,
-        eligible_count,
-        ineligible_count,
-        active_eligible_count,
-        slashed_count,
-        max_slashed_withdrawable,
-        previous_epoch_plus_one,
-        loop_nonempty,
-        post_present,
-        participating_count,
-        zero_score_count,
-        finality_delay,
-        changed_score_count,
-    ),
-    constants=(genesis_epoch, min_epochs_to_inactivity_penalty),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=CONSTRAINTS,

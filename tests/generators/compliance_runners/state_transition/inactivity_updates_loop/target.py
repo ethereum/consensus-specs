@@ -29,7 +29,6 @@ from .cases import arithmetic_witnesses
 from .observation import observe_attributes
 
 single_eligible = attribute("single_eligible", Boolean())
-leak_free = attribute("leak_free", Boolean())
 post_present = attribute("post_present", Boolean())
 score = attribute("score", Integer(min=0))
 post_score = attribute("post_score", Integer(min=0))
@@ -126,19 +125,6 @@ COVERAGE = coverage_spec(
     focus="process_inactivity_updates: loop body",
     record="one eligible validator in a singleton vector",
     applicable_when=single_eligible,
-    attributes=(
-        single_eligible,
-        leak_free,
-        post_present,
-        score,
-        post_score,
-        participating,
-        slashed,
-        active_in_previous,
-        timely_target_flag,
-        finality_delay,
-    ),
-    constants=(min_epochs_to_inactivity_penalty, bias, recovery_rate),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=CONSTRAINTS,

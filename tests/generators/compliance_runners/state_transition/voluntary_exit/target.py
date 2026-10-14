@@ -28,7 +28,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
 
 from .observation import observe_attributes
 
-validator_index = attribute("validator_index", Integer(min=0))
 validator_found = attribute("validator_found", Boolean())
 current_epoch = attribute("current_epoch", Integer(min=0))
 message_epoch = attribute("message_epoch", Integer(min=0))
@@ -156,25 +155,6 @@ COVERAGE = coverage_spec(
     "voluntary_exit",
     focus="voluntary-exit assertions, pending-withdrawal shape, and exit-churn arithmetic",
     record="one vector",
-    attributes=(
-        validator_index,
-        validator_found,
-        current_epoch,
-        message_epoch,
-        activation_epoch,
-        exit_epoch,
-        matching_pending,
-        foreign_pending,
-        pending_balance,
-        signature_valid,
-        earliest_exit_epoch,
-        new_exit_epoch,
-        exit_balance_to_consume,
-        per_epoch_churn,
-        effective_balance,
-        post_present,
-    ),
-    constants=(far_future_epoch, shard_committee_period, balance_increment),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=CONSTRAINTS,

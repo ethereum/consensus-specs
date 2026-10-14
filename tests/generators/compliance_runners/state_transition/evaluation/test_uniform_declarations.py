@@ -26,6 +26,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     constant,
     coverage_spec,
     coverage_value,
+    derived,
     dimension,
     exhaustive,
     factor,
@@ -176,6 +177,84 @@ def test_provider_adapter_has_stable_records_and_explicit_empty_profiles():
         build_profile("typo", spec=spec)
     with pytest.raises(ValueError, match="override"):
         coverage_profiles(t, empty_profiles=("all",))
+
+
+def test_inputs_are_inferred_from_values_availability_applicability_and_constraints():
+    x = attribute("x", Integer(0, 2))
+    enabled = attribute("enabled", Boolean())
+    available = attribute("available", Boolean())
+    applicable = attribute("applicable", Boolean())
+    offset = constant("offset", Integer(0, 1))
+    permitted = constant("permitted", Boolean())
+    gate = dimension("gate", enabled)
+    value = dimension(
+        "value",
+        derived("shifted", x + x + offset),
+        when=gate,
+        available_when=available,
+    )
+    definition = coverage_spec(
+        "inferred",
+        focus="input traversal",
+        record="one observation",
+        aspects=(aspect("values", gate, value),),
+        profiles={"all": exhaustive((gate, value))},
+        applicable_when=applicable,
+        constraints=(permitted,),
+    )
+    assert [a.name for a in definition.attributes] == ["applicable", "enabled", "x", "available"]
+    assert [c.name for c in definition.constants] == ["offset", "permitted"]
+    observed = {"x": 1, "enabled": True, "available": True, "applicable": True}
+    t = bind(
+        definition,
+        observe_attributes=lambda ctx: observed,
+        constants={"offset": lambda spec: 1, "permitted": lambda spec: True},
+    ).for_spec(object())
+    assert t.record(t.observation(Context(t._bound_spec, None, None, None, {}))) == {
+        "gate": True,
+        "value": 3,
+    }
+    with pytest.raises(ValueError, match="constant bindings"):
+        bind(definition, observe_attributes=lambda ctx: observed)
+
+
+def test_inferred_inputs_preserve_identity_and_reject_name_collisions():
+    shared = attribute("shared", Boolean())
+    factors = (dimension("first", shared), dimension("second", shared))
+    definition = coverage_spec(
+        "inferred",
+        focus="input identity",
+        record="one observation",
+        aspects=(aspect("values", *factors),),
+        profiles={"all": exhaustive(factors)},
+    )
+    assert len(definition.attributes) == 1
+    assert definition.attributes[0] is shared
+    other = attribute("shared", Boolean())
+    with pytest.raises(ValueError, match="duplicate input"):
+        coverage_spec(
+            "conflict",
+            focus="input identity",
+            record="one observation",
+            aspects=(aspect("values", factors[0], dimension("second", other)),),
+            profiles={},
+        )
+
+
+@pytest.mark.parametrize("explicit", ["attributes", "constants"])
+def test_explicit_input_lists_still_reject_omitted_references(explicit):
+    flag = attribute("flag", Boolean())
+    limit = constant("limit", Boolean())
+    f = dimension("value", flag & limit)
+    with pytest.raises(ValueError, match="undeclared input"):
+        coverage_spec(
+            "explicit",
+            focus="explicit input validation",
+            record="one observation",
+            aspects=(aspect("values", f),),
+            profiles={},
+            **{explicit: ()},
+        )
 
 
 def test_provider_adapter_matches_concrete_candidates_and_reports_missing_witnesses():

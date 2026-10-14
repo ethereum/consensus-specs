@@ -40,12 +40,6 @@ COVERAGE = coverage_spec(
     "participation_flag_updates",
     focus="process_participation_flag_updates: validator-set size and participation-array contents",
     record="one vector",
-    attributes=(
-        validator_count,
-        previous_nonzero_count,
-        current_nonzero_count,
-    ),
-    constants=(minimum_validator_count,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )

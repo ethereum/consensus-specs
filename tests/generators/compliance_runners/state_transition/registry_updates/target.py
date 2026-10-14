@@ -38,7 +38,6 @@ COVERAGE = coverage_spec(
     "registry_updates",
     focus="process_registry_updates: ordered per-validator queue, ejection, activation, and no-op branches",
     record="one vector; branch factors mean at least one validator takes that branch",
-    attributes=(validator_count, queued_count, ejected_count, activated_count, unchanged_count),
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=(SHAPE.ref("has_validators") == any_of(*BRANCHES.declarations),),

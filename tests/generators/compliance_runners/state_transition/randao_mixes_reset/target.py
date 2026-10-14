@@ -43,12 +43,6 @@ COVERAGE = coverage_spec(
     "randao_mixes_reset",
     focus="process_randao_mixes_reset: destination wraparound and source/destination mix relationship",
     record="one vector",
-    attributes=(
-        next_epoch,
-        source_mix,
-        destination_mix,
-    ),
-    constants=(zero_mix, vector_length),
     aspects=ASPECTS,
     profiles=PROFILES,
 )

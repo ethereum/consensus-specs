@@ -88,14 +88,7 @@ COVERAGE = coverage_spec(
     "effective_balance_updates",
     focus="process_effective_balance_updates: hysteresis guards, rounding, and cap",
     record="one validator loop iteration per vector",
-    attributes=(
-        balance,
-        effective_balance,
-        rounded_balance,
-        max_effective_balance,
-        is_compounding,
-        post_effective_balance,
-    ),
+    # Cap constants are also used by the Python feasibility callback.
     constants=(
         increment,
         downward_threshold,

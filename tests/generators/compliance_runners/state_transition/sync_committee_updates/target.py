@@ -41,12 +41,6 @@ COVERAGE = coverage_spec(
     "sync_committee_updates",
     focus="process_sync_committee_updates: period boundary and committee relationships",
     record="one vector",
-    attributes=(
-        next_epoch,
-        current_matches_next,
-        computed_next_matches_existing,
-    ),
-    constants=(epochs_per_sync_committee_period,),
     aspects=ASPECTS,
     profiles=PROFILES,
 )
