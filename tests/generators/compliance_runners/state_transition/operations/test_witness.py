@@ -6,7 +6,7 @@ import pytest
 
 from eth_consensus_specs.gloas import minimal as spec
 
-from .coverage import build_profile
+from . import build_profile
 from .materializer import OperationsMaterializer
 from .witness import complete_obligation, GATES
 

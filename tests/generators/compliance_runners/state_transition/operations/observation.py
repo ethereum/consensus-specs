@@ -9,7 +9,8 @@ if TYPE_CHECKING:
 
 
 def observe_attributes(ctx: Context) -> dict[str, Any]:
-    body = ctx.operation
+    operation = ctx.operation
+    body = operation.message.body if hasattr(operation, "message") else operation
     return {
         "post_present": ctx.post is not None,
         "deposits": len(body.deposits),

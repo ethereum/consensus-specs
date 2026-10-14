@@ -47,7 +47,6 @@ _LIMITS = (
         "payload_attestations_within_limit",
     ),
 )
-_DIMS = [*_GATES, "accepted", "outcome"]
 
 
 class OperationsMaterializer(Materializer):
@@ -119,7 +118,7 @@ class OperationsMaterializer(Materializer):
         claimed = {name: gates[name] for name in _GATES}
         # Keep the requested outcome authoritative. Validation must detect a
         # transition that does not realize this obligation.
-        claimed.update(accepted=accepted, outcome=outcome)
+        claimed["accepted"] = accepted
         meta = {
             "description": f"process_operations: {outcome}",
             "bls_setting": 1,
