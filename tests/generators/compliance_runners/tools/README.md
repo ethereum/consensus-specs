@@ -63,5 +63,10 @@ verification, not large-scale generation. MiniZinc is imported only when that
 backend is requested. Solver failures or incomplete enumeration are errors,
 never silently treated as empty coverage.
 
-The existing coverage DSL is not automatically translated: its raw-attribute
-gates need an explicit mapping to this finite activation model first.
+The state-transition declaration adapter maps finite dimensions and their
+coverage activation conditions to this model. Bound targets can opt in with
+`TARGET.for_spec(spec, backend="minizinc")`. Raw observation expressions are not
+translated. The declaration adapter additionally compiles abstract feasibility,
+assertion consistency, fault scopes, and coverage plans into two MiniZinc
+stages. Legacy Python feasibility callbacks supply explicit finite compatibility
+tables. See [the declaration documentation](../state_transition/evaluation/DECLARATIONS.md#optional-minizinc-enumeration).

@@ -1,37 +1,11 @@
-"""Coverage profiles for Gloas ``process_payload_attestation``."""
+"""MiniZinc-backed declaration profiles for payload attestations."""
 
-from __future__ import annotations
-
-from pathlib import Path
-
-from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    build_profile as _build_profile,
-    enumerate_signatures,
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
 )
 
-from .materializer import _DIMS
+from .target import TARGET
 
-INPUT_ASPECTS = {
-    "block_context": ["parent_root_matches", "slot_is_previous"],
-    "participants": ["attesting_indices_profile", "attesting_indices_nonempty", "signature_valid"],
-}
-OUTCOME_ASPECT = {"outcome": ["outcome"]}
-ALL_ASPECTS = {**INPUT_ASPECTS, **OUTCOME_ASPECT}
-MODEL = Path(__file__).parent / "models" / "handler_payload_attestation.mzn"
+build_profile = coverage_profiles(TARGET, backend="minizinc", materializer=True)
 
-
-def _nfaults(r: dict) -> int:
-    return (
-        int(not r["parent_root_matches"])
-        + int(not r["slot_is_previous"])
-        + int(not r["attesting_indices_nonempty"])
-        + int(r["signature_valid"] == "F")
-    )
-
-
-def _recs():
-    return enumerate_signatures(MODEL, _DIMS, ALL_ASPECTS, _nfaults)
-
-
-def build_profile(name):
-    return _build_profile(_recs(), name, ALL_ASPECTS, INPUT_ASPECTS, OUTCOME_ASPECT)
+__all__ = ("TARGET", "build_profile")
