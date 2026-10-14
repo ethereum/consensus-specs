@@ -255,13 +255,26 @@ unexpected-observation check. Review output includes the declared constraints.
 `state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
 for providers that materialize the obligations directly. Its `build_profile`
 requires `spec=` and returns `(obligation_records, representative_records)`; the
-two lists coincide for this adapter. Records have a stable order based on sorted
-factor/value pairs. Providers without rejection cases explicitly pass
-`empty_profiles=("exceptional",)`; unknown names still fail.
+two lists coincide when materializing obligations directly. Records have a stable
+order based on sorted factor/value pairs. Providers without rejection cases
+explicitly pass `empty_profiles=("exceptional",)`; unknown names still fail.
 
-Providers that complete concrete witnesses can use
-`profile_records(bound_target, name)` and retain their own representative
-selection. Scenario and MiniZinc providers retain their existing profile
+Providers can use the same adapter for concrete witnesses:
+
+- `complete=True` completes every obligation within its formula branch, retaining
+  fault restrictions and preferring fewer faults.
+- `witness(record)` converts a generation assignment to a materializer record,
+  as used by proposer slashing and operations.
+- `candidates(spec)` supplies concrete records containing factor values and
+  materializer inputs, as used by effective-balance updates. The adapter selects
+  the first matching candidate in stable factor order and reports missing
+  witnesses.
+
+The two witness options are mutually exclusive. The adapter deduplicates the
+representative list by sorted record contents; the first return value remains
+the generation obligations. Coverage scoring should use the representatives.
+`profile_records(bound_target, name, complete=False)` is also available for
+custom adapters. Scenario and MiniZinc providers retain their existing profile
 implementations.
 
 ## Current limits
@@ -437,9 +450,10 @@ Generation adapters should use `generation_obligations()` (as `profile_records`
 does), rather than treating scoped `run()` projections as unrestricted witness
 requests. It completes scoped obligations within their permitted configurations,
 so a downstream witness cannot add extra faults. Unscoped obligations remain
-partial. For incomplete slices, completion prefers agreement with the predicted
-outcome when the obligation permits it; this is a generation preference, not an
-assumption about all observed executions.
+partial unless `complete=True` is passed. Complete assignment selection also
+prefers fewer faults. For incomplete slices, completion prefers agreement with
+the predicted outcome when the obligation permits it; this is a generation
+preference, not an assumption about all observed executions.
 
 The migrated block-header, operations, and voluntary-exit targets use single-fault
 `exceptional` profiles. Their `max` profiles retain unrestricted exceptional
