@@ -2,32 +2,18 @@
 
 from __future__ import annotations
 
-from .cases import constants, representatives
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
+
+from .cases import candidate_records, constants
 from .target import COMPARISONS, TARGET
 
-
-def build_profile(name: str, *, spec):
-    if name == "exceptional":
-        return [], []
-    target = TARGET.for_spec(spec)
-    obligations = target.profiles[name].run()
-    candidates = representatives(constants(spec), COMPARISONS)
-    records = []
-    for obligation in sorted(obligations, key=repr):
-        matching = [key for key in candidates if obligation <= frozenset(key)]
-        if not matching:
-            raise ValueError(f"no concrete witness for {dict(obligation)}")
-        key = min(matching, key=repr)
-        _, effective, balance = candidates[key]
-        records.append(
-            {
-                **dict(key),
-                "effective_balance": effective,
-                "balance": balance,
-            }
-        )
-    records = list({tuple(sorted(record.items())): record for record in records}.values())
-    return records, records
+build_profile = coverage_profiles(
+    TARGET,
+    empty_profiles=("exceptional",),
+    candidates=lambda spec: candidate_records(constants(spec), COMPARISONS),
+)
 
 
 __all__ = ("TARGET", "build_profile")
