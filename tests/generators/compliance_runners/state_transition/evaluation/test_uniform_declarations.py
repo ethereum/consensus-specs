@@ -406,7 +406,7 @@ def test_generic_materializer_rejects_unknown_fault_count():
 )
 def test_nonrejecting_declaration_providers_share_the_empty_exceptional_profile(provider):
     module = import_module(
-        f"tests.generators.compliance_runners.state_transition.{provider}.coverage"
+        f"tests.generators.compliance_runners.state_transition.{provider}"
     )
     assert module.build_profile("exceptional", spec=object()) == ([], [])
 

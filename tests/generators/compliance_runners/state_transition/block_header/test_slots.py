@@ -13,7 +13,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     score,
 )
 
-from .coverage import build_profile
+from . import build_profile
 from .materializer import BlockHeaderMaterializer
 from .target import HEADER, TARGET
 from .witness import BUCKET_DELTAS, complete_obligation

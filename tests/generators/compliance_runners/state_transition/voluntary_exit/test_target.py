@@ -15,8 +15,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-from . import validation
-from .coverage import build_profile
+import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
+from . import build_profile
 from .materializer import VoluntaryExitMaterializer
 from .target import TARGET
 from .test_utils import CHURN_CASES

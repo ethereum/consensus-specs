@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context, NA
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-from . import validation
+import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from .materializer import VoluntaryExitMaterializer
 from .target import CHURN, TARGET
 from .test_utils import CHURN_CASES, make_record
