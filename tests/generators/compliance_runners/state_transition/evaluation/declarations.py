@@ -687,6 +687,7 @@ class BoundFormula:
         unless ``complete`` requests full assignments, preferring fewer faults.
         """
         result = set()
+        model = self.owner.definition.model(self.owner.bound_constants)
         for scopes, configurations, obligations in self._compiled():
             if not scopes and not complete:
                 result.update(obligations)
@@ -695,7 +696,7 @@ class BoundFormula:
 
             def preference(configuration, assertions=assertions):
                 if assertions is None:
-                    return False, (False, 0), repr(sorted(configuration))
+                    return False, (False, 0)
                 values = dict(configuration)
                 summary = assertions.evaluate(values, self.owner.bound_constants)
                 expected = summary.expected_accepted
@@ -709,11 +710,9 @@ class BoundFormula:
                     if complete
                     else (False, 0)
                 )
-                return observed != expected, faults, repr(sorted(configuration))
+                return observed != expected, faults
 
-            ordered = sorted(configurations, key=preference)
-            for o in obligations:
-                result.add(next(c for c in ordered if o <= c))
+            result.update(model.complete(obligations, configurations, preference=preference))
         return result
 
     def _run(self, selected_plan, configurations):

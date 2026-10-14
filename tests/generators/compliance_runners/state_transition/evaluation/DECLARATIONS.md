@@ -275,12 +275,20 @@ Providers can use the same adapter for concrete witnesses:
 
 - `complete=True` completes every obligation within its formula branch, retaining
   fault restrictions and preferring fewer faults.
-- `witness(record)` converts a generation assignment to a materializer record,
-  as used by operations.
+- `witness(record)` converts a generation assignment to a materializer record.
 - `candidates(spec)` supplies concrete records containing factor values and
   materializer inputs, as used by effective-balance updates. The adapter selects
   the first matching candidate in stable factor order and reports missing
   witnesses.
+
+`complete=True` delegates witness selection to `conditional_factors.Model.complete`
+over the declaration backend's feasible configurations for each formula branch.
+The declaration layer supplies the acceptance/fault preference; the shared model
+selects deterministic complete extensions while respecting inactive dimensions.
+Block header and operations request complete assignments at this stage, so their
+materializers do not fill missing abstract fields. Block header retains its
+concrete joint-slot constructor; abstract completion does not choose raw slots
+or construct consensus objects.
 
 The two witness options are mutually exclusive. The adapter deduplicates the
 representative list by sorted record contents; the first return value remains
