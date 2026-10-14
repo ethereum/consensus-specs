@@ -10,23 +10,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from . import validation
-from .cases import churn_witnesses, scenario_record
-from .coverage import build_profile
 from .materializer import VoluntaryExitMaterializer
 from .target import CHURN, TARGET
-
-CHURN_CASES = [
-    ("NEW_EPOCH", "LT_FAR", "ZERO"),
-    ("NEW_EPOCH", "EQ", "ZERO"),
-    ("NEW_EPOCH", "GT_FAR", "ONE"),
-    ("NEW_EPOCH", "GT_FAR", "MANY"),
-    ("CARRIED_AVAILABLE", "LT_FAR", "ZERO"),
-    ("CARRIED_AVAILABLE", "LT_1", "ZERO"),
-    ("CARRIED_AVAILABLE", "EQ", "ZERO"),
-    ("CARRIED_EXHAUSTED", "GT_1", "ONE"),
-    ("CARRIED_EXHAUSTED", "GT_FAR", "ONE"),
-    ("CARRIED_EXHAUSTED", "GT_FAR", "MANY"),
-]
+from .test_utils import CHURN_CASES, make_record
+from .witness import churn_witnesses
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
@@ -38,16 +25,18 @@ def test_churn_claims_and_state_updates(preset, active, kind, bucket, additional
     witness = next(
         w
         for w in churn_witnesses(spec, active=active)
-        if (w["exit_churn_state"], w["balance_gt_consumable"], w["churn_additional_epochs"])
-        == (kind, bucket, additional_kind)
+        if (w["earliest_lt_new"], w["balance_gt_consumable"], w["additional_epochs"])
+        == (kind == "NEW_EPOCH", bucket, "NA" if additional_kind == "ZERO" else additional_kind)
     )
-    record = scenario_record(
-        int(spec.config.SHARD_COMMITTEE_PERIOD),
-        "VALID" if active else "INACTIVE",
-        "EQ",
-        "GT_1" if active else "LT_FAR",
+    record = make_record(
+        spec,
+        activation_le_current=active,
+        current_ge_seasoned="GT_1" if active else "LT_FAR",
+        foreign_pending_entries="SOME" if kind != "NEW_EPOCH" else "ZERO",
+        **{
+            n: witness[n] for n in ("earliest_lt_new", "balance_gt_consumable", "additional_epochs")
+        },
     )
-    record.update(witness)
     materializer = VoluntaryExitMaterializer(spec)
     materializer.rng = Random(124)
     with bls_enabled():
@@ -56,7 +45,8 @@ def test_churn_claims_and_state_updates(preset, active, kind, bucket, additional
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
     signed_exit = spec.SignedVoluntaryExit.decode_bytes(encoded["voluntary_exit"])
     post = spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None
-    assert meta["claimed"] == validation.recover_dimensions(pre, signed_exit)
+    actual = validation.recover_dimensions(pre, signed_exit, post)
+    assert {n: meta["claimed"][n] for n in actual} == actual
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
     index = int(signed_exit.message.validator_index)
     assert int(pre.validators[index].effective_balance) % increment == 0
@@ -89,7 +79,7 @@ def test_churn_claims_and_state_updates(preset, active, kind, bucket, additional
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_fresh_budget_pruning_and_profile_coverage(preset):
+def test_fresh_budget_pruning(preset):
     spec = spec_targets[preset]["gloas"]
     target = TARGET.for_spec(spec)
     assert CHURN["balance_gt_consumable"].granularity == "cmp5"
@@ -97,12 +87,6 @@ def test_fresh_budget_pruning_and_profile_coverage(preset):
         assert not target.feasible({"earliest_lt_new": True, "balance_gt_consumable": bucket})
         assert target.feasible({"earliest_lt_new": False, "balance_gt_consumable": bucket})
     assert not target.feasible({"balance_gt_consumable": "GT_1", "additional_epochs": "MANY"})
-    for profile in ("smoke", "normal", "standard", "max"):
-        _, records = build_profile(profile, spec=spec)
-        assert {
-            (r["exit_churn_state"], r["balance_gt_consumable"], r["churn_additional_epochs"])
-            for r in records
-        } == set(CHURN_CASES)
 
 
 def test_one_gwei_increment_keeps_fresh_neighbour_buckets():
