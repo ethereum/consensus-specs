@@ -7,7 +7,7 @@ parsing or executing capture-function source. It currently powers
 `block_header`, `operations`, `voluntary_exit`, `proposer_slashing`, `inactivity_updates`,
 `inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
 `rewards_and_penalties`, `proposer_lookahead`, `process_slot`, `ptc_window`, and
-`pending_consolidations`. These targets
+`pending_consolidations`, `deposit_request`, and `slashings`. These targets
 use this API. `coverage_dsl.py` provides observation abstraction, scoring,
 vector loading, and the CLI; it no longer provides capture decorators or a
 second formula implementation.
