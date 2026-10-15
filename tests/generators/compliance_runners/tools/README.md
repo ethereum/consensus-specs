@@ -41,11 +41,12 @@ Path("conditional.mzn").write_text(model.to_minizinc())
 `Model.complete(obligations, configurations=None, preference=None, ...)` also
 completes existing partial obligations. By default it enumerates configurations
 with the requested backend and breaks ties deterministically. A caller can
-supply already filtered, complete configurations and a preference key; completion
-then stays within that supplied scope without enumerating again. The declaration
-adapter uses this path to preserve assertion fault bounds, prefer consistent
-acceptance and fewer faults, and retain explicit requested values. Impossible
-obligations raise `ValueError` rather than being silently altered or dropped.
+supply already filtered, complete configurations and a preference key;
+completion then stays within that supplied scope without enumerating again. The
+declaration adapter uses this path to preserve assertion fault bounds, prefer
+consistent acceptance and fewer faults, and retain explicit requested values.
+Impossible obligations raise `ValueError` rather than being silently altered or
+dropped.
 
 Run the exported model with
 `minizinc --solver gecode --all-solutions conditional.mzn` or open it in the
@@ -81,4 +82,5 @@ coverage activation conditions to this model. Bound targets can opt in with
 translated. The declaration adapter additionally compiles abstract feasibility,
 assertion consistency, fault scopes, and coverage plans into two MiniZinc
 stages. Legacy Python feasibility callbacks supply explicit finite compatibility
-tables. See [the declaration documentation](../state_transition/evaluation/DECLARATIONS.md#optional-minizinc-enumeration).
+tables. See
+[the declaration documentation](../state_transition/evaluation/DECLARATIONS.md#optional-minizinc-enumeration).

@@ -4,13 +4,14 @@ The declaration API in `declarations.py` builds expression trees rather than
 parsing or executing capture-function source. It currently powers
 `eth1_data_reset`, `historical_summaries_update`, `slashings_reset`,
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
-`block_header`, `operations`, `voluntary_exit`, `proposer_slashing`, `inactivity_updates`,
-`inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
-`rewards_and_penalties`, `proposer_lookahead`, `process_slot`, `ptc_window`, and
-`pending_consolidations`, `deposit_request`, and `slashings`. These targets
-use this API. `coverage_dsl.py` provides observation abstraction, scoring,
-vector loading, and the CLI; it no longer provides capture decorators or a
-second formula implementation.
+`block_header`, `operations`, `voluntary_exit`, `proposer_slashing`,
+`inactivity_updates`, `inactivity_updates_loop`,
+`justification_and_finalization`, `registry_updates`, `rewards_and_penalties`,
+`proposer_lookahead`, `process_slot`, `ptc_window`, and
+`pending_consolidations`, `deposit_request`, and `slashings`. These targets use
+this API. `coverage_dsl.py` provides observation abstraction, scoring, vector
+loading, and the CLI; it no longer provides capture decorators or a second
+formula implementation.
 
 ## Authoring and review workflow
 
@@ -49,8 +50,8 @@ or omitted.
 
 ## Expressions and inputs
 
-`coverage_spec` infers attributes and constants when their lists are omitted.
-It traverses aspect values, activation and availability expressions, target
+`coverage_spec` infers attributes and constants when their lists are omitted. It
+traverses aspect values, activation and availability expressions, target
 applicability, and constraints. Repeated references to the same declaration are
 collected once in first-reference order; distinct declarations with the same
 name still raise an error. Constant getters must still be supplied to `bind`.
@@ -84,11 +85,10 @@ extra attributes supplied by an observer. Those callbacks are not inspected.
   checked at declaration time; concrete domains are checked at binding and
   observation time.
 - Ordered alternatives can be written as
-  `choose((condition1, value1), (condition2, value2), fallback)`.
-  The first true condition wins; later conditions and unselected values are
-  skipped. Alternating condition/value arguments and the original three-argument
-  form still work. Flat choices lower to
-  the same expression trees as nested choices.
+  `choose((condition1, value1), (condition2, value2), fallback)`. The first true
+  condition wins; later conditions and unselected values are skipped.
+  Alternating condition/value arguments and the original three-argument form
+  still work. Flat choices lower to the same expression trees as nested choices.
 - Python `and`, `or`, `not`, chained comparisons, arbitrary callables, and
   unsupported operators are rejected. There is no implicit source translation.
 
@@ -102,14 +102,13 @@ Targets also support the mapping syntax used in the sibling checkout:
 `dimension(name, predicate(lhs, rhs, op="=="))`,
 `dimension(name, identity(value, domain=Finite(values)))`,
 `dimension(name, count(value))`, and
-`dimension(name, modulo_boundary(lhs, period))`.
-These forms lower to the existing boolean, comparison, categorical, and modulo
-declarations, preserving activation, availability, and coverage domains.
-`count` uses `ZERO`, `ONE`, and `MANY`. The optional `op` on `cmp3` and `cmp5`
-preserves predicate meaning in constraints and activation without changing their
-three or five buckets.
-Mapping forms accept `when`, `available_when`, and `description` on `dimension`;
-an explicit coverage domain belongs on `identity`.
+`dimension(name, modulo_boundary(lhs, period))`. These forms lower to the
+existing boolean, comparison, categorical, and modulo declarations, preserving
+activation, availability, and coverage domains. `count` uses `ZERO`, `ONE`, and
+`MANY`. The optional `op` on `cmp3` and `cmp5` preserves predicate meaning in
+constraints and activation without changing their three or five buckets. Mapping
+forms accept `when`, `available_when`, and `description` on `dimension`; an
+explicit coverage domain belongs on `identity`.
 
 `dimension(name, expression)` covers a small domain exactly. For an attribute or
 constant it reuses that input's declared domain. Boolean expressions infer a
@@ -117,26 +116,25 @@ boolean coverage domain. `choose` expressions infer the union of their branch
 domains, preserving gaps and deduplicating values in branch order; an `identity`
 wrapper or explicit `Finite` domain is optional. For example,
 `dimension("credential_type", choose(is_compounding, "COMPOUNDING", "STANDARD"))`
-covers both labels. Inference obeys the same enumeration limit as explicit domains.
-An integer attribute declared with `Integer(0, 4)` therefore needs no second
-enumeration of those five values.
-Boolean domains use the same predicate abstraction as `factor`; other finite
-domains use categorical values. An optional `domain=` supplies the coverage
-domain for a computed expression. Exact enumeration is limited to 1024 values by
-default; use comparison or categorical abstractions for larger domains. When a
-dimension depends only on constants, binding refines its coverage domain to the
-single resulting value if target applicability, activation, and availability are
-known true. Otherwise refinement is deferred, preserving lazy evaluation of
-inactive or unavailable values. Fresh bindings are refined independently.
-Integer domains also constrain enumeration: comparison buckets that cannot
-intersect the expression's inferred interval are removed. For example, comparing
-`attribute("vote_count", Integer(min=0))` with zero at `cmp5` yields only `EQ`,
-`GT_1`, and `GT_FAR`; `Integer(min=0, max=1)` yields `EQ` and `GT_1`. Intervals
-propagate conservatively through addition, subtraction, `maximum`, `choose`,
-derived expressions, and positive remainder. Bound constants refine these
-intervals per spec. This does not infer correlations between expressions. Domain
-pruning also applies to unfiltered enumeration; feasibility callbacks remain a
-separate filter.
+covers both labels. Inference obeys the same enumeration limit as explicit
+domains. An integer attribute declared with `Integer(0, 4)` therefore needs no
+second enumeration of those five values. Boolean domains use the same predicate
+abstraction as `factor`; other finite domains use categorical values. An
+optional `domain=` supplies the coverage domain for a computed expression. Exact
+enumeration is limited to 1024 values by default; use comparison or categorical
+abstractions for larger domains. When a dimension depends only on constants,
+binding refines its coverage domain to the single resulting value if target
+applicability, activation, and availability are known true. Otherwise refinement
+is deferred, preserving lazy evaluation of inactive or unavailable values. Fresh
+bindings are refined independently. Integer domains also constrain enumeration:
+comparison buckets that cannot intersect the expression's inferred interval are
+removed. For example, comparing `attribute("vote_count", Integer(min=0))` with
+zero at `cmp5` yields only `EQ`, `GT_1`, and `GT_FAR`; `Integer(min=0, max=1)`
+yields `EQ` and `GT_1`. Intervals propagate conservatively through addition,
+subtraction, `maximum`, `choose`, derived expressions, and positive remainder.
+Bound constants refine these intervals per spec. This does not infer
+correlations between expressions. Domain pruning also applies to unfiltered
+enumeration; feasibility callbacks remain a separate filter.
 
 Granularity is fixed per comparison across all profiles; a target may mix
 granularities across different comparisons. `categorical` declares a finite
@@ -268,21 +266,21 @@ unexpected-observation check. Review output includes the declared constraints.
 
 `state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
 for providers that materialize the obligations directly. Its `build_profile`
-requires `spec=` and returns a single list of canonical complete cases. Cases have a stable order based on sorted factor/value
-pairs. When `TARGET.profiles` omits `exceptional`, the adapter returns empty records
-for that profile. Declared profiles are evaluated normally; other missing names
-still fail.
+requires `spec=` and returns a single list of canonical complete cases. Cases
+have a stable order based on sorted factor/value pairs. When `TARGET.profiles`
+omits `exceptional`, the adapter returns empty records for that profile.
+Declared profiles are evaluated normally; other missing names still fail.
 
-Witness generation always delegates selection to `conditional_factors.Model.complete`
-over the declaration backend's feasible configurations for each formula branch.
-The declaration layer supplies the acceptance/fault preference; the shared model
-selects deterministic complete extensions while respecting inactive dimensions.
-Every active dimension is supplied, so materializers do not need to fill missing
-abstract fields. Block header retains its
-concrete joint-slot constructor; abstract completion does not choose raw slots
-or construct consensus objects.
-Effective-balance updates likewise choose concrete balances in their materializer,
-using the same witness table that defines target feasibility.
+Witness generation always delegates selection to
+`conditional_factors.Model.complete` over the declaration backend's feasible
+configurations for each formula branch. The declaration layer supplies the
+acceptance/fault preference; the shared model selects deterministic complete
+extensions while respecting inactive dimensions. Every active dimension is
+supplied, so materializers do not need to fill missing abstract fields. Block
+header retains its concrete joint-slot constructor; abstract completion does not
+choose raw slots or construct consensus objects. Effective-balance updates
+likewise choose concrete balances in their materializer, using the same witness
+table that defines target feasibility.
 
 Cases contain only target dimensions and encode inactive fields as `"NA"` using
 the target's activation model. Active values retain their native types and
@@ -290,28 +288,28 @@ missing active fields raise errors. The same dimension encoding is available as
 `materializer_record(bound_target, assignment)`.
 
 Fault scopes select cases during generation; assertion counts are computed when
-materializers build claimed records.
-Materializers use `self.claimed_record(TARGET, solution)` to build dimension
-metadata from the same activation model. It encodes inactive dimensions as
-`"NA"`, excludes concrete inputs and solver metadata, and adds `fault_count`
-when the target declares assertions. Claims retain the requested dimension
-values so validation can detect mismatches in the constructed state.
-`profile_records(bound_target, name)` is also available for
-custom adapters. `coverage_profiles(..., backend="minizinc", solver="gecode")`
-selects native declaration compilation, as used by payload attestation,
-voluntary exit, and proposer slashing. Omitting these options preserves the target's existing defaults.
-Scenario and remaining handwritten MiniZinc providers retain their existing profile
-implementations.
+materializers build claimed records. Materializers use
+`self.claimed_record(TARGET, solution)` to build dimension metadata from the
+same activation model. It encodes inactive dimensions as `"NA"`, excludes
+concrete inputs and solver metadata, and adds `fault_count` when the target
+declares assertions. Claims retain the requested dimension values so validation
+can detect mismatches in the constructed state.
+`profile_records(bound_target, name)` is also available for custom adapters.
+`coverage_profiles(..., backend="minizinc", solver="gecode")` selects native
+declaration compilation, as used by payload attestation, voluntary exit, and
+proposer slashing. Omitting these options preserves the target's existing
+defaults. Scenario and remaining handwritten MiniZinc providers retain their
+existing profile implementations.
 
 ## Shared validation
 
 `state_transition/declaration_validation.py` provides
-`target_validator(TARGET, operation_name="voluntary_exit",
-operation_type="SignedVoluntaryExit", spec=lambda: spec)`. It returns generic
-`recover` and `validate_case` functions. Case validation decodes pre, operation,
-and optional post, projects `TARGET.observation()` through `TARGET.record()`,
-encodes inactive dimensions as `"NA"`, and compares claimed fields. The provider
-runner injects each case's preset explicitly, including for these closures.
+`target_validator(TARGET, operation_name="voluntary_exit", operation_type="SignedVoluntaryExit", spec=lambda: spec)`.
+It returns generic `recover` and `validate_case` functions. Case validation
+decodes pre, operation, and optional post, projects `TARGET.observation()`
+through `TARGET.record()`, encodes inactive dimensions as `"NA"`, and compares
+claimed fields. The provider runner injects each case's preset explicitly,
+including for these closures.
 
 Materializers emit canonical target dimensions using native values and `"NA"`
 for inactive dimensions. Validation compares these fields directly, with no
@@ -332,12 +330,12 @@ fields produce mismatches instead of being silently ignored.
 
 Enumeration explores the complete finite factor model and caches it per bound
 target and filtering mode. It is intended for small focus areas.
-Expression-to-DL or UTVPI translation and sampling are not implemented.
-The optional MiniZinc backend translates finite domains, activation, abstract
+Expression-to-DL or UTVPI translation and sampling are not implemented. The
+optional MiniZinc backend translates finite domains, activation, abstract
 feasibility constraints, assertion consistency, fault scopes, and coverage
 formulas. Raw observation expressions and Python feasibility callbacks are not
-source-translated; callbacks supply explicit finite compatibility tables.
-The shared conditional-factor tool's standalone export covers activation only.
+source-translated; callbacks supply explicit finite compatibility tables. The
+shared conditional-factor tool's standalone export covers activation only.
 
 Block-header `slot_matches_state` and `slot_is_newer` use `cmp5`. For a valid
 pre-state, the latest header slot cannot exceed the state slot. Consequently
@@ -371,33 +369,33 @@ Voluntary-exit `current_ge_message_epoch` and `current_ge_seasoned` use `cmp5`.
 Epoch witnesses realize two epochs before, one before, exactly at, one after,
 and two after each boundary. MiniZinc compiles the target's feasibility rules,
 assertion fault scopes, and coverage formulas. Normal and exceptional profiles
-use the declaration assertion set; pending-loop coverage includes zero, one,
-and many matching entries, foreign entries, and actual acceptance. A future
+use the declaration assertion set; pending-loop coverage includes zero, one, and
+many matching entries, foreign entries, and actual acceptance. A future
 activation is at least `SHARD_COMMITTEE_PERIOD + 1` epochs short of seasoning,
 so unactivated validators cannot have only a one-epoch seasoning deficit when
 the period is positive. The declared feasibility rule excludes that impossible
-combination. Validation recovers the same dimensions from pre, signed exit,
-and optional post. Regenerate vectors to obtain the declaration-based profiles.
+combination. Validation recovers the same dimensions from pre, signed exit, and
+optional post. Regenerate vectors to obtain the declaration-based profiles.
 
 Voluntary-exit `balance_gt_consumable` uses `cmp5` for the effective balance
 against the available exit budget. Effective balances and fresh churn are
 aligned to the spec-bound `balance_increment`, so fresh-budget `LT_1` and `GT_1`
 buckets are infeasible when the increment exceeds one Gwei. Carried budgets can
 be unaligned: partial withdrawal requests consume the same churn budget in
-arbitrary Gwei amounts. When foreign pending entries are requested, the materializer realizes those
-one-Gwei residuals by processing a foreign partial withdrawal before the
-voluntary exit. Otherwise it sets a carried budget directly, keeping the
-pending-entry shape independent of the churn dimensions. A `GT_1`
-excess always fits in one additional epoch and cannot require `MANY`.
+arbitrary Gwei amounts. When foreign pending entries are requested, the
+materializer realizes those one-Gwei residuals by processing a foreign partial
+withdrawal before the voluntary exit. Otherwise it sets a carried budget
+directly, keeping the pending-entry shape independent of the churn dimensions. A
+`GT_1` excess always fits in one additional epoch and cannot require `MANY`.
 
 Churn profiles include `earliest_lt_new`, `balance_gt_consumable`, and the
-conditional `additional_epochs` (`ONE` or `MANY`). Witnesses
-cover fresh and carried budgets, equality, aligned under/overflow boundaries,
-and multi-epoch overflow; they recalculate the fresh limit when the selected
-effective balance changes total active balance. Larger balances use compounding
-credentials within the effective-balance cap. The DSL's conditional
-`additional_epochs` factor remains inactive when the exit fits the budget.
-Regenerate voluntary-exit vectors to include the new churn claims.
+conditional `additional_epochs` (`ONE` or `MANY`). Witnesses cover fresh and
+carried budgets, equality, aligned under/overflow boundaries, and multi-epoch
+overflow; they recalculate the fresh limit when the selected effective balance
+changes total active balance. Larger balances use compounding credentials within
+the effective-balance cap. The DSL's conditional `additional_epochs` factor
+remains inactive when the exit fits the budget. Regenerate voluntary-exit
+vectors to include the new churn claims.
 
 `voluntary_exit` declares `additional_epochs` with `when=EXCEEDS`, so churn
 exhaustiveness includes both within-budget and exceeding-budget branches. The
@@ -474,46 +472,46 @@ PROFILES = {
 
 An assertion set collects assertion declarations from the supplied aspects
 (ignoring ordinary dimensions), or accepts individual assertions directly.
-`faults(plan, minimum=0, maximum=None)` supplies a general inclusive fault range.
-Normal profiles require exactly zero faults; exceptional profiles require at
-least one. Scoped plans compose using the existing product and union operators.
-Limits apply to complete configurations **before** projection and to the actual
-records scored against each branch. A matching projection from a record outside
-the branch's fault range earns no coverage. These restrictions also apply when
-computing unexpected/infeasible observations.
+`faults(plan, minimum=0, maximum=None)` supplies a general inclusive fault
+range. Normal profiles require exactly zero faults; exceptional profiles require
+at least one. Scoped plans compose using the existing product and union
+operators. Limits apply to complete configurations **before** projection and to
+the actual records scored against each branch. A matching projection from a
+record outside the branch's fault range earns no coverage. These restrictions
+also apply when computing unexpected/infeasible observations.
 
-`target.assertion_result(record)` returns `failed`, `unknown`, `fault_count`, and
-`expected_accepted`. The observed `accepted` dimension continues to come from
-`post_present`; it is never replaced by the prediction. Inactive assertions
+`target.assertion_result(record)` returns `failed`, `unknown`, `fault_count`,
+and `expected_accepted`. The observed `accepted` dimension continues to come
+from `post_present`; it is never replaced by the prediction. Inactive assertions
 contribute no fault. An applicable but unavailable assertion leaves the exact
-fault count unknown (`None`), and cannot satisfy a finite upper fault bound.
-A known failure predicts rejection even if another assertion is unknown;
-otherwise unknown assertions leave the prediction unknown.
+fault count unknown (`None`), and cannot satisfy a finite upper fault bound. A
+known failure predicts rejection even if another assertion is unknown; otherwise
+unknown assertions leave the prediction unknown.
 
 Set `complete=True` only when the assertions fully characterize acceptance in
 the target scope. The default `complete=False` allows rejection after all
 modeled assertions pass, for example when the operations count-limit slice
-passes but subsequent operation processing fails. A known failed assertion
-still rules out acceptance. The assertion set supplies this feasibility rule;
-there is no need for a manual `accepted == all_of(...)` constraint. Scoring
-reports outcome disagreements separately in `Report.outcome_mismatches`,
-including the zero-based record index and both outcomes, even when the chosen
-coverage formula does not select the outcome dimension. `--records` displays
-assertion summaries, and `--describe` displays assertion membership and limits.
+passes but subsequent operation processing fails. A known failed assertion still
+rules out acceptance. The assertion set supplies this feasibility rule; there is
+no need for a manual `accepted == all_of(...)` constraint. Scoring reports
+outcome disagreements separately in `Report.outcome_mismatches`, including the
+zero-based record index and both outcomes, even when the chosen coverage formula
+does not select the outcome dimension. `--records` displays assertion summaries,
+and `--describe` displays assertion membership and limits.
 
 Generation adapters should use `generation_obligations()` (as `profile_records`
 does), rather than treating scoped `run()` projections as unrestricted witness
-requests. It completes all obligations within their permitted configurations,
-so a downstream witness cannot add extra faults to a scoped obligation. Coverage
+requests. It completes all obligations within their permitted configurations, so
+a downstream witness cannot add extra faults to a scoped obligation. Coverage
 projections from `run()` remain partial. Complete assignment selection also
 prefers fewer faults. For incomplete slices, completion prefers agreement with
 the predicted outcome when the obligation permits it; this is a generation
 preference, not an assumption about all observed executions.
 
-The migrated block-header, operations, and voluntary-exit targets use single-fault
-`exceptional` profiles. Their `max` profiles retain unrestricted exceptional
-coverage, including combinations where dependencies force multiple failures.
-
+The migrated block-header, operations, and voluntary-exit targets use
+single-fault `exceptional` profiles. Their `max` profiles retain unrestricted
+exceptional coverage, including combinations where dependencies force multiple
+failures.
 
 ### Optional MiniZinc enumeration
 
@@ -532,9 +530,9 @@ profile_sources = target.profiles["normal"].to_minizinc()
 
 The coverage scoring CLI accepts `--backend minizinc` and `--solver gecode`.
 Python remains the default; MiniZinc and the selected solver are required only
-when that backend enumerates configurations or exports profile models. Bind the original target template
-again to change the backend, solver, or spec; bound targets retain their own
-caches.
+when that backend enumerates configurations or exports profile models. Bind the
+original target template again to change the backend, solver, or spec; bound
+targets retain their own caches.
 
 This backend translates finite dimension domains and conditional activation,
 encoding inactive dimensions as zero and omitting them from decoded assignments.
@@ -550,8 +548,8 @@ recursive prerequisites, fixed obligations, unions, and compatible products.
 Products merge independently supported leaf obligations, then require a common
 complete extension; this preserves short conditional branches. Unions with
 different fault restrictions retain separate scoped models. The solver
-enumerates the encoded obligations themselves, avoiding duplicate solutions
-for unrelated completions. Python decodes the results, chooses deterministic
+enumerates the encoded obligations themselves, avoiding duplicate solutions for
+unrelated completions. Python decodes the results, chooses deterministic
 witnesses, and independently observes and scores vectors.
 
 Legacy `feasible=` and `constant_feasibility=` callbacks are not source
@@ -563,23 +561,23 @@ activation and profile fault scopes, preserving unexpected-observation scoring.
 
 `target.to_minizinc()` exports feasibility. A bound profile's `to_minizinc()`
 returns a tuple of dictionaries, each with `feasibility` and `coverage` sources
-for one fault scope; the coverage source embeds rows solved from that scope.
-The shared conditional model's `to_minizinc()` still exports only activation.
+for one fault scope; the coverage source embeds rows solved from that scope. The
+shared conditional model's `to_minizinc()` still exports only activation.
 
 This remains a reference implementation that enumerates complete finite
-configurations before projection, not a scalable search over large state
-spaces. Mixed-radix obligation encodings and nonconstant numeric expressions
-must fit Gecode's signed integer range; oversized models fail explicitly.
-No concrete state construction or raw observation expression is translated.
+configurations before projection, not a scalable search over large state spaces.
+Mixed-radix obligation encodings and nonconstant numeric expressions must fit
+Gecode's signed integer range; oversized models fail explicitly. No concrete
+state construction or raw observation expression is translated.
 
 `test_minizinc_backend.py` compares raw and feasible configurations, every
-feasible profile, deterministic witnesses, covered obligations, and outcomes
-for all registered targets under minimal and mainnet. Unfiltered profile/report
+feasible profile, deterministic witnesses, covered obligations, and outcomes for
+all registered targets under minimal and mainnet. Unfiltered profile/report
 comparisons are restricted to smaller raw spaces. Small explicit cases also
 check three-valued constraints, independent product witnesses, unknown fault
-counts, missing outcomes, arithmetic, and independently executable exports.
-The native-path test fails if Python feasibility, projection, or scope
-evaluation is used during MiniZinc obligation generation.
+counts, missing outcomes, arithmetic, and independently executable exports. The
+native-path test fails if Python feasibility, projection, or scope evaluation is
+used during MiniZinc obligation generation.
 
 ### Proposer-slashing migration
 
@@ -596,14 +594,13 @@ payment entries do not supply clearing-effect coverage. Missing validator data
 remains unknown.
 
 The provider uses MiniZinc to translate target feasibility rules, assertion
-fault scopes, and coverage formulas. It completes declaration obligations
-within each profile's scope and supplies canonical target dimensions directly
-to the materializer. Metadata records
-both the predicted fault count and claimed acceptance. The observer derives
-assertion truth from the actual headers, proposer state, and BLS signatures;
-acceptance is observed independently from post-state presence. Case validation
-checks these observations against metadata and reports expected/observed
-acceptance disagreements.
+fault scopes, and coverage formulas. It completes declaration obligations within
+each profile's scope and supplies canonical target dimensions directly to the
+materializer. Metadata records both the predicted fault count and claimed
+acceptance. The observer derives assertion truth from the actual headers,
+proposer state, and BLS signatures; acceptance is observed independently from
+post-state presence. Case validation checks these observations against metadata
+and reports expected/observed acceptance disagreements.
 
 The completed migration comparison established equivalence with the former
 MiniZinc handler model across all 1,610 feasible signatures under both presets;
@@ -611,8 +608,8 @@ that model has been removed. Regression tests retain the configuration counts
 and compare native configurations and complete profile witnesses against the
 Python reference backend. A generation guard rejects Python configuration
 enumeration to verify the provider actually uses MiniZinc. The `max` profile
-retains all 360 signatures with at most two faults (20 normal, 80 with one fault,
-260 with two), which also cover every exceptional pair in the full space.
+retains all 360 signatures with at most two faults (20 normal, 80 with one
+fault, 260 with two), which also cover every exceptional pair in the full space.
 `normal` retains 20 representatives. `smoke` and `exceptional` now cover
 individual declaration dimensions in addition to rejection categories; their
 representative counts need not equal the old outcome-only selections. Tests
