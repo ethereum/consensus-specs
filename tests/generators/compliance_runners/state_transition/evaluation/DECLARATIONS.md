@@ -771,3 +771,35 @@ outside the window. Padding uses unique valid public keys and the spec's
 registry insertion helper, with inactive balances below activation, preserving
 parallel state lists and the active validator set. Both preset pipelines and a
 mainnet outside-window regression validate these cases.
+
+### Withdrawal-request migration
+
+`withdrawal_request/target.py` retains all 6,369 feasible legacy signatures,
+including all 207 zero-fault and 905 single-fault assignments.
+Referenced-validator properties use conditional Boolean dimensions, with `cmp3`
+mappings over raw effective, actual, and required balances. The two credential
+predicates are expressions derived from the credential category rather than
+redundant coverage columns. Unresolved roles and unused churn use the shared
+`NA` representation.
+
+The smoke profile retains one representative per terminal outcome (12 cases).
+The normal profile preserves grouped pairwise input coverage; churn projections
+also retain their outcome context. Exceptional coverage preserves exactly one
+independently applicable failed gate. These ignored requests return normally, so
+profile scopes explicitly describe gate failures rather than declaring rejecting
+assertions. `max` now enumerates the complete feasible space instead of the old
+bounded-fault selection. The effect dimension observes actual exit initiation or
+an appended withdrawal with the correct validator and amount from the
+post-state.
+
+Generation, authoritative metadata, validation, and coverage loading use the
+shared TARGET adapters; the custom handler model, coverage driver, and validator
+are removed. Generation uses the shared MiniZinc backend. The materializer
+caches its genesis state and keeps AVAILABLE queue fixtures small on both
+presets. Mainnet's FULL queue still requires 134,217,728 entries; abstract
+coverage is checked for both presets, while exhaustive concrete validation uses
+minimal. Mainnet concrete regressions cover normal and exceptional witnesses
+with EMPTY and AVAILABLE queues. Regression tests fingerprint the complete
+legacy space and fault scopes, audit every profile, exercise the on-disk
+generation and coverage loading pipeline, and reject altered exit/withdrawal
+effects and missing posts.
