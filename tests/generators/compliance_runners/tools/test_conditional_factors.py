@@ -1,3 +1,5 @@
+from itertools import product
+
 import pytest
 
 from .conditional_factors import Factor, Model
@@ -229,3 +231,53 @@ def test_completion_handles_empty_obligations_and_missing_extensions():
     assert model.complete([frozenset()]) == {obligation(A=False)}
     with pytest.raises(ValueError, match="no feasible completion"):
         model.complete([frozenset()], set())
+
+
+@pytest.mark.parametrize("forbidden", [(), (obligation(A=True, other=False),), (frozenset(),)])
+def test_partial_completion_matches_exhaustive_rows(forbidden):
+    model = Model(
+        [
+            Factor("A", (False, True)),
+            Factor("B", ("x", "y"), (("A", True),)),
+            Factor("other", (False, True)),
+        ],
+        forbidden=forbidden,
+    )
+    rows = model.configurations()
+    names = tuple(f.name for f in model.factors)
+    for values in product((None, False, True), (None, "x", "y"), (None, False, True)):
+        fixed = {
+            name: value for name, value in zip(names, values, strict=True) if value is not None
+        }
+        for mask in product((False, True), repeat=len(names)):
+            inactive = {name for name, omit in zip(names, mask, strict=True) if omit}
+            for with_predicate in (False, True):
+                expected = any(
+                    fixed.items() <= row
+                    and not (inactive & dict(row).keys())
+                    and (not with_predicate or dict(row)["other"])
+                    for row in rows
+                )
+                assert (
+                    model.has_completion(
+                        fixed,
+                        inactive=inactive,
+                        required=("other",) if with_predicate else (),
+                        predicate=(lambda row: row["other"]) if with_predicate else None,
+                    )
+                    == expected
+                )
+    assert model._closure(name for name in ("B",)) == {"A", "B"}
+
+
+def test_completion_ignores_unrelated_cartesian_dimensions(monkeypatch):
+    model = Model(
+        [
+            Factor("A", (False, True)),
+            Factor("B", (False, True), (("A", True),)),
+            *(Factor(f"unused_{i}", (False, True)) for i in range(40)),
+        ]
+    )
+    monkeypatch.setattr(model, "configurations", lambda **kw: pytest.fail("raw enumeration"))
+    assert model.has_completion({"B": True})
+    assert not model.has_completion({"B": True}, inactive=("A",))

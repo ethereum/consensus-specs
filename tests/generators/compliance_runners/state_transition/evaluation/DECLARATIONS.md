@@ -574,9 +574,22 @@ witnesses, and independently observes and scores vectors.
 Legacy `feasible=` and `constant_feasibility=` callbacks are not source
 translated. They evaluate the finite rows produced by native feasibility, then
 their accepted rows become an explicit MiniZinc compatibility table. Targets
-without callbacks do not call Python feasibility or projection functions.
-`filtered=False` omits both declarative and callback feasibility while retaining
-activation and profile fault scopes, preserving unexpected-observation scoring.
+without callbacks do not call Python feasibility or projection functions during
+encodable MiniZinc obligation generation. `filtered=False` omits both
+declarative and callback feasibility while retaining activation and profile
+fault scopes.
+
+Scoring does not enumerate the unfiltered space for unexpected observations.
+`covered(records, filtered=False)` projects only obligations the supplied
+records can satisfy, checking structural completions over relevant factors and
+their activation prerequisites. Fault scopes and independent product witnesses
+retain their existing semantics. Subtracting feasible obligations then
+identifies unexpected projections. `run(filtered=False)` remains an explicit
+exhaustive reference operation, but `score()` never calls it. Regression tests
+compare observed-only scoring with exhaustive raw coverage on small models,
+including partial records, mutually exclusive branches, missing values, and
+fault scopes. Consolidation smoke scoring on both presets rejects any unfiltered
+enumeration and still reports a corrupted effect as unexpected.
 
 `target.to_minizinc()` exports feasibility. A bound profile's `to_minizinc()`
 returns a tuple of dictionaries, each with `feasibility` and `coverage` sources
@@ -585,9 +598,10 @@ shared conditional model's `to_minizinc()` still exports only activation.
 
 This remains a reference implementation that enumerates complete finite
 configurations before projection, not a scalable search over large state spaces.
-Mixed-radix obligation encodings and nonconstant numeric expressions must fit
-Gecode's signed integer range; oversized models fail explicitly. No concrete
-state construction or raw observation expression is translated.
+Nonconstant numeric expressions must fit Gecode's signed integer range.
+Mixed-radix obligation encodings over that range use Python projection over the
+solved rows; standalone coverage-model exports still fail explicitly. No
+concrete state construction or raw observation expression is translated.
 
 `test_minizinc_backend.py` compares raw and feasible configurations, every
 feasible profile, deterministic witnesses, covered obligations, and outcomes for
@@ -803,3 +817,44 @@ with EMPTY and AVAILABLE queues. Regression tests fingerprint the complete
 legacy space and fault scopes, audit every profile, exercise the on-disk
 generation and coverage loading pipeline, and reject altered exit/withdrawal
 effects and missing posts.
+
+### Consolidation-request migration
+
+`consolidation_request/target.py` retains all 27,996 feasible legacy signatures,
+including the complete 118-assignment zero-fault and 311-assignment single-fault
+spaces. Conditional Boolean dimensions describe source and target roles. Raw
+consolidation churn and source balances use `cmp3` against the bound activation
+minimum; credential predicates are derived expressions rather than three
+redundant coverage columns. Shared `NA` represents unresolved roles, unused
+switch balances, and unused consolidation churn.
+
+Smoke retains one representative per terminal outcome (19 cases). Normal
+preserves grouped pairwise inputs and carries outcome context when projecting
+switch balances and churn; exceptional retains exactly one independently
+applicable failed gate. Membership failures deactivate the remaining predicates
+for that role. Both branches return normally on failure, so the scopes describe
+ignored-operation gates rather than rejecting assertions. `max` covers all
+27,996 signatures. Effects are observed from changed credentials, a correctly
+formed excess-balance pending deposit, or a consolidation append and source exit
+in the actual post-state; validation requires a post-state.
+
+Generation, metadata, validation, and coverage loading use the shared adapters;
+the provider's custom model, coverage driver, and validator are removed. Use
+`--backend minizinc` for coverage scoring of this large target. Its projection
+encoding exceeds Gecode's integer range, so the shared backend solves feasible
+rows with MiniZinc and evaluates projection/union/products using the existing
+Python evaluator over those rows. It never enumerates the raw Cartesian space
+for that fallback. Standalone coverage-model export still reports the encoding
+limit. Sparse-model tests cover conditional activation, union, compatible and
+conflicting products, complete witnesses, and unsatisfiable inputs. The generic
+native-backend comparison skips Cartesian spaces exceeding ten million tuples;
+this provider instead compares its complete rows and fault scopes against
+fingerprints from the legacy MiniZinc model under both presets.
+
+Concrete regressions cover every minimal signature, both preset smoke pipelines,
+and mainnet standard witnesses with small queues. Full mainnet queues (262,144
+entries) are exercised by smoke. The legacy fixed validator counts were specific
+to minimal: mainnet now uses a compact pool of compounding validators, each at
+or below its effective-balance cap, to realize its much larger churn quotient.
+Low-churn fixtures retain enough validators for nonempty PTC slot committees.
+Genesis bases are cached, and AVAILABLE queues use small nonempty fixtures.

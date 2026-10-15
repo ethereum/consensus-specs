@@ -258,8 +258,7 @@ def score(
         raise ValueError("bind the target with for_spec(spec) before scoring")
     wanted = formula.run()
     covered = formula.covered(records)
-    pruned = formula.run(filtered=False) - wanted
-    unexpected = formula.covered(records, filtered=False) & pruned
+    unexpected = formula.covered(records, filtered=False) - wanted
     assertions = target.definition.assertions
     mismatches = [
         {
@@ -286,6 +285,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "consolidation_request": "tests.generators.compliance_runners.state_transition.consolidation_request.target",
     "withdrawal_request": "tests.generators.compliance_runners.state_transition.withdrawal_request.target",
     "parent_execution_payload": "tests.generators.compliance_runners.state_transition.parent_execution_payload.target",
     "builder_pending_withdrawal_processing": "tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target",

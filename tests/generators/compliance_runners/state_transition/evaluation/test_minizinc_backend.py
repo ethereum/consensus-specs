@@ -1,6 +1,7 @@
 """Compare the optional solver enumeration with existing declaration targets."""
 
 from importlib import import_module
+from math import prod
 
 import pytest
 
@@ -29,6 +30,7 @@ from .declarations import (
     maximum,
     nwise,
     present,
+    union,
 )
 
 
@@ -50,6 +52,13 @@ def test_existing_target_backend_agreement(minizinc_available, preset, name):
     template = import_module(TARGETS[name]).TARGET
     spec = spec_targets[preset]["gloas"]
     python = template.for_spec(spec)
+    raw_product = prod(
+        len(f.values) for f in python.definition.model(python.bound_constants).factors
+    )
+    if raw_product > 10_000_000:
+        pytest.skip(
+            "large native Cartesian space; legacy-space and profile parity tested in provider"
+        )
     solver = template.for_spec(spec, backend="minizinc")
     # Includes native constraints, fault scopes, and legacy callback tables.
     for filtered in (False, True):
@@ -69,8 +78,8 @@ def test_existing_target_backend_agreement(minizinc_available, preset, name):
             assert all(
                 solver.definition.assertions.agrees(r, solver.bound_constants) for r in records
             )
-        # score also expands the unfiltered space to detect unexpected records.
-        # Full report parity is checked on smaller spaces, including every
+        # Scoring checks only observed raw projections. Full report parity is
+        # checked on smaller spaces, including every
         # operator and scope. Large targets still compare raw configurations,
         # every feasible profile, witnesses, coverage, and observed outcomes.
         if raw_size <= 4096:
@@ -304,3 +313,81 @@ def test_unknown_faults_and_missing_outcomes_preserve_scope_semantics(minizinc_a
     assert frozenset({("gate", True), ("parent", False)}) in backend.configurations(
         scopes=((assertions, 0, 0),)
     )
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_large_projection_encoding_uses_solved_rows(minizinc_available, monkeypatch, empty):
+    # Twenty-one Booleans exceed the mixed-radix Gecode ID range, while the
+    # declared constraints leave only two feasible rows (or none).
+    flags = tuple(dimension(f"flag_{i}", attribute(f"input_{i}", Boolean())) for i in range(20))
+    flags += (dimension("flag_20", attribute("input_20", Boolean()), when=flags[0]),)
+    constraints = tuple(flag == flags[0] for flag in flags[1:])
+    if empty:
+        constraints += (flags[0] & ~flags[0],)
+    target = bind(
+        coverage_spec(
+            "large_projection",
+            focus="sparse solved rows with a large raw encoding",
+            record="one vector",
+            aspects=(aspect("flags", *flags),),
+            constraints=constraints,
+            profiles={
+                "all": exhaustive(flags),
+                "conditional": exhaustive((flags[-1],)),
+                "pairs": nwise(flags[:3], 2),
+                "product": nwise(flags[:3], 2) * fix(flag_0=True),
+                "union": union(fix(flag_0=False), fix(flag_1=True)),
+                "conflict": fix(flag_0=False) * fix(flag_0=True),
+            },
+        ),
+        observe_attributes=lambda ctx: {},
+    ).for_spec(object(), backend="minizinc")
+    expected = (
+        set()
+        if empty
+        else {
+            frozenset((f.name, value) for f in (flags if value else flags[:-1]))
+            for value in (False, True)
+        }
+    )
+    assert target._solver_backend().configurations() == expected
+    # Projection must use the supplied solved rows, never enumerate the raw
+    # native Cartesian space or an unfiltered MiniZinc space.
+    monkeypatch.setattr(target, "_configurations", lambda *a, **kw: pytest.fail("raw enumeration"))
+    for name, formula in target.profiles.items():
+        if name == "all":
+            obligations = expected
+        elif name == "conditional":
+            obligations = set() if empty else {frozenset((("flag_0", True), ("flag_20", True)))}
+        elif name == "pairs":
+            obligations = (
+                set()
+                if empty
+                else {
+                    frozenset(((flags[i].name, v), (flags[j].name, v)))
+                    for i, j in ((0, 1), (0, 2), (1, 2))
+                    for v in (False, True)
+                }
+            )
+        elif name == "product":
+            obligations = (
+                set()
+                if empty
+                else {
+                    frozenset((flags[i].name, True) for i in indices)
+                    for indices in ((0, 1), (0, 2), (0, 1, 2))
+                }
+            )
+        elif name == "union":
+            obligations = (
+                set()
+                if empty
+                else {
+                    frozenset((("flag_0", False),)),
+                    frozenset((("flag_1", True),)),
+                }
+            )
+        else:
+            obligations = set()
+        assert formula.run() == obligations
+        assert all(row in expected for row in formula.generation_obligations())

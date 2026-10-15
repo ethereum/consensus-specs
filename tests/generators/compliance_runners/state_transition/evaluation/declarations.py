@@ -7,7 +7,7 @@ adds observation, conditional coverage formulas, spec binding, and review text.
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from itertools import product
+from itertools import chain, combinations, product
 
 from tests.generators.compliance_runners.tools import conditional_factors as conditional
 from tests.generators.compliance_runners.tools.coverage_model import (
@@ -639,6 +639,13 @@ class BoundFormula:
         return self._compiled_cache[filtered]
 
     def _solver_branches(self):
+        # Preserve shared subplans for the large-model Python projection
+        # fallback; distributing unscoped products would duplicate their work.
+        if (
+            self.owner.definition.assertions is None
+            and self.owner._solver_backend().python_projection
+        ):
+            return [(self.plan, ())]
         groups = {}
         for plan, scopes in self._branches(self.plan):
             groups.setdefault(scopes, []).append(plan)
@@ -667,6 +674,8 @@ class BoundFormula:
         return set().union(*(obligations for _, _, obligations in self._compiled(filtered)))
 
     def covered(self, records, *, filtered=True):
+        if not filtered:
+            return self._observed_obligations(records)
         covered = set()
         for scopes, _, obligations in self._compiled(filtered):
             eligible = [
@@ -679,6 +688,145 @@ class BoundFormula:
                 for o in obligations
                 if any(all(r.get(n, NA) is not NA and r[n] == v for n, v in o) for r in eligible)
             )
+        return covered
+
+    def _observed_obligations(self, records):
+        """Project only obligations that supplied records can satisfy.
+
+        Unexpected-record detection needs raw structural support, not every
+        unfiltered configuration. Check existential completions of observed
+        projections, retaining conditional activation and branch fault scopes.
+        """
+        model = self.owner.definition.model(self.owner.bound_constants)
+        support_cache = {}
+        branches = (
+            [(self.plan, ())]
+            if self.owner.definition.assertions is None
+            else self._branches(self.plan)
+        )
+        covered = set()
+        for plan, scopes in branches:
+            required = {f.name for assertions, _, _ in scopes for f in assertions.declarations}
+
+            def supported(obligation, inactive=frozenset(), scopes=scopes, required=required):
+                key = obligation, inactive, scopes
+                if key not in support_cache:
+                    support_cache[key] = model.has_completion(
+                        dict(obligation),
+                        inactive=inactive,
+                        required=required,
+                        predicate=(
+                            (
+                                lambda values: all(
+                                    _within_faults(s, values, self.owner.bound_constants)
+                                    for s in scopes
+                                )
+                            )
+                            if scopes
+                            else None
+                        ),
+                    )
+                return support_cache[key]
+
+            for record in records:
+                if not all(_within_faults(s, record, self.owner.bound_constants) for s in scopes):
+                    continue
+                cache = {}
+
+                def projection(names, record=record):
+                    included = model._closure(names)
+                    if any(record.get(name, NA) is NA for name in included):
+                        return None
+                    return frozenset((name, record[name]) for name in included)
+
+                def run(node, cache=cache):
+                    key = id(node)
+                    if key not in cache:
+                        cache[key] = evaluate(node)
+                    return cache[key]
+
+                def evaluate(node, record=record):
+                    if node.kind == "nwise":
+                        names = [f.name for f in node.parts]
+                        known = [name for name in names if record.get(name, NA) is not NA]
+                        result = set()
+                        # A short projection contains *all* active selected
+                        # factors. Unconditional factors, and children enabled
+                        # by their observed values, must therefore be present.
+                        mandatory = {name for name in names if not model._by_name[name].conditions}
+                        disabled = set()
+                        pending = set(names) - mandatory
+                        while pending:
+                            previous = len(pending)
+                            for name in tuple(pending):
+                                conditions = model._by_name[name].conditions
+                                if any(
+                                    parent in disabled
+                                    or (
+                                        parent in mandatory and record.get(parent, NA) not in values
+                                    )
+                                    for parent, values in conditions
+                                ):
+                                    disabled.add(name)
+                                elif all(
+                                    parent in mandatory and record.get(parent, NA) in values
+                                    for parent, values in conditions
+                                ):
+                                    mandatory.add(name)
+                                else:
+                                    continue
+                                pending.remove(name)
+                            if len(pending) == previous:
+                                break
+                        selections = combinations(known, node.strength)
+                        if mandatory <= set(known):
+                            optional = set(known) - mandatory - disabled
+                            selections = chain(
+                                selections,
+                                (
+                                    tuple(mandatory) + selected
+                                    for size in range(
+                                        max(1, len(mandatory)), min(node.strength, len(known) + 1)
+                                    )
+                                    for selected in combinations(
+                                        sorted(optional), size - len(mandatory)
+                                    )
+                                ),
+                            )
+                        for selected in selections:
+                            obligation = projection(selected)
+                            inactive = (
+                                frozenset(set(names) - set(selected))
+                                if len(selected) < node.strength
+                                else frozenset()
+                            )
+                            if obligation is not None and supported(obligation, inactive):
+                                result.add(obligation)
+                        return result
+                    if node.kind == "fix":
+                        for name, value in node.parts:
+                            if value not in model._by_name[name].values:
+                                raise ValueError(f"invalid fixed value: {name}={value!r}")
+                        if any(record.get(name, NA) != value for name, value in node.parts):
+                            return set()
+                        obligation = projection(name for name, _ in node.parts)
+                        return (
+                            {obligation}
+                            if obligation is not None and supported(obligation)
+                            else set()
+                        )
+                    if node.kind == "union":
+                        return set().union(*(run(part) for part in node.parts))
+                    result = {frozenset()}
+                    for part in node.parts:
+                        result = {
+                            merged
+                            for left, right in product(result, run(part))
+                            if (merged := _merge(left, right)) is not None and supported(merged)
+                        }
+                    return result
+
+                covered.update(run(plan))
         return covered
 
     def generation_obligations(self):
@@ -711,9 +859,16 @@ class BoundFormula:
         return result
 
     def _run(self, selected_plan, configurations):
-        model, _ = self.owner._configurations(filtered=False)
+        model = self.owner.definition.model(self.owner.bound_constants)
+        cache = {}
 
         def run(plan):
+            key = id(plan)
+            if key not in cache:
+                cache[key] = evaluate(plan)
+            return cache[key]
+
+        def evaluate(plan):
             if plan.kind == "nwise":
                 return model.project([f.name for f in plan.parts], plan.strength, configurations)
             if plan.kind == "fix":

@@ -1,9 +1,8 @@
 """Materialize aspect-model solutions into process_consolidation_request cases.
 
-The most involved materializer: two validators (source + target), a churn gate
-realized by sizing the active validator set (64 -> sufficient, 32 -> ==MIN, i.e.
-insufficient), and two queue fills. No BLS. Never raises, so `post` is always
-present.
+Realizes source and target validator roles, preset-specific active-balance
+witnesses for the consolidation churn gate, and queue inputs. No BLS. The
+operation returns normally on every path, so `post` is always present.
 
 Spec: specs/electra/beacon-chain.md process_consolidation_request (inherited by gloas).
 """
@@ -28,6 +27,8 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.withdr
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -38,34 +39,12 @@ _VALIDATOR_COUNT_BY_CHURN_RELATION = {
 }
 PENDING_WITHDRAWAL_AMOUNT = 10**9
 
-_DIMS = [
-    "same_source_target",
-    "pending_consolidations_capacity",
-    "consolidation_churn_to_min_activation",
-    "churn_variant",
-    "switch_balance_to_min_activation",
-    "switch_excess_queued",
-    "validator_pubkey_found",
-    "validator_credential",
-    "source_address_matches",
-    "validator_active",
-    "validator_exiting",
-    "validator_old_enough",
-    "has_pending_partial_withdrawal",
-    "target_found",
-    "target_credential",
-    "target_active",
-    "target_exiting",
-    "validator_has_execution_credential",
-    "validator_has_compounding_credential",
-    "target_has_compounding_credential",
-    "outcome",
-    "state_effected",
-]
-
 
 def _s(sol: Any, n: str) -> str:
-    return str(getattr(sol, n))
+    value = getattr(sol, n)
+    if isinstance(value, bool):
+        return "T" if value else "F"
+    return str(value)
 
 
 def _b(sol: Any, n: str) -> bool:
@@ -75,6 +54,10 @@ def _b(sol: Any, n: str) -> bool:
 class ConsolidationRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "consolidation_request"
+
+    def __init__(self, spec, fork_name="gloas", preset_name="minimal", seed=0):
+        super().__init__(spec, fork_name, preset_name, seed)
+        self._bases = {}
 
     def _epochs(
         self, current_epoch: int, active: bool, exiting: bool, old_enough: bool
@@ -124,22 +107,41 @@ class ConsolidationRequestMaterializer(Materializer):
         )
         # Churn depends on active effective balance, not validator count. The
         # source and target below may become inactive, so reserve replacements.
-        n = (
-            _VALIDATOR_COUNT_BY_CHURN_RELATION[_s(sol, "consolidation_churn_to_min_activation")]
-            + inactive_source
-            + inactive_target
-        )
-        pre = create_genesis_state(
-            spec,
-            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * n,
-            activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
-        )
+        relation = _s(sol, "consolidation_churn_to_min_activation")
+        quotient = int(spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT)
+        # The legacy 16/32/64 counts realize minimal's churn boundaries. On
+        # mainnet, use a compact pool of compounding validators to supply the
+        # much larger total active balance required by its churn quotient.
+        total_balance = None
+        if quotient > 64 and relation != "LT":
+            desired_churn = int(spec.MIN_ACTIVATION_BALANCE)
+            if relation == "GT":
+                desired_churn += int(spec.EFFECTIVE_BALANCE_INCREMENT)
+            total_balance = desired_churn * quotient
+            maximum = int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+            role_count = 64
+            n = role_count + (total_balance + maximum - 1) // maximum
+        else:
+            n = (
+                max(int(spec.SLOTS_PER_EPOCH), _VALIDATOR_COUNT_BY_CHURN_RELATION[relation])
+                + inactive_source
+                + inactive_target
+            )
+            role_count = n
+        if n not in self._bases:
+            self._bases[n] = create_genesis_state(
+                spec,
+                validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * role_count
+                + [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * (n - role_count),
+                activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
+            )
+        pre = self._bases[n].copy()
         current_epoch = self.rng.randrange(
             int(spec.config.SHARD_COMMITTEE_PERIOD) + 10,
             int(spec.config.SHARD_COMMITTEE_PERIOD) + 101,
         )
         pre.slot = spec.Slot(current_epoch * spec.SLOTS_PER_EPOCH)
-        source_index, target_index = distinct_indices(self.rng, n, 2)
+        source_index, target_index = distinct_indices(self.rng, role_count, 2)
         absent_source_index, absent_target_index = distinct_indices(
             self.rng,
             len(pubkeys) - n,
@@ -214,6 +216,24 @@ class ConsolidationRequestMaterializer(Materializer):
         else:
             target_pubkey = absent_target
 
+        if total_balance is not None:
+            role_balance = sum(
+                int(v.effective_balance)
+                for v in pre.validators[:role_count]
+                if spec.is_active_validator(v, spec.Epoch(current_epoch))
+            )
+            remaining = total_balance - role_balance
+            for index in range(role_count, n):
+                balance = min(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA), max(0, remaining))
+                validator = pre.validators[index]
+                validator.effective_balance = spec.Gwei(balance)
+                pre.balances[index] = spec.Gwei(balance)
+                if not balance:
+                    validator.activation_epoch = spec.FAR_FUTURE_EPOCH
+                remaining -= balance
+            if remaining != 0:
+                raise ValueError("insufficient filler balance for the consolidation churn witness")
+
         # ---- source pending partial withdrawal ---------------------------------
         if source_found and _s(sol, "has_pending_partial_withdrawal") == "T":
             pre.pending_partial_withdrawals.append(
@@ -226,8 +246,11 @@ class ConsolidationRequestMaterializer(Materializer):
 
         # ---- pending consolidations queue --------------------------------------
         queue_capacity = _s(sol, "pending_consolidations_capacity")
-        queue_length = queue_length_from_profile(
-            queue_capacity, int(spec.PENDING_CONSOLIDATIONS_LIMIT), self.rng
+        queue_limit = int(spec.PENDING_CONSOLIDATIONS_LIMIT)
+        queue_length = (
+            self.rng.randint(1, min(64, queue_limit - 1))
+            if queue_capacity == "AVAILABLE"
+            else queue_length_from_profile(queue_capacity, queue_limit, self.rng)
         )
         if queue_length:
 
@@ -250,9 +273,7 @@ class ConsolidationRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_consolidation_request(post, request)  # never raises
 
-        claimed = {
-            k: (_b(sol, k) if isinstance(getattr(sol, k), bool) else _s(sol, k)) for k in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {
             "description": f"process_consolidation_request: {claimed['outcome']}",
             "claimed": claimed,

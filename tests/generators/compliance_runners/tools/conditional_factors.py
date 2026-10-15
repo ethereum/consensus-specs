@@ -173,6 +173,56 @@ class Model:
         obligations = self.project(selected, strength, configurations)
         return self.complete(obligations, configurations) if complete else obligations
 
+    def _closure(self, names):
+        included = set(names)
+        pending = list(included)
+        while pending:
+            for parent, _ in self._by_name[pending.pop()].conditions:
+                if parent not in included:
+                    included.add(parent)
+                    pending.append(parent)
+        return included
+
+    def has_completion(self, fixed, *, inactive=(), required=(), predicate=None):
+        """Check one partial assignment without enumerating complete configurations.
+
+        Only its factors, required predicate inputs, forbidden combinations,
+        and their activation prerequisites can affect the answer. Unrelated
+        factors always have an extension because their domains are nonempty.
+        """
+        inactive = frozenset(inactive)
+        names = set(fixed) | inactive | set(required)
+        names.update(name for combination in self.forbidden for name, _ in combination)
+        if names - self._by_name.keys():
+            raise ValueError("unknown completion factor")
+        if inactive & fixed.keys() or any(
+            value not in self._by_name[name].values for name, value in fixed.items()
+        ):
+            return False
+        relevant = self._closure(names)
+        ordered = [f for f in self._ordered if f.name in relevant]
+        active = {}
+
+        def visit(index):
+            if index == len(ordered):
+                return not any(c <= active.items() for c in self.forbidden) and (
+                    predicate is None or predicate(dict(active))
+                )
+            f = ordered[index]
+            enabled = all(parent in active and active[parent] in vs for parent, vs in f.conditions)
+            if not enabled:
+                return f.name not in fixed and visit(index + 1)
+            if f.name in inactive:
+                return False
+            for value in (fixed[f.name],) if f.name in fixed else f.values:
+                active[f.name] = value
+                if not any(c <= active.items() for c in self.forbidden) and visit(index + 1):
+                    return True
+            active.pop(f.name, None)
+            return False
+
+        return visit(0)
+
     def project(self, selected, strength, configurations):
         """Project already validated configurations, adding activation prerequisites."""
         names = self._selection(selected)
@@ -185,15 +235,7 @@ class Model:
             if not active:
                 continue
             for subset in combinations(active, min(strength, len(active))):
-                included = set()
-
-                pending = list(subset)
-                while pending:
-                    name = pending.pop()
-                    if name in included:
-                        continue
-                    included.add(name)
-                    pending.extend(parent for parent, _ in self._by_name[name].conditions)
+                included = self._closure(subset)
                 obligations.add(frozenset((n, values[n]) for n in included))
         return obligations
 
