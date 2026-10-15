@@ -297,6 +297,8 @@ TARGETS = {
     "registry_updates": "tests.generators.compliance_runners.state_transition.registry_updates.target",
     "rewards_and_penalties": "tests.generators.compliance_runners.state_transition.rewards_and_penalties.target",
     "proposer_lookahead": "tests.generators.compliance_runners.state_transition.proposer_lookahead.target",
+    "deposit_request": "tests.generators.compliance_runners.state_transition.deposit_request.target",
+    "slashings": "tests.generators.compliance_runners.state_transition.slashings.target",
     "historical_summaries_update": "tests.generators.compliance_runners.state_transition.historical_summaries_update.target",
     "inactivity_updates": "tests.generators.compliance_runners.state_transition.inactivity_updates.target",
     "inactivity_updates_loop": "tests.generators.compliance_runners.state_transition.inactivity_updates_loop.target",
