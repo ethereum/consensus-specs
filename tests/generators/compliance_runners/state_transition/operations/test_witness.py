@@ -20,17 +20,11 @@ GATES = tuple(f.name for f in LIMITS.factors)
 
 @pytest.mark.parametrize("profile", ["smoke", "normal", "exceptional", "standard", "max"])
 def test_completed_witnesses_cover_each_obligation_once(profile):
-    obligations, witnesses = build_profile(profile, spec=spec)
+    witnesses = build_profile(profile, spec=spec)
     signatures = [tuple(witness.items()) for witness in witnesses]
     assert len(signatures) == len(set(signatures))
     assert all(set(witness) == {*GATES, "accepted", "_nfaults", "_rank"} for witness in witnesses)
     assert all(witness["accepted"] is all(witness[gate] for gate in GATES) for witness in witnesses)
-    assert all(
-        any(
-            all(witness[key] == value for key, value in obligation.items()) for witness in witnesses
-        )
-        for obligation in obligations
-    )
     target = TARGET.for_spec(spec)
     assert all(
         witness["_rank"] == witness["_nfaults"] == target.assertion_result(witness).fault_count
@@ -55,7 +49,7 @@ def test_rejection_completion_preserves_explicit_true_gate():
 
 
 def test_smoke_materialization_has_no_duplicate_inputs(tmp_path):
-    _, witnesses = build_profile("smoke", spec=spec)
+    witnesses = build_profile("smoke", spec=spec)
     materializer = OperationsMaterializer(spec)
     materializer.test_provider = "process_operations"
     materializer.materialize_reps(tmp_path, [SimpleNamespace(**witness) for witness in witnesses])

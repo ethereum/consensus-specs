@@ -22,7 +22,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 @pytest.mark.parametrize("bucket", ["ZERO", "ONE", "LAST", "INTERIOR"])
 def test_epoch_remainder_claims_match_materialized_states(module_name, factor_name, bucket):
     module = import_module(f".{module_name}", __package__)
-    records, _ = module.build_profile("standard", spec=spec)
+    records = module.build_profile("standard", spec=spec)
     record = next(record for record in records if record[factor_name] == bucket)
     materializer_module = import_module(f".{module_name}.materializer", __package__)
     materializer = materializer_module.MATERIALIZER(spec)
@@ -33,7 +33,7 @@ def test_epoch_remainder_claims_match_materialized_states(module_name, factor_na
     post = spec.BeaconState.decode_bytes(encoded["post"])
     target = module.TARGET.for_spec(spec)
     actual = target.record(target.observation(Context(spec, pre, None, post, {})))
-    assert meta["claimed"] == actual == record
+    assert meta["claimed"] == actual == {k: v for k, v in record.items() if not k.startswith("_")}
     if module_name == "historical_summaries_update":
         assert len(post.historical_summaries) - len(pre.historical_summaries) == (bucket == "ZERO")
     elif module_name == "sync_committee_updates" and bucket != "ZERO":
@@ -60,7 +60,7 @@ def test_count_cmp5_claims_match_materialized_values(
     module_name, factor_name, attribute_name, bucket
 ):
     module = import_module(f".{module_name}", __package__)
-    records, _ = module.build_profile("standard", spec=spec)
+    records = module.build_profile("standard", spec=spec)
     record = next(record for record in records if record[factor_name] == bucket)
     materializer_module = import_module(f".{module_name}.materializer", __package__)
     materializer = materializer_module.MATERIALIZER(spec)
@@ -77,6 +77,10 @@ def test_count_cmp5_claims_match_materialized_values(
             {},
         )
     )
-    assert meta["claimed"] == target.record(observation) == record
+    assert (
+        meta["claimed"]
+        == target.record(observation)
+        == {k: v for k, v in record.items() if not k.startswith("_")}
+    )
     value = observation[attribute_name]
     assert value == 0 if bucket == "EQ" else value == 1 if bucket == "GT_1" else value >= 2

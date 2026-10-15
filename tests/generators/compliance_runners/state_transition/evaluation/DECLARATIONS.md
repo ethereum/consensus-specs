@@ -265,9 +265,7 @@ unexpected-observation check. Review output includes the declared constraints.
 
 `state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
 for providers that materialize the obligations directly. Its `build_profile`
-requires `spec=` and returns `(obligation_records, representative_records)`; the
-first contains complete abstract witnesses and the second contains canonical
-materializer records. Both lists have a stable order based on sorted factor/value
+requires `spec=` and returns a single list of canonical complete cases. Cases have a stable order based on sorted factor/value
 pairs. When `TARGET.profiles` omits `exceptional`, the adapter returns empty records
 for that profile. Declared profiles are evaluated normally; other missing names
 still fail.
@@ -283,7 +281,7 @@ or construct consensus objects.
 Effective-balance updates likewise choose concrete balances in their materializer,
 using the same witness table that defines target feasibility.
 
-Representatives always encode inactive fields as `"NA"` using the target's
+Cases always encode inactive fields as `"NA"` using the target's
 activation model. All target dimensions are included and active values retain
 their native types. `_nfaults` and `_rank` come from the bound assertion set, or
 are zero without assertions. Missing active fields and unknown fault counts

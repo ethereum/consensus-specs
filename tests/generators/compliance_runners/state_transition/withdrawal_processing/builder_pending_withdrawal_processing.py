@@ -18,6 +18,5 @@ def MATERIALIZER(spec, **kwargs):
 validate_case = validation.validate_case
 
 
-def build_profile(name: str) -> tuple[int, list[dict]]:
-    records = _build_profile(PENDING_MODEL, _normalize_pending_withdrawal, PENDING_ASPECTS, name)
-    return len(records), records
+def build_profile(name: str) -> list[dict]:
+    return _build_profile(PENDING_MODEL, _normalize_pending_withdrawal, PENDING_ASPECTS, name)

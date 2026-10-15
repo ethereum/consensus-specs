@@ -161,9 +161,9 @@ def _materialize_provider(
     module = import_module(f".{provider.module}", __package__)
     build_profile = module.build_profile
     if "spec" in inspect.signature(build_profile).parameters:
-        _, chosen = build_profile(profile, spec=spec)
+        chosen = build_profile(profile, spec=spec)
     else:
-        _, chosen = build_profile(profile)
+        chosen = build_profile(profile)
     reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
     materializer.test_provider = provider.name

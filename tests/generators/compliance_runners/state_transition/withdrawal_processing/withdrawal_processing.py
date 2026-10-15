@@ -18,11 +18,10 @@ def MATERIALIZER(spec, **kwargs):
 validate_case = validation.validate_case
 
 
-def build_profile(name: str) -> tuple[int, list[dict]]:
-    records = _build_profile(
+def build_profile(name: str) -> list[dict]:
+    return _build_profile(
         WITHDRAWAL_PROCESSING_MODEL,
         _flatten_withdrawal_processing,
         WITHDRAWAL_PROCESSING_ASPECTS,
         name,
     )
-    return len(records), records

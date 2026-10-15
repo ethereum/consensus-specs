@@ -137,13 +137,12 @@ def _build_profile(model_path: Path, normalize, aspects: dict, name: str) -> lis
     return chosen
 
 
-def build_profile(name: str) -> tuple[int, list[dict]]:
-    records = [
+def build_profile(name: str) -> list[dict]:
+    return [
         rec
         for model_path, normalize, aspects in _MODELS
         for rec in _build_profile(model_path, normalize, aspects, name)
     ]
-    return len(records), records
 
 
 def materialize_profile(name: str) -> int:

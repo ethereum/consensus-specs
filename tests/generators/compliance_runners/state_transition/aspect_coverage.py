@@ -107,7 +107,7 @@ def build_profile(
     exceptional_aspects: Aspects | None = None,
     normal_t: int = 2,
     exceptional_t: int = 1,
-) -> tuple[int, list[dict]]:
+) -> list[dict]:
     """Build a standard set of fault-count coverage profiles.
 
     Handler modules provide their aspect groups and may override the normal
@@ -115,24 +115,23 @@ def build_profile(
     a handler-specific policy.
     """
     if name == "max":
-        return max_profile(recs, all_aspects)
+        return max_profile(recs, all_aspects)[1]
     if name == "smoke":
-        return smoke(recs, all_aspects)
+        return smoke(recs, all_aspects)[1]
     if name == "normal":
         normal_records = filter_faults(recs, 0)
-        normal = cover(normal_records, input_aspects, normal_t)
         if normal_outcome_aspect is None:
-            return normal
+            return cover(normal_records, input_aspects, normal_t)[1]
         _, normal_inputs = cover(normal_records, input_aspects, normal_t)
         _, normal_outcomes = cover(normal_records, normal_outcome_aspect, 1)
-        return -1, dedup(normal_inputs + normal_outcomes, all_aspects)
+        return dedup(normal_inputs + normal_outcomes, all_aspects)
     if name == "exceptional":
         exceptional_coverage = (
             exceptional_aspects if exceptional_aspects is not None else outcome_aspect
         )
-        return cover(filter_faults(recs, 1), exceptional_coverage, exceptional_t)
+        return cover(filter_faults(recs, 1), exceptional_coverage, exceptional_t)[1]
     if name == "standard":
-        _, normal = build_profile(
+        normal = build_profile(
             recs,
             "normal",
             all_aspects,
@@ -143,7 +142,7 @@ def build_profile(
             normal_t=normal_t,
             exceptional_t=exceptional_t,
         )
-        _, exceptional = build_profile(
+        exceptional = build_profile(
             recs,
             "exceptional",
             all_aspects,
@@ -154,7 +153,7 @@ def build_profile(
             normal_t=normal_t,
             exceptional_t=exceptional_t,
         )
-        return -1, dedup(normal + exceptional, all_aspects)
+        return dedup(normal + exceptional, all_aspects)
     raise ValueError(f"unknown profile: {name}")
 
 

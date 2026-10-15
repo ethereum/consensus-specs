@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
@@ -15,7 +16,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from . import build_profile
 from .materializer import VoluntaryExitMaterializer
 from .target import TARGET
@@ -38,7 +38,7 @@ def profiles(request):
     preset = request.param
     spec = spec_targets[preset]["gloas"]
     target = TARGET.for_spec(spec, backend="minizinc")
-    records = {name: build_profile(name, spec=spec)[1] for name in target.profiles}
+    records = {name: build_profile(name, spec=spec) for name in target.profiles}
     return preset, spec, target, records
 
 
@@ -83,7 +83,7 @@ def test_provider_uses_native_configuration_generation(monkeypatch):
         pytest.fail("provider used Python configuration enumeration")
 
     monkeypatch.setattr(Model, "configurations", forbidden)
-    assert build_profile("smoke", spec=spec_targets["minimal"]["gloas"])[1]
+    assert build_profile("smoke", spec=spec_targets["minimal"]["gloas"])
 
 
 def test_all_profile_witnesses_materialize_exact_dimensions(profiles, monkeypatch):
