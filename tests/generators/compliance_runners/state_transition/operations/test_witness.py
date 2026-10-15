@@ -42,7 +42,7 @@ def test_rejection_completion_preserves_explicit_true_gate():
     target = TARGET.for_spec(spec)
     completed = BoundFormula(
         target, fix(accepted=False, deposits_empty=True)
-    ).generation_obligations(complete=True)
+    ).generation_obligations()
     assert len(completed) == 1
     witness = dict(next(iter(completed)))
     assert witness["deposits_empty"] is True

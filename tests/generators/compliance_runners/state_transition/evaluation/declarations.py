@@ -679,19 +679,16 @@ class BoundFormula:
             )
         return covered
 
-    def generation_obligations(self, *, complete=False):
-        """Preserve scope restrictions for adapters consuming plain dictionaries.
+    def generation_obligations(self):
+        """Return complete feasible witnesses within each formula branch.
 
-        A scoped projection is completed within its branch so downstream witness
-        selection cannot introduce additional faults. Unscoped plans stay compact
-        unless ``complete`` requests full assignments, preferring fewer faults.
+        Preserve fault scopes and explicit values, preferring consistent
+        acceptance and fewer faults. Coverage projections remain available
+        through ``run()`` and are independent of witness completion.
         """
         result = set()
         model = self.owner.definition.model(self.owner.bound_constants)
-        for scopes, configurations, obligations in self._compiled():
-            if not scopes and not complete:
-                result.update(obligations)
-                continue
+        for _scopes, configurations, obligations in self._compiled():
             assertions = self.owner.definition.assertions
 
             def preference(configuration, assertions=assertions):
@@ -705,11 +702,7 @@ class BoundFormula:
                     if assertions.observed is not None
                     else expected
                 )
-                faults = (
-                    (summary.fault_count is None, summary.fault_count or 0)
-                    if complete
-                    else (False, 0)
-                )
+                faults = (summary.fault_count is None, summary.fault_count or 0)
                 return observed != expected, faults
 
             result.update(model.complete(obligations, configurations, preference=preference))

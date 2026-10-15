@@ -125,7 +125,7 @@ def test_complete_generation_prefers_fewer_faults_and_retains_branch_scopes():
     target = example()
     for name in ("all", "mixed", "single", "double"):
         formula = target.profiles[name]
-        records = [dict(o) for o in formula.generation_obligations(complete=True)]
+        records = [dict(o) for o in formula.generation_obligations()]
         assert all(set(r) == {"positive", "valid", "accepted"} for r in records)
         report = score(target, records, formula)
         assert report.covered == report.total
