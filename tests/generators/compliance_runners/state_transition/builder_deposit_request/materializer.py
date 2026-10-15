@@ -28,24 +28,12 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.withdr
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-
-_DIMS = [
-    "withdrawal_credentials_profile",
-    "wc_is_builder_prefix",
-    "builder_pubkey_found",
-    "builder_signature_valid",
-    "amount_profile",
-    "builder_withdrawable_epoch_set",
-    "builder_balance_zero",
-    "reset_applies",
-    "reuses_swept_slot",
-    "builder_credited",
-    "outcome",
-]
 
 
 def _s(sol: Any, n: str) -> str:
@@ -96,8 +84,8 @@ class BuilderDepositRequestMaterializer(Materializer):
         address_tail = spec.sha256(request_pubkey)[12:]
 
         if found:
-            wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
-            bzero = _s(sol, "builder_balance_zero") == "T"
+            wset = _b(sol, "builder_withdrawable_epoch_set")
+            bzero = _b(sol, "builder_balance_zero")
             execution_address, _ = distinct_bytes(self.rng, 20)
             pre.builders.append(
                 spec.Builder(
@@ -113,7 +101,7 @@ class BuilderDepositRequestMaterializer(Materializer):
                     withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
                 )
             )
-        elif _s(sol, "reuses_swept_slot") == "T":
+        elif sol.reuses_swept_slot is True:
             # A distinct drained builder is reusable: the handler must replace
             # this registry entry instead of appending the request builder.
             execution_address, _ = distinct_bytes(self.rng, 20)
@@ -137,7 +125,7 @@ class BuilderDepositRequestMaterializer(Materializer):
             withdrawal_credentials=spec.Bytes32(wc),
             amount=spec.Gwei(amount),
         )
-        signer = request_pubkey if _s(sol, "builder_signature_valid") == "T" else wrong_pubkey
+        signer = request_pubkey if _b(sol, "builder_signature_valid") else wrong_pubkey
         request.signature = self._sign(request, builder_pubkey_to_privkey[signer])
 
         post = pre.copy()
@@ -148,9 +136,7 @@ class BuilderDepositRequestMaterializer(Materializer):
             ("builder_deposit_request", "ssz", request.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),
         ]
-        claimed = {
-            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {
             "description": f"process_builder_deposit_request: {claimed['outcome']}",
             "bls_setting": 1,
