@@ -691,3 +691,35 @@ provider metadata is present, allowing it to share `sanity/blocks` with the
 operations assertion-limit provider. Regression tests materialize and validate
 every feasible witness under both presets, audit all profiles, and reject
 corrupted dispatch shapes and effects.
+
+### Attestation and pending-deposit migrations
+
+`attestation/target.py` retains all 111 feasible legacy signatures. Its normal
+profile preserves grouped pairwise input coverage and outcome coverage; its
+exceptional profile preserves exactly one independently applicable failed gate.
+Window membership guards the slot/target fault, and committee resolution,
+nonempty aggregation, length, and signature form a dependency chain for fault
+counting. Raw recoverable booleans remain present even behind an earlier
+failure. The `max` profile now selects all 111 signatures, strengthening the
+former 89-case bounded-fault selection. Acceptance is observed from post-state
+presence, and payment-weight increases are measured from the post-state rather
+than predicted from the input gates.
+
+`pending_deposits/target.py` retains all 74 feasible legacy signatures and the
+normal profile's triple-wise composite-aspect obligations. The observer supplies
+numeric withdrawable epochs, deposit amounts, available/remaining activation
+churn, and carried balances. The declaration uses `cmp3` for comparisons and
+Boolean dimensions for lifecycle and signature predicates. Conditional
+projections carry their role or queue-layout context. A separate replay observes
+finalization, per-epoch and churn-limit stops without invoking the handler;
+retained churn is observed from the actual post-state. Validation requires a
+post-state, and this provider has no exceptional profile.
+
+Both providers use shared declaration generation, metadata, and validation;
+their custom MiniZinc models, coverage drivers, and validators have been
+removed. Pending-deposit generation uses the shared MiniZinc backend to avoid
+enumerating its much larger raw activation space in Python. The reference Python
+backend remains available for comparison. Generation and observation explicitly
+enable BLS for signature work and restore the caller's global setting.
+Regression tests materialize every feasible signature under minimal and mainnet,
+audit every profile's obligations, and reject altered post-state effects.

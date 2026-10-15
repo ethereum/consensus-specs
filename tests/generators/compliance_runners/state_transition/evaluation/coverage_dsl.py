@@ -286,6 +286,8 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "attestation": "tests.generators.compliance_runners.state_transition.attestation.target",
+    "pending_deposits": "tests.generators.compliance_runners.state_transition.pending_deposits.target",
     "builder_exit_request": "tests.generators.compliance_runners.state_transition.builder_exit_request.target",
     "process_operations_dispatch": "tests.generators.compliance_runners.state_transition.operations_dispatch.target",
     "builder_deposit_request": "tests.generators.compliance_runners.state_transition.builder_deposit_request.target",
