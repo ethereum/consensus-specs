@@ -23,13 +23,9 @@ def test_completed_witnesses_cover_each_obligation_once(profile):
     witnesses = build_profile(profile, spec=spec)
     signatures = [tuple(witness.items()) for witness in witnesses]
     assert len(signatures) == len(set(signatures))
-    assert all(set(witness) == {*GATES, "accepted", "_nfaults", "_rank"} for witness in witnesses)
+    assert all(set(witness) == {*GATES, "accepted"} for witness in witnesses)
     assert all(witness["accepted"] is all(witness[gate] for gate in GATES) for witness in witnesses)
     target = TARGET.for_spec(spec)
-    assert all(
-        witness["_rank"] == witness["_nfaults"] == target.assertion_result(witness).fault_count
-        for witness in witnesses
-    )
     report = score(target, witnesses, target.profiles[profile])
     assert report.covered == report.total
     assert not report.unexpected

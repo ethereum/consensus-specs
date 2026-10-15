@@ -281,12 +281,13 @@ or construct consensus objects.
 Effective-balance updates likewise choose concrete balances in their materializer,
 using the same witness table that defines target feasibility.
 
-Cases always encode inactive fields as `"NA"` using the target's
-activation model. All target dimensions are included and active values retain
-their native types. `_nfaults` and `_rank` come from the bound assertion set, or
-are zero without assertions. Missing active fields and unknown fault counts
-raise errors. The same conversion is available as
+Cases contain only target dimensions and encode inactive fields as `"NA"` using
+the target's activation model. Active values retain their native types and
+missing active fields raise errors. The same dimension encoding is available as
 `materializer_record(bound_target, assignment)`.
+
+Fault scopes select cases during generation; assertion counts are computed when
+materializers build claimed records.
 Materializers use `self.claimed_record(TARGET, solution)` to build dimension
 metadata from the same activation model. It encodes inactive dimensions as
 `"NA"`, excludes concrete inputs and solver metadata, and adds `fault_count`

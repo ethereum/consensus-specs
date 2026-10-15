@@ -16,10 +16,7 @@ def test_profiles_cover_their_dsl_obligations():
     for name in PROFILES:
         records = build_profile(name, spec=spec)
         assert records
-        assert all(
-            set(record) == {*(f.name for f in target.factors), "_nfaults", "_rank"}
-            for record in records
-        )
+        assert all(set(record) == {f.name for f in target.factors} for record in records)
         report = score(target, records, target.profiles[name])
         assert report.uncovered == []
         assert report.unexpected == []
