@@ -8,15 +8,11 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
     target_validator,
 )
 
-from .cases import candidate_records, constants
 from .materializer import EffectiveBalanceUpdatesBodyMaterializer
-from .target import COMPARISONS, TARGET
+from .target import TARGET
 
 MATERIALIZER = EffectiveBalanceUpdatesBodyMaterializer
-build_profile = coverage_profiles(
-    TARGET,
-    candidates=lambda bound_spec: candidate_records(constants(bound_spec), COMPARISONS),
-)
+build_profile = coverage_profiles(TARGET)
 recover_dimensions, validate_case = target_validator(TARGET, spec=lambda: spec)
 
 __all__ = (

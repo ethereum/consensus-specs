@@ -174,7 +174,10 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
     spec = object()
     build_profile = coverage_profiles(t)
     expected = [{"value": 0}, {"value": 1}, {"value": 2}]
-    assert build_profile("all", spec=spec) == (expected, expected)
+    assert build_profile("all", spec=spec) == (
+        expected,
+        [{**r, "_nfaults": 0, "_rank": 0} for r in expected],
+    )
     assert profile_records(t.for_spec(spec), "all") == expected
     assert build_profile("exceptional", spec=spec) == ([], [])
     with pytest.raises(KeyError):
@@ -192,7 +195,10 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
         ),
         observe_attributes=lambda ctx: ctx.pre,
     )
-    assert coverage_profiles(declared)("exceptional", spec=spec) == (expected, expected)
+    assert coverage_profiles(declared)("exceptional", spec=spec) == (
+        expected,
+        [{**r, "_nfaults": 0, "_rank": 0} for r in expected],
+    )
 
 
 def test_inputs_are_inferred_from_values_availability_applicability_and_constraints():
@@ -273,36 +279,6 @@ def test_explicit_input_lists_still_reject_omitted_references(explicit):
         )
 
 
-def test_provider_adapter_matches_concrete_candidates_and_reports_missing_witnesses():
-    x = attribute("x", Integer(0, 2))
-    t = target((x,), (dimension("value", x),))
-    spec = object()
-    candidates = [{"value": n, "balance": n + 10} for n in (2, 0, 1)]
-    duplicate = {"value": 0, "balance": 20}
-    build_profile = coverage_profiles(t, candidates=lambda bound_spec: [duplicate, *candidates])
-    records, chosen = build_profile("all", spec=spec)
-    assert records == [{"value": 0}, {"value": 1}, {"value": 2}]
-    assert chosen == sorted(candidates, key=lambda r: r["value"])
-    reversed_profile = coverage_profiles(
-        t, candidates=lambda bound_spec: [*reversed(candidates), duplicate]
-    )
-    assert reversed_profile("all", spec=spec) == (records, chosen)
-    missing = coverage_profiles(t, candidates=lambda bound_spec: candidates[:1])
-    with pytest.raises(ValueError, match="no concrete witness"):
-        missing("all", spec=spec)
-    with pytest.raises(ValueError, match="either"):
-        coverage_profiles(t, witness=dict, candidates=lambda bound_spec: candidates)
-
-
-def test_provider_adapter_deduplicates_converted_witnesses():
-    x = attribute("x", Integer(0, 2))
-    t = target((x,), (dimension("value", x),))
-    build_profile = coverage_profiles(t, witness=lambda record: {"bucket": record["value"] // 2})
-    records, chosen = build_profile("all", spec=object())
-    assert len(records) == 3
-    assert chosen == [{"bucket": 0}, {"bucket": 1}]
-
-
 def materializer_target():
     age = attribute("age", Integer(0, 2))
     ok = attribute("ok", Boolean())
@@ -352,7 +328,8 @@ def test_provider_profiles_always_complete_unscoped_obligations():
     spec = object()
     bound = template.for_spec(spec)
     records, chosen = coverage_profiles(template)("each", spec=spec)
-    assert records == chosen == profile_records(bound, "each")
+    assert records == profile_records(bound, "each")
+    assert chosen == [materializer_record(bound, r) for r in records]
     configurations = bound._configurations(filtered=True)[1]
     assert all(frozenset(r.items()) in configurations for r in records)
     assert all({"gate", "raw"} <= r.keys() for r in records)
@@ -368,7 +345,7 @@ def test_generic_materializer_profiles_encode_inactive_dimensions():
     template = materializer_target()
     spec = object()
     bound = template.for_spec(spec)
-    build_profile = coverage_profiles(template, materializer=True)
+    build_profile = coverage_profiles(template)
     records, chosen = build_profile("each", spec=spec)
     assert all(bound.assertion_result(r).fault_count is not None for r in records)
     assert {r["check"] for r in chosen} == {"NA", True, False}

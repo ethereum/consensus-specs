@@ -266,18 +266,11 @@ unexpected-observation check. Review output includes the declared constraints.
 `state_transition/declaration_coverage.py` provides `coverage_profiles(TARGET)`
 for providers that materialize the obligations directly. Its `build_profile`
 requires `spec=` and returns `(obligation_records, representative_records)`; the
-two lists coincide when materializing obligations directly. Records have a stable
-order based on sorted factor/value pairs. When `TARGET.profiles` omits `exceptional`, the adapter returns empty records
+first contains complete abstract witnesses and the second contains canonical
+materializer records. Both lists have a stable order based on sorted factor/value
+pairs. When `TARGET.profiles` omits `exceptional`, the adapter returns empty records
 for that profile. Declared profiles are evaluated normally; other missing names
 still fail.
-
-Providers can use the same adapter for concrete witnesses:
-
-- `witness(record)` converts a generation assignment to a materializer record.
-- `candidates(spec)` supplies concrete records containing factor values and
-  materializer inputs, as used by effective-balance updates. The adapter selects
-  the first matching candidate in stable factor order and reports missing
-  witnesses.
 
 Witness generation always delegates selection to `conditional_factors.Model.complete`
 over the declaration backend's feasible configurations for each formula branch.
@@ -287,17 +280,14 @@ Every active dimension is supplied, so materializers do not need to fill missing
 abstract fields. Block header retains its
 concrete joint-slot constructor; abstract completion does not choose raw slots
 or construct consensus objects.
+Effective-balance updates likewise choose concrete balances in their materializer,
+using the same witness table that defines target feasibility.
 
-The two witness options are mutually exclusive. The adapter deduplicates the
-representative list by sorted record contents; the first return value remains
-the generation obligations. Coverage scoring should use the representatives.
-For materializers that consume coverage dimensions directly, use
-`coverage_profiles(TARGET, materializer=True)`.
-This infers inactive fields from the target's
-activation model, encoding them as `"NA"`. All target dimensions are included and active values retain their native types. `_nfaults` and `_rank`
-come from the bound assertion set, or are zero without assertions. Missing
-active fields and unknown fault counts raise errors. The generic adapter cannot
-be combined with `witness` or `candidates`. The same conversion is available as
+Representatives always encode inactive fields as `"NA"` using the target's
+activation model. All target dimensions are included and active values retain
+their native types. `_nfaults` and `_rank` come from the bound assertion set, or
+are zero without assertions. Missing active fields and unknown fault counts
+raise errors. The same conversion is available as
 `materializer_record(bound_target, assignment)`.
 Materializers use `self.claimed_record(TARGET, solution)` to build dimension
 metadata from the same activation model. It encodes inactive dimensions as
