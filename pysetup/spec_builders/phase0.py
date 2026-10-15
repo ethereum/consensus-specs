@@ -61,6 +61,10 @@ def get_eth1_data(block: Eth1Block) -> Eth1Data:
         block_hash=Hash32(hash_tree_root(block)))
 
 
+def get_root_confirmed_before_restart() -> Root:
+    return Root()
+
+
 def cache_this(key_fn, value_fn, lru_size):
     cache_dict = LRU(size=lru_size)
 

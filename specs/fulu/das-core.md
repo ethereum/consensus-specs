@@ -207,7 +207,7 @@ def get_custody_groups(node_id: NodeID, custody_group_count: Uint64) -> Sequence
 
     # Skip computation if all groups are custodied
     if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
-        return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
+        return [CustodyIndex(index) for index in range(NUMBER_OF_CUSTODY_GROUPS)]
 
     current_id = Uint256(node_id)
     custody_groups: list[CustodyIndex] = []
@@ -234,7 +234,8 @@ def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[C
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
     return [
-        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group) for i in range(columns_per_group)
+        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * index + custody_group)
+        for index in range(columns_per_group)
     ]
 ```
 

@@ -180,15 +180,13 @@ the other is empty.
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=15)
+    ACTIVE_FIELDS = active_fields(width=15, gaps=(1, 6))
 
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data
     graffiti: Bytes32
     proposer_slashings: ProposerSlashings
     attester_slashings: AttesterSlashings
     attestations: Attestations
-    deposits: Deposits
     voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     bls_to_execution_changes: BLSToExecutionChanges
@@ -205,7 +203,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=48)
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -215,9 +213,6 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -235,7 +230,6 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -347,7 +341,6 @@ def process_epoch(state: BeaconState) -> None:
     # [New in EIP8321]
     process_pending_randao_commitments(state)
     process_slashings(state)
-    process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
     process_builder_pending_payments(state)
@@ -431,8 +424,6 @@ def process_operations(
     body: BeaconBlockBody,
     parent_slot: Slot,
 ) -> None:
-    assert len(body.deposits) == 0
-
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
             fn(state, operation, *args)
