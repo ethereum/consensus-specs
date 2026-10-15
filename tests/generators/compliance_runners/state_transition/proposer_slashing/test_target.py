@@ -62,10 +62,16 @@ def test_full_space_and_max_profile_completeness(preset, minizinc_available):
     assert native._configurations(filtered=True)[1] == configurations
     records = [materializer_record(target, dict(c)) for c in configurations]
     generated = build_profile("max", spec=spec)
-    low_faults = {signature(r) for r in records if r["_nfaults"] <= 2}
+    low_faults = {
+        signature(r) for r in records if target.assertion_result(assignment(r)).fault_count <= 2
+    }
     assert len(low_faults) == 360
     assert {signature(r) for r in generated} == low_faults
-    assert Counter(r["_nfaults"] for r in generated) == {0: 20, 1: 80, 2: 260}
+    assert Counter(target.assertion_result(assignment(r)).fault_count for r in generated) == {
+        0: 20,
+        1: 80,
+        2: 260,
+    }
 
     def exceptional_pairs(records):
         return {
@@ -120,7 +126,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
         expected = assignment(witness)
         assert {k: v for k, v in observed.items() if v is not NA} == expected
         result = target.assertion_result(observed)
-        assert result.fault_count == witness["_nfaults"] == meta["claimed"]["fault_count"]
+        assert result.fault_count == meta["claimed"]["fault_count"]
         assert result.expected_accepted == observed["accepted"] == (post is not None)
         assert not result.unknown
         recovered = validation.recover(pre, operation, post)

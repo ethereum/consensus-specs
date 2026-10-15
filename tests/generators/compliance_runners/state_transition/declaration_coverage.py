@@ -11,8 +11,6 @@ def materializer_record(target, assignment):
     """Encode a complete abstract assignment using the target's activation model.
 
     Inactive dimensions become ``"NA"``. Active values retain their native types.
-    Assertion fault counts supply ``_nfaults`` and ``_rank`` (zero for targets
-    without assertions).
     """
     if target._bound_spec is None:
         raise ValueError("bind the target with for_spec(spec) before adapting witnesses")
@@ -30,12 +28,7 @@ def materializer_record(target, assignment):
         if not any(type(value) is type(v) and value == v for v in factor.values):
             raise ValueError(f"invalid coverage value for {factor.name}: {value!r}")
         active[factor.name] = value
-    summary = target.assertion_result(active)
-    faults = 0 if summary is None else summary.fault_count
-    if faults is None:
-        raise ValueError(f"materializer witness has unknown assertions: {summary.unknown}")
-    record = {name: active.get(name, "NA") for name in names}
-    return {**record, "_nfaults": faults, "_rank": faults}
+    return {name: active.get(name, "NA") for name in names}
 
 
 def profile_records(target, name: str) -> list[dict]:
@@ -51,7 +44,7 @@ def coverage_profiles(target, *, backend=None, solver=None):
     """Expose complete declaration witnesses through the provider profile API.
 
     Return canonical complete cases in stable order.
-    Cases encode inactive dimensions as "NA" and include fault metadata. An
+    Cases contain only TARGET dimensions, encoding inactive values as "NA". An
     omitted exceptional profile returns empty lists; other missing profiles
     raise an error. Backend and solver override the target defaults.
     """

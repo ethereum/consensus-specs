@@ -53,7 +53,7 @@ def test_profiles_cover_native_formulas_and_match_python(profiles):
     names = {f.name for f in target.factors}
     for name, records in profiles.items():
         assert records
-        assert all(set(r) == names | {"_nfaults", "_rank"} for r in records)
+        assert all(set(r) == names for r in records)
         formula = target.profiles[name]
         # Full cross-backend formula equivalence is exercised for this target
         # by evaluation/test_minizinc_backend.py. Keep these provider checks
@@ -66,12 +66,16 @@ def test_profiles_cover_native_formulas_and_match_python(profiles):
         assert report.covered == report.total
         assert not report.unexpected
         assert not report.outcome_mismatches
-        for record in records:
-            assert target.assertion_result(assignment(record)).fault_count == record["_nfaults"]
         if name == "normal":
-            assert all(r["accepted"] and r["_nfaults"] == 0 for r in records)
+            assert all(
+                r["accepted"] and target.assertion_result(assignment(r)).fault_count == 0
+                for r in records
+            )
         elif name == "exceptional":
-            assert all(not r["accepted"] and r["_nfaults"] == 1 for r in records)
+            assert all(
+                not r["accepted"] and target.assertion_result(assignment(r)).fault_count == 1
+                for r in records
+            )
             assert all(r["activation_le_current"] for r in records)
     # These branches were absent from the scenario provider.
     assert {r["matching_pending_entries"] for r in profiles["max"]} == {"ZERO", "ONE", "MANY"}
@@ -106,7 +110,7 @@ def test_all_profile_witnesses_materialize_exact_dimensions(profiles, monkeypatc
         assert {n: v for n, v in observed.items() if v is not NA} == assignment(record), record
         assert (post is not None) == record["accepted"]
         summary = target.assertion_result(observed)
-        assert summary.fault_count == record["_nfaults"] == meta["claimed"]["fault_count"]
+        assert summary.fault_count == meta["claimed"]["fault_count"]
         assert summary.expected_accepted == record["accepted"]
         actual = validation.recover_dimensions(pre, operation, post)
         assert {n: meta["claimed"][n] for n in actual} == actual
