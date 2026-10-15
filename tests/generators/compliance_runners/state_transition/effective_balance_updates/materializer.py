@@ -7,7 +7,8 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from .target import TARGET
+from .cases import constants, representatives
+from .target import COMPARISONS, TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -56,8 +57,8 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         validator = pre.validators[0]
-        effective_balance = int(solution.effective_balance)
-        balance = int(solution.balance)
+        key = tuple(sorted((f.name, getattr(solution, f.name)) for f in TARGET.factors))
+        _, effective_balance, balance = representatives(constants(spec), COMPARISONS)[key]
         prefix = (
             spec.COMPOUNDING_WITHDRAWAL_PREFIX
             if solution.credential_type == "COMPOUNDING"

@@ -110,11 +110,3 @@ def representatives(values, comparisons):
         key = tuple(sorted(record.items()))
         selected.setdefault(key, witness)
     return selected
-
-
-def candidate_records(values, comparisons):
-    """Attach concrete balances to each realizable declaration assignment."""
-    return [
-        {**dict(key), "effective_balance": effective, "balance": balance}
-        for key, (_, effective, balance) in representatives(values, comparisons).items()
-    ]
