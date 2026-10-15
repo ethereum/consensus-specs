@@ -4,7 +4,9 @@ Feasibility is solved over the shared conditional-factor encoding. Coverage is
 a second MiniZinc model over those finite rows: set comprehensions implement
 projection, union, and compatible products with existential completion. Only
 the resulting obligation is a decision variable, avoiding duplicate solutions
-for its unrelated completions. This remains an enumerative reference backend.
+for its unrelated completions. Large encodings use the shared Python projection
+evaluator over the solved rows when Gecode cannot represent their mixed-radix obligation IDs. This remains
+an enumerative reference backend.
 """
 
 import json
@@ -57,6 +59,7 @@ class Backend:
         self.target = target
         self.definition = target.definition
         self.model = self.definition.model(target.bound_constants)
+        self.python_projection = prod(len(f.values) + 1 for f in self.model.factors) - 1 > 2**31 - 1
         self.indices = {f.name: i for i, f in enumerate(self.model.factors)}
         self.strings = {}
         self._configurations = {}
@@ -234,6 +237,11 @@ class Backend:
     def obligations(self, plan, configurations):
         key = _plan_key(plan), frozenset(configurations)
         if key not in self._obligations:
+            if self.python_projection:
+                from .declarations import BoundFormula  # noqa: PLC0415 - avoid import cycle
+
+                self._obligations[key] = BoundFormula(self.target, plan)._run(plan, configurations)
+                return self._obligations[key]
             compiler = Projection(self.model, configurations)
             self._obligations[key] = {
                 compiler.decode(s.obligation)
