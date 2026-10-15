@@ -49,6 +49,21 @@ validation.
 The body of this function is implementation dependent. The Engine API may be
 used to implement it with an external execution engine.
 
+*Note*: In Heze, `engine_newPayloadV6` is the only Engine API method that
+notifies a new payload, and it requires the separate ILs and omission claims.
+The Engine API adapter MUST therefore implement the
+`verify_and_notify_new_payload` call in `verify_execution_payload_envelope` and
+the `is_inclusion_list_satisfied` call in
+`record_payload_inclusion_list_satisfaction` for the same envelope as a single
+`engine_newPayloadV6` call. Its `inclusionLists` are the `inclusion_lists` that
+`record_payload_inclusion_list_satisfaction` computes for the envelope's beacon
+block with `get_inclusion_lists(..., only_timely=True)`, determined before the
+call, and its `omissionClaims` are `envelope.omission_claims`. The response
+`status` gives the result of `verify_and_notify_new_payload`;
+`inclusionListSatisfied` and `inclusionCheckId` give the result of
+`is_inclusion_list_satisfied`. If envelope verification fails, the inclusion
+result is discarded.
+
 #### New `is_inclusion_list_satisfied`
 
 The execution engine evaluates the supplied separate ILs and claim list for this
@@ -273,7 +288,9 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 *Note*: The only addition is the omission-claims root assertion. The complete
 function is retained because the executable specification replaces functions as
-a whole.
+a whole. The `verify_and_notify_new_payload` call is combined with the inclusion
+check into one `engine_newPayloadV6` call, as described in
+[`ExecutionEngine`](#executionengine).
 
 ```python
 def verify_execution_payload_envelope(

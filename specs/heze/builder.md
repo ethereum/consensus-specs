@@ -31,7 +31,7 @@ to set `bid.omission_claims_root`.
    `get_inclusion_list_committee(state, slot)`, `dependent_root` is
    `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
    `slot` is `bid.slot - 1`, and `store` is the fork choice store.
-1. Set `bid.omission_claims_root` to
+2. Set `bid.omission_claims_root` to
    `hash_tree_root(OmissionClaims(data=omission_claims))`, where
    `omission_claims` is the `omissionClaims` field returned by
    `engine_getPayloadV7`.

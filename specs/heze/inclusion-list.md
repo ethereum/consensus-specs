@@ -125,10 +125,10 @@ def get_inclusion_list_transactions(
 ### New `get_inclusion_lists`
 
 Return one transaction list per committee position from the same selected IL
-view. Missing, equivocating or excluded untimely lists produce empty entries.
-A validator holding several positions contributes the same list at each.
-Preserve transaction order and duplicates; the execution engine performs the
-per-list budget fill and may deduplicate verification work internally.
+view. Missing, equivocating or excluded untimely lists produce empty entries. A
+validator holding several positions contributes the same list at each. Preserve
+transaction order and duplicates; the execution engine performs the per-list
+budget fill and may deduplicate verification work internally.
 
 ```python
 def get_inclusion_lists(
@@ -145,11 +145,7 @@ def get_inclusion_lists(
     result: list[list[Transaction]] = []
     for validator_index in committee:
         entry = inclusion_lists.get(validator_index)
-        if (
-            entry is None
-            or validator_index in equivocators
-            or (only_timely and not entry.timely)
-        ):
+        if entry is None or validator_index in equivocators or (only_timely and not entry.timely):
             result.append([])
         else:
             result.append(list(entry.signed_inclusion_list.message.transactions))
