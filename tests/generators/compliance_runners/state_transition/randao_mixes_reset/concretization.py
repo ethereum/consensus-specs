@@ -13,9 +13,9 @@ from tests.generators.compliance_runners.state_transition.concretization import 
 class ManualConcretizer:
     def concretize(self, abstract_case: Any, spec: Any, rng: Any) -> dict[str, Any]:
         vector_length = int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-        position = getattr(abstract_case, "destination_position", "ZERO")
-        source_nonzero = getattr(abstract_case, "source_nonzero", True)
-        source_matches_destination = getattr(abstract_case, "source_matches_destination", True)
+        position = abstract_case.destination_position
+        source_nonzero = abstract_case.source_nonzero
+        source_matches_destination = abstract_case.source_matches_destination
         next_epoch = modulo_representative(position, vector_length) or vector_length
         source_value = (rng.getrandbits(256) or 1) if source_nonzero else 0
         source_mix = source_value.to_bytes(32, "big")

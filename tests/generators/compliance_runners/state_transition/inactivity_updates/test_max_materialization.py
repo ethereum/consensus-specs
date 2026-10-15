@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    BoundFormula,
+    fix,
+)
 from tests.generators.compliance_runners.state_transition.inactivity_updates_loop.materializer import (
     InactivityUpdatesLoopMaterializer,
 )
@@ -18,13 +22,17 @@ from .target import TARGET
 
 def _observed(materializer, target, **solution):
     materializer.rng = Random(0)
-    _, parts = materializer.materialize_solution(SimpleNamespace(**solution))
+    bound = target.for_spec(spec)
+    witnesses = BoundFormula(bound, fix(**solution)).generation_obligations()
+    assert len(witnesses) == 1
+    witness = dict(next(iter(witnesses)))
+    _, parts = materializer.materialize_solution(SimpleNamespace(**witness))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
     return target.record(target.observation(Context(spec, pre, None, post, {})))
 
 
-def test_partial_obligations_keep_requested_eligibility_and_score_effect():
+def test_generated_witnesses_keep_requested_eligibility_and_score_effect():
     materializer = InactivityUpdatesMaterializer(spec)
     empty = _observed(
         materializer,

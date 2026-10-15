@@ -10,6 +10,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     NA,
     score,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    BoundFormula,
+    fix,
+)
 
 from .target import BODY, TARGET
 
@@ -154,11 +158,12 @@ def test_cmp5_saturation_and_leak_boundaries_materialize():
     materializer.rng = Random(0)
     for score_bucket in ("EQ", "GT_1", "GT_FAR"):
         for leak_bucket in ("LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"):
-            solution = SimpleNamespace(
-                is_participating=True,
-                score_gt_zero=score_bucket,
-                leaking=leak_bucket,
-            )
+            witnesses = BoundFormula(
+                target,
+                fix(is_participating=True, score_gt_zero=score_bucket, leaking=leak_bucket),
+            ).generation_obligations()
+            assert len(witnesses) == 1
+            solution = SimpleNamespace(**dict(next(iter(witnesses))))
             _, parts = materializer.materialize_solution(solution)
             pre = spec.BeaconState.decode_bytes(parts[0][2])
             post = spec.BeaconState.decode_bytes(parts[1][2])

@@ -8,7 +8,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 from .cases import arithmetic_witnesses
-from .target import BODY, TARGET
+from .target import BODY
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -25,17 +25,7 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        if not hasattr(self, "_target"):
-            self._target = TARGET.for_spec(spec)
-        target = self._target
-        _, configurations = target._configurations(filtered=True)
-        requested = frozenset(
-            (str(k), v) for k, v in vars(solution).items() if not str(k).startswith("_")
-        )
-        completions = [c for c in configurations if requested <= c]
-        if not completions:
-            raise ValueError(f"no feasible inactivity-loop completion for {dict(requested)}")
-        assignment = dict(min(completions, key=lambda c: repr(sorted(c))))
+        assignment = vars(solution)
         witnesses = arithmetic_witnesses(
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),
             int(spec.config.INACTIVITY_SCORE_BIAS),
