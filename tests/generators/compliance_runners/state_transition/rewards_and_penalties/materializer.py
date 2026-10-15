@@ -23,28 +23,16 @@ class RewardsAndPenaltiesMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * count,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        any_eligible = bool(getattr(solution, "has_eligible_validator", True))
-        inactivity_penalty = bool(getattr(solution, "has_inactivity_penalty", False))
-        reward = bool(getattr(solution, "has_flag_reward", False))
-        penalty = bool(getattr(solution, "has_flag_penalty", False))
-        leaking = bool(getattr(solution, "in_inactivity_leak", False))
-        after_genesis = bool(getattr(solution, "after_genesis", True))
+        after_genesis = bool(solution.after_genesis)
+        any_eligible = after_genesis and bool(solution.has_eligible_validator)
+        inactivity_penalty = after_genesis and bool(solution.has_inactivity_penalty)
+        reward = after_genesis and bool(solution.has_flag_reward)
+        penalty = after_genesis and bool(solution.has_flag_penalty)
+        leaking = after_genesis and bool(solution.in_inactivity_leak)
         epoch = int(spec.GENESIS_EPOCH) + (
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) + 2 if after_genesis else 0
         )
         pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
-        if (
-            not reward
-            and not penalty
-            and not inactivity_penalty
-            and "has_eligible_validator" not in vars(solution)
-            and "in_inactivity_leak" in vars(solution)
-            and not leaking
-        ):
-            any_eligible = False
-        elif any_eligible and not reward and not penalty and not inactivity_penalty:
-            if "in_inactivity_leak" not in vars(solution):
-                leaking = True
         has_reward_and_penalty = reward and (penalty or inactivity_penalty) and not leaking
         eligible_count = (
             self.rng.randint(2, count)

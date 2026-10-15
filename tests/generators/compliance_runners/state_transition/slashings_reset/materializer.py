@@ -44,7 +44,6 @@ class SlashingsResetMaterializer(ConcretizingMaterializer):
         claimed = {
             name: getattr(solution, name)
             for name in ("destination_position", "destination_nonzero")
-            if hasattr(solution, name)
         }
         meta = {"description": "process_slashings_reset", "claimed": claimed}
         return meta, [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]

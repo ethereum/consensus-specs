@@ -20,7 +20,7 @@ class ParticipationFlagUpdatesMaterializer(Materializer):
         minimum_validator_count = int(spec.config.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT)
         validator_count = (
             minimum_validator_count + 1
-            if bool(getattr(solution, "validator_set_is_larger", True))
+            if bool(solution.validator_set_is_larger)
             else minimum_validator_count
         )
         pre = create_genesis_state(
@@ -30,8 +30,8 @@ class ParticipationFlagUpdatesMaterializer(Materializer):
         )
         flag = spec.ParticipationFlags(1)
         zero = spec.ParticipationFlags(0)
-        previous_has_flags = bool(getattr(solution, "previous_has_flags", True))
-        current_has_flags = bool(getattr(solution, "current_has_flags", True))
+        previous_has_flags = bool(solution.previous_has_flags)
+        current_has_flags = bool(solution.current_has_flags)
         previous = type(pre.previous_epoch_participation)()
         current = type(pre.current_epoch_participation)()
         previous_flag_index = (
@@ -55,7 +55,6 @@ class ParticipationFlagUpdatesMaterializer(Materializer):
                 "previous_has_flags",
                 "current_has_flags",
             )
-            if hasattr(solution, name)
         }
         meta = {
             "description": "process_participation_flag_updates",
