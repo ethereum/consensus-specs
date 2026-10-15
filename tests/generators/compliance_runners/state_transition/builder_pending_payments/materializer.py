@@ -14,20 +14,10 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-_DIMS = [
-    "previous_epoch_occupancy",
-    "target_weight_to_quorum",
-    "target_amount_nonzero",
-    "qualifying_payment_count",
-    "mixed_quorum_relations",
-    "next_epoch_payments_occupancy",
-    "preexisting_withdrawals_occupancy",
-    "outcome",
-    "state_effected",
-]
 
 
 class BuilderPendingPaymentsMaterializer(Materializer):
@@ -60,7 +50,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
 
         rel = str(sol.target_weight_to_quorum)
         weight = value_for_comparison(self.rng, rel, int(q)) if rel != "NA" else 0
-        amount = 0 if str(sol.target_amount_nonzero) == "F" else self.rng.randrange(1, 1_000)
+        amount = 0 if sol.target_amount_nonzero is False else self.rng.randrange(1, 1_000)
         occ = str(sol.previous_epoch_occupancy)
         count = str(sol.qualifying_payment_count)
         previous_slots = (
@@ -79,7 +69,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
                     value_for_comparison(self.rng, "GT", int(q)),
                 ] + [value_for_comparison(self.rng, "LT", int(q)) for _ in range(payment_count - 3)]
             else:
-                qualifiers = {"ZERO": 0, "ONE": 1, "MULTIPLE_COUNT": 2}[count]
+                qualifiers = {"ZERO": 0, "ONE": 1, "MANY": 2}[count]
                 ws = [weight]
                 qualifying_weight = max(weight, q)
                 ws.extend([qualifying_weight] * max(0, qualifiers - int(weight >= q)))
@@ -110,7 +100,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
         withdrawal_count = {
             "ZERO": 0,
             "ONE": 1,
-            "MULTIPLE_COUNT": 2,
+            "MANY": 2,
         }[str(sol.preexisting_withdrawals_occupancy)]
         for _ in range(withdrawal_count):
             fee_recipient, _ = distinct_bytes(self.rng, 20)
@@ -123,9 +113,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
             )
         post = pre.copy()
         s.process_builder_pending_payments(post)
-        claimed = {
-            n: (bool(v) if isinstance(v := getattr(sol, n), bool) else str(v)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {"description": "process_builder_pending_payments", "claimed": claimed}
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts
