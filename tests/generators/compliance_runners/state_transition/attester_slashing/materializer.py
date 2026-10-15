@@ -11,20 +11,10 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-
-_DIMS = [
-    "scenario",
-    "attestation_data_slashable",
-    "attestation_1_indices_well_formed",
-    "attestation_1_valid",
-    "attestation_2_valid",
-    "intersection_size",
-    "slashable_intersection",
-    "outcome",
-]
 
 
 class AttesterSlashingMaterializer(Materializer):
@@ -41,7 +31,21 @@ class AttesterSlashingMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        scenario = str(solution.scenario)
+        outcome = str(solution.outcome)
+        if outcome == "ACCEPT":
+            scenario = {
+                "ONE": "VALID_ONE",
+                "TWO": "VALID_TWO",
+                "THREE_OR_MORE": "VALID_THREE",
+            }[str(solution.intersection_size)]
+        else:
+            scenario = {
+                "REJECT_NOT_SLASHABLE": "NOT_SLASHABLE",
+                "REJECT_FIRST_ATTESTATION": "INVALID_FIRST_SIGNATURE",
+                "REJECT_MALFORMED_FIRST_INDICES": "INVALID_EMPTY_INDICES",
+                "REJECT_SECOND_ATTESTATION": "INVALID_SECOND_SIGNATURE",
+                "REJECT_NO_SLASHABLE_INTERSECTION": "NO_SLASHABLE_INTERSECTION",
+            }[outcome]
         intersection_size = {
             "VALID_TWO": 2,
             "VALID_THREE": 3,
@@ -74,11 +78,7 @@ class AttesterSlashingMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-            if name != "scenario"
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_attester_slashing: {claimed['outcome']}",
             "bls_setting": 1,
