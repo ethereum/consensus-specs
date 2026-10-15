@@ -723,3 +723,51 @@ backend remains available for comparison. Generation and observation explicitly
 enable BLS for signature work and restore the caller's global setting.
 Regression tests materialize every feasible signature under minimal and mainnet,
 audit every profile's obligations, and reject altered post-state effects.
+
+### Parent-payload and pending-builder-withdrawal migrations
+
+`parent_execution_payload/target.py` retains all 768 feasible legacy signatures
+when the redundant trace and dispatch columns are projected from the inputs. The
+reached-check prefix follows parent revelation, the requests root, and the four
+request caps in order; nonempty dispatch follows the successful prefix. The
+declaration covers that prefix with outcomes instead of enumerating six
+independent trace flags. Its normal profile preserves the former grouped input
+pairs and outcome obligations; its exceptional profile retains exactly one
+independently applicable failed condition and preserves the former trace and
+outcome obligations. `max` now retains the complete 768-signature space.
+
+The observer supplies raw request counts, with preset-bound limits and Boolean
+`predicate` mappings preserving the former cap coverage. It observes acceptance
+from post-state presence, actual state changes from pre/post roots, appended
+payment withdrawals from queue growth, and payment-slot clearing from the
+selected queue entry. Generation, metadata, and validation use shared adapters;
+the custom handler MiniZinc model, coverage driver, and validator are removed.
+Generation uses the shared MiniZinc backend.
+
+`builder_pending_withdrawal_processing/target.py` retains all 12 signatures of
+the single pending-builder-withdrawal provider, using Boolean dimensions and
+numeric `cmp3` mappings. It additionally observes the applied balance debit and
+pending-queue consumption, and validation requires a post-state. Normal and
+standard profiles preserve grouped pairs. Smoke and exceptional preserve the
+legacy one-wise aspect obligations; the latter historically selects valid
+vectors rather than filtering on failures. `max` retains all 12 signatures.
+
+This pending provider no longer enumerates a MiniZinc model or constructs a
+solution catalog. The aggregate withdrawal provider still uses its existing
+models and catalog; those shared files remain for its construction needs. The
+merged legacy entry point delegates pending generation to TARGET, while the
+shared materializer converts typed declaration witnesses only at its legacy
+construction boundary and serializes the authoritative declaration record.
+Coverage loading selects pending-provider vectors within the shared withdrawals
+handler. Regression tests exercise both providers under both presets, the
+combined withdrawals pipeline, profile obligations, and corrupted post-state
+effects.
+
+The combined mainnet regression also exposed an aggregate fixture bug: its
+validator sweep window can exceed the default 64-validator registry. The
+materializer now bounds in-window filling by the actual registry length and
+caches an expanded registry only for examples requiring an eligible validator
+outside the window. Padding uses unique valid public keys and the spec's
+registry insertion helper, with inactive balances below activation, preserving
+parallel state lists and the active validator set. Both preset pipelines and a
+mainnet outside-window regression validate these cases.

@@ -286,6 +286,8 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "parent_execution_payload": "tests.generators.compliance_runners.state_transition.parent_execution_payload.target",
+    "builder_pending_withdrawal_processing": "tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target",
     "attestation": "tests.generators.compliance_runners.state_transition.attestation.target",
     "pending_deposits": "tests.generators.compliance_runners.state_transition.pending_deposits.target",
     "builder_exit_request": "tests.generators.compliance_runners.state_transition.builder_exit_request.target",
@@ -321,6 +323,7 @@ TARGETS = {
 }
 
 TARGET_HANDLERS = {
+    "builder_pending_withdrawal_processing": "withdrawals",
     "process_operations": "blocks",
     "process_operations_dispatch": "blocks",
     "process_slot": "slots",
@@ -334,11 +337,11 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
     for case in test_run.gather_tests(tests):
         if case.handler != handler or case.preset != preset or case.fork != "gloas":
             continue
-        if target.name == "process_operations_dispatch":
+        if target.name in ("process_operations_dispatch", "builder_pending_withdrawal_processing"):
             dimensions_path = Path(case.test_dir) / "dimensions.yaml"
             if dimensions_path.exists():
                 dimensions = test_run.read_yaml(dimensions_path)
-                if dimensions.get("test_provider") != "process_operations_dispatch":
+                if dimensions.get("test_provider") != target.name:
                     continue
         tc = test_run.get_test_case(spec, Path(case.test_dir), case.handler)
         if target.name == "process_slot":

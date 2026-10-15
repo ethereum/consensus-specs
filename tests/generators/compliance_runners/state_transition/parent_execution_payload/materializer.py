@@ -14,6 +14,8 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_w
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -21,30 +23,6 @@ EPOCHS_PAST_GENESIS = 10
 EVICTED_EPOCH_DISTANCE = 5
 DISPATCH_DEPOSITS_COUNT = 20
 MAX_PAYMENT_VALUE = 50_000_000
-
-_DIMS = [
-    "parent_payload_revealed",
-    "requests_empty",
-    "requests_root_matches",
-    "withdrawals_within_cap",
-    "consolidations_within_cap",
-    "builder_deposits_within_cap",
-    "builder_exits_within_cap",
-    "deposits_nonempty",
-    "dispatches_nonempty_requests",
-    "payment_settlement",
-    "payment_value_nonzero",
-    "requests_empty_checked",
-    "requests_root_checked",
-    "withdrawals_cap_checked",
-    "consolidations_cap_checked",
-    "builder_deposits_cap_checked",
-    "builder_exits_cap_checked",
-    "outcome",
-    "state_effected",
-    "payment_withdrawal_appended",
-    "payment_slot_cleared",
-]
 
 
 def _b(solution: Any, name: str) -> bool:
@@ -202,14 +180,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {
-            name: (
-                _b(solution, name)
-                if isinstance(getattr(solution, name), bool)
-                else _s(solution, name)
-            )
-            for name in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, solution)
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("block", "ssz", block.encode_bytes()),

@@ -1,21 +1,17 @@
-"""Materialize builder_pending_withdrawal_processing and withdrawal_processing
-aspect-model solutions into process_withdrawals cases.
+"""Materialize pending-builder declarations and aggregate withdrawal aspect records.
 
-Solves both aspect models (all feasible BuilderPendingWithdrawalProcessing and
-WithdrawalProcessing records), materializes each solution into a concrete
-pre/post BeaconState vector, and verifies each via the corresponding validator.
-
-Spec: specs/gloas/beacon-chain.md get_builder_withdrawals / process_withdrawals.
-
-Usage:
-    uv run python -m tests.generators.compliance_runners.state_transition.withdrawal_processing.materializer
+Both paths build pre/post BeaconState vectors and verify their construction.
+Only aggregate processing needs the shared builder/validator solution catalog.
 """
 
 from __future__ import annotations
 
+from functools import cache
+from types import SimpleNamespace
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects.base import (
     Bool,
     Cmp,
@@ -28,6 +24,9 @@ from tests.generators.compliance_runners.state_transition.aspects.builder_withdr
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.pending_withdrawal import (
     BuilderPendingWithdrawal,
 )
+from tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target import (
+    TARGET as PENDING_TARGET,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
     BIG,
@@ -38,6 +37,7 @@ from tests.generators.compliance_runners.state_transition.materializer.common im
     set_parent_block,
     to_builder_solution,
 )
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing import (
     BuilderPendingWithdrawalProcessing,
 )
@@ -67,6 +67,14 @@ if TYPE_CHECKING:
 
 BUILDER_ADDRESS = b"\x42" * 20
 VALIDATOR_ADDRESS = b"\x43" * 20
+
+
+@cache
+def _padding_pubkey(index: int) -> bytes:
+    # Separate these inactive registry entries from the helper signing keys.
+    with bls_enabled():
+        return bls.SkToPk(2**40 + index)
+
 
 PENDING_WITHDRAWAL_DIMS = [
     "state_latest_block_hash_match",
@@ -365,7 +373,7 @@ class WithdrawalProcessingMaterializer(Materializer):
     def __init__(
         self,
         spec: Any,
-        solutions: SolutionCatalog,
+        solutions: SolutionCatalog | None = None,
         fork_name="gloas",
         preset_name="minimal",
         seed: int = 0,
@@ -374,6 +382,27 @@ class WithdrawalProcessingMaterializer(Materializer):
         self.solutions = solutions
         # Precompute the preprocessed base state once; each solution starts from a copy.
         self._base = make_base_state(spec)
+        self._outside_sweep_base = None
+
+    def _validator_sweep_base(self, *, outside_window: bool):
+        """Provide an actual registry position beyond the preset's sweep window."""
+        window = int(self.spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+        if not outside_window or len(self._base.validators) > window:
+            return self._base.copy()
+        if self._outside_sweep_base is None:
+            state = self._base.copy()
+            for index in range(len(state.validators), window + 1):
+                pubkey = _padding_pubkey(index)
+                self.spec.add_validator_to_registry(
+                    state,
+                    self.spec.BLSPubkey(pubkey),
+                    self.spec.Bytes32(
+                        self.spec.BLS_WITHDRAWAL_PREFIX + self.spec.sha256(pubkey)[1:]
+                    ),
+                    self.spec.MIN_DEPOSIT_AMOUNT,
+                )
+            self._outside_sweep_base = state
+        return self._outside_sweep_base.copy()
 
     def _materialize_validator_partial(
         self,
@@ -492,7 +521,20 @@ class WithdrawalProcessingMaterializer(Materializer):
     def materialize_solution(self, sol: Any) -> tuple[dict, list]:
         rec = self._record(sol)
         if "cmp_pending_amount_zero" in rec:
-            pre, post, _verified, claimed, extra_parts = self._materialize_pending_withdrawal(rec)
+            canonical = isinstance(rec["state_latest_block_hash_match"], bool)
+            construction = (
+                {
+                    name: ("T" if value else "F") if isinstance(value, bool) else value
+                    for name, value in rec.items()
+                }
+                if canonical
+                else rec
+            )
+            pre, post, _verified, claimed, extra_parts = self._materialize_pending_withdrawal(
+                construction
+            )
+            if canonical:
+                claimed = self.claimed_record(PENDING_TARGET, SimpleNamespace(**rec))
         else:
             pre, post, _verified, claimed, extra_parts = self._materialize_withdrawal_processing(
                 rec
@@ -587,6 +629,9 @@ class WithdrawalProcessingMaterializer(Materializer):
     def _materialize_withdrawal_processing(
         self, sol: Any
     ) -> tuple[Any, Any | None, bool, dict, list]:
+        catalog = self.solutions
+        if catalog is None:
+            raise ValueError("aggregate withdrawal processing requires a solution catalog")
         spec = self.spec
         rec = sol if isinstance(sol, dict) else self._record(sol)
 
@@ -607,7 +652,13 @@ class WithdrawalProcessingMaterializer(Materializer):
 
         bc, ni, positions = _pick_sweep(rec, limit, max_per_sweep, sweep_prior)
 
-        pre = self._base.copy()
+        pre = self._validator_sweep_base(
+            outside_window=(
+                rec["validators_eligible_for_sweep_exist"] == "T"
+                and rec["swept_validators_hit_limit"] == "F"
+                and rec["partial_validator_sweep_withdrawal"] == "F"
+            )
+        )
         state_epoch = int(spec.get_current_epoch(pre))
 
         set_parent_block(spec, pre, rec["state_latest_block_hash_match"])
@@ -618,8 +669,8 @@ class WithdrawalProcessingMaterializer(Materializer):
             root=spec.Root(b"\x01" * 32),
         )
 
-        ref_bs = self.rng.choice(self.solutions.ref_candidates)
-        active_bs = self.rng.choice(self.solutions.active_candidates)
+        ref_bs = self.rng.choice(catalog.ref_candidates)
+        active_bs = self.rng.choice(catalog.active_candidates)
         eligible_set = set(positions)
         active_indices = [i for i in range(bc) if i not in eligible_set][:builder_queue_len]
         active_set = set(active_indices)
@@ -669,7 +720,7 @@ class WithdrawalProcessingMaterializer(Materializer):
             template = self.rng.choice(
                 [
                     s
-                    for s in self.solutions.all_validator_pending_withdrawal_solutions
+                    for s in catalog.all_validator_pending_withdrawal_solutions
                     if (s.withdrawable == Bool.T) == eligible
                 ]
             )
@@ -693,7 +744,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         if rec["swept_validators_hit_limit"] == "T":
             # Fill the sweep window (skipping the pending-partial validator at 0)
             # so the validator sweep drains the remaining capacity to the limit.
-            for idx in range(1, window_end):
+            for idx in range(1, min(window_end, len(pre.validators))):
                 if idx != partial_index:
                     self._make_fully_withdrawable(pre, idx, state_epoch)
         elif rec["validators_eligible_for_sweep_exist"] == "T":
@@ -706,9 +757,9 @@ class WithdrawalProcessingMaterializer(Materializer):
             spec,
             pre,
             solution,
-            self.solutions.all_builder_solutions,
-            self.solutions.all_builder_pending_withdrawal_solutions,
-            self.solutions.all_validator_pending_withdrawal_solutions,
+            catalog.all_builder_solutions,
+            catalog.all_builder_pending_withdrawal_solutions,
+            catalog.all_validator_pending_withdrawal_solutions,
         )
 
         post = pre.copy()
