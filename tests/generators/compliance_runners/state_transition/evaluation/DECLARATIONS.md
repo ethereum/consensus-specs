@@ -523,6 +523,15 @@ materialized operation. The provider uses the shared declaration adapters for
 profile generation and case validation; its former handler MiniZinc model and
 custom validator have been removed.
 
+### Attester-slashing migration
+
+`attester_slashing/target.py` declares the eight feasible cases from its former
+handler model: three accepted intersection sizes and five rejection outcomes.
+The ordered outcome mapping follows the handler's first failing check, and the
+feasibility table keeps generated claims aligned with the materialized
+attestations and validator state. The provider now uses the shared declaration
+adapters; its former MiniZinc model and custom validator have been removed.
+
 ### Optional MiniZinc enumeration
 
 Existing targets can select the shared conditional-factor MiniZinc backend at
