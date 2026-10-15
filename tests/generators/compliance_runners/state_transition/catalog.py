@@ -104,7 +104,7 @@ PROVIDERS = (
     Provider("withdrawal_request", "withdrawal_request", "operations", "withdrawal_request"),
     Provider(
         "builder_pending_withdrawal_processing",
-        "withdrawal_processing.builder_pending_withdrawal_processing",
+        "builder_pending_withdrawal_processing",
         "operations",
         "withdrawals",
     ),
