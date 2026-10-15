@@ -397,7 +397,7 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         inclusion_list_due_ceiling = (
             spec.get_inclusion_list_due_ms() + spec.seconds_to_milliseconds(1)
         )
-        assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS_HEZE
+        assert inclusion_list_due_ceiling < spec.get_slot_duration_ms(spec.get_current_epoch(state))
 
         time_ms = forkchoice_store.time_ms + inclusion_list_due_ceiling
         spec.on_tick(forkchoice_store, time_ms)

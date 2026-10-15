@@ -95,7 +95,7 @@ def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
     Calculate a slot component's duration using this fork's slot duration.
     """
     # [Modified in Heze:EIP8198]
-    return basis_points * SLOT_DURATION_MS_HEZE // BASIS_POINTS
+    return basis_points * get_slot_duration_ms(HEZE_FORK_EPOCH) // BASIS_POINTS
 ```
 
 ### Modified `PayloadAttributes`
