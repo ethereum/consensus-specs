@@ -34,6 +34,7 @@
     - [Modified `process_block`](#modified-process_block)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
+      - [Modified `process_bls_to_execution_change`](#modified-process_bls_to_execution_change)
 
 <!-- mdformat-toc end -->
 
@@ -259,10 +260,10 @@ def is_valid_inclusion_list_signature(
 #### Modified `is_eligible_for_activation`
 
 *Note*: Validators with BLS withdrawal credentials are not activated. They
-remain in the registry with their balance and become eligible once their
-withdrawal credentials are changed with a `BLSToExecutionChange`. This includes
-validators created from deposits submitted before Heze. Validators that are
-already active are unaffected.
+remain in the registry with their balance until their withdrawal credentials are
+changed with a `BLSToExecutionChange`, which sends the balance back through the
+activation churn. This includes validators created from deposits submitted
+before Heze. Validators that are already active are unaffected.
 
 ```python
 def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
@@ -377,4 +378,51 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.payload_attestations, process_payload_attestation)
+```
+
+##### Modified `process_bls_to_execution_change`
+
+*Note*: A validator that changes its credentials before it is activated has its
+balance queued as a pending deposit, so that it becomes active only through the
+activation churn.
+
+```python
+def process_bls_to_execution_change(
+    state: BeaconState, signed_address_change: SignedBLSToExecutionChange
+) -> None:
+    address_change = signed_address_change.message
+
+    assert address_change.validator_index < len(state.validators)
+
+    validator = state.validators[address_change.validator_index]
+
+    assert validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX
+    assert validator.withdrawal_credentials[1:] == sha256(address_change.from_bls_pubkey)[1:]
+
+    # Fork-agnostic domain since address changes are valid across forks
+    domain = compute_domain(
+        DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root
+    )
+    signing_root = compute_signing_root(address_change, domain)
+    assert bls.Verify(address_change.from_bls_pubkey, signing_root, signed_address_change.signature)
+
+    validator.withdrawal_credentials = Bytes32(
+        ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + address_change.to_execution_address
+    )
+
+    # [New in Heze:EIP8365]
+    if validator.activation_epoch == FAR_FUTURE_EPOCH:
+        balance = state.balances[address_change.validator_index]
+        state.balances[address_change.validator_index] = Gwei(0)
+        validator.effective_balance = Gwei(0)
+        validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
+        state.pending_deposits.append(
+            PendingDeposit(
+                pubkey=validator.pubkey,
+                withdrawal_credentials=validator.withdrawal_credentials,
+                amount=balance,
+                signature=G2_POINT_AT_INFINITY,
+                slot=GENESIS_SLOT,
+            )
+        )
 ```

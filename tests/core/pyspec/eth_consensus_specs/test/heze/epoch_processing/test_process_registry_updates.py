@@ -33,26 +33,6 @@ def test_bls_withdrawal_credentials_not_activated(spec, state):
 
 @with_heze_and_later
 @spec_state_test
-def test_bls_withdrawal_credentials_activated_after_credential_change(spec, state):
-    index = 0
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(pubkeys[index])[1:]
-    prepare_queued_validator(spec, state, index, withdrawal_credentials)
-    assert not spec.is_eligible_for_activation(state, state.validators[index])
-
-    state.validators[index].withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\x42"
-    )
-    assert spec.is_eligible_for_activation(state, state.validators[index])
-
-    yield from run_process_registry_updates(spec, state)
-
-    assert state.validators[index].activation_epoch == spec.compute_activation_exit_epoch(
-        spec.get_current_epoch(state)
-    )
-
-
-@with_heze_and_later
-@spec_state_test
 def test_execution_withdrawal_credentials_activated(spec, state):
     index = 0
     withdrawal_credentials = make_withdrawal_credentials(
