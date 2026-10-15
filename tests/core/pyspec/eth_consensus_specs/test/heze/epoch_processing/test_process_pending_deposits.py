@@ -6,6 +6,8 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_state,
 )
+from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_pending_deposit,
@@ -146,3 +148,35 @@ def test_bls_withdrawal_credentials_queued_before_heze(spec, phases, state):
     assert state.validators[validator_index].withdrawal_credentials == withdrawal_credentials
     assert state.balances[validator_index] == pre_spec.MIN_ACTIVATION_BALANCE
     assert state.pending_deposits == spec.PendingDeposits()
+
+
+@with_heze_and_later
+@spec_state_test
+def test_requeued_bls_withdrawal_credentials_limited_by_churn(spec, state):
+    indices = list(range(spec.MAX_BLS_TO_EXECUTION_CHANGES))
+    for index in indices:
+        validator = state.validators[index]
+        validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
+        validator.activation_epoch = spec.FAR_FUTURE_EPOCH
+        validator.exit_epoch = spec.FAR_FUTURE_EPOCH
+        validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+        state.balances[index] = spec.MIN_ACTIVATION_BALANCE
+        validator.effective_balance = spec.MIN_ACTIVATION_BALANCE
+    for index in indices:
+        spec.process_bls_to_execution_change(
+            state, get_signed_address_change(spec, state, validator_index=index)
+        )
+    assert all(state.balances[index] == 0 for index in indices)
+    assert len(state.pending_deposits) == len(indices)
+    churn_limit = get_activation_churn_limit(spec, state)
+    assert len(indices) * spec.MIN_ACTIVATION_BALANCE > churn_limit
+
+    yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
+
+    applied = [index for index in indices if state.balances[index] > 0]
+    assert 0 < len(applied) < len(indices)
+    assert len(applied) * spec.MIN_ACTIVATION_BALANCE <= churn_limit
+    assert len(state.pending_deposits) == len(indices) - len(applied)
+    assert all(
+        not spec.is_eligible_for_activation(state, state.validators[index]) for index in indices
+    )

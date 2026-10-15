@@ -263,7 +263,8 @@ def is_valid_inclusion_list_signature(
 remain in the registry with their balance until their withdrawal credentials are
 changed with a `BLSToExecutionChange`, which sends the balance back through the
 activation churn. This includes validators created from deposits submitted
-before Heze. Validators that are already active are unaffected.
+before Heze. Validators that are already active or already assigned an
+activation epoch are unaffected.
 
 ```python
 def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
