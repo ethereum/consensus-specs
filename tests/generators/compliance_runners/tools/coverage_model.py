@@ -600,6 +600,11 @@ def identity(value, *, domain=None):
     return Mapping("identity", (expression(value),), domain=domain)
 
 
+def cmp3(lhs, rhs, *, op=">"):
+    """Three comparison buckets with an explicit predicate meaning for constraints."""
+    return Mapping("cmp3", (expression(lhs), expression(rhs)), op=op)
+
+
 def cmp5(lhs, rhs, *, op=">"):
     """Five distance buckets with an explicit predicate meaning for constraints."""
     return Mapping("cmp5", (expression(lhs), expression(rhs)), op=op)
@@ -652,7 +657,7 @@ def dimension(name, value, *, domain=None, limit=1024, **kwargs):
     if isinstance(value, Mapping):
         if domain is not None:
             raise ValueError("declare the coverage domain on the mapping")
-        if value.kind in ("predicate", "cmp5"):
+        if value.kind in ("predicate", "cmp3", "cmp5"):
             return comparison(name, *value.operands, op=value.op, granularity=value.kind, **kwargs)
         if value.kind == "modulo":
             return modulo(name, *value.operands, **kwargs)

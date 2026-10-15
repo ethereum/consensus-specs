@@ -10,11 +10,12 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.compar
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = ["queue_layout", "source_balance_to_effective", "outcome"]
 _VALIDATOR_COUNT = 8
 
 
@@ -80,10 +81,7 @@ class PendingConsolidationsMaterializer(Materializer):
 
         post = pre.copy()
         spec.process_pending_consolidations(post)
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_pending_consolidations: {claimed['outcome']}",
             "claimed": claimed,

@@ -6,7 +6,8 @@ parsing or executing capture-function source. It currently powers
 `randao_mixes_reset`, `sync_committee_updates`, `participation_flag_updates`,
 `block_header`, `operations`, `voluntary_exit`, `proposer_slashing`, `inactivity_updates`,
 `inactivity_updates_loop`, `justification_and_finalization`, `registry_updates`,
-`rewards_and_penalties`, `proposer_lookahead`, and `process_slot`. These targets
+`rewards_and_penalties`, `proposer_lookahead`, `process_slot`, `ptc_window`, and
+`pending_consolidations`. These targets
 use this API. `coverage_dsl.py` provides observation abstraction, scoring,
 vector loading, and the CLI; it no longer provides capture decorators or a
 second formula implementation.
@@ -96,6 +97,7 @@ and declares its granularity with `granularity="predicate"` (the default),
 `"cmp3"`, or `"cmp5"`, using `op` for its predicate meaning (default `>`).
 Targets also support the mapping syntax used in the sibling checkout:
 `dimension(name, identity(predicate))`,
+`dimension(name, cmp3(lhs, rhs, op="<"))`,
 `dimension(name, cmp5(lhs, rhs, op="<"))`,
 `dimension(name, predicate(lhs, rhs, op="=="))`,
 `dimension(name, identity(value, domain=Finite(values)))`,
@@ -103,8 +105,9 @@ Targets also support the mapping syntax used in the sibling checkout:
 `dimension(name, modulo_boundary(lhs, period))`.
 These forms lower to the existing boolean, comparison, categorical, and modulo
 declarations, preserving activation, availability, and coverage domains.
-`count` uses `ZERO`, `ONE`, and `MANY`. The optional `op` on `cmp5` preserves
-predicate meaning in constraints and activation without changing its five buckets.
+`count` uses `ZERO`, `ONE`, and `MANY`. The optional `op` on `cmp3` and `cmp5`
+preserves predicate meaning in constraints and activation without changing their
+three or five buckets.
 Mapping forms accept `when`, `available_when`, and `description` on `dimension`;
 an explicit coverage domain belongs on `identity`.
 
