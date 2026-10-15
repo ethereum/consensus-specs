@@ -513,6 +513,16 @@ single-fault `exceptional` profiles. Their `max` profiles retain unrestricted
 exceptional coverage, including combinations where dependencies force multiple
 failures.
 
+### BLS-to-execution-change migration
+
+`bls_to_execution_change/target.py` models the five feasible provider cases:
+acceptance and rejection at the validator index, credential prefix, pubkey
+match, or signature check. Its outcome is derived in assertion order, and the
+feasibility table keeps generated dimension claims consistent with the
+materialized operation. The provider uses the shared declaration adapters for
+profile generation and case validation; its former handler MiniZinc model and
+custom validator have been removed.
+
 ### Optional MiniZinc enumeration
 
 Existing targets can select the shared conditional-factor MiniZinc backend at
