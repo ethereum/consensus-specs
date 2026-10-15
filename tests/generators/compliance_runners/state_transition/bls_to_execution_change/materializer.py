@@ -8,18 +8,12 @@ from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = [
-    "scenario",
-    "validator_index_in_range",
-    "has_bls_withdrawal_credential",
-    "from_pubkey_matches",
-    "signature_valid",
-    "outcome",
-]
 _VALIDATOR_COUNT = 64
 
 
@@ -37,7 +31,20 @@ class BLSToExecutionChangeMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        scenario = str(solution.scenario)
+        index_in_range = bool(solution.validator_index_in_range)
+        has_bls_credential = bool(solution.has_bls_withdrawal_credential)
+        from_pubkey_matches = bool(solution.from_pubkey_matches)
+        signature_valid = bool(solution.signature_valid)
+        if not index_in_range:
+            scenario = "OUT_OF_RANGE"
+        elif not has_bls_credential:
+            scenario = "NON_BLS_CREDENTIAL"
+        elif not from_pubkey_matches:
+            scenario = "PUBKEY_MISMATCH"
+        elif not signature_valid:
+            scenario = "INVALID_SIGNATURE"
+        else:
+            scenario = "VALID"
         index = (
             _VALIDATOR_COUNT + self.rng.randrange(1, _VALIDATOR_COUNT + 1)
             if scenario == "OUT_OF_RANGE"
@@ -69,11 +76,7 @@ class BLSToExecutionChangeMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-            if name != "scenario"
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_bls_to_execution_change: {claimed['outcome']}",
             "bls_setting": 1,
