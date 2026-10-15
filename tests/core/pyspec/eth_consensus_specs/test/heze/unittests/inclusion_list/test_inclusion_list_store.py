@@ -170,6 +170,25 @@ def test_inclusion_list_store_by_slot_and_dependent_root__empty_slot(spec, state
         )
         assert inclusion_list_transactions_slot_1 == []
 
+        # A lookup for a slot with no inclusion lists must not populate the store
+        missing_key = (state.slot + 1, signed_inclusion_list_slot_0.message.dependent_root)
+        assert missing_key not in inclusion_list_store.inclusion_lists
+        assert missing_key not in inclusion_list_store.equivocators
+
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+        inclusion_list_bits_slot_1 = spec.get_inclusion_list_bits(
+            inclusion_list_store,
+            inclusion_list_committee,
+            missing_key[0],
+            missing_key[1],
+        )
+
+        assert inclusion_list_bits_slot_1 == spec.InclusionListBits(
+            data=[False] * len(inclusion_list_committee)
+        )
+        assert missing_key not in inclusion_list_store.inclusion_lists
+        assert missing_key not in inclusion_list_store.equivocators
+
     run_with_inclusion_list_store(spec, run_func)
 
 
