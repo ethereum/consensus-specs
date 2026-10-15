@@ -6,16 +6,10 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-_DIMS = [
-    "epoch_position",
-    "validator_count",
-    "validator_balance",
-    "validator_activity",
-]
-
 
 class PtcWindowMaterializer(Materializer):
     runner_name = "epoch_processing"
@@ -73,9 +67,7 @@ class PtcWindowMaterializer(Materializer):
         s.process_slots(pre, s.Slot(target))
         post = pre.copy()
         s.process_ptc_window(post)
-        claimed = {
-            n: (bool(v) if isinstance(v := getattr(sol, n), bool) else str(v)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {"description": "process_ptc_window", "claimed": claimed}
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts

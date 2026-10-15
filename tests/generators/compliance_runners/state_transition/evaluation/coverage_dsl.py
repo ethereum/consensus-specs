@@ -304,6 +304,8 @@ TARGETS = {
     "randao_mixes_reset": "tests.generators.compliance_runners.state_transition.randao_mixes_reset.target",
     "slashings_reset": "tests.generators.compliance_runners.state_transition.slashings_reset.target",
     "sync_committee_updates": "tests.generators.compliance_runners.state_transition.sync_committee_updates.target",
+    "pending_consolidations": "tests.generators.compliance_runners.state_transition.pending_consolidations.target",
+    "ptc_window": "tests.generators.compliance_runners.state_transition.ptc_window.target",
     "process_slot": "tests.generators.compliance_runners.state_transition.slot_processing.target",
 }
 
