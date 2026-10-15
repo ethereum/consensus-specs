@@ -11,38 +11,14 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_w
     distinct_bytes,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-_DIMS = [
-    "target_epoch_in_window",
-    "target_epoch_matches_slot",
-    "inclusion_delay_ok",
-    "index_valid",
-    "committee_indices_valid",
-    "committee_nonempty",
-    "aggregation_length_valid",
-    "signature_valid",
-    "target_is_current",
-    "attestation_is_same_slot",
-    "pending_payment_amount_positive",
-    "sets_new_participation_flag",
-    "payment_weight_increased",
-    "outcome",
-]
-_GATES = _DIMS[:8]
-_REJECTS = {
-    "REJECT_TARGET_EPOCH_OUT_OF_WINDOW": 0,
-    "REJECT_TARGET_EPOCH_SLOT_MISMATCH": 1,
-    "REJECT_INCLUSION_DELAY": 2,
-    "REJECT_INDEX": 3,
-    "REJECT_COMMITTEE_INDEX": 4,
-    "REJECT_COMMITTEE_EMPTY": 5,
-    "REJECT_AGGREGATION_LENGTH": 6,
-    "REJECT_SIGNATURE": 7,
-}
 
 
 def _b(sol: Any, name: str) -> bool:
@@ -150,16 +126,16 @@ class AttestationMaterializer(Materializer):
             and _b(sol, "committee_nonempty")
             and _b(sol, "aggregation_length_valid")
         ):
-            sign_attestation(spec, pre, attestation)
+            with bls_enabled():
+                sign_attestation(spec, pre, attestation)
         post = pre.copy()
         parent_slot = pre.latest_block_header.slot
         try:
-            spec.process_attestation(post, attestation, parent_slot)
+            with bls_enabled():
+                spec.process_attestation(post, attestation, parent_slot)
         except (AssertionError, IndexError):
             post = None
-        claimed = {
-            name: (_b(sol, name) if name != "outcome" else str(sol.outcome)) for name in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {
             "description": f"process_attestation: {claimed['outcome']}",
             "bls_setting": 1,

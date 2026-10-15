@@ -14,26 +14,13 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
     distinct_indices,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
+
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-_DIMS = [
-    "queue_layout",
-    "secondary_role",
-    "primary_reached",
-    "primary_role",
-    "deposit_signature_valid",
-    "validator_pubkey_found",
-    "validator_active",
-    "validator_exiting",
-    "withdrawable_epoch_to_next_epoch",
-    "initial_churn",
-    "primary_amount_to_available",
-    "second_amount_to_remaining",
-    "churn_effect",
-    "outcome",
-]
 # Minimal Gloas reaches the activation cap at 64 validators.  Twice that count
 # makes exit churn strictly larger, so GT cases distinguish activation-only
 # deposit churn from the uncapped exit churn.
@@ -64,13 +51,14 @@ class PendingDepositsMaterializer(Materializer):
         signed: bool = True,
         slot: Any = None,
     ):
-        return prepare_pending_deposit(
-            self.spec,
-            validator_index,
-            amount,
-            signed=signed,
-            slot=self.spec.GENESIS_SLOT if slot is None else slot,
-        )
+        with bls_enabled():
+            return prepare_pending_deposit(
+                self.spec,
+                validator_index,
+                amount,
+                signed=signed,
+                slot=self.spec.GENESIS_SLOT if slot is None else slot,
+            )
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
@@ -163,11 +151,9 @@ class PendingDepositsMaterializer(Materializer):
             raise ValueError(f"unknown queue layout: {layout}")
 
         post = pre.copy()
-        spec.process_pending_deposits(post)
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-        }
+        with bls_enabled():
+            spec.process_pending_deposits(post)
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_pending_deposits: {claimed['outcome']}",
             "bls_setting": 1,
