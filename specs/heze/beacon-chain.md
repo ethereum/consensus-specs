@@ -121,7 +121,7 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
 
 | Name                    | Value           |
 | ----------------------- | --------------- |
-| `SLOT_DURATION_MS_HEZE` | `Uint64(10000)` |
+| `SLOT_DURATION_MS_HEZE` | `Uint64(12000)` |
 
 The slot duration MUST be a positive multiple of `1000` so that
 `ExecutionPayload.timestamp` matches the slot start time in seconds.
