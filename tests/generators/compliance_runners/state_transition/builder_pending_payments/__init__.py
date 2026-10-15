@@ -1,9 +1,21 @@
-"""Compliance generator for ``process_builder_pending_payments``."""
+"""Declaration-based provider for ``process_builder_pending_payments``."""
 
-from .coverage import build_profile
-from .materializer import BuilderPendingPaymentsMaterializer
-from .validation import validate_case
+from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
+from tests.generators.compliance_runners.state_transition.declaration_validation import (
+    target_validator,
+)
 
-MATERIALIZER = BuilderPendingPaymentsMaterializer
+from .materializer import BuilderPendingPaymentsMaterializer as MATERIALIZER
+from .target import TARGET
 
-__all__ = ("MATERIALIZER", "build_profile", "validate_case")
+build_profile = coverage_profiles(TARGET)
+recover, validate_case = target_validator(
+    TARGET,
+    spec=lambda: spec,
+    require_post=True,
+)
+
+__all__ = ("MATERIALIZER", "TARGET", "build_profile", "recover", "validate_case")

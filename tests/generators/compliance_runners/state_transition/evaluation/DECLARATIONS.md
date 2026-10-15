@@ -634,3 +634,30 @@ individual declaration dimensions in addition to rejection categories; their
 representative counts need not equal the old outcome-only selections. Tests
 materialize every `max` witness under both presets and score every profile's
 representatives against the resulting observations.
+
+### Builder provider migrations
+
+`builder_deposit_request/target.py` and `builder_pending_payments/target.py`
+replace their handler MiniZinc models, coverage drivers, and custom validators.
+Both providers use the shared declaration adapters for profile generation,
+metadata, and validation, and are registered with the coverage scoring CLI. The
+migration comparison preserved all 306 builder-deposit signatures and all 468
+pending-payment signatures from the former models. Regression tests materialize
+every `max` witness under minimal and mainnet and audit every profile against
+independently recovered observations.
+
+Builder deposits retain prefix, signature, membership, amount, reset, and swept
+registry-slot coverage. A bad prefix or invalid new-builder signature selects an
+ignored-operation outcome, rather than a rejecting assertion: the operation
+always produces a post-state. Signature validity is recovered even when an
+earlier branch bypasses its check. Normal profiles cover grouped input pairs for
+each compatible credited outcome; exceptional profiles cover both ignored
+outcomes, and `max` retains the entire feasible space.
+
+Pending payments retain quorum comparison boundaries, previous/next section
+occupancies, mixed quorum relations, qualifying counts, existing withdrawals,
+and rotation/append outcomes. Normal and standard profiles cover pairs of aspect
+projections; the exceptional profile is empty because this handler has no fault
+conditions. Conditional projections include their applicability context so
+absent dimensions cannot earn coverage for an active branch. Both providers
+require post-state presence during case validation.
