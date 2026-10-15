@@ -11,11 +11,12 @@ from eth_consensus_specs.test.helpers.sync_committee import (
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = ["participation_level", "signature_valid", "outcome"]
 _VALIDATOR_COUNT = 64
 
 
@@ -69,10 +70,7 @@ class SyncAggregateMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_sync_aggregate: {claimed['outcome']}",
             "bls_setting": 1,
