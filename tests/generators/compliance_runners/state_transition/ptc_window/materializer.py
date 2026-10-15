@@ -11,6 +11,7 @@ from .target import TARGET
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
+
 class PtcWindowMaterializer(Materializer):
     runner_name = "epoch_processing"
     handler_name = "ptc_window"

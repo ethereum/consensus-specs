@@ -21,13 +21,9 @@ def observe_attributes(ctx: Context) -> dict[str, str]:
         balance_profile = "MINIMUM_BALANCE"
     else:
         balance_profile = "MIXED_BALANCE"
-    all_active = all(
-        validator.activation_epoch <= current_epoch for validator in state.validators
-    )
+    all_active = all(validator.activation_epoch <= current_epoch for validator in state.validators)
     return {
-        "observed_epoch_position": "GENESIS_END"
-        if int(current_epoch) == 0
-        else "LATER_EPOCH_END",
+        "observed_epoch_position": "GENESIS_END" if int(current_epoch) == 0 else "LATER_EPOCH_END",
         "observed_validator_count": "MINIMUM" if validator_count == 64 else "MANY",
         "observed_validator_balance": balance_profile,
         "observed_validator_activity": "ALL_ACTIVE" if all_active else "SOME_INACTIVE",

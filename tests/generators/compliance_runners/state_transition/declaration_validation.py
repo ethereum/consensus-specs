@@ -36,9 +36,7 @@ def validate_record(target, ctx, claimed):
     return checks
 
 
-def target_validator(
-    target, *, operation_name=None, operation_type=None, spec, require_post=False
-):
+def target_validator(target, *, operation_name=None, operation_type=None, spec, require_post=False):
     """Build recovery and on-disk validation using a provider's spec getter.
 
     Typed operations are decoded from ``<operation_name>.ssz_snappy``. When a
@@ -56,9 +54,7 @@ def target_validator(
         if operation_name is None:
             operation = None
         elif operation_type is None:
-            operation = YAML(typ="safe").load(
-                (case_dir / f"{operation_name}.yaml").read_text()
-            )
+            operation = YAML(typ="safe").load((case_dir / f"{operation_name}.yaml").read_text())
         else:
             operation = decode(
                 case_dir / f"{operation_name}.ssz_snappy", getattr(case_spec, operation_type)
@@ -70,7 +66,14 @@ def target_validator(
         ctx = Context(case_spec, pre, operation, post, metadata)
         checks = validate_record(target, ctx, metadata["claimed"])
         if require_post and not post_exists:
-            checks.append(Check("post_state_present", True, False, "mismatch"))
+            checks.append(
+                Check(
+                    "post_state_present",
+                    claimed=True,
+                    actual=False,
+                    status="mismatch",
+                )
+            )
         return checks
 
     def validate_case(case_dir):
