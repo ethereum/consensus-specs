@@ -29,13 +29,13 @@ def _vector(scenario: str, accepted: bool):
 
 
 def test_profiles_select_dispatch_scenarios():
-    assert {record["scenario"] for record in build_profile("smoke")[1]} == {
+    assert {record["scenario"] for record in build_profile("smoke")} == {
         "all_lists",
         "slash_before_exit",
     }
-    assert len(build_profile("normal")[1]) == 3
-    assert len(build_profile("exceptional")[1]) == 2
-    assert len(build_profile("standard")[1]) == 5
+    assert len(build_profile("normal")) == 3
+    assert len(build_profile("exceptional")) == 2
+    assert len(build_profile("standard")) == 5
 
 
 def test_slash_then_exit_rejects_but_reverse_order_accepts():

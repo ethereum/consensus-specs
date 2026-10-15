@@ -126,7 +126,7 @@ def test_impossible_pairs_and_contradictory_acceptance_are_rejected():
 def test_materialized_profiles_cover_their_obligations(profile):
     spec = spec_targets["minimal"]["gloas"]
     target = TARGET.for_spec(spec)
-    _, representatives = build_profile(profile, spec=spec)
+    representatives = build_profile(profile, spec=spec)
     records = []
     for assignment in representatives:
         meta, pre, block, post = materialize(spec, assignment)

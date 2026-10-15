@@ -10,23 +10,25 @@ from .target import COMPARISONS, PROFILES
 
 def test_profiles_cover_their_dsl_obligations():
     target = TARGET.for_spec(spec)
-    assert build_profile("exceptional", spec=spec) == ([], [])
+    assert build_profile("exceptional", spec=spec) == []
     assert all(f.granularity == "cmp5" for f in COMPARISONS)
     counts = {}
     for name in PROFILES:
-        records, chosen = build_profile(name, spec=spec)
+        records = build_profile(name, spec=spec)
         assert records
-        assert records == [{k: v for k, v in r.items() if not k.startswith("_")} for r in chosen]
-        assert all(set(record) == {f.name for f in target.factors} for record in records)
-        report = score(target, chosen, target.profiles[name])
+        assert all(
+            set(record) == {*(f.name for f in target.factors), "_nfaults", "_rank"}
+            for record in records
+        )
+        report = score(target, records, target.profiles[name])
         assert report.uncovered == []
         assert report.unexpected == []
-        counts[name] = len(chosen)
+        counts[name] = len(records)
     assert counts["max"] > counts["standard"] > 5
 
 
 def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
-    records, _ = build_profile("max", spec=spec)
+    records = build_profile("max", spec=spec)
     witnesses = representatives(constants(spec), COMPARISONS)
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
     maximum = int(spec.MAX_EFFECTIVE_BALANCE)
@@ -39,7 +41,7 @@ def test_max_preserves_old_behaviors_and_exact_guard_boundaries():
     )
     for witness in old_cases:
         record = signature(witness, constants(spec), COMPARISONS)
-        assert record in records
+        assert any(record.items() <= case.items() for case in records)
         assert witnesses[tuple(sorted(record.items()))] == witness
     for guard in ("downward_trigger", "upward_trigger"):
         assert {record[guard] for record in records} == {"LT_FAR", "LT_1", "EQ", "GT_1", "GT_FAR"}
@@ -49,7 +51,7 @@ def test_rounding_buckets_have_concrete_witnesses_in_every_profile():
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
     witnesses = representatives(constants(spec), COMPARISONS)
     for profile in PROFILES:
-        records, _ = build_profile(profile, spec=spec)
+        records = build_profile(profile, spec=spec)
         assert {record["balance_remainder"] for record in records} == {
             "ZERO",
             "ONE",
@@ -57,7 +59,9 @@ def test_rounding_buckets_have_concrete_witnesses_in_every_profile():
             "INTERIOR",
         }
         for record in records:
-            _, _, balance = witnesses[tuple(sorted(record.items()))]
+            _, _, balance = witnesses[
+                tuple(sorted((k, v) for k, v in record.items() if not k.startswith("_")))
+            ]
             remainder = balance % increment
             bucket = record["balance_remainder"]
             if bucket == "ZERO":

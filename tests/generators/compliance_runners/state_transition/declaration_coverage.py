@@ -39,10 +39,10 @@ def materializer_record(target, assignment):
 
 
 def profile_records(target, name: str) -> list[dict]:
-    """Return complete profile witnesses in a stable order."""
+    """Return canonical complete profile cases in a stable order."""
     obligations = target.profiles[name].generation_obligations()
     return [
-        dict(items)
+        materializer_record(target, dict(items))
         for items in sorted((tuple(sorted(obligation)) for obligation in obligations), key=repr)
     ]
 
@@ -50,17 +50,16 @@ def profile_records(target, name: str) -> list[dict]:
 def coverage_profiles(target, *, backend=None, solver=None):
     """Expose complete declaration witnesses through the provider profile API.
 
-    Return abstract records and canonical materializer representatives in stable
-    order. Representatives encode inactive dimensions as "NA" and include fault
-    metadata. An omitted exceptional profile returns empty lists; other missing
-    profiles raise an error. Backend and solver override the target defaults.
+    Return canonical complete cases in stable order.
+    Cases encode inactive dimensions as "NA" and include fault metadata. An
+    omitted exceptional profile returns empty lists; other missing profiles
+    raise an error. Backend and solver override the target defaults.
     """
 
-    def build_profile(name: str, *, spec) -> tuple[list[dict], list[dict]]:
+    def build_profile(name: str, *, spec) -> list[dict]:
         if name == "exceptional" and name not in target.profiles:
-            return [], []
+            return []
         bound = target.for_spec(spec, backend=backend, solver=solver)
-        records = profile_records(bound, name)
-        return records, [materializer_record(bound, record) for record in records]
+        return profile_records(bound, name)
 
     return build_profile
