@@ -414,6 +414,10 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
 
 #### Modified `get_base_reward_per_increment`
 
+*Note*: Rewards, penalties, and churn limits are scaled relative to
+`SLOT_DURATION_MS` rather than the slot duration at genesis, so they are also
+scaled on networks that activate Heze at genesis.
+
 ```python
 def get_base_reward_per_increment(
     state: BeaconState,
@@ -429,7 +433,7 @@ def get_base_reward_per_increment(
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
         * get_slot_duration_ms(epoch)
-        // get_slot_duration_ms(GENESIS_EPOCH)
+        // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
@@ -515,7 +519,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], S
             penalty_denominator = (
                 INACTIVITY_SCORE_BIAS
                 * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
-                * get_slot_duration_ms(GENESIS_EPOCH) ** 2
+                * SLOT_DURATION_MS**2
                 // get_slot_duration_ms(previous_epoch) ** 2
             )
             penalties[index] += penalty_numerator // penalty_denominator
@@ -539,11 +543,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
     )
     # [Modified in Heze:EIP8198]
     churn = min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
@@ -563,11 +563,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     # [Modified in Heze:EIP8198]
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
@@ -582,11 +578,7 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
     churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     # [Modified in Heze:EIP8198]
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 

@@ -38,6 +38,16 @@ def expected_base_reward(spec, state, index, slot_duration_ms):
     )
 
 
+def fork_epoch_cases(spec, slot_duration_ms):
+    genesis_ms = int(spec.config.SLOT_DURATION_MS)
+    return [
+        (FORK_EPOCH, FORK_EPOCH - 1, genesis_ms),
+        (FORK_EPOCH, FORK_EPOCH, slot_duration_ms),
+        (0, 0, slot_duration_ms),
+        (0, 1, slot_duration_ms),
+    ]
+
+
 def scale_churn(spec, churn, slot_duration_ms):
     churn = churn * slot_duration_ms // int(spec.config.SLOT_DURATION_MS)
     return churn - churn % spec.EFFECTIVE_BALANCE_INCREMENT
@@ -92,13 +102,12 @@ def test_time_at_slot_ms_across_fork(spec, state):
 @single_phase
 def test_base_reward_across_fork(spec, state):
     index = spec.ValidatorIndex(0)
-    genesis_ms = int(spec.config.SLOT_DURATION_MS)
     for slot_duration_ms in SLOT_DURATIONS_MS:
-        heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms)
-        pre_fork = heze_spec.get_base_reward(state, index, spec.Epoch(FORK_EPOCH - 1))
-        post_fork = heze_spec.get_base_reward(state, index, spec.Epoch(FORK_EPOCH))
-        assert pre_fork == expected_base_reward(spec, state, index, genesis_ms)
-        assert post_fork == expected_base_reward(spec, state, index, slot_duration_ms)
+        for fork_epoch, epoch, duration_ms in fork_epoch_cases(spec, slot_duration_ms):
+            heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms, fork_epoch)
+            assert heze_spec.get_base_reward(state, index, spec.Epoch(epoch)) == (
+                expected_base_reward(spec, state, index, duration_ms)
+            )
 
 
 @with_heze_and_later
@@ -129,10 +138,9 @@ def test_churn_limits_across_fork(spec, state):
     )
     activation_churn = min(spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, base_churn)
     consolidation_churn = total_active_balance // spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT
-    genesis_ms = int(spec.config.SLOT_DURATION_MS)
     for slot_duration_ms in SLOT_DURATIONS_MS:
-        heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms)
-        for epoch, duration_ms in [(FORK_EPOCH - 1, genesis_ms), (FORK_EPOCH, slot_duration_ms)]:
+        for fork_epoch, epoch, duration_ms in fork_epoch_cases(spec, slot_duration_ms):
+            heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms, fork_epoch)
             state.slot = spec.compute_start_slot_at_epoch(epoch)
             assert heze_spec.get_activation_churn_limit(state) == scale_churn(
                 spec, activation_churn, duration_ms
@@ -153,11 +161,8 @@ def test_inactivity_penalty_across_fork(spec, state):
     for index in range(len(state.validators)):
         state.inactivity_scores[index] = 1000 + index
     for slot_duration_ms in SLOT_DURATIONS_MS:
-        heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms)
-        for previous_epoch, duration_ms in [
-            (FORK_EPOCH - 1, genesis_ms),
-            (FORK_EPOCH, slot_duration_ms),
-        ]:
+        for fork_epoch, previous_epoch, duration_ms in fork_epoch_cases(spec, slot_duration_ms):
+            heze_spec = heze_spec_with_slot_duration(spec, slot_duration_ms, fork_epoch)
             state.slot = spec.compute_start_slot_at_epoch(previous_epoch + 1)
             _, penalties = heze_spec.get_inactivity_penalty_deltas(state)
             denominator = (

@@ -77,7 +77,7 @@ def has_enough_for_leak_penalty(spec, state, index):
         return state.validators[index].effective_balance * state.inactivity_scores[index] > (
             spec.config.INACTIVITY_SCORE_BIAS
             * get_inactivity_penalty_quotient(spec)
-            * spec.get_slot_duration_ms(spec.GENESIS_EPOCH) ** 2
+            * spec.config.SLOT_DURATION_MS**2
             // spec.get_slot_duration_ms(spec.get_previous_epoch(state)) ** 2
         )
     elif is_post_altair(spec):
@@ -333,7 +333,7 @@ def run_get_inactivity_penalty_deltas(spec, state):
             if is_post_heze(spec):
                 penalty_denominator = (
                     penalty_denominator
-                    * spec.get_slot_duration_ms(spec.GENESIS_EPOCH) ** 2
+                    * spec.config.SLOT_DURATION_MS**2
                     // spec.get_slot_duration_ms(spec.get_previous_epoch(state)) ** 2
                 )
             assert penalties[index] == penalty_numerator // penalty_denominator
