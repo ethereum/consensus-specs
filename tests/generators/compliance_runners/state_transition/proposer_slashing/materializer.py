@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-_DIMS = [f.name for f in TARGET.factors]
 
 
 def _s(sol: Any, name: str) -> str:
@@ -141,10 +140,7 @@ class ProposerSlashingMaterializer(Materializer):
                 spec.process_proposer_slashing(post, slashing)
         except (AssertionError, IndexError):
             post = None
-        claimed = {name: getattr(sol, name) for name in _DIMS}
-        target = TARGET.for_spec(spec)
-        summary = target.assertion_result({n: v for n, v in claimed.items() if v != "NA"})
-        claimed["fault_count"] = summary.fault_count
+        claimed = self.claimed_record(TARGET, sol)
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("proposer_slashing", "ssz", slashing.encode_bytes()),

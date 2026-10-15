@@ -10,6 +10,7 @@ from tests.generators.compliance_runners.state_transition.materializer import (
 )
 
 from .concretization import STRATEGY
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -46,9 +47,7 @@ class HistoricalSummariesUpdateMaterializer(ConcretizingMaterializer):
 
         post = pre.copy()
         spec.process_historical_summaries_update(post)
-        claimed = {
-            name: getattr(solution, name) for name in ("update_remainder", "summaries_nonempty")
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": "process_historical_summaries_update",
             "claimed": claimed,

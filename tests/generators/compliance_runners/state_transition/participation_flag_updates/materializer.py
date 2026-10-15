@@ -7,6 +7,8 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -48,14 +50,7 @@ class ParticipationFlagUpdatesMaterializer(Materializer):
 
         post = pre.copy()
         spec.process_participation_flag_updates(post)
-        claimed = {
-            name: bool(getattr(solution, name))
-            for name in (
-                "validator_set_is_larger",
-                "previous_has_flags",
-                "current_has_flags",
-            )
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": "process_participation_flag_updates",
             "claimed": claimed,

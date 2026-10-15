@@ -59,7 +59,8 @@ def test_joint_slot_boundaries(preset, match, newer):
         assert pre.latest_block_header.state_root == spec.Root()
     target = TARGET.for_spec(spec)
     actual = target.record(target.observation(Context(spec, pre, block, post, {})))
-    assert actual == meta["claimed"] == assignment
+    assert actual == assignment
+    assert meta["claimed"] == {**actual, "fault_count": target.assertion_result(actual).fault_count}
     assert target.feasible(actual)
     if accepted:
         expected = pre.copy()
@@ -92,7 +93,8 @@ def test_later_assertions_remain_isolated(gate):
     meta, pre, block, post = materialize(spec, assignment)
     target = TARGET.for_spec(spec)
     actual = target.record(target.observation(Context(spec, pre, block, post, {})))
-    assert actual == meta["claimed"] == assignment
+    assert actual == assignment
+    assert meta["claimed"] == {**actual, "fault_count": target.assertion_result(actual).fault_count}
     assert post is None
     expected = {
         "proposer_index_matches": "assert block.proposer_index == get_beacon_proposer_index(state)",
@@ -129,7 +131,10 @@ def test_materialized_profiles_cover_their_obligations(profile):
     for assignment in representatives:
         meta, pre, block, post = materialize(spec, assignment)
         record = target.record(target.observation(Context(spec, pre, block, post, {})))
-        assert record == meta["claimed"]
+        assert meta["claimed"] == {
+            **record,
+            "fault_count": target.assertion_result(record).fault_count,
+        }
         assert all(record[name] == value for name, value in assignment.items())
         records.append(record)
     report = score(target, records, target.profiles[profile])

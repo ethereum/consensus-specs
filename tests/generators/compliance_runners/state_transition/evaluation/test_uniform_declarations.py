@@ -41,6 +41,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     Integer,
     present,
 )
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.tools.coverage_model import expression
 
 
@@ -636,3 +637,28 @@ def test_known_applicability_still_refines_constant_dimensions():
         applicable_when=(k > 0) | flag,
     ).for_spec(object())
     assert t.profiles["all"].run() == {frozenset({("constant_value", 2)})}
+
+
+@pytest.mark.parametrize(("gate", "faults"), [("LT_1", 0), ("EQ", 1)])
+def test_claimed_record_uses_target_dimensions_activation_and_assertions(gate, faults):
+    solution = SimpleNamespace(gate=gate, raw=False, balance=123, _nfaults=99, _rank=99)
+    if gate == "EQ":
+        solution.check = False
+    claimed = Materializer(object()).claimed_record(materializer_target(), solution)
+    assert claimed == {
+        "gate": gate,
+        "raw": False,
+        "check": False if gate == "EQ" else "NA",
+        "fault_count": faults,
+    }
+    del solution.raw
+    with pytest.raises(ValueError, match="missing active dimension: raw"):
+        Materializer(object()).claimed_record(materializer_target(), solution)
+
+
+def test_claimed_record_without_assertions_omits_fault_metadata():
+    flag = attribute("flag", Boolean())
+    template = target((flag,), (dimension("raw", flag),))
+    assert Materializer(object()).claimed_record(
+        template, SimpleNamespace(raw=False, balance=123, _nfaults=99)
+    ) == {"raw": False}

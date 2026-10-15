@@ -10,6 +10,8 @@ from tests.generators.compliance_runners.state_transition.concretization import 
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -51,14 +53,7 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
 
         post = pre.copy()
         spec.process_sync_committee_updates(post)
-        claimed = {
-            name: getattr(solution, name)
-            for name in (
-                "period_remainder",
-                "committees_already_match",
-                "computed_next_is_unchanged",
-            )
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": "process_sync_committee_updates",
             "claimed": claimed,

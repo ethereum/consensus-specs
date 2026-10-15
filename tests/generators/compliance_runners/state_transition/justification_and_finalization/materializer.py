@@ -7,6 +7,8 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -75,7 +77,7 @@ class JustificationAndFinalizationMaterializer(Materializer):
         pre.justification_bits = bits
         post = pre.copy()
         spec.process_justification_and_finalization(post)
-        claimed = {str(k): v for k, v in vars(solution).items() if not str(k).startswith("_")}
+        claimed = self.claimed_record(TARGET, solution)
         return {"description": "process_justification_and_finalization", "claimed": claimed}, [
             ("pre", "ssz", pre.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),
