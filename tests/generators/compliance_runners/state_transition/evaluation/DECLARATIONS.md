@@ -661,3 +661,33 @@ projections; the exceptional profile is empty because this handler has no fault
 conditions. Conditional projections include their applicability context so
 absent dimensions cannot earn coverage for an active branch. Both providers
 require post-state presence during case validation.
+
+### Builder-exit and operation-dispatch migrations
+
+`builder_exit_request/target.py` replaces its handler MiniZinc model, coverage
+driver, and custom validator. It observes booleans and numeric epochs, using
+`cmp3(deposit_epoch, finalized_epoch, op="<")` for the activity boundary. All 19
+feasible signatures from the former model are retained. Normal cases initiate an
+exit; exceptional cases have exactly one independently applicable failed gate,
+including ignored requests. The `max` profile retains all signatures, including
+two-fault cases. The restriction that pending funds belong to an active builder
+is explicitly a fixture constraint inherited from the old generator. Exit
+initiation is observed from the actual post-state, and validation requires that
+post-state to be present.
+
+`operations_dispatch/target.py` preserves all five integration scenarios and the
+original profile selections. It classifies scenarios from raw list counts,
+validator sharing, payload roots, slot availability, committee index, and the
+post-state head flag. An unrecognized shape remains observable but is excluded
+from generation, so a malformed vector fails its scenario claim. Materializers
+now serialize declaration witnesses rather than rebuilding claims from their own
+generated objects. Both providers use the shared generation and validation
+adapters and are registered with the coverage scoring CLI.
+
+Dispatch vectors still need the existing `GLOAS_FORK_EPOCH=0` fixture setup; the
+`blocks` handler remains disabled in default generation. Coverage loading passes
+the signed block to this target and selects dispatch-provider vectors when
+provider metadata is present, allowing it to share `sanity/blocks` with the
+operations assertion-limit provider. Regression tests materialize and validate
+every feasible witness under both presets, audit all profiles, and reject
+corrupted dispatch shapes and effects.

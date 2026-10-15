@@ -1,6 +1,6 @@
 """Materialize aspect-model solutions into process_builder_exit_request cases.
 
-Consumes solution-like objects (from `coverage.py`), realizes each applicable
+Consumes declaration witnesses, realizes each applicable
 coverage dimension into a concrete pre / BuilderExitRequest / post vector, and
 serializes the solution to dimensions.yaml. This operation never raises, so
 `post` is always present (a no-op leaves it unchanged).
@@ -19,23 +19,12 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_w
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 EPOCHS_PAST_GENESIS = 10
-
-_DIMS = [
-    "builder_pubkey_found",
-    "builder_deposit_to_finalized_epoch",
-    "builder_withdrawable_epoch_set",
-    "builder_has_pending_withdrawal",
-    "builder_has_pending_payment",
-    "source_address_matches",
-    "builder_active",
-    "builder_has_pending_balance",
-    "exit_initiated",
-    "outcome",
-]
 
 
 def _s(sol: Any, n: str) -> str:
@@ -81,7 +70,7 @@ class BuilderExitRequestMaterializer(Materializer):
                 "EQ": finalized_epoch,
                 "GT": finalized_epoch + self.rng.randrange(1, 11),
             }[dep]
-            wset = _s(sol, "builder_withdrawable_epoch_set") == "T"
+            wset = _b(sol, "builder_withdrawable_epoch_set")
             pre.builders.append(
                 spec.Builder(
                     pubkey=spec.BLSPubkey(builder_pubkey),
@@ -92,7 +81,7 @@ class BuilderExitRequestMaterializer(Materializer):
                     withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
                 )
             )
-            if _s(sol, "builder_has_pending_withdrawal") == "T":
+            if _b(sol, "builder_has_pending_withdrawal"):
                 pre.builder_pending_withdrawals.append(
                     spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(builder_address),
@@ -100,7 +89,7 @@ class BuilderExitRequestMaterializer(Materializer):
                         builder_index=spec.BuilderIndex(0),
                     )
                 )
-            if _s(sol, "builder_has_pending_payment") == "T":
+            if _b(sol, "builder_has_pending_payment"):
                 payment_index = self.rng.randrange(len(pre.builder_pending_payments))
                 pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
                     weight=spec.Gwei(self.rng.randrange(1, 1001)),
@@ -111,7 +100,7 @@ class BuilderExitRequestMaterializer(Materializer):
                     ),
                     proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
                 )
-            matches = _s(sol, "source_address_matches") == "T"
+            matches = _b(sol, "source_address_matches")
             source_address = builder_address if matches else other_address
         else:
             source_address = builder_address  # arbitrary; pubkey absent from registry
@@ -123,9 +112,7 @@ class BuilderExitRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_builder_exit_request(post, request)  # never raises
 
-        claimed = {
-            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {
             "description": f"process_builder_exit_request: {claimed['outcome']}",
             "claimed": claimed,
