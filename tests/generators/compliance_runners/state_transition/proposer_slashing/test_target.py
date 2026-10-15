@@ -61,7 +61,7 @@ def test_full_space_and_max_profile_completeness(preset, minizinc_available):
     native = TARGET.for_spec(spec, backend="minizinc")
     assert native._configurations(filtered=True)[1] == configurations
     records = [materializer_record(target, dict(c)) for c in configurations]
-    _, generated = build_profile("max", spec=spec)
+    generated = build_profile("max", spec=spec)
     low_faults = {signature(r) for r in records if r["_nfaults"] <= 2}
     assert len(low_faults) == 360
     assert {signature(r) for r in generated} == low_faults
@@ -85,7 +85,7 @@ def test_full_space_and_max_profile_completeness(preset, minizinc_available):
             materializer_record(target, dict(c))
             for c in target.profiles[name].generation_obligations()
         ]
-        _, actual = build_profile(name, spec=spec)
+        actual = build_profile(name, spec=spec)
         assert {tuple(sorted(r.items())) for r in actual} == {
             tuple(sorted(r.items())) for r in expected
         }
@@ -96,7 +96,7 @@ def test_provider_uses_native_configuration_generation(monkeypatch, minizinc_ava
         pytest.fail("provider used Python configuration enumeration")
 
     monkeypatch.setattr(Model, "configurations", forbidden)
-    assert build_profile("standard", spec=spec_targets["minimal"]["gloas"])[1]
+    assert build_profile("standard", spec=spec_targets["minimal"]["gloas"])
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
@@ -108,7 +108,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
     target = TARGET.for_spec(spec)
     materializer = ProposerSlashingMaterializer(spec)
     materializer.rng = Random(124)
-    _, generated = build_profile("max", spec=spec)
+    generated = build_profile("max", spec=spec)
     observed_by_signature = {}
     for witness in generated:
         meta, parts = materializer.materialize_solution(SimpleNamespace(**witness))
@@ -127,7 +127,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
         assert all(recovered[n] == meta["claimed"][n] for n in _DIMS)
         observed_by_signature[signature(witness)] = observed
     for profile in PROFILES:
-        _, representatives = build_profile(profile, spec=spec)
+        representatives = build_profile(profile, spec=spec)
         records = [observed_by_signature[signature(r)] for r in representatives]
         if profile == "exceptional":
             assert all(target.assertion_result(r).fault_count == 1 for r in records)
@@ -206,7 +206,7 @@ def test_case_validation_checks_observed_outcome_and_fault_count(
     spec = spec_targets["minimal"]["gloas"]
 
     monkeypatch.setattr(validation, "spec", spec)
-    _, representatives = build_profile("normal", spec=spec)
+    representatives = build_profile("normal", spec=spec)
     materializer = ProposerSlashingMaterializer(spec)
     materializer.test_provider = "proposer_slashing"
     materializer.materialize_reps(tmp_path, [SimpleNamespace(**representatives[0])])

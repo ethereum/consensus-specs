@@ -9,7 +9,7 @@ SCENARIOS = (
 )
 
 
-def build_profile(name: str) -> tuple[list[dict], list[dict]]:
+def build_profile(name: str) -> list[dict]:
     if name not in ("smoke", "normal", "exceptional", "standard", "max"):
         raise ValueError(f"unknown profile: {name}")
     chosen = [
@@ -19,4 +19,4 @@ def build_profile(name: str) -> tuple[list[dict], list[dict]]:
         or (name == "smoke" and record["scenario"] in ("all_lists", "slash_before_exit"))
         or (name in ("normal", "exceptional") and record["accepted"] is (name == "normal"))
     ]
-    return list(SCENARIOS), chosen
+    return chosen

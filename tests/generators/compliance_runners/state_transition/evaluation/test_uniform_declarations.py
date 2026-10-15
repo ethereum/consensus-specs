@@ -173,13 +173,10 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
     t = target((x,), (dimension("value", x),))
     spec = object()
     build_profile = coverage_profiles(t)
-    expected = [{"value": 0}, {"value": 1}, {"value": 2}]
-    assert build_profile("all", spec=spec) == (
-        expected,
-        [{**r, "_nfaults": 0, "_rank": 0} for r in expected],
-    )
+    expected = [{"value": n, "_nfaults": 0, "_rank": 0} for n in range(3)]
+    assert build_profile("all", spec=spec) == expected
     assert profile_records(t.for_spec(spec), "all") == expected
-    assert build_profile("exceptional", spec=spec) == ([], [])
+    assert build_profile("exceptional", spec=spec) == []
     with pytest.raises(KeyError):
         build_profile("typo", spec=spec)
     with pytest.raises(KeyError):
@@ -195,10 +192,7 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
         ),
         observe_attributes=lambda ctx: ctx.pre,
     )
-    assert coverage_profiles(declared)("exceptional", spec=spec) == (
-        expected,
-        [{**r, "_nfaults": 0, "_rank": 0} for r in expected],
-    )
+    assert coverage_profiles(declared)("exceptional", spec=spec) == expected
 
 
 def test_inputs_are_inferred_from_values_availability_applicability_and_constraints():
@@ -327,11 +321,14 @@ def test_provider_profiles_always_complete_unscoped_obligations():
     template = materializer_target()
     spec = object()
     bound = template.for_spec(spec)
-    records, chosen = coverage_profiles(template)("each", spec=spec)
+    records = coverage_profiles(template)("each", spec=spec)
     assert records == profile_records(bound, "each")
-    assert chosen == [materializer_record(bound, r) for r in records]
     configurations = bound._configurations(filtered=True)[1]
-    assert all(frozenset(r.items()) in configurations for r in records)
+    assert all(
+        frozenset((k, v) for k, v in r.items() if not k.startswith("_") and v != "NA")
+        in configurations
+        for r in records
+    )
     assert all({"gate", "raw"} <= r.keys() for r in records)
     assert all(bound.assertion_result(r).fault_count is not None for r in records)
     # Coverage requirements retain their projections, independent of witnesses.
@@ -346,10 +343,10 @@ def test_generic_materializer_profiles_encode_inactive_dimensions():
     spec = object()
     bound = template.for_spec(spec)
     build_profile = coverage_profiles(template)
-    records, chosen = build_profile("each", spec=spec)
+    records = build_profile("each", spec=spec)
     assert all(bound.assertion_result(r).fault_count is not None for r in records)
-    assert {r["check"] for r in chosen} == {"NA", True, False}
-    assert all(type(r["raw"]) is bool for r in chosen)
+    assert {r["check"] for r in records} == {"NA", True, False}
+    assert all(type(r["raw"]) is bool for r in records)
     report = score(bound, records, bound.profiles["each"])
     assert report.covered == report.total
     assert not report.unexpected
@@ -400,7 +397,7 @@ def test_generic_materializer_rejects_unknown_fault_count():
 )
 def test_nonrejecting_declaration_providers_share_the_empty_exceptional_profile(provider):
     module = import_module(f"tests.generators.compliance_runners.state_transition.{provider}")
-    assert module.build_profile("exceptional", spec=object()) == ([], [])
+    assert module.build_profile("exceptional", spec=object()) == []
 
 
 @pytest.mark.parametrize(
