@@ -1,17 +1,7 @@
-"""Independently validate withdrawal-processing compliance vectors.
+"""Validate aggregate withdrawal dimensions and delegate the pending-builder slice.
 
-For every generated case this module decodes the serialized pre/post pair,
-independently recovers the aspect's coverage dimensions directly from the
-state, compares them against the `claimed` dimensions recorded at
-materialization time, and re-executes `process_withdrawals` to confirm `post`
-matches the spec.
-
-Handles both aspect models:
-
-- ``builder_pending_withdrawal_processing`` — a single pending builder
-  withdrawal entry.
-- ``withdrawal_processing`` — pending builder/validator queues, builder sweep,
-  and validator sweep.
+The single pending-builder-withdrawal provider uses its shared TARGET validator;
+aggregate vectors retain their existing independent dimension recovery.
 """
 
 from __future__ import annotations
@@ -21,9 +11,12 @@ from typing import TYPE_CHECKING
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.gloas import minimal as spec
-from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool, _to_cmp
+from tests.generators.compliance_runners.state_transition.aspects.base import _to_bool
 from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.builder_sweep_validator import (
     get_builder_sweep_solution,
+)
+from tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing import (
+    validate_case as pending_validate,
 )
 from tests.generators.compliance_runners.state_transition.provider import check_dimensions, decode
 
@@ -31,53 +24,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _YAML = YAML(typ="safe")
-
-
-def recover_pending_withdrawal(pre) -> dict[str, str]:
-    """Recover builder-pending-withdrawal dimensions from a pre state."""
-    state_epoch = int(spec.get_current_epoch(pre))
-    finalized_epoch = int(pre.finalized_checkpoint.epoch)
-    min_deposit = int(spec.MIN_DEPOSIT_AMOUNT)
-
-    pending_withdrawal = pre.builder_pending_withdrawals[0]
-    builder_index = int(pending_withdrawal.builder_index)
-    builder = pre.builders[builder_index]
-    amount = int(pending_withdrawal.amount)
-    balance = int(builder.balance)
-
-    has_pending_payments = any(
-        int(p.withdrawal.builder_index) == builder_index and int(p.withdrawal.amount) > 0
-        for p in pre.builder_pending_payments
-    )
-    has_pending_withdrawals = any(
-        int(w.builder_index) == builder_index and int(w.amount) > 0
-        for w in pre.builder_pending_withdrawals
-    )
-
-    return {
-        "state_latest_block_hash_match": _to_bool(
-            pre.latest_block_hash == pre.latest_execution_payload_bid.block_hash
-        ).name,
-        "cmp_pending_amount_zero": _to_cmp(amount, 0).name,
-        "cmp_builder_balance_amount": _to_cmp(balance, amount).name,
-        "payload_builder_version": _to_bool(
-            int(builder.version) == int(spec.PAYLOAD_BUILDER_VERSION)
-        ).name,
-        "cmp_state_epoch_deposit_epoch": _to_cmp(state_epoch, int(builder.deposit_epoch)).name,
-        "cmp_state_epoch_withdrawal_epoch": _to_cmp(
-            state_epoch, int(builder.withdrawable_epoch)
-        ).name,
-        "cmp_finalized_epoch_deposit_epoch": _to_cmp(
-            finalized_epoch, int(builder.deposit_epoch)
-        ).name,
-        "withdrawable_epoch_set": _to_bool(
-            int(builder.withdrawable_epoch) != int(spec.FAR_FUTURE_EPOCH)
-        ).name,
-        "cmp_balance_zero": _to_cmp(balance, 0).name,
-        "cmp_balance_min_deposit": _to_cmp(balance, min_deposit).name,
-        "has_pending_payments": _to_bool(has_pending_payments).name,
-        "has_pending_withdrawals": _to_bool(has_pending_withdrawals).name,
-    }
 
 
 def recover_withdrawal_processing(pre) -> dict[str, str]:
@@ -139,13 +85,11 @@ def recover_withdrawal_processing(pre) -> dict[str, str]:
     return dims
 
 
-def validate_case(case_dir: Path) -> tuple[list, list[str]]:
-    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
-    claimed = _YAML.load((case_dir / "dimensions.yaml").read_text())["claimed"]
-
+def validate_case(case_dir: Path):
+    metadata = _YAML.load((case_dir / "dimensions.yaml").read_text())
+    claimed = metadata["claimed"]
     if "cmp_pending_amount_zero" in claimed:
-        actual = recover_pending_withdrawal(pre)
-    else:
-        actual = recover_withdrawal_processing(pre)
-
+        return pending_validate.for_spec(spec, case_dir)
+    pre = decode(case_dir / "pre.ssz_snappy", spec.BeaconState)
+    actual = recover_withdrawal_processing(pre)
     return check_dimensions(claimed, actual)
