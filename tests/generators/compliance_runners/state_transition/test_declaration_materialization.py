@@ -17,6 +17,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 @pytest.mark.parametrize(
     "provider",
     [
+        "effective_balance_updates",
         "inactivity_updates",
         "inactivity_updates_loop",
         "registry_updates",

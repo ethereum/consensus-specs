@@ -47,66 +47,20 @@ def profile_records(target, name: str) -> list[dict]:
     ]
 
 
-def coverage_profiles(
-    target,
-    *,
-    witness=None,
-    candidates=None,
-    materializer=False,
-    backend=None,
-    solver=None,
-):
-    """Expose declaration profiles through the provider's ``build_profile`` API.
+def coverage_profiles(target, *, backend=None, solver=None):
+    """Expose complete declaration witnesses through the provider profile API.
 
-    An omitted ``exceptional`` profile returns empty records. Other missing
-    profile names raise an error.
-    Witnesses always include every active dimension within each formula branch.
-    ``witness(record)`` converts assignments to materializer records; alternatively,
-    ``candidates(spec)`` supplies concrete records to match against obligations.
-    Representative selection and deduplication are deterministic.
-    ``backend`` and ``solver`` optionally select the declaration target backend.
-    ``materializer`` selects the generic adapter for all target dimensions,
-    encoding inactive dimensions and adding assertion fault metadata automatically.
+    Return abstract records and canonical materializer representatives in stable
+    order. Representatives encode inactive dimensions as "NA" and include fault
+    metadata. An omitted exceptional profile returns empty lists; other missing
+    profiles raise an error. Backend and solver override the target defaults.
     """
-    if witness is not None and candidates is not None:
-        raise ValueError("choose either a witness adapter or concrete candidates")
-    if materializer and (witness is not None or candidates is not None):
-        raise ValueError("choose either the generic materializer adapter or a custom adapter")
 
     def build_profile(name: str, *, spec) -> tuple[list[dict], list[dict]]:
         if name == "exceptional" and name not in target.profiles:
             return [], []
         bound = target.for_spec(spec, backend=backend, solver=solver)
         records = profile_records(bound, name)
-        if witness is None and candidates is None and not materializer:
-            return records, records
-        if materializer:
-
-            def adapt(record):
-                return materializer_record(bound, record)
-
-        elif candidates is not None:
-            factor_names = {f.name for f in bound.factors}
-            ordered = sorted(
-                candidates(spec),
-                key=lambda r: (
-                    repr(sorted((n, v) for n, v in r.items() if n in factor_names)),
-                    repr(sorted(r.items())),
-                ),
-            )
-
-            def adapt(record):
-                for candidate in ordered:
-                    if record.items() <= candidate.items():
-                        return candidate
-                raise ValueError(f"no concrete witness for {record}")
-
-        else:
-            adapt = witness
-        chosen = {}
-        for record in records:
-            representative = adapt(record)
-            chosen.setdefault(tuple(sorted(representative.items())), representative)
-        return records, list(chosen.values())
+        return records, [materializer_record(bound, record) for record in records]
 
     return build_profile

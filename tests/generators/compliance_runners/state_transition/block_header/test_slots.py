@@ -135,7 +135,9 @@ def test_materialized_profiles_cover_their_obligations(profile):
             **record,
             "fault_count": target.assertion_result(record).fault_count,
         }
-        assert all(record[name] == value for name, value in assignment.items())
+        assert all(
+            record[name] == value for name, value in assignment.items() if not name.startswith("_")
+        )
         records.append(record)
     report = score(target, records, target.profiles[profile])
     assert report.covered == report.total
