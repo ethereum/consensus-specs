@@ -24,11 +24,11 @@
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
+    - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
-    - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
     - [Modified `process_epoch`](#modified-process_epoch)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -46,7 +46,7 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 - [EIP-8015](https://github.com/ethereum/EIPs/blob/0ebff04bf89b696d51ebf2ff9d029940ef3ed693/EIPS/eip-8015.md):
   Remove `deposit` and `eth1data` fields
 - [EIP-8365](https://github.com/ethereum/EIPs/blob/718595d75a86eafcf6f005c2b79e23ef941381e5/EIPS/eip-8365.md):
-  Disallow new `0x00` validators
+  Gate activation of `0x00` validators
 
 *Note*: These EIPs are in draft and may change or be removed. Each link above
 points to the specific version targeted by this specification, which may differ
@@ -256,6 +256,30 @@ def is_valid_inclusion_list_signature(
     return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
+#### Modified `is_eligible_for_activation`
+
+*Note*: Validators with BLS withdrawal credentials are not activated. They
+remain in the registry with their balance and become eligible once their
+withdrawal credentials are changed with a `BLSToExecutionChange`. This includes
+validators created from deposits submitted before Heze. Validators that are
+already active are unaffected.
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+        # [New in Heze:EIP8365]
+        # Does not have BLS withdrawal credentials
+        and validator.withdrawal_credentials[:1] != BLS_WITHDRAWAL_PREFIX
+    )
+```
+
 ### Beacon state accessors
 
 #### New `get_inclusion_list_committee`
@@ -280,35 +304,6 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
 ## Beacon chain state transition function
 
 ### Epoch processing
-
-#### Modified `apply_pending_deposit`
-
-*Note*: Deposits that would create new validators with BLS withdrawal
-credentials are skipped without a refund, including deposits submitted before
-Heze. Top-ups to existing validators are unaffected.
-
-```python
-def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
-    """
-    Applies ``deposit`` to the ``state`` without creating validators with BLS withdrawal credentials.
-    """
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    if deposit.pubkey not in validator_pubkeys:
-        # [New in Heze:EIP8365]
-        # Do not create validators with BLS withdrawal credentials
-        if deposit.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX:
-            return
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        if is_valid_deposit_signature(
-            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
-        ):
-            add_validator_to_registry(
-                state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount
-            )
-    else:
-        validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
-        increase_balance(state, validator_index, deposit.amount)
-```
 
 #### Modified `process_epoch`
 

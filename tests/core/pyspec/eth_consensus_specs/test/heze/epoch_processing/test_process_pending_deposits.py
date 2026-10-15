@@ -30,7 +30,10 @@ def test_new_bls_withdrawal_credentials_valid_signature(spec, state):
         signed=True,
     )
 
-    yield from run_pending_deposit_applying(spec, state, deposit, validator_index, effective=False)
+    yield from run_pending_deposit_applying(spec, state, deposit, validator_index)
+
+    assert state.validators[validator_index].withdrawal_credentials == withdrawal_credentials
+    assert state.validators[validator_index].activation_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_heze_and_later
@@ -109,8 +112,8 @@ def test_bls_withdrawal_credentials_followed_by_eth1_deposit(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert len(state.validators) == validator_index + 1
-    assert state.validators[validator_index].withdrawal_credentials == eth1_credentials
-    assert state.balances[validator_index] == amount
+    assert state.validators[validator_index].withdrawal_credentials == bls_credentials
+    assert state.balances[validator_index] == 2 * amount
     assert state.pending_deposits == spec.PendingDeposits()
 
 
@@ -139,6 +142,7 @@ def test_bls_withdrawal_credentials_queued_before_heze(spec, phases, state):
 
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
-    assert len(state.validators) == validator_index
-    assert len(state.balances) == validator_index
+    assert len(state.validators) == validator_index + 1
+    assert state.validators[validator_index].withdrawal_credentials == withdrawal_credentials
+    assert state.balances[validator_index] == pre_spec.MIN_ACTIVATION_BALANCE
     assert state.pending_deposits == spec.PendingDeposits()
