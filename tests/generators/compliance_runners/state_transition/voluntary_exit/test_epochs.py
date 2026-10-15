@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
+import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from .materializer import VoluntaryExitMaterializer
 from .target import EPOCHS, TARGET
 from .test_utils import make_record
@@ -47,7 +47,7 @@ def test_signed_exit_epoch_boundaries(preset, message_bucket, seasoned_bucket, m
     assert observed["current_ge_seasoned"] == seasoned_bucket
     assert observed["accepted"] == (post is not None)
     assert target.feasible(observed)
-    assert target.assertion_result(observed).fault_count == record["_nfaults"]
+    assert target.assertion_result(observed).fault_count == meta["claimed"]["fault_count"]
     assert all(
         observed[name] == value
         for name, value in record.items()

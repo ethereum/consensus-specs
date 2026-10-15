@@ -117,10 +117,11 @@ class Materializer:
         """Encode TARGET dimensions and assertion counts from a complete witness."""
         bound = target.for_spec(self.spec)
         record = materializer_record(bound, vars(solution))
-        faults = record.pop("_nfaults")
-        record.pop("_rank")
-        if bound.definition.assertions is not None:
-            record["fault_count"] = faults
+        summary = bound.assertion_result({k: v for k, v in record.items() if v != "NA"})
+        if summary is not None:
+            if summary.fault_count is None:
+                raise ValueError(f"materializer witness has unknown assertions: {summary.unknown}")
+            record["fault_count"] = summary.fault_count
         return record
 
     def write_case(self, dumper: Dumper, output_dir: Path, index: int, solution: Any) -> None:

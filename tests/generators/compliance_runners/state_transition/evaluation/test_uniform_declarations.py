@@ -173,7 +173,7 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
     t = target((x,), (dimension("value", x),))
     spec = object()
     build_profile = coverage_profiles(t)
-    expected = [{"value": n, "_nfaults": 0, "_rank": 0} for n in range(3)]
+    expected = [{"value": n} for n in range(3)]
     assert build_profile("all", spec=spec) == expected
     assert profile_records(t.for_spec(spec), "all") == expected
     assert build_profile("exceptional", spec=spec) == []
@@ -291,26 +291,22 @@ def materializer_target():
     return bind(definition, observe_attributes=lambda ctx: {})
 
 
-def test_generic_materializer_record_uses_comparison_activation_and_fault_counts():
+def test_generic_materializer_record_uses_comparison_activation():
     bound = materializer_target().for_spec(object())
     assert materializer_record(bound, {"gate": "LT_1", "raw": False}) == {
         "gate": "LT_1",
         "check": "NA",
         "raw": False,
-        "_nfaults": 0,
-        "_rank": 0,
     }
     assert materializer_record(bound, {"gate": "EQ", "check": False, "raw": True}) == {
         "gate": "EQ",
         "check": False,
         "raw": True,
-        "_nfaults": 1,
-        "_rank": 1,
     }
     assert materializer_record(
         bound,
         {"gate": "GT_1", "check": True, "raw": False},
-    ) == {"gate": "GT_1", "check": True, "raw": False, "_nfaults": 0, "_rank": 0}
+    ) == {"gate": "GT_1", "check": True, "raw": False}
     # An active missing observation must not be encoded as inactive.
     for record in ({"gate": "EQ", "raw": False}, {"gate": "EQ", "check": NA, "raw": False}):
         with pytest.raises(ValueError, match="missing active dimension: check"):
@@ -354,8 +350,6 @@ def test_generic_materializer_profiles_encode_inactive_dimensions():
     ordinary = target((flag,), (dimension("raw", flag),)).for_spec(object())
     assert materializer_record(ordinary, {"raw": False}) == {
         "raw": False,
-        "_nfaults": 0,
-        "_rank": 0,
     }
 
 
@@ -372,9 +366,9 @@ def test_generic_materializer_rejects_unknown_fault_count():
         profiles={"each": each((parent, child, check))},
         assertions=assertion_set(check),
     )
-    bound = bind(definition, observe_attributes=lambda ctx: {}).for_spec(object())
+    template = bind(definition, observe_attributes=lambda ctx: {})
     with pytest.raises(ValueError, match="unknown assertions"):
-        materializer_record(bound, {"parent": False})
+        Materializer(object()).claimed_record(template, SimpleNamespace(parent=False))
 
 
 @pytest.mark.parametrize(
