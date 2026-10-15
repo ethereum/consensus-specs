@@ -20,6 +20,9 @@ from tests.generators.compliance_runners.state_transition.concretization import 
     ConcretizationStrategy,
     concretize,
 )
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    materializer_record,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -109,6 +112,16 @@ class Materializer:
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         raise NotImplementedError("Subclasses must implement this method")
+
+    def claimed_record(self, target, solution: Any) -> dict[str, Any]:
+        """Encode TARGET dimensions and assertion counts from a complete witness."""
+        bound = target.for_spec(self.spec)
+        record = materializer_record(bound, vars(solution))
+        faults = record.pop("_nfaults")
+        record.pop("_rank")
+        if bound.definition.assertions is not None:
+            record["fault_count"] = faults
+        return record
 
     def write_case(self, dumper: Dumper, output_dir: Path, index: int, solution: Any) -> None:
         case_name = f"case_{index:04d}"

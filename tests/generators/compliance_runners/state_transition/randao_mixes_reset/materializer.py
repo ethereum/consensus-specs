@@ -10,6 +10,7 @@ from tests.generators.compliance_runners.state_transition.materializer import (
 )
 
 from .concretization import STRATEGY
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -52,14 +53,7 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
 
         post = pre.copy()
         spec.process_randao_mixes_reset(post)
-        claimed = {
-            name: getattr(solution, name)
-            for name in (
-                "destination_position",
-                "source_nonzero",
-                "source_matches_destination",
-            )
-        }
+        claimed = self.claimed_record(TARGET, solution)
         meta = {"description": "process_randao_mixes_reset", "claimed": claimed}
         return meta, [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
 

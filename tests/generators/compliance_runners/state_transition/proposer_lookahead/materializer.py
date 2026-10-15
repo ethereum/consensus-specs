@@ -7,7 +7,7 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
-from .target import CANDIDATES
+from .target import CANDIDATES, TARGET
 from .witness import distinct_proposer_balances
 
 if TYPE_CHECKING:
@@ -124,7 +124,7 @@ class ProposerLookaheadMaterializer(Materializer):
             pre.proposer_lookahead[index] = proposer_index
         post = pre.copy()
         spec.process_proposer_lookahead(post)
-        claimed = {str(k): v for k, v in vars(solution).items() if not str(k).startswith("_")}
+        claimed = self.claimed_record(TARGET, solution)
         return {"description": "process_proposer_lookahead", "claimed": claimed}, [
             ("pre", "ssz", pre.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),

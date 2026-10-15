@@ -24,8 +24,10 @@ from tests.generators.compliance_runners.state_transition.validation_helpers imp
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
 from . import build_profile
-from .materializer import _DIMS, ProposerSlashingMaterializer
+from .materializer import ProposerSlashingMaterializer
 from .target import TARGET
+
+_DIMS = tuple(f.name for f in TARGET.factors)
 
 PROFILES = ("smoke", "normal", "exceptional", "standard", "max")
 
