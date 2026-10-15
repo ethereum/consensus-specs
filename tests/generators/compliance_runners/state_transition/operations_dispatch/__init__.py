@@ -1,7 +1,22 @@
-"""Integration vectors for Gloas ``process_operations`` dispatch."""
+"""Declaration-based provider for ``process_operations dispatch``."""
 
-from .coverage import build_profile
-from .materializer import MATERIALIZER
-from .validation import validate_case
+from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.state_transition.declaration_coverage import (
+    coverage_profiles,
+)
+from tests.generators.compliance_runners.state_transition.declaration_validation import (
+    target_validator,
+)
 
-__all__ = ("MATERIALIZER", "build_profile", "validate_case")
+from .materializer import OperationsDispatchMaterializer as MATERIALIZER
+from .target import TARGET
+
+build_profile = coverage_profiles(TARGET)
+recover, validate_case = target_validator(
+    TARGET,
+    operation_name="blocks_0",
+    operation_type="SignedBeaconBlock",
+    spec=lambda: spec,
+)
+
+__all__ = ("MATERIALIZER", "TARGET", "build_profile", "recover", "validate_case")

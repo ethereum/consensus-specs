@@ -7,7 +7,7 @@ from eth_consensus_specs.gloas import minimal
 from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
 from eth_consensus_specs.utils import bls
 
-from .coverage import build_profile
+from . import build_profile
 from .materializer import OperationsDispatchMaterializer
 
 # These vectors exercise Gloas operations from genesis.
@@ -18,9 +18,9 @@ def _vector(scenario: str, accepted: bool):
     materializer = OperationsDispatchMaterializer(spec)
     materializer.rng = Random(0)
     materializer.test_provider = "process_operations_dispatch"
-    _, parts = materializer.materialize_solution(
-        SimpleNamespace(scenario=scenario, accepted=accepted)
-    )
+    record = next(r for r in build_profile("max", spec=spec) if r["scenario"] == scenario)
+    assert record["accepted"] is accepted
+    _, parts = materializer.materialize_solution(SimpleNamespace(**record))
     encoded = {name: data for name, _, data in parts}
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
     block = spec.SignedBeaconBlock.decode_bytes(encoded["blocks_0"]).message
@@ -29,13 +29,13 @@ def _vector(scenario: str, accepted: bool):
 
 
 def test_profiles_select_dispatch_scenarios():
-    assert {record["scenario"] for record in build_profile("smoke")} == {
+    assert {record["scenario"] for record in build_profile("smoke", spec=spec)} == {
         "all_lists",
         "slash_before_exit",
     }
-    assert len(build_profile("normal")) == 3
-    assert len(build_profile("exceptional")) == 2
-    assert len(build_profile("standard")) == 5
+    assert len(build_profile("normal", spec=spec)) == 3
+    assert len(build_profile("exceptional", spec=spec)) == 2
+    assert len(build_profile("standard", spec=spec)) == 5
 
 
 def test_slash_then_exit_rejects_but_reverse_order_accepts():
