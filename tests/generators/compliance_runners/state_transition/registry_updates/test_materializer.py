@@ -5,6 +5,10 @@ from types import SimpleNamespace
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
+from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
+    BoundFormula,
+    fix,
+)
 
 from .materializer import RegistryUpdatesMaterializer
 from .target import TARGET
@@ -13,7 +17,11 @@ from .target import TARGET
 def _observed(**obligation):
     materializer = RegistryUpdatesMaterializer(spec)
     materializer.rng = Random(0)
-    _, parts = materializer.materialize_solution(SimpleNamespace(**obligation))
+    bound = TARGET.for_spec(spec)
+    witnesses = BoundFormula(bound, fix(**obligation)).generation_obligations()
+    assert len(witnesses) == 1
+    witness = dict(next(iter(witnesses)))
+    _, parts = materializer.materialize_solution(SimpleNamespace(**witness))
     pre = spec.BeaconState.decode_bytes(parts[0][2])
     post = spec.BeaconState.decode_bytes(parts[1][2])
     return TARGET.record(TARGET.observation(Context(spec, pre, None, post, {})))

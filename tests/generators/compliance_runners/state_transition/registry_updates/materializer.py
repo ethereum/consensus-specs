@@ -27,7 +27,7 @@ class RegistryUpdatesMaterializer(Materializer):
             epoch=spec.GENESIS_EPOCH, root=pre.finalized_checkpoint.root
         )
         requested = {
-            name: bool(getattr(solution, name, False))
+            name: bool(getattr(solution, name))
             for name in (
                 "queues_validator",
                 "ejects_validator",
@@ -35,21 +35,9 @@ class RegistryUpdatesMaterializer(Materializer):
                 "leaves_validator_unchanged",
             )
         }
-        all_branches_excluded = all(getattr(solution, name, None) is False for name in requested)
-        has_validators = bool(getattr(solution, "has_validators", not all_branches_excluded))
-        if has_validators and getattr(solution, "leaves_validator_unchanged", None) is False:
-            active_branch = next(
-                (name for name, value in requested.items() if value),
-                next(
-                    (
-                        name
-                        for name in requested
-                        if name not in vars(solution) or getattr(solution, name) is not False
-                    ),
-                    "queues_validator",
-                ),
-            )
-            requested[active_branch] = True
+        has_validators = bool(solution.has_validators)
+        if has_validators and not requested["leaves_validator_unchanged"]:
+            active_branch = next(name for name, value in requested.items() if value)
             for index, validator in enumerate(pre.validators):
                 if active_branch == "queues_validator":
                     validator.activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH

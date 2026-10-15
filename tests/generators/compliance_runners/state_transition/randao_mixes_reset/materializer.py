@@ -59,7 +59,6 @@ class RandaoMixesResetMaterializer(ConcretizingMaterializer):
                 "source_nonzero",
                 "source_matches_destination",
             )
-            if hasattr(solution, name)
         }
         meta = {"description": "process_randao_mixes_reset", "claimed": claimed}
         return meta, [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]

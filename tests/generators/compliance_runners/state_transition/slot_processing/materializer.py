@@ -22,7 +22,7 @@ class SlotProcessingMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         period = int(spec.SLOTS_PER_HISTORICAL_ROOT)
-        position = str(getattr(solution, "ring_position", "ZERO"))
+        position = str(solution.ring_position)
         slot = modulo_representative(position, period)
         pre = create_genesis_state(
             spec,
@@ -43,7 +43,7 @@ class SlotProcessingMaterializer(Materializer):
         index = slot % period
         next_index = (slot + 1) % period
 
-        header_empty = bool(getattr(solution, "header_state_root_empty", True))
+        header_empty = bool(solution.header_state_root_empty)
         header_state_root = self.rng.getrandbits(256).to_bytes(32, "big")
         if header_state_root == bytes(32):
             header_state_root = b"\x01" + bytes(31)
@@ -54,16 +54,16 @@ class SlotProcessingMaterializer(Materializer):
         block_root_destination = self.rng.getrandbits(256) or 1
         pre.state_roots[index] = (
             spec.Bytes32(state_root_destination.to_bytes(32, "big"))
-            if bool(getattr(solution, "state_root_destination_populated", False))
+            if bool(solution.state_root_destination_populated)
             else spec.Bytes32()
         )
         pre.block_roots[index] = (
             spec.Bytes32(block_root_destination.to_bytes(32, "big"))
-            if bool(getattr(solution, "block_root_destination_populated", False))
+            if bool(solution.block_root_destination_populated)
             else spec.Bytes32()
         )
         pre.execution_payload_availability[next_index] = spec.Boolean(
-            bool(getattr(solution, "next_payload_available_before_clear", False))
+            bool(solution.next_payload_available_before_clear)
         )
 
         slots = 1

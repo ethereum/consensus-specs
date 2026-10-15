@@ -47,9 +47,7 @@ class HistoricalSummariesUpdateMaterializer(ConcretizingMaterializer):
         post = pre.copy()
         spec.process_historical_summaries_update(post)
         claimed = {
-            name: getattr(solution, name)
-            for name in ("update_remainder", "summaries_nonempty")
-            if hasattr(solution, name)
+            name: getattr(solution, name) for name in ("update_remainder", "summaries_nonempty")
         }
         meta = {
             "description": "process_historical_summaries_update",

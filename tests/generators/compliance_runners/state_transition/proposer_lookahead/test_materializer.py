@@ -17,6 +17,7 @@ from .target import TARGET
 def test_slashed_active_validator_is_absent_from_old_lookahead(tail_matches):
     solution = SimpleNamespace(
         fewer_candidates_than_slots="LT_1",
+        new_proposers_repeat=True,
         has_slashed_active_validator=True,
         old_lookahead_contains_slashed=False,
         new_epoch_repeats_old_tail=tail_matches,
