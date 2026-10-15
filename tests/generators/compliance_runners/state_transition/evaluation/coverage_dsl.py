@@ -286,6 +286,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "attester_slashing": "tests.generators.compliance_runners.state_transition.attester_slashing.target",
     "bls_to_execution_change": "tests.generators.compliance_runners.state_transition.bls_to_execution_change.target",
     "payload_attestation": "tests.generators.compliance_runners.state_transition.payload_attestation.target",
     "proposer_slashing": "tests.generators.compliance_runners.state_transition.proposer_slashing.target",
