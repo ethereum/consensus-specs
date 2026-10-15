@@ -46,7 +46,8 @@ def test_complete_max_witnesses_match_materialized_observations(provider):
             {},
         )
         actual = target.record(target.observation(context))
-        assert meta["claimed"] == record == {k: v for k, v in actual.items() if v is not NA}
+        assert meta["claimed"] == {k: "NA" if v is NA else v for k, v in actual.items()}
+        assert record == {k: v for k, v in actual.items() if v is not NA}
         observed.append(actual)
     report = score(target, observed, formula)
     assert report.covered == report.total

@@ -7,6 +7,8 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -78,7 +80,7 @@ class RegistryUpdatesMaterializer(Materializer):
                 validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE
         post = pre.copy()
         spec.process_registry_updates(post)
-        claimed = {str(k): v for k, v in vars(solution).items() if not str(k).startswith("_")}
+        claimed = self.claimed_record(TARGET, solution)
         return {"description": "process_registry_updates", "claimed": claimed}, [
             ("pre", "ssz", pre.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),

@@ -7,18 +7,12 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = (
-    "credential_type",
-    "downward_trigger",
-    "upward_trigger",
-    "rounded_vs_cap",
-    "balance_remainder",
-    "outcome",
-)
 _GENESIS_VALIDATOR_COUNT = 64
 
 
@@ -77,7 +71,7 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
         post = pre.copy()
         spec.process_effective_balance_updates(post)
 
-        claimed = {name: getattr(solution, name) for name in _DIMS}
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_effective_balance_updates: {claimed['outcome']}",
             "claimed": claimed,

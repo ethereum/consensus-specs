@@ -299,6 +299,11 @@ come from the bound assertion set, or are zero without assertions. Missing
 active fields and unknown fault counts raise errors. The generic adapter cannot
 be combined with `witness` or `candidates`. The same conversion is available as
 `materializer_record(bound_target, assignment)`.
+Materializers use `self.claimed_record(TARGET, solution)` to build dimension
+metadata from the same activation model. It encodes inactive dimensions as
+`"NA"`, excludes concrete inputs and solver metadata, and adds `fault_count`
+when the target declares assertions. Claims retain the requested dimension
+values so validation can detect mismatches in the constructed state.
 `profile_records(bound_target, name)` is also available for
 custom adapters. `coverage_profiles(..., backend="minizinc", solver="gecode")`
 selects native declaration compilation, as used by payload attestation,

@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = [f.name for f in TARGET.factors]
 _VALIDATOR_COUNT = 64
 
 
@@ -139,11 +138,7 @@ class VoluntaryExitMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {name: getattr(solution, name) for name in _DIMS}
-        summary = TARGET.for_spec(spec).assertion_result(
-            {n: v for n, v in claimed.items() if v != "NA"}
-        )
-        claimed["fault_count"] = summary.fault_count
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_voluntary_exit: {'ACCEPT' if claimed['accepted'] else 'REJECT'}",
             "bls_setting": 1,

@@ -83,7 +83,7 @@ class BlockHeaderMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = assignment
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_block_header: {'ACCEPT' if post is not None else 'REJECT'}",
             "bls_setting": 0,

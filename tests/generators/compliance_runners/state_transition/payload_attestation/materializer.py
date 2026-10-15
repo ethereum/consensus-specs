@@ -8,17 +8,10 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.payload_attestation import prepare_signed_payload_attestation
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-_DIMS = [
-    "parent_root_matches",
-    "slot_is_previous",
-    "attesting_indices_profile",
-    "attesting_indices_nonempty",
-    "signature_valid",
-    "outcome",
-]
 
 
 def _s(sol: Any, name: str) -> str:
@@ -75,7 +68,7 @@ class PayloadAttestationMaterializer(Materializer):
             spec.process_payload_attestation(post, operation)
         except (AssertionError, IndexError):
             post = None
-        claimed = {name: getattr(sol, name) for name in (*_DIMS, "accepted")}
+        claimed = self.claimed_record(TARGET, sol)
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("payload_attestation", "ssz", operation.encode_bytes()),

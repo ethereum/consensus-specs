@@ -10,6 +10,7 @@ from tests.generators.compliance_runners.state_transition.materializer import (
 )
 
 from .concretization import STRATEGY
+from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -42,7 +43,7 @@ class Eth1DataResetMaterializer(ConcretizingMaterializer):
 
         post = pre.copy()
         spec.process_eth1_data_reset(post)
-        claimed = {name: getattr(solution, name) for name in ("reset_remainder", "votes_nonempty")}
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": "process_eth1_data_reset",
             "claimed": claimed,

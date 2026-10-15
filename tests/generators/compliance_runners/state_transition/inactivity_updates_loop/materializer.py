@@ -8,7 +8,7 @@ from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 from .cases import arithmetic_witnesses
-from .target import BODY
+from .target import BODY, TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
@@ -63,7 +63,7 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             )
         post = pre.copy()
         spec.process_inactivity_updates(post)
-        claimed = {str(k): v for k, v in vars(solution).items() if not str(k).startswith("_")}
+        claimed = self.claimed_record(TARGET, solution)
         return {"description": "process_inactivity_updates loop body", "claimed": claimed}, [
             ("pre", "ssz", pre.encode_bytes()),
             ("post", "ssz", post.encode_bytes()),

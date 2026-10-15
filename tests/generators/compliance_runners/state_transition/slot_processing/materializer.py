@@ -10,6 +10,8 @@ from tests.generators.compliance_runners.state_transition.concretization import 
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
@@ -69,9 +71,7 @@ class SlotProcessingMaterializer(Materializer):
         slots = 1
         post = pre.copy()
         spec.process_slots(post, spec.Slot(int(pre.slot) + slots))
-        claimed = {
-            str(key): value for key, value in vars(solution).items() if not str(key).startswith("_")
-        }
+        claimed = self.claimed_record(TARGET, solution)
         return {
             "description": f"process_slot at {position.lower()} historical-root index",
             "claimed": claimed,
