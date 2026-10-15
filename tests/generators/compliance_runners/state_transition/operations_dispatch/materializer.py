@@ -21,18 +21,10 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-
-_FIELDS = (
-    "proposer_slashings",
-    "attester_slashings",
-    "attestations",
-    "voluntary_exits",
-    "bls_to_execution_changes",
-    "payload_attestations",
-)
 
 
 class OperationsDispatchMaterializer(Materializer):
@@ -67,9 +59,8 @@ class OperationsDispatchMaterializer(Materializer):
         pre.execution_payload_availability[4] = spec.Boolean(0)
         return pre
 
-    def _populate(self, scenario: str, pre: Any, block: Any) -> dict:
+    def _populate(self, scenario: str, pre: Any, block: Any) -> None:
         spec, body = self.spec, block.body
-        claimed: dict[str, Any] = {}
         if scenario == "all_lists":
             (
                 first_slashed_index,
@@ -109,7 +100,6 @@ class OperationsDispatchMaterializer(Materializer):
                 )
             )
             body.voluntary_exits.append(prepare_signed_exits(spec, pre, [shared_index])[0])
-            claimed["shared_slash_exit"] = True
         elif scenario == "invalid_payload_attestation":
             mismatched_root = bytearray(self.rng.getrandbits(256).to_bytes(32, "big"))
             if mismatched_root == bytes(block.parent_root):
@@ -122,7 +112,6 @@ class OperationsDispatchMaterializer(Materializer):
                     beacon_block_root=spec.Root(bytes(mismatched_root)),
                 )
             )
-            claimed["payload_root_matches"] = False
         elif scenario in ("parent_slot_matches", "parent_slot_mismatches"):
             advanced = pre.copy()
             spec.process_slots(advanced, spec.Slot(5))
@@ -137,16 +126,8 @@ class OperationsDispatchMaterializer(Materializer):
             )
             sign_attestation(spec, advanced, attestation)
             body.attestations.append(attestation)
-            claimed.update(
-                parent_slot_differs_from_attestation_slot=True,
-                parent_slot_payload_available=True,
-                attestation_slot_payload_available=False,
-                head_flag_set=scenario == "parent_slot_matches",
-            )
         else:
             raise ValueError(f"unknown dispatch scenario: {scenario}")
-        claimed["counts"] = {field: len(getattr(body, field)) for field in _FIELDS}
-        return claimed
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
@@ -160,7 +141,7 @@ class OperationsDispatchMaterializer(Materializer):
                 else self._parent_state()
             )
             block = build_empty_block(spec, pre, slot=int(pre.slot) + 1)
-            claimed = self._populate(scenario, pre, block)
+            self._populate(scenario, pre, block)
             signed_block = spec.SignedBeaconBlock(message=block)
             post = pre.copy()
             try:
@@ -170,8 +151,7 @@ class OperationsDispatchMaterializer(Materializer):
         finally:
             bls.bls_active = old_bls_active
 
-        claimed["accepted"] = bool(solution.accepted)
-        claimed["outcome"] = "ACCEPT" if solution.accepted else "REJECT"
+        claimed = self.claimed_record(TARGET, solution)
         meta = {
             "description": f"process_operations dispatch: {scenario}",
             "bls_setting": 1,

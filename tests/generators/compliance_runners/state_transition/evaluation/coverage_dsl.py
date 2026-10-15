@@ -286,6 +286,8 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "builder_exit_request": "tests.generators.compliance_runners.state_transition.builder_exit_request.target",
+    "process_operations_dispatch": "tests.generators.compliance_runners.state_transition.operations_dispatch.target",
     "builder_deposit_request": "tests.generators.compliance_runners.state_transition.builder_deposit_request.target",
     "builder_pending_payments": "tests.generators.compliance_runners.state_transition.builder_pending_payments.target",
     "attester_slashing": "tests.generators.compliance_runners.state_transition.attester_slashing.target",
@@ -318,6 +320,7 @@ TARGETS = {
 
 TARGET_HANDLERS = {
     "process_operations": "blocks",
+    "process_operations_dispatch": "blocks",
     "process_slot": "slots",
 }
 
@@ -329,13 +332,23 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
     for case in test_run.gather_tests(tests):
         if case.handler != handler or case.preset != preset or case.fork != "gloas":
             continue
+        if target.name == "process_operations_dispatch":
+            dimensions_path = Path(case.test_dir) / "dimensions.yaml"
+            if dimensions_path.exists():
+                dimensions = test_run.read_yaml(dimensions_path)
+                if dimensions.get("test_provider") != "process_operations_dispatch":
+                    continue
         tc = test_run.get_test_case(spec, Path(case.test_dir), case.handler)
         if target.name == "process_slot":
             operation = tc["slots"]
-        elif target.name == "process_operations":
+        elif target.name in ("process_operations", "process_operations_dispatch"):
             if not tc["blocks"]:
                 raise ValueError(f"sanity/blocks vector has no blocks: {case.test_dir}")
-            operation = tc["blocks"][0].message.body
+            operation = (
+                tc["blocks"][0].message.body
+                if target.name == "process_operations"
+                else tc["blocks"][0]
+            )
         else:
             operation = tc["operation"]
         obs = target.observation(Context(spec, tc["pre"], operation, tc["post"], tc["meta"]))
