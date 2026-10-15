@@ -28,18 +28,13 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.withdr
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 NUM_VALIDATORS = 64
 INVALID_SIGNATURE = b"\x00" * 96  # not verified by this handler
-
-_DIMS = [
-    "amount_profile",
-    "withdrawal_credentials_profile",
-    "signature_profile",
-    "pubkey_is_existing_validator",
-]
 
 
 def _b(sol: Any, n: str) -> bool:
@@ -97,9 +92,7 @@ class DepositRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_deposit_request(post, request)  # never raises
 
-        claimed = {
-            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {"description": "process_deposit_request", "claimed": claimed}
         parts = [
             ("pre", "ssz", pre.encode_bytes()),

@@ -7,12 +7,21 @@ from typing import Any, TYPE_CHECKING
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_DIMS = ["scenario", "validator_status", "total_slashings", "penalty_outcome", "outcome"]
 _VALIDATOR_COUNT = 64
+_SCENARIO_BY_CLAIM = {
+    ("UNSLASHED_VALIDATOR", "SATURATED_TOTAL", "NO_PENALTY", "NO_STATE_CHANGE"): ("UNSLASHED"),
+    ("SLASHED_WAITING", "SATURATED_TOTAL", "NO_PENALTY", "NO_STATE_CHANGE"): ("SLASHED_NOT_DUE"),
+    ("SLASHED_DUE", "ZERO_TOTAL", "NO_PENALTY", "NO_STATE_CHANGE"): ("ZERO"),
+    ("SLASHED_DUE", "PARTIAL_TOTAL", "PARTIAL_PENALTY", "BALANCE_DECREASED"): ("PARTIAL"),
+    ("SLASHED_DUE", "SATURATED_TOTAL", "FULL_PENALTY", "BALANCE_ZEROED"): ("FULL"),
+    ("SLASHED_DUE", "SATURATED_TOTAL", "UNDERFLOW_TO_ZERO", "BALANCE_ZEROED"): ("UNDERFLOW"),
+}
 
 
 class SlashingsMaterializer(Materializer):
@@ -29,11 +38,16 @@ class SlashingsMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        scenario = str(solution.scenario)
+        claim = self.claimed_record(TARGET, solution)
+        scenario_key = tuple(
+            claim[name]
+            for name in ("validator_status", "total_slashings", "penalty_outcome", "outcome")
+        )
+        scenario = _SCENARIO_BY_CLAIM[scenario_key]
         validator_index = self.rng.randrange(_VALIDATOR_COUNT)
         validator = pre.validators[validator_index]
-        # Mark the selected validator without changing its active status. This
-        # lets the independent validator locate it after serialization.
+        # Mark the selected validator without changing its active status so the
+        # target observer can locate it after serialization.
         validator.activation_eligibility_epoch = spec.Epoch(spec.GENESIS_EPOCH + 1)
         current_epoch = spec.get_current_epoch(pre)
         penalty_epoch = spec.Epoch(current_epoch + spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
@@ -58,11 +72,7 @@ class SlashingsMaterializer(Materializer):
 
         post = pre.copy()
         spec.process_slashings(post)
-        claimed = {
-            name: bool(value) if isinstance(value := getattr(solution, name), bool) else str(value)
-            for name in _DIMS
-            if name != "scenario"
-        }
+        claimed = claim
         meta = {"description": f"process_slashings: {claimed['outcome']}", "claimed": claimed}
         return meta, [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
 
