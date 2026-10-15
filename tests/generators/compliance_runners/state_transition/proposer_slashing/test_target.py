@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 from ruamel.yaml import YAML
 
+import tests.generators.compliance_runners.state_transition.proposer_slashing as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
@@ -22,7 +23,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-import tests.generators.compliance_runners.state_transition.proposer_slashing as validation
 from . import build_profile
 from .materializer import _DIMS, ProposerSlashingMaterializer
 from .target import TARGET
@@ -81,7 +81,7 @@ def test_full_space_and_max_profile_completeness(preset, minizinc_available):
     for name in PROFILES:
         expected = [
             materializer_record(target, dict(c))
-            for c in target.profiles[name].generation_obligations(complete=True)
+            for c in target.profiles[name].generation_obligations()
         ]
         _, actual = build_profile(name, spec=spec)
         assert {tuple(sorted(r.items())) for r in actual} == {

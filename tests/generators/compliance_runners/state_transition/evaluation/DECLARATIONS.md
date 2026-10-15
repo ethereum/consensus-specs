@@ -273,20 +273,18 @@ still fail.
 
 Providers can use the same adapter for concrete witnesses:
 
-- `complete=True` completes every obligation within its formula branch, retaining
-  fault restrictions and preferring fewer faults.
 - `witness(record)` converts a generation assignment to a materializer record.
 - `candidates(spec)` supplies concrete records containing factor values and
   materializer inputs, as used by effective-balance updates. The adapter selects
   the first matching candidate in stable factor order and reports missing
   witnesses.
 
-`complete=True` delegates witness selection to `conditional_factors.Model.complete`
+Witness generation always delegates selection to `conditional_factors.Model.complete`
 over the declaration backend's feasible configurations for each formula branch.
 The declaration layer supplies the acceptance/fault preference; the shared model
 selects deterministic complete extensions while respecting inactive dimensions.
-Block header and operations request complete assignments at this stage, so their
-materializers do not fill missing abstract fields. Block header retains its
+Every active dimension is supplied, so materializers do not need to fill missing
+abstract fields. Block header retains its
 concrete joint-slot constructor; abstract completion does not choose raw slots
 or construct consensus objects.
 
@@ -295,13 +293,13 @@ representative list by sorted record contents; the first return value remains
 the generation obligations. Coverage scoring should use the representatives.
 For materializers that consume coverage dimensions directly, use
 `coverage_profiles(TARGET, materializer=True)`.
-This completes assignments and infers inactive fields from the target's
+This infers inactive fields from the target's
 activation model, encoding them as `"NA"`. All target dimensions are included and active values retain their native types. `_nfaults` and `_rank`
 come from the bound assertion set, or are zero without assertions. Missing
 active fields and unknown fault counts raise errors. The generic adapter cannot
 be combined with `witness` or `candidates`. The same conversion is available as
 `materializer_record(bound_target, assignment)`.
-`profile_records(bound_target, name, complete=False)` is also available for
+`profile_records(bound_target, name)` is also available for
 custom adapters. `coverage_profiles(..., backend="minizinc", solver="gecode")`
 selects native declaration compilation, as used by payload attestation,
 voluntary exit, and proposer slashing. Omitting these options preserves the target's existing defaults.
@@ -508,9 +506,9 @@ assertion summaries, and `--describe` displays assertion membership and limits.
 
 Generation adapters should use `generation_obligations()` (as `profile_records`
 does), rather than treating scoped `run()` projections as unrestricted witness
-requests. It completes scoped obligations within their permitted configurations,
-so a downstream witness cannot add extra faults. Unscoped obligations remain
-partial unless `complete=True` is passed. Complete assignment selection also
+requests. It completes all obligations within their permitted configurations,
+so a downstream witness cannot add extra faults to a scoped obligation. Coverage
+projections from `run()` remain partial. Complete assignment selection also
 prefers fewer faults. For incomplete slices, completion prefers agreement with
 the predicted outcome when the obligation permits it; this is a generation
 preference, not an assumption about all observed executions.
@@ -528,7 +526,7 @@ binding time:
 ```python
 target = TARGET.for_spec(spec, backend="minizinc", solver="gecode")
 obligations = target.profiles["normal"].run()
-witnesses = target.profiles["normal"].generation_obligations(complete=True)
+witnesses = target.profiles["normal"].generation_obligations()
 model = target.definition.model(target.bound_constants)
 activation_source = model.to_minizinc()
 feasibility_source = target.to_minizinc()

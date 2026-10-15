@@ -15,7 +15,7 @@ from .target import TARGET
 
 def _write_case(tmp_path, **obligation):
     target = TARGET.for_spec(spec)
-    completed = BoundFormula(target, fix(**obligation)).generation_obligations(complete=True)
+    completed = BoundFormula(target, fix(**obligation)).generation_obligations()
     assert len(completed) == 1
     materializer = OperationsMaterializer(spec)
     materializer.test_provider = "process_operations"
