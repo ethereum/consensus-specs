@@ -174,7 +174,6 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
     build_profile = coverage_profiles(t)
     expected = [{"value": 0}, {"value": 1}, {"value": 2}]
     assert build_profile("all", spec=spec) == (expected, expected)
-    assert coverage_profiles(t, complete=True)("all", spec=spec) == (expected, expected)
     assert profile_records(t.for_spec(spec), "all") == expected
     assert build_profile("exceptional", spec=spec) == ([], [])
     with pytest.raises(KeyError):
@@ -347,7 +346,24 @@ def test_generic_materializer_record_uses_comparison_activation_and_fault_counts
             materializer_record(bound, record)
 
 
-def test_generic_materializer_profiles_complete_unscoped_obligations():
+def test_provider_profiles_always_complete_unscoped_obligations():
+    template = materializer_target()
+    spec = object()
+    bound = template.for_spec(spec)
+    records, chosen = coverage_profiles(template)("each", spec=spec)
+    assert records == chosen == profile_records(bound, "each")
+    configurations = bound._configurations(filtered=True)[1]
+    assert all(frozenset(r.items()) in configurations for r in records)
+    assert all({"gate", "raw"} <= r.keys() for r in records)
+    assert all(bound.assertion_result(r).fault_count is not None for r in records)
+    # Coverage requirements retain their projections, independent of witnesses.
+    assert frozenset({("raw", False)}) in bound.profiles["each"].run()
+    report = score(bound, records, bound.profiles["each"])
+    assert report.covered == report.total
+    assert not report.unexpected
+
+
+def test_generic_materializer_profiles_encode_inactive_dimensions():
     template = materializer_target()
     spec = object()
     bound = template.for_spec(spec)
@@ -405,9 +421,7 @@ def test_generic_materializer_rejects_unknown_fault_count():
     ],
 )
 def test_nonrejecting_declaration_providers_share_the_empty_exceptional_profile(provider):
-    module = import_module(
-        f"tests.generators.compliance_runners.state_transition.{provider}"
-    )
+    module = import_module(f"tests.generators.compliance_runners.state_transition.{provider}")
     assert module.build_profile("exceptional", spec=object()) == ([], [])
 
 

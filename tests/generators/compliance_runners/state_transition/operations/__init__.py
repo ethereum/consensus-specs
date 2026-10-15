@@ -11,7 +11,7 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 from .materializer import MATERIALIZER
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET, complete=True, backend="minizinc")
+build_profile = coverage_profiles(TARGET, backend="minizinc")
 recover_dimensions, validate_case = target_validator(
     TARGET,
     operation_name="blocks_0",

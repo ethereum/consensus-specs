@@ -61,11 +61,8 @@ def test_existing_target_backend_agreement(minizinc_available, preset, name):
         filtered_modes = (False, True) if raw_size <= 4096 else (True,)
         for filtered in filtered_modes:
             assert actual.run(filtered=filtered) == expected.run(filtered=filtered)
-        for complete in (False, True):
-            assert actual.generation_obligations(
-                complete=complete
-            ) == expected.generation_obligations(complete=complete)
-        records = [dict(c) for c in actual.generation_obligations(complete=True)]
+        assert actual.generation_obligations() == expected.generation_obligations()
+        records = [dict(c) for c in actual.generation_obligations()]
         assert actual.covered(records) == expected.covered(records)
         assert actual.covered(records) == actual.run()
         if solver.definition.assertions is not None:

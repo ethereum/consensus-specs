@@ -38,9 +38,9 @@ def materializer_record(target, assignment):
     return {**record, "_nfaults": faults, "_rank": faults}
 
 
-def profile_records(target, name: str, *, complete=False) -> list[dict]:
-    """Expand a bound profile in a stable order, independent of set iteration."""
-    obligations = target.profiles[name].generation_obligations(complete=complete)
+def profile_records(target, name: str) -> list[dict]:
+    """Return complete profile witnesses in a stable order."""
+    obligations = target.profiles[name].generation_obligations()
     return [
         dict(items)
         for items in sorted((tuple(sorted(obligation)) for obligation in obligations), key=repr)
@@ -50,7 +50,6 @@ def profile_records(target, name: str, *, complete=False) -> list[dict]:
 def coverage_profiles(
     target,
     *,
-    complete=False,
     witness=None,
     candidates=None,
     materializer=False,
@@ -61,13 +60,13 @@ def coverage_profiles(
 
     An omitted ``exceptional`` profile returns empty records. Other missing
     profile names raise an error.
-    ``complete`` requests full abstract assignments within each formula branch.
+    Witnesses always include every active dimension within each formula branch.
     ``witness(record)`` converts assignments to materializer records; alternatively,
     ``candidates(spec)`` supplies concrete records to match against obligations.
     Representative selection and deduplication are deterministic.
     ``backend`` and ``solver`` optionally select the declaration target backend.
     ``materializer`` selects the generic adapter for all target dimensions,
-    completing assignments and adding assertion fault metadata automatically.
+    encoding inactive dimensions and adding assertion fault metadata automatically.
     """
     if witness is not None and candidates is not None:
         raise ValueError("choose either a witness adapter or concrete candidates")
@@ -78,7 +77,7 @@ def coverage_profiles(
         if name == "exceptional" and name not in target.profiles:
             return [], []
         bound = target.for_spec(spec, backend=backend, solver=solver)
-        records = profile_records(bound, name, complete=complete or materializer)
+        records = profile_records(bound, name)
         if witness is None and candidates is None and not materializer:
             return records, records
         if materializer:
