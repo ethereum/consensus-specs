@@ -286,6 +286,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "withdrawal_request": "tests.generators.compliance_runners.state_transition.withdrawal_request.target",
     "parent_execution_payload": "tests.generators.compliance_runners.state_transition.parent_execution_payload.target",
     "builder_pending_withdrawal_processing": "tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target",
     "attestation": "tests.generators.compliance_runners.state_transition.attestation.target",

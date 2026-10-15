@@ -27,34 +27,20 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.withdr
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .target import TARGET
+
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 NUM_VALIDATORS = 64
 PARTIAL_AMOUNT = 10**9
 
-_DIMS = [
-    "is_full_exit_request",
-    "partial_queue_capacity",
-    "validator_pubkey_found",
-    "validator_credential",
-    "source_address_matches",
-    "validator_active",
-    "validator_exiting",
-    "validator_old_enough",
-    "has_pending_partial_withdrawal",
-    "effective_balance_to_min_activation",
-    "balance_to_required",
-    "churn_variant",
-    "validator_has_execution_credential",
-    "validator_has_compounding_credential",
-    "outcome",
-    "withdrawal_effected",
-]
-
 
 def _s(sol: Any, n: str) -> str:
-    return str(getattr(sol, n))
+    value = getattr(sol, n)
+    if isinstance(value, bool):
+        return "T" if value else "F"
+    return str(value)
 
 
 def _b(sol: Any, n: str) -> bool:
@@ -65,13 +51,17 @@ class WithdrawalRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "withdrawal_request"
 
-    def _base_state(self) -> Any:
-        spec = self.spec
-        state = create_genesis_state(
+    def __init__(self, spec, fork_name="gloas", preset_name="minimal", seed=0):
+        super().__init__(spec, fork_name, preset_name, seed)
+        self._base = create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * NUM_VALIDATORS,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
+
+    def _base_state(self) -> Any:
+        spec = self.spec
+        state = self._base.copy()
         current_epoch = self.rng.randrange(
             int(spec.config.SHARD_COMMITTEE_PERIOD) + 10,
             int(spec.config.SHARD_COMMITTEE_PERIOD) + 101,
@@ -150,8 +140,13 @@ class WithdrawalRequestMaterializer(Materializer):
         # filler realizes the requested capacity profile.
         pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
         queue_capacity = _s(sol, "partial_queue_capacity")
-        queue_length = queue_length_from_profile(
-            queue_capacity, int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT), self.rng
+        queue_limit = int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
+        # AVAILABLE covers occupancy below capacity; keep that fixture small
+        # even when mainnet allows over a hundred million entries.
+        queue_length = (
+            self.rng.randint(1, min(NUM_VALIDATORS, queue_limit - 1))
+            if queue_capacity == "AVAILABLE"
+            else queue_length_from_profile(queue_capacity, queue_limit, self.rng)
         )
         entries = []
         if pending_for_target:
@@ -218,9 +213,7 @@ class WithdrawalRequestMaterializer(Materializer):
         post = pre.copy()
         spec.process_withdrawal_request(post, request)  # never raises
 
-        claimed = {
-            n: (_b(sol, n) if isinstance(getattr(sol, n), bool) else _s(sol, n)) for n in _DIMS
-        }
+        claimed = self.claimed_record(TARGET, sol)
         meta = {
             "description": f"process_withdrawal_request: {claimed['outcome']}",
             "claimed": claimed,
