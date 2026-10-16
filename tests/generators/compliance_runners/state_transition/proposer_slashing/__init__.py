@@ -12,7 +12,7 @@ from .materializer import ProposerSlashingMaterializer
 from .target import TARGET
 
 MATERIALIZER = ProposerSlashingMaterializer
-build_profile = coverage_profiles(TARGET, backend="minizinc")
+build_profile = coverage_profiles(TARGET)
 recover, validate_case = target_validator(
     TARGET,
     operation_name="proposer_slashing",

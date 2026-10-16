@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.runner import test_run
 
+from .backend_config import BACKENDS, DEFAULT_BACKEND, DEFAULT_SOLVER
+
 # --- attributes ---------------------------------------------------------------
 
 
@@ -389,8 +391,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tests", type=Path, nargs="+", required=True)
     parser.add_argument("--target", choices=sorted(TARGETS), default="voluntary_exit")
     parser.add_argument("--preset", choices=("minimal", "mainnet"), default="minimal")
-    parser.add_argument("--backend", choices=("python", "minizinc"), default="python")
-    parser.add_argument("--solver", default="gecode", help="MiniZinc solver (default: gecode)")
+    parser.add_argument("--backend", choices=BACKENDS, default=DEFAULT_BACKEND)
+    parser.add_argument(
+        "--solver", default=DEFAULT_SOLVER, help=f"MiniZinc solver (default: {DEFAULT_SOLVER})"
+    )
     parser.add_argument("--profile", action="append", help="default: every profile")
     parser.add_argument("--max-uncovered", type=int, default=10)
     parser.add_argument(

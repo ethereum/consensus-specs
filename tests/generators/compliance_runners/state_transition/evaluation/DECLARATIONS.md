@@ -295,11 +295,12 @@ concrete inputs and solver metadata, and adds `fault_count` when the target
 declares assertions. Claims retain the requested dimension values so validation
 can detect mismatches in the constructed state.
 `profile_records(bound_target, name)` is also available for custom adapters.
-`coverage_profiles(..., backend="minizinc", solver="gecode")` selects native
-declaration compilation, as used by payload attestation, voluntary exit, and
-proposer slashing. Omitting these options preserves the target's existing
-defaults. Scenario and remaining handwritten MiniZinc providers retain their
-existing profile implementations.
+`coverage_profiles(TARGET)` inherits the central MiniZinc/Gecode defaults from
+`evaluation/backend_config.py`. All TARGET providers use this shared policy.
+`coverage_profiles(..., backend="python")` explicitly selects the reference
+implementation; solver/backend overrides remain available when needed. Scenario
+and remaining handwritten MiniZinc providers retain their existing profile
+implementations.
 
 ## Shared validation
 
@@ -331,7 +332,7 @@ fields produce mismatches instead of being silently ignored.
 Enumeration explores the complete finite factor model and caches it per bound
 target and filtering mode. It is intended for small focus areas.
 Expression-to-DL or UTVPI translation and sampling are not implemented. The
-optional MiniZinc backend translates finite domains, activation, abstract
+default MiniZinc backend translates finite domains, activation, abstract
 feasibility constraints, assertion consistency, fault scopes, and coverage
 formulas. Raw observation expressions and Python feasibility callbacks are not
 source-translated; callbacks supply explicit finite compatibility tables. The
@@ -532,13 +533,18 @@ feasibility table keeps generated claims aligned with the materialized
 attestations and validator state. The provider now uses the shared declaration
 adapters; its former MiniZinc model and custom validator have been removed.
 
-### Optional MiniZinc enumeration
+### Default MiniZinc backend and Python reference
 
-Existing targets can select the shared conditional-factor MiniZinc backend at
-binding time:
+TARGET binding, provider generation, and the coverage scoring CLI default to
+MiniZinc with Gecode. Defaults are defined once in `backend_config.py`; provider
+modules do not repeat backend overrides. Python remains an explicit reference
+backend for small-model tests and parity comparisons. Binding and observation
+are lazy and do not invoke a solver until generation, enumeration, or export.
+For example:
 
 ```python
-target = TARGET.for_spec(spec, backend="minizinc", solver="gecode")
+target = TARGET.for_spec(spec)  # central MiniZinc/Gecode defaults
+reference = TARGET.for_spec(spec, backend="python")
 obligations = target.profiles["normal"].run()
 witnesses = target.profiles["normal"].generation_obligations()
 model = target.definition.model(target.bound_constants)
@@ -547,10 +553,11 @@ feasibility_source = target.to_minizinc()
 profile_sources = target.profiles["normal"].to_minizinc()
 ```
 
-The coverage scoring CLI accepts `--backend minizinc` and `--solver gecode`.
-Python remains the default; MiniZinc and the selected solver are required only
-when that backend enumerates configurations or exports profile models. Bind the
-original target template again to change the backend, solver, or spec; bound
+The coverage scoring CLI accepts `--backend python` for reference scoring and
+`--solver` for an explicit MiniZinc solver override. MiniZinc and the selected
+solver must be installed for default generation, enumeration, and model export.
+Observation and validation do not require invoking the MiniZinc executable. Bind
+the original target template again to change the backend, solver, or spec; bound
 targets retain their own caches.
 
 This backend translates finite dimension domains and conditional activation,
@@ -839,17 +846,17 @@ formed excess-balance pending deposit, or a consolidation append and source exit
 in the actual post-state; validation requires a post-state.
 
 Generation, metadata, validation, and coverage loading use the shared adapters;
-the provider's custom model, coverage driver, and validator are removed. Use
-`--backend minizinc` for coverage scoring of this large target. Its projection
-encoding exceeds Gecode's integer range, so the shared backend solves feasible
-rows with MiniZinc and evaluates projection/union/products using the existing
-Python evaluator over those rows. It never enumerates the raw Cartesian space
-for that fallback. Standalone coverage-model export still reports the encoding
-limit. Sparse-model tests cover conditional activation, union, compatible and
-conflicting products, complete witnesses, and unsatisfiable inputs. The generic
-native-backend comparison skips Cartesian spaces exceeding ten million tuples;
-this provider instead compares its complete rows and fault scopes against
-fingerprints from the legacy MiniZinc model under both presets.
+the provider's custom model, coverage driver, and validator are removed. Use the
+default MiniZinc backend for coverage scoring of this large target. Its
+projection encoding exceeds Gecode's integer range, so the shared backend solves
+feasible rows with MiniZinc and evaluates projection/union/products using the
+existing Python evaluator over those rows. It never enumerates the raw Cartesian
+space for that fallback. Standalone coverage-model export still reports the
+encoding limit. Sparse-model tests cover conditional activation, union,
+compatible and conflicting products, complete witnesses, and unsatisfiable
+inputs. The generic native-backend comparison skips Cartesian spaces exceeding
+ten million tuples; this provider instead compares its complete rows and fault
+scopes against fingerprints from the legacy MiniZinc model under both presets.
 
 Concrete regressions cover every minimal signature, both preset smoke pipelines,
 and mainnet standard witnesses with small queues. Full mainnet queues (262,144
@@ -858,3 +865,34 @@ to minimal: mainnet now uses a compact pool of compounding validators, each at
 or below its effective-balance cap, to realize its much larger churn quotient.
 Low-churn fixtures retain enough validators for nonempty PTC slot committees.
 Genesis bases are cached, and AVAILABLE queues use small nonempty fixtures.
+
+### Central-default migration baseline
+
+The fourteen TARGET providers previously inheriting Python now inherit the
+central MiniZinc default: attestation, attester slashing, BLS-to-execution
+change, builder deposit requests, builder exits, builder pending payments,
+single builder pending withdrawals, deposit requests, effective-balance updates,
+operation dispatch, pending consolidations, PTC window, slashings, and sync
+aggregates. The other 22 TARGET providers also inherit that policy after
+removing redundant MiniZinc overrides. The two remaining legacy providers are
+outside this change. Generic conditional-factor tools retain their Python
+reference defaults.
+
+Reference tests bind `backend="python"` explicitly, so changing production
+defaults cannot silently turn a parity test into MiniZinc versus itself.
+Provider contract tests verify inheritance through each actual `build_profile`
+adapter; the CLI shares the same constants. The existing two-preset backend
+matrix compares configurations, profile obligations, deterministic witnesses,
+and coverage semantics for the fourteen migrated providers.
+
+`benchmark_backends.py` records a pre-optimization baseline for that fixed
+cohort. It uses isolated processes per provider/preset/backend, three repeats by
+default, and fresh target bindings per profile. Timings exclude module imports;
+scoring reuses generation caches. Garbage collection between samples releases
+previous bindings. Reports include per-profile generation/scoring wall time,
+solver calls, canonical witness/obligation/report fingerprints, Python peak RSS,
+and maximum child-process RSS. RSS includes imports, is process-wide rather than
+per-profile, and does not represent combined Python-plus-solver peak memory. The
+benchmark checks semantic parity before declaring completion. It makes no
+production performance changes. Commands and measurement details are in the
+evaluation README; generated reports remain local.

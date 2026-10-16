@@ -61,7 +61,7 @@ def definition(attributes, factors, profiles, **kwargs):
 
 def bound(definition, **kwargs):
     return bind(definition, observe_attributes=lambda ctx: ctx.pre, **kwargs).for_spec(
-        SimpleNamespace()
+        SimpleNamespace(), backend="python"
     )
 
 
@@ -380,12 +380,12 @@ def test_derived_expressions_short_circuit_and_constant_validation():
     A = comparison("A", after, c)
     d = definition((x,), (A,), {"a": each([A])}, constants=(c,))
     template = bind(d, observe_attributes=lambda ctx: ctx.pre, constants={"c": lambda spec: spec.c})
-    t = template.for_spec(SimpleNamespace(c=4))
+    t = template.for_spec(SimpleNamespace(c=4), backend="python")
     assert t.observation(Context(t._bound_spec, {"x": 0}, None, None, {}))["A"] == 0
     assert t.observation(Context(t._bound_spec, {"x": 7}, None, None, {}))["A"] == 2
     assert choose(condition=False, yes=expression(1) % x, no=9).evaluate({"x": 0}, {}) == 9
     with pytest.raises(ValueError, match="outside"):
-        template.for_spec(SimpleNamespace(c=0))
+        template.for_spec(SimpleNamespace(c=0), backend="python")
     with pytest.raises(ValueError, match="attributes mismatch"):
         t.observation(Context(t._bound_spec, {"x": 1, "c": 99}, None, None, {}))
 
@@ -522,7 +522,7 @@ def test_modulo_domains_and_observations_follow_bound_constant(period, expected)
     template = bind(
         d, observe_attributes=lambda ctx: ctx.pre, constants={"period": lambda spec: spec.period}
     )
-    t = template.for_spec(SimpleNamespace(period=period))
+    t = template.for_spec(SimpleNamespace(period=period), backend="python")
     assert t.factors[0].domain() == expected
     assert t.profiles["all"].run() == {obligation(position=v) for v in expected}
     assert t.profiles["child"].run() == {

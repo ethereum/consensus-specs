@@ -1,4 +1,4 @@
-"""Compare the optional solver enumeration with existing declaration targets."""
+"""Compare the default MiniZinc backend with the explicit Python reference."""
 
 from importlib import import_module
 from math import prod
@@ -51,7 +51,7 @@ def minizinc_available():
 def test_existing_target_backend_agreement(minizinc_available, preset, name):
     template = import_module(TARGETS[name]).TARGET
     spec = spec_targets[preset]["gloas"]
-    python = template.for_spec(spec)
+    python = template.for_spec(spec, backend="python")
     raw_product = prod(
         len(f.values) for f in python.definition.model(python.bound_constants).factors
     )
@@ -92,8 +92,10 @@ def test_existing_target_backend_agreement(minizinc_available, preset, name):
 def test_backend_binding_is_explicit():
     template = import_module(TARGETS["eth1_data_reset"]).TARGET
     spec = spec_targets["minimal"]["gloas"]
-    python = template.for_spec(spec)
+    python = template.for_spec(spec, backend="python")
     solver = template.for_spec(spec, backend="minizinc")
+    assert template.backend == "minizinc"
+    assert template.for_spec(spec).backend == "minizinc"
     assert python.backend == "python"
     assert solver.backend == "minizinc"
     assert solver.for_spec(spec) is solver
@@ -141,7 +143,7 @@ def test_native_constraints_and_formulas_do_not_use_python_evaluation(
         constants={"limit": lambda spec: 2**64 - 1},
     )
     spec = object()
-    python = template.for_spec(spec)
+    python = template.for_spec(spec, backend="python")
     expected_configs = python._configurations(filtered=True)[1]
     expected = {name: formula.run() for name, formula in python.profiles.items()}
     solver = template.for_spec(spec, backend="minizinc")
@@ -211,7 +213,7 @@ def test_product_uses_independent_leaf_witnesses(minizinc_available):
         observe_attributes=lambda ctx: {},
     )
     spec = object()
-    expected = template.for_spec(spec).profiles["product"].run()
+    expected = template.for_spec(spec, backend="python").profiles["product"].run()
     actual = template.for_spec(spec, backend="minizinc").profiles["product"].run()
     assert actual == expected
     # The singleton 'a' leaf came from gate=False, but its merge has a valid
@@ -247,7 +249,10 @@ def test_numeric_and_categorical_constraint_expressions(minizinc_available, divi
     )
     spec = object()
     actual = template.for_spec(spec, backend="minizinc")
-    assert actual.profiles["all"].run() == template.for_spec(spec).profiles["all"].run()
+    assert (
+        actual.profiles["all"].run()
+        == template.for_spec(spec, backend="python").profiles["all"].run()
+    )
     assert actual._configurations(filtered=True)[1] == {
         frozenset({("parent", False), ("category", "OFF")}),
         *(frozenset({("parent", True), ("numeric", n), ("category", "ON")}) for n in (-1, 1, 3)),
@@ -300,7 +305,7 @@ def test_unknown_faults_and_missing_outcomes_preserve_scope_semantics(minizinc_a
         observe_attributes=lambda ctx: {},
     )
     spec = object()
-    python = template.for_spec(spec)
+    python = template.for_spec(spec, backend="python")
     solver = template.for_spec(spec, backend="minizinc")
     assert solver._configurations(filtered=True)[1] == python._configurations(filtered=True)[1]
     for name, formula in solver.profiles.items():

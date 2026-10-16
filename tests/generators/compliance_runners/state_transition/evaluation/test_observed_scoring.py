@@ -57,7 +57,7 @@ def target():
             },
         ),
         observe_attributes=lambda ctx: {},
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
 
 
 def exhaustive_covered(formula, record):
