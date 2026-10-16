@@ -287,6 +287,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "bid_processing": "tests.generators.compliance_runners.state_transition.bid_processing.target",
     "consolidation_request": "tests.generators.compliance_runners.state_transition.consolidation_request.target",
     "withdrawal_request": "tests.generators.compliance_runners.state_transition.withdrawal_request.target",
     "parent_execution_payload": "tests.generators.compliance_runners.state_transition.parent_execution_payload.target",
@@ -326,6 +327,7 @@ TARGETS = {
 }
 
 TARGET_HANDLERS = {
+    "bid_processing": "execution_payload_bid",
     "builder_pending_withdrawal_processing": "withdrawals",
     "process_operations": "blocks",
     "process_operations_dispatch": "blocks",

@@ -1,72 +1,67 @@
-# `process_execution_payload_bid` compliance tests (bid_processing aspect model)
+# `process_execution_payload_bid` TARGET provider
 
-Aspect-based coverage generation for the `gloas` `process_execution_payload_bid`
-handler, following [`../TEST_METHODOLOGY.md`](../TEST_METHODOLOGY.md). Uses the
-aggregate `bid_processing` aspect model (aspects/bid_processing/) rather than
-the flat-aspect sibling in
-[`../execution_payload_bid/`](../execution_payload_bid/).
+`target.py` declares coverage for self-build and external-builder bids. It uses
+shared MiniZinc/Gecode generation, inherited through
+`coverage_profiles(TARGET)`. The former handwritten MiniZinc model, coverage
+selector, and validator have been replaced by the shared declaration adapters.
 
-## Pipeline
+`observation.py` reads numeric balances, epochs, slots, pending amounts, and
+commitment counts from the decoded pre-state and signed bid. Comparisons use
+`cmp3`, Boolean predicates use native booleans, and builder-only dimensions are
+inactive for self-builds. Signature classification enables real BLS verification
+and does not trust metadata. Claims are recovered through `target_validator`.
 
-```
-aspects/bid_processing/*.mzn   aggregate realization aspect: builder record +
-        │                      bid-processing dimensions, coherence, explicit NA,
-        │                      no_more_than_several_of fault bound
-        ▼
-models/handler_bid_processing.mzn  flat dimension vars + handler-local dimensions,
-        │                      derives outcome / faults / effects / trace
-        ▼
-models/coverage_smoke.mzn      coverage scope (n_faults <= 1)
-        │
-        ▼
-materializer.py                solve, realize each solution into pre /
-        │                      SignedExecutionPayloadBid / post + dimensions.yaml
-        ▼
-validation.py                  independently recover every dimension via spec predicates,
-                                recompute the outcome, run the handler as an oracle
-```
+## Coverage and legacy parity
 
-## Coverage: combinatorial over aspects
+The native model retains all **1,433 legacy signatures** on both minimal and
+mainnet after normalizing `F`/`T` to booleans and inactive values to `NA`. The
+added `fault_count` dimension independently counts applicable failing gates: 66
+signatures have zero faults, 755 have one, and 612 have two.
 
-Coverage is **t-wise over a configurable set of aspects**, with `outcome`
-treated as just another aspect (`coverage.py`). MiniZinc enumerates the feasible
-space once; Python computes the t-wise obligations and greedily covers them
-(preferring fewer faults, so representatives stay clean).
+The legacy fixture's at-most-one-failure constraint counted only `INVALID`
+external signatures. An `INF` signature could coexist with one other failed
+gate, producing two actual faults. The TARGET preserves this distinction;
+exceptional profiles select exactly one independently counted fault.
 
-| profile       | request                                               | cases |
-| ------------- | ----------------------------------------------------- | ----- |
-| `onewise`     | 1-wise over all aspects (incl. `outcome`)             | 34    |
-| `normal`      | 2-wise over input aspects, `outcome == ACCEPT`        | 13    |
-| `exceptional` | 2-wise over `builder_type × outcome`, rejections only | 16    |
-| `standard`    | `normal ∪ exceptional`                                | 29    |
-| `pairwise`    | 2-wise over all aspects                               | —     |
+| Profile     | Coverage                                      | Cases |
+| ----------- | --------------------------------------------- | ----: |
+| smoke       | One clean representative per terminal outcome |    12 |
+| normal      | Grouped pairwise input aspects, zero faults   |    28 |
+| exceptional | Each terminal outcome with exactly one fault  |    11 |
+| standard    | Normal plus exceptional                       |    39 |
+| max         | Every feasible complete signature             | 1,433 |
 
-## Usage
+Normal preserves all 206 original grouped pairwise projections. Its 28 complete
+witnesses replace the old greedy selector's 13 representatives; standard changes
+from 24 to 39 accordingly. These are coverage-equivalent sets, not identical
+representative selections. Smoke stays at one case per reachable outcome.
+
+Generation retains the existing fixture scope: self-builds or existing external
+builders, states past genesis, and a block hash distinct from its parent hash.
+The materializer guarantees the latter explicitly. Missing builders and genesis
+rejections can be observed but are outside the generated space.
+
+The mixed-radix projection encoding is larger than Gecode's integer range, so
+MiniZinc enumerates feasible rows and the shared projection evaluator operates
+on those rows. It does not enumerate the raw Cartesian space. Regression tests
+compare exhaustive legacy fingerprints, fault scopes, legacy profile coverage,
+and Python reference projections/completions over the legacy-validated rows.
+
+## Generate and validate
 
 ```bash
-# smoke profile: generate + validate
-uv run python -m tests.generators.compliance_runners.state_transition.bid_processing.run
+make comptests kind=state_transition handler=execution_payload_bid profile=smoke seed=124 \
+  comptests_dir=/tmp/bid-target-vectors
 
-# combinatorial-over-aspects coverage: profile summary, or materialize one
-uv run python -m ...bid_processing.coverage                       # summary
-uv run python -m ...bid_processing.coverage standard --materialize  # or: onewise|normal|exceptional|pairwise
+uv run python -m tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl \
+  --target bid_processing --preset minimal --profile smoke --tests /tmp/bid-target-vectors
 ```
 
-## Output
+The ordinary provider runner accepts `preset=mainnet` as well. Vectors use the
+operations format under
+`<preset>/gloas/operations/execution_payload_bid/main/case_XXXX/`, with real BLS
+signatures, complete TARGET claims, and a post-state only for accepted bids.
 
-Standard [operations format](../../../../formats/operations/README.md) under
-`reftests/minimal/gloas/operations/execution_payload_bid/main/case_XXXX/`: `pre`
-/ `execution_payload_bid` / `post` (omitted on rejection) `.ssz_snappy`,
-`meta.yaml`, `manifest.yaml`, and `dimensions.yaml` (the serialized solution).
-
-## Notes
-
-- **Real BLS.** Signatures are signed with the deterministic builder keys —
-  valid, wrong-key (invalid), and `G2_POINT_AT_INFINITY` (self-build).
-- **Rejection = no `post`.** This handler `assert`s, so rejected cases omit
-  `post`; only `ACCEPT` cases carry it.
-- **`state_slot_past_genesis` is always true** (the spec requires
-  `state.slot > GENESIS_SLOT`), so `REJECT_NOT_PAST_GENESIS` is never produced.
-- **Coherence.** The aspect model links `cmp_balance_min_deposit` to
-  `cmp_builder_balance_to_bid_value_plus_min_balance` so the solver does not
-  produce physically impossible balance/bid combinations.
+Tests exercise both preset smoke pipelines, independent recovery and replay, all
+standard representatives, every external-builder state, all self-build
+signatures, and numeric balance witnesses for every feasible signature.
