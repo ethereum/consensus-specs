@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
-from types import FunctionType, ModuleType
+from types import CellType, FunctionType, ModuleType
 from typing import Any
 
 import pytest
@@ -801,15 +801,28 @@ def get_copy_of_spec(spec):
     module = ModuleType(spec.__name__)
     namespace = module.__dict__
     namespace.update(vars(spec))
-    for name, value in list(namespace.items()):
-        if isinstance(value, FunctionType) and value.__globals__ is vars(spec):
-            namespace[name] = FunctionType(
+    remade = {}
+
+    def remake(value):
+        if isinstance(value, LRU):
+            return LRU(size=value.get_size())
+        if not isinstance(value, FunctionType) or value.__globals__ is not vars(spec):
+            return value
+        if id(value) not in remade:
+            closure = value.__closure__
+            if closure is not None:
+                closure = tuple(CellType(remake(cell.cell_contents)) for cell in closure)
+            remade[id(value)] = FunctionType(
                 value.__code__,
                 namespace,
                 value.__name__,
                 value.__defaults__,
-                value.__closure__,
+                closure,
             )
+        return remade[id(value)]
+
+    for name, value in list(namespace.items()):
+        namespace[name] = remake(value)
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
