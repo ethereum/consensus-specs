@@ -18,6 +18,7 @@
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
   - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
   - [Modified `should_extend_payload`](#modified-should_extend_payload)
+  - [Modified `get_payload_status_tiebreaker`](#modified-get_payload_status_tiebreaker)
   - [New `get_inclusion_list_due_ms`](#new-get_inclusion_list_due_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
@@ -242,6 +243,38 @@ def should_extend_payload(store: Store, root: Root) -> bool:
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
     )
+```
+
+### Modified `get_payload_status_tiebreaker`
+
+*Note*: `get_payload_status_tiebreaker` is modified to not prefer a payload over
+its empty variant during the block's own slot once it is known to not satisfy
+the inclusion list constraints. Otherwise `get_head` returns the `FULL` node
+during that slot while `should_extend_payload` makes it return the `EMPTY` node
+from the next slot on.
+
+```python
+def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
+    if is_previous_slot_payload_decision(store, node):
+        # To decide on a payload from the previous slot, choose
+        # between FULL and EMPTY based on `should_extend_payload`
+        if node.payload_status == PAYLOAD_STATUS_EMPTY:
+            return Uint8(1)
+        if should_extend_payload(store, node.root):
+            return Uint8(2)
+        return Uint8(0)
+    # [New in Heze:EIP7805]
+    is_current_slot = store.blocks[node.root].slot == get_current_slot(store)
+    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
+    if is_current_slot and is_payload_decision:
+        # During the block's own slot, prefer FULL over EMPTY unless the
+        # payload is known to not satisfy the inclusion list constraints
+        if node.payload_status == PAYLOAD_STATUS_EMPTY:
+            return Uint8(1)
+        if is_payload_inclusion_list_satisfied(store, node.root):
+            return Uint8(2)
+        return Uint8(0)
+    return node.payload_status
 ```
 
 ### New `get_inclusion_list_due_ms`
