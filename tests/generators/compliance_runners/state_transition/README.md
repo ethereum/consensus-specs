@@ -99,8 +99,8 @@ uv run python -m tests.generators.compliance_runners.state_transition.run \
 ```
 
 `--comptests-output` is required. The command validates each handler immediately
-after materialization. Handler-specific coverage declarations, observers,
-and materializers are located in the corresponding provider directory.
+after materialization. Handler-specific coverage declarations, observers, and
+materializers are located in the corresponding provider directory.
 
 A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
@@ -156,5 +156,5 @@ Backend policy belongs to `bind` in `target.py`: for example,
 `TARGET = bind(COVERAGE, observe_attributes=observe_attributes, backend="python")`.
 Generation and scoring inherit that default; explicit backend arguments override
 it. Use `load_provider(name, spec=spec)` for direct recovery or validation with
-a particular preset; generation accepts `spec` explicitly, and validation through
-the runner reads the preset from each case's path.
+a particular preset; generation accepts `spec` explicitly, and validation
+through the runner reads the preset from each case's path.
