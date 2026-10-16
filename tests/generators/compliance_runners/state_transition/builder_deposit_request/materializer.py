@@ -143,3 +143,6 @@ class BuilderDepositRequestMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, parts
+
+
+MATERIALIZER = BuilderDepositRequestMaterializer

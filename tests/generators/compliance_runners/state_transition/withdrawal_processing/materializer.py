@@ -448,3 +448,6 @@ class WithdrawalProcessingMaterializer(Materializer):
         if "cmp_builder_balance_amount" in claimed:
             return f"builder_pending_withdrawal_processing: {claimed}"
         return f"withdrawal_processing: {claimed}"
+
+
+MATERIALIZER = WithdrawalProcessingMaterializer

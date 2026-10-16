@@ -224,3 +224,6 @@ class WithdrawalRequestMaterializer(Materializer):
             ("post", "ssz", post.encode_bytes()),
         ]
         return meta, parts
+
+
+MATERIALIZER = WithdrawalRequestMaterializer

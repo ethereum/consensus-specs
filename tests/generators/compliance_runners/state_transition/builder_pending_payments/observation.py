@@ -26,8 +26,7 @@ def observe_attributes(ctx):
     qualifying_payment_count = len(appended)
 
     quorum_relations = {
-        "LT" if payment.weight < q else "GT" if payment.weight > q else "EQ"
-        for payment in occupied
+        "LT" if payment.weight < q else "GT" if payment.weight > q else "EQ" for payment in occupied
     }
     mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
 

@@ -13,8 +13,8 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     fix,
 )
 
-from .target import TARGET
 from .materializer import ConsolidationRequestMaterializer
+from .target import TARGET
 
 
 def _record(**obligation):

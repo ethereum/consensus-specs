@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context, NA
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .materializer import VoluntaryExitMaterializer
@@ -15,13 +15,15 @@ from .target import CHURN, TARGET
 from .test_utils import CHURN_CASES, make_record
 from .witness import churn_witnesses
 
+validation = load_provider("voluntary_exit")
+
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
 @pytest.mark.parametrize("active", [False, True])
 @pytest.mark.parametrize(("kind", "bucket", "additional_kind"), CHURN_CASES)
 def test_churn_claims_and_state_updates(preset, active, kind, bucket, additional_kind, monkeypatch):
     spec = spec_targets[preset]["gloas"]
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("voluntary_exit", spec=spec)
     witness = next(
         w
         for w in churn_witnesses(spec, active=active)
@@ -45,7 +47,7 @@ def test_churn_claims_and_state_updates(preset, active, kind, bucket, additional
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
     signed_exit = spec.SignedVoluntaryExit.decode_bytes(encoded["voluntary_exit"])
     post = spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None
-    actual = validation.recover_dimensions(pre, signed_exit, post)
+    actual = validation.recover(pre, signed_exit, post)
     assert {n: meta["claimed"][n] for n in actual} == actual
     increment = int(spec.EFFECTIVE_BALANCE_INCREMENT)
     index = int(signed_exit.message.validator_index)

@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
@@ -13,13 +12,16 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     NA,
     score,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-from . import build_profile
 from .materializer import VoluntaryExitMaterializer
 from .target import TARGET
 from .test_utils import CHURN_CASES
+
+validation = load_provider("voluntary_exit")
+build_profile = load_provider("voluntary_exit").build_profile
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -92,7 +94,7 @@ def test_provider_uses_native_configuration_generation(monkeypatch):
 
 def test_all_profile_witnesses_materialize_exact_dimensions(profiles, monkeypatch):
     preset, spec, target, profiles = profiles
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("voluntary_exit", spec=spec)
     # Signature verification and processing must work even with BLS disabled
     # globally, without changing that global setting after each case.
     monkeypatch.setattr(bls, "bls_active", False)
@@ -112,7 +114,7 @@ def test_all_profile_witnesses_materialize_exact_dimensions(profiles, monkeypatc
         summary = target.assertion_result(observed)
         assert summary.fault_count == meta["claimed"]["fault_count"]
         assert summary.expected_accepted == record["accepted"]
-        actual = validation.recover_dimensions(pre, operation, post)
+        actual = validation.recover(pre, operation, post)
         assert {n: meta["claimed"][n] for n in actual} == actual
         assert bls.bls_active is False
         observed_by_witness[key] = observed
@@ -129,7 +131,7 @@ def test_all_profile_witnesses_materialize_exact_dimensions(profiles, monkeypatc
 
 def test_canonical_dimensions_validate_saved_case(profiles, monkeypatch, tmp_path):
     preset, spec, _, profiles = profiles
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("voluntary_exit", spec=spec)
     records = profiles["normal"]
     materializer = VoluntaryExitMaterializer(spec, preset_name=preset)
     materializer.test_provider = "voluntary_exit"

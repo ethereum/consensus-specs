@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import pytest
 from ruamel.yaml import YAML
 
-import tests.generators.compliance_runners.state_transition.payload_attestation as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
@@ -19,14 +18,16 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     NA,
     score,
 )
-from tests.generators.compliance_runners.state_transition.provider import decode
+from tests.generators.compliance_runners.state_transition.provider import decode, load_provider
 from tests.generators.compliance_runners.state_transition.runner.test_run import run_processing_case
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-from . import build_profile
 from .materializer import PayloadAttestationMaterializer
 from .target import TARGET
+
+validation = load_provider("payload_attestation")
+build_profile = load_provider("payload_attestation").build_profile
 
 PROFILES = ("smoke", "normal", "exceptional", "standard", "max")
 COUNTS = {"smoke": 5, "normal": 2, "exceptional": 4, "standard": 6, "max": 17}
@@ -179,7 +180,7 @@ def test_provider_uses_minizinc_not_python_enumeration(configured_spec, monkeypa
 
 def test_materialized_space_validates_and_covers_profiles(configured_spec, tmp_path, monkeypatch):
     preset, spec = configured_spec
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("payload_attestation", spec=spec)
     target = TARGET.for_spec(spec, backend="minizinc")
     records = sorted(
         (materializer_record(target, dict(c)) for c in target._configurations(filtered=True)[1]),

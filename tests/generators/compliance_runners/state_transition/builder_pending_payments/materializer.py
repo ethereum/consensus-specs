@@ -117,3 +117,6 @@ class BuilderPendingPaymentsMaterializer(Materializer):
         meta = {"description": "process_builder_pending_payments", "claimed": claimed}
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts
+
+
+MATERIALIZER = BuilderPendingPaymentsMaterializer

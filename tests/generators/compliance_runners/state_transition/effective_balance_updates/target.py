@@ -120,4 +120,5 @@ TARGET = bind(
         "standard_max": lambda spec: int(spec.MAX_EFFECTIVE_BALANCE),
         "compounding_max": lambda spec: int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
     },
+    backend="python",
 )

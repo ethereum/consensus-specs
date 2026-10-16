@@ -1138,8 +1138,17 @@ class DeclarationTarget:
         return "\n".join(lines)
 
 
-def bind(definition, *, observe_attributes, constants=None):
+def bind(
+    definition,
+    *,
+    observe_attributes,
+    constants=None,
+    backend=DEFAULT_BACKEND,
+    solver=DEFAULT_SOLVER,
+):
     constants = dict(constants or {})
     if set(constants) != {c.name for c in definition.constants}:
         raise ValueError("constant bindings must exactly match declarations")
-    return DeclarationTarget(definition, observe_attributes, constants)
+    return DeclarationTarget(
+        definition, observe_attributes, constants, backend=backend, solver=solver
+    )

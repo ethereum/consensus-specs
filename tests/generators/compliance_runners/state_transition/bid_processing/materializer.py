@@ -350,3 +350,6 @@ class BidProcessingMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, parts
+
+
+MATERIALIZER = BidProcessingMaterializer

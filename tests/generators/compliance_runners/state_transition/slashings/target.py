@@ -73,4 +73,4 @@ COVERAGE = coverage_spec(
     constraints=scenario_constraints,
 )
 
-TARGET = bind(COVERAGE, observe_attributes=observe_attributes)
+TARGET = bind(COVERAGE, observe_attributes=observe_attributes, backend="python")

@@ -86,3 +86,6 @@ class SlashingsMaterializer(Materializer):
         amounts = [right - left for left, right in zip([0, *cuts], [*cuts, total], strict=True)]
         for index in self.rng.sample(range(len(state.slashings)), slot_count):
             state.slashings[index] = self.spec.Gwei(amounts.pop())
+
+
+MATERIALIZER = SlashingsMaterializer

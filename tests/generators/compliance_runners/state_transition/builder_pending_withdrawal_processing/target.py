@@ -109,4 +109,5 @@ TARGET = bind(
     COVERAGE,
     observe_attributes=observe_attributes,
     constants={"minimum_deposit": lambda spec: int(spec.MIN_DEPOSIT_AMOUNT)},
+    backend="python",
 )

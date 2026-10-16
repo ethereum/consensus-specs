@@ -100,3 +100,6 @@ class DepositRequestMaterializer(Materializer):
             ("post", "ssz", post.encode_bytes()),
         ]
         return meta, parts
+
+
+MATERIALIZER = DepositRequestMaterializer

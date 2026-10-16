@@ -295,14 +295,12 @@ concrete inputs and solver metadata, and adds `fault_count` when the target
 declares assertions. Claims retain the requested dimension values so validation
 can detect mismatches in the constructed state.
 `profile_records(bound_target, name)` is also available for custom adapters.
-`coverage_profiles(TARGET)` inherits the central MiniZinc/Gecode defaults from
-`evaluation/backend_config.py`. Small providers explicitly select Python
-generation with `coverage_profiles(TARGET, backend="python")` in `__init__.py`.
-Direct TARGET binding and coverage scoring keep the shared MiniZinc default.
-`coverage_profiles(..., backend="python")` explicitly selects the reference
-implementation; solver/backend overrides remain available when needed. Scenario
-and remaining handwritten MiniZinc providers retain their existing profile
-implementations.
+`coverage_profiles(TARGET)` inherits the target's backend and solver defaults.
+Small targets select Python with `bind(..., backend="python")` in `target.py`;
+others inherit MiniZinc/Gecode from `evaluation/backend_config.py`. Direct
+binding, provider generation, and coverage scoring use the same defaults.
+Explicit backend/solver arguments override them when needed. All providers use
+these shared declaration adapters through `provider.load_provider`.
 
 ## Shared validation
 
@@ -546,7 +544,7 @@ observation are lazy and do not invoke a solver until generation, enumeration,
 or export. For example:
 
 ```python
-target = TARGET.for_spec(spec)  # central MiniZinc/Gecode defaults
+target = TARGET.for_spec(spec)  # defaults declared by bind()
 reference = TARGET.for_spec(spec, backend="python")
 obligations = target.profiles["normal"].run()
 witnesses = target.profiles["normal"].generation_obligations()
@@ -882,16 +880,16 @@ now have TARGET declarations, including the later bid- and withdrawal-processing
 migrations. Generic conditional-factor tools retain their Python reference
 defaults.
 
-After benchmarking, thirteen providers explicitly select Python generation in
-`coverage_profiles`: all of the original fourteen except attestation. TARGET
-templates and the scoring CLI retain MiniZinc. The measured choices and
+After benchmarking, thirteen targets explicitly select Python in
+`bind(..., backend="python")`: all of the original fourteen except attestation.
+Provider generation and the scoring CLI inherit those target defaults. The measured choices and
 raw-space counts are listed in the evaluation README; there is no automatic
 cutoff.
 
 Reference tests bind `backend="python"` explicitly, so changing production
 defaults cannot silently turn a parity test into MiniZinc versus itself.
 Provider contract tests verify inheritance through each actual `build_profile`
-adapter; the CLI shares the same constants. The existing two-preset backend
+adapter; the CLI inherits the selected target defaults. The existing two-preset backend
 matrix compares configurations, profile obligations, deterministic witnesses,
 and coverage semantics for the fourteen migrated providers.
 

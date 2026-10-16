@@ -161,3 +161,6 @@ class PendingDepositsMaterializer(Materializer):
         }
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts
+
+
+MATERIALIZER = PendingDepositsMaterializer

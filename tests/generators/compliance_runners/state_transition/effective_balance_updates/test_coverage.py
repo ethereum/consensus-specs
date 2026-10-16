@@ -2,10 +2,12 @@
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import score
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import build_profile, TARGET
 from .cases import constants, representatives, signature
-from .target import COMPARISONS, PROFILES
+from .target import COMPARISONS, PROFILES, TARGET
+
+build_profile = load_provider("effective_balance_updates").build_profile
 
 
 def test_profiles_cover_their_dsl_obligations():
