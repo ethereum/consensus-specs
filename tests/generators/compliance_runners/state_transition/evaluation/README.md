@@ -94,6 +94,15 @@ Gecode as well as the project's Python dependencies. Python remains available
 through `TARGET.for_spec(spec, backend="python")` and the scoring CLI's
 `--backend python`. Pure observation and validation do not launch a solver.
 
+The TARGET backend solves generated integer satisfaction models in one MiniZinc
+CLI invocation. It streams JSON solutions directly, avoiding the separate
+model-interface analysis that `minizinc.Instance` normally performs before
+solving. Solver discovery/configuration and warning/error decoding still use the
+MiniZinc library. Only `ALL_SOLUTIONS` or `UNSATISFIABLE` terminal statuses are
+accepted; partial enumeration fails. Temporary model files and processes are
+cleaned up on errors. This changes execution overhead, not feasibility or
+coverage compilation, and introduces no cache shared across target bindings.
+
 Run the pre-optimization comparison of the fourteen migrated TARGET providers:
 
 ```bash
@@ -114,4 +123,6 @@ Markdown report sums profile medians for a compact per-worker comparison.
 The benchmark runs serially; avoid concurrent test or benchmark jobs while
 collecting a baseline. Reports are written incrementally with `status: running`,
 and marked complete only after all requested cells finish and fingerprints
-agree. Keep generated JSON/Markdown reports local; do not commit them.
+agree. Keep generated JSON/Markdown reports local; do not commit them. Use a new
+output directory for each revision so before/after measurements and canonical
+parity fingerprints remain available for comparison.
