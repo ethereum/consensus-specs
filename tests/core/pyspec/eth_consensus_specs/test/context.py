@@ -1021,6 +1021,10 @@ def yield_fork_meta(fork_metas: Sequence[ForkMeta]):
                 kw["fork_epoch"] = fork_meta.fork_epoch
                 has_fork_epoch = True
                 yield "fork_epoch", "meta", fork_meta.fork_epoch
+                post_spec, _ = spec_with_config_overrides(
+                    get_copy_of_spec(post_spec),
+                    {f"{post_spec.fork.upper()}_FORK_EPOCH": fork_meta.fork_epoch},
+                )
 
             result = fn(
                 *args,
