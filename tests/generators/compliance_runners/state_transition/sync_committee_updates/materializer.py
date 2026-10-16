@@ -28,8 +28,8 @@ class SyncCommitteeUpdatesMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         position = solution.period_remainder
-        committees_already_match = bool(solution.committees_already_match)
-        computed_next_is_unchanged = bool(solution.computed_next_is_unchanged)
+        committees_already_match = solution.committees_already_match
+        computed_next_is_unchanged = solution.computed_next_is_unchanged
         period = int(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD)
         next_epoch = modulo_representative(position, period) or period
         current_epoch = next_epoch - 1

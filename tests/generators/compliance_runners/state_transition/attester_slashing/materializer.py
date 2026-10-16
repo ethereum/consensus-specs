@@ -31,13 +31,13 @@ class AttesterSlashingMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        outcome = str(solution.outcome)
+        outcome = solution.outcome
         if outcome == "ACCEPT":
             scenario = {
                 "ONE": "VALID_ONE",
                 "TWO": "VALID_TWO",
                 "THREE_OR_MORE": "VALID_THREE",
-            }[str(solution.intersection_size)]
+            }[solution.intersection_size]
         else:
             scenario = {
                 "REJECT_NOT_SLASHABLE": "NOT_SLASHABLE",

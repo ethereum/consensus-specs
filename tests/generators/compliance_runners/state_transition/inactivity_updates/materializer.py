@@ -24,7 +24,7 @@ class InactivityUpdatesMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        after_genesis = bool(solution.current_after_genesis)
+        after_genesis = solution.current_after_genesis
         epoch = int(spec.GENESIS_EPOCH) + (
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) + 2 if after_genesis else 0
         )
@@ -34,8 +34,8 @@ class InactivityUpdatesMaterializer(Materializer):
         )
         if after_genesis and not solution.has_ineligible_validators:
             count = len(pre.validators)
-        active_eligible = after_genesis and bool(solution.has_active_eligible)
-        slashed = after_genesis and bool(solution.has_slashed_validators)
+        active_eligible = after_genesis and solution.has_active_eligible
+        slashed = after_genesis and solution.has_slashed_validators
         slash_eligible = count > 0 and not active_eligible
         eligible_indices = self.rng.sample(range(len(pre.validators)), count)
         for _index, validator in enumerate(pre.validators):
@@ -54,14 +54,14 @@ class InactivityUpdatesMaterializer(Materializer):
                 validator.slashed = True
                 validator.withdrawable_epoch = (
                     int(spec.get_previous_epoch(pre)) + 2
-                    if bool(solution.slashed_withdrawable_vs_previous)
+                    if solution.slashed_withdrawable_vs_previous
                     else int(spec.get_previous_epoch(pre)) + 1
                 )
         elif slashed:
             # A slashed validator beyond the withdrawable boundary is
             # eligible too. Reuse an existing eligible index where possible
             # so the requested ONE/MANY shape does not gain an extra member.
-            withdrawable_after_previous = bool(solution.slashed_withdrawable_vs_previous)
+            withdrawable_after_previous = solution.slashed_withdrawable_vs_previous
             ineligible_indices = [
                 index for index in range(len(pre.validators)) if index not in eligible_indices
             ]
@@ -77,9 +77,9 @@ class InactivityUpdatesMaterializer(Materializer):
                 if withdrawable_after_previous
                 else int(spec.get_previous_epoch(pre)) + 1
             )
-        has_zero_score = count > 0 and bool(solution.has_zero_score_eligible)
-        scores_changed = count > 0 and bool(solution.scores_changed)
-        leaking = count > 0 and bool(solution.leaking)
+        has_zero_score = count > 0 and solution.has_zero_score_eligible
+        scores_changed = count > 0 and solution.scores_changed
+        leaking = count > 0 and solution.leaking
         previous_epoch = max(int(spec.GENESIS_EPOCH), epoch - 1)
         finalized_epoch = (
             max(
@@ -92,7 +92,7 @@ class InactivityUpdatesMaterializer(Materializer):
         pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
             epoch=finalized_epoch, root=pre.finalized_checkpoint.root
         )
-        branch_mix = str(solution.branch_mix) if count else "ALL_INCREMENT"
+        branch_mix = solution.branch_mix if count else "ALL_INCREMENT"
         participating_count = 0 if branch_mix == "ALL_INCREMENT" else count
         if branch_mix == "MIXED":
             participating_count = 1

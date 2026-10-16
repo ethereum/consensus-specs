@@ -42,8 +42,8 @@ class ProposerLookaheadMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * validator_count,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        slashed_active = bool(solution.has_slashed_active_validator)
-        old_slashed = bool(solution.old_lookahead_contains_slashed)
+        slashed_active = solution.has_slashed_active_validator
+        old_slashed = solution.old_lookahead_contains_slashed
         candidate_indices = set(self.rng.sample(range(len(pre.validators)), active_candidates))
         remaining_indices = [
             index for index in range(len(pre.validators)) if index not in candidate_indices
@@ -58,7 +58,7 @@ class ProposerLookaheadMaterializer(Materializer):
             validator.slashed = index in {slashed_active_index, old_slashed_index}
             if index not in candidate_indices and index != slashed_active_index:
                 validator.activation_epoch = spec.FAR_FUTURE_EPOCH
-        if bool(solution.new_proposers_repeat):
+        if solution.new_proposers_repeat:
             # Concentrate all effective balance in one of the candidate
             # validators so proposer selection deterministically repeats it.
             repeated_index = self.rng.choice(sorted(candidate_indices))
@@ -102,7 +102,7 @@ class ProposerLookaheadMaterializer(Materializer):
         split = len(old) - slots
         old[split:] = (
             new
-            if bool(solution.new_epoch_repeats_old_tail)
+            if solution.new_epoch_repeats_old_tail
             else [spec.ValidatorIndex((int(index) + 1) % len(pre.validators)) for index in new]
         )
         if not old_slashed:

@@ -39,7 +39,7 @@ class SyncAggregateMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        level = str(solution.participation_level)
+        level = solution.participation_level
         committee_indices = compute_committee_indices(pre, pre.current_sync_committee)
         committee_size = len(committee_indices)
         participant_count = {
@@ -57,7 +57,7 @@ class SyncAggregateMaterializer(Materializer):
         signature = compute_aggregate_sync_committee_signature(
             spec, pre, int(pre.slot) - 1, participants
         )
-        if not bool(solution.signature_valid):
+        if not solution.signature_valid:
             signature = spec.BLSSignature()
         aggregate = spec.SyncAggregate(
             sync_committee_bits=spec.SyncCommitteeBits(data=bits),

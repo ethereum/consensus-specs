@@ -31,10 +31,10 @@ class BLSToExecutionChangeMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        index_in_range = bool(solution.validator_index_in_range)
-        has_bls_credential = bool(solution.has_bls_withdrawal_credential)
-        from_pubkey_matches = bool(solution.from_pubkey_matches)
-        signature_valid = bool(solution.signature_valid)
+        index_in_range = solution.validator_index_in_range
+        has_bls_credential = solution.has_bls_withdrawal_credential
+        from_pubkey_matches = solution.from_pubkey_matches
+        signature_valid = solution.signature_valid
         if not index_in_range:
             scenario = "OUT_OF_RANGE"
         elif not has_bls_credential:

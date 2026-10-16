@@ -36,17 +36,6 @@ NUM_VALIDATORS = 64
 PARTIAL_AMOUNT = 10**9
 
 
-def _s(sol: Any, n: str) -> str:
-    value = getattr(sol, n)
-    if isinstance(value, bool):
-        return "T" if value else "F"
-    return str(value)
-
-
-def _b(sol: Any, n: str) -> bool:
-    return bool(getattr(sol, n))
-
-
 class WithdrawalRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "withdrawal_request"
@@ -94,8 +83,8 @@ class WithdrawalRequestMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
-        found = _b(sol, "validator_pubkey_found")
-        is_full = _b(sol, "is_full_exit_request")
+        found = sol.validator_pubkey_found
+        is_full = sol.is_full_exit_request
         target_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
         absent_index = (
             NUM_VALIDATORS + distinct_indices(self.rng, len(pubkeys) - NUM_VALIDATORS, 1)[0]
@@ -105,23 +94,23 @@ class WithdrawalRequestMaterializer(Materializer):
         source_address = credential_address
         if found:
             v = pre.validators[target_index]
-            cred = _s(sol, "validator_credential")
+            cred = sol.validator_credential
             v.withdrawal_credentials = spec.Bytes32(
                 withdrawal_credentials_from_profile(spec, cred, credential_address, self.rng)
             )
             source_address = (
-                credential_address if _s(sol, "source_address_matches") == "T" else other_address
+                credential_address if sol.source_address_matches else other_address
             )
 
             activation, exit_epoch = self._epochs(
                 current_epoch,
-                _s(sol, "validator_active") == "T",
-                _s(sol, "validator_exiting") == "T",
-                _s(sol, "validator_old_enough") == "T",
+                sol.validator_active,
+                sol.validator_exiting,
+                sol.validator_old_enough,
             )
             v.activation_epoch = spec.Epoch(activation)
             v.exit_epoch = spec.Epoch(exit_epoch)
-            effective_balance_relation = _s(sol, "effective_balance_to_min_activation")
+            effective_balance_relation = sol.effective_balance_to_min_activation
             effective_balance = int(spec.MIN_ACTIVATION_BALANCE)
             if effective_balance_relation == "LT":
                 effective_balance = self.rng.randrange(effective_balance)
@@ -133,13 +122,13 @@ class WithdrawalRequestMaterializer(Materializer):
 
             # A carry-overflow vector must exceed the per-epoch exit churn by
             # several epochs.  Keep the declared balance relation (GT) true.
-            if _s(sol, "churn_variant") == "CARRY_OVERFLOW":
+            if sol.churn_variant == "CARRY_OVERFLOW":
                 v.effective_balance = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA))
 
         # Pending-partial-withdrawals queue: target entry (for has_pending) +
         # filler realizes the requested capacity profile.
-        pending_for_target = found and _s(sol, "has_pending_partial_withdrawal") == "T"
-        queue_capacity = _s(sol, "partial_queue_capacity")
+        pending_for_target = found and sol.has_pending_partial_withdrawal
+        queue_capacity = sol.partial_queue_capacity
         queue_limit = int(spec.PENDING_PARTIAL_WITHDRAWALS_LIMIT)
         # AVAILABLE covers occupancy below capacity; keep that fixture small
         # even when mainnet allows over a hundred million entries.
@@ -178,7 +167,7 @@ class WithdrawalRequestMaterializer(Materializer):
                 else 0
             )
             required_balance = int(spec.MIN_ACTIVATION_BALANCE) + pending_amount
-            balance_relation = _s(sol, "balance_to_required")
+            balance_relation = sol.balance_to_required
             if balance_relation == "LT":
                 balance = self.rng.randrange(required_balance)
             elif balance_relation == "GT":
@@ -187,7 +176,7 @@ class WithdrawalRequestMaterializer(Materializer):
                 balance = required_balance
             pre.balances[target_index] = spec.Gwei(balance)
 
-        variant = _s(sol, "churn_variant")
+        variant = sol.churn_variant
         activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
         if variant == "RESET_FIT":
             pre.earliest_exit_epoch = spec.Epoch(max(0, activation_epoch - 1))

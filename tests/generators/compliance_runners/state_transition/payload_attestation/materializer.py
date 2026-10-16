@@ -14,14 +14,6 @@ if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-def _s(sol: Any, name: str) -> str:
-    return str(getattr(sol, name))
-
-
-def _b(sol: Any, name: str) -> bool:
-    return bool(getattr(sol, name))
-
-
 class PayloadAttestationMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "payload_attestation"
@@ -37,15 +29,15 @@ class PayloadAttestationMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
-        slot = pre.slot - 1 if _b(sol, "slot_is_previous") else pre.slot
-        if _b(sol, "parent_root_matches"):
+        slot = pre.slot - 1 if sol.slot_is_previous else pre.slot
+        if sol.parent_root_matches:
             root = pre.latest_block_header.parent_root
         else:
             root = bytearray(pre.latest_block_header.parent_root)
             root[self.rng.randrange(len(root))] ^= self.rng.randrange(1, 256)
             root = spec.Root(bytes(root))
         ptc = spec.get_ptc(pre, slot)
-        indices_profile = _s(sol, "attesting_indices_profile")
+        indices_profile = sol.attesting_indices_profile
         if indices_profile == "EMPTY":
             attesting_indices = []
         elif indices_profile == "PARTIAL":
@@ -54,14 +46,14 @@ class PayloadAttestationMaterializer(Materializer):
             attesting_indices = None
         else:
             raise ValueError(f"unknown attesting indices profile: {indices_profile}")
-        nonempty = _b(sol, "attesting_indices_nonempty")
+        nonempty = sol.attesting_indices_nonempty
         operation = prepare_signed_payload_attestation(
             spec,
             pre,
             slot=slot,
             beacon_block_root=root,
             attesting_indices=attesting_indices,
-            valid_signature=nonempty and _b(sol, "signature_valid"),
+            valid_signature=nonempty and sol.signature_valid,
         )
         post = pre.copy()
         try:

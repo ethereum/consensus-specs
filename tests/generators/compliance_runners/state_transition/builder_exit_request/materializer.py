@@ -27,14 +27,6 @@ if TYPE_CHECKING:
 EPOCHS_PAST_GENESIS = 10
 
 
-def _s(sol: Any, n: str) -> str:
-    return str(getattr(sol, n))
-
-
-def _b(sol: Any, n: str) -> bool:
-    return bool(getattr(sol, n))
-
-
 class BuilderExitRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "builder_exit_request"
@@ -52,7 +44,7 @@ class BuilderExitRequestMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        found = _b(sol, "builder_pubkey_found")
+        found = sol.builder_pubkey_found
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
         finalized_epoch = self.rng.randrange(2, current_epoch)
@@ -64,13 +56,13 @@ class BuilderExitRequestMaterializer(Materializer):
         builder_address, other_address = distinct_bytes(self.rng, 20)
 
         if found:
-            dep = _s(sol, "builder_deposit_to_finalized_epoch")
+            dep = sol.builder_deposit_to_finalized_epoch
             deposit_epoch = {
                 "LT": self.rng.randrange(finalized_epoch),
                 "EQ": finalized_epoch,
                 "GT": finalized_epoch + self.rng.randrange(1, 11),
             }[dep]
-            wset = _b(sol, "builder_withdrawable_epoch_set")
+            wset = sol.builder_withdrawable_epoch_set
             pre.builders.append(
                 spec.Builder(
                     pubkey=spec.BLSPubkey(builder_pubkey),
@@ -81,7 +73,7 @@ class BuilderExitRequestMaterializer(Materializer):
                     withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
                 )
             )
-            if _b(sol, "builder_has_pending_withdrawal"):
+            if sol.builder_has_pending_withdrawal:
                 pre.builder_pending_withdrawals.append(
                     spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(builder_address),
@@ -89,7 +81,7 @@ class BuilderExitRequestMaterializer(Materializer):
                         builder_index=spec.BuilderIndex(0),
                     )
                 )
-            if _b(sol, "builder_has_pending_payment"):
+            if sol.builder_has_pending_payment:
                 payment_index = self.rng.randrange(len(pre.builder_pending_payments))
                 pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
                     weight=spec.Gwei(self.rng.randrange(1, 1001)),
@@ -100,7 +92,7 @@ class BuilderExitRequestMaterializer(Materializer):
                     ),
                     proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
                 )
-            matches = _b(sol, "source_address_matches")
+            matches = sol.source_address_matches
             source_address = builder_address if matches else other_address
         else:
             source_address = builder_address  # arbitrary; pubkey absent from registry

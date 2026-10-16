@@ -63,11 +63,11 @@ class PendingDepositsMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        layout = str(solution.queue_layout)
-        role = str(solution.primary_role)
-        carry = str(solution.initial_churn)
-        comparison = str(solution.primary_amount_to_available)
-        second_comparison = str(solution.second_amount_to_remaining)
+        layout = solution.queue_layout
+        role = solution.primary_role
+        carry = solution.initial_churn
+        comparison = solution.primary_amount_to_available
+        second_comparison = solution.second_amount_to_remaining
         next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
         primary_index, secondary_index = distinct_indices(self.rng, NUM_VALIDATORS, 2)
         new_validator_index = (
@@ -92,7 +92,7 @@ class PendingDepositsMaterializer(Materializer):
                 validator.exit_epoch = spec.Epoch(0)
                 validator.withdrawable_epoch = (
                     spec.Epoch(next_epoch + self.rng.randrange(1, 11))
-                    if str(solution.withdrawable_epoch_to_next_epoch) == "GT"
+                    if solution.withdrawable_epoch_to_next_epoch == "GT"
                     else next_epoch
                 )
             elif entry_role == "WITHDRAWN":

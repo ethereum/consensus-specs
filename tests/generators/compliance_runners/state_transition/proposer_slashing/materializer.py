@@ -24,14 +24,6 @@ if TYPE_CHECKING:
 EPOCHS_PAST_GENESIS = 10
 
 
-def _s(sol: Any, name: str) -> str:
-    return str(getattr(sol, name))
-
-
-def _b(sol: Any, name: str) -> bool:
-    return bool(getattr(sol, name))
-
-
 class ProposerSlashingMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "proposer_slashing"
@@ -63,16 +55,16 @@ class ProposerSlashingMaterializer(Materializer):
         current = int(spec.get_current_epoch(pre))
         proposer_index, foreign_index = distinct_indices(self.rng, len(pre.validators), 2)
         proposer = pre.validators[proposer_index]
-        proposer.slashed = not _b(sol, "proposer_not_slashed")
-        proposer.activation_epoch = spec.Epoch(0 if _b(sol, "proposer_activated") else current + 1)
+        proposer.slashed = not sol.proposer_not_slashed
+        proposer.activation_epoch = spec.Epoch(0 if sol.proposer_activated else current + 1)
         proposer.exit_epoch = spec.Epoch(
-            current if _b(sol, "exit_initiated") else spec.FAR_FUTURE_EPOCH
+            current if sol.exit_initiated else spec.FAR_FUTURE_EPOCH
         )
         proposer.withdrawable_epoch = spec.Epoch(
-            spec.FAR_FUTURE_EPOCH if _b(sol, "proposer_not_withdrawable") else current
+            spec.FAR_FUTURE_EPOCH if sol.proposer_not_withdrawable else current
         )
 
-        variant = _s(sol, "churn_variant")
+        variant = sol.churn_variant
         if variant == "CARRY_OVERFLOW":
             proposer.withdrawal_credentials = spec.Bytes32(
                 spec.COMPOUNDING_WITHDRAWAL_PREFIX + bytes(31)
@@ -90,13 +82,13 @@ class ProposerSlashingMaterializer(Materializer):
             pre.earliest_exit_epoch = spec.Epoch(activation_epoch + 1)
             pre.exit_balance_to_consume = spec.Gwei(1)
 
-        window = _s(sol, "payment_window")
+        window = sol.payment_window
         slot_1 = (
             int(pre.slot)
             - int(spec.SLOTS_PER_EPOCH) * {"CURRENT": 0, "PREVIOUS": 1, "OLD": 2}[window]
         )
-        slot_2 = slot_1 if _b(sol, "slots_match") else slot_1 + 1
-        proposer_2 = proposer_index if _b(sol, "proposers_match") else foreign_index
+        slot_2 = slot_1 if sol.slots_match else slot_1 + 1
+        proposer_2 = proposer_index if sol.proposers_match else foreign_index
         parent_root, other_parent_root = distinct_bytes(self.rng, 32)
         state_root, _ = distinct_bytes(self.rng, 32)
         body_root, _ = distinct_bytes(self.rng, 32)
@@ -110,13 +102,13 @@ class ProposerSlashingMaterializer(Materializer):
         h2 = spec.BeaconBlockHeader(
             slot=spec.Slot(slot_2),
             proposer_index=spec.ValidatorIndex(proposer_2),
-            parent_root=other_parent_root if _b(sol, "headers_different") else parent_root,
+            parent_root=other_parent_root if sol.headers_different else parent_root,
             state_root=state_root,
             body_root=body_root,
         )
         slashing = spec.ProposerSlashing(
-            signed_header_1=self._sign(pre, h1, _b(sol, "signature_1_valid"), proposer_index),
-            signed_header_2=self._sign(pre, h2, _b(sol, "signature_2_valid"), proposer_index),
+            signed_header_1=self._sign(pre, h1, sol.signature_1_valid, proposer_index),
+            signed_header_2=self._sign(pre, h2, sol.signature_2_valid, proposer_index),
         )
         if window != "OLD":
             index = (int(spec.SLOTS_PER_EPOCH) if window == "CURRENT" else 0) + slot_1 % int(
@@ -131,7 +123,7 @@ class ProposerSlashingMaterializer(Materializer):
                     builder_index=spec.BuilderIndex(self.rng.randrange(64)),
                 ),
                 proposer_index=spec.ValidatorIndex(
-                    proposer_index if _b(sol, "payment_proposer_matches") else foreign_index
+                    proposer_index if sol.payment_proposer_matches else foreign_index
                 ),
             )
         post = pre.copy()

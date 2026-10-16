@@ -131,7 +131,7 @@ class OperationsDispatchMaterializer(Materializer):
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        scenario = str(solution.scenario)
+        scenario = solution.scenario
         old_bls_active = bls.bls_active
         bls.bls_active = True
         try:

@@ -37,7 +37,7 @@ def _builder_params_from_dims(spec: Any, state_epoch: int, rec: dict[str, Any]) 
 
     version = (
         spec.PAYLOAD_BUILDER_VERSION
-        if rec["payload_builder_version"] == "T"
+        if rec["payload_builder_version"]
         else spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
     )
 
@@ -48,7 +48,7 @@ def _builder_params_from_dims(spec: Any, state_epoch: int, rec: dict[str, Any]) 
     else:  # LT
         deposit_epoch = state_epoch + 2
 
-    if rec["withdrawable_epoch_set"] == "F":
+    if not rec["withdrawable_epoch_set"]:
         withdrawable_epoch = spec.FAR_FUTURE_EPOCH
     else:
         w_cmp = rec["cmp_state_epoch_withdrawal_epoch"]
@@ -92,15 +92,15 @@ def _pick_finalized_epoch(rec: dict[str, Any], deposit_epoch: int) -> int:
 
 def _pick_builder_queue_len(rec: dict[str, Any], limit: int, max_partials: int) -> int:
     """Pick a concrete builder pending-withdrawal queue length from the bool dims."""
-    if rec["builder_pending_withdrawals_exist"] == "F":
+    if not rec["builder_pending_withdrawals_exist"]:
         return 0
     # Add one entry beyond the available capacity.  This makes
     # get_builder_withdrawals evaluate ``has_reached_limit`` as true and take
     # its ``break`` branch, rather than merely exhausting the queue at the
     # same count.
-    if rec["builder_pending_withdrawals_hit_limit"] == "T":
+    if rec["builder_pending_withdrawals_hit_limit"]:
         return limit + 1
-    if rec["validator_pending_withdrawals_hit_limit"] == "T":
+    if rec["validator_pending_withdrawals_hit_limit"]:
         # Leave exactly the partial-source capacity before the shared limit.
         return max(1, limit - max_partials)
     return 1
@@ -108,14 +108,14 @@ def _pick_builder_queue_len(rec: dict[str, Any], limit: int, max_partials: int) 
 
 def _pick_validator_queue_len(rec: dict[str, Any], max_partials: int) -> int:
     """Pick a concrete validator pending-withdrawal queue length from the bool dims."""
-    if rec["validator_pending_withdrawals_exist"] == "F":
+    if not rec["validator_pending_withdrawals_exist"]:
         return 0
     # Queue non-empty; all entries are either withdrawable or not.
-    if rec["eligible_validator_pending_withdrawals_exist"] == "F":
+    if not rec["eligible_validator_pending_withdrawals_exist"]:
         return 1
     # Eligible entries exist; hitting the limit means the partial source reaches
     # MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, so the queue length equals that cap.
-    if rec["validator_pending_withdrawals_hit_limit"] == "T":
+    if rec["validator_pending_withdrawals_hit_limit"]:
         return max_partials
     return 1
 
@@ -127,24 +127,23 @@ def _pick_sweep(
     queue_len: int,
 ) -> tuple[int, int, list[int]]:
     """Pick (builders_count, next_index, eligible_positions) realizing the sweep dims."""
-    bs = rec.get("builder_sweep", rec)
     bc = {
         "LT": limit + 1,
         "EQ": max_per_sweep,
         "GT": max_per_sweep + 1,
-    }[bs["cmp_builder_count_max_per_sweep"]]
+    }[rec["cmp_builder_count_max_per_sweep"]]
 
-    if bs["cmp_next_index_zero"] == "EQ":
+    if rec["cmp_next_index_zero"] == "EQ":
         ni = 0
-    elif bs["cmp_next_index_last_builder_index"] == "EQ":
+    elif rec["cmp_next_index_last_builder_index"] == "EQ":
         ni = bc - 1
     else:
         ni = 1
 
     prior = queue_len
-    eligible_zero = bs["cmp_eligible_builder_count_zero"]
-    swept_zero = bs["cmp_swept_count_zero"]
-    hit = bs["swept_builders_hit_withdrawals_limit"]
+    eligible_zero = rec["cmp_eligible_builder_count_zero"]
+    swept_zero = rec["cmp_swept_count_zero"]
+    hit = rec["swept_builders_hit_withdrawals_limit"]
 
     if eligible_zero == "EQ":
         positions: list[int] = []
@@ -153,7 +152,7 @@ def _pick_sweep(
             positions = [0]
         else:
             positions = [(ni - 1) % bc]
-    elif hit == "T":
+    elif hit:
         k = limit - prior
         positions = [(ni + i) % bc for i in range(k)]
     else:
@@ -272,15 +271,11 @@ class WithdrawalProcessingMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list]:
         rec = vars(sol)
-        construction = {
-            name: ("T" if value else "F") if isinstance(value, bool) else value
-            for name, value in rec.items()
-        }
         pending = "cmp_pending_amount_zero" in rec
         if pending:
-            pre, post = self._materialize_pending_withdrawal(construction)
+            pre, post = self._materialize_pending_withdrawal(rec)
         else:
-            pre, post = self._materialize_withdrawal_processing(construction)
+            pre, post = self._materialize_withdrawal_processing(rec)
         claimed = self.claimed_record(PENDING_TARGET if pending else TARGET, sol)
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         description = (
@@ -330,7 +325,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         )
 
         # has_pending_payments == T requires a matching pending payment
-        if rec["has_pending_payments"] == "T":
+        if rec["has_pending_payments"]:
             pre.builder_pending_payments[0] = spec.BuilderPendingPayment(
                 weight=spec.Gwei(1),
                 withdrawal=spec.BuilderPendingWithdrawal(
@@ -356,7 +351,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         validator_queue_len = _pick_validator_queue_len(
             rec, int(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP)
         )
-        eligible = rec["eligible_validator_pending_withdrawals_exist"] == "T"
+        eligible = rec["eligible_validator_pending_withdrawals_exist"]
 
         # Withdrawals drained by the builder pending and validator partial
         # sources before the builder sweep (get_builder_withdrawals +
@@ -369,9 +364,9 @@ class WithdrawalProcessingMaterializer(Materializer):
 
         pre = self._validator_sweep_base(
             outside_window=(
-                rec["validators_eligible_for_sweep_exist"] == "T"
-                and rec["swept_validators_hit_limit"] == "F"
-                and rec["partial_validator_sweep_withdrawal"] == "F"
+                rec["validators_eligible_for_sweep_exist"]
+                and not rec["swept_validators_hit_limit"]
+                and not rec["partial_validator_sweep_withdrawal"]
             )
         )
         state_epoch = int(spec.get_current_epoch(pre))
@@ -425,17 +420,17 @@ class WithdrawalProcessingMaterializer(Materializer):
         # validators_eligible_for_sweep_exist / swept_validators_hit_limit.
         pre.next_withdrawal_validator_index = spec.ValidatorIndex(0)
         window_end = int(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
-        partial_sweep = rec["partial_validator_sweep_withdrawal"] == "T"
+        partial_sweep = rec["partial_validator_sweep_withdrawal"]
         partial_index = 1
         if partial_sweep:
             self._make_partially_withdrawable(pre, partial_index)
-        if rec["swept_validators_hit_limit"] == "T":
+        if rec["swept_validators_hit_limit"]:
             # Fill the sweep window (skipping the pending-partial validator at 0)
             # so the validator sweep drains the remaining capacity to the limit.
             for idx in range(1, min(window_end, len(pre.validators))):
                 if idx != partial_index:
                     self._make_fully_withdrawable(pre, idx, state_epoch)
-        elif rec["validators_eligible_for_sweep_exist"] == "T":
+        elif rec["validators_eligible_for_sweep_exist"]:
             if not partial_sweep:
                 # A single eligible validator outside the sweep window.
                 self._make_fully_withdrawable(pre, window_end, state_epoch)

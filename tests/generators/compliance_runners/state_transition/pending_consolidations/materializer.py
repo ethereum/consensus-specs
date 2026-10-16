@@ -34,8 +34,8 @@ class PendingConsolidationsMaterializer(Materializer):
         spec = self.spec
         pre = self._base_state()
         next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
-        layout = str(solution.queue_layout)
-        relation = str(solution.source_balance_to_effective)
+        layout = solution.queue_layout
+        relation = solution.source_balance_to_effective
 
         def append(source_index: int, target_index: int, role: str) -> None:
             source = pre.validators[source_index]

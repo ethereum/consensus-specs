@@ -12,9 +12,9 @@ from tests.generators.compliance_runners.state_transition.materializer.state_pre
 BIG = 10_000_000_000  # 10 Gwei, well above MIN_DEPOSIT_AMOUNT
 
 
-def set_parent_block(spec: Any, state: Any, hash_match: str) -> None:
+def set_parent_block(spec: Any, state: Any, hash_match: bool) -> None:
     """Set the parent-block state per state_latest_block_hash_match."""
-    if hash_match == "T":
+    if hash_match:
         # Parent block full: hashes must match (use a non-zero hash)
         if bytes(state.latest_block_hash) == b"\x00" * 32:
             state.latest_block_hash = spec.Hash32(b"\x01" * 32)

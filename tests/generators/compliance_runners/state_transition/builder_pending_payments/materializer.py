@@ -48,11 +48,11 @@ class BuilderPendingPaymentsMaterializer(Materializer):
                 proposer_index=s.ValidatorIndex(self.rng.randrange(64)),
             )
 
-        rel = str(sol.target_weight_to_quorum)
+        rel = sol.target_weight_to_quorum
         weight = value_for_comparison(self.rng, rel, int(q)) if rel != "NA" else 0
         amount = 0 if sol.target_amount_nonzero is False else self.rng.randrange(1, 1_000)
-        occ = str(sol.previous_epoch_occupancy)
-        count = str(sol.qualifying_payment_count)
+        occ = sol.previous_epoch_occupancy
+        count = sol.qualifying_payment_count
         previous_slots = (
             tuple(range(spe))
             if occ == "FULL"
@@ -62,7 +62,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
             pre.builder_pending_payments[previous_slots[0]] = payment(weight, amount)
         elif occ in {"MULTIPLE", "FULL"}:
             payment_count = 3 if occ == "MULTIPLE" else spe
-            if bool(sol.mixed_quorum_relations):
+            if sol.mixed_quorum_relations:
                 weights = [
                     value_for_comparison(self.rng, "LT", int(q)),
                     int(q),
@@ -86,7 +86,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
             "SINGLE": 1,
             "MULTIPLE": 2,
             "FULL": spe,
-        }[str(sol.next_epoch_payments_occupancy)]
+        }[sol.next_epoch_payments_occupancy]
         next_slots = (
             tuple(range(spe))
             if next_epoch_count == spe
@@ -101,7 +101,7 @@ class BuilderPendingPaymentsMaterializer(Materializer):
             "ZERO": 0,
             "ONE": 1,
             "MANY": 2,
-        }[str(sol.preexisting_withdrawals_occupancy)]
+        }[sol.preexisting_withdrawals_occupancy]
         for _ in range(withdrawal_count):
             fee_recipient, _ = distinct_bytes(self.rng, 20)
             pre.builder_pending_withdrawals.append(

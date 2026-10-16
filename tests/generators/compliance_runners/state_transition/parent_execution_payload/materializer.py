@@ -25,14 +25,6 @@ DISPATCH_DEPOSITS_COUNT = 20
 MAX_PAYMENT_VALUE = 50_000_000
 
 
-def _b(solution: Any, name: str) -> bool:
-    return bool(getattr(solution, name))
-
-
-def _s(solution: Any, name: str) -> str:
-    return str(getattr(solution, name))
-
-
 class ParentExecutionPayloadMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "parent_execution_payload"
@@ -69,7 +61,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
 
     def _requests(self, solution: Any) -> Any:
         spec = self.spec
-        deposits_nonempty = _b(solution, "deposits_nonempty")
+        deposits_nonempty = solution.deposits_nonempty
         deposits_count = (
             self.rng.randrange(1, DISPATCH_DEPOSITS_COUNT + 1) if deposits_nonempty else 0
         )
@@ -78,28 +70,28 @@ class ParentExecutionPayloadMaterializer(Materializer):
             withdrawals=self._request_list(
                 spec.WithdrawalRequests,
                 spec.WithdrawalRequest,
-                _b(solution, "withdrawals_within_cap"),
+                solution.withdrawals_within_cap,
                 spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             consolidations=self._request_list(
                 spec.ConsolidationRequests,
                 spec.ConsolidationRequest,
-                _b(solution, "consolidations_within_cap"),
+                solution.consolidations_within_cap,
                 spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             builder_deposits=self._request_list(
                 spec.BuilderDepositRequests,
                 spec.BuilderDepositRequest,
-                _b(solution, "builder_deposits_within_cap"),
+                solution.builder_deposits_within_cap,
                 spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
             builder_exits=self._request_list(
                 spec.BuilderExitRequests,
                 spec.BuilderExitRequest,
-                _b(solution, "builder_exits_within_cap"),
+                solution.builder_exits_within_cap,
                 spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD,
                 deposits_nonempty,
             ),
@@ -123,14 +115,14 @@ class ParentExecutionPayloadMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        if _b(solution, "parent_payload_revealed"):
+        if solution.parent_payload_revealed:
             set_parent_block_full(spec, pre)
         else:
             set_parent_block_empty(spec, pre)
 
         requests = self._requests(solution)
         requests_root = spec.hash_tree_root(requests)
-        if _b(solution, "requests_root_matches"):
+        if solution.requests_root_matches:
             pre.latest_execution_payload_bid.execution_requests_root = requests_root
         else:
             mismatched_root = bytearray(bytes(requests_root))
@@ -139,7 +131,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
                 bytes(mismatched_root)
             )
 
-        settlement = _s(solution, "payment_settlement")
+        settlement = solution.payment_settlement
         current_epoch = int(spec.get_current_epoch(pre))
         parent_slot = self._parent_slot(current_epoch, settlement)
         parent_bid = pre.latest_execution_payload_bid
@@ -150,7 +142,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
         parent_bid.builder_index = spec.BuilderIndex(0)
         payment_value = spec.Gwei(
             self.rng.randrange(1, MAX_PAYMENT_VALUE + 1)
-            if _b(solution, "payment_value_nonzero")
+            if solution.payment_value_nonzero
             else 0
         )
         if settlement == "EVICTED":

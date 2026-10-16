@@ -29,7 +29,7 @@ class RegistryUpdatesMaterializer(Materializer):
             epoch=spec.GENESIS_EPOCH, root=pre.finalized_checkpoint.root
         )
         requested = {
-            name: bool(getattr(solution, name))
+            name: getattr(solution, name)
             for name in (
                 "queues_validator",
                 "ejects_validator",
@@ -37,7 +37,7 @@ class RegistryUpdatesMaterializer(Materializer):
                 "leaves_validator_unchanged",
             )
         }
-        has_validators = bool(solution.has_validators)
+        has_validators = solution.has_validators
         if has_validators and not requested["leaves_validator_unchanged"]:
             active_branch = next(name for name, value in requested.items() if value)
             for index, validator in enumerate(pre.validators):
