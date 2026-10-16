@@ -115,6 +115,7 @@ class CachedLightClientData:
 
     # Finality information at block's post-state
     finalized_slot: Any  # Slot
+    finalized_root: Any  # Root
     finality_branch: Any  # FinalityBranch
 
     # Best / latest light client data
@@ -216,12 +217,13 @@ def _get_current_sync_committee_for_finalized_period(test, period):  # -> Option
         return None
     block = test.blocks[bid.root]
     state = test.finalized_checkpoint_states[block.data.message.state_root]
-    if sync_committee_slot > state.data.slot:
-        state.spec, state.data, _ = transition_across_forks(
-            state.spec, state.data, sync_committee_slot, phases=test.phases
+    state_spec, state_data = state.spec, state.data
+    if sync_committee_slot > state_data.slot:
+        state_spec, state_data, _ = transition_across_forks(
+            state_spec, state_data, sync_committee_slot, phases=test.phases
         )
-    assert is_post_altair(state.spec)
-    return state.data.current_sync_committee
+    assert is_post_altair(state_spec)
+    return state_data.current_sync_committee
 
 
 def _light_client_header_for_block(test, block):  # -> ForkedLightClientHeader
@@ -277,6 +279,7 @@ def _cache_lc_data(
             latest_next_sync_committee_gindex(lc_data_store.spec),
         ),
         finalized_slot=spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch),
+        finalized_root=state.finalized_checkpoint.root,
         finality_branch=latest_normalize_merkle_branch(
             lc_data_store.spec,
             spec.compute_merkle_proof(state, spec.finalized_root_gindex_at_slot(state.slot)),
@@ -306,7 +309,7 @@ def _create_lc_finality_update_from_lc_data(
         if finalized_bid.slot != attested_data.finalized_slot:
             # Empty slots at end of epoch, update cache for latest block slot
             attested_data.finalized_slot = finalized_bid.slot
-        if finalized_bid.slot == attested_header.spec.GENESIS_SLOT:
+        if attested_data.finalized_root == attested_header.spec.Root():
             finalized_header = ForkedLightClientHeader(
                 spec=attested_header.spec,
                 data=attested_header.spec.LightClientHeader(),
@@ -708,13 +711,13 @@ def select_new_head(test, spec, head_bid):
     # Process finalization
     block = test.blocks[head_bid.root]
     state = test.states[block.data.message.state_root]
-    if state.data.finalized_checkpoint.epoch != spec.GENESIS_EPOCH:
+    if state.data.finalized_checkpoint.epoch > test.latest_finalized_epoch:
         block = test.blocks[state.data.finalized_checkpoint.root]
         bid = _block_to_block_id(block.data)
         new_finalized_bid = bid
+        new_finalized_epoch = state.data.finalized_checkpoint.epoch
         if new_finalized_bid.slot > old_finalized_bid.slot:
             old_finalized_epoch = None
-            new_finalized_epoch = state.data.finalized_checkpoint.epoch
             while bid.slot > test.latest_finalized_bid.slot:
                 test.finalized_block_roots[bid.slot] = bid.root
                 finalized_epoch = spec.compute_epoch_at_slot(bid.slot + spec.SLOTS_PER_EPOCH - 1)
@@ -726,8 +729,6 @@ def select_new_head(test, spec, head_bid):
                     old_finalized_epoch = finalized_epoch
                 block = test.blocks[block.data.message.parent_root]
                 bid = _block_to_block_id(block.data)
-            test.latest_finalized_epoch = new_finalized_epoch
-            test.latest_finalized_bid = new_finalized_bid
             _process_finalization_for_light_client(test, spec, new_finalized_bid, old_finalized_bid)
 
             blocks_to_delete = []
@@ -742,6 +743,8 @@ def select_new_head(test, spec, head_bid):
                     states_to_delete.append(state_root)
             for state_root in states_to_delete:
                 del test.states[state_root]
+        test.latest_finalized_epoch = new_finalized_epoch
+        test.latest_finalized_bid = new_finalized_bid
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
 
