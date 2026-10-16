@@ -57,9 +57,7 @@ class ProposerSlashingMaterializer(Materializer):
         proposer = pre.validators[proposer_index]
         proposer.slashed = not sol.proposer_not_slashed
         proposer.activation_epoch = spec.Epoch(0 if sol.proposer_activated else current + 1)
-        proposer.exit_epoch = spec.Epoch(
-            current if sol.exit_initiated else spec.FAR_FUTURE_EPOCH
-        )
+        proposer.exit_epoch = spec.Epoch(current if sol.exit_initiated else spec.FAR_FUTURE_EPOCH)
         proposer.withdrawable_epoch = spec.Epoch(
             spec.FAR_FUTURE_EPOCH if sol.proposer_not_withdrawable else current
         )

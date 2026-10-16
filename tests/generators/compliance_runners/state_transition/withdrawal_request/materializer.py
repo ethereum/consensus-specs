@@ -98,9 +98,7 @@ class WithdrawalRequestMaterializer(Materializer):
             v.withdrawal_credentials = spec.Bytes32(
                 withdrawal_credentials_from_profile(spec, cred, credential_address, self.rng)
             )
-            source_address = (
-                credential_address if sol.source_address_matches else other_address
-            )
+            source_address = credential_address if sol.source_address_matches else other_address
 
             activation, exit_epoch = self._epochs(
                 current_epoch,

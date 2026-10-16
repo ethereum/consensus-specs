@@ -141,9 +141,7 @@ class ParentExecutionPayloadMaterializer(Materializer):
         parent_bid.fee_recipient = spec.ExecutionAddress(fee_recipient)
         parent_bid.builder_index = spec.BuilderIndex(0)
         payment_value = spec.Gwei(
-            self.rng.randrange(1, MAX_PAYMENT_VALUE + 1)
-            if solution.payment_value_nonzero
-            else 0
+            self.rng.randrange(1, MAX_PAYMENT_VALUE + 1) if solution.payment_value_nonzero else 0
         )
         if settlement == "EVICTED":
             parent_bid.value = payment_value
