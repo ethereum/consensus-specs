@@ -6,30 +6,25 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.generators.compliance_runners.state_transition.aspects_helpers.comparison_witness import (
     value_for_comparison,
 )
-from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
-    distinct_indices,
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
 )
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
+from .concretization import NUM_VALIDATORS, STRATEGY
 from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-# Minimal Gloas reaches the activation cap at 64 validators.  Twice that count
-# makes exit churn strictly larger, so GT cases distinguish activation-only
-# deposit churn from the uncapped exit churn.
-NUM_VALIDATORS = 128
 
-
-class PendingDepositsMaterializer(Materializer):
+class PendingDepositsMaterializer(ConcretizingMaterializer):
     runner_name = "epoch_processing"
     handler_name = "pending_deposits"
+    strategy = STRATEGY
 
     def _base_state(self) -> Any:
         state = create_genesis_state(
@@ -60,20 +55,20 @@ class PendingDepositsMaterializer(Materializer):
                 slot=self.spec.GENESIS_SLOT if slot is None else slot,
             )
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
+    def materialize_concrete_attributes(
+        self, solution: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        layout = solution.queue_layout
-        role = solution.primary_role
-        carry = solution.initial_churn
-        comparison = solution.primary_amount_to_available
-        second_comparison = solution.second_amount_to_remaining
+        carry = attributes["initial_churn"]
+        comparison = attributes["primary_amount_to_available"]
+        second_comparison = attributes["second_amount_to_remaining"]
+        withdrawable_comparison = attributes["withdrawable_epoch_to_next_epoch"]
         next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
-        primary_index, secondary_index = distinct_indices(self.rng, NUM_VALIDATORS, 2)
-        new_validator_index = (
-            NUM_VALIDATORS + distinct_indices(self.rng, len(pubkeys) - NUM_VALIDATORS, 1)[0]
-        )
-        unfinalized_slot = spec.Slot(self.rng.randrange(1, int(pre.slot) + 1))
+        primary_index = attributes["primary_index"]
+        secondary_index = attributes["secondary_index"]
+        new_validator_index = attributes["new_validator_index"]
+        unfinalized_slot = spec.Slot(attributes["unfinalized_slot"])
 
         if carry == "CARRY_NONZERO":
             pre.deposit_balance_to_consume = spec.Gwei(
@@ -92,14 +87,14 @@ class PendingDepositsMaterializer(Materializer):
                 validator.exit_epoch = spec.Epoch(0)
                 validator.withdrawable_epoch = (
                     spec.Epoch(next_epoch + self.rng.randrange(1, 11))
-                    if solution.withdrawable_epoch_to_next_epoch == "GT"
+                    if withdrawable_comparison == "GT"
                     else next_epoch
                 )
             elif entry_role == "WITHDRAWN":
                 validator.exit_epoch = spec.Epoch(0)
                 validator.withdrawable_epoch = spec.Epoch(next_epoch - 1)
 
-        def add_primary(entry_role: str, *, slot: Any = None) -> None:
+        def add_primary(entry_role: str, amount: int, *, slot: Any = None) -> None:
             if entry_role in {"ACTIVE", "EXITING", "WITHDRAWN"}:
                 set_role(primary_index, entry_role)
                 pre.pending_deposits.append(self._deposit(pre, primary_index, amount, slot=slot))
@@ -114,41 +109,35 @@ class PendingDepositsMaterializer(Materializer):
                     )
                 )
 
-        if layout == "FIRST_UNFINALIZED":
-            add_primary(role, slot=unfinalized_slot)
-        elif layout == "SINGLE":
-            add_primary(role)
-        elif layout == "POSTPONE_THEN_ACTIVE":
-            add_primary("EXITING")
-            pre.pending_deposits.append(
-                self._deposit(pre, secondary_index, spec.EFFECTIVE_BALANCE_INCREMENT)
-            )
-        elif layout == "ACTIVE_THEN_UNFINALIZED":
-            add_primary(role)
-            pre.pending_deposits.append(
-                self._deposit(
-                    pre,
-                    secondary_index,
-                    spec.EFFECTIVE_BALANCE_INCREMENT,
-                    slot=unfinalized_slot,
-                )
-            )
-        elif layout in {"TWO_PROCESSABLE", "INVALID_THEN_PROCESSABLE"}:
-            add_primary("NEW_INVALID" if layout == "INVALID_THEN_PROCESSABLE" else role)
-            remaining = available - amount
-            second_amount = value_for_comparison(
-                self.rng, second_comparison, remaining, lower_bound=1
-            )
-            pre.pending_deposits.append(self._deposit(pre, secondary_index, second_amount))
-        elif layout == "LIMIT_AFTER_WITHDRAWN":
+        if attributes["initially_withdrawn"]:
             set_role(primary_index, "WITHDRAWN")
-            for _ in range(int(spec.MAX_PENDING_DEPOSITS_PER_EPOCH)):
+            for _ in range(attributes["fill_withdrawn_limit"]):
                 pre.pending_deposits.append(
                     self._deposit(pre, primary_index, spec.EFFECTIVE_BALANCE_INCREMENT)
                 )
-            add_primary(role)
-        elif layout != "EMPTY":
-            raise ValueError(f"unknown queue layout: {layout}")
+
+        for entry in attributes["entries"]:
+            source = entry["source"]
+            entry_amount = entry["amount"]
+            slot = unfinalized_slot if entry.get("slot") == "unfinalized" else None
+            if entry_amount == "primary":
+                entry_amount = amount
+            elif entry_amount == "increment":
+                entry_amount = spec.EFFECTIVE_BALANCE_INCREMENT
+            elif entry_amount == "second":
+                remaining = available - amount
+                entry_amount = value_for_comparison(
+                    self.rng, second_comparison, remaining, lower_bound=1
+                )
+
+            if source == "primary":
+                add_primary(entry["role"], entry_amount, slot=slot)
+            elif source == "secondary":
+                pre.pending_deposits.append(
+                    self._deposit(pre, secondary_index, entry_amount, slot=slot)
+                )
+            else:
+                raise ValueError(f"unknown pending-deposit source: {source}")
 
         post = pre.copy()
         with bls_enabled():
