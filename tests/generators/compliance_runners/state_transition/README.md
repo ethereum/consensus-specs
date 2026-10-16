@@ -118,7 +118,7 @@ containing generated `reftests`:
 
 ```bash
 uv run pytest \
-  tests/generators/compliance_runners/state_transition/runner/test_run.py \
+  tests/generators/compliance_runners/runner/test_run.py --kind=state_transition \
   --test-dir ${test_dir}
 ```
 

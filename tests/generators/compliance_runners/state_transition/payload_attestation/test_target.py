@@ -9,6 +9,7 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.runner.state_transition import run_processing_case
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
     materializer_record,
 )
@@ -19,7 +20,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     score,
 )
 from tests.generators.compliance_runners.state_transition.provider import decode, load_provider
-from tests.generators.compliance_runners.state_transition.runner.test_run import run_processing_case
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 

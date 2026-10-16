@@ -10,7 +10,9 @@ from typing import Any, TYPE_CHECKING
 import snappy
 from ruamel.yaml import YAML
 
-from .catalog import HANDLERS, OPERATION_INPUTS, Provider, PROVIDERS, RUNNERS
+from tests.generators.compliance_runners.runner.formats import OPERATION_INPUTS
+
+from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
 
 if TYPE_CHECKING:
