@@ -18,7 +18,9 @@ if TYPE_CHECKING:
     from .declarations import BoundFormula as Formula, DeclarationTarget as Target
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
-from tests.generators.compliance_runners.state_transition.runner import test_run
+from tests.generators.compliance_runners.runner import state_transition as replay
+from tests.generators.compliance_runners.runner.discovery import gather_tests
+from tests.generators.compliance_runners.runner.io import read_yaml
 
 from .backend_config import BACKENDS
 
@@ -337,7 +339,7 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
     spec = spec_targets[preset]["gloas"]
     handler = TARGET_HANDLERS.get(target.name, target.name)
     out = []
-    for case in test_run.gather_tests(tests):
+    for case in gather_tests(tests, kind="state_transition"):
         if case.handler != handler or case.preset != preset or case.fork != "gloas":
             continue
         if target.name in (
@@ -347,10 +349,10 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
         ):
             dimensions_path = Path(case.test_dir) / "dimensions.yaml"
             if dimensions_path.exists():
-                dimensions = test_run.read_yaml(dimensions_path)
+                dimensions = read_yaml(dimensions_path)
                 if dimensions.get("test_provider") != target.name:
                     continue
-        tc = test_run.get_test_case(spec, Path(case.test_dir), case.handler)
+        tc = replay.get_test_case(spec, Path(case.test_dir), case.handler)
         if target.name == "process_slot":
             operation = tc["slots"]
         elif target.name in ("process_operations", "process_operations_dispatch"):

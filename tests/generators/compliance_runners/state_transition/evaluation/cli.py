@@ -15,8 +15,9 @@ from ruamel.yaml import YAML
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.runner import state_transition as replay
+from tests.generators.compliance_runners.runner.discovery import gather_tests, VectorCase
 from tests.generators.compliance_runners.state_transition.catalog import HANDLERS
-from tests.generators.compliance_runners.state_transition.runner import test_run
 
 from . import collect_slice
 
@@ -141,9 +142,9 @@ def collect(args: argparse.Namespace) -> None:
             raise RuntimeError(f"generated slice does not match installed PySpec: {output}")
 
 
-def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
+def run_case(case: VectorCase, processor) -> None:
     spec = spec_targets[case.preset][case.fork]
-    test_case = test_run.get_test_case(spec, Path(case.test_dir), case.handler)
+    test_case = replay.get_test_case(spec, Path(case.test_dir), case.handler)
     old_bls_active = bls.bls_active
     bls.bls_active = bool(test_case["meta"].get("bls_setting", 0))
     try:
@@ -157,7 +158,7 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
                     test_case["post"],
                 )
                 return
-            test_run.run_sanity_blocks_case(
+            replay.run_sanity_blocks_case(
                 spec,
                 test_case["pre"],
                 test_case["blocks"],
@@ -168,7 +169,7 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
         extra_args = ()
         if case.handler == "attestation" and is_post_gloas(spec):
             extra_args = (spec.Slot(test_case["meta"]["parent_slot"]),)
-        test_run.run_processing_case(
+        replay.run_processing_case(
             processor,
             test_case["pre"],
             test_case["operation"],
@@ -182,7 +183,7 @@ def run_case(case: test_run.StateTransitionTestInfo, processor) -> None:
 def cases_for(tests: list[Path], handler: str, preset: str):
     cases = [
         case
-        for case in test_run.gather_tests(tests)
+        for case in gather_tests(tests, kind="state_transition")
         if case.handler == handler and case.preset == preset and case.fork == "gloas"
     ]
     if not cases:
