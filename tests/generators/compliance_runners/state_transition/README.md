@@ -76,14 +76,13 @@ make comptests kind=state_transition comptests_dir=../compliance-spec-tests/test
 
 The supported profiles are:
 
-- `smoke` — one representative per terminal outcome
-- `normal` — cases with no independently failed conditions
-- `exceptional` — single-fault cases
-- `standard` — `normal` plus `exceptional`
-- `max` — all normal signatures and exceptional signatures up to
-  `MAX_EXHAUSTIVE_FAULTS` in enumerated models, plus cases needed for
-  `MAX_EXCEPTIONAL_INTERACTION_STRENGTH`-wise exceptional coverage (pairwise by
-  default); DSL providers declare their formulas explicitly
+- `smoke` — a small representative set for the handler
+- `normal` — the provider's declared routine coverage plan
+- `exceptional` — the provider's declared exceptional plan, or no cases when
+  exceptional coverage does not apply
+- `standard` — the provider's declared combined routine and exceptional plan
+- `max` — the provider's largest declared coverage plan, including exhaustive
+  and interaction coverage selected for that handler
 
 `make comptests` is the supported generation path. The underlying module can
 also be run directly:
@@ -100,18 +99,17 @@ uv run python -m tests.generators.compliance_runners.state_transition.run \
 ```
 
 `--comptests-output` is required. The command validates each handler immediately
-after materialization. Handler-specific MiniZinc models, coverage definitions,
-materializers, and validators are located in the corresponding provider
-directory.
+after materialization. Handler-specific coverage declarations, materializers,
+and validators are located in the corresponding provider directory.
 
 A handler may have multiple provider directories. Their cases are appended to
 the same handler output with distinct case numbers and validated independently;
 the provider directory is an implementation detail, while the generated manifest
 continues to use the protocol handler name.
 
-`--seed` changes only materialization choices, never the model solutions or
-coverage profile. It defaults to `0`, and the same seed produces the same
-vectors. The seed is recorded in each generated case's `dimensions.yaml`.
+`--seed` changes only materialization choices, never the coverage obligations.
+It defaults to `0`, and the same seed produces the same vectors. The seed is
+recorded in each generated case's `dimensions.yaml`.
 
 ## Running generated tests
 

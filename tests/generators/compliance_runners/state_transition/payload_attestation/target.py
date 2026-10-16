@@ -1,9 +1,5 @@
 """Payload-attestation declarations preserving the original coverage policy."""
 
-from tests.generators.compliance_runners.state_transition.aspect_coverage import (
-    MAX_EXCEPTIONAL_INTERACTION_STRENGTH,
-    MAX_EXHAUSTIVE_FAULTS,
-)
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
     aspect,
     assertion,
@@ -22,6 +18,11 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
 )
 
 from .observation import observe_attributes
+
+# Keep up to two assertion faults exhaustive, then cover exceptional
+# interactions pairwise for the max profile.
+MAX_EXHAUSTIVE_FAULTS = 2
+MAX_EXCEPTIONAL_INTERACTION_STRENGTH = 2
 
 OUTCOMES = (
     "REJECT_PARENT_ROOT",

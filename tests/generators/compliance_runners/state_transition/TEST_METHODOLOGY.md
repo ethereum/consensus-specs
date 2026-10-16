@@ -6,11 +6,11 @@ and validating that each vector realizes its model solution. It is general — t
 same structure applies to state-transition, fork-choice, and execution-spec
 tests. The running example is the `process_execution_payload_bid` handler on the
 `gloas` `BeaconState` (the exploratory model in [`old/models/`](old/models)
-illustrates its solution space). It and
-[`builder_exit_request/`](builder_exit_request) are worked aspect-based
-instances that **share** realization aspects from a common [`aspects/`](aspects)
-directory; earlier single-model *smoke-profile* versions are archived under
-[`old2/`](old2).
+illustrates its solution space). The
+[`builder_exit_request/`](builder_exit_request) provider is another worked
+example. Shared concrete-input helpers live in
+[`aspects_helpers/`](aspects_helpers); earlier single-model *smoke-profile*
+versions are archived under [`old2/`](old2).
 
 Central design principle:
 
@@ -212,18 +212,18 @@ combinations (and effects present vs absent). Across several large aspects, use
 an explicit interaction policy — exhaustive for selected high-risk relations,
 pairwise or three-way otherwise, single- and multi-fault cases.
 
-The same handler relation supports multiple profiles. State-transition handler
-profiles classify records by the number of independently applicable failed
-conditions (`nfaults`), not by the first-failing terminal outcome:
+Each declaration target defines its own coverage formulas for the shared
+profiles. Targets can select exhaustive dimensions, interaction strength,
+assertion fault counts, and materialization requirements according to the
+handler's semantics. Profiles are coverage plans, not classifications of every
+possible record:
 
 ```text
-smoke:       one canonical case per outcome
-normal:      nfaults == 0
-exceptional: nfaults == 1 (the usual single-fault profile)
-standard:    normal ∪ exceptional
-max:         all zero- and up-to-MAX_EXHAUSTIVE_FAULTS signatures plus cases needed for
-             MAX_EXCEPTIONAL_INTERACTION_STRENGTH-wise coverage in enumerated models;
-             explicit stronger normal and bounded exceptional formulas in DSL targets
+smoke:       a small representative set for the handler
+normal:      the handler's declared routine coverage plan
+exceptional: the handler's declared exceptional plan, or empty if not applicable
+standard:    the handler's declared combined routine and exceptional plan
+max:         the handler's largest declared coverage plan
 ```
 
 One-case-per-outcome frontiers are useful smoke tests, but they are not a
@@ -232,12 +232,11 @@ derived observation; it must not erase other applicable failures that were not
 reached because of short-circuit evaluation.
 
 Quality is measured by satisfied obligations, not case count: every applicable
-value of every dimension, every requested pair or tuple, every outcome, every
-check reached and not reached where possible, every selected effect, every
-comparison boundary. If satisfying assignments are too numerous, reduce them
-with a deterministic set cover that preserves the declared obligations, and
+value of every dimension, every requested combination, every outcome, every
+check reached and not reached where possible, every selected effect, and every
+comparison boundary. Providers generate witnesses for their declared plans and
 report uncovered or unsatisfiable obligations explicitly. Deduplicate solutions
-by a coverage fingerprint over applicable coverage values and `NA` markers — not
+by a coverage fingerprint over applicable coverage values and `NA` markers, not
 over auxiliary or concrete materialization choices.
 
 ## Materialization

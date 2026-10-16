@@ -8,16 +8,6 @@ if TYPE_CHECKING:
     from random import Random
 
 
-def queue_capacity_profile(length: int, limit: int) -> str:
-    if length == 0:
-        return "EMPTY"
-    if not 0 < length <= limit:
-        return "UNKNOWN"
-    if length == limit:
-        return "FULL"
-    return "AVAILABLE"
-
-
 def queue_occupancy(length: int, capacity: int) -> str:
     """Classify a bounded queue's occupancy."""
     if length == 0:

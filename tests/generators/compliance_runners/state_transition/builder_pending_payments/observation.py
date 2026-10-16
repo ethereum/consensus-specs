@@ -1,6 +1,5 @@
 """Recover quorum, queue occupancy, and withdrawal inputs from the pre-state."""
 
-from tests.generators.compliance_runners.state_transition.aspects.base import _to_cmp
 from tests.generators.compliance_runners.state_transition.aspects_helpers.queue_capacity import (
     queue_occupancy,
 )
@@ -26,7 +25,10 @@ def observe_attributes(ctx):
 
     qualifying_payment_count = len(appended)
 
-    quorum_relations = {_to_cmp(payment.weight, q).name for payment in occupied}
+    quorum_relations = {
+        "LT" if payment.weight < q else "GT" if payment.weight > q else "EQ"
+        for payment in occupied
+    }
     mixed_quorum_relations = {"LT", "EQ", "GT"}.issubset(quorum_relations)
 
     next_epoch_payments = pre.builder_pending_payments[spe:]
