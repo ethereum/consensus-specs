@@ -136,9 +136,7 @@ CONSTRAINTS = (
 
 BRANCHES = exhaustive(LOOP.declarations[:3])
 EFFECT = exhaustive([LOOP.declarations[0], LOOP.declarations[3]])
-NORMAL = union(
-    each(ALL_FACTORS), *(a.each() * b.each() for a, b in combinations(ASPECTS, 2))
-)
+NORMAL = union(each(ALL_FACTORS), *(a.each() * b.each() for a, b in combinations(ASPECTS, 2)))
 PROFILES = {
     "smoke": each(ALL_FACTORS),
     "max": union(METHOD.exhaustive(), ELIGIBLE.exhaustive(), nwise(ALL_FACTORS, 3)),

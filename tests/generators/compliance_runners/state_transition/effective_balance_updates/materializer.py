@@ -78,3 +78,6 @@ class EffectiveBalanceUpdatesBodyMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
+
+
+MATERIALIZER = EffectiveBalanceUpdatesBodyMaterializer

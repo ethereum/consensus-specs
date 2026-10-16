@@ -89,10 +89,9 @@ uv run python -m tests.generators.compliance_runners.state_transition.evaluation
 ## TARGET backend defaults and benchmarks
 
 The shared TARGET default is MiniZinc/Gecode, configured in
-[`backend_config.py`](backend_config.py). Small providers explicitly opt into
-Python generation with `coverage_profiles(TARGET, backend="python")` in their
-`__init__.py`. Direct TARGET binding and coverage scoring retain the shared
-MiniZinc default. Select Python for those paths with
+[`backend_config.py`](backend_config.py). Small targets explicitly opt into
+Python with `bind(..., backend="python")` in `target.py`. Generation, direct
+TARGET binding, and coverage scoring inherit that target default. Override it with
 `TARGET.for_spec(spec, backend="python")` or the scoring CLI's
 `--backend python`. There is no automatic size-based switch. Install the
 MiniZinc executable with Gecode as well as the project's Python dependencies to
@@ -136,9 +135,9 @@ parity fingerprints remain available for comparison.
 The optimized three-repeat benchmark found Python faster on both presets for
 thirteen providers. They have at most 31,104 raw configurations, and Python
 generation summed across their supported profiles takes less than 1.6 seconds
-per provider/preset. These providers explicitly select Python generation;
-attestation and the other TARGET providers inherit MiniZinc generation. All
-TARGET templates and the scoring CLI retain the shared MiniZinc default.
+per provider/preset. These targets explicitly select Python through `bind`;
+attestation and the other TARGET providers inherit MiniZinc. The scoring CLI
+uses the target default unless `--backend` is supplied.
 
 | Provider                              | Raw configurations | Generation backend |
 | ------------------------------------- | -----------------: | ------------------ |

@@ -153,3 +153,6 @@ class ProposerSlashingMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, parts
+
+
+MATERIALIZER = ProposerSlashingMaterializer

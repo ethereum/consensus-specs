@@ -6,9 +6,11 @@ from types import SimpleNamespace
 from eth_consensus_specs.gloas import minimal
 from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import build_profile
 from .materializer import OperationsDispatchMaterializer
+
+build_profile = load_provider("operations_dispatch").build_profile
 
 # These vectors exercise Gloas operations from genesis.
 spec, _ = spec_with_config_overrides(get_copy_of_spec(minimal), {"GLOAS_FORK_EPOCH": 0})

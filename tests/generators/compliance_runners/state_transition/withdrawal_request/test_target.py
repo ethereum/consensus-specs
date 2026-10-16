@@ -16,9 +16,16 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     load_observations,
 )
-from tests.generators.compliance_runners.state_transition.provider import materialize_handler
+from tests.generators.compliance_runners.state_transition.provider import (
+    load_provider,
+    materialize_handler,
+)
 
-from . import build_profile, MATERIALIZER, TARGET, validate_case
+from .materializer import MATERIALIZER
+from .target import TARGET
+
+build_profile = load_provider("withdrawal_request").build_profile
+validate_case = load_provider("withdrawal_request").validate_case
 
 
 @lru_cache

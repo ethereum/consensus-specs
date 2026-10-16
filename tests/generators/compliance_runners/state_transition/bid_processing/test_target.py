@@ -23,15 +23,19 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     load_observations,
     score,
 )
-from tests.generators.compliance_runners.state_transition.provider import materialize_handler
+from tests.generators.compliance_runners.state_transition.provider import (
+    load_provider,
+    materialize_handler,
+)
 from tests.generators.compliance_runners.state_transition.runner.test_run import (
     gather_tests,
     run_test,
 )
 
-from . import MATERIALIZER, TARGET, validate_case
-from .materializer import _pick_balance_and_bid_value
-from .target import INPUT_ASPECTS
+from .materializer import _pick_balance_and_bid_value, MATERIALIZER
+from .target import INPUT_ASPECTS, TARGET
+
+validate_case = load_provider("bid_processing").validate_case
 
 
 @lru_cache

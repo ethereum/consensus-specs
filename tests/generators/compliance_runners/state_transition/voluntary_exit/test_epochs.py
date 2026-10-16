@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import tests.generators.compliance_runners.state_transition.voluntary_exit as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .materializer import VoluntaryExitMaterializer
@@ -15,13 +15,15 @@ from .target import EPOCHS, TARGET
 from .test_utils import make_record
 from .witness import BUCKET_DELTAS
 
+validation = load_provider("voluntary_exit")
+
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
 @pytest.mark.parametrize("message_bucket", list(BUCKET_DELTAS))
 @pytest.mark.parametrize("seasoned_bucket", list(BUCKET_DELTAS))
 def test_signed_exit_epoch_boundaries(preset, message_bucket, seasoned_bucket, monkeypatch):
     spec = spec_targets[preset]["gloas"]
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("voluntary_exit", spec=spec)
     period = int(spec.config.SHARD_COMMITTEE_PERIOD)
     record = make_record(
         spec, current_ge_message_epoch=message_bucket, current_ge_seasoned=seasoned_bucket
@@ -34,7 +36,7 @@ def test_signed_exit_epoch_boundaries(preset, message_bucket, seasoned_bucket, m
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
     signed_exit = spec.SignedVoluntaryExit.decode_bytes(encoded["voluntary_exit"])
     post = spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None
-    actual = validation.recover_dimensions(pre, signed_exit, post)
+    actual = validation.recover(pre, signed_exit, post)
     assert {n: meta["claimed"][n] for n in actual} == actual
     assert (post is not None) == actual["accepted"]
     epoch = int(spec.get_current_epoch(pre))

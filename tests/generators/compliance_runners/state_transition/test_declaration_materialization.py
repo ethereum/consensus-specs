@@ -1,6 +1,5 @@
 """Complete declaration witnesses survive concrete state construction."""
 
-from importlib import import_module
 from random import Random
 from types import SimpleNamespace
 
@@ -12,6 +11,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     NA,
     score,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     ],
 )
 def test_complete_max_witnesses_match_materialized_observations(provider):
-    module = import_module(f".{provider}", __package__)
+    module = load_provider(provider)
     target = module.TARGET.for_spec(spec)
     formula = target.profiles["max"]
     records = [dict(witness) for witness in formula.generation_obligations()]
