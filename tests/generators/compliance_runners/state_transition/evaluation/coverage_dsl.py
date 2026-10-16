@@ -242,10 +242,6 @@ class Report:
         }
 
 
-def _satisfied(obligation: Obligation, rec: dict[str, Any]) -> bool:
-    return all(rec[name] is not NA and rec[name] == value for name, value in obligation)
-
-
 def _sorted(obligations: Iterable[Obligation]) -> list[dict]:
     return [dict(sorted(o)) for o in sorted(obligations, key=lambda o: repr(sorted(o)))]
 

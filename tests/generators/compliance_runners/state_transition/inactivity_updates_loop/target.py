@@ -112,13 +112,15 @@ def constant_feasibility(constants: dict):
 MEMBERSHIP = exhaustive([ACTIVE, SLASHED, FLAGGED])
 ARITHMETIC = exhaustive([PARTICIPATING, SCORE, LEAKING, RECOVERY])
 EFFECTS = each([DELTA]) * each([PARTICIPATING, LEAKING, SCORE])
+NORMAL = union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 2))
 PROFILES = {
     "smoke": each(ALL_FACTORS),
     "max": union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 3)),
     "membership": MEMBERSHIP,
     "arithmetic": ARITHMETIC,
     "effects": EFFECTS,
-    "standard": union(MEMBERSHIP, ARITHMETIC, EFFECTS, nwise(ALL_FACTORS, 2)),
+    "normal": NORMAL,
+    "standard": NORMAL,
 }
 COVERAGE = coverage_spec(
     "inactivity_updates",

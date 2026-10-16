@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 from dataclasses import dataclass
 from importlib import import_module
 from types import SimpleNamespace
@@ -15,7 +14,6 @@ from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -63,7 +61,7 @@ def _spec_for_case(case_dir: Path) -> Any:
 def validate_cases(
     test_dir: Path,
     handler: str,
-    validate_case: Callable[..., Any] | dict[str, Callable[..., Any]],
+    validate_case: Any | dict[str, Any],
     selected_cases: set[str] | None = None,
 ) -> int:
     """Run a handler validator over its materialized reference-test cases."""
@@ -89,21 +87,10 @@ def validate_cases(
             case_validate = validate_case[test_provider]
         else:
             case_validate = validate_case
-        # Generic validators accept the case's preset explicitly. Legacy
-        # validators still import a spec binding that must be replaced.
-        if hasattr(case_validate, "for_spec"):
-            result = case_validate.for_spec(case_spec, case_dir)
-        else:
-            case_validate.__globals__["spec"] = case_spec
-            result = case_validate(case_dir)
-        if isinstance(result, tuple):
-            checks, errors = result
-        else:
-            checks, errors = result, []
+        checks = case_validate.for_spec(case_spec, case_dir)
         mismatches = [check for check in checks if check.status == "mismatch"]
         total_mm += len(mismatches)
-        total_err += len(errors)
-        status = "OK" if not mismatches and not errors else "FAIL"
+        status = "OK" if not mismatches else "FAIL"
         outcome = next((check.claimed for check in checks if check.dimension == "outcome"), None)
         if outcome is None:
             accepted = next(
@@ -113,12 +100,10 @@ def validate_cases(
         print(f"{case_dir.name}: {status}  [{outcome}]")
         for check in mismatches:
             print(f"    dim {check.dimension}: claimed={check.claimed!r} actual={check.actual!r}")
-        for error in errors:
-            print(f"    oracle: {error}")
 
     print()
     if total_mm or total_err:
-        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} oracle error(s)")
+        print(f"FAILED: {total_mm} dimension mismatch(es), {total_err} provider error(s)")
         return 1
     print(f"PASSED: {len(case_dirs)} cases, all dimensions consistent")
     return 0
@@ -143,11 +128,6 @@ def providers_for(handler: str) -> tuple[Provider, ...]:
     return providers
 
 
-def _generated_count(generated: int | tuple[int, int]) -> int:
-    """Normalize provider return values to the generated case count."""
-    return generated[0] if isinstance(generated, tuple) else generated
-
-
 def _materialize_provider(
     provider: Provider,
     profile: str,
@@ -159,11 +139,7 @@ def _materialize_provider(
     seed: int,
 ) -> tuple[Any, int, str]:
     module = import_module(f".{provider.module}", __package__)
-    build_profile = module.build_profile
-    if "spec" in inspect.signature(build_profile).parameters:
-        chosen = build_profile(profile, spec=spec)
-    else:
-        chosen = build_profile(profile)
+    chosen = module.build_profile(profile, spec=spec)
     reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
     materializer.test_provider = provider.name
@@ -172,7 +148,7 @@ def _materialize_provider(
     generated = materializer.materialize_reps(
         output_dir, reps, case_offset=case_offset, clean=clean
     )
-    return module.validate_case, _generated_count(generated), materializer.fork_name
+    return module.validate_case, generated, materializer.fork_name
 
 
 def materialize_handler(
