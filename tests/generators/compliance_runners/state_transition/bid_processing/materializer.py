@@ -1,14 +1,4 @@
-"""Materialize bid_processing aspect-model solutions into process_execution_payload_bid cases.
-
-Solves models/coverage_smoke.mzn (or handler_bid_processing.mzn), materializes
-each solution into a concrete pre / SignedExecutionPayloadBid / post vector
-using common_state_preprocessor, and verifies each via bid_processing_validator.
-
-Spec: specs/gloas/beacon-chain.md process_execution_payload_bid.
-
-Usage:
-    uv run python -m tests.generators.compliance_runners.state_transition.bid_processing.materializer
-"""
+"""Realize complete TARGET witnesses as signed execution-payload-bid vectors."""
 
 from __future__ import annotations
 
@@ -16,16 +6,6 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.state_transition.aspects.base import (
-    BuilderType,
-    SignatureType,
-)
-from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing import (
-    ExecutionPayloadBidProcessing,
-)
-from tests.generators.compliance_runners.state_transition.aspects.bid_processing.bid_processing_validator import (
-    bid_processing_validator,
-)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
     distinct_bytes,
 )
@@ -34,85 +14,15 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.entity
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
-    BOOL,
-    CMP,
     make_base_state,
-    to_builder_solution,
 )
+
+from .target import TARGET
 
 if TYPE_CHECKING:
     from random import Random
 
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
-
-
-_BT = {"EXTERNAL": BuilderType.EXTERNAL, "SELF": BuilderType.SELF}
-_ST = {"INF": SignatureType.INF, "VALID": SignatureType.VALID, "INVALID": SignatureType.INVALID}
-
-DIMS = [
-    "builder_type",
-    "cmp_bid_value_zero",
-    "bid_signature",
-    "cmp_builder_balance_to_bid_value_plus_min_balance",
-    "cmp_len_kzg_commitments_max_blobs",
-    "cmp_state_slot_bid_slot",
-    "parent_block_hash_match",
-    "parent_block_root_match",
-    "prev_randao_match",
-    # builder sub-dimensions
-    "payload_builder_version",
-    "cmp_state_epoch_deposit_epoch",
-    "cmp_state_epoch_withdrawal_epoch",
-    "cmp_finalized_epoch_deposit_epoch",
-    "withdrawable_epoch_set",
-    "cmp_balance_zero",
-    "cmp_balance_min_deposit",
-    "has_pending_payments",
-    "has_pending_withdrawals",
-    # handler-local
-    "amount_positive",
-    "state_slot_past_genesis",
-    # derived
-    "outcome",
-]
-
-
-def _normalize(sol: Any) -> dict[str, Any]:
-    """Flatten a MiniZinc solution into a {field: value} dict."""
-    p = getattr(sol, "p", None)
-    if p is None:
-        if isinstance(sol, dict):
-            return sol
-        return {k: getattr(sol, k) for k in dir(sol) if not k.startswith("_")}
-    rec: dict[str, Any] = {}
-    for k, v in p.items():
-        if k == "builder" and isinstance(v, dict):
-            for bk, bv in v.items():
-                rec[bk] = str(bv)
-        else:
-            rec[k] = str(v)
-    for k in ("amount_positive", "state_slot_past_genesis", "outcome"):
-        v = getattr(sol, k, None)
-        if v is not None:
-            rec[k] = bool(v) if isinstance(v, bool) else str(v)
-    return rec
-
-
-def _to_solution(rec: dict[str, Any]) -> ExecutionPayloadBidProcessing:
-    return ExecutionPayloadBidProcessing(
-        builder_type=_BT[rec["builder_type"]],
-        builder=to_builder_solution(rec),
-        cmp_bid_value_zero=CMP[rec["cmp_bid_value_zero"]],
-        bid_signature=_ST[rec["bid_signature"]],
-        cmp_builder_balance_to_bid_value_plus_min_balance=CMP[
-            rec["cmp_builder_balance_to_bid_value_plus_min_balance"]
-        ],
-        cmp_len_kzg_commitments_max_blobs=CMP[rec["cmp_len_kzg_commitments_max_blobs"]],
-        cmp_state_slot_bid_slot=CMP[rec["cmp_state_slot_bid_slot"]],
-        parent_block_hash_match=BOOL[rec["parent_block_hash_match"]],
-        parent_block_root_match=BOOL[rec["parent_block_root_match"]],
-        prev_randao_match=BOOL[rec["prev_randao_match"]],
-    )
 
 
 def _pick_deposit_epoch(s_dep: str, state_epoch: int, rng: Random) -> int:
@@ -231,7 +141,6 @@ class BidProcessingMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "execution_payload_bid"
     description = "process_execution_payload_bid"
-    validator_name = "bid_processing_validator"
     bls_setting = 1
 
     def describe(self, claimed: dict) -> str:
@@ -245,16 +154,15 @@ class BidProcessingMaterializer(Materializer):
 
     def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int = 0):
         super().__init__(spec, fork_name, preset_name, seed)
-        # Precompute both base-state variants once; each solution starts from a copy.
-        self._base_genesis = make_base_state(spec, num_validators=256, preprocess=False)
+        # Generated witnesses are always past genesis.
         self._base = make_base_state(spec, num_validators=256, preprocess=True)
 
-    def _base_state(self, past_genesis: bool) -> Any:
-        return (self._base if past_genesis else self._base_genesis).copy()
+    def _base_state(self) -> Any:
+        return self._base.copy()
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        rec = _normalize(sol)
+        rec = vars(sol)
         is_self = rec["builder_type"] == "SELF"
         past_genesis = rec.get("state_slot_past_genesis", True)
 
@@ -262,7 +170,7 @@ class BidProcessingMaterializer(Materializer):
         if not past_genesis:
             raise AssertionError("State slot should be past genesis")
 
-        pre = self._base_state(past_genesis)
+        pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
         min_deposit = int(spec.MIN_DEPOSIT_AMOUNT)
         builder_key_index, wrong_key_index = distinct_indices(self.rng, len(builder_pubkeys), 2)
@@ -284,7 +192,7 @@ class BidProcessingMaterializer(Materializer):
                 epoch=spec.Epoch(finalized_epoch), root=spec.Root(finalized_root)
             )
 
-            wset = rec["withdrawable_epoch_set"] == "T"
+            wset = rec["withdrawable_epoch_set"] is True
             if not wset:
                 withdrawable_epoch = spec.FAR_FUTURE_EPOCH
             else:
@@ -294,15 +202,15 @@ class BidProcessingMaterializer(Materializer):
 
             version = (
                 spec.PAYLOAD_BUILDER_VERSION
-                if rec["payload_builder_version"] == "T"
+                if rec["payload_builder_version"] is True
                 else spec.Uint8(1)
             )
 
             pending_payment_amount = (
-                self.rng.randrange(1, 1001) if rec["has_pending_payments"] == "T" else 0
+                self.rng.randrange(1, 1001) if rec["has_pending_payments"] is True else 0
             )
             pending_withdrawal_amount = (
-                self.rng.randrange(1, 1001) if rec["has_pending_withdrawals"] == "T" else 0
+                self.rng.randrange(1, 1001) if rec["has_pending_withdrawals"] is True else 0
             )
             pending_total = pending_payment_amount + pending_withdrawal_amount
             balance, bid_value = _pick_balance_and_bid_value(
@@ -327,7 +235,7 @@ class BidProcessingMaterializer(Materializer):
             )
             builder_index = len(pre.builders) - 1
 
-            if rec["has_pending_payments"] == "T":
+            if rec["has_pending_payments"] is True:
                 payment_index = self.rng.randrange(len(pre.builder_pending_payments))
                 pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
                     weight=spec.Gwei(self.rng.randrange(1, 1001)),
@@ -338,7 +246,7 @@ class BidProcessingMaterializer(Materializer):
                     ),
                     proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
                 )
-            if rec["has_pending_withdrawals"] == "T":
+            if rec["has_pending_withdrawals"] is True:
                 pre.builder_pending_withdrawals.append(
                     spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(builder_address),
@@ -371,9 +279,9 @@ class BidProcessingMaterializer(Materializer):
         ]
 
         # ---- block context ---------------------------------------------------
-        ph = rec["parent_block_hash_match"] == "T"
-        rr = rec["prev_randao_match"] == "T"
-        pr = rec["parent_block_root_match"] == "T"
+        ph = rec["parent_block_hash_match"] is True
+        rr = rec["prev_randao_match"] is True
+        pr = rec["parent_block_root_match"] is True
 
         def mutate(value: bytes) -> bytes:
             result = bytearray(value)
@@ -397,7 +305,8 @@ class BidProcessingMaterializer(Materializer):
         bid = spec.ExecutionPayloadBid(
             parent_block_hash=parent_block_hash,
             parent_block_root=parent_block_root,
-            block_hash=spec.Hash32(distinct_bytes(self.rng, 32)[0]),
+            # The legacy coverage scope fixes this unprojected gate to pass.
+            block_hash=spec.Hash32(mutate(bytes(parent_block_hash))),
             prev_randao=prev_randao,
             fee_recipient=spec.ExecutionAddress(distinct_bytes(self.rng, 20)[0]),
             gas_limit=spec.Uint64(30000000),
@@ -421,10 +330,6 @@ class BidProcessingMaterializer(Materializer):
 
         signed = spec.SignedExecutionPayloadBid(message=bid, signature=signature)
 
-        # ---- verify via validator --------------------------------------------
-        solution = _to_solution(rec)
-        verified = bid_processing_validator(spec, pre, solution, builder_index, signed)
-
         # ---- derive post (accepted) or omit (rejected) ----------------------
         post = pre.copy()
         try:
@@ -432,7 +337,7 @@ class BidProcessingMaterializer(Materializer):
         except (AssertionError, IndexError):
             post = None
 
-        claimed = {n: rec.get(n) for n in DIMS}
+        claimed = self.claimed_record(TARGET, sol)
         parts: list[TestCasePart] = [
             ("pre", "ssz", pre.encode_bytes()),
             ("execution_payload_bid", "ssz", signed.encode_bytes()),
@@ -441,7 +346,6 @@ class BidProcessingMaterializer(Materializer):
             parts.append(("post", "ssz", post.encode_bytes()))  # type: ignore[union-attr]
         meta = {
             "description": f"process_execution_payload_bid: {claimed['outcome']}",
-            "verified": verified,
             "bls_setting": 1,
             "claimed": claimed,
         }
