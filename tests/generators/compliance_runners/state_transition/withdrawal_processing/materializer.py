@@ -1,69 +1,24 @@
-"""Materialize pending-builder declarations and aggregate withdrawal aspect records.
-
-Both paths build pre/post BeaconState vectors and verify their construction.
-Only aggregate processing needs the shared builder/validator solution catalog.
-"""
+"""Materialize pending-builder and aggregate withdrawal TARGET witnesses."""
 
 from __future__ import annotations
 
 from functools import cache
-from types import SimpleNamespace
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.state_transition.aspects.base import (
-    Bool,
-    Cmp,
-    OpBool,
-    OpCmp,
-)
-from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.builder_sweep import (
-    BuilderSweep,
-)
-from tests.generators.compliance_runners.state_transition.aspects.builder_withdrawals.pending_withdrawal import (
-    BuilderPendingWithdrawal,
-)
 from tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target import (
     TARGET as PENDING_TARGET,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
     BIG,
-    BOOL,
-    CMP,
     make_base_state,
-    OP_CMP,
     set_parent_block,
-    to_builder_solution,
 )
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
-from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing import (
-    BuilderPendingWithdrawalProcessing,
-)
-from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.builder_pending_withdrawal_processing_validator import (
-    builder_pending_withdrawal_processing_validator,
-)
-from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.withdrawal_processing import (
-    WithdrawalProcessing,
-)
-from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.withdrawal_processing_validator import (
-    withdrawal_processing_validator,
-)
 
-if TYPE_CHECKING:
-    from tests.generators.compliance_runners.state_transition.aspects.builder.builder import (
-        Builder as BuilderSolution,
-    )
-    from tests.generators.compliance_runners.state_transition.aspects.validator.validator import (
-        Validator,
-    )
-    from tests.generators.compliance_runners.state_transition.aspects.validator_withdrawals.pending_partial_withdrawal import (
-        ValidatorPendingPartialWithdrawal,
-    )
-    from tests.generators.compliance_runners.state_transition.withdrawal_processing.models.solutions import (
-        SolutionCatalog,
-    )
+from .target import TARGET
 
 BUILDER_ADDRESS = b"\x42" * 20
 VALIDATOR_ADDRESS = b"\x43" * 20
@@ -74,72 +29,6 @@ def _padding_pubkey(index: int) -> bytes:
     # Separate these inactive registry entries from the helper signing keys.
     with bls_enabled():
         return bls.SkToPk(2**40 + index)
-
-
-PENDING_WITHDRAWAL_DIMS = [
-    "state_latest_block_hash_match",
-    "cmp_pending_amount_zero",
-    "cmp_builder_balance_amount",
-    # embedded builder sub-dimensions
-    "payload_builder_version",
-    "cmp_state_epoch_deposit_epoch",
-    "cmp_state_epoch_withdrawal_epoch",
-    "cmp_finalized_epoch_deposit_epoch",
-    "withdrawable_epoch_set",
-    "cmp_balance_zero",
-    "cmp_balance_min_deposit",
-    "has_pending_payments",
-    "has_pending_withdrawals",
-]
-
-WITHDRAWAL_PROCESSING_DIMS = [
-    "state_latest_block_hash_match",
-    "builder_pending_withdrawals_exist",
-    "builder_pending_withdrawals_hit_limit",
-    "validator_pending_withdrawals_exist",
-    "eligible_validator_pending_withdrawals_exist",
-    "validator_pending_withdrawals_hit_limit",
-    "validators_eligible_for_sweep_exist",
-    "partial_validator_sweep_withdrawal",
-    "swept_validators_hit_limit",
-    "cmp_builder_count_withdrawals_limit",
-    "cmp_builder_count_max_per_sweep",
-    "cmp_eligible_builder_count_zero",
-    "cmp_swept_count_zero",
-    "cmp_swept_count_max_per_sweep",
-    "cmp_next_index_zero",
-    "cmp_next_index_last_builder_index",
-    "swept_builders_hit_withdrawals_limit",
-]
-
-
-# --- builder_pending_withdrawal_processing helpers ---
-
-
-def _normalize_pending_withdrawal(sol: Any) -> dict[str, Any]:
-    """Flatten a MiniZinc solution into a {field: value} dict."""
-    p = sol.p
-    entry = p["pending_withdrawal"]
-    rec: dict[str, Any] = {
-        "state_latest_block_hash_match": str(p["state_latest_block_hash_match"]),
-        "cmp_pending_amount_zero": str(entry["cmp_pending_amount_zero"]),
-        "cmp_builder_balance_amount": str(entry["cmp_builder_balance_amount"]),
-    }
-    for k, v in entry["builder"].items():
-        rec[k] = str(v)
-    return rec
-
-
-def _to_pending_withdrawal_solution(rec: dict[str, Any]) -> BuilderPendingWithdrawalProcessing:
-    entry = BuilderPendingWithdrawal(
-        builder=to_builder_solution(rec),
-        cmp_pending_amount_zero=OP_CMP[rec["cmp_pending_amount_zero"]],
-        cmp_builder_balance_amount=OP_CMP[rec["cmp_builder_balance_amount"]],
-    )
-    return BuilderPendingWithdrawalProcessing(
-        state_latest_block_hash_match=BOOL[rec["state_latest_block_hash_match"]],
-        pending_withdrawal=entry,
-    )
 
 
 def _builder_params_from_dims(spec: Any, state_epoch: int, rec: dict[str, Any]) -> dict[str, Any]:
@@ -201,76 +90,7 @@ def _pick_finalized_epoch(rec: dict[str, Any], deposit_epoch: int) -> int:
 # --- withdrawal_processing helpers ---
 
 
-def _normalize_withdrawal_processing(sol: Any) -> dict[str, Any]:
-    p = sol.p
-    rec: dict[str, Any] = {
-        "state_latest_block_hash_match": str(p["state_latest_block_hash_match"]),
-        "builder_pending_withdrawals_exist": str(p["builder_pending_withdrawals_exist"]),
-        "builder_pending_withdrawals_hit_limit": str(p["builder_pending_withdrawals_hit_limit"]),
-        "validator_pending_withdrawals_exist": str(p["validator_pending_withdrawals_exist"]),
-        "eligible_validator_pending_withdrawals_exist": str(
-            p["eligible_validator_pending_withdrawals_exist"]
-        ),
-        "validator_pending_withdrawals_hit_limit": str(
-            p["validator_pending_withdrawals_hit_limit"]
-        ),
-        "validators_eligible_for_sweep_exist": str(p["validators_eligible_for_sweep_exist"]),
-        "partial_validator_sweep_withdrawal": str(p["partial_validator_sweep_withdrawal"]),
-        "swept_validators_hit_limit": str(p["swept_validators_hit_limit"]),
-        "builder_sweep": {k: str(v) for k, v in p["builder_sweep"].items()},
-    }
-    return rec
-
-
-def _to_sweep(bs: dict[str, str]) -> BuilderSweep:
-    return BuilderSweep(
-        cmp_builder_count_withdrawals_limit=CMP[bs["cmp_builder_count_withdrawals_limit"]],
-        cmp_builder_count_max_per_sweep=CMP[bs["cmp_builder_count_max_per_sweep"]],
-        cmp_eligible_builder_count_zero=CMP[bs["cmp_eligible_builder_count_zero"]],
-        cmp_swept_count_zero=CMP[bs["cmp_swept_count_zero"]],
-        cmp_swept_count_max_per_sweep=CMP[bs["cmp_swept_count_max_per_sweep"]],
-        cmp_next_index_zero=CMP[bs["cmp_next_index_zero"]],
-        cmp_next_index_last_builder_index=CMP[bs["cmp_next_index_last_builder_index"]],
-        swept_builders_hit_withdrawals_limit=BOOL[bs["swept_builders_hit_withdrawals_limit"]],
-    )
-
-
-def _to_withdrawal_processing_solution(rec: dict[str, Any]) -> WithdrawalProcessing:
-    builder_sweep_dims = rec.get(
-        "builder_sweep",
-        {
-            name: rec[name]
-            for name in (
-                "cmp_builder_count_withdrawals_limit",
-                "cmp_builder_count_max_per_sweep",
-                "cmp_eligible_builder_count_zero",
-                "cmp_swept_count_zero",
-                "cmp_swept_count_max_per_sweep",
-                "cmp_next_index_zero",
-                "cmp_next_index_last_builder_index",
-                "swept_builders_hit_withdrawals_limit",
-            )
-        },
-    )
-    return WithdrawalProcessing(
-        state_latest_block_hash_match=BOOL[rec["state_latest_block_hash_match"]],
-        builder_pending_withdrawals_exist=BOOL[rec["builder_pending_withdrawals_exist"]],
-        builder_pending_withdrawals_hit_limit=BOOL[rec["builder_pending_withdrawals_hit_limit"]],
-        validator_pending_withdrawals_exist=BOOL[rec["validator_pending_withdrawals_exist"]],
-        eligible_validator_pending_withdrawals_exist=BOOL[
-            rec["eligible_validator_pending_withdrawals_exist"]
-        ],
-        validator_pending_withdrawals_hit_limit=BOOL[
-            rec["validator_pending_withdrawals_hit_limit"]
-        ],
-        validators_eligible_for_sweep_exist=BOOL[rec["validators_eligible_for_sweep_exist"]],
-        partial_validator_sweep_withdrawal=BOOL[rec["partial_validator_sweep_withdrawal"]],
-        swept_validators_hit_limit=BOOL[rec["swept_validators_hit_limit"]],
-        builder_sweep=_to_sweep(builder_sweep_dims),
-    )
-
-
-def _pick_builder_queue_len(rec: dict[str, Any], limit: int) -> int:
+def _pick_builder_queue_len(rec: dict[str, Any], limit: int, max_partials: int) -> int:
     """Pick a concrete builder pending-withdrawal queue length from the bool dims."""
     if rec["builder_pending_withdrawals_exist"] == "F":
         return 0
@@ -278,7 +98,12 @@ def _pick_builder_queue_len(rec: dict[str, Any], limit: int) -> int:
     # get_builder_withdrawals evaluate ``has_reached_limit`` as true and take
     # its ``break`` branch, rather than merely exhausting the queue at the
     # same count.
-    return limit + 1 if rec["builder_pending_withdrawals_hit_limit"] == "T" else 1
+    if rec["builder_pending_withdrawals_hit_limit"] == "T":
+        return limit + 1
+    if rec["validator_pending_withdrawals_hit_limit"] == "T":
+        # Leave exactly the partial-source capacity before the shared limit.
+        return max(1, limit - max_partials)
+    return 1
 
 
 def _pick_validator_queue_len(rec: dict[str, Any], max_partials: int) -> int:
@@ -338,34 +163,21 @@ def _pick_sweep(
 
 
 def _builder_params(
-    spec: Any,
-    state_epoch: int,
-    bs: BuilderSolution,
-    builder_index: int,
-    withdrawable_epoch: Any,
+    spec: Any, state_epoch: int, builder_index: int, withdrawable_epoch: Any
 ) -> dict[str, Any]:
-    min_deposit = int(spec.MIN_DEPOSIT_AMOUNT)
-    version = (
-        spec.PAYLOAD_BUILDER_VERSION
-        if bs.payload_builder_version == OpBool.T
-        else spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
-    )
-    deposit_epoch = (
-        state_epoch if bs.cmp_state_epoch_deposit_epoch == OpCmp.EQ else max(0, state_epoch - 2)
-    )
-    balance = min_deposit if bs.cmp_balance_min_deposit == OpCmp.EQ else min_deposit + BIG
+    """Use a concrete ordinary builder; only sweep eligibility is projected."""
     return {
         "pubkey": spec.BLSPubkey(builder_pubkeys[builder_index % len(builder_pubkeys)]),
-        "version": version,
+        "version": spec.PAYLOAD_BUILDER_VERSION,
         "execution_address": spec.ExecutionAddress(BUILDER_ADDRESS),
-        "balance": spec.Gwei(balance),
-        "deposit_epoch": spec.Epoch(deposit_epoch),
+        "balance": spec.Gwei(int(spec.MIN_DEPOSIT_AMOUNT) + BIG),
+        "deposit_epoch": spec.Epoch(max(0, state_epoch - 1)),
         "withdrawable_epoch": withdrawable_epoch,
     }
 
 
 class WithdrawalProcessingMaterializer(Materializer):
-    """Materializes each solution of both withdrawal-processing aspect models."""
+    """Materialize the two separately registered withdrawal providers."""
 
     runner_name = "operations"
     handler_name = "withdrawals"
@@ -373,13 +185,11 @@ class WithdrawalProcessingMaterializer(Materializer):
     def __init__(
         self,
         spec: Any,
-        solutions: SolutionCatalog | None = None,
         fork_name="gloas",
         preset_name="minimal",
         seed: int = 0,
     ):
         super().__init__(spec, fork_name, preset_name, seed)
-        self.solutions = solutions
         # Precompute the preprocessed base state once; each solution starts from a copy.
         self._base = make_base_state(spec)
         self._outside_sweep_base = None
@@ -405,73 +215,25 @@ class WithdrawalProcessingMaterializer(Materializer):
         return self._outside_sweep_base.copy()
 
     def _materialize_validator_partial(
-        self,
-        pre: Any,
-        state_epoch: int,
-        finalized_epoch: int,
-        vs: Validator,
-        template: ValidatorPendingPartialWithdrawal,
-        queue_len: int,
+        self, pre: Any, state_epoch: int, eligible: bool, queue_len: int
     ) -> None:
         spec = self.spec
-        min_act = int(spec.MIN_ACTIVATION_BALANCE)
-
         index = 0
-        old = pre.validators[index]
-
-        if vs.cmp_effective_balance_min_activation_balance == Cmp.EQ:
-            effective_balance = min_act
-        else:
-            effective_balance = min_act + int(spec.EFFECTIVE_BALANCE_INCREMENT)
-
-        if vs.cmp_state_epoch_activation_epoch == Cmp.EQ:
-            activation_epoch = state_epoch
-        elif vs.cmp_state_epoch_activation_epoch == Cmp.GT:
-            activation_epoch = max(0, state_epoch - 1)
-        else:
-            activation_epoch = state_epoch + 1
-
-        if vs.cmp_finalized_epoch_activation_eligibility_epoch == Cmp.EQ:
-            eligibility_epoch = finalized_epoch
-        elif vs.cmp_finalized_epoch_activation_eligibility_epoch == Cmp.GT:
-            eligibility_epoch = max(0, finalized_epoch - 1)
-        else:
-            eligibility_epoch = finalized_epoch + 1
-
-        new_validator = spec.Validator(
-            pubkey=old.pubkey,
-            withdrawal_credentials=spec.Bytes32(b"\x02" + b"\x00" * 11 + VALIDATOR_ADDRESS),
-            effective_balance=spec.Gwei(effective_balance),
-            slashed=False,
-            activation_eligibility_epoch=spec.Epoch(eligibility_epoch),
-            activation_epoch=spec.Epoch(activation_epoch),
-            exit_epoch=spec.FAR_FUTURE_EPOCH,
-            withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        )
-        pre.validators[index] = new_validator
-
-        balance = min_act + 1_000_000
-        pre.balances[index] = spec.Gwei(balance)
-
-        if template.cmp_balance_amount == CMP["LT"]:
-            amount = balance + 1
-        elif template.cmp_balance_amount == CMP["EQ"]:
-            amount = balance
-        else:
-            amount = balance - 1
-
-        withdrawable_epoch = (
-            spec.Epoch(state_epoch)
-            if template.withdrawable == Bool.T
-            else spec.Epoch(state_epoch + 1)
-        )
-
+        validator = pre.validators[index]
+        validator.withdrawal_credentials = spec.Bytes32(b"\x02" + b"\x00" * 11 + VALIDATOR_ADDRESS)
+        validator.effective_balance = spec.MIN_ACTIVATION_BALANCE
+        validator.exit_epoch = spec.FAR_FUTURE_EPOCH
+        validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+        amount = 1_000_000
+        # Each processed entry must emit a real withdrawal. Otherwise the
+        # processed-entry count differs from the prior-output count for sweeps.
+        pre.balances[index] = spec.Gwei(int(spec.MIN_ACTIVATION_BALANCE) + (queue_len + 1) * amount)
         for _ in range(queue_len):
             pre.pending_partial_withdrawals.append(
                 spec.PendingPartialWithdrawal(
                     validator_index=spec.ValidatorIndex(index),
                     amount=spec.Gwei(amount),
-                    withdrawable_epoch=withdrawable_epoch,
+                    withdrawable_epoch=spec.Epoch(state_epoch if eligible else state_epoch + 1),
                 )
             )
 
@@ -508,56 +270,26 @@ class WithdrawalProcessingMaterializer(Materializer):
         )
         pre.balances[idx] = spec.Gwei(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA) + BIG)
 
-    def _record(self, sol: Any) -> dict[str, Any]:
-        """Normalize a MiniZinc solution or a catalog representative."""
-        if hasattr(sol, "p"):
-            if "pending_withdrawal" in sol.p:
-                return _normalize_pending_withdrawal(sol)
-            rec = _normalize_withdrawal_processing(sol)
-            rec.update(rec.pop("builder_sweep"))
-            return rec
-        return vars(sol).copy() if not isinstance(sol, dict) else sol.copy()
-
     def materialize_solution(self, sol: Any) -> tuple[dict, list]:
-        rec = self._record(sol)
-        if "cmp_pending_amount_zero" in rec:
-            canonical = isinstance(rec["state_latest_block_hash_match"], bool)
-            construction = (
-                {
-                    name: ("T" if value else "F") if isinstance(value, bool) else value
-                    for name, value in rec.items()
-                }
-                if canonical
-                else rec
-            )
-            pre, post, _verified, claimed, extra_parts = self._materialize_pending_withdrawal(
-                construction
-            )
-            if canonical:
-                claimed = self.claimed_record(PENDING_TARGET, SimpleNamespace(**rec))
+        rec = vars(sol)
+        construction = {
+            name: ("T" if value else "F") if isinstance(value, bool) else value
+            for name, value in rec.items()
+        }
+        pending = "cmp_pending_amount_zero" in rec
+        if pending:
+            pre, post = self._materialize_pending_withdrawal(construction)
         else:
-            pre, post, _verified, claimed, extra_parts = self._materialize_withdrawal_processing(
-                rec
-            )
-
-        parts = [("pre", "ssz", pre.encode_bytes())]
-        parts.extend((name, "ssz", value.encode_bytes()) for name, value in extra_parts)
-        if post is not None:
-            parts.append(("post", "ssz", post.encode_bytes()))
+            pre, post = self._materialize_withdrawal_processing(construction)
+        claimed = self.claimed_record(PENDING_TARGET if pending else TARGET, sol)
+        parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         description = (
-            "builder_pending_withdrawal_processing"
-            if "cmp_pending_amount_zero" in claimed
-            else "withdrawal_processing"
+            "builder_pending_withdrawal_processing" if pending else "withdrawal_processing"
         )
-        return {
-            "description": f"{description}: {claimed}",
-            "claimed": claimed,
-            "verified": _verified,
-        }, parts
+        return {"description": f"{description}: {claimed}", "claimed": claimed}, parts
 
-    def _materialize_pending_withdrawal(self, sol: Any) -> tuple[Any, Any | None, bool, dict, list]:
+    def _materialize_pending_withdrawal(self, rec: dict) -> tuple[Any, Any]:
         spec = self.spec
-        rec = sol if isinstance(sol, dict) else self._record(sol)
 
         pre = self._base.copy()
         state_epoch = int(spec.get_current_epoch(pre))
@@ -609,35 +341,18 @@ class WithdrawalProcessingMaterializer(Materializer):
                 proposer_index=spec.ValidatorIndex(0),
             )
 
-        solution = _to_pending_withdrawal_solution(rec)
-        verified = builder_pending_withdrawal_processing_validator(
-            spec,
-            pre,
-            solution,
-            0,
-        )
-
         post = pre.copy()
-        try:
-            spec.process_withdrawals(post)
-        except Exception:
-            post = None
+        spec.process_withdrawals(post)
+        return pre, post
 
-        claimed = {n: rec.get(n) for n in PENDING_WITHDRAWAL_DIMS}
-        return pre, post, verified, claimed, []
-
-    def _materialize_withdrawal_processing(
-        self, sol: Any
-    ) -> tuple[Any, Any | None, bool, dict, list]:
-        catalog = self.solutions
-        if catalog is None:
-            raise ValueError("aggregate withdrawal processing requires a solution catalog")
+    def _materialize_withdrawal_processing(self, rec: dict) -> tuple[Any, Any]:
         spec = self.spec
-        rec = sol if isinstance(sol, dict) else self._record(sol)
 
         limit = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD) - 1
         max_per_sweep = int(spec.MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
-        builder_queue_len = _pick_builder_queue_len(rec, limit)
+        builder_queue_len = _pick_builder_queue_len(
+            rec, limit, int(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP)
+        )
         validator_queue_len = _pick_validator_queue_len(
             rec, int(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP)
         )
@@ -647,7 +362,7 @@ class WithdrawalProcessingMaterializer(Materializer):
         # sources before the builder sweep (get_builder_withdrawals +
         # get_pending_partial_withdrawals), which is the builder sweep's prior.
         processed_builder = min(builder_queue_len, limit)
-        processed_partial = validator_queue_len if (eligible and processed_builder < limit) else 0
+        processed_partial = min(validator_queue_len, limit - processed_builder) if eligible else 0
         sweep_prior = processed_builder + processed_partial
 
         bc, ni, positions = _pick_sweep(rec, limit, max_per_sweep, sweep_prior)
@@ -669,25 +384,12 @@ class WithdrawalProcessingMaterializer(Materializer):
             root=spec.Root(b"\x01" * 32),
         )
 
-        ref_bs = self.rng.choice(catalog.ref_candidates)
-        active_bs = self.rng.choice(catalog.active_candidates)
         eligible_set = set(positions)
         active_indices = [i for i in range(bc) if i not in eligible_set][:builder_queue_len]
-        active_set = set(active_indices)
 
         for i in range(bc):
-            if i in eligible_set:
-                wd = (
-                    spec.Epoch(state_epoch)
-                    if ref_bs.cmp_state_epoch_withdrawal_epoch == OpCmp.EQ
-                    else spec.Epoch(max(0, state_epoch - 1))
-                )
-                params = _builder_params(spec, state_epoch, ref_bs, i, wd)
-            elif i in active_set:
-                params = _builder_params(spec, state_epoch, active_bs, i, spec.FAR_FUTURE_EPOCH)
-            else:
-                params = _builder_params(spec, state_epoch, ref_bs, i, spec.FAR_FUTURE_EPOCH)
-            pre.builders.append(spec.Builder(**params))
+            wd = spec.Epoch(state_epoch) if i in eligible_set else spec.FAR_FUTURE_EPOCH
+            pre.builders.append(spec.Builder(**_builder_params(spec, state_epoch, i, wd)))
 
         pre.next_withdrawal_builder_index = spec.BuilderIndex(ni)
 
@@ -717,21 +419,7 @@ class WithdrawalProcessingMaterializer(Materializer):
 
         # Validator pending partial withdrawal queue entries.
         if validator_queue_len > 0:
-            template = self.rng.choice(
-                [
-                    s
-                    for s in catalog.all_validator_pending_withdrawal_solutions
-                    if (s.withdrawable == Bool.T) == eligible
-                ]
-            )
-            self._materialize_validator_partial(
-                pre,
-                state_epoch,
-                finalized_epoch,
-                template.validator,
-                template,
-                validator_queue_len,
-            )
+            self._materialize_validator_partial(pre, state_epoch, eligible, validator_queue_len)
 
         # Validator sweep: control fully-withdrawable validators to realize
         # validators_eligible_for_sweep_exist / swept_validators_hit_limit.
@@ -752,40 +440,9 @@ class WithdrawalProcessingMaterializer(Materializer):
                 # A single eligible validator outside the sweep window.
                 self._make_fully_withdrawable(pre, window_end, state_epoch)
 
-        solution = _to_withdrawal_processing_solution(rec)
-        verified = withdrawal_processing_validator(
-            spec,
-            pre,
-            solution,
-            catalog.all_builder_solutions,
-            catalog.all_builder_pending_withdrawal_solutions,
-            catalog.all_validator_pending_withdrawal_solutions,
-        )
-
         post = pre.copy()
-        try:
-            spec.process_withdrawals(post)
-        except Exception:
-            post = None
-
-        claimed_dims: dict[str, Any] = {
-            "state_latest_block_hash_match": rec["state_latest_block_hash_match"],
-            "builder_pending_withdrawals_exist": rec["builder_pending_withdrawals_exist"],
-            "builder_pending_withdrawals_hit_limit": rec["builder_pending_withdrawals_hit_limit"],
-            "validator_pending_withdrawals_exist": rec["validator_pending_withdrawals_exist"],
-            "eligible_validator_pending_withdrawals_exist": rec[
-                "eligible_validator_pending_withdrawals_exist"
-            ],
-            "validator_pending_withdrawals_hit_limit": rec[
-                "validator_pending_withdrawals_hit_limit"
-            ],
-            "validators_eligible_for_sweep_exist": rec["validators_eligible_for_sweep_exist"],
-            "partial_validator_sweep_withdrawal": rec["partial_validator_sweep_withdrawal"],
-            "swept_validators_hit_limit": rec["swept_validators_hit_limit"],
-        }
-        claimed_dims.update({name: rec[name] for name in WITHDRAWAL_PROCESSING_DIMS if name in rec})
-        claimed = {n: claimed_dims.get(n) for n in WITHDRAWAL_PROCESSING_DIMS}
-        return pre, post, verified, claimed, []
+        spec.process_withdrawals(post)
+        return pre, post
 
     def describe(self, claimed: dict) -> str:
         if "cmp_builder_balance_amount" in claimed:

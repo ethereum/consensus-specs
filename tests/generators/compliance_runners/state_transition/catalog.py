@@ -110,7 +110,7 @@ PROVIDERS = (
     ),
     Provider(
         "withdrawal_processing",
-        "withdrawal_processing.withdrawal_processing",
+        "withdrawal_processing",
         "operations",
         "withdrawals",
     ),
