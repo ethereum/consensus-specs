@@ -877,9 +877,10 @@ change, builder deposit requests, builder exits, builder pending payments,
 single builder pending withdrawals, deposit requests, effective-balance updates,
 operation dispatch, pending consolidations, PTC window, slashings, and sync
 aggregates. The other 22 TARGET providers also inherit that policy after
-removing redundant MiniZinc overrides. The remaining legacy
-withdrawal-processing provider is outside this policy. Generic
-conditional-factor tools retain their Python reference defaults.
+removing redundant MiniZinc overrides. All registered state-transition providers
+now have TARGET declarations, including the later bid- and withdrawal-processing
+migrations. Generic conditional-factor tools retain their Python reference
+defaults.
 
 After benchmarking, thirteen providers explicitly select Python generation in
 `coverage_profiles`: all of the original fourteen except attestation. TARGET
@@ -924,3 +925,24 @@ and validation modules are removed. Legacy-space fingerprints and concrete
 recovery/replay tests cover both presets; Python reference projection parity
 uses the exhaustively legacy-validated feasible rows to avoid raw-space
 enumeration. Fixture scope and generation commands are in the provider README.
+
+### Aggregate withdrawal-processing migration
+
+`withdrawal_processing/target.py` inherits MiniZinc generation and preserves all
+873 legacy signatures on both presets: 864 matching-parent states and nine
+empty-parent no-ops. Smoke/exceptional preserve 44 grouped one-wise obligations,
+and normal/standard preserve 393 grouped pairwise obligations. The shared
+adapter emits 40/267 complete representatives instead of the former greedy
+30/125 selections; max retains every signature. There is no terminal-outcome
+column or rejecting assertion in this aggregate slice.
+
+The shared withdrawals materializer now builds direct numeric witnesses rather
+than solving a fixture catalog. Queue sizes scale to preset source caps, each
+processed partial emits a positive output, and real mainnet sweep-window
+boundaries remain covered. Both withdrawals providers use independent TARGET
+recovery and require a post-state; coverage loading selects their metadata
+separately. The handwritten aggregate model, legacy helper models, custom
+coverage/validation, and catalog are removed. Complete legacy fingerprints,
+profile obligations, reference projections/completions, and concrete recovery
+and replay are verified on both presets. Scope and commands are documented in
+the provider README.
