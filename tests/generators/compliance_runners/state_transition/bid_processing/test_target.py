@@ -32,7 +32,8 @@ from tests.generators.compliance_runners.state_transition.provider import (
     materialize_handler,
 )
 
-from .materializer import _pick_balance_and_bid_value, MATERIALIZER
+from .concretization import _pick_balance_and_bid_value
+from .materializer import MATERIALIZER
 from .target import INPUT_ASPECTS, TARGET
 
 validate_case = load_provider("bid_processing").validate_case
