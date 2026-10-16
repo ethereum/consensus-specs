@@ -53,7 +53,9 @@ def target(*, feasible=lambda a: True):
         profiles={"pairs": nwise((a, b), 2)},
         feasible=feasible,
     )
-    return bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(SimpleNamespace())
+    return bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(
+        SimpleNamespace(), backend="python"
+    )
 
 
 def test_na_never_satisfies_and_scores_are_exact():
@@ -95,7 +97,9 @@ def test_declared_outcome_values_are_not_overwritten_by_context():
         aspects=(aspect("outcome", accepted),),
         profiles={"all": nwise((accepted,), 1)},
     )
-    t = bind(definition, observe_attributes=lambda ctx: {"post_present": True}).for_spec(object())
+    t = bind(definition, observe_attributes=lambda ctx: {"post_present": True}).for_spec(
+        object(), backend="python"
+    )
     assert t.observation(Context(t._bound_spec, None, None, None, {})) == {
         "post_present": True,
         "accepted": True,

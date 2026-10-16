@@ -12,7 +12,7 @@ from .materializer import VoluntaryExitMaterializer
 from .target import TARGET
 
 MATERIALIZER = VoluntaryExitMaterializer
-build_profile = coverage_profiles(TARGET, backend="minizinc")
+build_profile = coverage_profiles(TARGET)
 recover_dimensions, validate_case = target_validator(
     TARGET,
     operation_name="voluntary_exit",

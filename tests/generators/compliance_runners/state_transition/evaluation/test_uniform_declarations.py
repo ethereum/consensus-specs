@@ -67,7 +67,7 @@ def test_union_preserves_the_gap_and_covers_the_sentinel_exactly():
     domain = Integer(0, 255) | Finite((sentinel,))
     x = attribute("x", domain)
     d = dimension("covered_x", x)
-    t = target((x,), (d,)).for_spec(object())
+    t = target((x,), (d,)).for_spec(object(), backend="python")
     assert t.profiles["all"].run() == {
         frozenset({("covered_x", v)}) for v in (*range(256), sentinel)
     }
@@ -98,7 +98,7 @@ def test_finite_domains_separate_scalar_types_and_reject_large_enumeration():
     flag = attribute("flag", Boolean())
     label = attribute("label", Finite(("first", "last")))
     t = target((flag, label), (dimension("flag_value", flag), dimension("label_value", label)))
-    assert len(t.for_spec(object()).profiles["all"].run()) == 4
+    assert len(t.for_spec(object(), backend="python").profiles["all"].run()) == 4
 
 
 def test_constraints_use_predicate_truth_and_explicit_bucket_values():
@@ -110,7 +110,7 @@ def test_constraints_use_predicate_truth_and_explicit_bucket_values():
         (x, accepted),
         (cmp, outcome),
         constraints=(outcome == cmp, coverage_value(cmp) != "GT_1"),
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
     assert t.profiles["all"].run() == {
         frozenset({("positive", bucket), ("accepted", truth)})
         for bucket, truth in (("LT_FAR", False), ("LT_1", False), ("EQ", False), ("GT_FAR", True))
@@ -125,12 +125,14 @@ def test_inactive_unknown_does_not_hide_a_known_violation():
     flag = attribute("flag", Boolean())
     parent = factor("parent", flag)
     child = factor("child", flag, when=parent)
-    t = target((flag,), (parent, child), constraints=(all_of(child, parent),)).for_spec(object())
+    t = target((flag,), (parent, child), constraints=(all_of(child, parent),)).for_spec(
+        object(), backend="python"
+    )
     assert t.profiles["all"].run() == {frozenset({("parent", True), ("child", True)})}
     assert not t.feasible({"parent": False})
     # Presence tests distinguish omission from an ordinary false value.
     t = target((flag,), (parent, child), constraints=(implies(~parent, ~present(child)),))
-    assert t.for_spec(object()).feasible({"parent": False})
+    assert t.for_spec(object(), backend="python").feasible({"parent": False})
 
 
 def test_bound_constant_constraints_and_lazy_branches():
@@ -147,8 +149,8 @@ def test_bound_constant_constraints_and_lazy_branches():
             choose(period == 0, yes=True, no=(expression(1) % period) == 0),
         ),
     )
-    zero = t.for_spec(SimpleNamespace(period=0))
-    two = t.for_spec(SimpleNamespace(period=2))
+    zero = t.for_spec(SimpleNamespace(period=0), backend="python")
+    two = t.for_spec(SimpleNamespace(period=2), backend="python")
     assert zero.feasible({"flag_value": False})
     assert not two.feasible({"flag_value": False})
     assert not two.feasible({"flag_value": True})
@@ -172,10 +174,10 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
     x = attribute("x", Integer(0, 2))
     t = target((x,), (dimension("value", x),))
     spec = object()
-    build_profile = coverage_profiles(t)
+    build_profile = coverage_profiles(t, backend="python")
     expected = [{"value": n} for n in range(3)]
     assert build_profile("all", spec=spec) == expected
-    assert profile_records(t.for_spec(spec), "all") == expected
+    assert profile_records(t.for_spec(spec, backend="python"), "all") == expected
     assert build_profile("exceptional", spec=spec) == []
     with pytest.raises(KeyError):
         build_profile("typo", spec=spec)
@@ -192,7 +194,7 @@ def test_provider_adapter_has_stable_records_and_inferred_empty_exceptional_prof
         ),
         observe_attributes=lambda ctx: ctx.pre,
     )
-    assert coverage_profiles(declared)("exceptional", spec=spec) == expected
+    assert coverage_profiles(declared, backend="python")("exceptional", spec=spec) == expected
 
 
 def test_inputs_are_inferred_from_values_availability_applicability_and_constraints():
@@ -225,7 +227,7 @@ def test_inputs_are_inferred_from_values_availability_applicability_and_constrai
         definition,
         observe_attributes=lambda ctx: observed,
         constants={"offset": lambda spec: 1, "permitted": lambda spec: True},
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
     assert t.record(t.observation(Context(t._bound_spec, None, None, None, {}))) == {
         "gate": True,
         "value": 3,
@@ -292,7 +294,7 @@ def materializer_target():
 
 
 def test_generic_materializer_record_uses_comparison_activation():
-    bound = materializer_target().for_spec(object())
+    bound = materializer_target().for_spec(object(), backend="python")
     assert materializer_record(bound, {"gate": "LT_1", "raw": False}) == {
         "gate": "LT_1",
         "check": "NA",
@@ -316,8 +318,8 @@ def test_generic_materializer_record_uses_comparison_activation():
 def test_provider_profiles_always_complete_unscoped_obligations():
     template = materializer_target()
     spec = object()
-    bound = template.for_spec(spec)
-    records = coverage_profiles(template)("each", spec=spec)
+    bound = template.for_spec(spec, backend="python")
+    records = coverage_profiles(template, backend="python")("each", spec=spec)
     assert records == profile_records(bound, "each")
     configurations = bound._configurations(filtered=True)[1]
     assert all(
@@ -337,8 +339,8 @@ def test_provider_profiles_always_complete_unscoped_obligations():
 def test_generic_materializer_profiles_encode_inactive_dimensions():
     template = materializer_target()
     spec = object()
-    bound = template.for_spec(spec)
-    build_profile = coverage_profiles(template)
+    bound = template.for_spec(spec, backend="python")
+    build_profile = coverage_profiles(template, backend="python")
     records = build_profile("each", spec=spec)
     assert all(bound.assertion_result(r).fault_count is not None for r in records)
     assert {r["check"] for r in records} == {"NA", True, False}
@@ -347,7 +349,7 @@ def test_generic_materializer_profiles_encode_inactive_dimensions():
     assert report.covered == report.total
     assert not report.unexpected
     flag = attribute("flag", Boolean())
-    ordinary = target((flag,), (dimension("raw", flag),)).for_spec(object())
+    ordinary = target((flag,), (dimension("raw", flag),)).for_spec(object(), backend="python")
     assert materializer_record(ordinary, {"raw": False}) == {
         "raw": False,
     }
@@ -412,7 +414,7 @@ def test_constant_dimensions_refine_to_the_bound_value(domain, value, form):
     )
     d = dimension("constant_value", value_expression)
     template = target((), (d,), constants=(k,), bindings={"k": lambda spec: spec.k})
-    t = template.for_spec(SimpleNamespace(k=value))
+    t = template.for_spec(SimpleNamespace(k=value), backend="python")
     assert t.profiles["all"].run() == {frozenset({("constant_value", value)})}
     observation = t.observation(Context(t._bound_spec, {}, None, None, {}))
     report = score(t, [t.record(observation)], t.profiles["all"])
@@ -424,7 +426,7 @@ def test_identity_boolean_domain_supports_predicate_activation():
     flag = attribute("flag", Boolean())
     enabled = dimension("enabled", identity(flag, domain=Boolean()))
     child = dimension("child", identity(~flag, domain=Boolean()), when=enabled)
-    t = target((flag,), (enabled, child)).for_spec(object())
+    t = target((flag,), (enabled, child)).for_spec(object(), backend="python")
     assert t.profiles["all"].run() == {
         frozenset({("enabled", False)}),
         frozenset({("enabled", True), ("child", False)}),
@@ -440,7 +442,7 @@ def test_constant_expression_dimensions_refine_independently_per_binding():
     d = dimension("next_value", k + 1)
     template = target((), (d,), constants=(k,), bindings={"k": lambda spec: spec.k})
     for value in (0, 2, 4):
-        t = template.for_spec(SimpleNamespace(k=value))
+        t = template.for_spec(SimpleNamespace(k=value), backend="python")
         assert t.profiles["all"].run() == {frozenset({("next_value", value + 1)})}
     assert d.values == (1, 2, 3, 4, 5)
 
@@ -457,7 +459,7 @@ def test_large_finite_membership_and_conjunctions_use_balanced_trees(size):
     assert conjunction.evaluate({"x": size - 1}, {}) is True
     assert conjunction.evaluate({"x": size - 2}, {}) is False
     # Validation and review traversal must also handle the full-size tree.
-    t = target((x,), (factor("member", membership),)).for_spec(object())
+    t = target((x,), (factor("member", membership),)).for_spec(object(), backend="python")
     assert "attribute x" in t.review()
 
 
@@ -478,7 +480,7 @@ def test_bytes_constants_preserve_operands_in_feasibility(same):
             constants=(left, right),
             bindings=bindings,
             constraints=(condition,),
-        ).for_spec(SimpleNamespace(same=same))
+        ).for_spec(SimpleNamespace(same=same), backend="python")
         assert t.feasible({"flag_value": True}) is allowed
         assert len(t.profiles["all"].run()) == (2 if allowed else 0)
 
@@ -500,7 +502,7 @@ def test_constant_refinement_preserves_lazy_activation_and_nested_dependencies(k
         constants=(k,),
         bindings={"k": lambda spec: spec.k},
     )
-    t = template.for_spec(SimpleNamespace(k=k_value))
+    t = template.for_spec(SimpleNamespace(k=k_value), backend="python")
     observation = t.observation(Context(t._bound_spec, {}, None, None, {}))
     if k_value == 0:
         assert observation == {"enabled": False, "remainder": NA, "nested": NA}
@@ -525,7 +527,7 @@ def test_constant_refinement_defers_unknown_activation_until_observation():
         (enabled, remainder),
         constants=(k,),
         bindings={"k": lambda spec: 0},
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
     observation = t.observation(Context(t._bound_spec, {"flag": False}, None, None, {}))
     assert observation["remainder"] is NA
     with pytest.raises(ZeroDivisionError):
@@ -540,7 +542,9 @@ def test_constant_refinement_preserves_lazy_availability():
         domain=Integer(0, 0),
         available_when=k > 0,
     )
-    t = target((), (remainder,), constants=(k,), bindings={"k": lambda spec: 0}).for_spec(object())
+    t = target((), (remainder,), constants=(k,), bindings={"k": lambda spec: 0}).for_spec(
+        object(), backend="python"
+    )
     observation = t.observation(Context(t._bound_spec, {}, None, None, {}))
     assert observation["remainder"] is NA
     # Availability still suppresses observation, rather than coverage obligations.
@@ -565,7 +569,7 @@ def test_constant_refinement_honors_target_applicability(k_value):
         definition,
         observe_attributes=lambda ctx: {},
         constants={"k": lambda spec: spec.k},
-    ).for_spec(SimpleNamespace(k=k_value))
+    ).for_spec(SimpleNamespace(k=k_value), backend="python")
     observation = t.observation(Context(t._bound_spec, {}, None, None, {}))
     assert observation == {"remainder": NA if k_value == 0 else 0}
     for formula in t.profiles.values():
@@ -585,7 +589,7 @@ def test_constant_refinement_defers_unknown_target_applicability():
         constants=(k,),
         bindings={"k": lambda spec: 0},
         applicable_when=flag,
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
     observation = t.observation(Context(t._bound_spec, {"flag": False}, None, None, {}))
     assert observation["remainder"] is NA
     assert "target uniform" in t.review()
@@ -603,7 +607,7 @@ def test_known_applicability_still_refines_constant_dimensions():
         constants=(k,),
         bindings={"k": lambda spec: 2},
         applicable_when=(k > 0) | flag,
-    ).for_spec(object())
+    ).for_spec(object(), backend="python")
     assert t.profiles["all"].run() == {frozenset({("constant_value", 2)})}
 
 
