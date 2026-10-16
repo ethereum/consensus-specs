@@ -882,16 +882,16 @@ defaults.
 
 After benchmarking, thirteen targets explicitly select Python in
 `bind(..., backend="python")`: all of the original fourteen except attestation.
-Provider generation and the scoring CLI inherit those target defaults. The measured choices and
-raw-space counts are listed in the evaluation README; there is no automatic
-cutoff.
+Provider generation and the scoring CLI inherit those target defaults. The
+measured choices and raw-space counts are listed in the evaluation README; there
+is no automatic cutoff.
 
 Reference tests bind `backend="python"` explicitly, so changing production
 defaults cannot silently turn a parity test into MiniZinc versus itself.
 Provider contract tests verify inheritance through each actual `build_profile`
-adapter; the CLI inherits the selected target defaults. The existing two-preset backend
-matrix compares configurations, profile obligations, deterministic witnesses,
-and coverage semantics for the fourteen migrated providers.
+adapter; the CLI inherits the selected target defaults. The existing two-preset
+backend matrix compares configurations, profile obligations, deterministic
+witnesses, and coverage semantics for the fourteen migrated providers.
 
 `benchmark_backends.py` records a pre-optimization baseline for that fixed
 cohort. It uses isolated processes per provider/preset/backend, three repeats by
