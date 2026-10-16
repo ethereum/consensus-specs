@@ -296,7 +296,9 @@ declares assertions. Claims retain the requested dimension values so validation
 can detect mismatches in the constructed state.
 `profile_records(bound_target, name)` is also available for custom adapters.
 `coverage_profiles(TARGET)` inherits the central MiniZinc/Gecode defaults from
-`evaluation/backend_config.py`. All TARGET providers use this shared policy.
+`evaluation/backend_config.py`. Small providers explicitly select Python
+generation with `coverage_profiles(TARGET, backend="python")` in `__init__.py`.
+Direct TARGET binding and coverage scoring keep the shared MiniZinc default.
 `coverage_profiles(..., backend="python")` explicitly selects the reference
 implementation; solver/backend overrides remain available when needed. Scenario
 and remaining handwritten MiniZinc providers retain their existing profile
@@ -536,11 +538,12 @@ adapters; its former MiniZinc model and custom validator have been removed.
 ### Default MiniZinc backend and Python reference
 
 TARGET binding, provider generation, and the coverage scoring CLI default to
-MiniZinc with Gecode. Defaults are defined once in `backend_config.py`; provider
-modules do not repeat backend overrides. Python remains an explicit reference
-backend for small-model tests and parity comparisons. Binding and observation
-are lazy and do not invoke a solver until generation, enumeration, or export.
-For example:
+MiniZinc with Gecode. Defaults are defined once in `backend_config.py`. Small
+providers override only generation through `coverage_profiles`; direct binding
+and the scoring CLI keep MiniZinc unless explicitly overridden. Python remains a
+reference backend for small-model tests and parity comparisons. Binding and
+observation are lazy and do not invoke a solver until generation, enumeration,
+or export. For example:
 
 ```python
 target = TARGET.for_spec(spec)  # central MiniZinc/Gecode defaults
@@ -877,6 +880,12 @@ aggregates. The other 22 TARGET providers also inherit that policy after
 removing redundant MiniZinc overrides. The two remaining legacy providers are
 outside this change. Generic conditional-factor tools retain their Python
 reference defaults.
+
+After benchmarking, thirteen providers explicitly select Python generation in
+`coverage_profiles`: all of the original fourteen except attestation. TARGET
+templates and the scoring CLI retain MiniZinc. The measured choices and
+raw-space counts are listed in the evaluation README; there is no automatic
+cutoff.
 
 Reference tests bind `backend="python"` explicitly, so changing production
 defaults cannot silently turn a parity test into MiniZinc versus itself.

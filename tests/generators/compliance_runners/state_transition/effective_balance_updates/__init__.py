@@ -12,7 +12,7 @@ from .materializer import EffectiveBalanceUpdatesBodyMaterializer
 from .target import TARGET
 
 MATERIALIZER = EffectiveBalanceUpdatesBodyMaterializer
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="python")
 recover_dimensions, validate_case = target_validator(TARGET, spec=lambda: spec)
 
 __all__ = (

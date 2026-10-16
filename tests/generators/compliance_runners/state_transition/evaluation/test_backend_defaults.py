@@ -1,4 +1,4 @@
-"""TARGET providers and the scoring CLI inherit one backend policy."""
+"""Small-provider generation overrides preserve shared TARGET/CLI defaults."""
 
 from importlib import import_module
 
@@ -10,17 +10,41 @@ from tests.generators.compliance_runners.state_transition import declaration_cov
 from .backend_config import DEFAULT_BACKEND, DEFAULT_SOLVER
 from .coverage_dsl import parse_args, TARGETS
 
+# Measured Python wins on both presets; keep this contract explicit so new
+# providers continue to inherit MiniZinc rather than an automatic size cutoff.
+PYTHON_PROVIDERS = frozenset(
+    {
+        "attester_slashing",
+        "bls_to_execution_change",
+        "builder_deposit_request",
+        "builder_exit_request",
+        "builder_pending_payments",
+        "builder_pending_withdrawal_processing",
+        "deposit_request",
+        "effective_balance_updates",
+        "process_operations_dispatch",
+        "pending_consolidations",
+        "ptc_window",
+        "slashings",
+        "sync_aggregate",
+    }
+)
+
 
 @pytest.mark.parametrize("name", tuple(TARGETS))
-def test_provider_inherits_central_defaults(name, monkeypatch):
+@pytest.mark.parametrize("preset", ["minimal", "mainnet"])
+def test_provider_backend_policy(name, preset, monkeypatch):
     target_module = import_module(TARGETS[name])
     provider = import_module(target_module.__package__)
-    spec = spec_targets["minimal"]["gloas"]
-    assert provider.TARGET.backend == DEFAULT_BACKEND == "minizinc"
+    spec = spec_targets[preset]["gloas"]
+    expected = "python" if name in PYTHON_PROVIDERS else DEFAULT_BACKEND
+    assert DEFAULT_BACKEND == "minizinc"
+    assert provider.TARGET.backend == DEFAULT_BACKEND
+    assert provider.TARGET.for_spec(spec).backend == DEFAULT_BACKEND
     assert provider.TARGET.solver == DEFAULT_SOLVER == "gecode"
 
     def inspect(bound, profile):
-        assert bound.backend == "minizinc"
+        assert bound.backend == expected
         assert bound.solver == DEFAULT_SOLVER
         assert bound._bound_spec is spec
         assert profile == "smoke"
@@ -29,9 +53,9 @@ def test_provider_inherits_central_defaults(name, monkeypatch):
     # Exercise the actual provider adapter without running a solver.
     monkeypatch.setattr(declaration_coverage, "profile_records", inspect)
     assert provider.build_profile("smoke", spec=spec) == ["central-default"]
-    reference = provider.TARGET.for_spec(spec, backend="python")
-    assert reference.backend == "python"
-    assert provider.TARGET.backend == "minizinc"
+    for backend in ("python", "minizinc"):
+        assert provider.TARGET.for_spec(spec, backend=backend).backend == backend
+    assert provider.TARGET.backend == DEFAULT_BACKEND
 
 
 def test_cli_inherits_defaults_and_accepts_python_reference():

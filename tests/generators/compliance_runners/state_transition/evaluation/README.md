@@ -88,11 +88,15 @@ uv run python -m tests.generators.compliance_runners.state_transition.evaluation
 
 ## TARGET backend defaults and benchmarks
 
-TARGET providers and coverage scoring default to MiniZinc/Gecode, configured in
-[`backend_config.py`](backend_config.py). Install the MiniZinc executable with
-Gecode as well as the project's Python dependencies. Python remains available
-through `TARGET.for_spec(spec, backend="python")` and the scoring CLI's
-`--backend python`. Pure observation and validation do not launch a solver.
+The shared TARGET default is MiniZinc/Gecode, configured in
+[`backend_config.py`](backend_config.py). Small providers explicitly opt into
+Python generation with `coverage_profiles(TARGET, backend="python")` in their
+`__init__.py`. Direct TARGET binding and coverage scoring retain the shared
+MiniZinc default. Select Python for those paths with
+`TARGET.for_spec(spec, backend="python")` or the scoring CLI's
+`--backend python`. There is no automatic size-based switch. Install the
+MiniZinc executable with Gecode as well as the project's Python dependencies to
+use MiniZinc. Pure observation and validation do not launch a solver.
 
 The TARGET backend solves generated integer satisfaction models in one MiniZinc
 CLI invocation. It streams JSON solutions directly, avoiding the separate
@@ -103,7 +107,7 @@ accepted; partial enumeration fails. Temporary model files and processes are
 cleaned up on errors. This changes execution overhead, not feasibility or
 coverage compilation, and introduces no cache shared across target bindings.
 
-Run the pre-optimization comparison of the fourteen migrated TARGET providers:
+Run the comparison of the fourteen providers in the original migration cohort:
 
 ```bash
 uv run python -m tests.generators.compliance_runners.state_transition.evaluation.benchmark_backends \
@@ -126,3 +130,35 @@ and marked complete only after all requested cells finish and fingerprints
 agree. Keep generated JSON/Markdown reports local; do not commit them. Use a new
 output directory for each revision so before/after measurements and canonical
 parity fingerprints remain available for comparison.
+
+### Explicit small-provider choices
+
+The optimized three-repeat benchmark found Python faster on both presets for
+thirteen providers. They have at most 31,104 raw configurations, and Python
+generation summed across their supported profiles takes less than 1.6 seconds
+per provider/preset. These providers explicitly select Python generation;
+attestation and the other 22 TARGET providers inherit MiniZinc generation. All
+TARGET templates and the scoring CLI retain the shared MiniZinc default.
+
+| Provider                              | Raw configurations | Generation backend |
+| ------------------------------------- | -----------------: | ------------------ |
+| attester_slashing                     |                768 | Python             |
+| bls_to_execution_change               |                 80 | Python             |
+| builder_deposit_request               |             14,400 | Python             |
+| builder_exit_request                  |              1,960 | Python             |
+| builder_pending_payments              |             10,944 | Python             |
+| builder_pending_withdrawal_processing |             31,104 | Python             |
+| deposit_request                       |                120 | Python             |
+| effective_balance_updates             |              3,000 | Python             |
+| process_operations_dispatch           |                 24 | Python             |
+| pending_consolidations                |                 60 | Python             |
+| ptc_window                            |                 24 | Python             |
+| slashings                             |                108 | Python             |
+| sync_aggregate                        |                 12 | Python             |
+| attestation                           |            163,840 | MiniZinc           |
+
+Counts are before target feasibility filtering and agree on minimal/mainnet.
+These are measured provider choices, not a universal cutoff. Rebenchmark as
+domains, constraints, or profiles grow. Python remains the explicit parity
+reference even for MiniZinc providers; the benchmark forces each backend so
+provider defaults cannot turn a comparison into the same backend on both sides.
