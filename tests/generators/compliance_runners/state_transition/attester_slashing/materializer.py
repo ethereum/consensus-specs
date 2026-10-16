@@ -31,46 +31,40 @@ class AttesterSlashingMaterializer(Materializer):
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        outcome = solution.outcome
-        if outcome == "ACCEPT":
-            scenario = {
-                "ONE": "VALID_ONE",
-                "TWO": "VALID_TWO",
-                "THREE_OR_MORE": "VALID_THREE",
-            }[solution.intersection_size]
+        intersection_count = {
+            "NONE": 0,
+            "ONE": 1,
+            "TWO": 2,
+            "THREE_OR_MORE": 3,
+        }[solution.intersection_size]
+        if intersection_count:
+            shared_indices = sorted(
+                self.rng.sample(range(len(pre.validators)), intersection_count)
+            )
+            indices_1 = shared_indices
+            indices_2 = shared_indices
         else:
-            scenario = {
-                "REJECT_NOT_SLASHABLE": "NOT_SLASHABLE",
-                "REJECT_FIRST_ATTESTATION": "INVALID_FIRST_SIGNATURE",
-                "REJECT_MALFORMED_FIRST_INDICES": "INVALID_EMPTY_INDICES",
-                "REJECT_SECOND_ATTESTATION": "INVALID_SECOND_SIGNATURE",
-                "REJECT_NO_SLASHABLE_INTERSECTION": "NO_SLASHABLE_INTERSECTION",
-            }[outcome]
-        intersection_size = {
-            "VALID_TWO": 2,
-            "VALID_THREE": 3,
-        }.get(scenario, 1)
-        indices = sorted(self.rng.sample(range(len(pre.validators)), intersection_size))
+            indices_1, indices_2 = sorted(self.rng.sample(range(len(pre.validators)), 2))
+            indices_1 = [indices_1]
+            indices_2 = [indices_2]
         slashing = get_valid_attester_slashing_by_indices(
-            spec, pre, indices, signed_1=True, signed_2=True
+            spec, pre, indices_1, indices_2, signed_1=True, signed_2=True
         )
 
-        if scenario == "NOT_SLASHABLE":
+        if not solution.attestation_data_slashable:
             slashing.attestation_2.data = slashing.attestation_1.data.copy()
             sign_indexed_attestation(spec, pre, slashing.attestation_2)
-        elif scenario == "INVALID_FIRST_SIGNATURE":
-            slashing.attestation_1.signature = spec.BLSSignature()
-        elif scenario == "INVALID_EMPTY_INDICES":
+        if not solution.attestation_1_indices_well_formed:
             slashing.attestation_1.attesting_indices = spec.AttestingIndices()
-        elif scenario == "INVALID_SECOND_SIGNATURE":
+        if not solution.attestation_1_valid:
+            slashing.attestation_1.signature = spec.BLSSignature()
+        if not solution.attestation_2_valid:
             slashing.attestation_2.signature = spec.BLSSignature()
-        elif scenario == "NO_SLASHABLE_INTERSECTION":
+        if not solution.slashable_intersection:
             for index in set(slashing.attestation_1.attesting_indices).intersection(
                 slashing.attestation_2.attesting_indices
             ):
                 pre.validators[index].slashed = True
-        elif scenario not in {"VALID_ONE", "VALID_TWO", "VALID_THREE"}:
-            raise ValueError(f"unknown attester-slashing scenario: {scenario}")
 
         post = pre.copy()
         try:
