@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .helpers import payload_attestation_to_messages
+from tests.generators.compliance_runners.runner.payload_attestation import (
+    payload_attestation_to_messages,
+)
 
 
 class QueueItemKind(Enum):
