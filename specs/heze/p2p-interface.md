@@ -14,6 +14,7 @@
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
+  - [New `compute_blob_data_retention_start_epoch`](#new-compute_blob_data_retention_start_epoch)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -21,6 +22,9 @@
       - [New `inclusion_list`](#new-inclusion_list)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
+    - [Status v2](#status-v2)
+    - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+    - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
     - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
     - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
@@ -50,6 +54,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_REQUEST_INCLUSION_LIST`                | `Uint64(2**4)` (= 16)     | Maximum number of inclusion lists in a single request           |
 | `MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS`    | `Slot(1)`                 | Minimum slot range over which a node must serve inclusion lists |
 | `MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST` | `Uint64(2**13)` (= 8,192) | Maximum size of the inclusion list's transactions in bytes      |
+| `MIN_BLOB_DATA_RETENTION_MS`                | `Uint64(1572864000)`      | Minimum time range over which a node must serve blob data       |
+
+*Note*: `MIN_BLOB_DATA_RETENTION_MS` replaces
+`MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` with the same duration.
 
 ## Types
 
@@ -156,7 +164,29 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
         raise GossipReject("too many payload attestations")
 ```
 
+### New `compute_blob_data_retention_start_epoch`
+
+```python
+def compute_blob_data_retention_start_epoch(epoch: Epoch) -> Epoch:
+    """
+    Return the start epoch of the blob data retention window,
+    preserving its wall-clock length across slot duration changes.
+    """
+    window_ms = MIN_BLOB_DATA_RETENTION_MS
+    current_start_slot = compute_start_slot_at_epoch(epoch)
+    current_start_ms = compute_time_at_slot_ms(Uint64(0), current_start_slot)
+    if current_start_ms < window_ms:
+        return GENESIS_EPOCH
+    window_start_ms = Uint64(current_start_ms - window_ms)
+    return compute_epoch_at_slot(compute_slot_at_time_ms(Uint64(0), window_start_ms))
+```
+
 ## The gossip domain: gossipsub
+
+*[Modified in Heze:EIP8198]*
+
+*Note*: Durations in slots or epochs, such as `seen_ttl`, MUST account for slot
+duration changes when converted to milliseconds.
 
 ### Topics and messages
 
@@ -398,6 +428,34 @@ def validate_inclusion_list_gossip(
 ## The Req/Resp domain
 
 ### Messages
+
+#### Status v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/status/2/`
+
+*[Modified in Heze:EIP8198]*
+
+*Note*: The data column sidecar retention period used to determine
+`earliest_available_slot` begins at epoch
+`max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH)`.
+
+#### DataColumnSidecarsByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
+
+*[Modified in Heze:EIP8198]*
+
+*Note*: The `data_column_serve_range` is modified to
+`[max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH), current_epoch]`.
+
+#### DataColumnSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
+
+*[Modified in Heze:EIP8198]*
+
+*Note*: The `data_column_serve_range` is modified to
+`[max(compute_blob_data_retention_start_epoch(current_epoch), FULU_FORK_EPOCH), current_epoch]`.
 
 #### BeaconBlocksByRange v2
 

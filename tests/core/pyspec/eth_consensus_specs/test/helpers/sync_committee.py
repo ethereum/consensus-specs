@@ -7,6 +7,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.block_processing import run_block_processing_to
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
 
@@ -50,7 +51,13 @@ def compute_sync_committee_inclusion_reward(spec, state):
     total_active_increments = (
         spec.get_total_active_balance(state) // spec.EFFECTIVE_BALANCE_INCREMENT
     )
-    total_base_rewards = spec.get_base_reward_per_increment(state) * total_active_increments
+    if is_post_heze(spec):
+        base_reward_per_increment = spec.get_base_reward_per_increment(
+            state, spec.get_current_epoch(state)
+        )
+    else:
+        base_reward_per_increment = spec.get_base_reward_per_increment(state)
+    total_base_rewards = base_reward_per_increment * total_active_increments
     max_participant_rewards = (
         total_base_rewards
         * spec.SYNC_REWARD_WEIGHT

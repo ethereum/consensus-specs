@@ -22,6 +22,7 @@ from eth_consensus_specs.test.helpers.attester_slashings import get_indexed_atte
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
+    is_post_heze,
 )
 from eth_consensus_specs.test.helpers.rewards import leaking
 from eth_consensus_specs.test.helpers.state import (
@@ -156,7 +157,10 @@ def test_full_attestations_misc_balances(spec, state):
     brs = {}
     attesting_indices = _get_unslashed_attesting_indices(spec, state, attestations)
     for index in attesting_indices:
-        br = spec.get_base_reward(state, index)
+        if is_post_heze(spec):
+            br = spec.get_base_reward(state, index, spec.get_previous_epoch(state))
+        else:
+            br = spec.get_base_reward(state, index)
         if br in brs:
             assert brs[br] == state.validators[index].effective_balance
         else:
