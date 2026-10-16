@@ -11,9 +11,14 @@ Standard configs:
 - [`minimal.yaml`](./minimal.yaml): Minimal configuration, used in spec-testing
   along with the [`minimal`](../presets/minimal) preset.
 
-Not all network configurations are in scope for the specification, see
-[`github.com/eth-clients/eth2-networks`](https://github.com/eth-clients/eth2-networks)
-for common networks, and additional testnet assets.
+Not all network configurations are in scope for the specification. See
+[`github.com/eth-clients/mainnet`](https://github.com/eth-clients/mainnet)
+for mainnet client configuration, and the active testnet repositories
+[`sepolia`](https://github.com/eth-clients/sepolia),
+[`hoodi`](https://github.com/eth-clients/hoodi), and
+[`holesky`](https://github.com/eth-clients/holesky).
+(The older [`eth2-networks`](https://github.com/eth-clients/eth2-networks)
+repository is archived and redirects there.)
 
 ## Forking
 
