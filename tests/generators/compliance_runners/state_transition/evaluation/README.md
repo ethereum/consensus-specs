@@ -137,7 +137,7 @@ The optimized three-repeat benchmark found Python faster on both presets for
 thirteen providers. They have at most 31,104 raw configurations, and Python
 generation summed across their supported profiles takes less than 1.6 seconds
 per provider/preset. These providers explicitly select Python generation;
-attestation and the other 22 TARGET providers inherit MiniZinc generation. All
+attestation and the other TARGET providers inherit MiniZinc generation. All
 TARGET templates and the scoring CLI retain the shared MiniZinc default.
 
 | Provider                              | Raw configurations | Generation backend |

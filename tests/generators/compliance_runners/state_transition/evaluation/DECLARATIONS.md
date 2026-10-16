@@ -877,9 +877,9 @@ change, builder deposit requests, builder exits, builder pending payments,
 single builder pending withdrawals, deposit requests, effective-balance updates,
 operation dispatch, pending consolidations, PTC window, slashings, and sync
 aggregates. The other 22 TARGET providers also inherit that policy after
-removing redundant MiniZinc overrides. The two remaining legacy providers are
-outside this change. Generic conditional-factor tools retain their Python
-reference defaults.
+removing redundant MiniZinc overrides. The remaining legacy
+withdrawal-processing provider is outside this policy. Generic
+conditional-factor tools retain their Python reference defaults.
 
 After benchmarking, thirteen providers explicitly select Python generation in
 `coverage_profiles`: all of the original fourteen except attestation. TARGET
@@ -905,3 +905,22 @@ per-profile, and does not represent combined Python-plus-solver peak memory. The
 benchmark checks semantic parity before declaring completion. It makes no
 production performance changes. Commands and measurement details are in the
 evaluation README; generated reports remain local.
+
+### Bid-processing migration
+
+`bid_processing/target.py` uses the shared MiniZinc default and preserves all
+1,433 legacy signatures on both presets, including 66 zero-fault, 755 one-fault,
+and 612 two-fault cases. The old fixture counted only INVALID signatures toward
+its fault bound; an external INF signature can coexist with another failure. The
+explicit `fault_count` dimension preserves the independently counted scopes.
+Smoke stays at 12 cases. Normal preserves all 206 legacy grouped pairwise
+projections with 28 complete witnesses; exceptional has 11 cases, standard 39,
+and max 1,433. The former normal/standard greedy selections had 13/24 cases.
+
+Numeric observations use `cmp3`, predicates use Boolean domains, and inactive
+self-build builder fields use shared `NA`. Generation, metadata, validation, and
+coverage loading use shared adapters. The handwritten model and custom coverage
+and validation modules are removed. Legacy-space fingerprints and concrete
+recovery/replay tests cover both presets; Python reference projection parity
+uses the exhaustively legacy-validated feasible rows to avoid raw-space
+enumeration. Fixture scope and generation commands are in the provider README.
