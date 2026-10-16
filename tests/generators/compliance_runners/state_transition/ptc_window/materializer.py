@@ -18,9 +18,7 @@ class PtcWindowMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         s = self.spec
-        validator_count = (
-            64 if sol.validator_count == "MINIMUM" else self.rng.randrange(65, 129)
-        )
+        validator_count = 64 if sol.validator_count == "MINIMUM" else self.rng.randrange(65, 129)
         some_inactive = sol.validator_activity == "SOME_INACTIVE"
         inactive_indices = (
             set(

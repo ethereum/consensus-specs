@@ -91,9 +91,7 @@ class ConsolidationRequestMaterializer(Materializer):
         same = sol.same_source_target
         source_found = sol.validator_pubkey_found
         inactive_source = source_found and not sol.validator_active
-        inactive_target = (
-            not same and sol.target_found and not sol.target_active
-        )
+        inactive_target = not same and sol.target_found and not sol.target_active
         # Churn depends on active effective balance, not validator count. The
         # source and target below may become inactive, so reserve replacements.
         relation = sol.consolidation_churn_to_min_activation
@@ -156,9 +154,7 @@ class ConsolidationRequestMaterializer(Materializer):
                     int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
                 )
             source_pubkey = pre.validators[source_index].pubkey
-            source_address = (
-                credential_address if sol.source_address_matches else other_address
-            )
+            source_address = credential_address if sol.source_address_matches else other_address
         else:
             source_pubkey = absent_source
             source_address = credential_address
