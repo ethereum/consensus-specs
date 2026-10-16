@@ -38,9 +38,7 @@ class AttesterSlashingMaterializer(Materializer):
             "THREE_OR_MORE": 3,
         }[solution.intersection_size]
         if intersection_count:
-            shared_indices = sorted(
-                self.rng.sample(range(len(pre.validators)), intersection_count)
-            )
+            shared_indices = sorted(self.rng.sample(range(len(pre.validators)), intersection_count))
             indices_1 = shared_indices
             indices_2 = shared_indices
         else:
