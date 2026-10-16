@@ -287,6 +287,7 @@ def score(
 # --- vector loading and CLI ---------------------------------------------------
 
 TARGETS = {
+    "withdrawal_processing": "tests.generators.compliance_runners.state_transition.withdrawal_processing.target",
     "bid_processing": "tests.generators.compliance_runners.state_transition.bid_processing.target",
     "consolidation_request": "tests.generators.compliance_runners.state_transition.consolidation_request.target",
     "withdrawal_request": "tests.generators.compliance_runners.state_transition.withdrawal_request.target",
@@ -327,6 +328,7 @@ TARGETS = {
 }
 
 TARGET_HANDLERS = {
+    "withdrawal_processing": "withdrawals",
     "bid_processing": "execution_payload_bid",
     "builder_pending_withdrawal_processing": "withdrawals",
     "process_operations": "blocks",
@@ -342,7 +344,11 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
     for case in test_run.gather_tests(tests):
         if case.handler != handler or case.preset != preset or case.fork != "gloas":
             continue
-        if target.name in ("process_operations_dispatch", "builder_pending_withdrawal_processing"):
+        if target.name in (
+            "process_operations_dispatch",
+            "builder_pending_withdrawal_processing",
+            "withdrawal_processing",
+        ):
             dimensions_path = Path(case.test_dir) / "dimensions.yaml"
             if dimensions_path.exists():
                 dimensions = test_run.read_yaml(dimensions_path)
