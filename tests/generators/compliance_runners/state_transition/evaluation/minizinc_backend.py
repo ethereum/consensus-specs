@@ -10,8 +10,12 @@ an enumerative reference backend.
 """
 
 import json
+import subprocess
+import tempfile
 from itertools import combinations
 from math import prod
+from pathlib import Path
+from types import SimpleNamespace
 
 from tests.generators.compliance_runners.tools.coverage_model import Expr, expression
 
@@ -43,15 +47,66 @@ def _plan_key(plan):
 
 def _solve(source, solver):
     import minizinc  # noqa: PLC0415 - optional backend
+    from minizinc.error import ConfigurationError, parse_error  # noqa: PLC0415
+    from minizinc.json import decode_json_stream  # noqa: PLC0415
 
-    model = minizinc.Model()
-    model.add_string(source)
-    result = minizinc.Instance(minizinc.Solver.lookup(solver), model).solve(all_solutions=True)
-    if result.status == minizinc.Status.UNSATISFIABLE:
+    driver = minizinc.default_driver
+    if driver is None:
+        raise ConfigurationError("No compatible MiniZinc driver provided")
+    configuration = minizinc.Solver.lookup(solver, driver=driver)
+    if "-a" not in configuration.stdFlags:
+        raise NotImplementedError("Solver does not support the -a flag")
+    # Our generated satisfaction models have known integer output fields. Read
+    # those directly instead of launching Instance's separate interface-analysis
+    # process before every solve. Keep discovery/configuration and diagnostics
+    # with the MiniZinc library, and require an exhaustive terminal status.
+    solutions, status = [], None
+    with (
+        tempfile.TemporaryDirectory(prefix="target-minizinc-") as directory,
+        tempfile.TemporaryFile() as errors,
+        configuration.configuration() as solver_configuration,
+    ):
+        model = Path(directory) / "model.mzn"
+        model.write_text(source)
+        command = [
+            str(driver.executable),
+            "--solver",
+            solver_configuration,
+            "--json-stream",
+            "--output-mode",
+            "json",
+            "--all-solutions",
+            str(model),
+        ]
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=errors) as process:
+            try:
+                # Stream stdout; buffering all JSON would duplicate large row
+                # enumerations in memory. A file for stderr avoids pipe stalls.
+                for line in process.stdout:
+                    for message in decode_json_stream(line):
+                        if message["type"] == "solution":
+                            solutions.append(SimpleNamespace(**message["output"]["json"]))
+                        elif message["type"] == "status":
+                            status = message["status"]
+                process.wait()
+                if process.returncode:
+                    errors.seek(0)
+                    raise parse_error(errors.read())
+            except BaseException:
+                # Let MiniZinc terminate its solver children before resorting
+                # to a forced kill if the driver does not respond.
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                raise
+    if status == "UNSATISFIABLE":
         return []
-    if result.status != minizinc.Status.ALL_SOLUTIONS:
-        raise RuntimeError(f"incomplete MiniZinc enumeration: {result.status}")
-    return result.solution
+    if status != "ALL_SOLUTIONS":
+        raise RuntimeError(f"incomplete MiniZinc enumeration: {status}")
+    return solutions
 
 
 class Backend:
