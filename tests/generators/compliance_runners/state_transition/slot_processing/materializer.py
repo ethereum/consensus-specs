@@ -45,7 +45,7 @@ class SlotProcessingMaterializer(Materializer):
         index = slot % period
         next_index = (slot + 1) % period
 
-        header_empty = bool(solution.header_state_root_empty)
+        header_empty = solution.header_state_root_empty
         header_state_root = self.rng.getrandbits(256).to_bytes(32, "big")
         if header_state_root == bytes(32):
             header_state_root = b"\x01" + bytes(31)
@@ -56,16 +56,16 @@ class SlotProcessingMaterializer(Materializer):
         block_root_destination = self.rng.getrandbits(256) or 1
         pre.state_roots[index] = (
             spec.Bytes32(state_root_destination.to_bytes(32, "big"))
-            if bool(solution.state_root_destination_populated)
+            if solution.state_root_destination_populated
             else spec.Bytes32()
         )
         pre.block_roots[index] = (
             spec.Bytes32(block_root_destination.to_bytes(32, "big"))
-            if bool(solution.block_root_destination_populated)
+            if solution.block_root_destination_populated
             else spec.Bytes32()
         )
         pre.execution_payload_availability[next_index] = spec.Boolean(
-            bool(solution.next_payload_available_before_clear)
+            solution.next_payload_available_before_clear
         )
 
         slots = 1

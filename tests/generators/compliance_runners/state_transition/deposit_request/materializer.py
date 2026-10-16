@@ -37,14 +37,6 @@ NUM_VALIDATORS = 64
 INVALID_SIGNATURE = b"\x00" * 96  # not verified by this handler
 
 
-def _b(sol: Any, n: str) -> bool:
-    return bool(getattr(sol, n))
-
-
-def _s(sol: Any, n: str) -> str:
-    return str(getattr(sol, n))
-
-
 class DepositRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "deposit_request"
@@ -59,12 +51,12 @@ class DepositRequestMaterializer(Materializer):
         pre.slot = spec.Slot(self.rng.randrange(10 * int(spec.SLOTS_PER_EPOCH)))
         existing_index = distinct_indices(self.rng, NUM_VALIDATORS, 1)[0]
         new_index = NUM_VALIDATORS + distinct_indices(self.rng, len(pubkeys) - NUM_VALIDATORS, 1)[0]
-        pubkey_is_existing = _b(sol, "pubkey_is_existing_validator")
+        pubkey_is_existing = sol.pubkey_is_existing_validator
         key_index = existing_index if pubkey_is_existing else new_index
         pubkey = pre.validators[key_index].pubkey if pubkey_is_existing else pubkeys[key_index]
-        amount_profile = _s(sol, "amount_profile")
-        credentials_profile = _s(sol, "withdrawal_credentials_profile")
-        signature_profile = _s(sol, "signature_profile")
+        amount_profile = sol.amount_profile
+        credentials_profile = sol.withdrawal_credentials_profile
+        signature_profile = sol.signature_profile
         amount = deposit_amount_from_profile(spec, amount_profile, self.rng)
         address_tail, _ = distinct_bytes(self.rng, 20)
         withdrawal_credentials = withdrawal_credentials_from_profile(

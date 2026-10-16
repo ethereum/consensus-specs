@@ -19,9 +19,9 @@ class PtcWindowMaterializer(Materializer):
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         s = self.spec
         validator_count = (
-            64 if str(sol.validator_count) == "MINIMUM" else self.rng.randrange(65, 129)
+            64 if sol.validator_count == "MINIMUM" else self.rng.randrange(65, 129)
         )
-        some_inactive = str(sol.validator_activity) == "SOME_INACTIVE"
+        some_inactive = sol.validator_activity == "SOME_INACTIVE"
         inactive_indices = (
             set(
                 self.rng.sample(
@@ -31,7 +31,7 @@ class PtcWindowMaterializer(Materializer):
             if some_inactive
             else set()
         )
-        balance_profile = str(sol.validator_balance)
+        balance_profile = sol.validator_balance
         if balance_profile == "MINIMUM_BALANCE":
             validator_balances = [s.EFFECTIVE_BALANCE_INCREMENT] * validator_count
             activation_threshold = s.EFFECTIVE_BALANCE_INCREMENT
@@ -63,7 +63,7 @@ class PtcWindowMaterializer(Materializer):
                 validator.activation_epoch = s.FAR_FUTURE_EPOCH
             pre.genesis_validators_root = s.hash_tree_root(pre.validators)
             pre.ptc_window = initialize_ptc_window(s, pre)
-        epoch_count = 1 if str(sol.epoch_position) == "GENESIS_END" else 2
+        epoch_count = 1 if sol.epoch_position == "GENESIS_END" else 2
         target = epoch_count * s.SLOTS_PER_EPOCH - 1
         s.process_slots(pre, s.Slot(target))
         post = pre.copy()

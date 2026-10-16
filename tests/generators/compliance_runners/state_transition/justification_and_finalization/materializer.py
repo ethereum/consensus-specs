@@ -31,7 +31,7 @@ class JustificationAndFinalizationMaterializer(Materializer):
             self.rng.getrandbits(256).to_bytes(32, "big")
         )
         pre.finalized_checkpoint.root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
-        reached = bool(solution.past_initial_epochs)
+        reached = solution.past_initial_epochs
         rule = int(solution.finalization_path) if reached else 0
         epoch = int(spec.GENESIS_EPOCH) + (2 if reached else 1)
         if rule in (1, 2):
@@ -54,8 +54,8 @@ class JustificationAndFinalizationMaterializer(Materializer):
             )
         # Epoch processing runs at the last slot of the epoch.
         pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
-        previous = reached and bool(solution.previous_epoch_supermajority)
-        current = reached and bool(solution.current_epoch_supermajority)
+        previous = reached and solution.previous_epoch_supermajority
+        current = reached and solution.current_epoch_supermajority
         threshold_count = (2 * len(pre.validators) + 2) // 3
         previous_participants = (
             set(self.rng.sample(range(len(pre.validators)), threshold_count)) if previous else set()
