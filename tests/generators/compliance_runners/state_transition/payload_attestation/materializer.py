@@ -81,3 +81,6 @@ class PayloadAttestationMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, parts
+
+
+MATERIALIZER = PayloadAttestationMaterializer

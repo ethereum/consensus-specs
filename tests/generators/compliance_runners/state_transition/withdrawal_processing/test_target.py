@@ -10,9 +10,6 @@ import pytest
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
-from tests.generators.compliance_runners.state_transition import (
-    builder_pending_withdrawal_processing as pending_provider,
-)
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
     profile_records,
 )
@@ -24,14 +21,20 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     load_observations,
     score,
 )
-from tests.generators.compliance_runners.state_transition.provider import materialize_handler
+from tests.generators.compliance_runners.state_transition.provider import (
+    load_provider,
+    materialize_handler,
+)
 from tests.generators.compliance_runners.state_transition.runner.test_run import (
     gather_tests,
     run_test,
 )
 
-from . import MATERIALIZER, TARGET, validate_case
-from .target import ASPECTS
+from .materializer import MATERIALIZER
+from .target import ASPECTS, TARGET
+
+pending_provider = load_provider("builder_pending_withdrawal_processing")
+validate_case = load_provider("withdrawal_processing").validate_case
 
 
 @lru_cache

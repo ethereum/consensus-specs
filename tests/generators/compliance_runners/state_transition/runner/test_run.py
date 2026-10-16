@@ -11,25 +11,7 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
-
-OPERATION_INPUTS = {
-    "attestation": ("attestation", "Attestation"),
-    "block_header": ("block_header", "BeaconBlock"),
-    "builder_deposit_request": ("builder_deposit_request", "BuilderDepositRequest"),
-    "builder_exit_request": ("builder_exit_request", "BuilderExitRequest"),
-    "consolidation_request": ("consolidation_request", "ConsolidationRequest"),
-    "deposit_request": ("deposit_request", "DepositRequest"),
-    "execution_payload_bid": ("execution_payload_bid", "SignedExecutionPayloadBid"),
-    "parent_execution_payload": ("block", "BeaconBlock"),
-    "payload_attestation": ("payload_attestation", "PayloadAttestation"),
-    "proposer_slashing": ("proposer_slashing", "ProposerSlashing"),
-    "attester_slashing": ("attester_slashing", "AttesterSlashing"),
-    "deposit": ("deposit", "Deposit"),
-    "bls_to_execution_change": ("address_change", "SignedBLSToExecutionChange"),
-    "voluntary_exit": ("voluntary_exit", "SignedVoluntaryExit"),
-    "withdrawal_request": ("withdrawal_request", "WithdrawalRequest"),
-    "sync_aggregate": ("sync_aggregate", "SyncAggregate"),
-}
+from tests.generators.compliance_runners.state_transition.catalog import OPERATION_INPUTS
 
 OPERATION_PROCESSORS = {
     "attestation": "process_attestation",

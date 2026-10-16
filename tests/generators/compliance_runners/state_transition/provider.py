@@ -10,15 +10,60 @@ from typing import Any, TYPE_CHECKING
 import snappy
 from ruamel.yaml import YAML
 
-from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
+from .catalog import HANDLERS, OPERATION_INPUTS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
 PROFILES = ("smoke", "normal", "exceptional", "standard", "max")
 _YAML = YAML(typ="safe")
+
+
+@dataclass(frozen=True)
+class LoadedProvider:
+    """The uniform provider interface assembled from declarations and catalog data."""
+
+    TARGET: Any
+    MATERIALIZER: Any
+    build_profile: Callable
+    recover: Callable
+    validate_case: Callable
+
+
+def load_provider(name: str, *, spec=None) -> LoadedProvider:
+    """Load a catalog provider by its name or module, without package re-exports.
+
+    ``spec`` supplies the default for direct recovery/validation calls. Generation
+    and on-disk validation continue to use their explicitly selected preset.
+    """
+    from .declaration_coverage import coverage_profiles  # noqa: PLC0415
+    from .declaration_validation import target_validator  # noqa: PLC0415
+
+    provider = next((p for p in PROVIDERS if name in (p.name, p.module)), None)
+    if provider is None:
+        raise ValueError(f"unknown provider: {name}")
+    target = import_module(f".{provider.module}.target", __package__).TARGET
+    materializer_module = provider.materializer_module or provider.module
+    materializer = import_module(f".{materializer_module}.materializer", __package__).MATERIALIZER
+    if spec is None:
+        spec = import_module("eth_consensus_specs.gloas.minimal")
+    if provider.runner == "sanity":
+        operation_name, operation_type = (
+            ("blocks_0", "SignedBeaconBlock") if provider.handler == "blocks" else ("slots", None)
+        )
+    else:
+        operation_name, operation_type = OPERATION_INPUTS.get(provider.handler, (None, None))
+    recover, validate_case = target_validator(
+        target,
+        operation_name=operation_name,
+        operation_type=operation_type,
+        spec=lambda: spec,
+        require_post=provider.require_post,
+    )
+    return LoadedProvider(target, materializer, coverage_profiles(target), recover, validate_case)
 
 
 @dataclass
@@ -138,7 +183,7 @@ def _materialize_provider(
     preset_name: str,
     seed: int,
 ) -> tuple[Any, int, str]:
-    module = import_module(f".{provider.module}", __package__)
+    module = load_provider(provider.name)
     chosen = module.build_profile(profile, spec=spec)
     reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
@@ -200,7 +245,7 @@ def validate_handler(
     """Validate all providers registered for ``handler``."""
     validators = {}
     for provider in providers_for(handler):
-        module = import_module(f".{provider.module}", __package__)
+        module = load_provider(provider.name)
         validators[provider.name] = module.validate_case
     return validate_cases(test_dir, handler, validators, selected_cases)
 

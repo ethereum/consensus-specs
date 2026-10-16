@@ -8,6 +8,7 @@ import pytest
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
 
 @pytest.mark.parametrize(
@@ -21,7 +22,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 )
 @pytest.mark.parametrize("bucket", ["ZERO", "ONE", "LAST", "INTERIOR"])
 def test_epoch_remainder_claims_match_materialized_states(module_name, factor_name, bucket):
-    module = import_module(f".{module_name}", __package__)
+    module = load_provider(module_name)
     records = module.build_profile("standard", spec=spec)
     record = next(record for record in records if record[factor_name] == bucket)
     materializer_module = import_module(f".{module_name}.materializer", __package__)
@@ -59,7 +60,7 @@ def test_epoch_remainder_claims_match_materialized_states(module_name, factor_na
 def test_count_cmp5_claims_match_materialized_values(
     module_name, factor_name, attribute_name, bucket
 ):
-    module = import_module(f".{module_name}", __package__)
+    module = load_provider(module_name)
     records = module.build_profile("standard", spec=spec)
     record = next(record for record in records if record[factor_name] == bucket)
     materializer_module = import_module(f".{module_name}.materializer", __package__)

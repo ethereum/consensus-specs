@@ -12,11 +12,13 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     score,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import build_profile
 from .materializer import BlockHeaderMaterializer
 from .target import HEADER, TARGET
 from .witness import BUCKET_DELTAS
+
+build_profile = load_provider("block_header").build_profile
 
 BUCKETS = tuple(BUCKET_DELTAS)
 REACHABLE_PAIRS = [(match, newer) for i, match in enumerate(BUCKETS) for newer in BUCKETS[i:]]

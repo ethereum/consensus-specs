@@ -91,3 +91,6 @@ class AttesterSlashingMaterializer(Materializer):
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
         return meta, parts
+
+
+MATERIALIZER = AttesterSlashingMaterializer

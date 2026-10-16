@@ -193,3 +193,6 @@ class ParentExecutionPayloadMaterializer(Materializer):
             "claimed": claimed,
         }
         return meta, parts
+
+
+MATERIALIZER = ParentExecutionPayloadMaterializer

@@ -16,8 +16,13 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     load_observations,
     score,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import build_profile, MATERIALIZER, TARGET, validate_case
+from .materializer import MATERIALIZER
+from .target import TARGET
+
+build_profile = load_provider("operations_dispatch").build_profile
+validate_case = load_provider("operations_dispatch").validate_case
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])

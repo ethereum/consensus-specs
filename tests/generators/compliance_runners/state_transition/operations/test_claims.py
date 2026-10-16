@@ -7,10 +7,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     BoundFormula,
     fix,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import validate_case
 from .materializer import OperationsMaterializer
 from .target import TARGET
+
+validate_case = load_provider("operations").validate_case
 
 
 def _write_case(tmp_path, **obligation):

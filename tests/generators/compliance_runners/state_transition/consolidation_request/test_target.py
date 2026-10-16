@@ -25,10 +25,15 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     BoundFormula,
     exhaustive,
 )
-from tests.generators.compliance_runners.state_transition.provider import materialize_handler
+from tests.generators.compliance_runners.state_transition.provider import (
+    load_provider,
+    materialize_handler,
+)
 
-from . import MATERIALIZER, TARGET, validate_case
-from .target import FACTORS, NORMAL_SCOPE, SINGLE_FAULT
+from .materializer import MATERIALIZER
+from .target import FACTORS, NORMAL_SCOPE, SINGLE_FAULT, TARGET
+
+validate_case = load_provider("consolidation_request").validate_case
 
 
 @lru_cache

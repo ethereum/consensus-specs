@@ -8,7 +8,6 @@ from types import SimpleNamespace
 import pytest
 from ruamel.yaml import YAML
 
-import tests.generators.compliance_runners.state_transition.proposer_slashing as validation
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
@@ -20,12 +19,15 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     NA,
     score,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 from tests.generators.compliance_runners.tools.conditional_factors import Model
 
-from . import build_profile
 from .materializer import ProposerSlashingMaterializer
 from .target import TARGET
+
+validation = load_provider("proposer_slashing")
+build_profile = load_provider("proposer_slashing").build_profile
 
 _DIMS = tuple(f.name for f in TARGET.factors)
 
@@ -110,7 +112,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
     preset, monkeypatch, minizinc_available
 ):
     spec = spec_targets[preset]["gloas"]
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("proposer_slashing", spec=spec)
     target = TARGET.for_spec(spec)
     materializer = ProposerSlashingMaterializer(spec)
     materializer.rng = Random(124)
@@ -147,7 +149,7 @@ def test_all_generated_profiles_match_observed_assertions_and_cover_obligations(
 
 def test_mismatched_proposers_use_first_proposer_key_for_both_signatures(monkeypatch):
     spec = spec_targets["minimal"]["gloas"]
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("proposer_slashing", spec=spec)
 
     target = TARGET.for_spec(spec)
     configuration = next(
@@ -211,7 +213,7 @@ def test_case_validation_checks_observed_outcome_and_fault_count(
 
     spec = spec_targets["minimal"]["gloas"]
 
-    monkeypatch.setattr(validation, "spec", spec)
+    validation = load_provider("proposer_slashing", spec=spec)
     representatives = build_profile("normal", spec=spec)
     materializer = ProposerSlashingMaterializer(spec)
     materializer.test_provider = "proposer_slashing"

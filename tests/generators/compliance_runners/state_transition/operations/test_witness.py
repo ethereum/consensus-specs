@@ -10,10 +10,12 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     BoundFormula,
     fix,
 )
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 
-from . import build_profile
 from .materializer import OperationsMaterializer
 from .target import LIMITS, TARGET
+
+build_profile = load_provider("operations").build_profile
 
 GATES = tuple(f.name for f in LIMITS.factors)
 

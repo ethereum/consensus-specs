@@ -1,6 +1,5 @@
 """Domain, feasibility, and provider contracts for uniform declarations."""
 
-from importlib import import_module
 from types import SimpleNamespace
 
 import pytest
@@ -42,6 +41,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     present,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.provider import load_provider
 from tests.generators.compliance_runners.tools.coverage_model import expression
 
 
@@ -392,7 +392,7 @@ def test_generic_materializer_rejects_unknown_fault_count():
     ],
 )
 def test_nonrejecting_declaration_providers_share_the_empty_exceptional_profile(provider):
-    module = import_module(f"tests.generators.compliance_runners.state_transition.{provider}")
+    module = load_provider(provider)
     assert module.build_profile("exceptional", spec=object()) == []
 
 

@@ -72,3 +72,6 @@ class PtcWindowMaterializer(Materializer):
         meta = {"description": "process_ptc_window", "claimed": claimed}
         parts = [("pre", "ssz", pre.encode_bytes()), ("post", "ssz", post.encode_bytes())]
         return meta, parts
+
+
+MATERIALIZER = PtcWindowMaterializer
