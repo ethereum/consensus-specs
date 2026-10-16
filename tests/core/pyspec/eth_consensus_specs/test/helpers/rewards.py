@@ -8,7 +8,7 @@ from ssz.uint import Uint64
 from eth_consensus_specs.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_bellatrix
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_bellatrix, is_post_heze
 from eth_consensus_specs.test.helpers.random import (
     exit_random_validators,
     randomize_state,
@@ -73,7 +73,14 @@ def has_enough_for_leak_penalty(spec, state, index):
     and be in a leak, but have zero leak penalty.
     """
 
-    if is_post_altair(spec):
+    if is_post_heze(spec):
+        return state.validators[index].effective_balance * state.inactivity_scores[index] > (
+            spec.config.INACTIVITY_SCORE_BIAS
+            * get_inactivity_penalty_quotient(spec)
+            * spec.get_slot_duration_ms(spec.GENESIS_EPOCH) ** 2
+            // spec.get_slot_duration_ms(spec.get_previous_epoch(state)) ** 2
+        )
+    elif is_post_altair(spec):
         return state.validators[index].effective_balance * state.inactivity_scores[
             index
         ] > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
@@ -284,7 +291,10 @@ def run_get_inactivity_penalty_deltas(spec, state):
 
         if spec.is_in_inactivity_leak(state):
             # Compute base_penalty
-            base_reward = spec.get_base_reward(state, index)
+            if is_post_heze(spec):
+                base_reward = spec.get_base_reward(state, index, spec.get_previous_epoch(state))
+            else:
+                base_reward = spec.get_base_reward(state, index)
             if not is_post_altair(spec):
                 cancel_base_rewards_per_epoch = spec.BASE_REWARDS_PER_EPOCH
                 base_penalty = (
@@ -320,6 +330,12 @@ def run_get_inactivity_penalty_deltas(spec, state):
             penalty_denominator = (
                 spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
             )
+            if is_post_heze(spec):
+                penalty_denominator = (
+                    penalty_denominator
+                    * spec.get_slot_duration_ms(spec.GENESIS_EPOCH) ** 2
+                    // spec.get_slot_duration_ms(spec.get_previous_epoch(state)) ** 2
+                )
             assert penalties[index] == penalty_numerator // penalty_denominator
 
 

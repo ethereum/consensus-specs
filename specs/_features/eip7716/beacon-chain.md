@@ -294,7 +294,7 @@ def get_flag_index_deltas(
         slot_offsets = get_validator_slot_offsets(state)
 
     for index in get_eligible_validator_indices(state):
-        base_reward = get_base_reward(state, index)
+        base_reward = get_base_reward(state, index, previous_epoch)
         if index in unslashed_participating_indices:
             if not is_in_inactivity_leak(state):
                 reward_numerator = base_reward * weight * unslashed_participating_increments

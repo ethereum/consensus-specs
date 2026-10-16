@@ -69,6 +69,12 @@ class NoopExecutionEngine(ExecutionEngine):
 EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
+    def deprecate_config_vars(cls) -> set[str]:
+        return {
+            "MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS",
+        }
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
             "initialize_ptc_window",
