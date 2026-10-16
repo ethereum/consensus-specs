@@ -1,7 +1,8 @@
 # Compliance vector replay
 
-Replay validates serialized vectors independently of generation and coverage evaluation.
-Run either format, or omit `--kind` to replay both from a mixed root:
+Replay validates serialized vectors independently of generation and coverage
+evaluation. Run either format, or omit `--kind` to replay both from a mixed
+root:
 
 ```sh
 pytest tests/generators/compliance_runners/runner/test_run.py \
@@ -12,12 +13,14 @@ pytest tests/generators/compliance_runners/runner/test_run.py \
 ```
 
 `--test-dir` accepts a root containing preset directories or a batch directory
-containing `*/reftests`. Repeat it to combine roots. `--start` and `--limit` slice
-the discovered cases after format filtering. An empty selection is an error.
+containing `*/reftests`. Repeat it to combine roots. `--start` and `--limit`
+slice the discovered cases after format filtering. An empty selection is an
+error.
 
 - `discovery.py` identifies cases by preset, fork, runner, handler, and suite.
 - `io.py` reads YAML and compressed SSZ files.
-- `state_transition.py` replays operations, epoch processing, and sanity vectors.
+- `state_transition.py` replays operations, epoch processing, and sanity
+  vectors.
 - `fork_choice.py` replays fork-choice events and initializes its trusted setup.
 - `test_run.py` provides the shared pytest entry point.
 
