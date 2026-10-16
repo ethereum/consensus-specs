@@ -11,7 +11,7 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 from .materializer import BuilderDepositRequestMaterializer as MATERIALIZER
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="python")
 recover, validate_case = target_validator(
     TARGET,
     operation_name="builder_deposit_request",

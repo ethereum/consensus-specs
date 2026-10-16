@@ -9,7 +9,7 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 from .materializer import DepositRequestMaterializer as MATERIALIZER
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="python")
 recover, validate_case = target_validator(
     TARGET,
     operation_name="deposit_request",

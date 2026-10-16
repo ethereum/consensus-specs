@@ -10,7 +10,7 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 
 from .target import TARGET
 
-build_profile = coverage_profiles(TARGET)
+build_profile = coverage_profiles(TARGET, backend="python")
 recover, validate_case = target_validator(TARGET, spec=lambda: spec, require_post=True)
 
 
