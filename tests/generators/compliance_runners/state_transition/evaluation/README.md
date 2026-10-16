@@ -91,8 +91,8 @@ uv run python -m tests.generators.compliance_runners.state_transition.evaluation
 The shared TARGET default is MiniZinc/Gecode, configured in
 [`backend_config.py`](backend_config.py). Small targets explicitly opt into
 Python with `bind(..., backend="python")` in `target.py`. Generation, direct
-TARGET binding, and coverage scoring inherit that target default. Override it with
-`TARGET.for_spec(spec, backend="python")` or the scoring CLI's
+TARGET binding, and coverage scoring inherit that target default. Override it
+with `TARGET.for_spec(spec, backend="python")` or the scoring CLI's
 `--backend python`. There is no automatic size-based switch. Install the
 MiniZinc executable with Gecode as well as the project's Python dependencies to
 use MiniZinc. Pure observation and validation do not launch a solver.
