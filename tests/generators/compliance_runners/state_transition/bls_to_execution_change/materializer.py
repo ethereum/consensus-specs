@@ -6,50 +6,36 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
+)
 
+from .concretization import STRATEGY, VALIDATOR_COUNT
 from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-_VALIDATOR_COUNT = 64
-
-
-class BLSToExecutionChangeMaterializer(Materializer):
+class BLSToExecutionChangeMaterializer(ConcretizingMaterializer):
     runner_name = "operations"
     handler_name = "bls_to_execution_change"
+    strategy = STRATEGY
 
     def _base_state(self) -> Any:
         return create_genesis_state(
             self.spec,
-            validator_balances=[self.spec.MAX_EFFECTIVE_BALANCE] * _VALIDATOR_COUNT,
+            validator_balances=[self.spec.MAX_EFFECTIVE_BALANCE] * VALIDATOR_COUNT,
             activation_threshold=self.spec.MAX_EFFECTIVE_BALANCE,
         )
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
+    def materialize_concrete_attributes(
+        self, solution: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
-        index_in_range = solution.validator_index_in_range
-        has_bls_credential = solution.has_bls_withdrawal_credential
-        from_pubkey_matches = solution.from_pubkey_matches
-        signature_valid = solution.signature_valid
-        if not index_in_range:
-            scenario = "OUT_OF_RANGE"
-        elif not has_bls_credential:
-            scenario = "NON_BLS_CREDENTIAL"
-        elif not from_pubkey_matches:
-            scenario = "PUBKEY_MISMATCH"
-        elif not signature_valid:
-            scenario = "INVALID_SIGNATURE"
-        else:
-            scenario = "VALID"
-        index = (
-            _VALIDATOR_COUNT + self.rng.randrange(1, _VALIDATOR_COUNT + 1)
-            if scenario == "OUT_OF_RANGE"
-            else self.rng.randrange(_VALIDATOR_COUNT)
-        )
+        scenario = attributes["scenario"]
+        index = attributes["validator_index"]
         signed_change = get_signed_address_change(spec, pre, validator_index=index)
 
         if scenario != "OUT_OF_RANGE":
