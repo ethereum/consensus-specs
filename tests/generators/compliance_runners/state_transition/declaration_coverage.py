@@ -46,7 +46,8 @@ def coverage_profiles(target, *, backend=None, solver=None):
     Return canonical complete cases in stable order.
     Cases contain only TARGET dimensions, encoding inactive values as "NA". An
     omitted exceptional profile returns empty lists; other missing profiles
-    raise an error. Backend and solver override the target defaults.
+    raise an error. Omitted backend/solver options inherit the central TARGET
+    defaults (MiniZinc/Gecode). Pass backend="python" for reference enumeration.
     """
 
     def build_profile(name: str, *, spec) -> list[dict]:

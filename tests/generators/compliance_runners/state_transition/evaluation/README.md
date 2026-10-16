@@ -85,3 +85,33 @@ Use `dump` to inspect the army and every test attempt:
 uv run python -m tests.generators.compliance_runners.state_transition.evaluation.mut_cli \
   dump --work-dir /tmp/state-transition-mutation --group parent_execution_payload_plus_invoked
 ```
+
+## TARGET backend defaults and benchmarks
+
+TARGET providers and coverage scoring default to MiniZinc/Gecode, configured in
+[`backend_config.py`](backend_config.py). Install the MiniZinc executable with
+Gecode as well as the project's Python dependencies. Python remains available
+through `TARGET.for_spec(spec, backend="python")` and the scoring CLI's
+`--backend python`. Pure observation and validation do not launch a solver.
+
+Run the pre-optimization comparison of the fourteen migrated TARGET providers:
+
+```bash
+uv run python -m tests.generators.compliance_runners.state_transition.evaluation.benchmark_backends \
+  --repeats 3 --output /tmp/state-transition-backend-baseline/results.json
+```
+
+The default run covers both presets, both backends, and every supported standard
+profile. Use `--providers`, `--presets`, `--profiles`, or `--backends` to narrow
+a run. Each provider/preset/backend runs in a separate worker process. Every
+profile starts with a fresh target binding; scoring uses its generation caches.
+Imports are excluded from timings, and module-level fixture caches may warm
+across repeats. The JSON retains individual samples and min/median/max timings,
+solver calls, parity fingerprints, and POSIX process memory peaks. Python and
+child-process peak RSS are separate measurements, not a combined peak. The
+Markdown report sums profile medians for a compact per-worker comparison.
+
+The benchmark runs serially; avoid concurrent test or benchmark jobs while
+collecting a baseline. Reports are written incrementally with `status: running`,
+and marked complete only after all requested cells finish and fingerprints
+agree. Keep generated JSON/Markdown reports local; do not commit them.

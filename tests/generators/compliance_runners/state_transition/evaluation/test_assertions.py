@@ -49,7 +49,9 @@ def example(*, complete=True):
         profiles=profiles,
         assertions=assertions,
     )
-    return bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(SimpleNamespace())
+    return bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(
+        SimpleNamespace(), backend="python"
+    )
 
 
 def test_assertion_summary_uses_predicate_truth_and_preserves_observed_outcome():
@@ -177,7 +179,9 @@ def test_unavailable_assertion_observation_remains_unknown():
         assertions=checks,
         profiles={"normal": checks.normal(each((check,)))},
     )
-    target = bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(SimpleNamespace())
+    target = bind(definition, observe_attributes=lambda ctx: ctx.pre).for_spec(
+        SimpleNamespace(), backend="python"
+    )
     obs = target.observation(
         Context(target._bound_spec, {"available": False, "value": True}, None, None, {})
     )

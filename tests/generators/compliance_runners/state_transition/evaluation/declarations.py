@@ -44,6 +44,7 @@ from tests.generators.compliance_runners.tools.coverage_model import (
     present,
 )
 
+from .backend_config import BACKENDS, DEFAULT_BACKEND, DEFAULT_SOLVER
 from .coverage_dsl import _merge, Cmp, Enum, NA, Pred, rules
 
 __all__ = [
@@ -916,9 +917,16 @@ class BoundFormula:
 
 class DeclarationTarget:
     def __init__(
-        self, definition, observer, constants, *, spec=None, backend="python", solver="gecode"
+        self,
+        definition,
+        observer,
+        constants,
+        *,
+        spec=None,
+        backend=DEFAULT_BACKEND,
+        solver=DEFAULT_SOLVER,
     ):
-        if backend not in ("python", "minizinc"):
+        if backend not in BACKENDS:
             raise ValueError(f"unknown backend: {backend}")
         self.backend, self.solver = backend, solver
         self.name = definition.name
