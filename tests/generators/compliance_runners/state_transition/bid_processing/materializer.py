@@ -47,18 +47,18 @@ def _pick_finalized_epoch(f_dep: str, deposit_epoch: int, rng: Random) -> int:
     return deposit_epoch + rng.randrange(1, 11)
 
 
-def _pick_withdrawable_epoch(w_cmp: str, state_epoch: int, rng: Random):
-    """Returns (withdrawable_epoch, is_far_future).
+def _pick_withdrawable_epoch(w_cmp: str, state_epoch: int, rng: Random) -> int:
+    """Pick a withdrawable epoch satisfying the requested comparison.
     cmp(state_epoch, withdrawable_epoch) = w_cmp.
     LT -> state < withdrawable (withdrawable = state + 1)
     EQ -> state == withdrawable
     GT -> state > withdrawable (withdrawable = state - 1)
     """
     if w_cmp == "LT":
-        return state_epoch + rng.randrange(1, 11), False
+        return state_epoch + rng.randrange(1, 11)
     elif w_cmp == "EQ":
-        return state_epoch, False
-    return rng.randrange(state_epoch), False
+        return state_epoch
+    return rng.randrange(state_epoch)
 
 
 def _pick_balance_and_bid_value(
@@ -132,19 +132,12 @@ def _pick_balance_and_bid_value(
     elif bid_value <= 0:
         bid_value = rng.randrange(1, 1001)
 
-    # Step 6: final verification — if we can't satisfy both, prioritize v_funds + b_min
-    # (these are the dimensions the validator checks)
     return balance, bid_value
 
 
 class BidProcessingMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "execution_payload_bid"
-    description = "process_execution_payload_bid"
-    bls_setting = 1
-
-    def describe(self, claimed: dict) -> str:
-        return f"process_execution_payload_bid: {claimed.get('outcome')}"
 
     def _sign(self, state: Any, bid: Any, privkey: int) -> Any:
         spec = self.spec
@@ -197,7 +190,7 @@ class BidProcessingMaterializer(Materializer):
                 withdrawable_epoch = spec.FAR_FUTURE_EPOCH
             else:
                 w_cmp = rec["cmp_state_epoch_withdrawal_epoch"]
-                we, _ = _pick_withdrawable_epoch(w_cmp, current_epoch, self.rng)
+                we = _pick_withdrawable_epoch(w_cmp, current_epoch, self.rng)
                 withdrawable_epoch = spec.Epoch(we)
 
             version = (
