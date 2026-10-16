@@ -12,33 +12,23 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
-    distinct_bytes,
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
 )
-from tests.generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
-    deposit_amount_from_profile,
-)
-from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
-    distinct_indices,
-)
-from tests.generators.compliance_runners.state_transition.aspects_helpers.withdrawal_credential import (
-    withdrawal_credentials_from_profile,
-)
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .concretization import STRATEGY, VALIDATOR_COUNT
 from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
-EPOCHS_PAST_GENESIS = 10
 
-
-class BuilderDepositRequestMaterializer(Materializer):
+class BuilderDepositRequestMaterializer(ConcretizingMaterializer):
     runner_name = "operations"
     handler_name = "builder_deposit_request"
+    strategy = STRATEGY
 
     def _sign(self, request: Any, privkey: int) -> Any:
         spec = self.spec
@@ -50,74 +40,60 @@ class BuilderDepositRequestMaterializer(Materializer):
         root = spec.compute_signing_root(message, spec.compute_domain(spec.DOMAIN_BUILDER_DEPOSIT))
         return bls.Sign(privkey, root)
 
-    def _base_state(self) -> Any:
+    def _base_state(self, slot: int) -> Any:
         spec = self.spec
         state = create_genesis_state(
             spec,
-            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
+            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * VALIDATOR_COUNT,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
         state.builders = type(state.builders)()
-        state.slot = spec.Slot(
-            self.rng.randrange(1, EPOCHS_PAST_GENESIS + 1) * spec.SLOTS_PER_EPOCH
-        )
+        state.slot = spec.Slot(slot)
         return state
 
-    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
+    def materialize_concrete_attributes(
+        self, sol: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        found = sol.builder_pubkey_found
-        pre = self._base_state()
+        found = attributes["builder_found"]
+        pre = self._base_state(attributes["slot"])
         current_epoch = int(spec.get_current_epoch(pre))
-        request_pubkey_index, wrong_pubkey_index = distinct_indices(
-            self.rng, len(builder_pubkeys), 2
-        )
-        request_pubkey = builder_pubkeys[request_pubkey_index]
-        wrong_pubkey = builder_pubkeys[wrong_pubkey_index]
-        address_tail = spec.sha256(request_pubkey)[12:]
+        if current_epoch != attributes["current_epoch"]:
+            raise ValueError("builder-deposit concretization epoch does not match the base state")
+        request_pubkey = attributes["request_pubkey"]
+        wrong_pubkey = attributes["wrong_pubkey"]
 
         if found:
-            wset = sol.builder_withdrawable_epoch_set
-            bzero = sol.builder_balance_zero
-            execution_address, _ = distinct_bytes(self.rng, 20)
             pre.builders.append(
                 spec.Builder(
                     pubkey=spec.BLSPubkey(request_pubkey),
                     version=spec.PAYLOAD_BUILDER_VERSION,
-                    execution_address=spec.ExecutionAddress(execution_address),
-                    balance=(
-                        spec.Gwei(0)
-                        if bzero
-                        else spec.Gwei(self.rng.randrange(1, int(spec.MIN_ACTIVATION_BALANCE) + 1))
-                    ),
-                    deposit_epoch=spec.Epoch(self.rng.randrange(current_epoch + 1)),
-                    withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
+                    execution_address=spec.ExecutionAddress(attributes["execution_address"]),
+                    balance=spec.Gwei(attributes["balance"]),
+                    deposit_epoch=spec.Epoch(attributes["deposit_epoch"]),
+                    withdrawable_epoch=spec.Epoch(attributes["withdrawable_epoch"]),
                 )
             )
-        elif sol.reuses_swept_slot is True:
+        elif attributes["reuses_swept_slot"]:
             # A distinct drained builder is reusable: the handler must replace
             # this registry entry instead of appending the request builder.
-            execution_address, _ = distinct_bytes(self.rng, 20)
             pre.builders.append(
                 spec.Builder(
                     pubkey=spec.BLSPubkey(wrong_pubkey),
                     version=spec.PAYLOAD_BUILDER_VERSION,
-                    execution_address=spec.ExecutionAddress(execution_address),
+                    execution_address=spec.ExecutionAddress(attributes["execution_address"]),
                     balance=spec.Gwei(0),
                     deposit_epoch=spec.Epoch(0),
                     withdrawable_epoch=spec.Epoch(current_epoch),
                 )
             )
 
-        credentials_profile = sol.withdrawal_credentials_profile
-        wc = withdrawal_credentials_from_profile(spec, credentials_profile, address_tail, self.rng)
-        amount = deposit_amount_from_profile(spec, sol.amount_profile, self.rng)
-
         request = spec.BuilderDepositRequest(
             pubkey=spec.BLSPubkey(request_pubkey),
-            withdrawal_credentials=spec.Bytes32(wc),
-            amount=spec.Gwei(amount),
+            withdrawal_credentials=spec.Bytes32(attributes["withdrawal_credentials"]),
+            amount=spec.Gwei(attributes["amount"]),
         )
-        signer = request_pubkey if sol.builder_signature_valid else wrong_pubkey
+        signer = attributes["signer_pubkey"]
         request.signature = self._sign(request, builder_pubkey_to_privkey[signer])
 
         post = pre.copy()

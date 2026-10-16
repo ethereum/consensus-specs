@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.aspects_helpers.comparison_witness import (
-    value_for_comparison,
+from tests.generators.compliance_runners.state_transition.materializer import (
+    ConcretizingMaterializer,
 )
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
+from .concretization import STRATEGY
 from .target import TARGET
 
 if TYPE_CHECKING:
@@ -19,9 +19,10 @@ if TYPE_CHECKING:
 _VALIDATOR_COUNT = 8
 
 
-class PendingConsolidationsMaterializer(Materializer):
+class PendingConsolidationsMaterializer(ConcretizingMaterializer):
     runner_name = "epoch_processing"
     handler_name = "pending_consolidations"
+    strategy = STRATEGY
 
     def _base_state(self) -> Any:
         return create_genesis_state(
@@ -30,14 +31,16 @@ class PendingConsolidationsMaterializer(Materializer):
             activation_threshold=self.spec.MAX_EFFECTIVE_BALANCE,
         )
 
-    def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
+    def materialize_concrete_attributes(
+        self, solution: Any, attributes: dict[str, Any]
+    ) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
         next_epoch = spec.Epoch(spec.get_current_epoch(pre) + 1)
-        layout = solution.queue_layout
-        relation = solution.source_balance_to_effective
-
-        def append(source_index: int, target_index: int, role: str) -> None:
+        for entry in attributes["entries"]:
+            source_index = entry["source_index"]
+            target_index = entry["target_index"]
+            role = entry["role"]
             source = pre.validators[source_index]
             if role == "SLASHED":
                 source.slashed = True
@@ -45,14 +48,7 @@ class PendingConsolidationsMaterializer(Materializer):
                 source.withdrawable_epoch = spec.Epoch(next_epoch + 1)
             elif role == "PROCESSABLE":
                 source.withdrawable_epoch = next_epoch
-                pre.balances[source_index] = spec.Gwei(
-                    value_for_comparison(
-                        self.rng,
-                        relation,
-                        int(source.effective_balance),
-                        lower_bound=1,
-                    )
-                )
+                pre.balances[source_index] = spec.Gwei(entry["source_balance"])
             else:
                 raise ValueError(f"unknown consolidation role: {role}")
             pre.pending_consolidations.append(
@@ -61,23 +57,6 @@ class PendingConsolidationsMaterializer(Materializer):
                     target_index=spec.ValidatorIndex(target_index),
                 )
             )
-
-        if layout == "EMPTY":
-            pass
-        elif layout == "SLASHED_ONLY":
-            append(0, 1, "SLASHED")
-        elif layout == "BLOCKED_ONLY":
-            append(0, 1, "BLOCKED")
-        elif layout == "PROCESS_ONE":
-            append(0, 1, "PROCESSABLE")
-        elif layout == "SLASHED_THEN_PROCESS":
-            append(0, 1, "SLASHED")
-            append(2, 3, "PROCESSABLE")
-        elif layout == "PROCESS_THEN_BLOCKED":
-            append(0, 1, "PROCESSABLE")
-            append(2, 3, "BLOCKED")
-        else:
-            raise ValueError(f"unknown queue layout: {layout}")
 
         post = pre.copy()
         spec.process_pending_consolidations(post)
