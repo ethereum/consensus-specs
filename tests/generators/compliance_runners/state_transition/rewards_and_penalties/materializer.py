@@ -25,12 +25,12 @@ class RewardsAndPenaltiesMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * count,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        after_genesis = bool(solution.after_genesis)
-        any_eligible = after_genesis and bool(solution.has_eligible_validator)
-        inactivity_penalty = after_genesis and bool(solution.has_inactivity_penalty)
-        reward = after_genesis and bool(solution.has_flag_reward)
-        penalty = after_genesis and bool(solution.has_flag_penalty)
-        leaking = after_genesis and bool(solution.in_inactivity_leak)
+        after_genesis = solution.after_genesis
+        any_eligible = after_genesis and solution.has_eligible_validator
+        inactivity_penalty = after_genesis and solution.has_inactivity_penalty
+        reward = after_genesis and solution.has_flag_reward
+        penalty = after_genesis and solution.has_flag_penalty
+        leaking = after_genesis and solution.in_inactivity_leak
         epoch = int(spec.GENESIS_EPOCH) + (
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY) + 2 if after_genesis else 0
         )

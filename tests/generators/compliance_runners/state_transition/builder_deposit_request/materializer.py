@@ -36,14 +36,6 @@ if TYPE_CHECKING:
 EPOCHS_PAST_GENESIS = 10
 
 
-def _s(sol: Any, n: str) -> str:
-    return str(getattr(sol, n))
-
-
-def _b(sol: Any, n: str) -> bool:
-    return bool(getattr(sol, n))
-
-
 class BuilderDepositRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "builder_deposit_request"
@@ -73,7 +65,7 @@ class BuilderDepositRequestMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        found = _b(sol, "builder_pubkey_found")
+        found = sol.builder_pubkey_found
         pre = self._base_state()
         current_epoch = int(spec.get_current_epoch(pre))
         request_pubkey_index, wrong_pubkey_index = distinct_indices(
@@ -84,8 +76,8 @@ class BuilderDepositRequestMaterializer(Materializer):
         address_tail = spec.sha256(request_pubkey)[12:]
 
         if found:
-            wset = _b(sol, "builder_withdrawable_epoch_set")
-            bzero = _b(sol, "builder_balance_zero")
+            wset = sol.builder_withdrawable_epoch_set
+            bzero = sol.builder_balance_zero
             execution_address, _ = distinct_bytes(self.rng, 20)
             pre.builders.append(
                 spec.Builder(
@@ -116,16 +108,16 @@ class BuilderDepositRequestMaterializer(Materializer):
                 )
             )
 
-        credentials_profile = _s(sol, "withdrawal_credentials_profile")
+        credentials_profile = sol.withdrawal_credentials_profile
         wc = withdrawal_credentials_from_profile(spec, credentials_profile, address_tail, self.rng)
-        amount = deposit_amount_from_profile(spec, _s(sol, "amount_profile"), self.rng)
+        amount = deposit_amount_from_profile(spec, sol.amount_profile, self.rng)
 
         request = spec.BuilderDepositRequest(
             pubkey=spec.BLSPubkey(request_pubkey),
             withdrawal_credentials=spec.Bytes32(wc),
             amount=spec.Gwei(amount),
         )
-        signer = request_pubkey if _b(sol, "builder_signature_valid") else wrong_pubkey
+        signer = request_pubkey if sol.builder_signature_valid else wrong_pubkey
         request.signature = self._sign(request, builder_pubkey_to_privkey[signer])
 
         post = pre.copy()

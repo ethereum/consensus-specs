@@ -40,17 +40,6 @@ _VALIDATOR_COUNT_BY_CHURN_RELATION = {
 PENDING_WITHDRAWAL_AMOUNT = 10**9
 
 
-def _s(sol: Any, n: str) -> str:
-    value = getattr(sol, n)
-    if isinstance(value, bool):
-        return "T" if value else "F"
-    return str(value)
-
-
-def _b(sol: Any, n: str) -> bool:
-    return bool(getattr(sol, n))
-
-
 class ConsolidationRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "consolidation_request"
@@ -99,15 +88,15 @@ class ConsolidationRequestMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        same = _b(sol, "same_source_target")
-        source_found = _b(sol, "validator_pubkey_found")
-        inactive_source = source_found and _s(sol, "validator_active") != "T"
+        same = sol.same_source_target
+        source_found = sol.validator_pubkey_found
+        inactive_source = source_found and not sol.validator_active
         inactive_target = (
-            not same and _s(sol, "target_found") == "T" and _s(sol, "target_active") != "T"
+            not same and sol.target_found and not sol.target_active
         )
         # Churn depends on active effective balance, not validator count. The
         # source and target below may become inactive, so reserve replacements.
-        relation = _s(sol, "consolidation_churn_to_min_activation")
+        relation = sol.consolidation_churn_to_min_activation
         quotient = int(spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT)
         # The legacy 16/32/64 counts realize minimal's churn boundaries. On
         # mainnet, use a compact pool of compounding validators to supply the
@@ -155,26 +144,26 @@ class ConsolidationRequestMaterializer(Materializer):
         if source_found:
             self._set_validator(
                 pre.validators[source_index],
-                _s(sol, "validator_credential"),
+                sol.validator_credential,
                 credential_address,
                 current_epoch,
-                _s(sol, "validator_active") == "T",
-                _s(sol, "validator_exiting") == "T",
-                _s(sol, "validator_old_enough") == "T",
+                sol.validator_active,
+                sol.validator_exiting,
+                sol.validator_old_enough,
             )
-            if _s(sol, "churn_variant") == "CARRY_OVERFLOW":
+            if sol.churn_variant == "CARRY_OVERFLOW":
                 pre.validators[source_index].effective_balance = spec.Gwei(
                     int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
                 )
             source_pubkey = pre.validators[source_index].pubkey
             source_address = (
-                credential_address if _s(sol, "source_address_matches") == "T" else other_address
+                credential_address if sol.source_address_matches else other_address
             )
         else:
             source_pubkey = absent_source
             source_address = credential_address
 
-        switch_balance = _s(sol, "switch_balance_to_min_activation")
+        switch_balance = sol.switch_balance_to_min_activation
         if switch_balance != "NA":
             minimum = int(spec.MIN_ACTIVATION_BALANCE)
             if switch_balance == "LT":
@@ -186,7 +175,7 @@ class ConsolidationRequestMaterializer(Materializer):
 
         activation_epoch = int(spec.compute_activation_exit_epoch(spec.get_current_epoch(pre)))
         source_balance = int(pre.validators[source_index].effective_balance)
-        variant = _s(sol, "churn_variant")
+        variant = sol.churn_variant
         if variant == "RESET_FIT":
             pre.earliest_consolidation_epoch = spec.Epoch(max(0, activation_epoch - 1))
             pre.consolidation_balance_to_consume = spec.Gwei(0)
@@ -202,14 +191,14 @@ class ConsolidationRequestMaterializer(Materializer):
         # ---- target validator (consolidation path only) ------------------------
         if same:
             target_pubkey = source_pubkey
-        elif _s(sol, "target_found") == "T":
+        elif sol.target_found:
             self._set_validator(
                 pre.validators[target_index],
-                _s(sol, "target_credential"),
+                sol.target_credential,
                 credential_address,
                 current_epoch,
-                _s(sol, "target_active") == "T",
-                _s(sol, "target_exiting") == "T",
+                sol.target_active,
+                sol.target_exiting,
                 old_enough=True,
             )
             target_pubkey = pre.validators[target_index].pubkey
@@ -235,7 +224,7 @@ class ConsolidationRequestMaterializer(Materializer):
                 raise ValueError("insufficient filler balance for the consolidation churn witness")
 
         # ---- source pending partial withdrawal ---------------------------------
-        if source_found and _s(sol, "has_pending_partial_withdrawal") == "T":
+        if source_found and sol.has_pending_partial_withdrawal:
             pre.pending_partial_withdrawals.append(
                 spec.PendingPartialWithdrawal(
                     validator_index=spec.ValidatorIndex(source_index),
@@ -245,7 +234,7 @@ class ConsolidationRequestMaterializer(Materializer):
             )
 
         # ---- pending consolidations queue --------------------------------------
-        queue_capacity = _s(sol, "pending_consolidations_capacity")
+        queue_capacity = sol.pending_consolidations_capacity
         queue_limit = int(spec.PENDING_CONSOLIDATIONS_LIMIT)
         queue_length = (
             self.rng.randint(1, min(64, queue_limit - 1))

@@ -21,10 +21,6 @@ if TYPE_CHECKING:
 EPOCHS_PAST_GENESIS = 10
 
 
-def _b(sol: Any, name: str) -> bool:
-    return bool(getattr(sol, name))
-
-
 class AttestationMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "attestation"
@@ -43,7 +39,7 @@ class AttestationMaterializer(Materializer):
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
-        same_slot = _b(sol, "attestation_is_same_slot")
+        same_slot = sol.attestation_is_same_slot
         if same_slot:
             pre = create_genesis_state(
                 spec,
@@ -52,8 +48,8 @@ class AttestationMaterializer(Materializer):
             )
             transition_to(spec, pre, spec.Slot(spec.MIN_ATTESTATION_INCLUSION_DELAY))
         current = int(spec.get_current_epoch(pre))
-        target_current = _b(sol, "target_is_current")
-        target_matches_slot = _b(sol, "target_epoch_matches_slot")
+        target_current = sol.target_is_current
+        target_matches_slot = sol.target_epoch_matches_slot
         # For a mismatch, choose a slot from the opposite epoch first. This
         # preserves target_is_current while making the target/slot comparison
         # false; changing only the target epoch would invert that dimension.
@@ -78,24 +74,24 @@ class AttestationMaterializer(Materializer):
             filter_participant_set=lambda _: {participant},
         )
         data = attestation.data
-        if not _b(sol, "target_epoch_in_window"):
+        if not sol.target_epoch_in_window:
             data.target.epoch = spec.Epoch(current + 1)
         elif not target_matches_slot:
             data.target.epoch = spec.Epoch(current if target_current else current - 1)
-        if not _b(sol, "inclusion_delay_ok"):
+        if not sol.inclusion_delay_ok:
             data.slot = pre.slot
-            if _b(sol, "target_epoch_matches_slot"):
+            if sol.target_epoch_matches_slot:
                 data.target.epoch = spec.compute_epoch_at_slot(pre.slot)
-        if not _b(sol, "index_valid"):
+        if not sol.index_valid:
             data.index = spec.CommitteeIndex(2)
-        if not _b(sol, "committee_indices_valid"):
+        if not sol.committee_indices_valid:
             invalid = int(spec.get_committee_count_per_slot(pre, data.target.epoch))
             attestation.committee_bits[0] = False
             attestation.committee_bits[invalid] = True
-        if not _b(sol, "committee_nonempty"):
+        if not sol.committee_nonempty:
             for i in range(len(attestation.aggregation_bits)):
                 attestation.aggregation_bits[i] = False
-        if not _b(sol, "aggregation_length_valid"):
+        if not sol.aggregation_length_valid:
             # Add an unused bit rather than removing one. A short bitfield can
             # make the preceding committee-attester access fail, changing this
             # intended length-only failure into an earlier failure.
@@ -103,12 +99,12 @@ class AttestationMaterializer(Materializer):
             attestation.aggregation_bits = spec.AggregationBits(data=aggregation_bits)
         # These are pre-state properties. Materialize them independently of
         # whether a later gate permits the handler to consume the attestation.
-        if same_slot and not _b(sol, "sets_new_participation_flag"):
+        if same_slot and not sol.sets_new_participation_flag:
             flags = pre.current_epoch_participation[participant]
             for flag in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
                 flags = spec.add_flag(flags, flag)
             pre.current_epoch_participation[participant] = flags
-        if same_slot and _b(sol, "pending_payment_amount_positive"):
+        if same_slot and sol.pending_payment_amount_positive:
             payment_index = int(spec.SLOTS_PER_EPOCH) + slot % int(spec.SLOTS_PER_EPOCH)
             fee_recipient, _ = distinct_bytes(self.rng, 20)
             pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
@@ -121,10 +117,10 @@ class AttestationMaterializer(Materializer):
                 proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
             )
         if (
-            _b(sol, "signature_valid")
-            and _b(sol, "committee_indices_valid")
-            and _b(sol, "committee_nonempty")
-            and _b(sol, "aggregation_length_valid")
+            sol.signature_valid
+            and sol.committee_indices_valid
+            and sol.committee_nonempty
+            and sol.aggregation_length_valid
         ):
             with bls_enabled():
                 sign_attestation(spec, pre, attestation)
