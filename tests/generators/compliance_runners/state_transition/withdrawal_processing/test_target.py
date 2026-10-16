@@ -10,6 +10,10 @@ import pytest
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
+from tests.generators.compliance_runners.runner.discovery import gather_tests
+from tests.generators.compliance_runners.runner.state_transition import (
+    run_test,
+)
 from tests.generators.compliance_runners.state_transition.declaration_coverage import (
     profile_records,
 )
@@ -24,10 +28,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
 from tests.generators.compliance_runners.state_transition.provider import (
     load_provider,
     materialize_handler,
-)
-from tests.generators.compliance_runners.state_transition.runner.test_run import (
-    gather_tests,
-    run_test,
 )
 
 from .materializer import MATERIALIZER

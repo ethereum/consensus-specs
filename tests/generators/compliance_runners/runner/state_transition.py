@@ -1,17 +1,20 @@
+"""Decode and replay operations, epoch processing, and sanity vectors."""
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import NamedTuple
-
-import pytest
-from ruamel.yaml import YAML
-from snappy import uncompress
+from typing import TYPE_CHECKING
 
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.state_transition.catalog import OPERATION_INPUTS
+
+from .formats import OPERATION_INPUTS
+from .io import read_ssz_snappy, read_yaml
+
+if TYPE_CHECKING:
+    from .discovery import VectorCase
 
 OPERATION_PROCESSORS = {
     "attestation": "process_attestation",
@@ -52,24 +55,6 @@ EPOCH_PROCESSORS = {
     "sync_committee_updates": "process_sync_committee_updates",
     "proposer_lookahead": "process_proposer_lookahead",
 }
-
-
-class StateTransitionTestInfo(NamedTuple):
-    preset: str
-    fork: str
-    runner: str
-    handler: str
-    suite: str
-    test_dir: Path
-
-
-def read_yaml(path: Path):
-    yaml = YAML(typ="safe")
-    return yaml.load(path.read_text())
-
-
-def read_ssz_snappy(path: Path) -> bytes:
-    return uncompress(path.read_bytes())
 
 
 def decode_file(spec, test_dir: Path, name: str, typ):
@@ -116,7 +101,7 @@ def decode_optional_post(spec, test_dir: Path):
     return spec.BeaconState.decode_bytes(read_ssz_snappy(post_path))
 
 
-def run_test(test_info: StateTransitionTestInfo):
+def run_test(test_info: VectorCase):
     preset, fork, runner, handler, _, test_dir = test_info
     spec = spec_targets[preset][fork]
 
@@ -205,74 +190,3 @@ def run_processing_case(process_fn, state, operation, expected_post, extra_args=
 
     run_processing()
     assert state == expected_post
-
-
-def gather_tests(tests_dir):
-    if isinstance(tests_dir, (list, tuple)):
-        for path in tests_dir:
-            yield from gather_tests(path)
-        return
-
-    tests_path = Path(tests_dir)
-    reftests_dirs = (
-        [tests_path]
-        if any(path.name in spec_targets for path in tests_path.glob("*"))
-        else sorted(tests_path.glob("*/reftests"))
-    )
-    for reftests_dir in reftests_dirs:
-        for preset in [p.name for p in reftests_dir.glob("*") if p.name in spec_targets]:
-            for fork in [
-                f.name for f in (reftests_dir / preset).glob("*") if f.name in spec_targets[preset]
-            ]:
-                for test_dir in sorted((reftests_dir / preset / fork).glob("*/*/*/*")):
-                    manifest_path = test_dir / "manifest.yaml"
-                    if not manifest_path.exists():
-                        continue
-                    manifest = read_yaml(manifest_path)
-                    yield StateTransitionTestInfo(
-                        preset,
-                        fork,
-                        manifest["runner"],
-                        manifest["handler"],
-                        manifest["suite"],
-                        test_dir,
-                    )
-
-
-def select_tests(tests, start=None, limit=None):
-    if start is not None:
-        tests = tests[start:]
-    if limit is not None:
-        tests = tests[:limit]
-    return tests
-
-
-def _test_id(test_info: StateTransitionTestInfo) -> str:
-    return (
-        f"{test_info.preset}::{test_info.fork}::{test_info.runner}::"
-        f"{test_info.handler}::{test_info.suite}::{Path(test_info.test_dir).name}"
-    )
-
-
-def pytest_generate_tests(metafunc):
-    if "test_info" not in metafunc.fixturenames:
-        return
-
-    tests_dir = metafunc.config.getoption("--test-dir")
-    if tests_dir is None:
-        raise pytest.UsageError(
-            "--test-dir is required when running state-transition compliance tests"
-        )
-
-    start = metafunc.config.getoption("--start")
-    limit = metafunc.config.getoption("--limit")
-    test_infos = select_tests(list(gather_tests(tests_dir)), start=start, limit=limit)
-    metafunc.parametrize(
-        "test_info",
-        test_infos,
-        ids=[_test_id(test_info) for test_info in test_infos],
-    )
-
-
-def test_run_state_transition_case(test_info):
-    run_test(test_info)
