@@ -121,12 +121,11 @@ def validate_execution_proof_gossip(
             "proof already seen from this prover for this beacon block and proof type"
         )
 
-    # [IGNORE] The proof's execution payload is available
-    if beacon_block_root not in store.payloads:
-        raise GossipIgnore("execution proof's payload is unavailable")
+    # [IGNORE] The proof's beacon block has been validated
+    if beacon_block_root not in store.block_states:
+        raise GossipIgnore("execution proof's beacon block has not been validated")
 
     state = store.block_states[beacon_block_root]
-    payload_envelope = store.payloads[beacon_block_root]
 
     # [REJECT] The execution proof envelope passes validation
     try:
@@ -134,11 +133,7 @@ def validate_execution_proof_gossip(
     except AssertionError:
         raise GossipReject("execution proof envelope is invalid") from None
 
-    proof = get_execution_proof(
-        state,
-        proof_envelope,
-        payload_envelope,
-    )
+    proof = get_execution_proof(proof_envelope)
 
     # Mark the authenticated proof and prover attempt as seen
     if beacon_block_root not in seen.execution_proof_roots:
