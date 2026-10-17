@@ -18,6 +18,7 @@
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
   - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
   - [Modified `should_extend_payload`](#modified-should_extend_payload)
+  - [Modified `verify_execution_payload_envelope`](#modified-verify_execution_payload_envelope)
   - [New `get_inclusion_list_due_ms`](#new-get_inclusion_list_due_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
@@ -48,30 +49,61 @@ validation.
 The body of this function is implementation dependent. The Engine API may be
 used to implement it with an external execution engine.
 
+*Note*: In Heze, `engine_newPayloadV6` is the only Engine API method that
+notifies a new payload, and it requires the separate ILs and omission claims.
+The Engine API adapter MUST therefore implement the
+`verify_and_notify_new_payload` call in `verify_execution_payload_envelope` and
+the `is_inclusion_list_satisfied` call in
+`record_payload_inclusion_list_satisfaction` for the same envelope as a single
+`engine_newPayloadV6` call. Its `inclusionLists` are the `inclusion_lists` that
+`record_payload_inclusion_list_satisfaction` computes for the envelope's beacon
+block with `get_inclusion_lists(..., only_timely=True)`, determined before the
+call, and its `omissionClaims` are `envelope.omission_claims`. The response
+`status` gives the result of `verify_and_notify_new_payload`;
+`inclusionListSatisfied` and `inclusionCheckId` give the result of
+`is_inclusion_list_satisfied`. If envelope verification fails, the inclusion
+result is discarded.
+
 #### New `is_inclusion_list_satisfied`
+
+The execution engine evaluates the supplied separate ILs and claim list for this
+call, even if it has already validated the execution payload. The consensus
+layer MUST pass the committed claims unchanged, including their order and any
+duplicates; claim interpretation is an execution layer rule. Different beacon
+blocks may commit different claims for the same execution payload, so
+satisfaction MUST NOT be cached by execution block hash alone.
+
+The Engine API adapter MUST associate the returned `inclusionCheckId` with this
+beacon block and frozen IL view, and poll `engine_getInclusionListVerdictV1`
+until completion or abandonment. It retains the original inputs for recovery
+from `Unknown inclusion check`; only recovery or pending execution requires
+resubmitting `engine_newPayloadV6`. It MUST NOT substitute a later IL view. A
+completed result updates only the associated beacon block's
+`payload_inclusion_list_satisfaction`, not other blocks sharing its execution
+hash. The adapter owns identifiers; they are not consensus commitments.
 
 ```python
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    inclusion_list_transactions: Sequence[Transaction],
-) -> bool:
+    inclusion_lists: Sequence[Sequence[Transaction]],
+    omission_claims: Sequence[OmissionClaim],
+) -> bool | None:
     """
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
-    list constraints with respect to ``inclusion_list_transactions``.
+    list constraints with respect to ``inclusion_lists`` and ``omission_claims``.
+    Return ``None`` while execution validation or inclusion checking is pending.
     """
 ```
 
 #### Modified `notify_forkchoice_updated`
 
-*Note*: The only change made is to the `PayloadAttributes` container through the
-addition of `inclusion_list_transactions`. Otherwise,
-`notify_forkchoice_updated` inherits all prior functionality.
+`PayloadAttributes` adds separate `inclusion_lists` for the child build.
+Forkchoice updates report execution validity only; inclusion results are
+retrieved with `engine_getInclusionListVerdictV1`.
 
-*Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
-not empty, the payload build process MUST produce an execution payload that
-satisfies the inclusion list constraints with respect to
-`inclusion_list_transactions`.
+*Note*: The payload build process MUST satisfy the inclusion constraints for
+`payload_attributes.inclusion_lists`.
 
 ```python
 def notify_forkchoice_updated(
@@ -88,7 +120,8 @@ def notify_forkchoice_updated(
 
 ### Modified `PayloadAttributes`
 
-`PayloadAttributes` is extended with the `inclusion_list_transactions` field.
+`PayloadAttributes` is extended with `inclusion_lists`, ordered by committee
+position with an empty list where no applicable IL is available.
 
 ```python
 @dataclass
@@ -101,7 +134,7 @@ class PayloadAttributes:
     slot_number: Uint64
     target_gas_limit: Uint64
     # [New in Heze:EIP7805]
-    inclusion_list_transactions: Sequence[Transaction]
+    inclusion_lists: Sequence[Sequence[Transaction]]
 ```
 
 ### Modified `Store`
@@ -130,7 +163,7 @@ class Store:
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in Heze:EIP7805]
-    payload_inclusion_list_satisfaction: dict[Root, bool]
+    payload_inclusion_list_satisfaction: dict[Root, bool | None]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -172,10 +205,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 satisfying the inclusion list constraints SHOULD NOT be marked as unsatisfied
 even if their associated `InclusionList`s have subsequently been pruned.
 
-*Note*: A `NOT_VALIDATED` payload is optimistically recorded as satisfying the
-inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
-`VALID`, whether the payload satisfies the inclusion list constraints MUST be
-recorded according to the
+*Note*: A pending inclusion check is recorded as `None`, including when
+execution is already `VALID`. It does not permit extending the payload; the
+[proposer fallback](./validator.md#block-and-sidecar-proposal) applies at the
+proposal-slot parent decision. Deferred results MUST be recorded according to
+the
 [Optimistic sync](./optimistic-sync.md#new-how-to-track-inclusion-list-satisfaction)
 specification.
 
@@ -188,15 +222,21 @@ def record_payload_inclusion_list_satisfaction(
     store: Store,
     root: Root,
     payload: ExecutionPayload,
+    omission_claims: Sequence[OmissionClaim],
     execution_engine: ExecutionEngine,
 ) -> None:
     slot = store.blocks[root].slot - 1
     dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
-    inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), slot, dependent_root, only_timely=True
+    inclusion_list_store = get_inclusion_list_store()
+    inclusion_lists = get_inclusion_lists(
+        inclusion_list_store,
+        get_inclusion_list_committee(store.block_states[root], slot),
+        slot,
+        dependent_root,
+        only_timely=True,
     )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
-        payload, inclusion_list_transactions
+        payload, inclusion_lists, omission_claims
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```
@@ -217,7 +257,7 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return store.payload_inclusion_list_satisfaction[root]
+    return store.payload_inclusion_list_satisfaction[root] is True
 ```
 
 ### Modified `should_extend_payload`
@@ -241,6 +281,63 @@ def should_extend_payload(store: Store, root: Root) -> bool:
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
+    )
+```
+
+### Modified `verify_execution_payload_envelope`
+
+*Note*: The only addition is the omission-claims root assertion. The complete
+function is retained because the executable specification replaces functions as
+a whole. The `verify_and_notify_new_payload` call is combined with the inclusion
+check into one `engine_newPayloadV6` call, as described in
+[`ExecutionEngine`](#executionengine).
+
+```python
+def verify_execution_payload_envelope(
+    state: BeaconState,
+    signed_envelope: SignedExecutionPayloadEnvelope,
+    execution_engine: ExecutionEngine,
+) -> None:
+    envelope = signed_envelope.message
+    payload = envelope.payload
+
+    # Verify signature
+    assert verify_execution_payload_envelope_signature(state, signed_envelope)
+
+    # Verify consistency with the beacon block
+    header = state.latest_block_header.copy()
+    header.state_root = hash_tree_root(state)
+    assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
+
+    # Verify consistency with the committed bid
+    bid = state.latest_execution_payload_bid
+    assert envelope.builder_index == bid.builder_index
+    assert payload.prev_randao == bid.prev_randao
+    assert payload.gas_limit == bid.gas_limit
+    assert payload.block_hash == bid.block_hash
+    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+    # [New in Heze:EIP7805]
+    assert hash_tree_root(envelope.omission_claims) == bid.omission_claims_root
+
+    # Verify the execution payload is valid
+    assert payload.slot_number == state.slot
+    assert payload.parent_hash == state.latest_block_hash
+    assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+
+    # Compute versioned hashes
+    versioned_hashes = VersionedHashes()
+    for commitment in bid.blob_kzg_commitments:
+        versioned_hashes.append(kzg_commitment_to_versioned_hash(commitment))
+
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=envelope.parent_beacon_block_root,
+            execution_requests=envelope.execution_requests,
+        )
     )
 ```
 
@@ -337,7 +434,11 @@ def on_execution_payload_envelope(
     # Check if this payload satisfies the inclusion list constraints
     # If not, add this payload to the store as inclusion list constraints unsatisfied
     record_payload_inclusion_list_satisfaction(
-        store, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
+        store,
+        envelope.beacon_block_root,
+        envelope.payload,
+        envelope.omission_claims,
+        EXECUTION_ENGINE,
     )
 
     # Add execution payload envelope to the store

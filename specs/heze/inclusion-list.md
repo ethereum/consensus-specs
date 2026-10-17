@@ -13,6 +13,7 @@
   - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
   - [New `process_inclusion_list`](#new-process_inclusion_list)
   - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
+  - [New `get_inclusion_lists`](#new-get_inclusion_lists)
   - [New `get_inclusion_list_bits`](#new-get_inclusion_list_bits)
   - [New `is_inclusion_list_bits_inclusive`](#new-is_inclusion_list_bits_inclusive)
 
@@ -119,6 +120,36 @@ def get_inclusion_list_transactions(
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
     return list(set(transactions))
+```
+
+### New `get_inclusion_lists`
+
+Return one transaction list per committee position from the same selected IL
+view. Missing, equivocating or excluded untimely lists produce empty entries. A
+validator holding several positions contributes the same list at each. Preserve
+transaction order and duplicates; the execution engine performs the per-list
+budget fill and may deduplicate verification work internally.
+
+```python
+def get_inclusion_lists(
+    store: InclusionListStore,
+    committee: InclusionListCommittee,
+    slot: Slot,
+    dependent_root: Root,
+    only_timely: bool = True,
+) -> Sequence[Sequence[Transaction]]:
+    key = (slot, dependent_root)
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
+
+    result: list[list[Transaction]] = []
+    for validator_index in committee:
+        entry = inclusion_lists.get(validator_index)
+        if entry is None or validator_index in equivocators or (only_timely and not entry.timely):
+            result.append([])
+        else:
+            result.append(list(entry.signed_inclusion_list.message.transactions))
+    return result
 ```
 
 ### New `get_inclusion_list_bits`
