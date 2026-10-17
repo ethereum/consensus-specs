@@ -18,9 +18,9 @@ the Gloas upgrade.
 ### Modified `block_to_light_client_header`
 
 *Note*: A pre-Gloas block is turned into a header by the function of its own
-fork, and the result is brought forward with `upgrade_lc_header_to_gloas`. The
-execution block hash and its proof are read from the payload bid, which only a
-Gloas block carries.
+fork, and the result is brought forward with
+`upgrade_light_client_header_to_gloas`. The execution block hash and its proof
+are read from the payload bid, which only a Gloas block carries.
 
 ```python
 def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
