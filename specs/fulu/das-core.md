@@ -368,10 +368,12 @@ to retrieve all selected columns.
 ## Extended data
 
 In this construction, we extend the blobs using a one-dimensional erasure coding
-extension. The matrix comprises maximum `MAX_BLOBS_PER_BLOCK` rows and fixed
-`NUMBER_OF_COLUMNS` columns, with each row containing a `Blob` and its
-corresponding extension. `compute_matrix` demonstrates the relationship between
-blobs and the matrix, a potential method of storing cells/proofs.
+extension. The matrix has one row per blob in the block and a fixed
+`NUMBER_OF_COLUMNS` columns. The maximum number of rows is
+`get_blob_parameters(epoch).max_blobs_per_block`, where `epoch` is the block's
+epoch. Each row contains a `Blob` and its corresponding extension.
+`compute_matrix` demonstrates the relationship between blobs and the matrix, a
+potential method of storing cells/proofs.
 
 ## Column gossip
 
