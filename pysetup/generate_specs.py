@@ -308,7 +308,10 @@ Examples:
         "--out-dir",
         type=Path,
         default=None,
-        help="Output directory (default: tests/core/pyspec/eth_consensus_specs/<fork>)",
+        help=(
+            "Output directory (default: tests/core/pyspec/eth_consensus_specs/<fork>; "
+            "--all-forks appends each fork name)"
+        ),
     )
 
     parser.add_argument(
@@ -354,7 +357,7 @@ Examples:
         for fork in forks:
             # Determine output directory
             if args.out_dir:
-                out_dir = args.out_dir
+                out_dir = args.out_dir / fork if args.all_forks else args.out_dir
             else:
                 out_dir = Path("tests/core/pyspec/eth_consensus_specs") / fork
 
