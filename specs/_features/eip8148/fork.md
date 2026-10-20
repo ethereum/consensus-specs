@@ -32,8 +32,6 @@ change is made to upgrade to EIP-8148.
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
-`validator_sweep_thresholds` is filled with default values at the fork.
-
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
 whose root differs from the extended type even for identical content; the
