@@ -59,7 +59,6 @@
     - [New `get_total_weight`](#new-get_total_weight)
     - [New `get_participating_weight`](#new-get_participating_weight)
     - [Modified `get_finality_delay`](#modified-get_finality_delay)
-    - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_flag_index_rewards`](#new-get_flag_index_rewards)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
@@ -850,28 +849,6 @@ def get_finality_delay(state: BeaconState) -> Epoch:
     return previous_epoch - finalized_epoch
 ```
 
-#### Modified `get_attestation_participation_flag_indices`
-
-*Note*: The function `get_attestation_participation_flag_indices` is rewritten
-for the finality gadget. It has no inclusion-delay check, since an attestation
-counts only while its height is current or its finality pair is pending.
-
-```python
-def get_attestation_participation_flag_indices(
-    state: BeaconState, data: AttestationData
-) -> Sequence[int]:
-    """
-    Return the flag indices that are satisfied by an attestation.
-    """
-    participation_flag_indices = []
-    if data.target == state.target_checkpoint:
-        participation_flag_indices.append(PROGRESS_FLAG_INDEX)
-    for pending in state.pending_finality:
-        if pending.checkpoint == data.finality:
-            participation_flag_indices.append(FINALITY_FLAG_INDEX)
-    return participation_flag_indices
-```
-
 #### New `get_flag_index_rewards`
 
 *Note*: This replaces `get_flag_index_deltas`. A validator without the flag
@@ -1247,7 +1224,9 @@ def process_operations(
 *Note*: The function `process_attestation` is rewritten for the finality gadget.
 Its checks read only the parts of the state that attestations do not modify, so
 each attestation is checked against the state as it was before the block's
-attestations.
+attestations. A validator earns a participation flag, and the proposer a reward,
+only when an attestation records the validator's progress or finality for the
+first time, so including the same attestation again earns nothing.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -1259,9 +1238,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state, attestation.round, attestation.committee_bits, attestation.aggregation_bits
     )
 
-    # Participation flag indices
-    participation_flag_indices = get_attestation_participation_flag_indices(state, data)
-
     # Verify signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
@@ -1272,20 +1248,22 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
+        credited_flag_indices = []
         for pending in state.pending_finality:
-            if pending.checkpoint == data.finality:
+            if pending.checkpoint == data.finality and not pending.participation[index]:
                 pending.participation[index] = Boolean(True)
+                credited_flag_indices.append(FINALITY_FLAG_INDEX)
         if data.target == state.target_checkpoint:
-            state.progress_participation[index] = Boolean(True)
+            if not state.progress_participation[index]:
+                state.progress_participation[index] = Boolean(True)
+                credited_flag_indices.append(PROGRESS_FLAG_INDEX)
             if not data.timeout:
                 state.target_participation[index] = Boolean(True)
 
-        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS_DC):
-            if flag_index in participation_flag_indices and not has_flag(
-                round_participation[index], flag_index
-            ):
-                round_participation[index] = add_flag(round_participation[index], flag_index)
-                proposer_reward_numerator += get_base_reward(state, index) * weight
+        for flag_index in credited_flag_indices:
+            round_participation[index] = add_flag(round_participation[index], flag_index)
+            weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
+            proposer_reward_numerator += get_base_reward(state, index) * weight
 
     # Reward proposer with a round's share of the per-epoch reward
     proposer_reward_denominator = (
