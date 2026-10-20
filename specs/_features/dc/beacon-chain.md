@@ -1243,7 +1243,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     assert is_well_formed_attestation_data(data)
     assert is_valid_attestation_data(state, data)
-    assert attestation.round in (get_previous_round(state), get_current_round(state))
+    assert attestation.round <= get_current_round(state)
+    assert attestation.round >= compute_round_at_slot(state.finalized_slot)
     assert is_valid_aggregation_bits(state, attestation.round, attestation)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
