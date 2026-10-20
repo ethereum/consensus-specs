@@ -10,6 +10,7 @@
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
+  - [New `LegacyAttesterSlashings`](#new-legacyattesterslashings)
   - [New `Participation`](#new-participation)
   - [New `PendingFinalities`](#new-pendingfinalities)
   - [New `Round`](#new-round)
@@ -41,6 +42,11 @@
     - [New `is_well_formed_attestation_data`](#new-is_well_formed_attestation_data)
     - [New `is_valid_attestation_data`](#new-is_valid_attestation_data)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
+    - [New `is_double_target_vote`](#new-is_double_target_vote)
+    - [New `is_conflicting_with_finality_pair`](#new-is_conflicting_with_finality_pair)
+    - [Modified `is_slashable_attestation_data`](#modified-is_slashable_attestation_data)
+    - [New `is_slashable_legacy_attestation_data`](#new-is_slashable_legacy_attestation_data)
+    - [New `is_valid_legacy_indexed_attestation`](#new-is_valid_legacy_indexed_attestation)
     - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
     - [Modified `is_active_builder`](#modified-is_active_builder)
     - [New `has_quorum`](#new-has_quorum)
@@ -78,6 +84,8 @@
   - [Block processing](#block-processing)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
+      - [Legacy attester slashings](#legacy-attester-slashings)
+        - [New `process_legacy_attester_slashing`](#new-process_legacy_attester_slashing)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Head votes](#head-votes)
@@ -137,9 +145,8 @@ Every validator has the same weight, regardless of its balance, reduced only by
 its inactivity score. Slashed validators count toward the total but not toward a
 quorum.
 
-*Note*: This upgrade does not yet specify rewards for head votes, slashing
-conditions for FG attestations, or how attestations weigh builder payments. A
-block therefore carries no attester slashings.
+*Note*: This upgrade does not yet specify rewards for head votes or how
+attestations weigh builder payments.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -184,6 +191,16 @@ class Height(Uint64):
     A height of the finality gadget. The chain moves to the next height when it
     justifies the target of the current height, or after a delay when target
     votes and timeouts together reach a quorum.
+    """
+```
+
+### New `LegacyAttesterSlashings`
+
+```python
+class LegacyAttesterSlashings(ProgressiveList[heze.AttesterSlashing]):
+    """
+    The attester slashings included in a beacon block for attestations made
+    before this upgrade.
     """
 ```
 
@@ -410,15 +427,22 @@ class Attestation(ProgressiveContainer):
 *Note*: Support is recorded per aggregate rather than per vote. The validators
 in an aggregate share its head, so their votes resolve together.
 
+*Note*: `legacy_attester_slashings` keeps the position of `attester_slashings`
+and its contents. `attester_slashings` is a new field for slashings of this
+upgrade's attestations. `legacy_attester_slashings` should be removed in a later
+upgrade.
+
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=15)
+    ACTIVE_FIELDS = active_fields(width=16)
 
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
     proposer_slashings: ProposerSlashings
-    attester_slashings: AttesterSlashings
+    # [Modified in DC]
+    # Renamed `attester_slashings`
+    legacy_attester_slashings: LegacyAttesterSlashings
     attestations: Attestations
     deposits: Deposits
     voluntary_exits: VoluntaryExits
@@ -431,6 +455,8 @@ class BeaconBlockBody(ProgressiveContainer):
     head_votes: HeadVotes
     # [New in DC]
     head_vote_support_bits: HeadVoteSupportBits
+    # [New in DC]
+    attester_slashings: AttesterSlashings
 ```
 
 ### Modified `BeaconState`
@@ -578,6 +604,104 @@ def is_valid_indexed_attestation(
     pubkeys = [state.validators[i].pubkey for i in indices]
     # [Modified in DC]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER)
+    signing_root = compute_signing_root(indexed_attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+```
+
+#### New `is_double_target_vote`
+
+```python
+def is_double_target_vote(data_1: AttestationData, data_2: AttestationData) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are different target votes at the same height.
+    """
+    if data_1.timeout:
+        return False
+    if data_2.timeout:
+        return False
+    if data_1 == data_2:
+        return False
+    if data_1.target.height != data_2.target.height:
+        return False
+    return True
+```
+
+#### New `is_conflicting_with_finality_pair`
+
+```python
+def is_conflicting_with_finality_pair(data: AttestationData, finality: HeightCheckpoint) -> bool:
+    """
+    Check if ``data`` votes at the height of the non-empty ``finality`` pair
+    without a target vote for its root.
+    """
+    if finality == HeightCheckpoint.empty():
+        return False
+    if data.target.height != finality.height:
+        return False
+    if data.timeout:
+        return True
+    if data.target.root != finality.root:
+        return True
+    return False
+```
+
+#### Modified `is_slashable_attestation_data`
+
+*Note*: The function `is_slashable_attestation_data` is rewritten for the
+finality gadget.
+
+```python
+def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationData) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are slashable according to the finality
+    gadget rules.
+    """
+    if is_double_target_vote(data_1, data_2):
+        return True
+    if is_conflicting_with_finality_pair(data_1, data_2.finality):
+        return True
+    if is_conflicting_with_finality_pair(data_2, data_1.finality):
+        return True
+    return False
+```
+
+#### New `is_slashable_legacy_attestation_data`
+
+```python
+def is_slashable_legacy_attestation_data(
+    data_1: heze.AttestationData, data_2: heze.AttestationData
+) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are slashable according to Casper FFG rules.
+    """
+    return (
+        # Double vote
+        (data_1 != data_2 and data_1.target.epoch == data_2.target.epoch)
+        or
+        # Surround vote
+        (data_1.source.epoch < data_2.source.epoch and data_2.target.epoch < data_1.target.epoch)
+    )
+```
+
+#### New `is_valid_legacy_indexed_attestation`
+
+```python
+def is_valid_legacy_indexed_attestation(
+    state: BeaconState, indexed_attestation: heze.IndexedAttestation
+) -> bool:
+    """
+    Check if ``indexed_attestation`` is not empty, has sorted and unique indices
+    and has a valid aggregate signature.
+    """
+    indices = indexed_attestation.attesting_indices
+    if (
+        len(indices) == 0
+        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
+        or list(indices) != sorted(set(indices))
+    ):
+        return False
+    pubkeys = [state.validators[i].pubkey for i in indices]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
@@ -1200,14 +1324,15 @@ def process_operations(
     # Removed `parent_slot`
 ) -> None:
     assert len(body.deposits) == 0
-    # [New in DC]
-    assert len(body.attester_slashings) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
             fn(state, operation, *args)
 
     assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
+    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
+    # [New in DC]
+    assert len(body.legacy_attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
     assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
     assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
     assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
@@ -1218,8 +1343,9 @@ def process_operations(
     assert len(body.head_vote_support_bits) == len(body.head_votes)
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
-    # [Modified in DC]
-    # Removed `process_attester_slashing`
+    for_ops(body.attester_slashings, process_attester_slashing)
+    # [New in DC]
+    for_ops(body.legacy_attester_slashings, process_legacy_attester_slashing)
     # [Modified in DC]
     for_ops(body.attestations, process_attestation)
     for_ops(body.voluntary_exits, process_voluntary_exit)
@@ -1227,6 +1353,29 @@ def process_operations(
     for_ops(body.payload_attestations, process_payload_attestation)
     # [New in DC]
     for_ops(body.head_votes, process_head_vote)
+```
+
+##### Legacy attester slashings
+
+###### New `process_legacy_attester_slashing`
+
+```python
+def process_legacy_attester_slashing(
+    state: BeaconState, attester_slashing: heze.AttesterSlashing
+) -> None:
+    attestation_1 = attester_slashing.attestation_1
+    attestation_2 = attester_slashing.attestation_2
+    assert is_slashable_legacy_attestation_data(attestation_1.data, attestation_2.data)
+    assert is_valid_legacy_indexed_attestation(state, attestation_1)
+    assert is_valid_legacy_indexed_attestation(state, attestation_2)
+
+    slashed_any = False
+    indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)
+    for index in sorted(indices):
+        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
+            slash_validator(state, index)
+            slashed_any = True
+    assert slashed_any
 ```
 
 ##### Attestations
