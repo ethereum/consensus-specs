@@ -214,12 +214,16 @@ def generate_fork_specs(
     Args:
         fork: The fork name (e.g., 'phase0', 'altair')
         out_dir: Output directory where spec modules will be written
-        build_targets: List of BuildTarget (preset configurations)
+        build_targets: Non-empty list of BuildTarget (preset configurations). The default
+            spec is mainnet when included, otherwise the first target.
         source_files: List of markdown source files (auto-detected if None)
         verbose: Enable verbose output
     """
     if fork not in spec_builders:
         raise ValueError(f"Unknown fork: {fork}. Available: {list(spec_builders.keys())}")
+
+    if not build_targets:
+        raise ValueError("At least one build target is required")
 
     # Auto-detect source files if not provided
     if source_files is None:
@@ -261,9 +265,13 @@ def generate_fork_specs(
         if verbose:
             print(f"    Wrote: {output_file} ({len(spec_str):,} bytes)")
 
-    # Create __init__.py that imports mainnet as default
+    # Prefer mainnet as the default spec, falling back to the first build target.
+    default_target = next(
+        (target.name for target in build_targets if target.name == "mainnet"),
+        build_targets[0].name,
+    )
     init_file = out_dir / "__init__.py"
-    init_file.write_text("from . import mainnet as spec  # noqa:F401\n")
+    init_file.write_text(f"from . import {default_target} as spec  # noqa:F401\n")
 
     if verbose:
         print(f"  Wrote: {init_file}")

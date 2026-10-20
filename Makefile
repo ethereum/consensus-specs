@@ -219,7 +219,8 @@ test: build
 		--self-contained-html \
 		$(MAYBE_REFTESTS) \
 		$(COVERAGE) \
-		$(PYSPEC_DIR)/eth_consensus_specs
+		$(PYSPEC_DIR)/eth_consensus_specs \
+		$(CURDIR)/tests/unit
 
 COMMA:= ,
 DEFAULT_COMPTESTS_DIR = $(CURDIR)/../compliance-spec-tests/tests
