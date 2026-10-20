@@ -44,6 +44,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
             "get_latest_confirmed",
             "get_node_support_between_slots",
             "get_pulled_up_head_state",
+            "get_restart_resilient_confirmed_root",
             "get_slot_committee",
             "get_support_discount",
             "get_voting_source",

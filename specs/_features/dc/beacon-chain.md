@@ -436,17 +436,15 @@ upgrade.
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=16)
+    ACTIVE_FIELDS = active_fields(width=16, gaps=(1, 6))
 
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data
     graffiti: Bytes32
     proposer_slashings: ProposerSlashings
     # [Modified in DC]
     # Renamed `attester_slashings`
     legacy_attester_slashings: LegacyAttesterSlashings
     attestations: Attestations
-    deposits: Deposits
     voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
     bls_to_execution_changes: BLSToExecutionChanges
@@ -469,7 +467,7 @@ keeps its name but moves to a new position.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=56, gaps=(15, 16, 17, 18, 19, 20))
+    ACTIVE_FIELDS = active_fields(width=56, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -479,9 +477,6 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -505,7 +500,6 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -1241,7 +1235,6 @@ def process_epoch(state: BeaconState) -> None:
     # Removed `process_rewards_and_penalties`
     process_registry_updates(state)
     process_slashings(state)
-    process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
     process_builder_pending_payments(state)
@@ -1328,7 +1321,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_withdrawals(state)
     process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
-    process_eth1_data(state, block.body)
     # [Modified in DC]
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
@@ -1347,8 +1339,6 @@ def process_operations(
     # [Modified in DC]
     # Removed `parent_slot`
 ) -> None:
-    assert len(body.deposits) == 0
-
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
         for operation in operations:
             fn(state, operation, *args)

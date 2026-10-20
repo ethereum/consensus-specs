@@ -168,14 +168,14 @@ def verify_partial_data_column_sidecar_kzg_proofs(
     Verify the KZG proofs.
     """
     # Get the blob indices from the bitmap
-    blob_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+    blob_indices = [index for index, bit in enumerate(sidecar.cells_present_bitmap) if bit]
 
     # The cell index is the column index for all cells in this column
     cell_indices = [CellIndex(column_index)] * len(blob_indices)
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return kzg.verify_cell_kzg_proof_batch(
-        commitments_bytes=[all_commitments[i] for i in blob_indices],
+        commitments_bytes=[all_commitments[index] for index in blob_indices],
         cell_indices=cell_indices,
         cells=sidecar.partial_column,
         proofs_bytes=sidecar.kzg_proofs,

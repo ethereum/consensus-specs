@@ -82,17 +82,19 @@ def get_blocks_meta(blocks, head_payload=None):
     return entries
 
 
-def setup_store_advanced_for_bid(spec, state):
+def setup_store_advanced_for_bid(spec, state, head_gas_limit=None):
     """
     Advance ``state`` to at least the (MIN_SEED_LOOKAHEAD + 1)-th epoch so
     bid validation's dependent_root lookup doesn't underflow, then build a
-    genesis store containing every produced block and its state.
+    genesis store containing every produced block and its state. If
+    ``head_gas_limit`` is given, the head block's bid commits to it.
     Returns (store, blocks, parent_block_root).
     """
     return _build_store_advanced_to(
         spec,
         state,
         spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1)),
+        head_gas_limit=head_gas_limit,
     )
 
 
@@ -109,14 +111,19 @@ def setup_store_advanced_to_epoch_end(spec, state):
     return _build_store_advanced_to(spec, state, target_slot)
 
 
-def _build_store_advanced_to(spec, state, target_slot):
+def _build_store_advanced_to(spec, state, target_slot, head_gas_limit=None):
     """Build a genesis store and advance ``state`` to ``target_slot`` with empty
-    blocks, recording every produced block and its post-state in the store."""
+    blocks, recording every produced block and its post-state in the store.
+    If ``head_gas_limit`` is given, the last block's bid commits to it."""
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     blocks = [signed_anchor]
     while state.slot < target_slot:
         block = build_empty_block_for_next_slot(spec, state)
+        if head_gas_limit is not None and block.slot == target_slot:
+            # A self-build bid is signed with the infinity signature, so the
+            # gas_limit can be set after the fact.
+            block.body.signed_execution_payload_bid.message.gas_limit = head_gas_limit
         signed_block = state_transition_and_sign_block(spec, state, block)
         record_block_in_store(spec, store, signed_block, state.copy())
         blocks.append(signed_block)

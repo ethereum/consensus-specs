@@ -119,7 +119,7 @@ cross-network replay.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=47)
+    ACTIVE_FIELDS = active_fields(width=47, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -129,9 +129,6 @@ class BeaconState(ProgressiveContainer):
     block_roots: BlockRoots
     state_roots: StateRoots
     historical_roots: HistoricalRoots
-    eth1_data: Eth1Data
-    eth1_data_votes: Eth1DataVotes
-    eth1_deposit_index: Uint64
     validators: Validators
     balances: Balances
     randao_mixes: RandaoMixes
@@ -149,7 +146,6 @@ class BeaconState(ProgressiveContainer):
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
-    deposit_requests_start_index: Uint64
     deposit_balance_to_consume: Gwei
     exit_balance_to_consume: Gwei
     earliest_exit_epoch: Epoch
@@ -316,7 +312,6 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_slashings(state)
-    process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
     process_builder_pending_payments(state)
@@ -484,21 +479,8 @@ def apply_parent_execution_payload(
     # [New in EIP8205]
     assert len(requests.preregistrations) <= MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
 
-    # Process execution requests from parent's payload. The execution
-    # requests are processed at state.slot (child's slot), not the parent's slot.
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-    for_ops(requests.builder_deposits, process_builder_deposit_request)
-    for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in EIP8205]
-    for_ops(requests.preregistrations, process_preregistration_request)
-
-    # Settle the builder payment
+    # Settle the builder payment before the requests so that a builder exit
+    # request is rejected while the payment is pending
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
@@ -515,6 +497,20 @@ def apply_parent_execution_payload(
                 builder_index=parent_bid.builder_index,
             )
         )
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
+    # [New in EIP8205]
+    for_ops(requests.preregistrations, process_preregistration_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
