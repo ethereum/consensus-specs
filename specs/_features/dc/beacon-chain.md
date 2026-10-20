@@ -627,21 +627,19 @@ def has_quorum(state: BeaconState, participation: Participation) -> bool:
 
 ```python
 def is_valid_aggregation_bits(
-    state: BeaconState,
-    round: Round,
-    committee_bits: CommitteeBits,
-    aggregation_bits: AggregationBits,
+    state: BeaconState, round: Round, aggregate: Attestation | HeadVote
 ) -> bool:
     """
-    Check if ``aggregation_bits`` has one bit for each member of the voting
-    committees marked in ``committee_bits``, within the aggregate limit.
+    Check if the ``aggregation_bits`` of ``aggregate`` has one bit for each
+    member of the voting committees marked in its ``committee_bits``, within the
+    aggregate limit.
     """
     committees_size = 0
-    for committee_index in get_committee_indices(committee_bits):
+    for committee_index in get_committee_indices(aggregate.committee_bits):
         committees_size += len(get_voting_committee(state, round, committee_index))
-    return (
-        committees_size <= MAX_VALIDATORS_PER_AGGREGATE and len(aggregation_bits) == committees_size
-    )
+    if committees_size > MAX_VALIDATORS_PER_AGGREGATE:
+        return False
+    return len(aggregate.aggregation_bits) == committees_size
 ```
 
 ### Misc
@@ -728,21 +726,19 @@ def get_voting_committee(
 
 ```python
 def get_aggregate_participants(
-    state: BeaconState,
-    round: Round,
-    committee_bits: CommitteeBits,
-    aggregation_bits: AggregationBits,
+    state: BeaconState, round: Round, aggregate: Attestation | HeadVote
 ) -> set[ValidatorIndex]:
     """
-    Return the validators marked in ``aggregation_bits``, which concatenates the
-    voting committees marked in ``committee_bits`` for ``round``.
+    Return the validators marked in the ``aggregation_bits`` of ``aggregate``,
+    which concatenates the voting committees marked in its ``committee_bits``
+    for ``round``.
     """
     participants: set[ValidatorIndex] = set()
     committee_offset = 0
-    for committee_index in get_committee_indices(committee_bits):
+    for committee_index in get_committee_indices(aggregate.committee_bits):
         committee = get_voting_committee(state, round, committee_index)
         for i, validator_index in enumerate(committee):
-            if aggregation_bits[committee_offset + i]:
+            if aggregate.aggregation_bits[committee_offset + i]:
                 participants.add(validator_index)
         committee_offset += len(committee)
     return participants
@@ -756,9 +752,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
     Return the set of attesting indices corresponding to ``aggregation_bits``
     and ``committee_bits``.
     """
-    return get_aggregate_participants(
-        state, attestation.round, attestation.committee_bits, attestation.aggregation_bits
-    )
+    return get_aggregate_participants(state, attestation.round, attestation)
 ```
 
 #### Modified `get_unslashed_participating_indices`
@@ -1222,23 +1216,17 @@ def process_operations(
 ###### Modified `process_attestation`
 
 *Note*: The function `process_attestation` is rewritten for the finality gadget.
-Its checks read only the parts of the state that attestations do not modify, so
-each attestation is checked against the state as it was before the block's
-attestations. A validator earns a participation flag, and the proposer a reward,
-only when an attestation records the validator's progress or finality for the
-first time, so including the same attestation again earns nothing.
+Flags are credited only the first time a validator's progress or finality
+participation is recorded.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
+
     assert is_well_formed_attestation_data(data)
     assert is_valid_attestation_data(state, data)
     assert attestation.round in (get_previous_round(state), get_current_round(state))
-    assert is_valid_aggregation_bits(
-        state, attestation.round, attestation.committee_bits, attestation.aggregation_bits
-    )
-
-    # Verify signature
+    assert is_valid_aggregation_bits(state, attestation.round, attestation)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     if attestation.round == get_current_round(state):
@@ -1265,13 +1253,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
             proposer_reward_numerator += get_base_reward(state, index) * weight
 
-    # Reward proposer with a round's share of the per-epoch reward
-    proposer_reward_denominator = (
-        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
-    )
-    proposer_reward = Gwei(
-        proposer_reward_numerator // (proposer_reward_denominator * ROUNDS_PER_EPOCH)
-    )
+    epoch_divisor = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // (epoch_divisor * ROUNDS_PER_EPOCH))
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 
@@ -1291,10 +1274,8 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
     round = compute_round_at_slot(data.slot)
     for committee_index in get_committee_indices(vote.committee_bits):
         assert compute_voting_committee_slot(round, committee_index) == data.slot
-    assert is_valid_aggregation_bits(state, round, vote.committee_bits, vote.aggregation_bits)
-    voter_indices = get_aggregate_participants(
-        state, round, vote.committee_bits, vote.aggregation_bits
-    )
+    assert is_valid_aggregation_bits(state, round, vote)
+    voter_indices = get_aggregate_participants(state, round, vote)
     assert len(voter_indices) > 0
 
     # Verify signature
