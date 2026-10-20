@@ -1,0 +1,18 @@
+# Minimal preset - DC
+
+# Finality gadget
+# ---------------------------------------------------------------
+# 2**2 (= 4)
+PENDING_FINALITY_WINDOW: 4
+# 2**1 (= 2)
+TIMEOUT_DELAY_SLOTS: 2
+
+# Inactivity leak
+# ---------------------------------------------------------------
+# 2**14 (= 16,384)
+EJECTION_INACTIVITY_SCORE: 16384
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**3 (= 8)
+MAX_HEAD_VOTES: 8

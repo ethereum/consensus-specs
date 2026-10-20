@@ -1,6 +1,7 @@
 from .altair import AltairSpecBuilder
 from .bellatrix import BellatrixSpecBuilder
 from .capella import CapellaSpecBuilder
+from .dc import DCSpecBuilder
 from .deneb import DenebSpecBuilder
 from .eip8025 import EIP8025SpecBuilder
 from .eip8148 import EIP8148SpecBuilder
@@ -30,5 +31,6 @@ spec_builders = {
         EIP8198SpecBuilder,
         EIP8205SpecBuilder,
         EIP8321SpecBuilder,
+        DCSpecBuilder,
     )
 }
