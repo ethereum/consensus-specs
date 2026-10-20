@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [Modified `CommitteeBits`](#modified-committeebits)
+  - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
@@ -163,10 +163,10 @@ attestations weigh builder payments.
 
 ## Types
 
-### Modified `CommitteeBits`
+### New `AttestationCommitteeBits`
 
 ```python
-class CommitteeBits(BitVector):
+class AttestationCommitteeBits(BitVector):
     """
     Bits marking which attestation committees of a round participate in an
     attestation.
@@ -459,7 +459,8 @@ class Attestation(ProgressiveContainer):
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
-    committee_bits: CommitteeBits
+    # [Modified in DC]
+    committee_bits: AttestationCommitteeBits
     # [New in DC]
     round: Round
 ```
