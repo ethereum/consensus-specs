@@ -259,6 +259,7 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 | ------------------------------- | -------------------------------------------- |
 | `GENESIS_ROUND`                 | `Round(0)`                                   |
 | `ROUNDS_PER_EPOCH`              | `Uint64(SLOTS_PER_EPOCH // SLOTS_PER_ROUND)` |
+| `TIMEOUT_DELAY_SLOTS`           | `SLOTS_PER_ROUND`                            |
 | `PARTICIPATION_FLAG_WEIGHTS_DC` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]`         |
 
 ## Presets
@@ -268,7 +269,6 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 | Name                      | Value                |
 | ------------------------- | -------------------- |
 | `PENDING_FINALITY_WINDOW` | `Uint64(2**2)` (= 4) |
-| `TIMEOUT_DELAY_SLOTS`     | `Slot(2**1)` (= 2)   |
 
 *Note*: `PENDING_FINALITY_WINDOW` must be at least 2.
 
