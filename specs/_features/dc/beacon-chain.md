@@ -22,6 +22,7 @@
 - [Presets](#presets)
   - [Finality gadget](#finality-gadget)
   - [Voting rounds](#voting-rounds)
+  - [Rewards](#rewards)
   - [Inactivity leak](#inactivity-leak)
   - [Max operations per block](#max-operations-per-block)
 - [Containers](#containers)
@@ -59,6 +60,7 @@
     - [New `get_total_weight`](#new-get_total_weight)
     - [New `get_participating_weight`](#new-get_participating_weight)
     - [Modified `get_finality_delay`](#modified-get_finality_delay)
+    - [New `get_round_base_reward`](#new-get_round_base_reward)
     - [New `get_flag_index_rewards`](#new-get_flag_index_rewards)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
@@ -255,12 +257,11 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 ### Misc
 
-| Name                            | Value                                        |
-| ------------------------------- | -------------------------------------------- |
-| `GENESIS_ROUND`                 | `Round(0)`                                   |
-| `ROUNDS_PER_EPOCH`              | `Uint64(SLOTS_PER_EPOCH // SLOTS_PER_ROUND)` |
-| `TIMEOUT_DELAY_SLOTS`           | `SLOTS_PER_ROUND`                            |
-| `PARTICIPATION_FLAG_WEIGHTS_DC` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]`         |
+| Name                            | Value                                |
+| ------------------------------- | ------------------------------------ |
+| `GENESIS_ROUND`                 | `Round(0)`                           |
+| `TIMEOUT_DELAY_SLOTS`           | `SLOTS_PER_ROUND`                    |
+| `PARTICIPATION_FLAG_WEIGHTS_DC` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]` |
 
 ## Presets
 
@@ -281,8 +282,13 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 | `VOTING_COMMITTEE_SIZE`        | `Uint64(2**10)` (= 1,024)   |
 | `MAX_VALIDATORS_PER_AGGREGATE` | `Uint64(2**17)` (= 131,072) |
 
-*Note*: `SLOTS_PER_ROUND` must divide `SLOTS_PER_EPOCH`, and
-`COMMITTEES_PER_ROUND` must be a multiple of `SLOTS_PER_ROUND`.
+*Note*: `COMMITTEES_PER_ROUND` must be a multiple of `SLOTS_PER_ROUND`.
+
+### Rewards
+
+| Name                  | Value                 |
+| --------------------- | --------------------- |
+| `ROUND_REWARD_FACTOR` | `Uint64(2**4)` (= 16) |
 
 ### Inactivity leak
 
@@ -843,12 +849,24 @@ def get_finality_delay(state: BeaconState) -> Epoch:
     return previous_epoch - finalized_epoch
 ```
 
+#### New `get_round_base_reward`
+
+```python
+def get_round_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    """
+    Return the base reward for one round of the validator at ``index``.
+    """
+    increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    total_balance_root = integer_squareroot(get_total_active_balance(state))
+    reward_per_increment = EFFECTIVE_BALANCE_INCREMENT * ROUND_REWARD_FACTOR // total_balance_root
+    return increments * reward_per_increment
+```
+
 #### New `get_flag_index_rewards`
 
 *Note*: This replaces `get_flag_index_deltas`. A validator without the flag
 forfeits the reward and is not penalized, and no rewards are paid during an
-inactivity leak. Rewards are settled for the previous round, which earns
-`1 / ROUNDS_PER_EPOCH` of the per-epoch base reward.
+inactivity leak. Rewards are settled for the previous round.
 
 ```python
 def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei]:
@@ -871,9 +889,9 @@ def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei
     )
     active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
     for index in unslashed_participating_indices:
-        base_reward = get_base_reward(state, index)
+        base_reward = get_round_base_reward(state, index)
         reward_numerator = base_reward * weight * unslashed_participating_increments
-        reward_denominator = active_increments * WEIGHT_DENOMINATOR * ROUNDS_PER_EPOCH
+        reward_denominator = active_increments * WEIGHT_DENOMINATOR
         rewards[index] += reward_numerator // reward_denominator
     return rewards
 ```
@@ -1251,10 +1269,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         for flag_index in credited_flag_indices:
             round_participation[index] = add_flag(round_participation[index], flag_index)
             weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
-            proposer_reward_numerator += get_base_reward(state, index) * weight
+            proposer_reward_numerator += get_round_base_reward(state, index) * weight
 
-    epoch_divisor = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
-    proposer_reward = Gwei(proposer_reward_numerator // (epoch_divisor * ROUNDS_PER_EPOCH))
+    reward_divisor = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // reward_divisor)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
 ```
 

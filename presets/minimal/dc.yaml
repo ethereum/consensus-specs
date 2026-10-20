@@ -16,6 +16,11 @@ VOTING_COMMITTEE_SIZE: 64
 # [customized] 2**9 (= 512)
 MAX_VALIDATORS_PER_AGGREGATE: 512
 
+# Rewards
+# ---------------------------------------------------------------
+# [customized] 2**5 (= 32)
+ROUND_REWARD_FACTOR: 32
+
 # Inactivity leak
 # ---------------------------------------------------------------
 # 2**16 (= 65,536)
