@@ -8,9 +8,9 @@ PENDING_FINALITY_WINDOW: 4
 # Voting rounds
 # ---------------------------------------------------------------
 # [customized] 2**2 (= 4)
-SLOTS_PER_ROUND: 4
+SLOTS_PER_VOTING_ROUND: 4
 # [customized] 2**3 (= 8)
-COMMITTEES_PER_ROUND: 8
+COMMITTEES_PER_VOTING_ROUND: 8
 # [customized] 2**6 (= 64)
 VOTING_COMMITTEE_SIZE: 64
 # [customized] 2**9 (= 512)
@@ -19,7 +19,7 @@ MAX_VALIDATORS_PER_AGGREGATE: 512
 # Rewards
 # ---------------------------------------------------------------
 # [customized] 2**5 (= 32)
-ROUND_REWARD_FACTOR: 32
+VOTING_ROUND_REWARD_FACTOR: 32
 
 # Inactivity leak
 # ---------------------------------------------------------------
