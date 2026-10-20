@@ -7,14 +7,16 @@
 - [Introduction](#introduction)
 - [Types](#types)
   - [Modified `CommitteeBits`](#modified-committeebits)
+  - [New `HeadVoteCommittee`](#new-headvotecommittee)
+  - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
   - [New `LegacyAttesterSlashings`](#new-legacyattesterslashings)
   - [New `Participation`](#new-participation)
   - [New `PendingFinalities`](#new-pendingfinalities)
-  - [New `VotingRoundParticipation`](#new-votingroundparticipation)
   - [New `VotingRound`](#new-votinground)
+  - [New `VotingRoundParticipation`](#new-votingroundparticipation)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
@@ -23,6 +25,7 @@
 - [Presets](#presets)
   - [Finality gadget](#finality-gadget)
   - [Voting rounds](#voting-rounds)
+  - [Head votes](#head-votes)
   - [Rewards](#rewards)
   - [Inactivity leak](#inactivity-leak)
   - [Max operations per block](#max-operations-per-block)
@@ -61,6 +64,7 @@
     - [New `get_voting_committee`](#new-get_voting_committee)
     - [New `get_aggregate_participants`](#new-get_aggregate_participants)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [New `get_head_vote_committee`](#new-get_head_vote_committee)
     - [Modified `get_unslashed_participating_indices`](#modified-get_unslashed_participating_indices)
     - [New `get_validator_weight`](#new-get_validator_weight)
     - [New `get_total_weight`](#new-get_total_weight)
@@ -91,7 +95,7 @@
         - [New `process_legacy_attester_slashing`](#new-process_legacy_attester_slashing)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
-      - [Head votes](#head-votes)
+      - [Head votes](#head-votes-1)
         - [New `process_head_vote`](#new-process_head_vote)
     - [Height events](#height-events)
       - [New `process_height_events`](#new-process_height_events)
@@ -120,13 +124,15 @@ finality pairs reach a quorum is finalized.
 
 The AC keeps its own state outside of the beacon state. A block carries the head
 votes of the previous slot and records which of them the proposer counted as
-support. The state transition checks these votes but does not store them.
+support. The state transition checks these votes but does not store them. In
+every slot, a head vote committee of `HEAD_VOTE_COMMITTEE_SIZE` validators,
+sampled by effective balance, casts head votes.
 
-Validators vote in voting rounds of `SLOTS_PER_VOTING_ROUND` slots, separate
-from epochs. In every voting round, the active validators are shuffled into
+Validators cast FG attestations in voting rounds of `SLOTS_PER_VOTING_ROUND`
+slots. In every voting round, the active validators are shuffled into
 `COMMITTEES_PER_VOTING_ROUND` voting committees, spread evenly over the slots of
-the voting round. Each validator sits on one committee and, in that committee's
-slot, casts a head vote and an FG attestation. Aggregates combine the votes of
+the voting round. Each validator sits on one committee and casts its FG
+attestation in that committee's slot. Aggregates combine the attestations of
 several committees, and the FG accounting below is settled once per voting
 round, in `process_voting_round`.
 
@@ -162,10 +168,33 @@ attestations weigh builder payments.
 class CommitteeBits(BitVector):
     """
     Bits marking which voting committees of a voting round participate in an
-    aggregate.
+    attestation.
     """
 
     LENGTH = COMMITTEES_PER_VOTING_ROUND
+```
+
+### New `HeadVoteCommittee`
+
+```python
+class HeadVoteCommittee(Vector[ValidatorIndex]):
+    """
+    The head vote committee of a slot.
+    """
+
+    LENGTH = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteCommitteeBits`
+
+```python
+class HeadVoteCommitteeBits(BitVector):
+    """
+    The participation bits of the head vote committee, one bit per member in
+    committee order.
+    """
+
+    LENGTH = HEAD_VOTE_COMMITTEE_SIZE
 ```
 
 ### New `HeadVoteSupportBits`
@@ -230,15 +259,6 @@ class PendingFinalities(List[PendingFinality]):
     LIMIT = PENDING_FINALITY_WINDOW
 ```
 
-### New `VotingRoundParticipation`
-
-```python
-class VotingRoundParticipation(ProgressiveList[ParticipationFlags]):
-    """
-    The participation flags of each validator for a voting round.
-    """
-```
-
 ### New `VotingRound`
 
 ```python
@@ -246,6 +266,15 @@ class VotingRound(Uint64):
     """
     A voting round number. Each voting round spans ``SLOTS_PER_VOTING_ROUND``
     slots, in which each active validator sits on one voting committee.
+    """
+```
+
+### New `VotingRoundParticipation`
+
+```python
+class VotingRoundParticipation(ProgressiveList[ParticipationFlags]):
+    """
+    The participation flags of each validator for a voting round.
     """
 ```
 
@@ -271,10 +300,11 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 ### Domains
 
-| Name                      | Value                      |
-| ------------------------- | -------------------------- |
-| `DOMAIN_HEAD_VOTE`        | `DomainType("0x12000000")` |
-| `DOMAIN_VOTING_COMMITTEE` | `DomainType("0x13000000")` |
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
+| `DOMAIN_HEAD_VOTE`           | `DomainType("0x12000000")` |
+| `DOMAIN_VOTING_COMMITTEE`    | `DomainType("0x13000000")` |
+| `DOMAIN_HEAD_VOTE_COMMITTEE` | `DomainType("0x14000000")` |
 
 ### Misc
 
@@ -305,6 +335,12 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 *Note*: `COMMITTEES_PER_VOTING_ROUND` must be a multiple of
 `SLOTS_PER_VOTING_ROUND`.
+
+### Head votes
+
+| Name                       | Value                     |
+| -------------------------- | ------------------------- |
+| `HEAD_VOTE_COMMITTEE_SIZE` | `Uint64(2**10)` (= 1,024) |
 
 ### Rewards
 
@@ -358,12 +394,11 @@ class HeadVoteData(Container):
 
 ```python
 class HeadVote(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=4)
+    ACTIVE_FIELDS = active_fields(width=3)
 
-    aggregation_bits: AggregationBits
+    aggregation_bits: HeadVoteCommitteeBits
     data: HeadVoteData
     signature: BLSSignature
-    committee_bits: CommitteeBits
 ```
 
 ### New `HeadVoteMessage`
@@ -713,8 +748,8 @@ def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool
     Check if ``validator`` is eligible for activation.
     """
     return (
-        # Placement in queue is finalized
         # [Modified in DC]
+        # Placement in queue is finalized
         validator.activation_eligibility_epoch <= compute_epoch_at_slot(state.finalized_slot)
         # Has not yet been activated
         and validator.activation_epoch == FAR_FUTURE_EPOCH
@@ -730,8 +765,8 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     """
     builder = state.builders[builder_index]
     return (
-        # Placement in builder list is finalized
         # [Modified in DC]
+        # Placement in builder list is finalized
         builder.deposit_epoch < compute_epoch_at_slot(state.finalized_slot)
         # Has not initiated exit
         and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
@@ -756,7 +791,7 @@ def has_quorum(state: BeaconState, participation: Participation) -> bool:
 
 ```python
 def is_valid_aggregation_bits(
-    state: BeaconState, voting_round: VotingRound, aggregate: Attestation | HeadVote
+    state: BeaconState, voting_round: VotingRound, aggregate: Attestation
 ) -> bool:
     """
     Check if the ``aggregation_bits`` of ``aggregate`` has one bit for each
@@ -859,7 +894,7 @@ def get_voting_committee(
 
 ```python
 def get_aggregate_participants(
-    state: BeaconState, voting_round: VotingRound, aggregate: Attestation | HeadVote
+    state: BeaconState, voting_round: VotingRound, aggregate: Attestation
 ) -> set[ValidatorIndex]:
     """
     Return the validators marked in the ``aggregation_bits`` of ``aggregate``,
@@ -886,6 +921,26 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
     and ``committee_bits``.
     """
     return get_aggregate_participants(state, attestation.voting_round, attestation)
+```
+
+#### New `get_head_vote_committee`
+
+*Note*: Like the payload timeliness committee, the head vote committee is
+sampled by effective balance and can contain duplicates.
+
+```python
+def get_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee:
+    """
+    Return the head vote committee for ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_HEAD_VOTE_COMMITTEE) + uint_to_bytes(slot))
+    indices = get_active_validator_indices(state, epoch)
+    return HeadVoteCommittee(
+        data=compute_balance_weighted_selection(
+            state, indices, seed, size=HEAD_VOTE_COMMITTEE_SIZE, shuffle_indices=True
+        )
+    )
 ```
 
 #### Modified `get_unslashed_participating_indices`
@@ -1464,12 +1519,11 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
     data = vote.data
     assert data.slot == state.slot - 1
 
-    # Only the committees assigned to the vote's slot cast head votes
-    voting_round = compute_voting_round_at_slot(data.slot)
-    for committee_index in get_committee_indices(vote.committee_bits):
-        assert compute_voting_committee_slot(voting_round, committee_index) == data.slot
-    assert is_valid_aggregation_bits(state, voting_round, vote)
-    voter_indices = get_aggregate_participants(state, voting_round, vote)
+    committee = get_head_vote_committee(state, data.slot)
+    voter_indices: list[ValidatorIndex] = []
+    for position, index in enumerate(committee):
+        if vote.aggregation_bits[position]:
+            voter_indices.append(index)
     assert len(voter_indices) > 0
 
     # Verify signature
