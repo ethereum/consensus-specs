@@ -755,6 +755,8 @@ def process_epoch(state: BeaconState) -> None:
     # [Modified in DC]
     # Removed `process_justification_and_finalization`
     process_inactivity_updates(state)
+    # [Modified in DC]
+    # Removed `process_rewards_and_penalties`
     # [New in DC]
     process_rewards(state)
     process_registry_updates(state)
@@ -972,6 +974,8 @@ def process_operations(
     assert len(body.head_vote_support_bits) == len(body.head_votes)
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
+    # [Modified in DC]
+    # Removed `process_attester_slashing`
     # [Modified in DC]
     for_ops(body.attestations, process_attestation)
     for_ops(body.voluntary_exits, process_voluntary_exit)
