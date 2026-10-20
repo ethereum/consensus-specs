@@ -84,6 +84,7 @@
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
   - [Block processing](#block-processing)
+    - [Modified `process_block`](#modified-process_block)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
       - [Legacy attester slashings](#legacy-attester-slashings)
@@ -1310,6 +1311,8 @@ def process_pending_deposits(state: BeaconState) -> None:
 ```
 
 ### Block processing
+
+#### Modified `process_block`
 
 *Note*: The height events of a block are processed once, after all of its
 attestations.
