@@ -470,10 +470,9 @@ class Attestation(ProgressiveContainer):
 *Note*: Support is recorded per aggregate rather than per vote. The validators
 in an aggregate share its head, so their votes resolve together.
 
-*Note*: `legacy_attester_slashings` keeps the position of `attester_slashings`
-and its contents. `attester_slashings` is a new field for slashings of this
-upgrade's attestations. `legacy_attester_slashings` should be removed in a later
-upgrade.
+*Note*: `attester_slashings` now holds slashings of this upgrade's attestations.
+`legacy_attester_slashings` holds slashings of attestations made before this
+upgrade and should be removed in a later upgrade.
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
@@ -482,9 +481,7 @@ class BeaconBlockBody(ProgressiveContainer):
     randao_reveal: BLSSignature
     graffiti: Bytes32
     proposer_slashings: ProposerSlashings
-    # [Modified in DC]
-    # Renamed `attester_slashings`
-    legacy_attester_slashings: LegacyAttesterSlashings
+    attester_slashings: AttesterSlashings
     attestations: Attestations
     voluntary_exits: VoluntaryExits
     sync_aggregate: SyncAggregate
@@ -497,7 +494,7 @@ class BeaconBlockBody(ProgressiveContainer):
     # [New in DC]
     head_vote_support_bits: HeadVoteSupportBits
     # [New in DC]
-    attester_slashings: AttesterSlashings
+    legacy_attester_slashings: LegacyAttesterSlashings
 ```
 
 ### Modified `BeaconState`
