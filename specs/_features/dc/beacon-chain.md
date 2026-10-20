@@ -68,6 +68,8 @@
     - [Modified `get_finality_delay`](#modified-get_finality_delay)
     - [New `get_round_base_reward`](#new-get_round_base_reward)
     - [New `get_flag_index_rewards`](#new-get_flag_index_rewards)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [New `add_round_participation_flag`](#new-add_round_participation_flag)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -1020,6 +1022,28 @@ def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei
     return rewards
 ```
 
+### Beacon state mutators
+
+#### New `add_round_participation_flag`
+
+```python
+def add_round_participation_flag(
+    state: BeaconState, round: Round, index: ValidatorIndex, flag_index: int
+) -> None:
+    """
+    Add the flag at ``flag_index`` to the participation of the validator at
+    ``index`` in ``round``, or in the previous round for older rounds.
+    """
+    if round == get_current_round(state):
+        state.current_round_participation[index] = add_flag(
+            state.current_round_participation[index], flag_index
+        )
+    else:
+        state.previous_round_participation[index] = add_flag(
+            state.previous_round_participation[index], flag_index
+        )
+```
+
 ### Validator registry
 
 #### Modified `add_validator_to_registry`
@@ -1389,37 +1413,31 @@ participation is recorded.
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
+    current_round = get_current_round(state)
 
     assert is_well_formed_attestation_data(data)
     assert is_valid_attestation_data(state, data)
-    assert attestation.round <= get_current_round(state)
+    assert attestation.round <= current_round
     assert attestation.round >= compute_round_at_slot(state.finalized_slot)
     assert is_valid_aggregation_bits(state, attestation.round, attestation)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
-    if attestation.round == get_current_round(state):
-        round_participation = state.current_round_participation
-    else:
-        round_participation = state.previous_round_participation
-
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
-        credited_flag_indices = []
+        base_reward = get_round_base_reward(state, index)
         for pending in state.pending_finality:
             if pending.checkpoint == data.finality and not pending.participation[index]:
                 pending.participation[index] = Boolean(True)
-                credited_flag_indices.append(FINALITY_FLAG_INDEX)
+                add_round_participation_flag(state, attestation.round, index, FINALITY_FLAG_INDEX)
+                proposer_reward_numerator += base_reward * FINALITY_WEIGHT
         if data.target == state.target_checkpoint:
             if not state.progress_participation[index]:
                 state.progress_participation[index] = Boolean(True)
-                credited_flag_indices.append(PROGRESS_FLAG_INDEX)
+                add_round_participation_flag(state, current_round, index, PROGRESS_FLAG_INDEX)
+                add_round_participation_flag(state, attestation.round, index, PROGRESS_FLAG_INDEX)
+                proposer_reward_numerator += base_reward * PROGRESS_WEIGHT
             if not data.timeout:
                 state.target_participation[index] = Boolean(True)
-
-        for flag_index in credited_flag_indices:
-            round_participation[index] = add_flag(round_participation[index], flag_index)
-            weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
-            proposer_reward_numerator += get_round_base_reward(state, index) * weight
 
     reward_divisor = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
     proposer_reward = Gwei(proposer_reward_numerator // reward_divisor)
