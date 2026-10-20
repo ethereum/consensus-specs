@@ -108,10 +108,10 @@ weight reaches zero is exited and keeps its stake. When finality is delayed,
 this is what lets the participating validators regain a quorum, and no rewards
 are paid until it does.
 
-*Note*: A quorum is two thirds of the total weight of the active validators. A
-validator's weight is its effective balance, reduced by its inactivity score.
-Slashed validators count toward the total but not toward a quorum, as in Casper
-FFG.
+*Note*: A quorum is two thirds of the total weight of the active validators.
+Every validator has the same weight, regardless of its balance, reduced only by
+its inactivity score. Slashed validators count toward the total but not toward a
+quorum.
 
 *Note*: This upgrade does not yet specify rewards for head votes, slashing
 conditions for FG attestations, or how attestations weigh builder payments. A
@@ -550,7 +550,8 @@ def has_quorum(state: BeaconState, participation: Participation) -> bool:
     """
     active_indices = set(get_active_validator_indices(state, get_current_epoch(state)))
     participating_weight = get_participating_weight(state, participation)
-    return participating_weight * 3 >= get_total_weight(state, active_indices) * 2
+    total_weight = get_total_weight(state, active_indices)
+    return participating_weight > 0 and participating_weight * 3 >= total_weight * 2
 ```
 
 ### Beacon state accessors
@@ -574,41 +575,39 @@ def get_attesting_indices(
 
 #### New `get_validator_weight`
 
-*Note*: The weight is the effective balance times
-`1 - (score / EJECTION_INACTIVITY_SCORE)**2`, computed as two integer factors to
-avoid overflow.
+*Note*: Every validator has the same weight, regardless of its balance. A
+validator with no inactivity score has weight `EJECTION_INACTIVITY_SCORE**2`,
+which falls with the square of its score and reaches zero at
+`EJECTION_INACTIVITY_SCORE`.
 
 ```python
-def get_validator_weight(state: BeaconState, index: ValidatorIndex) -> Gwei:
+def get_validator_weight(state: BeaconState, index: ValidatorIndex) -> Uint64:
     """
     Return the weight of the validator at ``index`` in finality gadget quorums.
     """
-    effective_balance = state.validators[index].effective_balance
     inactivity_score = min(state.inactivity_scores[index], EJECTION_INACTIVITY_SCORE)
-    weight = effective_balance * (EJECTION_INACTIVITY_SCORE - inactivity_score)
-    weight = weight // EJECTION_INACTIVITY_SCORE * (EJECTION_INACTIVITY_SCORE + inactivity_score)
-    return Gwei(weight // EJECTION_INACTIVITY_SCORE)
+    return (EJECTION_INACTIVITY_SCORE - inactivity_score) * (
+        EJECTION_INACTIVITY_SCORE + inactivity_score
+    )
 ```
 
 #### New `get_total_weight`
 
 ```python
-def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Gwei:
+def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint64:
     """
     Return the combined weight of the ``indices``.
-    ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum, so that no validators never
-    form a quorum.
     """
-    total_weight = Gwei(0)
+    total_weight = Uint64(0)
     for index in indices:
         total_weight += get_validator_weight(state, index)
-    return max(EFFECTIVE_BALANCE_INCREMENT, total_weight)
+    return total_weight
 ```
 
 #### New `get_participating_weight`
 
 ```python
-def get_participating_weight(state: BeaconState, participation: Participation) -> Gwei:
+def get_participating_weight(state: BeaconState, participation: Participation) -> Uint64:
     """
     Return the combined weight of the active and unslashed validators marked in
     ``participation``.
@@ -803,9 +802,9 @@ def process_inactivity_updates(state: BeaconState) -> None:
 *Note*: A validator gains `INACTIVITY_SCORE_BIAS` points for each epoch it is
 offline, and its weight falls with the square of its score. The table below
 shows the weight of a validator that was fully active and then stays offline.
-These percentages are the same for every validator, regardless of its balance.
-Inactivity does not reduce a validator's balance. When the weight reaches zero,
-the validator is force-exited and keeps its stake.
+Weights are shown as a percentage of full weight. Inactivity does not reduce a
+validator's balance. When the weight reaches zero, the validator is force-exited
+and keeps its stake.
 
 | Epochs offline | Inactivity score | Voting weight |
 | -------------: | ---------------: | ------------: |
