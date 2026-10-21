@@ -134,7 +134,7 @@ sampled by effective balance, casts head votes.
 Validators cast FG attestations in rounds of `SLOTS_PER_ROUND` slots. A round is
 to the FG what an epoch is to Casper FFG: each active validator attests once,
 and the FG settles rewards and inactivity at its end, in `process_round`. In
-every round, the active validators are shuffled into
+every round, the active validators are split into
 `ATTESTATION_COMMITTEES_PER_ROUND` attestation committees, spread evenly over
 the slots of the round. Each validator sits on one committee and casts its FG
 attestation in that committee's slot. Aggregates combine the attestations of
@@ -305,11 +305,10 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 ### Domains
 
-| Name                           | Value                      |
-| ------------------------------ | -------------------------- |
-| `DOMAIN_HEAD_VOTE`             | `DomainType("0x12000000")` |
-| `DOMAIN_ATTESTATION_COMMITTEE` | `DomainType("0x13000000")` |
-| `DOMAIN_HEAD_VOTE_COMMITTEE`   | `DomainType("0x14000000")` |
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
+| `DOMAIN_HEAD_VOTE`           | `DomainType("0x12000000")` |
+| `DOMAIN_HEAD_VOTE_COMMITTEE` | `DomainType("0x13000000")` |
 
 ### Misc
 
@@ -335,7 +334,6 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 | ---------------------------------- | --------------------------- |
 | `SLOTS_PER_ROUND`                  | `Slot(2**3)` (= 8)          |
 | `ATTESTATION_COMMITTEES_PER_ROUND` | `Uint64(2**11)` (= 2,048)   |
-| `ATTESTATION_COMMITTEE_SIZE`       | `Uint64(2**10)` (= 1,024)   |
 | `MAX_VALIDATORS_PER_AGGREGATE`     | `Uint64(2**17)` (= 131,072) |
 
 *Note*: `ATTESTATION_COMMITTEES_PER_ROUND` must be a multiple of
@@ -916,10 +914,9 @@ def get_previous_round(state: BeaconState) -> Round:
 
 #### New `get_attestation_committee`
 
-*Note*: The active validators are shuffled once per round and split evenly into
-`ATTESTATION_COMMITTEES_PER_ROUND` committees, so each validator sits on exactly
-one. Committees are capped at `ATTESTATION_COMMITTEE_SIZE`, so if there are more
-active validators than seats, the rest do not vote in that round.
+*Note*: The active validators are not shuffled. They are split evenly into
+`ATTESTATION_COMMITTEES_PER_ROUND` committees, in index order rotated by
+`round`, so each validator sits on exactly one.
 
 ```python
 def get_attestation_committee(
@@ -929,10 +926,13 @@ def get_attestation_committee(
     Return the attestation committee at ``index`` for ``round``.
     """
     epoch = compute_epoch_at_slot(compute_start_slot_at_round(round))
-    seed = sha256(get_seed(state, epoch, DOMAIN_ATTESTATION_COMMITTEE) + uint_to_bytes(round))
     indices = get_active_validator_indices(state, epoch)
-    committee = compute_committee(indices, seed, index, ATTESTATION_COMMITTEES_PER_ROUND)
-    return committee[:ATTESTATION_COMMITTEE_SIZE]
+    start = (len(indices) * index) // ATTESTATION_COMMITTEES_PER_ROUND
+    end = (len(indices) * (index + 1)) // ATTESTATION_COMMITTEES_PER_ROUND
+    committee: list[ValidatorIndex] = []
+    for position in range(start, end):
+        committee.append(indices[(position + round) % len(indices)])
+    return committee
 ```
 
 #### New `get_aggregate_participants`
