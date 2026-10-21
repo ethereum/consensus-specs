@@ -35,6 +35,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
             "get_attestation_participation_flag_indices",
             "get_attestation_signature",
             "get_beacon_committee",
+            "get_builder_payment_quorum_threshold",
             "get_committee_assignment",
             "get_committee_count_per_slot",
             "get_current_target",

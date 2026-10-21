@@ -9,6 +9,7 @@
   - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
+  - [New `HeadVoteParticipation`](#new-headvoteparticipation)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
@@ -52,6 +53,8 @@
     - [New `is_valid_legacy_indexed_attestation`](#new-is_valid_legacy_indexed_attestation)
     - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
     - [Modified `is_active_builder`](#modified-is_active_builder)
+    - [New `is_head_vote_same_slot`](#new-is_head_vote_same_slot)
+    - [New `has_builder_payment_quorum`](#new-has_builder_payment_quorum)
     - [New `has_quorum`](#new-has_quorum)
     - [New `is_valid_aggregation_bits`](#new-is_valid_aggregation_bits)
   - [Misc](#misc-1)
@@ -89,6 +92,7 @@
     - [Modified `process_participation_flag_updates`](#modified-process_participation_flag_updates)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [Modified `process_builder_pending_payments`](#modified-process_builder_pending_payments)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -125,11 +129,12 @@ and timeouts together also moves the chain to the next height, but only
 `TIMEOUT_DELAY_SLOTS` slots after the target. A pending justification whose
 finality pairs reach a quorum is finalized.
 
-The AC keeps its own state outside of the beacon state. A block carries the head
-votes of the previous slot and records which of them the proposer counted as
-support. The state transition checks these votes but does not store them. In
-every slot, a head vote committee of `HEAD_VOTE_COMMITTEE_SIZE` validators,
-sampled by effective balance, casts head votes.
+The AC keeps its own state outside of the beacon state. In every slot, a head
+vote committee of `HEAD_VOTE_COMMITTEE_SIZE` validators, sampled by effective
+balance, casts head votes. A block carries head votes of the previous and
+current epochs and records which of the previous slot's votes the proposer
+counted as support. The state transition records which seats voted for the block
+of their slot, which weighs builder payments.
 
 Validators cast FG attestations in rounds of `SLOTS_PER_ROUND` slots. A round is
 to the FG what an epoch is to Casper FFG: each active validator attests once,
@@ -159,8 +164,7 @@ Every validator has the same weight, regardless of its balance, reduced only by
 its inactivity score. Slashed validators count toward the total but not toward a
 quorum.
 
-*Note*: This upgrade does not yet specify rewards for head votes or how
-attestations weigh builder payments.
+*Note*: This upgrade does not yet specify rewards for head votes.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -199,6 +203,18 @@ class HeadVoteCommitteeBits(BitVector):
     """
 
     LENGTH = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteParticipation`
+
+```python
+class HeadVoteParticipation(Vector[HeadVoteCommitteeBits]):
+    """
+    The seats of each slot's head vote committee that voted for the block of
+    that slot, for the previous and current epochs.
+    """
+
+    LENGTH = 2 * SLOTS_PER_EPOCH
 ```
 
 ### New `HeadVoteSupportBits`
@@ -506,7 +522,7 @@ keeps its name but moves to a new position.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=56, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
+    ACTIVE_FIELDS = active_fields(width=57, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -576,6 +592,8 @@ class BeaconState(ProgressiveContainer):
     current_round_participation: RoundParticipation
     # [New in DC]
     pending_finality: PendingFinalities
+    # [New in DC]
+    head_vote_participation: HeadVoteParticipation
 ```
 
 ## Helpers
@@ -774,6 +792,37 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
         # Has not initiated exit
         and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
     )
+```
+
+#### New `is_head_vote_same_slot`
+
+```python
+def is_head_vote_same_slot(state: BeaconState, data: HeadVoteData) -> bool:
+    """
+    Check if ``data`` votes for the block proposed at its slot.
+    """
+    if data.slot == GENESIS_SLOT:
+        return True
+    if data.beacon_block_root != get_block_root_at_slot(state, data.slot):
+        return False
+    if data.beacon_block_root == get_block_root_at_slot(state, data.slot - 1):
+        return False
+    return True
+```
+
+#### New `has_builder_payment_quorum`
+
+```python
+def has_builder_payment_quorum(participation: HeadVoteCommitteeBits) -> bool:
+    """
+    Check if the seats set in ``participation`` reach the payment quorum.
+    """
+    seats = 0
+    for is_set in participation:
+        if is_set:
+            seats += 1
+    quorum = HEAD_VOTE_COMMITTEE_SIZE * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
+    return seats * BUILDER_PAYMENT_THRESHOLD_DENOMINATOR >= quorum
 ```
 
 #### New `has_quorum`
@@ -1180,11 +1229,11 @@ def add_validator_to_registry(
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
+    set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in DC]
     set_or_append_list(state.previous_round_participation, index, ParticipationFlags(0b0000_0000))
     # [New in DC]
     set_or_append_list(state.current_round_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in DC]
     set_or_append_list(state.target_participation, index, Boolean(False))
     # [New in DC]
@@ -1379,6 +1428,34 @@ def process_epoch(state: BeaconState) -> None:
     process_ptc_window(state)
 ```
 
+#### Modified `process_builder_pending_payments`
+
+*Note*: The function `process_builder_pending_payments` is rewritten to weigh
+payments by the head votes recorded in `head_vote_participation`.
+
+```python
+def process_builder_pending_payments(state: BeaconState) -> None:
+    """
+    Processes the builder pending payments from the previous epoch.
+    """
+    for index in range(SLOTS_PER_EPOCH):
+        payment = state.builder_pending_payments[index]
+        if payment.withdrawal.amount == 0:
+            continue
+        if has_builder_payment_quorum(state.head_vote_participation[index]):
+            state.builder_pending_withdrawals.append(payment.withdrawal)
+
+    old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
+    state.builder_pending_payments[:SLOTS_PER_EPOCH] = old_payments
+    new_payments = [BuilderPendingPayment.empty() for _ in range(SLOTS_PER_EPOCH)]
+    state.builder_pending_payments[SLOTS_PER_EPOCH:] = new_payments
+
+    old_participation = state.head_vote_participation[SLOTS_PER_EPOCH:]
+    state.head_vote_participation[:SLOTS_PER_EPOCH] = old_participation
+    new_participation = [HeadVoteCommitteeBits() for _ in range(SLOTS_PER_EPOCH)]
+    state.head_vote_participation[SLOTS_PER_EPOCH:] = new_participation
+```
+
 #### Modified `process_pending_deposits`
 
 ```python
@@ -1487,6 +1564,10 @@ def process_operations(
     assert len(body.head_votes) <= MAX_HEAD_VOTES
     # [New in DC]
     assert len(body.head_vote_support_bits) == len(body.head_votes)
+    # [New in DC]
+    for vote_index in range(len(body.head_votes)):
+        if body.head_vote_support_bits[vote_index]:
+            assert body.head_votes[vote_index].data.slot == state.slot - 1
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
@@ -1570,13 +1651,14 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ###### New `process_head_vote`
 
-*Note*: Head votes belong to the available chain. A block must carry only valid
-votes of the previous slot, but the votes do not modify the beacon state.
+*Note*: Head votes belong to the available chain. The beacon state records only
+which seats voted for the block of their slot, to weigh builder payments.
 
 ```python
 def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
     data = vote.data
-    assert data.slot == state.slot - 1
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
 
     committee = get_head_vote_committee(state, data.slot)
     voter_indices: list[ValidatorIndex] = []
@@ -1590,6 +1672,17 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
     domain = get_domain(state, DOMAIN_HEAD_VOTE, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     assert bls.FastAggregateVerify(pubkeys, signing_root, vote.signature)
+
+    # Record the seats that voted for the block of their slot
+    if is_head_vote_same_slot(state, data):
+        if compute_epoch_at_slot(data.slot) == get_current_epoch(state):
+            participation_index = SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH
+        else:
+            participation_index = data.slot % SLOTS_PER_EPOCH
+        participation = state.head_vote_participation[participation_index]
+        for position in range(HEAD_VOTE_COMMITTEE_SIZE):
+            if vote.aggregation_bits[position]:
+                participation[position] = Boolean(True)
 ```
 
 #### Height events
