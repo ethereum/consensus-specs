@@ -72,6 +72,11 @@ configs = ["*.yaml"]
 presets = ["**/*.yaml", "**/*.json"]
 specs = ["**/*.md"]
 
+[tool.uv]
+# Older uv versions trust a root CA with a compromised intermediate:
+# https://github.com/astral-sh/uv/security/advisories/GHSA-hq85-5cpj-mr62
+required-version = ">=0.13.4"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
