@@ -448,6 +448,98 @@ def test_process_parent_execution_payload__older_than_previous_epoch(spec, state
 
 @with_gloas_and_later
 @spec_state_test
+def test_process_parent_execution_payload__older_than_previous_epoch_builder_exit(spec, state):
+    """
+    Test that a builder exit request in the parent's payload is rejected when the
+    parent's payment was evicted from ``builder_pending_payments``: the payment
+    is appended before the requests are processed, so the exit guard sees it.
+    """
+    builder_index = 0
+    value = spec.Gwei(50_000_000)
+    fee_recipient = spec.ExecutionAddress(b"\xab" * 20)
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests(
+            data=[
+                spec.BuilderExitRequest(
+                    source_address=builder.execution_address, pubkey=builder.pubkey
+                )
+            ]
+        )
+    )
+
+    parent_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    state.latest_block_header.slot = parent_slot
+    state.latest_execution_payload_bid.slot = parent_slot
+    state.latest_execution_payload_bid.fee_recipient = fee_recipient
+    _commit_parent_requests(spec, state, requests, value=value, builder_index=builder_index)
+    parent_bid = state.latest_execution_payload_bid.copy()
+
+    # Cross two epoch boundaries to evict the payment, then finalize so the builder is active
+    spec.process_slots(state, 2 * spec.SLOTS_PER_EPOCH)
+    state.finalized_checkpoint.epoch = spec.Epoch(1)
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+    spec.process_slots(state, block.slot)
+
+    assert spec.compute_epoch_at_slot(parent_bid.slot) < spec.get_previous_epoch(state)
+    assert spec.is_active_builder(state, builder_index)
+    assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
+    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    # The payment is pending again and the exit was rejected
+    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
+    assert state.builder_pending_withdrawals[pre_pending_withdrawals_len].amount == value
+    assert spec.is_active_builder(state, builder_index)
+    assert state.builders[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__older_than_previous_epoch_builder_exit_no_payment(
+    spec, state
+):
+    """
+    Test that a builder exit request in the parent's payload is accepted when the
+    parent's bid had no payment, even if the parent is older than the previous epoch.
+    """
+    builder_index = 0
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests(
+            data=[
+                spec.BuilderExitRequest(
+                    source_address=builder.execution_address, pubkey=builder.pubkey
+                )
+            ]
+        )
+    )
+
+    parent_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    state.latest_block_header.slot = parent_slot
+    state.latest_execution_payload_bid.slot = parent_slot
+    _commit_parent_requests(spec, state, requests, value=spec.Gwei(0), builder_index=builder_index)
+
+    spec.process_slots(state, 2 * spec.SLOTS_PER_EPOCH)
+    state.finalized_checkpoint.epoch = spec.Epoch(1)
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+    spec.process_slots(state, block.slot)
+
+    assert spec.is_active_builder(state, builder_index)
+    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    # Nothing to settle and the exit was accepted
+    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len
+    assert not spec.is_active_builder(state, builder_index)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_builder_slot(
     spec, state
 ):

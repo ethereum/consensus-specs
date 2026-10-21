@@ -3,8 +3,10 @@ from random import Random
 from eth_consensus_specs.test.context import (
     always_bls,
     GLOAS,
+    HEZE,
     spec_state_test,
     spec_state_test_with_matching_config,
+    with_all_phases_from_to,
     with_gloas_and_later,
     with_phases,
 )
@@ -560,6 +562,51 @@ def test_invalid_too_many_attester_slashings(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_builder_payment_removed_when_proposer_slashes_itself(spec, state):
+    """
+    Test that a proposer cannot keep its builder payment by slashing itself in
+    the block that carries the bid.
+    """
+    # Advance to get finalization
+    for _ in range(4):
+        next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
+    block = build_empty_block_for_next_slot(spec, state)
+    builder_index = 0
+    value = spec.Gwei(1000000)  # 0.001 ETH
+
+    bid = block.body.signed_execution_payload_bid.message
+    bid.builder_index = builder_index
+    bid.value = value
+    signature = spec.get_execution_payload_bid_signature(
+        state, bid, builder_privkeys[builder_index]
+    )
+    block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
+        message=bid,
+        signature=signature,
+    )
+    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
+
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [block.proposer_index], signed_1=True, signed_2=True
+    )
+    block.body.attester_slashings = spec.AttesterSlashings(data=[attester_slashing])
+
+    yield "pre", state
+
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    assert state.validators[block.proposer_index].slashed
+    payment_index = spec.SLOTS_PER_EPOCH + block.slot % spec.SLOTS_PER_EPOCH
+    assert state.builder_pending_payments[payment_index] == spec.BuilderPendingPayment()
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_max_attestations(spec, state):
     rng = Random(2000)
 
@@ -596,7 +643,7 @@ def test_invalid_too_many_attestations(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_max_deposits(spec, state):
     yield "pre", state
@@ -609,7 +656,7 @@ def test_max_deposits(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE)
 @spec_state_test
 def test_invalid_too_many_deposits(spec, state):
     yield "pre", state

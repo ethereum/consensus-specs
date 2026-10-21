@@ -51,7 +51,7 @@ def initialize_ptc_window(
     for e in range(1 + MIN_SEED_LOOKAHEAD):
         epoch = current_epoch + e
         start_slot = compute_start_slot_at_epoch(epoch)
-        ptcs += [compute_ptc(state, start_slot + i) for i in range(SLOTS_PER_EPOCH)]
+        ptcs += [compute_ptc(state, start_slot + index) for index in range(SLOTS_PER_EPOCH)]
 
     return PayloadTimelinessCommitteeWindow(data=empty_previous_epoch + ptcs)
 ```
@@ -72,7 +72,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     Applies any pending deposit for builders, effectively
     onboarding builders at the fork.
     """
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
 
     pending_deposits = PendingDeposits()
     for deposit in state.pending_deposits:
@@ -84,7 +84,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         # Note that applying a deposit below can mutate the state and
         # may add a builder to the registry. For this reason, the list
         # of builder pubkeys must be recomputed each iteration.
-        builder_pubkeys = [b.pubkey for b in state.builders]
+        builder_pubkeys = [builder.pubkey for builder in state.builders]
 
         # Deposits for non-builders stay in the pending queue. If there is a
         # valid pending deposit for a new validator with this pubkey, keep this

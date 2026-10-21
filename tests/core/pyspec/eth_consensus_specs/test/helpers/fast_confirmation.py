@@ -30,6 +30,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.genesis import (
+    GENESIS_ETH1_BLOCK_HASH,
     get_sample_genesis_execution_payload,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -210,8 +211,9 @@ class FCRTest:
             root = block.parent_root
 
         if block.slot == self.spec.GENESIS_SLOT:
-            eth1_block_hash = self.store.block_states[parent_root].eth1_data.block_hash
-            return get_sample_genesis_execution_payload(self.spec, eth1_block_hash=eth1_block_hash)
+            return get_sample_genesis_execution_payload(
+                self.spec, eth1_block_hash=GENESIS_ETH1_BLOCK_HASH
+            )
 
         if is_post_gloas(self.spec):
             return self.store.payloads[root].payload

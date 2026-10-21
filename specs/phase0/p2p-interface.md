@@ -1767,19 +1767,21 @@ object (`ENRForkID`)
 )
 ```
 
-The fields of `ENRForkID` are defined as
+The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
-  - `genesis_validators_root` is the static `Root` found in
-    `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time (not
-    necessarily the epoch to which the node is sync).
-- `next_fork_version` is the fork version corresponding to the next planned hard
-  fork at a future epoch. If no future fork is planned, set
-  `next_fork_version = current_fork_version` to signal this fact
-- `next_fork_epoch` is the epoch at which the next fork is planned and the
-  `current_fork_version` will be updated. If no future fork is planned, set
-  `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact
+- `fork_digest` is
+  `compute_fork_digest(genesis_validators_root, current_epoch)`.
+- `next_fork_version` is the fork version that will be in effect at
+  `next_fork_epoch`: `compute_fork_version(current_epoch)` if
+  `next_fork_epoch == FAR_FUTURE_EPOCH`, otherwise
+  `compute_fork_version(next_fork_epoch)`.
+- `next_fork_epoch` is the epoch at which the next fork is planned. If no future
+  fork is planned, set `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
+*Note*: In the definitions above, `genesis_validators_root` is the static `Root`
+found in `state.genesis_validators_root` and `current_epoch` is the node's
+current epoch defined by the wall-clock time (not necessarily the epoch to which
+the node is sync).
 
 *Note*: `fork_digest` is composed of values that are not known until the genesis
 block/state are available. Due to this, clients SHOULD NOT form ENRs and begin

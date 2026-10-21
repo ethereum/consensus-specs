@@ -42,12 +42,16 @@ def _run_bid_inclusion_list_bits_scenario(
     yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, time_ms = yield from (
-        _seed_bid_context(spec, state, store, head_payload, messages, time_ms)
-    )
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     inclusion_list_slot = spec.Slot(proposal_slot - 1)
     inclusion_list_committee = spec.get_inclusion_list_committee(state, inclusion_list_slot)
@@ -57,19 +61,19 @@ def _run_bid_inclusion_list_bits_scenario(
     )
     yield get_filename(signed_il), signed_il
 
-    time_ms += 10
+    current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_inclusion_list=signed_il,
-        current_time_ms=time_ms,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "current_time_ms": int(time_ms),
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_il),
             "expected": result,
         }
@@ -102,7 +106,7 @@ def _run_bid_inclusion_list_bits_scenario(
     # Gossip validation of the inclusion list only checks the message; the
     # bid's check reads the inclusion list store that on_inclusion_list
     # populates at the fork-choice layer, so record it there too.
-    time_ms += 40
+    current_time_ms += 40
     bid_result = bid_reason = None
 
     def _record_and_validate_bid():
@@ -113,7 +117,7 @@ def _run_bid_inclusion_list_bits_scenario(
             seen=seen,
             store=store,
             signed_execution_payload_bid=signed_bid,
-            current_time_ms=time_ms,
+            current_time_ms=current_time_ms,
         )
 
     run_with_inclusion_list_store(spec, _record_and_validate_bid)
@@ -121,7 +125,7 @@ def _run_bid_inclusion_list_bits_scenario(
     assert bid_result == expected_result
     assert bid_reason == expected_reason
     entry = {
-        "current_time_ms": int(time_ms),
+        "current_time_ms": int(current_time_ms),
         "message": get_filename(signed_bid),
         "expected": bid_result,
     }

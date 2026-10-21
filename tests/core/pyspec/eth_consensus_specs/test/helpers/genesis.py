@@ -18,6 +18,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
+    is_post_heze,
 )
 from eth_consensus_specs.test.helpers.fulu.state import (
     initialize_proposer_lookahead,
@@ -26,6 +27,8 @@ from eth_consensus_specs.test.helpers.gloas.state import (
     initialize_ptc_window,
 )
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
+
+GENESIS_ETH1_BLOCK_HASH = b"\xda" * 32
 
 
 def build_mock_builder(spec, i: int, balance: int):
@@ -111,7 +114,7 @@ def get_sample_genesis_execution_payload(spec, eth1_block_hash=None):
 def create_genesis_state(spec, validator_balances, activation_threshold, builder_count=8):
     deposit_root = b"\x42" * 32
 
-    eth1_block_hash = b"\xda" * 32
+    eth1_block_hash = GENESIS_ETH1_BLOCK_HASH
     previous_version = spec.config.GENESIS_FORK_VERSION
     current_version = spec.config.GENESIS_FORK_VERSION
 
@@ -121,12 +124,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
 
     state = spec.BeaconState(
         genesis_time=0,
-        eth1_deposit_index=len(validator_balances),
-        eth1_data=spec.Eth1Data(
-            deposit_root=deposit_root,
-            deposit_count=len(validator_balances),
-            block_hash=eth1_block_hash,
-        ),
         fork=spec.Fork(
             previous_version=previous_version,
             current_version=current_version,
@@ -137,6 +134,14 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
         ),
         randao_mixes=spec.RandaoMixes(data=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR),
     )
+
+    if not is_post_heze(spec):
+        state.eth1_deposit_index = len(validator_balances)
+        state.eth1_data = spec.Eth1Data(
+            deposit_root=deposit_root,
+            deposit_count=len(validator_balances),
+            block_hash=eth1_block_hash,
+        )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
@@ -193,10 +198,11 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
     elif is_post_bellatrix(spec):
         state.latest_execution_payload_header = get_execution_payload_header(spec, genesis_payload)
 
-    if is_post_fulu(spec):
-        state.deposit_requests_start_index = state.eth1_data.deposit_count
-    elif is_post_electra(spec):
-        state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+    if not is_post_heze(spec):
+        if is_post_fulu(spec):
+            state.deposit_requests_start_index = state.eth1_data.deposit_count
+        elif is_post_electra(spec):
+            state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_electra(spec):
         state.deposit_balance_to_consume = 0
