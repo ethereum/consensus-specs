@@ -9,7 +9,8 @@
 - [Helpers](#helpers)
   - [New `FinalitySigningRecord`](#new-finalitysigningrecord)
 - [Validator assignments](#validator-assignments)
-  - [Voting committees](#voting-committees)
+  - [Attestation committees](#attestation-committees)
+  - [Head vote committees](#head-vote-committees)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
@@ -37,9 +38,6 @@
       - [FG attestations](#fg-attestations)
       - [Aggregation bits](#aggregation-bits)
     - [Broadcast aggregate](#broadcast-aggregate)
-- [How to avoid slashing](#how-to-avoid-slashing)
-  - [Attester slashing](#attester-slashing)
-- [Protection best practices](#protection-best-practices)
 
 <!-- mdformat-toc end -->
 
@@ -48,9 +46,11 @@
 This document represents the changes to be made in the code of an "honest
 validator" to implement decoupled consensus (DC).
 
-DC replaces the combined LMD-GHOST and Casper FFG attestation with separate
-head votes for the available chain (AC) and attestations for the finality gadget
-(FG). Validators are assigned to voting committees once per round.
+DC replaces the combined LMD-GHOST and Casper FFG attestation with separate head
+votes for the available chain (AC) and attestations for the finality gadget
+(FG). Each round, every active validator sits on one attestation committee and
+casts its FG attestation in that committee's slot. In every slot, a head vote
+committee casts head votes.
 
 ## Prerequisites
 
@@ -96,36 +96,63 @@ expire and are distinct from the temporary AC locks maintained by fork choice.
 
 ## Validator assignments
 
-### Voting committees
+### Attestation committees
 
-To determine its voting committee assignment, a validator calls
-`get_voting_committee_assignment(state, attestation_round, validator_index)`.
-The returned committee index and slot apply to both head voting and FG
-attestation.
+To determine its attestation committee assignment, a validator calls
+`get_attestation_committee_assignment(state, round, validator_index)`. The
+returned committee index and slot apply to FG attestation.
 
 ```python
-def get_voting_committee_assignment(
-    state: BeaconState, attestation_round: Round, validator_index: ValidatorIndex
+def get_attestation_committee_assignment(
+    state: BeaconState, round: Round, validator_index: ValidatorIndex
 ) -> tuple[CommitteeIndex, Slot] | None:
     """
-    Return the validator's voting committee index and assigned slot, if any.
+    Return the validator's attestation committee index and assigned slot, if any.
     """
-    for index in range(COMMITTEES_PER_ROUND):
+    for index in range(ATTESTATION_COMMITTEES_PER_ROUND):
         committee_index = CommitteeIndex(index)
-        if validator_index in get_voting_committee(state, attestation_round, committee_index):
-            return committee_index, compute_voting_committee_slot(attestation_round, committee_index)
+        if validator_index in get_attestation_committee(state, round, committee_index):
+            return committee_index, compute_attestation_committee_slot(round, committee_index)
     return None
 ```
 
-A validator has at most one voting assignment per round. Validators excluded by
-the committee-size cap have no assignment for that round. Round numbering is
-defined by `compute_round_at_slot` and does not restart at the DC fork.
+Every active validator has exactly one attestation assignment per round. Round
+numbering is defined by `compute_round_at_slot` and does not restart at the DC
+fork.
+
+### Head vote committees
+
+To determine the slots in which it casts head votes, a validator calls
+`get_head_vote_committee_assignments(state, epoch, validator_index)`.
+
+```python
+def get_head_vote_committee_assignments(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Sequence[Slot]:
+    """
+    Return the slots of ``epoch`` in which the validator sits on the head vote
+    committee.
+    """
+    next_epoch = get_current_epoch(state) + 1
+    assert epoch <= next_epoch
+
+    slots: list[Slot] = []
+    start_slot = compute_start_slot_at_epoch(epoch)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
+        if validator_index in get_head_vote_committee(state, Slot(slot)):
+            slots.append(Slot(slot))
+    return slots
+```
+
+A validator can sit on the head vote committee in several slots of an epoch, or
+in none. It casts one head vote per assigned slot, even if it holds several
+seats in that slot's committee.
 
 ### Lookahead
 
-Assignments are computed from the chain state using `get_voting_committee`.
-A validator should recompute its assignment when the dependent chain state
-changes.
+Assignments are computed from the chain state using `get_attestation_committee`
+and `get_head_vote_committee`. A validator should recompute its assignment when
+the dependent chain state changes.
 
 *TODO*: Specify assignment lookahead and the dependent root in the DC
 fork-choice and networking specifications.
@@ -136,8 +163,8 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ### Block and sidecar proposal
 
-A validator is expected to propose a `SignedBeaconBlock` at the beginning of
-any slot during which `is_proposer(state, validator_index)` returns `True`.
+A validator is expected to propose a `SignedBeaconBlock` at the beginning of any
+slot during which `is_proposer(state, validator_index)` returns `True`.
 
 #### Preparing for a `BeaconBlock`
 
@@ -156,16 +183,20 @@ slots up to the proposal slot using `process_slots`, before applying the block.
 
 Set `block.body.head_votes` to aggregates from the AC proposal view, up to
 `MAX_HEAD_VOTES`. Each aggregate must satisfy the verification conditions in
-[`process_head_vote`](./beacon-chain.md#new-process_head_vote), including the
-requirement that its vote slot is `block.slot - 1`.
+[`process_head_vote`](./beacon-chain.md#new-process_head_vote). Votes of
+`block.slot - 1` come first. The remaining space may hold votes of earlier slots
+in the previous and current epochs that add seats for the block of their slot,
+since these weigh builder payments.
 
 Set `block.body.head_vote_support_bits` to a `HeadVoteSupportBits` with one bit
-per included aggregate, in the same order. Set bit `i` if the block named by
+per included aggregate, in the same order. Set bit `i` if the vote's slot is
+`block.slot - 1`, and the block named by
 `block.body.head_votes[i].data.beacon_block_root` is in the accepted tree at
 proposal time and its slot is no later than the vote's slot. Otherwise, clear
 bit `i`.
 
-*Note*: A vote for an unknown block may be included with its support bit cleared.
+*Note*: A vote for an unknown block may be included with its support bit
+cleared.
 
 *TODO*: Specify aggregate selection when the proposal view exceeds
 `MAX_HEAD_VOTES`, preserving the requirements of view merge.
@@ -194,12 +225,13 @@ position in block processing.
 
 ### Head voting
 
-A validator assigned to vote during `slot` creates, signs and broadcasts a
+A validator on the head vote committee of `slot` creates, signs and broadcasts a
 `HeadVoteMessage` for that slot.
 
 *Note*: In the Goldilocks schedule, head voting occurs one quarter of the way
 through the slot, after unlocking against the previous slot's votes. The
-validator must satisfy the fork choice's observation requirement after waking up.
+validator must satisfy the fork choice's observation requirement after waking
+up.
 
 *TODO*: Specify the DC head-vote deadline and voting helper.
 
@@ -226,9 +258,7 @@ The validator creates `head_vote_message` as a
   `get_head_vote_signature(state, head_vote_data, privkey)`.
 
 ```python
-def get_head_vote_signature(
-    state: BeaconState, data: HeadVoteData, privkey: int
-) -> BLSSignature:
+def get_head_vote_signature(state: BeaconState, data: HeadVoteData, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_HEAD_VOTE, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     return bls.Sign(privkey, signing_root)
@@ -245,9 +275,9 @@ The validator broadcasts `head_vote_message` and processes it locally.
 
 ### Attesting
 
-A validator assigned to vote during `slot` attempts to create an FG attestation
-using the rules below. It sends no new attestation if there is no FG source or
-if its signing history suppresses the vote.
+A validator attempts to create an FG attestation in the slot of its attestation
+committee using the rules below. It sends no new attestation if there is no FG
+source or if its signing history suppresses the vote.
 
 *TODO*: Specify the FG attestation deadline and source observation for each
 assigned slot and staggered committee schedule.
@@ -328,15 +358,17 @@ removed, if necessary, by `get_finality_attestation_data` below.
 ##### Construct data
 
 Set `attestation_data` to
-`get_finality_attestation_data(record, target, justified, finalized_height)`.
-If it returns `None`, the validator sends no new attestation.
+`get_finality_attestation_data(record, round, target, justified, finalized_height)`,
+where `round` is the round of the assignment. If it returns `None`, the
+validator sends no new attestation.
 
-*Note*: The duplicate-vote checks suppress the entire attestation, including
-any new finality pair.
+*Note*: The duplicate-vote checks suppress the entire attestation, including any
+new finality pair.
 
 ```python
 def get_finality_attestation_data(
     record: FinalitySigningRecord,
+    round: Round,
     target: HeightCheckpoint,
     justified: HeightCheckpoint,
     finalized_height: Height,
@@ -354,7 +386,7 @@ def get_finality_attestation_data(
     if finality != HeightCheckpoint.empty() and target.height <= finality.height:
         finality = HeightCheckpoint.empty()
 
-    return AttestationData(target=target, timeout=Boolean(timeout), finality=finality)
+    return AttestationData(round=round, target=target, timeout=Boolean(timeout), finality=finality)
 ```
 
 ##### Record attestation
@@ -362,9 +394,7 @@ def get_finality_attestation_data(
 Before signing, the validator records the selected `attestation_data`:
 
 ```python
-def record_finality_attestation(
-    record: FinalitySigningRecord, data: AttestationData
-) -> None:
+def record_finality_attestation(record: FinalitySigningRecord, data: AttestationData) -> None:
     height, root = data.target.height, data.target.root
     record.entries.setdefault(height, set()).add(root)
     if data.finality != HeightCheckpoint.empty():
@@ -387,30 +417,23 @@ following fields:
 
 - Set `attestation.committee_index` to the assigned committee index.
 - Set `attestation.attester_index = validator_index`.
-- Set `attestation.round` to the assigned round.
 - Set `attestation.data = attestation_data`.
 - Set `attestation.signature` to
   `get_attestation_signature(state, attestation_data, privkey)`.
-
-*Note*: Here `state` is the duty's chain state advanced to the current slot,
-rather than the historical source state. This matches the signature domain used
-by `is_valid_indexed_attestation`.
 
 ```python
 def get_attestation_signature(
     state: BeaconState, attestation_data: AttestationData, privkey: int
 ) -> BLSSignature:
     # [Modified in DC]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER)
+    epoch = compute_epoch_at_slot(compute_start_slot_at_round(attestation_data.round))
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
-The signature covers `attestation.data`; it does not cover `attestation.round`
-or `attestation.committee_index`.
-
-*TODO*: Specify domain handling for delayed FG signatures across a fork-version
-change.
+The signature covers `attestation.data`, including its round, but not
+`attestation.committee_index`.
 
 #### Broadcast attestation
 
@@ -421,8 +444,8 @@ The validator broadcasts `attestation` and processes it locally.
 ### Attestation aggregation
 
 Validators aggregate head votes and FG attestations separately. The messages
-passed to the helpers below must have valid signatures under the same domain
-and valid committee assignments for `state`.
+passed to the helpers below must have valid signatures under the same domain and
+valid committee assignments for `state`.
 
 *Note*: The helpers aggregate individual messages. Aggregates with overlapping
 signers cannot be combined by adding their signatures.
@@ -437,102 +460,98 @@ types. The legacy aggregation helpers require adaptation to DC committees.
 ##### Head votes
 
 Construct `aggregate_vote` using `get_aggregate_head_vote` with head vote
-messages for the same slot and block root:
+messages for the same slot and block root. A validator holding several seats in
+the committee has its bit set and its signature added once per seat, matching
+`process_head_vote`.
 
 ```python
-def get_aggregate_head_vote(
-    state: BeaconState, messages: Sequence[HeadVoteMessage]
-) -> HeadVote:
+def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessage]) -> HeadVote:
     """
     Aggregate head vote messages with identical data and distinct signers.
     """
     assert len(messages) > 0
     data = messages[0].data
     assert all(message.data == data for message in messages)
-    participants = {message.validator_index for message in messages}
-    assert len(participants) == len(messages)
+    signatures = {message.validator_index: message.signature for message in messages}
+    assert len(signatures) == len(messages)
 
-    attestation_round = compute_round_at_slot(data.slot)
-    committee_bits = CommitteeBits()
-    for index in range(COMMITTEES_PER_ROUND):
-        committee_index = CommitteeIndex(index)
-        if compute_voting_committee_slot(attestation_round, committee_index) != data.slot:
-            continue
-        committee = get_voting_committee(state, attestation_round, committee_index)
-        committee_bits[index] = any(validator_index in participants for validator_index in committee)
-
-    aggregation_bits = get_vote_aggregation_bits(
-        state, attestation_round, committee_bits, participants
-    )
+    aggregation_bits = HeadVoteCommitteeBits()
+    seat_signatures: list[BLSSignature] = []
+    represented: set[ValidatorIndex] = set()
+    for position, validator_index in enumerate(get_head_vote_committee(state, data.slot)):
+        if validator_index in signatures:
+            aggregation_bits[position] = Boolean(True)
+            seat_signatures.append(signatures[validator_index])
+            represented.add(validator_index)
+    assert represented == set(signatures)
     return HeadVote(
         aggregation_bits=aggregation_bits,
         data=data,
-        signature=bls.Aggregate([message.signature for message in messages]),
-        committee_bits=committee_bits,
+        signature=bls.Aggregate(seat_signatures),
     )
 ```
 
 ##### FG attestations
 
 Construct `aggregate_attestation` using `get_aggregate_attestation` with
-individual attestations for the same data and round:
+individual attestations for the same data:
 
 ```python
 def get_aggregate_attestation(
     state: BeaconState, attestations: Sequence[SingleAttestation]
 ) -> Attestation:
     """
-    Aggregate attestations with identical data and round, and distinct signers.
+    Aggregate attestations with identical data and distinct signers.
     """
     assert len(attestations) > 0
     data = attestations[0].data
-    attestation_round = attestations[0].round
-    assert all(a.data == data and a.round == attestation_round for a in attestations)
+    assert all(a.data == data for a in attestations)
     participants = {a.attester_index for a in attestations}
     assert len(participants) == len(attestations)
 
-    committee_bits = CommitteeBits()
+    committee_bits = AttestationCommitteeBits()
     for attestation in attestations:
-        assert attestation.committee_index < COMMITTEES_PER_ROUND
-        committee_bits[attestation.committee_index] = True
+        assert attestation.committee_index < ATTESTATION_COMMITTEES_PER_ROUND
+        committee_bits[attestation.committee_index] = Boolean(True)
 
-    aggregation_bits = get_vote_aggregation_bits(
-        state, attestation_round, committee_bits, participants
+    aggregation_bits = get_attestation_aggregation_bits(
+        state, data.round, committee_bits, participants
     )
     return Attestation(
         aggregation_bits=aggregation_bits,
         data=data,
         signature=bls.Aggregate([a.signature for a in attestations]),
         committee_bits=committee_bits,
-        round=attestation_round,
     )
 ```
 
 ##### Aggregation bits
 
-`get_vote_aggregation_bits` encodes signers in committee-index order, matching
-`get_aggregate_participants` in the beacon-chain specification. The size bound
-applies to all members of the represented committees, not only the signers.
-Split messages into separate aggregates when the bound would be exceeded.
+`get_attestation_aggregation_bits` encodes signers in committee-index order,
+matching `get_aggregate_participants` in the beacon-chain specification. The
+size bound applies to all members of the represented committees, not only the
+signers. Split messages into separate aggregates when the bound would be
+exceeded.
 
 ```python
-def get_vote_aggregation_bits(
+def get_attestation_aggregation_bits(
     state: BeaconState,
-    attestation_round: Round,
-    committee_bits: CommitteeBits,
+    round: Round,
+    committee_bits: AttestationCommitteeBits,
     participants: set[ValidatorIndex],
 ) -> AggregationBits:
     """
-    Encode participants in the concatenation of the selected voting committees.
+    Encode participants in the concatenation of the selected attestation
+    committees.
     """
     aggregation_bits = AggregationBits()
     represented_participants: set[ValidatorIndex] = set()
     for committee_index in get_committee_indices(committee_bits):
-        committee = get_voting_committee(state, attestation_round, committee_index)
+        committee = get_attestation_committee(state, round, committee_index)
         assert len(aggregation_bits) + len(committee) <= MAX_VALIDATORS_PER_AGGREGATE
         for validator_index in committee:
             is_participant = validator_index in participants
-            aggregation_bits.append(is_participant)
+            aggregation_bits.append(Boolean(is_participant))
             if is_participant:
                 represented_participants.add(validator_index)
     assert represented_participants == participants
@@ -548,7 +567,5 @@ broadcast deadlines.
 
 *Note*: An FG aggregate's round must be between
 `compute_round_at_slot(state.finalized_slot)` and `get_current_round(state)`,
-inclusive, when included in a block. Its data must also remain valid against
-the inclusion state. Forwarding an aggregate preserves its original round:
-changing the round changes the committee encoding, even though the round is
-not signed.
+inclusive, when included in a block. Its data must also remain valid against the
+inclusion state.
