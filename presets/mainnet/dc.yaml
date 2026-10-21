@@ -26,6 +26,8 @@ ROUND_REWARD_FACTOR: 16
 
 # Inactivity leak
 # ---------------------------------------------------------------
+# 2**4 (= 16)
+MIN_ROUNDS_TO_INACTIVITY_LEAK: 16
 # 2**16 (= 65,536)
 EJECTION_INACTIVITY_SCORE: 65536
 

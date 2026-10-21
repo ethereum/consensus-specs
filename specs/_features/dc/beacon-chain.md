@@ -56,6 +56,7 @@
     - [New `is_head_vote_same_slot`](#new-is_head_vote_same_slot)
     - [New `has_builder_payment_quorum`](#new-has_builder_payment_quorum)
     - [New `has_quorum`](#new-has_quorum)
+    - [Modified `is_in_inactivity_leak`](#modified-is_in_inactivity_leak)
     - [New `is_valid_aggregation_bits`](#new-is_valid_aggregation_bits)
   - [Misc](#misc-1)
     - [New `compute_round_at_slot`](#new-compute_round_at_slot)
@@ -369,9 +370,10 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 ### Inactivity leak
 
-| Name                        | Value                      |
-| --------------------------- | -------------------------- |
-| `EJECTION_INACTIVITY_SCORE` | `Uint64(2**16)` (= 65,536) |
+| Name                            | Value                      |
+| ------------------------------- | -------------------------- |
+| `MIN_ROUNDS_TO_INACTIVITY_LEAK` | `Round(2**4)` (= 16)       |
+| `EJECTION_INACTIVITY_SCORE`     | `Uint64(2**16)` (= 65,536) |
 
 ### Max operations per block
 
@@ -839,6 +841,14 @@ def has_quorum(state: BeaconState, participation: Participation) -> bool:
     return participating_weight > 0 and participating_weight * 3 >= total_weight * 2
 ```
 
+#### Modified `is_in_inactivity_leak`
+
+```python
+def is_in_inactivity_leak(state: BeaconState) -> bool:
+    # [Modified in DC]
+    return get_finality_delay(state) > MIN_ROUNDS_TO_INACTIVITY_LEAK
+```
+
 #### New `is_valid_aggregation_bits`
 
 ```python
@@ -1135,17 +1145,17 @@ def get_participating_weight(state: BeaconState, participation: Participation) -
 
 #### Modified `get_finality_delay`
 
-*Note*: The finality gadget can finalize a block of the current epoch, so the
+*Note*: The function `get_finality_delay` is rewritten to measure the delay in
+rounds. The finality gadget can finalize a block of the current round, so the
 delay stops at zero rather than going negative.
 
 ```python
-def get_finality_delay(state: BeaconState) -> Epoch:
-    previous_epoch = get_previous_epoch(state)
-    # [Modified in DC]
-    finalized_epoch = compute_epoch_at_slot(state.finalized_slot)
-    if finalized_epoch > previous_epoch:
-        return Epoch(0)
-    return previous_epoch - finalized_epoch
+def get_finality_delay(state: BeaconState) -> Round:
+    previous_round = get_previous_round(state)
+    finalized_round = compute_round_at_slot(state.finalized_slot)
+    if finalized_round > previous_round:
+        return Round(0)
+    return previous_round - finalized_round
 ```
 
 #### New `get_round_base_reward`
