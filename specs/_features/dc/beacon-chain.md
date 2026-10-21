@@ -440,6 +440,8 @@ is false, and a timeout when it is true. The finality pair is `finality`.
 class AttestationData(Container):
     # [Modified in DC]
     # Removed `slot`
+    # [New in DC]
+    round: Round
     # [Modified in DC]
     # Removed `index`
     # [Modified in DC]
@@ -462,26 +464,19 @@ class SingleAttestation(Container):
     attester_index: ValidatorIndex
     data: AttestationData
     signature: BLSSignature
-    # [New in DC]
-    round: Round
 ```
 
 ### Modified `Attestation`
 
-*Note*: The attestation data has no slot, so an aggregate names the round whose
-attestation committees it covers.
-
 ```python
 class Attestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=5)
+    ACTIVE_FIELDS = active_fields(width=4)
 
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
     # [Modified in DC]
     committee_bits: AttestationCommitteeBits
-    # [New in DC]
-    round: Round
 ```
 
 ### Modified `BeaconBlockBody`
@@ -636,9 +631,6 @@ def is_valid_attestation_data(state: BeaconState, data: AttestationData) -> bool
 
 #### Modified `is_valid_indexed_attestation`
 
-*Note*: The attestation data has no epoch, so the signature domain uses the
-current epoch.
-
 ```python
 def is_valid_indexed_attestation(
     state: BeaconState, indexed_attestation: IndexedAttestation
@@ -659,7 +651,8 @@ def is_valid_indexed_attestation(
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     # [Modified in DC]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER)
+    epoch = compute_epoch_at_slot(compute_start_slot_at_round(indexed_attestation.data.round))
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
@@ -669,16 +662,16 @@ def is_valid_indexed_attestation(
 ```python
 def is_double_target_vote(data_1: AttestationData, data_2: AttestationData) -> bool:
     """
-    Check if ``data_1`` and ``data_2`` are different target votes
+    Check if ``data_1`` and ``data_2`` are target votes for different roots
     at the same height.
     """
     if data_1.timeout:
         return False
     if data_2.timeout:
         return False
-    if data_1 == data_2:
-        return False
     if data_1.target.height != data_2.target.height:
+        return False
+    if data_1.target.root == data_2.target.root:
         return False
     return True
 ```
@@ -1024,7 +1017,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
     Return the set of attesting indices corresponding to ``aggregation_bits``
     and ``committee_bits``.
     """
-    return get_aggregate_participants(state, attestation.round, attestation)
+    return get_aggregate_participants(state, attestation.data.round, attestation)
 ```
 
 #### New `get_head_vote_committee`
@@ -1630,9 +1623,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     assert is_well_formed_attestation_data(data)
     assert is_valid_attestation_data(state, data)
-    assert attestation.round <= current_round
-    assert attestation.round >= compute_round_at_slot(state.finalized_slot)
-    assert is_valid_aggregation_bits(state, attestation.round, attestation)
+    assert data.round <= current_round
+    assert data.round >= compute_round_at_slot(state.finalized_slot)
+    assert is_valid_aggregation_bits(state, data.round, attestation)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     proposer_reward_numerator = 0
@@ -1641,13 +1634,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         for pending in state.pending_finality:
             if pending.checkpoint == data.finality and not pending.participation[index]:
                 pending.participation[index] = Boolean(True)
-                add_participation_flag(state, attestation.round, index, FINALITY_FLAG_INDEX)
+                add_participation_flag(state, data.round, index, FINALITY_FLAG_INDEX)
                 proposer_reward_numerator += base_reward * FINALITY_WEIGHT
         if data.target == state.target_checkpoint:
             if not state.progress_participation[index]:
                 state.progress_participation[index] = Boolean(True)
                 add_participation_flag(state, current_round, index, PROGRESS_FLAG_INDEX)
-                add_participation_flag(state, attestation.round, index, PROGRESS_FLAG_INDEX)
+                add_participation_flag(state, data.round, index, PROGRESS_FLAG_INDEX)
                 proposer_reward_numerator += base_reward * PROGRESS_WEIGHT
             if not data.timeout:
                 state.target_participation[index] = Boolean(True)
