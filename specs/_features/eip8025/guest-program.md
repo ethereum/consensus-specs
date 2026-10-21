@@ -39,12 +39,12 @@ containers.
 @dataclass
 class PrivateInput:
     state: BeaconState
-    signed_envelope: SignedExecutionPayloadEnvelope
+    envelope: ExecutionPayloadEnvelope
     execution_witness: Any
 ```
 
-- `state` is the post-state of the target block, and `signed_envelope` is the
-  target block's payload envelope.
+- `state` is the post-state of the target block, and `envelope` is the target
+  block's payload envelope.
 - `execution_witness` has the execution-specs type `ExecutionWitness`. The
   execution engine running in the guest is bound to it.
 
@@ -64,8 +64,7 @@ def verify_execution_transition(
     private_input: PrivateInput,
 ) -> PublicInput:
     state = private_input.state
-    signed_envelope = private_input.signed_envelope
-    envelope = signed_envelope.message
+    envelope = private_input.envelope
 
     # Gloas enforces these limits only in payload envelope gossip. The gossip
     # helper raises ``GossipReject``, which fails the proof like an assertion.
@@ -74,7 +73,7 @@ def verify_execution_transition(
 
     # Authenticate the post-state against the envelope's block root, bind the
     # payload to the block, and validate it statelessly
-    verify_execution_payload_envelope(state, signed_envelope, execution_engine)
+    verify_execution_payload_envelope(state, envelope, execution_engine)
 
     return PublicInput(
         beacon_block_root=envelope.beacon_block_root,
