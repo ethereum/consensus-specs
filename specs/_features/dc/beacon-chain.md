@@ -626,7 +626,8 @@ def is_valid_indexed_attestation(
     state: BeaconState, indexed_attestation: IndexedAttestation
 ) -> bool:
     """
-    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
+    Check if ``indexed_attestation`` is not empty, has sorted and unique
+    indices and has a valid aggregate signature.
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
@@ -650,7 +651,8 @@ def is_valid_indexed_attestation(
 ```python
 def is_double_target_vote(data_1: AttestationData, data_2: AttestationData) -> bool:
     """
-    Check if ``data_1`` and ``data_2`` are different target votes at the same height.
+    Check if ``data_1`` and ``data_2`` are different target votes
+    at the same height.
     """
     if data_1.timeout:
         return False
@@ -709,7 +711,7 @@ def is_slashable_legacy_attestation_data(
     data_1: heze.AttestationData, data_2: heze.AttestationData
 ) -> bool:
     """
-    Check if ``data_1`` and ``data_2`` are slashable according to Casper FFG rules.
+    Check if ``data_1`` and ``data_2`` are slashable under Casper FFG rules.
     """
     return (
         # Double vote
@@ -868,7 +870,7 @@ def compute_uniform_selection(
 ```python
 def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
-    Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
+    Get the payload timeliness committee for ``slot``, with possible duplicates.
     """
     epoch = compute_epoch_at_slot(slot)
     seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
