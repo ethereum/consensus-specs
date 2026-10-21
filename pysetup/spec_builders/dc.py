@@ -33,7 +33,6 @@ from eth_consensus_specs.heze import {preset_name} as heze
             "get_aggregate_and_proof",
             "get_aggregate_and_proof_signature",
             "get_attestation_participation_flag_indices",
-            "get_attestation_signature",
             "get_current_target",
             "get_current_target_score",
             "get_equivocation_score",
