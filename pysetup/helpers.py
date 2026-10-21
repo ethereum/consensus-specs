@@ -193,6 +193,14 @@ def objects_to_spec(
     sundry_functions = reduce(
         lambda txt, builder: (txt + "\n\n" + builder.sundry_functions()).strip("\n"), builders, ""
     )
+    # Remove the cache wrappers of deprecated functions
+    for name in deprecate_functions:
+        sundry_functions = re.sub(
+            rf"_{name} = {name}\n{name} = cache_this\(.*?lru_size=[^\n]*\)(\n|$)",
+            "",
+            sundry_functions,
+            flags=re.DOTALL,
+        )
     # Keep engine from the most recent fork
     execution_engine_cls = reduce(
         lambda txt, builder: builder.execution_engine_cls() or txt, builders, ""

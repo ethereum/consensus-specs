@@ -58,6 +58,8 @@
     - [New `compute_round_at_slot`](#new-compute_round_at_slot)
     - [New `compute_start_slot_at_round`](#new-compute_start_slot_at_round)
     - [New `compute_attestation_committee_slot`](#new-compute_attestation_committee_slot)
+    - [New `compute_uniform_selection`](#new-compute_uniform_selection)
+    - [Modified `compute_ptc`](#modified-compute_ptc)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_current_round`](#new-get_current_round)
     - [New `get_previous_round`](#new-get_previous_round)
@@ -65,6 +67,7 @@
     - [New `get_aggregate_participants`](#new-get_aggregate_participants)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [New `get_head_vote_committee`](#new-get_head_vote_committee)
+    - [Modified `get_inclusion_list_committee`](#modified-get_inclusion_list_committee)
     - [Modified `get_unslashed_participating_indices`](#modified-get_unslashed_participating_indices)
     - [New `get_validator_weight`](#new-get_validator_weight)
     - [New `get_total_weight`](#new-get_total_weight)
@@ -840,6 +843,49 @@ def compute_attestation_committee_slot(round: Round, index: CommitteeIndex) -> S
     return compute_start_slot_at_round(round) + Slot(index // committees_per_slot)
 ```
 
+#### New `compute_uniform_selection`
+
+```python
+def compute_uniform_selection(
+    indices: Sequence[ValidatorIndex], seed: Bytes32, size: Uint64
+) -> Sequence[ValidatorIndex]:
+    """
+    Return ``size`` indices sampled uniformly from ``indices`` by shuffling. The
+    returned list contains duplicates only if ``size`` exceeds the number of
+    ``indices``.
+    """
+    total = Uint64(len(indices))
+    assert total > 0
+    selected: list[ValidatorIndex] = []
+    for i in range(size):
+        shuffled_index = compute_shuffled_index(Uint64(i) % total, total, seed)
+        selected.append(indices[shuffled_index])
+    return selected
+```
+
+#### Modified `compute_ptc`
+
+```python
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
+    """
+    Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    # [Modified in DC]
+    indices = get_active_validator_indices(state, epoch)
+    # [Modified in DC]
+    return PayloadTimelinessCommittee(
+        data=compute_balance_weighted_selection(
+            state,
+            indices,
+            seed,
+            size=PTC_SIZE,
+            shuffle_indices=True,
+        )
+    )
+```
+
 ### Beacon state accessors
 
 #### New `get_current_round`
@@ -935,7 +981,30 @@ def get_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee
     indices = get_active_validator_indices(state, epoch)
     return HeadVoteCommittee(
         data=compute_balance_weighted_selection(
-            state, indices, seed, size=HEAD_VOTE_COMMITTEE_SIZE, shuffle_indices=True
+            state,
+            indices,
+            seed,
+            size=HEAD_VOTE_COMMITTEE_SIZE,
+            shuffle_indices=True,
+        )
+    )
+```
+
+#### Modified `get_inclusion_list_committee`
+
+```python
+def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionListCommittee:
+    """
+    Get the inclusion list committee for the given ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_INCLUSION_LIST_COMMITTEE) + uint_to_bytes(slot))
+    indices = get_active_validator_indices(state, epoch)
+    return InclusionListCommittee(
+        data=compute_uniform_selection(
+            indices,
+            seed,
+            size=INCLUSION_LIST_COMMITTEE_SIZE,
         )
     )
 ```
