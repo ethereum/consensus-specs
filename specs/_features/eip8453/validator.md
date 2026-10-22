@@ -431,7 +431,7 @@ def get_attestation_signature(
     privkey: int,
 ) -> BLSSignature:
     # [Modified in EIP8453]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
+    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```

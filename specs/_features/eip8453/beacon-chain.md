@@ -338,6 +338,7 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 | ---------------------------- | -------------------------- |
 | `DOMAIN_HEAD_VOTE`           | `DomainType("0x12000000")` |
 | `DOMAIN_HEAD_VOTE_COMMITTEE` | `DomainType("0x13000000")` |
+| `DOMAIN_FINALITY_ATTESTER`   | `DomainType("0x14000000")` |
 
 ### Misc
 
@@ -679,7 +680,7 @@ def is_valid_indexed_attestation(
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     # [Modified in EIP8453]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.epoch)
+    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, indexed_attestation.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
