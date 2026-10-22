@@ -651,9 +651,8 @@ def is_valid_attestation_data(state: BeaconState, data: AttestationData) -> bool
     """
     if data.target == state.target_checkpoint:
         return True
-    pending_checkpoints = [pending.checkpoint for pending in state.pending_finality]
     return (
-        data.finality in pending_checkpoints
+        data.finality in [pending.checkpoint for pending in state.pending_finality]
         and data.finality.height < data.target.height < state.target_checkpoint.height
     )
 ```
@@ -938,8 +937,7 @@ def compute_uniform_selection(
     assert total > 0
     selected: list[ValidatorIndex] = []
     for i in range(size):
-        shuffled_index = compute_shuffled_index(Uint64(i) % total, total, seed)
-        selected.append(indices[shuffled_index])
+        selected.append(indices[compute_shuffled_index(Uint64(i) % total, total, seed)])
     return selected
 ```
 
@@ -1166,9 +1164,8 @@ def get_participating_weight(state: BeaconState, participation: HeightParticipat
     Return the combined weight of the active and unslashed validators marked in
     ``participation``.
     """
-    epoch = get_current_epoch(state)
     participating_indices: set[ValidatorIndex] = set()
-    for index in get_active_validator_indices(state, epoch):
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
         if participation[index] and not state.validators[index].slashed:
             participating_indices.add(index)
     return get_total_weight(state, participating_indices)
@@ -1480,12 +1477,11 @@ def process_pending_deposits(state: BeaconState) -> None:
     next_deposit_index = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False
-    # [Modified in EIP8453]
-    finalized_slot = state.finalized_slot
 
     for deposit in state.pending_deposits:
+        # [Modified in EIP8453]
         # Check if deposit has been finalized, otherwise, stop processing.
-        if deposit.slot > finalized_slot:
+        if deposit.slot > state.finalized_slot:
             break
 
         # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
@@ -1672,9 +1668,8 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
 
-    committee = get_head_vote_committee(state, data.slot)
     voter_indices: list[ValidatorIndex] = []
-    for position, index in enumerate(committee):
+    for position, index in enumerate(get_head_vote_committee(state, data.slot)):
         if vote.aggregation_bits[position]:
             voter_indices.append(index)
     assert len(voter_indices) > 0
@@ -1691,10 +1686,9 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
             participation_index = SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH
         else:
             participation_index = data.slot % SLOTS_PER_EPOCH
-        participation = state.head_vote_participation[participation_index]
         for position in range(HEAD_VOTE_COMMITTEE_SIZE):
             if vote.aggregation_bits[position]:
-                participation[position] = Boolean(True)
+                state.head_vote_participation[participation_index][position] = Boolean(True)
 ```
 
 #### Height events

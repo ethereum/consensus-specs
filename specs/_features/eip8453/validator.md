@@ -135,8 +135,7 @@ def get_head_vote_committee_assignments(
     Return the slots of ``epoch`` in which the validator sits on the head vote
     committee.
     """
-    next_epoch = get_current_epoch(state) + 1
-    assert epoch <= next_epoch
+    assert epoch <= get_current_epoch(state) + 1
 
     slots: list[Slot] = []
     start_slot = compute_start_slot_at_epoch(epoch)
