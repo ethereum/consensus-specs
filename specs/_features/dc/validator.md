@@ -48,9 +48,9 @@ validator" to implement decoupled consensus (DC).
 
 DC replaces the combined LMD-GHOST and Casper FFG attestation with separate head
 votes for the available chain (AC) and attestations for the finality gadget
-(FG). Each round, every active validator sits on one attestation committee and
-casts its FG attestation in that committee's slot. In every slot, a head vote
-committee casts head votes.
+(FG). Each epoch, every active validator sits on one attestation committee and,
+in every round, casts its FG attestation in that committee's slot. In every
+slot, a head vote committee casts head votes.
 
 ## Prerequisites
 
@@ -98,27 +98,29 @@ expire and are distinct from the temporary AC locks maintained by fork choice.
 
 ### Attestation committees
 
-To determine its attestation committee assignment, a validator calls
-`get_attestation_committee_assignment(state, round, validator_index)`. The
-returned committee index and slot apply to FG attestation.
+To determine its attestation committee for `epoch`, a validator calls
+`get_attestation_committee_assignment(state, epoch, validator_index)`.
 
 ```python
 def get_attestation_committee_assignment(
-    state: BeaconState, round: Round, validator_index: ValidatorIndex
-) -> tuple[CommitteeIndex, Slot] | None:
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> CommitteeIndex | None:
     """
-    Return the validator's attestation committee index and assigned slot, if any.
+    Return the index of the validator's attestation committee in ``epoch``, if
+    any.
     """
     for index in range(ATTESTATION_COMMITTEES_PER_ROUND):
         committee_index = CommitteeIndex(index)
-        if validator_index in get_attestation_committee(state, round, committee_index):
-            return committee_index, compute_attestation_committee_slot(round, committee_index)
+        if validator_index in get_attestation_committee(state, epoch, committee_index):
+            return committee_index
     return None
 ```
 
-Every active validator has exactly one attestation assignment per round. Round
-numbering is defined by `compute_round_at_slot` and does not restart at the DC
-fork.
+Every active validator sits on exactly one attestation committee per epoch. In
+each round, it attests in the slot
+`compute_attestation_committee_slot(round, committee_index)`, using the
+committee of that slot's epoch. Round numbering is defined by
+`compute_round_at_slot` and does not restart at the DC fork.
 
 ### Head vote committees
 
@@ -207,7 +209,7 @@ Set `block.body.attestations` to aggregates selected from the FG attestation
 pool, up to `MAX_ATTESTATIONS_ELECTRA`. Each aggregate must satisfy the
 verification conditions in
 [`process_attestation`](./beacon-chain.md#modified-process_attestation),
-including its round, committee encoding and signature.
+including its epoch, committee encoding and signature.
 
 A proposer should prefer aggregates that add target, progress or
 pending-finality participation. An attestation for a previous height can still
@@ -358,9 +360,8 @@ removed, if necessary, by `get_finality_attestation_data` below.
 ##### Construct data
 
 Set `attestation_data` to
-`get_finality_attestation_data(record, round, target, justified, finalized_height)`,
-where `round` is the round of the assignment. If it returns `None`, the
-validator sends no new attestation.
+`get_finality_attestation_data(record, target, justified, finalized_height)`. If
+it returns `None`, the validator sends no new attestation.
 
 *Note*: The duplicate-vote checks suppress the entire attestation, including any
 new finality pair.
@@ -368,7 +369,6 @@ new finality pair.
 ```python
 def get_finality_attestation_data(
     record: FinalitySigningRecord,
-    round: Round,
     target: HeightCheckpoint,
     justified: HeightCheckpoint,
     finalized_height: Height,
@@ -386,7 +386,7 @@ def get_finality_attestation_data(
     if finality != HeightCheckpoint.empty() and target.height <= finality.height:
         finality = HeightCheckpoint.empty()
 
-    return AttestationData(round=round, target=target, timeout=Boolean(timeout), finality=finality)
+    return AttestationData(target=target, timeout=Boolean(timeout), finality=finality)
 ```
 
 ##### Record attestation
@@ -418,21 +418,25 @@ following fields:
 - Set `attestation.committee_index` to the assigned committee index.
 - Set `attestation.attester_index = validator_index`.
 - Set `attestation.data = attestation_data`.
+- Set `attestation.epoch` to the epoch of the assigned slot.
 - Set `attestation.signature` to
-  `get_attestation_signature(state, attestation_data, privkey)`.
+  `get_attestation_signature(state, attestation_data, attestation.epoch, privkey)`.
 
 ```python
 def get_attestation_signature(
-    state: BeaconState, attestation_data: AttestationData, privkey: int
+    state: BeaconState,
+    attestation_data: AttestationData,
+    # [New in DC]
+    epoch: Epoch,
+    privkey: int,
 ) -> BLSSignature:
     # [Modified in DC]
-    epoch = compute_epoch_at_slot(compute_start_slot_at_round(attestation_data.round))
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
-The signature covers `attestation.data`, including its round, but not
+The signature covers `attestation.data`, but not `attestation.epoch` or
 `attestation.committee_index`.
 
 #### Broadcast attestation
@@ -494,18 +498,20 @@ def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessa
 ##### FG attestations
 
 Construct `aggregate_attestation` using `get_aggregate_attestation` with
-individual attestations for the same data:
+individual attestations for the same data and epoch. Attestations cast in
+different rounds of the same epoch can be aggregated together.
 
 ```python
 def get_aggregate_attestation(
     state: BeaconState, attestations: Sequence[SingleAttestation]
 ) -> Attestation:
     """
-    Aggregate attestations with identical data and distinct signers.
+    Aggregate attestations with identical data and epoch, and distinct signers.
     """
     assert len(attestations) > 0
     data = attestations[0].data
-    assert all(a.data == data for a in attestations)
+    epoch = attestations[0].epoch
+    assert all(a.data == data and a.epoch == epoch for a in attestations)
     participants = {a.attester_index for a in attestations}
     assert len(participants) == len(attestations)
 
@@ -514,14 +520,13 @@ def get_aggregate_attestation(
         assert attestation.committee_index < ATTESTATION_COMMITTEES_PER_ROUND
         committee_bits[attestation.committee_index] = Boolean(True)
 
-    aggregation_bits = get_attestation_aggregation_bits(
-        state, data.round, committee_bits, participants
-    )
+    aggregation_bits = get_attestation_aggregation_bits(state, epoch, committee_bits, participants)
     return Attestation(
         aggregation_bits=aggregation_bits,
         data=data,
         signature=bls.Aggregate([a.signature for a in attestations]),
         committee_bits=committee_bits,
+        epoch=epoch,
     )
 ```
 
@@ -536,7 +541,7 @@ exceeded.
 ```python
 def get_attestation_aggregation_bits(
     state: BeaconState,
-    round: Round,
+    epoch: Epoch,
     committee_bits: AttestationCommitteeBits,
     participants: set[ValidatorIndex],
 ) -> AggregationBits:
@@ -547,7 +552,7 @@ def get_attestation_aggregation_bits(
     aggregation_bits = AggregationBits()
     represented_participants: set[ValidatorIndex] = set()
     for committee_index in get_committee_indices(committee_bits):
-        committee = get_attestation_committee(state, round, committee_index)
+        committee = get_attestation_committee(state, epoch, committee_index)
         assert len(aggregation_bits) + len(committee) <= MAX_VALIDATORS_PER_AGGREGATE
         for validator_index in committee:
             is_participant = validator_index in participants
@@ -563,9 +568,10 @@ def get_attestation_aggregation_bits(
 The validator broadcasts the aggregate for block inclusion.
 
 *TODO*: Specify aggregate gossip messages, selection-proof wrappers and
-broadcast deadlines.
+broadcast deadlines. Gossip deduplication must use the data and signers, since
+the epoch is not signed.
 
-*Note*: An FG aggregate's round must be between
-`compute_round_at_slot(state.finalized_slot)` and `get_current_round(state)`,
+*Note*: An FG aggregate's epoch must be between
+`compute_epoch_at_slot(state.finalized_slot)` and `get_current_epoch(state)`,
 inclusive, when included in a block. Its data must also remain valid against the
 inclusion state.

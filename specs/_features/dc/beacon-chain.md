@@ -39,6 +39,7 @@
   - [Modified `AttestationData`](#modified-attestationdata)
   - [Modified `SingleAttestation`](#modified-singleattestation)
   - [Modified `Attestation`](#modified-attestation)
+  - [Modified `IndexedAttestation`](#modified-indexedattestation)
   - [Modified `BeaconBlockBody`](#modified-beaconblockbody)
   - [Modified `BeaconState`](#modified-beaconstate)
 - [Helpers](#helpers)
@@ -70,6 +71,7 @@
     - [New `get_attestation_committee`](#new-get_attestation_committee)
     - [New `get_aggregate_participants`](#new-get_aggregate_participants)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
     - [New `get_head_vote_committee`](#new-get_head_vote_committee)
     - [Modified `get_inclusion_list_committee`](#modified-get_inclusion_list_committee)
     - [Modified `get_unslashed_participating_indices`](#modified-get_unslashed_participating_indices)
@@ -139,12 +141,12 @@ of their slot, which weighs builder payments.
 
 Validators cast FG attestations in rounds of `SLOTS_PER_ROUND` slots. A round is
 to the FG what an epoch is to Casper FFG: each active validator attests once,
-and the FG settles rewards and inactivity at its end, in `process_round`. In
-every round, the active validators are split into
+and the FG settles rewards and inactivity at its end, in `process_round`. Once
+per epoch, the active validators are split into
 `ATTESTATION_COMMITTEES_PER_ROUND` attestation committees, spread evenly over
-the slots of the round. Each validator sits on one committee and casts its FG
-attestation in that committee's slot. Aggregates combine the attestations of
-several committees.
+the slots of a round. Each validator sits on one committee and, in every round,
+casts its FG attestation in that committee's slot. Aggregates combine the
+attestations of several committees.
 
 Validators are rewarded per round, as in Altair, with two participation flags.
 The progress flag is earned by a target vote or a timeout counted at the current
@@ -176,7 +178,7 @@ quorum.
 ```python
 class AttestationCommitteeBits(BitVector):
     """
-    Bits marking which attestation committees of a round participate in an
+    Bits marking which attestation committees of an epoch participate in an
     attestation.
     """
 
@@ -440,8 +442,6 @@ is false, and a timeout when it is true. The finality pair is `finality`.
 class AttestationData(Container):
     # [Modified in DC]
     # Removed `slot`
-    # [New in DC]
-    round: Round
     # [Modified in DC]
     # Removed `index`
     # [Modified in DC]
@@ -464,19 +464,39 @@ class SingleAttestation(Container):
     attester_index: ValidatorIndex
     data: AttestationData
     signature: BLSSignature
+    # [New in DC]
+    epoch: Epoch
 ```
 
 ### Modified `Attestation`
 
+*Note*: `epoch` is not signed. It selects the attestation committees that
+`committee_bits` and `aggregation_bits` refer to, and the signature domain.
+
 ```python
 class Attestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=4)
+    ACTIVE_FIELDS = active_fields(width=5)
 
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
     # [Modified in DC]
     committee_bits: AttestationCommitteeBits
+    # [New in DC]
+    epoch: Epoch
+```
+
+### Modified `IndexedAttestation`
+
+```python
+class IndexedAttestation(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=4)
+
+    attesting_indices: AttestingIndices
+    data: AttestationData
+    signature: BLSSignature
+    # [New in DC]
+    epoch: Epoch
 ```
 
 ### Modified `BeaconBlockBody`
@@ -519,7 +539,7 @@ keeps its name but moves to a new position.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=57, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
+    ACTIVE_FIELDS = active_fields(width=56, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -584,9 +604,7 @@ class BeaconState(ProgressiveContainer):
     # [New in DC]
     progress_participation: Participation
     # [New in DC]
-    previous_round_participation: RoundParticipation
-    # [New in DC]
-    current_round_participation: RoundParticipation
+    round_participation: RoundParticipation
     # [New in DC]
     pending_finality: PendingFinalities
     # [New in DC]
@@ -651,8 +669,7 @@ def is_valid_indexed_attestation(
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     # [Modified in DC]
-    epoch = compute_epoch_at_slot(compute_start_slot_at_round(indexed_attestation.data.round))
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
@@ -845,7 +862,7 @@ def is_in_inactivity_leak(state: BeaconState) -> bool:
 #### New `is_valid_aggregation_bits`
 
 ```python
-def is_valid_aggregation_bits(state: BeaconState, round: Round, aggregate: Attestation) -> bool:
+def is_valid_aggregation_bits(state: BeaconState, epoch: Epoch, aggregate: Attestation) -> bool:
     """
     Check if the ``aggregation_bits`` of ``aggregate`` has one bit for each
     member of the attestation committees marked in its ``committee_bits``,
@@ -853,7 +870,7 @@ def is_valid_aggregation_bits(state: BeaconState, round: Round, aggregate: Attes
     """
     committees_size = 0
     for committee_index in get_committee_indices(aggregate.committee_bits):
-        committees_size += len(get_attestation_committee(state, round, committee_index))
+        committees_size += len(get_attestation_committee(state, epoch, committee_index))
     if committees_size > MAX_VALIDATORS_PER_AGGREGATE:
         return False
     return len(aggregate.aggregation_bits) == committees_size
@@ -968,22 +985,21 @@ def get_previous_round(state: BeaconState) -> Round:
 
 *Note*: The active validators are not shuffled. They are split evenly into
 `ATTESTATION_COMMITTEES_PER_ROUND` committees, in index order rotated by
-`round`, so each validator sits on exactly one.
+`epoch`, so each validator sits on exactly one.
 
 ```python
 def get_attestation_committee(
-    state: BeaconState, round: Round, index: CommitteeIndex
+    state: BeaconState, epoch: Epoch, index: CommitteeIndex
 ) -> Sequence[ValidatorIndex]:
     """
-    Return the attestation committee at ``index`` for ``round``.
+    Return the attestation committee at ``index`` for ``epoch``.
     """
-    epoch = compute_epoch_at_slot(compute_start_slot_at_round(round))
     indices = get_active_validator_indices(state, epoch)
     start = (len(indices) * index) // ATTESTATION_COMMITTEES_PER_ROUND
     end = (len(indices) * (index + 1)) // ATTESTATION_COMMITTEES_PER_ROUND
     committee: list[ValidatorIndex] = []
     for position in range(start, end):
-        committee.append(indices[(position + round) % len(indices)])
+        committee.append(indices[(position + epoch) % len(indices)])
     return committee
 ```
 
@@ -991,17 +1007,17 @@ def get_attestation_committee(
 
 ```python
 def get_aggregate_participants(
-    state: BeaconState, round: Round, aggregate: Attestation
+    state: BeaconState, epoch: Epoch, aggregate: Attestation
 ) -> set[ValidatorIndex]:
     """
     Return the validators marked in the ``aggregation_bits`` of ``aggregate``,
     which concatenates the attestation committees marked in its
-    ``committee_bits`` for ``round``.
+    ``committee_bits`` for ``epoch``.
     """
     participants: set[ValidatorIndex] = set()
     committee_offset = 0
     for committee_index in get_committee_indices(aggregate.committee_bits):
-        committee = get_attestation_committee(state, round, committee_index)
+        committee = get_attestation_committee(state, epoch, committee_index)
         for i, validator_index in enumerate(committee):
             if aggregate.aggregation_bits[committee_offset + i]:
                 participants.add(validator_index)
@@ -1017,7 +1033,25 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
     Return the set of attesting indices corresponding to ``aggregation_bits``
     and ``committee_bits``.
     """
-    return get_aggregate_participants(state, attestation.data.round, attestation)
+    return get_aggregate_participants(state, attestation.epoch, attestation)
+```
+
+#### Modified `get_indexed_attestation`
+
+```python
+def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> IndexedAttestation:
+    """
+    Return the indexed attestation corresponding to ``attestation``.
+    """
+    attesting_indices = get_attesting_indices(state, attestation)
+
+    return IndexedAttestation(
+        attesting_indices=AttestingIndices(data=sorted(attesting_indices)),
+        data=attestation.data,
+        signature=attestation.signature,
+        # [New in DC]
+        epoch=attestation.epoch,
+    )
 ```
 
 #### New `get_head_vote_committee`
@@ -1069,22 +1103,15 @@ def get_inclusion_list_committee(state: BeaconState, slot: Slot) -> InclusionLis
 round participation.
 
 ```python
-def get_unslashed_participating_indices(
-    state: BeaconState, flag_index: int, round: Round
-) -> set[ValidatorIndex]:
+def get_unslashed_participating_indices(state: BeaconState, flag_index: int) -> set[ValidatorIndex]:
     """
     Return the set of validator indices that are both active and unslashed for
-    the given ``flag_index`` and ``round``.
+    the given ``flag_index`` in the current round.
     """
-    assert round in (get_previous_round(state), get_current_round(state))
-    if round == get_current_round(state):
-        round_participation = state.current_round_participation
-    else:
-        round_participation = state.previous_round_participation
-    epoch = compute_epoch_at_slot(compute_start_slot_at_round(round))
     participating_indices: set[ValidatorIndex] = set()
-    for index in get_active_validator_indices(state, epoch):
-        if has_flag(round_participation[index], flag_index) and not state.validators[index].slashed:
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        flags = state.round_participation[index]
+        if has_flag(flags, flag_index) and not state.validators[index].slashed:
             participating_indices.add(index)
     return participating_indices
 ```
@@ -1168,7 +1195,7 @@ def get_round_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 
 *Note*: This replaces `get_flag_index_deltas`. A validator without the flag
 forfeits the reward and is not penalized, and no rewards are paid during an
-inactivity leak. Rewards are settled for the previous round.
+inactivity leak. Rewards are settled at the end of each round.
 
 ```python
 def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei]:
@@ -1180,10 +1207,7 @@ def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei
     if is_in_inactivity_leak(state):
         return rewards
 
-    previous_round = get_previous_round(state)
-    unslashed_participating_indices = get_unslashed_participating_indices(
-        state, flag_index, previous_round
-    )
+    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index)
     weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
     unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
     unslashed_participating_increments = (
@@ -1203,21 +1227,12 @@ def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei
 #### New `add_participation_flag`
 
 ```python
-def add_participation_flag(
-    state: BeaconState, round: Round, index: ValidatorIndex, flag_index: int
-) -> None:
+def add_participation_flag(state: BeaconState, index: ValidatorIndex, flag_index: int) -> None:
     """
     Add the flag at ``flag_index`` to the participation of the validator at
-    ``index`` in ``round``, or in the previous round if older.
+    ``index`` in the current round.
     """
-    if round == get_current_round(state):
-        state.current_round_participation[index] = add_flag(
-            state.current_round_participation[index], flag_index
-        )
-    else:
-        state.previous_round_participation[index] = add_flag(
-            state.previous_round_participation[index], flag_index
-        )
+    state.round_participation[index] = add_flag(state.round_participation[index], flag_index)
 ```
 
 ### Validator registry
@@ -1234,9 +1249,7 @@ def add_validator_to_registry(
     set_or_append_list(state.balances, index, amount)
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in DC]
-    set_or_append_list(state.previous_round_participation, index, ParticipationFlags(0b0000_0000))
-    # [New in DC]
-    set_or_append_list(state.current_round_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.round_participation, index, ParticipationFlags(0b0000_0000))
     # [New in DC]
     set_or_append_list(state.target_participation, index, Boolean(False))
     # [New in DC]
@@ -1315,15 +1328,8 @@ inactivity leak.
 
 ```python
 def process_inactivity_updates(state: BeaconState) -> None:
-    if get_current_round(state) == GENESIS_ROUND:
-        return
-
-    previous_round = get_previous_round(state)
-    participating_indices = get_unslashed_participating_indices(
-        state, PROGRESS_FLAG_INDEX, previous_round
-    )
-    epoch = compute_epoch_at_slot(compute_start_slot_at_round(previous_round))
-    for index in get_active_validator_indices(state, epoch):
+    participating_indices = get_unslashed_participating_indices(state, PROGRESS_FLAG_INDEX)
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
         if index in participating_indices:
             state.inactivity_scores[index] = saturating_sub(
                 state.inactivity_scores[index], INACTIVITY_SCORE_RECOVERY_RATE
@@ -1368,9 +1374,6 @@ longer penalized.
 
 ```python
 def process_rewards(state: BeaconState) -> None:
-    if get_current_round(state) == GENESIS_ROUND:
-        return
-
     for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS_DC)):
         rewards = get_flag_index_rewards(state, flag_index)
         for index in range(len(state.validators)):
@@ -1387,17 +1390,13 @@ round.
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
     # [Modified in DC]
-    state.previous_round_participation = state.current_round_participation
-    # [Modified in DC]
-    state.current_round_participation = RoundParticipation(
+    state.round_participation = RoundParticipation(
         data=[ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
     )
     # [New in DC]
     for index in range(len(state.validators)):
         if state.progress_participation[index]:
-            state.current_round_participation[index] = add_flag(
-                state.current_round_participation[index], PROGRESS_FLAG_INDEX
-            )
+            add_participation_flag(state, ValidatorIndex(index), PROGRESS_FLAG_INDEX)
 ```
 
 ### Epoch processing
@@ -1614,18 +1613,18 @@ def process_legacy_attester_slashing(
 
 *Note*: The function `process_attestation` is rewritten for the finality gadget.
 Flags are credited only the first time a validator's progress or finality
-participation is recorded.
+participation is recorded, and count toward the round in which the attestation
+is included.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    current_round = get_current_round(state)
 
     assert is_well_formed_attestation_data(data)
     assert is_valid_attestation_data(state, data)
-    assert data.round <= current_round
-    assert data.round >= compute_round_at_slot(state.finalized_slot)
-    assert is_valid_aggregation_bits(state, data.round, attestation)
+    assert attestation.epoch <= get_current_epoch(state)
+    assert attestation.epoch >= compute_epoch_at_slot(state.finalized_slot)
+    assert is_valid_aggregation_bits(state, attestation.epoch, attestation)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     proposer_reward_numerator = 0
@@ -1634,13 +1633,12 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         for pending in state.pending_finality:
             if pending.checkpoint == data.finality and not pending.participation[index]:
                 pending.participation[index] = Boolean(True)
-                add_participation_flag(state, data.round, index, FINALITY_FLAG_INDEX)
+                add_participation_flag(state, index, FINALITY_FLAG_INDEX)
                 proposer_reward_numerator += base_reward * FINALITY_WEIGHT
         if data.target == state.target_checkpoint:
             if not state.progress_participation[index]:
                 state.progress_participation[index] = Boolean(True)
-                add_participation_flag(state, current_round, index, PROGRESS_FLAG_INDEX)
-                add_participation_flag(state, data.round, index, PROGRESS_FLAG_INDEX)
+                add_participation_flag(state, index, PROGRESS_FLAG_INDEX)
                 proposer_reward_numerator += base_reward * PROGRESS_WEIGHT
             if not data.timeout:
                 state.target_participation[index] = Boolean(True)
