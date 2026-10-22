@@ -1399,7 +1399,7 @@ round.
 def process_participation_flag_updates(state: BeaconState) -> None:
     # [Modified in EIP8453]
     state.round_participation = RoundParticipation(
-        data=[ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
+        data=[ParticipationFlags(0b0000_0000)] * len(state.validators)
     )
     # [New in EIP8453]
     for index in range(len(state.validators)):
@@ -1719,9 +1719,7 @@ def process_height_events(state: BeaconState) -> None:
             PendingFinality(
                 checkpoint=state.target_checkpoint,
                 slot=state.target_slot,
-                participation=HeightParticipation(
-                    data=[Boolean(False) for _ in range(len(state.validators))]
-                ),
+                participation=HeightParticipation(data=[Boolean(False)] * len(state.validators)),
             )
         )
         advance_height(state)
@@ -1743,10 +1741,8 @@ def advance_height(state: BeaconState) -> None:
         root=Root(),
     )
     state.target_slot = state.latest_block_header.slot
-    state.target_participation = HeightParticipation(
-        data=[Boolean(False) for _ in range(len(state.validators))]
-    )
+    state.target_participation = HeightParticipation(data=[Boolean(False)] * len(state.validators))
     state.progress_participation = HeightParticipation(
-        data=[Boolean(False) for _ in range(len(state.validators))]
+        data=[Boolean(False)] * len(state.validators)
     )
 ```
