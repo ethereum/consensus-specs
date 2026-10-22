@@ -1,4 +1,4 @@
-# Decoupled Consensus -- The Beacon Chain
+# EIP-8453 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -115,8 +115,8 @@
 
 ## Introduction
 
-Decoupled consensus (DC) composes two parts: a finality gadget (FG) and an
-available chain (AC). The FG decides which blocks are accepted and finalizes
+EIP-8453 ("Decoupled Consensus") composes two parts: a finality gadget (FG) and
+an available chain (AC). The FG decides which blocks are accepted and finalizes
 them; the AC follows the head and confirms blocks quickly, reading the FG only
 through a narrow interface. This upgrade replaces Casper FFG with the FG, whose
 chain state lives in the beacon state, and adds the payload of the AC, head
@@ -331,11 +331,11 @@ the weights still equals `WEIGHT_DENOMINATOR`.
 
 ### Misc
 
-| Name                            | Value                                |
-| ------------------------------- | ------------------------------------ |
-| `GENESIS_ROUND`                 | `Round(0)`                           |
-| `TIMEOUT_DELAY_SLOTS`           | `SLOTS_PER_ROUND`                    |
-| `PARTICIPATION_FLAG_WEIGHTS_DC` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]` |
+| Name                                 | Value                                |
+| ------------------------------------ | ------------------------------------ |
+| `GENESIS_ROUND`                      | `Round(0)`                           |
+| `TIMEOUT_DELAY_SLOTS`                | `SLOTS_PER_ROUND`                    |
+| `PARTICIPATION_FLAG_WEIGHTS_EIP8453` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]` |
 
 ## Presets
 
@@ -440,19 +440,19 @@ is false, and a timeout when it is true. The finality pair is `finality`.
 
 ```python
 class AttestationData(Container):
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `slot`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `index`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `beacon_block_root`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `source`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     target: HeightCheckpoint
-    # [New in DC]
+    # [New in EIP8453]
     timeout: Boolean
-    # [New in DC]
+    # [New in EIP8453]
     finality: HeightCheckpoint
 ```
 
@@ -464,7 +464,7 @@ class SingleAttestation(Container):
     attester_index: ValidatorIndex
     data: AttestationData
     signature: BLSSignature
-    # [New in DC]
+    # [New in EIP8453]
     epoch: Epoch
 ```
 
@@ -480,9 +480,9 @@ class Attestation(ProgressiveContainer):
     aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
-    # [Modified in DC]
+    # [Modified in EIP8453]
     committee_bits: AttestationCommitteeBits
-    # [New in DC]
+    # [New in EIP8453]
     epoch: Epoch
 ```
 
@@ -495,7 +495,7 @@ class IndexedAttestation(ProgressiveContainer):
     attesting_indices: AttestingIndices
     data: AttestationData
     signature: BLSSignature
-    # [New in DC]
+    # [New in EIP8453]
     epoch: Epoch
 ```
 
@@ -523,11 +523,11 @@ class BeaconBlockBody(ProgressiveContainer):
     signed_execution_payload_bid: SignedExecutionPayloadBid
     payload_attestations: PayloadAttestations
     parent_execution_requests: ExecutionRequests
-    # [New in DC]
+    # [New in EIP8453]
     head_votes: HeadVotes
-    # [New in DC]
+    # [New in EIP8453]
     head_vote_support_bits: HeadVoteSupportBits
-    # [New in DC]
+    # [New in EIP8453]
     legacy_attester_slashings: LegacyAttesterSlashings
 ```
 
@@ -553,17 +553,17 @@ class BeaconState(ProgressiveContainer):
     balances: Balances
     randao_mixes: RandaoMixes
     slashings: Slashings
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `previous_epoch_participation`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `current_epoch_participation`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `justification_bits`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `previous_justified_checkpoint`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `current_justified_checkpoint`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `finalized_checkpoint`
     inactivity_scores: InactivityScores
     current_sync_committee: SyncCommittee
@@ -589,25 +589,25 @@ class BeaconState(ProgressiveContainer):
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
-    # [New in DC]
+    # [New in EIP8453]
     target_checkpoint: HeightCheckpoint
-    # [New in DC]
+    # [New in EIP8453]
     justified_checkpoint: HeightCheckpoint
-    # [New in DC]
+    # [New in EIP8453]
     finalized_checkpoint: HeightCheckpoint
-    # [New in DC]
+    # [New in EIP8453]
     target_slot: Slot
-    # [New in DC]
+    # [New in EIP8453]
     finalized_slot: Slot
-    # [New in DC]
+    # [New in EIP8453]
     target_participation: Participation
-    # [New in DC]
+    # [New in EIP8453]
     progress_participation: Participation
-    # [New in DC]
+    # [New in EIP8453]
     round_participation: RoundParticipation
-    # [New in DC]
+    # [New in EIP8453]
     pending_finality: PendingFinalities
-    # [New in DC]
+    # [New in EIP8453]
     head_vote_participation: HeadVoteParticipation
 ```
 
@@ -661,14 +661,14 @@ def is_valid_indexed_attestation(
     indices = indexed_attestation.attesting_indices
     if (
         len(indices) == 0
-        # [Modified in DC]
+        # [Modified in EIP8453]
         or len(indices) > MAX_VALIDATORS_PER_AGGREGATE
         or list(indices) != sorted(set(indices))
     ):
         return False
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
-    # [Modified in DC]
+    # [Modified in EIP8453]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
@@ -781,7 +781,7 @@ def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool
     Check if ``validator`` is eligible for activation.
     """
     return (
-        # [Modified in DC]
+        # [Modified in EIP8453]
         # Placement in queue is finalized
         validator.activation_eligibility_epoch <= compute_epoch_at_slot(state.finalized_slot)
         # Has not yet been activated
@@ -798,7 +798,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     """
     builder = state.builders[builder_index]
     return (
-        # [Modified in DC]
+        # [Modified in EIP8453]
         # Placement in builder list is finalized
         builder.deposit_epoch < compute_epoch_at_slot(state.finalized_slot)
         # Has not initiated exit
@@ -855,7 +855,7 @@ def has_quorum(state: BeaconState, participation: Participation) -> bool:
 
 ```python
 def is_in_inactivity_leak(state: BeaconState) -> bool:
-    # [Modified in DC]
+    # [Modified in EIP8453]
     return get_finality_delay(state) > MIN_ROUNDS_TO_INACTIVITY_LEAK
 ```
 
@@ -941,9 +941,9 @@ def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     """
     epoch = compute_epoch_at_slot(slot)
     seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
-    # [Modified in DC]
+    # [Modified in EIP8453]
     indices = get_active_validator_indices(state, epoch)
-    # [Modified in DC]
+    # [Modified in EIP8453]
     return PayloadTimelinessCommittee(
         data=compute_balance_weighted_selection(
             state,
@@ -1049,7 +1049,7 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
         attesting_indices=AttestingIndices(data=sorted(attesting_indices)),
         data=attestation.data,
         signature=attestation.signature,
-        # [New in DC]
+        # [New in EIP8453]
         epoch=attestation.epoch,
     )
 ```
@@ -1208,7 +1208,7 @@ def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei
         return rewards
 
     unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index)
-    weight = PARTICIPATION_FLAG_WEIGHTS_DC[flag_index]
+    weight = PARTICIPATION_FLAG_WEIGHTS_EIP8453[flag_index]
     unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
     unslashed_participating_increments = (
         unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
@@ -1248,13 +1248,13 @@ def add_validator_to_registry(
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
-    # [New in DC]
+    # [New in EIP8453]
     set_or_append_list(state.round_participation, index, ParticipationFlags(0b0000_0000))
-    # [New in DC]
+    # [New in EIP8453]
     set_or_append_list(state.target_participation, index, Boolean(False))
-    # [New in DC]
+    # [New in EIP8453]
     set_or_append_list(state.progress_participation, index, Boolean(False))
-    # [New in DC]
+    # [New in EIP8453]
     for pending in state.pending_finality:
         set_or_append_list(pending.participation, index, Boolean(False))
 ```
@@ -1270,7 +1270,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
     assert state.slot < slot
     while state.slot < slot:
         process_slot(state)
-        # [New in DC]
+        # [New in EIP8453]
         # Process round on the start slot of the next round
         if (state.slot + 1) % SLOTS_PER_ROUND == 0:
             process_round(state)
@@ -1300,7 +1300,7 @@ def process_slot(state: BeaconState) -> None:
     # Cache block root
     previous_block_root = hash_tree_root(state.latest_block_header)
     state.block_roots[slot_index] = previous_block_root
-    # [New in DC]
+    # [New in EIP8453]
     # Cache target checkpoint root
     if state.target_checkpoint.root == Root():
         state.target_checkpoint.root = previous_block_root
@@ -1374,7 +1374,7 @@ longer penalized.
 
 ```python
 def process_rewards(state: BeaconState) -> None:
-    for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS_DC)):
+    for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS_EIP8453)):
         rewards = get_flag_index_rewards(state, flag_index)
         for index in range(len(state.validators)):
             increase_balance(state, ValidatorIndex(index), rewards[index])
@@ -1389,11 +1389,11 @@ round.
 
 ```python
 def process_participation_flag_updates(state: BeaconState) -> None:
-    # [Modified in DC]
+    # [Modified in EIP8453]
     state.round_participation = RoundParticipation(
         data=[ParticipationFlags(0b0000_0000) for _ in range(len(state.validators))]
     )
-    # [New in DC]
+    # [New in EIP8453]
     for index in range(len(state.validators)):
         if state.progress_participation[index]:
             add_participation_flag(state, ValidatorIndex(index), PROGRESS_FLAG_INDEX)
@@ -1408,11 +1408,11 @@ def process_participation_flag_updates(state: BeaconState) -> None:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `process_justification_and_finalization`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `process_inactivity_updates`
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `process_rewards_and_penalties`
     process_registry_updates(state)
     process_slashings(state)
@@ -1423,7 +1423,7 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_summaries_update(state)
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `process_participation_flag_updates`
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
@@ -1469,7 +1469,7 @@ def process_pending_deposits(state: BeaconState) -> None:
     next_deposit_index = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False
-    # [Modified in DC]
+    # [Modified in EIP8453]
     finalized_slot = state.finalized_slot
 
     for deposit in state.pending_deposits:
@@ -1532,10 +1532,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_withdrawals(state)
     process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
-    # [Modified in DC]
+    # [Modified in EIP8453]
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    # [New in DC]
+    # [New in EIP8453]
     process_height_events(state)
 ```
 
@@ -1547,7 +1547,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def process_operations(
     state: BeaconState,
     body: BeaconBlockBody,
-    # [Modified in DC]
+    # [Modified in EIP8453]
     # Removed `parent_slot`
 ) -> None:
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
@@ -1556,31 +1556,31 @@ def process_operations(
 
     assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
     assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
-    # [New in DC]
+    # [New in EIP8453]
     assert len(body.legacy_attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
     assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
     assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
     assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
     assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
-    # [New in DC]
+    # [New in EIP8453]
     assert len(body.head_votes) <= MAX_HEAD_VOTES
-    # [New in DC]
+    # [New in EIP8453]
     assert len(body.head_vote_support_bits) == len(body.head_votes)
-    # [New in DC]
+    # [New in EIP8453]
     for vote_index in range(len(body.head_votes)):
         if body.head_vote_support_bits[vote_index]:
             assert body.head_votes[vote_index].data.slot == state.slot - 1
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    # [New in DC]
+    # [New in EIP8453]
     for_ops(body.legacy_attester_slashings, process_legacy_attester_slashing)
-    # [Modified in DC]
+    # [Modified in EIP8453]
     for_ops(body.attestations, process_attestation)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.payload_attestations, process_payload_attestation)
-    # [New in DC]
+    # [New in EIP8453]
     for_ops(body.head_votes, process_head_vote)
 ```
 

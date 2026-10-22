@@ -1,4 +1,4 @@
-# Decoupled Consensus Light Client -- Sync Protocol
+# EIP-8453 Light Client -- Sync Protocol
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -33,14 +33,14 @@ class FinalityBranch(Vector[Bytes32]):
     ``BeaconState``.
     """
 
-    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX_DC)
+    LENGTH = floorlog2(FINALIZED_ROOT_GINDEX_EIP8453)
 ```
 
 ## Constants
 
 ### Frozen constants
 
-Existing `GeneralizedIndex` constants are frozen at their pre-DC values.
+Existing `GeneralizedIndex` constants are frozen at their pre-EIP-8453 values.
 
 | Name                          | Value                                                                             |
 | ----------------------------- | --------------------------------------------------------------------------------- |
@@ -48,9 +48,9 @@ Existing `GeneralizedIndex` constants are frozen at their pre-DC values.
 
 ### New constants
 
-| Name                       | Value                                                                          |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| `FINALIZED_ROOT_GINDEX_DC` | `get_generalized_index(BeaconState, "finalized_checkpoint", "root")` (= 5,943) |
+| Name                            | Value                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `FINALIZED_ROOT_GINDEX_EIP8453` | `get_generalized_index(BeaconState, "finalized_checkpoint", "root")` (= 5,943) |
 
 ## Helpers
 
@@ -60,9 +60,9 @@ Existing `GeneralizedIndex` constants are frozen at their pre-DC values.
 def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     epoch = compute_epoch_at_slot(slot)
 
-    # [New in DC]
-    if epoch >= DC_FORK_EPOCH:
-        return FINALIZED_ROOT_GINDEX_DC
+    # [New in EIP8453]
+    if epoch >= EIP8453_FORK_EPOCH:
+        return FINALIZED_ROOT_GINDEX_EIP8453
     if epoch >= GLOAS_FORK_EPOCH:
         return FINALIZED_ROOT_GINDEX_GLOAS
     if epoch >= ELECTRA_FORK_EPOCH:

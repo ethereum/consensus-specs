@@ -1,10 +1,10 @@
-from pysetup.constants import DC
+from pysetup.constants import EIP8453
 
 from .base import BaseSpecBuilder
 
 
-class DCSpecBuilder(BaseSpecBuilder):
-    fork: str = DC
+class EIP8453SpecBuilder(BaseSpecBuilder):
+    fork: str = EIP8453
 
     @classmethod
     def imports(cls, preset_name: str):
@@ -15,7 +15,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         return {
-            "FINALIZED_ROOT_GINDEX_DC": "GeneralizedIndex(5943)",
+            "FINALIZED_ROOT_GINDEX_EIP8453": "GeneralizedIndex(5943)",
         }
 
     @classmethod

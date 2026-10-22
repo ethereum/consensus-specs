@@ -1,4 +1,4 @@
-# Decoupled Consensus -- Honest Validator
+# EIP-8453 -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -44,13 +44,13 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-validator" to implement decoupled consensus (DC).
+validator" to implement EIP-8453.
 
-DC replaces the combined LMD-GHOST and Casper FFG attestation with separate head
-votes for the available chain (AC) and attestations for the finality gadget
-(FG). Each epoch, every active validator sits on one attestation committee and,
-in every round, casts its FG attestation in that committee's slot. In every
-slot, a head vote committee casts head votes.
+EIP-8453 replaces the combined LMD-GHOST and Casper FFG attestation with
+separate head votes for the available chain (AC) and attestations for the
+finality gadget (FG). Each epoch, every active validator sits on one attestation
+committee and, in every round, casts its FG attestation in that committee's
+slot. In every slot, a head vote committee casts head votes.
 
 ## Prerequisites
 
@@ -60,11 +60,11 @@ definitions in that document, and documents it extends, carry over unless
 explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in
-[Decoupled Consensus -- The Beacon Chain](./beacon-chain.md) are requisite for
-this document and used throughout.
+[EIP-8453 -- The Beacon Chain](./beacon-chain.md) are requisite for this
+document and used throughout.
 
-*TODO*: Specify the DC fork-choice interfaces and duty deadlines referenced
-below.
+*TODO*: Specify the EIP-8453 fork-choice interfaces and duty deadlines
+referenced below.
 
 ## Helpers
 
@@ -83,7 +83,7 @@ class FinalitySigningRecord:
     entries: dict[Height, set[Root]]
 ```
 
-The fields are initialized empty for a validator with no prior DC signing
+The fields are initialized empty for a validator with no prior EIP-8453 signing
 history:
 
 - `targets[h]`: the first target voted for at height `h`.
@@ -120,7 +120,7 @@ Every active validator sits on exactly one attestation committee per epoch. In
 each round, it attests in the slot
 `compute_attestation_committee_slot(round, committee_index)`, using the
 committee of that slot's epoch. Round numbering is defined by
-`compute_round_at_slot` and does not restart at the DC fork.
+`compute_round_at_slot` and does not restart at the EIP-8453 fork.
 
 ### Head vote committees
 
@@ -156,7 +156,7 @@ Assignments are computed from the chain state using `get_attestation_committee`
 and `get_head_vote_committee`. A validator should recompute its assignment when
 the dependent chain state changes.
 
-*TODO*: Specify assignment lookahead and the dependent root in the DC
+*TODO*: Specify assignment lookahead and the dependent root in the EIP-8453
 fork-choice and networking specifications.
 
 ## Beacon chain responsibilities
@@ -173,7 +173,7 @@ slot during which `is_proposer(state, validator_index)` returns `True`.
 Let `parent` be the block returned by the AC proposal procedure, together with
 its previous slot head-vote view.
 
-*TODO*: Specify the DC proposal helper, including full or empty execution
+*TODO*: Specify the EIP-8453 proposal helper, including full or empty execution
 payload selection and inclusion-list checks.
 
 #### Constructing the `BeaconBlockBody`
@@ -217,9 +217,9 @@ contribute to a retained finality pair.
 
 ##### Attester slashings
 
-Set `block.body.attester_slashings` to valid DC attester slashing evidence and
-`block.body.legacy_attester_slashings` to valid pre-DC evidence. Each list may
-contain up to `MAX_ATTESTER_SLASHINGS_ELECTRA` items.
+Set `block.body.attester_slashings` to valid EIP-8453 attester slashing evidence
+and `block.body.legacy_attester_slashings` to valid pre-EIP-8453 evidence. Each
+list may contain up to `MAX_ATTESTER_SLASHINGS_ELECTRA` items.
 
 The evidence must satisfy `process_attester_slashing` or
 `process_legacy_attester_slashing`, respectively, against the state at its
@@ -235,7 +235,7 @@ through the slot, after unlocking against the previous slot's votes. The
 validator must satisfy the fork choice's observation requirement after waking
 up.
 
-*TODO*: Specify the DC head-vote deadline and voting helper.
+*TODO*: Specify the EIP-8453 head-vote deadline and voting helper.
 
 #### Head vote data
 
@@ -426,11 +426,11 @@ following fields:
 def get_attestation_signature(
     state: BeaconState,
     attestation_data: AttestationData,
-    # [New in DC]
+    # [New in EIP8453]
     epoch: Epoch,
     privkey: int,
 ) -> BLSSignature:
-    # [Modified in DC]
+    # [Modified in EIP8453]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
@@ -457,7 +457,7 @@ signers cannot be combined by adding their signatures.
 #### Aggregation selection
 
 *TODO*: Specify aggregator selection and selection proofs for both message
-types. The legacy aggregation helpers require adaptation to DC committees.
+types. The legacy aggregation helpers require adaptation to EIP-8453 committees.
 
 #### Construct aggregate
 
