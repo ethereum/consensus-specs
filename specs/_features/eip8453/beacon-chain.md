@@ -14,8 +14,8 @@
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
+  - [New `HeightParticipation`](#new-heightparticipation)
   - [New `LegacyAttesterSlashings`](#new-legacyattesterslashings)
-  - [New `Participation`](#new-participation)
   - [New `PendingFinalities`](#new-pendingfinalities)
   - [New `Round`](#new-round)
   - [New `RoundParticipation`](#new-roundparticipation)
@@ -260,6 +260,16 @@ class Height(Uint64):
     """
 ```
 
+### New `HeightParticipation`
+
+```python
+class HeightParticipation(ProgressiveList[Boolean]):
+    """
+    Whether each validator in the registry voted at a height, in validator index
+    order.
+    """
+```
+
 ### New `LegacyAttesterSlashings`
 
 ```python
@@ -267,16 +277,6 @@ class LegacyAttesterSlashings(ProgressiveList[heze.AttesterSlashing]):
     """
     The attester slashings included in a beacon block for attestations made
     before this upgrade.
-    """
-```
-
-### New `Participation`
-
-```python
-class Participation(ProgressiveList[Boolean]):
-    """
-    Whether each validator in the registry participates, in validator index
-    order.
     """
 ```
 
@@ -413,7 +413,7 @@ class HeightCheckpoint(Container):
 class PendingFinality(Container):
     checkpoint: HeightCheckpoint
     slot: Slot
-    participation: Participation
+    participation: HeightParticipation
 ```
 
 ### New `HeadVoteData`
@@ -611,9 +611,9 @@ class BeaconState(ProgressiveContainer):
     # [New in EIP8453]
     finalized_slot: Slot
     # [New in EIP8453]
-    target_participation: Participation
+    target_participation: HeightParticipation
     # [New in EIP8453]
-    progress_participation: Participation
+    progress_participation: HeightParticipation
     # [New in EIP8453]
     round_participation: RoundParticipation
     # [New in EIP8453]
@@ -851,7 +851,7 @@ def has_builder_payment_quorum(participation: HeadVoteCommitteeBits) -> bool:
 #### New `has_quorum`
 
 ```python
-def has_quorum(state: BeaconState, participation: Participation) -> bool:
+def has_quorum(state: BeaconState, participation: HeightParticipation) -> bool:
     """
     Check if the validators marked in ``participation`` hold at least two
     thirds of the total weight of the active validators.
@@ -1161,7 +1161,7 @@ def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint64
 #### New `get_participating_weight`
 
 ```python
-def get_participating_weight(state: BeaconState, participation: Participation) -> Uint64:
+def get_participating_weight(state: BeaconState, participation: HeightParticipation) -> Uint64:
     """
     Return the combined weight of the active and unslashed validators marked in
     ``participation``.
@@ -1725,7 +1725,7 @@ def process_height_events(state: BeaconState) -> None:
             PendingFinality(
                 checkpoint=state.target_checkpoint,
                 slot=state.target_slot,
-                participation=Participation(
+                participation=HeightParticipation(
                     data=[Boolean(False) for _ in range(len(state.validators))]
                 ),
             )
@@ -1749,10 +1749,10 @@ def advance_height(state: BeaconState) -> None:
         root=Root(),
     )
     state.target_slot = state.latest_block_header.slot
-    state.target_participation = Participation(
+    state.target_participation = HeightParticipation(
         data=[Boolean(False) for _ in range(len(state.validators))]
     )
-    state.progress_participation = Participation(
+    state.progress_participation = HeightParticipation(
         data=[Boolean(False) for _ in range(len(state.validators))]
     )
 ```
