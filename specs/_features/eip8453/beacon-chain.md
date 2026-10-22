@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `AttestationCommittee`](#new-attestationcommittee)
   - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
@@ -172,6 +173,15 @@ quorum.
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
 ## Types
+
+### New `AttestationCommittee`
+
+```python
+class AttestationCommittee(ProgressiveList[ValidatorIndex]):
+    """
+    An attestation committee of an epoch.
+    """
+```
 
 ### New `AttestationCommitteeBits`
 
@@ -990,14 +1000,14 @@ def get_previous_round(state: BeaconState) -> Round:
 ```python
 def get_attestation_committee(
     state: BeaconState, epoch: Epoch, index: CommitteeIndex
-) -> Sequence[ValidatorIndex]:
+) -> AttestationCommittee:
     """
     Return the attestation committee at ``index`` for ``epoch``.
     """
     indices = get_active_validator_indices(state, epoch)
     start = (len(indices) * index) // ATTESTATION_COMMITTEES_PER_ROUND
     end = (len(indices) * (index + 1)) // ATTESTATION_COMMITTEES_PER_ROUND
-    committee: list[ValidatorIndex] = []
+    committee = AttestationCommittee()
     for position in range(start, end):
         committee.append(indices[(position + epoch) % len(indices)])
     return committee
