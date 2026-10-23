@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-SUITE_NAME = "main"
+SUITE_NAME = "pyspec_tests"
 
 
 class Materializer:

@@ -22,7 +22,7 @@ def _write_case(tmp_path, **obligation):
     materializer = OperationsMaterializer(spec)
     materializer.test_provider = "process_operations"
     materializer.materialize_reps(tmp_path, [SimpleNamespace(**dict(next(iter(completed))))])
-    return tmp_path / "minimal/gloas/sanity/blocks/main/case_0000"
+    return tmp_path / "minimal/gloas/sanity/blocks/pyspec_tests/case_0000"
 
 
 def test_requested_acceptance_survives_failed_materialization(tmp_path, monkeypatch):

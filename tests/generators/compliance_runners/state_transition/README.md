@@ -131,9 +131,9 @@ Generated cases use this layout:
 
 ```text
 <output>/minimal/gloas/
-  operations/<handler>/main/case_XXXX/
-  sanity/blocks/main/case_XXXX/
-  epoch_processing/<handler>/main/case_XXXX/
+  operations/<handler>/pyspec_tests/case_XXXX/
+  sanity/blocks/pyspec_tests/case_XXXX/
+  epoch_processing/<handler>/pyspec_tests/case_XXXX/
 ```
 
 Each case contains `pre.ssz_snappy`, the operation input when applicable,
