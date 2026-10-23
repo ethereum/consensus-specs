@@ -970,3 +970,119 @@ def test_fork_invalid_validator_deposit_does_not_claim_builder_topup(spec, phase
 
     assert len(post_state.builders) == 0
     assert list(post_state.pending_deposits) == [invalid_validator_deposit]
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_existing_validator_valid_non_builder_topup_after_builder(spec, phases, state):
+    """A valid non-B0 top-up remains queued for an existing validator sharing a builder key."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = state.validators[0].pubkey
+    builder_deposit = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 2, privkey=privkeys[0]
+    )
+    validator_topup = create_pending_deposit_for_validator(post_spec, 0, amount * 3)
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, validator_topup)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == amount * 2
+    assert list(post_state.pending_deposits) == [validator_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_pending_validator_invalid_non_builder_topup_after_builder(spec, phases, state):
+    """The pending validator deposit and invalid non-B0 top-up stay queued in order."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+    validator_deposit = create_pending_deposit_for_unregistered_validator(post_spec, pubkey, amount)
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount * 2)
+    validator_topup = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount * 3, signed=False
+    )
+    # Different credentials let the paired epoch test detect an overwrite from the top-up.
+    validator_topup.withdrawal_credentials = (
+        post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xcd" * 20
+    )
+    state.pending_deposits = spec.PendingDeposits.of(
+        validator_deposit, builder_deposit, validator_topup
+    )
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == amount * 2
+    assert list(post_state.pending_deposits) == [validator_deposit, validator_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_existing_validator_invalid_builder_then_valid_builder(spec, phases, state):
+    """An invalid B0 top-up falls back to the validator before valid B0 registers a builder."""
+    post_spec = phases[GLOAS]
+    pubkey = state.validators[0].pubkey
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    invalid_topup = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 3, signed=False, privkey=privkeys[0]
+    )
+    builder_deposit = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 2, privkey=privkeys[0]
+    )
+    state.pending_deposits = spec.PendingDeposits.of(invalid_topup, builder_deposit)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == builder_deposit.amount
+    assert list(post_state.pending_deposits) == [invalid_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_topups_to_non_latest_builders(spec, phases, state):
+    """B0 top-ups find their builder by pubkey even when newer builders follow it."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    deposits = [
+        create_pending_deposit_for_builder(post_spec, builder_pubkeys[i], amount * (i + 1))
+        for i in range(3)
+    ]
+    invalid_topup_a = create_pending_deposit_for_builder(
+        post_spec, builder_pubkeys[0], amount * 4, signed=False
+    )
+    valid_topup_b = create_pending_deposit_for_builder(post_spec, builder_pubkeys[1], amount * 5)
+    state.pending_deposits = spec.PendingDeposits(data=deposits + [invalid_topup_a, valid_topup_b])
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert [builder.pubkey for builder in post_state.builders] == builder_pubkeys[:3]
+    assert [builder.balance for builder in post_state.builders] == [
+        amount * 5,
+        amount * 7,
+        amount * 3,
+    ]
+    assert list(post_state.pending_deposits) == []
