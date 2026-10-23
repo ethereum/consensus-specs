@@ -458,9 +458,9 @@ def get_base_reward(
 
 #### Modified `get_flag_index_deltas`
 
-*Note*: Participation deltas pay for the previous epoch, so they are priced at
-the slot duration in effect at that epoch, which differs from the current one in
-the first epoch after a slot duration change.
+*Note*: Participation rewards and penalties are calculated for the previous
+epoch and scale with its slot duration, which differs from that of the first
+epoch after a slot duration change.
 
 ```python
 def get_flag_index_deltas(
@@ -495,9 +495,10 @@ def get_flag_index_deltas(
 
 #### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The inactivity penalty scales with the square of the epoch duration, so
-the cumulative penalty over a fixed wall-clock leak duration is unchanged. The
-penalty pays for the previous epoch and is priced at its slot duration.
+*Note*: The inactivity penalty is calculated for the previous epoch and scales
+with the square of the slot duration ratio, so the cumulative penalty over the
+same amount of time during an inactivity leak remains approximately unchanged
+after a slot duration change.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -528,9 +529,6 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], S
 
 #### Modified `get_activation_churn_limit`
 
-*Note*: The cap is applied before scaling, so the maximum activation rate is
-scaled too, and the increment rounding is applied once, after scaling.
-
 ```python
 def get_activation_churn_limit(state: BeaconState) -> Gwei:
     """
@@ -548,9 +546,6 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
 ```
 
 #### Modified `get_exit_churn_limit`
-
-*Note*: Exit and consolidation epochs assigned before a duration change keep
-their assigned epochs and consumed quota.
 
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:
@@ -693,9 +688,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
 ###### Modified `process_attestation`
 
-*Note*: The proposer reward for a newly included attestation is priced at the
-attestation's target epoch, so around a slot duration change the proposer's
-share matches the attesters' rewards for the same epoch.
+*Note*: The proposer reward for an attestation is calculated for its target
+epoch and scales with its slot duration, which may differ from that of the
+current epoch after a slot duration change.
 
 ```python
 def process_attestation(
