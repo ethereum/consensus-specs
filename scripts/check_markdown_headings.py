@@ -23,18 +23,25 @@ def check_file(file_path):
     # Pattern to match markdown headings (must be at start of line)
     heading_pattern = r"^(#{1,6})\s+(.+)$"
 
-    in_code_block = False
+    code_fence = None
     prev_level = 0
 
     for line_num, line in enumerate(lines, 1):
         stripped = line.rstrip()
 
         # Track code blocks to skip headings inside them
-        if stripped.startswith("```"):
-            in_code_block = not in_code_block
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", stripped)
+        if code_fence is not None:
+            if (
+                fence
+                and fence.group(1)[0] == code_fence[0]
+                and len(fence.group(1)) >= len(code_fence)
+                and not fence.group(2).strip()
+            ):
+                code_fence = None
             continue
-
-        if in_code_block:
+        if fence and not (fence.group(1)[0] == "`" and "`" in fence.group(2)):
+            code_fence = fence.group(1)
             continue
 
         match = re.match(heading_pattern, stripped)
