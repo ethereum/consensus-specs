@@ -183,6 +183,10 @@ def test_inclusion_list_store_by_slot_and_dependent_root__empty_slot(spec, state
             missing_key[1],
         )
 
+        assert spec.get_inclusion_lists(
+            inclusion_list_store, inclusion_list_committee, missing_key[0], missing_key[1]
+        ) == [[] for _ in inclusion_list_committee]
+
         assert inclusion_list_bits_slot_1 == spec.InclusionListBits(
             data=[False] * len(inclusion_list_committee)
         )
@@ -441,3 +445,91 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
         assert inclusion_list_transactions == []
 
     run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_inclusion_list_store_separate_lists(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        shared, only_0, only_1 = get_sample_transactions(spec, max_transaction_count=3)
+        signed_inclusion_list_0 = get_sample_signed_inclusion_list(
+            spec,
+            forkchoice_store,
+            state,
+            validator_index=inclusion_list_committee[0],
+            transactions=spec.Transactions(data=[shared, only_0]),
+        )
+        signed_inclusion_list_1 = get_sample_signed_inclusion_list(
+            spec,
+            forkchoice_store,
+            state,
+            validator_index=inclusion_list_committee[1],
+            transactions=spec.Transactions(data=[only_1, shared]),
+        )
+        for signed_inclusion_list in (signed_inclusion_list_0, signed_inclusion_list_1):
+            spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
+        dependent_root = signed_inclusion_list_0.message.dependent_root
+
+        lists = spec.get_inclusion_lists(
+            inclusion_list_store, inclusion_list_committee, state.slot, dependent_root
+        )
+        assert len(lists) == spec.INCLUSION_LIST_COMMITTEE_SIZE
+        for member, transactions in zip(inclusion_list_committee, lists, strict=True):
+            if member == inclusion_list_committee[0]:
+                assert transactions == [shared, only_0]
+            elif member == inclusion_list_committee[1]:
+                assert transactions == [only_1, shared]
+            else:
+                assert transactions == []
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_test
+@single_phase
+def test_separate_lists_repeated_positions_timeliness_and_equivocation(spec):
+    store = spec.get_inclusion_list_store()
+    slot = spec.Slot(1)
+    root = spec.Root(b"\x11" * 32)
+    committee = spec.InclusionListCommittee(
+        data=[i % 3 for i in range(spec.INCLUSION_LIST_COMMITTEE_SIZE)]
+    )
+    shared, first, late = [spec.Transaction(data=[i]) for i in range(1, 4)]
+
+    def record(member, transactions, timely=True, dependent_root=root):
+        spec.process_inclusion_list(
+            store,
+            spec.SignedInclusionList(
+                message=spec.InclusionList(
+                    slot=slot,
+                    validator_index=member,
+                    dependent_root=dependent_root,
+                    transactions=spec.Transactions(data=transactions),
+                )
+            ),
+            timely,
+        )
+
+    record(0, [shared, first, shared])
+    record(1, [shared])
+    record(2, [late], timely=False)
+    # A list under a different dependent root must not contribute transactions.
+    record(2, [first], dependent_root=spec.Root(b"\x22" * 32))
+
+    def check(only_timely, expected):
+        lists = spec.get_inclusion_lists(store, committee, slot, root, only_timely)
+        assert len(lists) == spec.INCLUSION_LIST_COMMITTEE_SIZE
+        for member, transactions in zip(committee, lists, strict=True):
+            assert transactions == expected.get(int(member), [])
+
+    check(only_timely=True, expected={0: [shared, first, shared], 1: [shared]})
+    check(only_timely=False, expected={0: [shared, first, shared], 1: [shared], 2: [late]})
+    record(0, [first])
+    check(only_timely=True, expected={1: [shared]})
+    check(only_timely=False, expected={1: [shared], 2: [late]})

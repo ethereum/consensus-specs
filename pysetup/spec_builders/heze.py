@@ -62,7 +62,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_inclusion_list_satisfied(self: ExecutionEngine,
                                     execution_payload: ExecutionPayload,
-                                    inclusion_list_transactions: Sequence[Transaction]) -> bool:
+                                    inclusion_lists: Sequence[Sequence[Transaction]],
+                                    omission_claims: Sequence[OmissionClaim]) -> bool | None:
         return True
 
 

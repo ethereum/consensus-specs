@@ -8,17 +8,22 @@
 - [Types](#types)
   - [New `InclusionListBits`](#new-inclusionlistbits)
   - [New `InclusionListCommittee`](#new-inclusionlistcommittee)
+  - [New `OmissionClaims`](#new-omissionclaims)
 - [Constants](#constants)
   - [Domains](#domains)
 - [Presets](#presets)
   - [Inclusion list committee](#inclusion-list-committee)
+  - [Omission claims](#omission-claims)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
     - [`SignedInclusionList`](#signedinclusionlist)
+    - [`OmissionClaim`](#omissionclaim)
   - [Modified containers](#modified-containers)
     - [`ExecutionPayloadBid`](#executionpayloadbid)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
+    - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
+    - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
@@ -77,6 +82,17 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
     LENGTH = INCLUSION_LIST_COMMITTEE_SIZE
 ```
 
+### New `OmissionClaims`
+
+```python
+class OmissionClaims(List[OmissionClaim]):
+    """
+    The omission claims committed to by a payload bid.
+    """
+
+    LIMIT = MAX_OMISSION_CLAIMS
+```
+
 ## Constants
 
 ### Domains
@@ -92,6 +108,12 @@ class InclusionListCommittee(Vector[ValidatorIndex]):
 | Name                            | Value                 |
 | ------------------------------- | --------------------- |
 | `INCLUSION_LIST_COMMITTEE_SIZE` | `Uint64(2**4)` (= 16) |
+
+### Omission claims
+
+| Name                  | Value                     |
+| --------------------- | ------------------------- |
+| `MAX_OMISSION_CLAIMS` | `Uint64(2**12)` (= 4,096) |
 
 ## Containers
 
@@ -115,13 +137,27 @@ class SignedInclusionList(Container):
     signature: BLSSignature
 ```
 
+#### `OmissionClaim`
+
+```python
+class OmissionClaim(Container):
+    transaction_hash: Bytes32
+    evaluation_index: Uint64
+```
+
+`transaction_hash` is the Keccak-256 hash of the exact EIP-2718 transaction
+bytes. `evaluation_index` identifies the state before that payload transaction;
+the payload's transaction count identifies its end. The execution layer handles
+duplicate, unmatched and out-of-range claims as specified in EIP-7805. They do
+not invalidate the envelope.
+
 ### Modified containers
 
 #### `ExecutionPayloadBid`
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13)
+    ACTIVE_FIELDS = active_fields(width=14)
 
     parent_block_hash: Hash32
     parent_block_root: Root
@@ -137,6 +173,8 @@ class ExecutionPayloadBid(ProgressiveContainer):
     execution_requests_root: Root
     # [New in Heze:EIP7805]
     inclusion_list_bits: InclusionListBits
+    # [New in Heze:EIP7805]
+    omission_claims_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -145,6 +183,30 @@ class ExecutionPayloadBid(ProgressiveContainer):
 class SignedExecutionPayloadBid(Container):
     # [Modified in Heze:EIP7805]
     message: ExecutionPayloadBid
+    signature: BLSSignature
+```
+
+#### `ExecutionPayloadEnvelope`
+
+```python
+class ExecutionPayloadEnvelope(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=6)
+
+    payload: ExecutionPayload
+    execution_requests: ExecutionRequests
+    builder_index: BuilderIndex
+    beacon_block_root: Root
+    parent_beacon_block_root: Root
+    # [New in Heze:EIP7805]
+    omission_claims: OmissionClaims
+```
+
+#### `SignedExecutionPayloadEnvelope`
+
+```python
+class SignedExecutionPayloadEnvelope(Container):
+    # [Modified in Heze:EIP7805]
+    message: ExecutionPayloadEnvelope
     signature: BLSSignature
 ```
 
