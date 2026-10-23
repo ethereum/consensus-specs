@@ -27,7 +27,8 @@ rules.
 ```python
 def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
     """
-    Calculate a slot component's duration using this fork's slot duration, rounded to the nearest millisecond.
+    Calculate a slot component's duration using this fork's slot duration,
+    rounded to the nearest millisecond.
     """
     # [Modified in EIP8198]
     return (basis_points * SLOT_DURATION_MS_EIP8198 + BASIS_POINTS // 2) // BASIS_POINTS
