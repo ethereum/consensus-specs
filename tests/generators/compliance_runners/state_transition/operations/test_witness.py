@@ -51,7 +51,7 @@ def test_smoke_materialization_has_no_duplicate_inputs(tmp_path):
     materializer = OperationsMaterializer(spec)
     materializer.test_provider = "process_operations"
     materializer.materialize_reps(tmp_path, [SimpleNamespace(**witness) for witness in witnesses])
-    cases = sorted((tmp_path / "minimal/gloas/sanity/blocks/main").glob("case_*"))
+    cases = sorted((tmp_path / "minimal/gloas/sanity/blocks/pyspec_tests").glob("case_*"))
     inputs = [
         ((case / "pre.ssz_snappy").read_bytes(), (case / "blocks_0.ssz_snappy").read_bytes())
         for case in cases

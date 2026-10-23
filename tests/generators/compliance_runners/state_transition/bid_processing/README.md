@@ -59,8 +59,9 @@ uv run python -m tests.generators.compliance_runners.state_transition.evaluation
 
 The ordinary provider runner accepts `preset=mainnet` as well. Vectors use the
 operations format under
-`<preset>/gloas/operations/execution_payload_bid/main/case_XXXX/`, with real BLS
-signatures, complete TARGET claims, and a post-state only for accepted bids.
+`<preset>/gloas/operations/execution_payload_bid/pyspec_tests/case_XXXX/`, with
+real BLS signatures, complete TARGET claims, and a post-state only for accepted
+bids.
 
 Tests exercise both preset smoke pipelines, independent recovery and replay, all
 standard representatives, every external-builder state, all self-build
