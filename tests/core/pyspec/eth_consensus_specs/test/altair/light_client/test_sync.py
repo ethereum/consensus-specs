@@ -29,8 +29,8 @@ from eth_consensus_specs.test.helpers.light_client import (
 from eth_consensus_specs.test.helpers.light_client_sync import (
     emit_force_update,
     emit_update,
-    finish_lc_sync_test,
-    setup_lc_sync_test,
+    finish_light_client_sync_test,
+    setup_light_client_sync_test,
 )
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
@@ -48,7 +48,7 @@ from eth_consensus_specs.test.helpers.state import (
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync(spec, state):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    test = yield from setup_light_client_sync_test(spec, state)
 
     # Initial `LightClientUpdate`, populating `store.next_sync_committee`
     # ```
@@ -318,7 +318,7 @@ def test_light_client_sync(spec, state):
     assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
 @with_light_client
@@ -350,7 +350,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
     past_state = state.copy()
 
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    test = yield from setup_light_client_sync_test(spec, state)
     assert not spec.is_next_sync_committee_known(test.store)
 
     # Apply `LightClientUpdate` from the past, populating `store.next_sync_committee`
@@ -363,7 +363,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
     assert test.store.optimistic_header.beacon.slot == state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
 @with_light_client
@@ -376,7 +376,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_advance_finality_without_sync_committee(spec, state):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    test = yield from setup_light_client_sync_test(spec, state)
 
     # Initial `LightClientUpdate`, populating `store.next_sync_committee`
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
@@ -480,7 +480,7 @@ def test_advance_finality_without_sync_committee(spec, state):
     assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
 @with_light_client
@@ -523,7 +523,7 @@ def test_light_client_sync_no_force_update(spec, state):
     * advance to just before timeout threshold
     * verify force update does not occur
     """
-    test = yield from setup_lc_sync_test(spec, state)
+    test = yield from setup_light_client_sync_test(spec, state)
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
     finalized_block = state_transition_with_full_block(
@@ -568,12 +568,12 @@ def test_light_client_sync_no_force_update(spec, state):
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
-def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
+def run_light_client_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Start test (Legacy bootstrap with an upgraded store)
-    test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
+    test = yield from setup_light_client_sync_test(spec, state, phases[fork], phases)
 
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
     finalized_block = create_signed_genesis_block(spec, state)
@@ -595,7 +595,7 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     assert test.store.optimistic_header.beacon.slot == attested_state.slot
 
     # Finish test
-    yield from finish_lc_sync_test(test)
+    yield from finish_light_client_sync_test(test)
 
 
 @with_all_phases_from_to(ALTAIR, CAPELLA, other_phases=[CAPELLA])
@@ -604,7 +604,9 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
 @with_matching_spec_config(emitted_fork=CAPELLA)
 @with_presets([MINIMAL], reason="too slow")
 def test_capella_store_with_legacy_data(spec, phases, state):
-    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, CAPELLA)
+    yield from run_light_client_sync_test_upgraded_store_with_legacy_data(
+        spec, phases, state, CAPELLA
+    )
 
 
 @with_all_phases_from_to(ALTAIR, DENEB, other_phases=[CAPELLA, DENEB])
@@ -613,7 +615,9 @@ def test_capella_store_with_legacy_data(spec, phases, state):
 @with_matching_spec_config(emitted_fork=DENEB)
 @with_presets([MINIMAL], reason="too slow")
 def test_deneb_store_with_legacy_data(spec, phases, state):
-    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, DENEB)
+    yield from run_light_client_sync_test_upgraded_store_with_legacy_data(
+        spec, phases, state, DENEB
+    )
 
 
 @with_all_phases_from_to(ALTAIR, ELECTRA, other_phases=[CAPELLA, DENEB, ELECTRA])
@@ -622,7 +626,9 @@ def test_deneb_store_with_legacy_data(spec, phases, state):
 @with_matching_spec_config(emitted_fork=ELECTRA)
 @with_presets([MINIMAL], reason="too slow")
 def test_electra_store_with_legacy_data(spec, phases, state):
-    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, ELECTRA)
+    yield from run_light_client_sync_test_upgraded_store_with_legacy_data(
+        spec, phases, state, ELECTRA
+    )
 
 
 @with_all_phases_from_to(ALTAIR, GLOAS, other_phases=[CAPELLA, DENEB, ELECTRA, GLOAS])
@@ -631,4 +637,6 @@ def test_electra_store_with_legacy_data(spec, phases, state):
 @with_matching_spec_config(emitted_fork=GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 def test_gloas_store_with_legacy_data(spec, phases, state):
-    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, GLOAS)
+    yield from run_light_client_sync_test_upgraded_store_with_legacy_data(
+        spec, phases, state, GLOAS
+    )
