@@ -157,7 +157,7 @@ def run_epoch_processing_case(spec, state, handler, expected_post):
 def run_sanity_blocks_case(spec, state, blocks, expected_post):
     def run_blocks():
         for block in blocks:
-            spec.state_transition(state, block, validate_result=False)
+            spec.state_transition(state, block, validate_result=True)
 
     if expected_post is None:
         expect_assertion_error(run_blocks)
