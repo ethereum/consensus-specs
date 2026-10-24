@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
@@ -117,6 +118,10 @@ def _get_ptc_from_indices(spec, state, slot, indices):
     seed = spec.sha256(
         spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
     )
+    if is_post_heze(spec):
+        return spec.compute_balance_weighted_selection(
+            state, indices, seed, size=spec.PTC_SIZE, shuffle_indices=False, exclude_slashed=False
+        )
     return spec.compute_balance_weighted_selection(
         state, indices, seed, size=spec.PTC_SIZE, shuffle_indices=False
     )
