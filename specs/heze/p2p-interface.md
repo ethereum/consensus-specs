@@ -201,6 +201,15 @@ def validate_execution_payload_bid_gossip(
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
 
+    # [New in Heze:EIP7805]
+    # [IGNORE] The bid is received after the inclusion list deadline of the previous slot
+    inclusion_list_due_time_ms = (
+        compute_time_at_slot_ms(store.genesis_time_ms, Slot(bid.slot - 1))
+        + get_inclusion_list_due_ms()
+    )
+    if current_time_ms < inclusion_list_due_time_ms:
+        raise GossipIgnore("bid is received before the inclusion list deadline")
+
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
         raise GossipReject("bid's execution payment must be zero")
