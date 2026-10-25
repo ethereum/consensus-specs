@@ -102,8 +102,8 @@ def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
 ) -> Sequence[Transaction]:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     transactions: list[Transaction] = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -132,8 +132,8 @@ def get_inclusion_list_bits(
     only_timely: bool = True,
 ) -> InclusionListBits:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     validator_indices = []
     for validator_index, inclusion_list in inclusion_lists.items():
