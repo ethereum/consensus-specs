@@ -203,10 +203,8 @@ def validate_execution_payload_bid_gossip(
 
     # [New in Heze:EIP7805]
     # [IGNORE] The bid is received after the inclusion list deadline of the previous slot
-    inclusion_list_due_time_ms = (
-        compute_time_at_slot_ms(store.genesis_time_ms, Slot(bid.slot - 1))
-        + get_inclusion_list_due_ms()
-    )
+      inclusion_list_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+      inclusion_list_due_time_ms = inclusion_list_slot_time_ms + get_inclusion_list_due_ms()
     if current_time_ms < inclusion_list_due_time_ms:
         raise GossipIgnore("bid is received before the inclusion list deadline")
 
