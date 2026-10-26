@@ -189,14 +189,14 @@ Set `block.body.head_votes` to aggregates from the AC proposal view, up to
 in the previous and current epochs that add seats for the block of their slot,
 since these weigh builder payments.
 
-Set `block.body.head_vote_support_bits` to a `HeadVoteSupportBits` with one bit
-per included aggregate, in the same order. Set bit `i` if the vote's slot is
-`block.slot - 1`, and the block named by
-`block.body.head_votes[i].data.beacon_block_root` is in the accepted tree at
-proposal time and its slot is no later than the vote's slot. Otherwise, clear
-bit `i`.
+Set `block.body.head_vote_support` to one `HeadVoteSupportBits` per included
+aggregate, in the same order, with one bit per seat that voted in that
+aggregate, in seat order. Set a seat's bit if the proposer counted that seat's
+vote as support in its previous slot head-vote view. A counted vote must be of
+slot `block.slot - 1`, for a block in the accepted tree at proposal time whose
+slot is no later than the vote's slot. Otherwise, clear the bit.
 
-*Note*: A vote for an unknown block may be included with its support bit
+*Note*: A vote for an unknown block may be included with its support bits
 cleared.
 
 *TODO*: Specify aggregate selection when the proposal view exceeds

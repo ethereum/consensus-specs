@@ -11,6 +11,7 @@
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
   - [New `HeadVoteParticipation`](#new-headvoteparticipation)
+  - [New `HeadVoteSupport`](#new-headvotesupport)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
@@ -230,13 +231,22 @@ class HeadVoteParticipation(Vector[HeadVoteCommitteeBits]):
     LENGTH = 2 * SLOTS_PER_EPOCH
 ```
 
+### New `HeadVoteSupport`
+
+```python
+class HeadVoteSupport(ProgressiveList[HeadVoteSupportBits]):
+    """
+    The support bits of each head vote in a beacon block.
+    """
+```
+
 ### New `HeadVoteSupportBits`
 
 ```python
 class HeadVoteSupportBits(ProgressiveBitList):
     """
-    One bit per head vote in a beacon block, set when the proposer counted
-    that vote as support.
+    One bit per seat that voted in a head vote, in seat order, set when the
+    proposer counted that seat's vote as support.
     """
 ```
 
@@ -512,9 +522,6 @@ class IndexedAttestation(ProgressiveContainer):
 
 ### Modified `BeaconBlockBody`
 
-*Note*: Support is recorded per aggregate rather than per vote. The validators
-in an aggregate share its head, so their votes resolve together.
-
 *Note*: `attester_slashings` now holds slashings of this upgrade's attestations.
 `legacy_attester_slashings` holds slashings of attestations made before this
 upgrade and should be removed in a later upgrade.
@@ -537,7 +544,7 @@ class BeaconBlockBody(ProgressiveContainer):
     # [New in EIP8453]
     head_votes: HeadVotes
     # [New in EIP8453]
-    head_vote_support_bits: HeadVoteSupportBits
+    head_vote_support: HeadVoteSupport
     # [New in EIP8453]
     legacy_attester_slashings: LegacyAttesterSlashings
 ```
@@ -1572,11 +1579,7 @@ def process_operations(
     # [New in EIP8453]
     assert len(body.head_votes) <= MAX_HEAD_VOTES
     # [New in EIP8453]
-    assert len(body.head_vote_support_bits) == len(body.head_votes)
-    # [New in EIP8453]
-    for vote_index in range(len(body.head_votes)):
-        if body.head_vote_support_bits[vote_index]:
-            assert body.head_votes[vote_index].data.slot == state.slot - 1
+    assert len(body.head_vote_support) == len(body.head_votes)
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
@@ -1588,7 +1591,8 @@ def process_operations(
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.payload_attestations, process_payload_attestation)
     # [New in EIP8453]
-    for_ops(body.head_votes, process_head_vote)
+    for vote_index in range(len(body.head_votes)):
+        process_head_vote(state, body.head_votes[vote_index], body.head_vote_support[vote_index])
 ```
 
 ##### Legacy attester slashings
@@ -1663,7 +1667,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 which seats voted for the block of their slot, to weigh builder payments.
 
 ```python
-def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
+def process_head_vote(
+    state: BeaconState, vote: HeadVote, support_bits: HeadVoteSupportBits
+) -> None:
     data = vote.data
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
@@ -1673,6 +1679,11 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
         if vote.aggregation_bits[position]:
             voter_indices.append(index)
     assert len(voter_indices) > 0
+
+    assert len(support_bits) == len(voter_indices)
+    for is_supported in support_bits:
+        if is_supported:
+            assert data.slot == state.slot - 1
 
     # Verify signature
     pubkeys = [state.validators[index].pubkey for index in voter_indices]
