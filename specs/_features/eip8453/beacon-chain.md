@@ -459,6 +459,7 @@ class PendingFinality(Container):
 class HeadVoteData(Container):
     slot: Slot
     beacon_block_root: Root
+    payload_status: PayloadStatus
 ```
 
 ### New `HeadVote`
@@ -1734,6 +1735,13 @@ def process_head_vote(
     data = vote.data
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.payload_status in (
+        PAYLOAD_STATUS_EMPTY,
+        PAYLOAD_STATUS_FULL,
+        PAYLOAD_STATUS_PENDING,
+    )
+    if is_head_vote_same_slot(state, data):
+        assert data.payload_status == PAYLOAD_STATUS_PENDING
 
     committee = get_head_vote_committee(state, data.slot)
     assert len(vote.voter_indices) > 0

@@ -244,6 +244,10 @@ First, the validator constructs `head_vote_data`, a
 - Let `head` be the head selected by the AC voting procedure for `slot`.
 - Set `head_vote_data.slot = slot`.
 - Set `head_vote_data.beacon_block_root = hash_tree_root(head)`.
+- Set `head_vote_data.payload_status` to `PAYLOAD_STATUS_PENDING` if
+  `head.slot == slot`. Otherwise, set it to the payload status of `head`
+  selected by the AC voting procedure, `PAYLOAD_STATUS_FULL` or
+  `PAYLOAD_STATUS_EMPTY`.
 
 The AC voting procedure applies view merge, AC locks and FG restrictions using
 its voting view.
