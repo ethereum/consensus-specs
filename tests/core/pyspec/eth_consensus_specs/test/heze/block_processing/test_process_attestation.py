@@ -51,7 +51,9 @@ def _run_proposer_reward_test(spec, state, epoch, previous_epoch: bool = False):
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 @always_bls
 def test_proposer_reward_previous_epoch_at_heze_fork(spec, state):
     yield from _run_proposer_reward_test(
@@ -60,7 +62,9 @@ def test_proposer_reward_previous_epoch_at_heze_fork(spec, state):
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 @always_bls
 def test_proposer_reward_current_epoch_at_heze_fork(spec, state):
     yield from _run_proposer_reward_test(spec, state, spec.config.HEZE_FORK_EPOCH)

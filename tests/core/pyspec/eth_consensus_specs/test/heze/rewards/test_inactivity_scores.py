@@ -3,7 +3,7 @@ from eth_consensus_specs.test.context import (
     with_phases,
 )
 from eth_consensus_specs.test.helpers.constants import HEZE
-from eth_consensus_specs.test.helpers.rewards import make_deltas
+from eth_consensus_specs.test.helpers.rewards import run_deltas
 
 
 def _run_inactivity_penalty(spec, state, epoch):
@@ -23,21 +23,25 @@ def _run_inactivity_penalty(spec, state, epoch):
     )
     penalty = penalty_numerator // penalty_denominator
 
-    yield "pre", state
+    yield from run_deltas(spec, state)
+
     rewards, penalties = spec.get_inactivity_penalty_deltas(state)
-    yield "inactivity_penalty_deltas", make_deltas(rewards, penalties)
 
     assert rewards[0] == 0
     assert penalties[0] == penalty
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 def test_inactivity_penalty_previous_epoch_at_heze_fork(spec, state):
     yield from _run_inactivity_penalty(spec, state, spec.config.HEZE_FORK_EPOCH)
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 def test_inactivity_penalty_current_epoch_at_heze_fork(spec, state):
     yield from _run_inactivity_penalty(spec, state, spec.config.HEZE_FORK_EPOCH + 1)

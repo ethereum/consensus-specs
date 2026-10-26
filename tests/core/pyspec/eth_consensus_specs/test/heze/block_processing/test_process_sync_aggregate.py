@@ -16,7 +16,9 @@ from eth_consensus_specs.test.helpers.sync_committee import (
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 @always_bls
 def test_sync_committee_rewards_use_current_epoch_at_heze_fork(spec, state):
     fork_slot = spec.compute_start_slot_at_epoch(spec.config.HEZE_FORK_EPOCH)

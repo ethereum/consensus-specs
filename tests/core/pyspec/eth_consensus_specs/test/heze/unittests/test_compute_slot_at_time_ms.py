@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.constants import HEZE
 
 @with_phases([HEZE])
 @spec_test
-@with_config_overrides({"HEZE_FORK_EPOCH": 2})
+@with_config_overrides({"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000})
 @single_phase
 def test_compute_slot_at_time_ms_at_heze_fork(spec):
     genesis_time_ms = 1_000_000

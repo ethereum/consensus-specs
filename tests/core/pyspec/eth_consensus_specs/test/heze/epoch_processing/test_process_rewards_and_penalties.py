@@ -45,12 +45,16 @@ def _run_participation_deltas(spec, state, epoch):
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 def test_participation_deltas_previous_epoch_at_heze_fork(spec, state):
     yield from _run_participation_deltas(spec, state, spec.config.HEZE_FORK_EPOCH)
 
 
 @with_phases([HEZE])
-@spec_configured_state_test({"HEZE_FORK_EPOCH": 2}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {"HEZE_FORK_EPOCH": 2, "SLOT_DURATION_MS_HEZE": 10000}, activate_at_genesis=True
+)
 def test_participation_deltas_current_epoch_at_heze_fork(spec, state):
     yield from _run_participation_deltas(spec, state, spec.config.HEZE_FORK_EPOCH + 1)
