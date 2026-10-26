@@ -35,3 +35,8 @@ EJECTION_INACTIVITY_SCORE: 65536
 # ---------------------------------------------------------------
 # 2**3 (= 8)
 MAX_HEAD_VOTES: 8
+
+# Type-specific SSZ bounds
+# ---------------------------------------------------------------
+# [customized] 8,578 bytes, ~8 KiB
+MAX_ATTESTER_SLASHING_SIZE_EIP8453: 8578

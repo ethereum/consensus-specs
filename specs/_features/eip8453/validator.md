@@ -274,9 +274,8 @@ another head for the same slot.
 
 #### Broadcast head vote
 
-The validator broadcasts `head_vote_message` and processes it locally.
-
-*TODO*: Specify the head-vote gossip topic and subnet assignment.
+The validator broadcasts `head_vote_message` on the global `head_vote`
+[topic](./p2p-interface.md#new-head_vote) and processes it locally.
 
 ### Attesting
 
@@ -444,9 +443,24 @@ The signature covers `attestation.data`, but not `attestation.epoch` or
 
 #### Broadcast attestation
 
-The validator broadcasts `attestation` and processes it locally.
+The validator broadcasts `attestation` on the `attestation_{subnet_id}`
+[topic](./p2p-interface.md#new-attestation_subnet_id) and processes it locally,
+where `subnet_id = compute_subnet_for_attestation(attestation.committee_index)`.
 
-*TODO*: Specify the FG attestation gossip topic and subnet assignment.
+```python
+def compute_subnet_for_attestation(
+    # [Modified in EIP8453]
+    # Removed `committees_per_slot`
+    # [Modified in EIP8453]
+    # Removed `slot`
+    committee_index: CommitteeIndex,
+) -> SubnetID:
+    """
+    Return the subnet of the attestation committee at ``committee_index``.
+    """
+    # [Modified in EIP8453]
+    return SubnetID(committee_index % ATTESTATION_SUBNET_COUNT)
+```
 
 ### Attestation aggregation
 
@@ -459,8 +473,8 @@ signers cannot be combined by adding their signatures.
 
 #### Aggregation selection
 
-*TODO*: Specify aggregator selection and selection proofs for both message
-types. The legacy aggregation helpers require adaptation to EIP-8453 committees.
+*TODO*: Specify aggregator selection for head votes and FG attestations. The
+legacy aggregation helpers require adaptation to EIP-8453 committees.
 
 #### Construct aggregate
 
