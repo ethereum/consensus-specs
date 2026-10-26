@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Configs](#configs)
+- [Helpers](#helpers)
+  - [New `initialize_head_vote_committee_window`](#new-initialize_head_vote_committee_window)
 - [Fork to EIP-8453](#fork-to-eip-8453)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -22,6 +24,24 @@ This document describes the process of the EIP-8453 upgrade.
 | ---------------------- | ----------------------- |
 | `EIP8453_FORK_VERSION` | `Version("0xe8453000")` |
 | `EIP8453_FORK_EPOCH`   | `FAR_FUTURE_EPOCH`      |
+
+## Helpers
+
+### New `initialize_head_vote_committee_window`
+
+```python
+def initialize_head_vote_committee_window(state: BeaconState) -> HeadVoteCommitteeWindow:
+    """
+    Return the head vote committee window starting from the current epoch.
+    """
+    committees = [HeadVoteCommittee() for _ in range(SLOTS_PER_EPOCH)]
+    current_epoch = get_current_epoch(state)
+    start_slot = compute_start_slot_at_epoch(current_epoch)
+    end_slot = compute_start_slot_at_epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1)
+    for slot in range(start_slot, end_slot):
+        committees.append(compute_head_vote_committee(state, Slot(slot)))
+    return HeadVoteCommitteeWindow(data=committees)
+```
 
 ## Fork to EIP-8453
 
@@ -126,7 +146,12 @@ def upgrade_to_eip8453(pre: heze.BeaconState) -> BeaconState:
         pending_finality=PendingFinalities(),
         # [New in EIP8453]
         head_vote_participation=HeadVoteParticipation(),
+        # [New in EIP8453]
+        head_vote_committee_window=HeadVoteCommitteeWindow(),
     )
+
+    # [New in EIP8453]
+    post.head_vote_committee_window = initialize_head_vote_committee_window(post)
 
     return post
 ```

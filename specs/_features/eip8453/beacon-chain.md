@@ -10,6 +10,7 @@
   - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
+  - [New `HeadVoteCommitteeWindow`](#new-headvotecommitteewindow)
   - [New `HeadVoteParticipation`](#new-headvoteparticipation)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
@@ -67,6 +68,7 @@
     - [New `compute_attestation_committee_slot`](#new-compute_attestation_committee_slot)
     - [New `compute_uniform_selection`](#new-compute_uniform_selection)
     - [Modified `compute_ptc`](#modified-compute_ptc)
+    - [New `compute_head_vote_committee`](#new-compute_head_vote_committee)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_current_round`](#new-get_current_round)
     - [New `get_previous_round`](#new-get_previous_round)
@@ -99,6 +101,7 @@
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_builder_pending_payments`](#modified-process_builder_pending_payments)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
+    - [New `process_head_vote_committee_window`](#new-process_head_vote_committee_window)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
     - [Operations](#operations)
@@ -217,6 +220,18 @@ class HeadVoteCommitteeBits(BitVector):
     """
 
     LENGTH = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteCommitteeWindow`
+
+```python
+class HeadVoteCommitteeWindow(Vector[HeadVoteCommittee]):
+    """
+    A rolling window of head vote committees for the previous, current, and
+    lookahead epochs.
+    """
+
+    LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 2) * Uint64(SLOTS_PER_EPOCH)
 ```
 
 ### New `HeadVoteParticipation`
@@ -558,7 +573,7 @@ keeps its name but moves to a new position.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=56, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
+    ACTIVE_FIELDS = active_fields(width=57, gaps=(8, 9, 10, 15, 16, 17, 18, 19, 20, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -628,6 +643,8 @@ class BeaconState(ProgressiveContainer):
     pending_finality: PendingFinalities
     # [New in EIP8453]
     head_vote_participation: HeadVoteParticipation
+    # [New in EIP8453]
+    head_vote_committee_window: HeadVoteCommitteeWindow
 ```
 
 ## Helpers
@@ -972,6 +989,27 @@ def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
     )
 ```
 
+#### New `compute_head_vote_committee`
+
+```python
+def compute_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee:
+    """
+    Return the head vote committee for ``slot``, with possible duplicates.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_HEAD_VOTE_COMMITTEE) + uint_to_bytes(slot))
+    indices = get_active_validator_indices(state, epoch)
+    return HeadVoteCommittee(
+        data=compute_balance_weighted_selection(
+            state,
+            indices,
+            seed,
+            size=HEAD_VOTE_COMMITTEE_SIZE,
+            shuffle_indices=True,
+        )
+    )
+```
+
 ### Beacon state accessors
 
 #### New `get_current_round`
@@ -1073,26 +1111,20 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
 
 #### New `get_head_vote_committee`
 
-*Note*: Like the payload timeliness committee, the head vote committee is
-sampled by effective balance and can contain duplicates.
-
 ```python
 def get_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee:
     """
     Return the head vote committee for ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = sha256(get_seed(state, epoch, DOMAIN_HEAD_VOTE_COMMITTEE) + uint_to_bytes(slot))
-    indices = get_active_validator_indices(state, epoch)
-    return HeadVoteCommittee(
-        data=compute_balance_weighted_selection(
-            state,
-            indices,
-            seed,
-            size=HEAD_VOTE_COMMITTEE_SIZE,
-            shuffle_indices=True,
-        )
-    )
+    assert epoch >= EIP8453_FORK_EPOCH
+    state_epoch = get_current_epoch(state)
+    if epoch < state_epoch:
+        assert epoch + 1 == state_epoch
+        return state.head_vote_committee_window[slot % SLOTS_PER_EPOCH]
+    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    return state.head_vote_committee_window[offset + slot % SLOTS_PER_EPOCH]
 ```
 
 #### Modified `get_inclusion_list_committee`
@@ -1444,6 +1476,8 @@ def process_epoch(state: BeaconState) -> None:
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
     process_ptc_window(state)
+    # [New in EIP8453]
+    process_head_vote_committee_window(state)
 ```
 
 #### Modified `process_builder_pending_payments`
@@ -1531,6 +1565,21 @@ def process_pending_deposits(state: BeaconState) -> None:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
     else:
         state.deposit_balance_to_consume = Gwei(0)
+```
+
+#### New `process_head_vote_committee_window`
+
+```python
+def process_head_vote_committee_window(state: BeaconState) -> None:
+    """
+    Update the cached head vote committee window.
+    """
+    current_epoch = get_current_epoch(state)
+    committees = list(state.head_vote_committee_window[SLOTS_PER_EPOCH:])
+    start_slot = compute_start_slot_at_epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
+        committees.append(compute_head_vote_committee(state, Slot(slot)))
+    state.head_vote_committee_window = HeadVoteCommitteeWindow(data=committees)
 ```
 
 ### Block processing
