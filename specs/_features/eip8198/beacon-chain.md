@@ -310,7 +310,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
-    Per-epoch churn limit reserved for consolidations (EIP-7521).
+    Per-epoch churn limit reserved for consolidations (EIP-7251).
     Derived from total active balance and rounded to
     ``EFFECTIVE_BALANCE_INCREMENT``.
     """

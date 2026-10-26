@@ -62,6 +62,12 @@ def initialize_ptc_window(
 contract that creates builders. From the fork onward, builders are created and
 topped up only via `BuilderDepositRequest`.
 
+During this pass:
+
+- Only deposits with builder withdrawal credentials can fund builders.
+- Other deposits stay queued, even if a builder uses the same public key.
+- A valid builder registration can use a validator's public key.
+
 *Note*: In the slots leading up to the fork, implementations SHOULD validate
 pending deposit signatures and cache the results. The pending deposit queue
 might be large and verifying many signatures at the fork could be slow.
@@ -76,8 +82,8 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
 
     pending_deposits = PendingDeposits()
     for deposit in state.pending_deposits:
-        # Deposits for existing validators stay in the pending queue
-        if deposit.pubkey in validator_pubkeys:
+        # Only builder-credential deposits can fund builders at the fork.
+        if not is_builder_withdrawal_credential(deposit.withdrawal_credentials):
             pending_deposits.append(deposit)
             continue
 
@@ -86,22 +92,18 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         # of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [builder.pubkey for builder in state.builders]
 
-        # Deposits for non-builders stay in the pending queue. If there is a
-        # valid pending deposit for a new validator with this pubkey, keep this
-        # deposit in the pending queue to be applied to that validator later.
         if deposit.pubkey not in builder_pubkeys:
-            if not is_builder_withdrawal_credential(deposit.withdrawal_credentials):
-                pending_deposits.append(deposit)
-                continue
-            if is_pending_validator(pending_deposits, deposit.pubkey):
-                pending_deposits.append(deposit)
-                continue
             if not is_valid_deposit_signature(
                 deposit.pubkey,
                 deposit.withdrawal_credentials,
                 deposit.amount,
                 deposit.signature,
             ):
+                # Preserve validator top-ups when no builder can receive them.
+                if deposit.pubkey in validator_pubkeys or is_pending_validator(
+                    pending_deposits, deposit.pubkey
+                ):
+                    pending_deposits.append(deposit)
                 continue
 
             add_builder_to_registry(
