@@ -182,19 +182,20 @@ slots up to the proposal slot using `process_slots`, before applying the block.
 
 ##### Head votes
 
-Set `block.body.head_votes` to aggregates from the AC proposal view, up to
-`MAX_HEAD_VOTES`. Each aggregate must satisfy the verification conditions in
+Set `block.body.head_votes` to head votes built from aggregates in the AC
+proposal view, up to `MAX_HEAD_VOTES`. Each head vote must satisfy the
+verification conditions in
 [`process_head_vote`](./beacon-chain.md#new-process_head_vote). Votes of
 `block.slot - 1` come first. The remaining space may hold votes of earlier slots
 in the previous and current epochs that add seats for the block of their slot,
 since these weigh builder payments.
 
-Set `block.body.head_vote_support` to one `HeadVoteSupportBits` per included
-aggregate, in the same order, with one bit per seat that voted in that
-aggregate, in seat order. Set a seat's bit if the proposer counted that seat's
-vote as support in its previous slot head-vote view. A counted vote must be of
-slot `block.slot - 1`, for a block in the accepted tree at proposal time whose
-slot is no later than the vote's slot. Otherwise, clear the bit.
+To build a head vote, copy the `aggregation_bits`, `data` and `signature` of a
+`HeadVoteAggregate`, and set `support_bits` to one bit per seat that voted, in
+seat order. Set a seat's bit if the proposer counted that seat's vote as support
+in its previous slot head-vote view. A counted vote must be of slot
+`block.slot - 1`, for a block in the accepted tree at proposal time whose slot
+is no later than the vote's slot. Otherwise, clear the bit.
 
 *Note*: A vote for an unknown block may be included with its support bits
 cleared.
@@ -468,7 +469,9 @@ the committee has its bit set and its signature added once per seat, matching
 `process_head_vote`.
 
 ```python
-def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessage]) -> HeadVote:
+def get_aggregate_head_vote(
+    state: BeaconState, messages: Sequence[HeadVoteMessage]
+) -> HeadVoteAggregate:
     """
     Aggregate head vote messages with identical data and distinct signers.
     """
@@ -487,7 +490,7 @@ def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessa
             seat_signatures.append(signatures[validator_index])
             represented.add(validator_index)
     assert represented == set(signatures)
-    return HeadVote(
+    return HeadVoteAggregate(
         aggregation_bits=aggregation_bits,
         data=data,
         signature=bls.Aggregate(seat_signatures),
