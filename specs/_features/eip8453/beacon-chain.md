@@ -12,6 +12,7 @@
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
   - [New `HeadVoteCommitteeWindow`](#new-headvotecommitteewindow)
   - [New `HeadVoteParticipation`](#new-headvoteparticipation)
+  - [New `HeadVoteSupport`](#new-headvotesupport)
   - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
   - [New `HeadVotes`](#new-headvotes)
   - [New `Height`](#new-height)
@@ -36,7 +37,6 @@
   - [New `HeightCheckpoint`](#new-heightcheckpoint)
   - [New `PendingFinality`](#new-pendingfinality)
   - [New `HeadVoteData`](#new-headvotedata)
-  - [New `HeadVoteAggregate`](#new-headvoteaggregate)
   - [New `HeadVote`](#new-headvote)
   - [New `HeadVoteMessage`](#new-headvotemessage)
   - [Modified `AttestationData`](#modified-attestationdata)
@@ -246,6 +246,15 @@ class HeadVoteParticipation(Vector[HeadVoteCommitteeBits]):
     LENGTH = 2 * SLOTS_PER_EPOCH
 ```
 
+### New `HeadVoteSupport`
+
+```python
+class HeadVoteSupport(ProgressiveList[HeadVoteSupportBits]):
+    """
+    The support bits of each head vote in a beacon block.
+    """
+```
+
 ### New `HeadVoteSupportBits`
 
 ```python
@@ -440,27 +449,15 @@ class HeadVoteData(Container):
     beacon_block_root: Root
 ```
 
-### New `HeadVoteAggregate`
+### New `HeadVote`
 
 ```python
-class HeadVoteAggregate(ProgressiveContainer):
+class HeadVote(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=3)
 
     aggregation_bits: HeadVoteCommitteeBits
     data: HeadVoteData
     signature: BLSSignature
-```
-
-### New `HeadVote`
-
-```python
-class HeadVote(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=4)
-
-    aggregation_bits: HeadVoteCommitteeBits
-    data: HeadVoteData
-    signature: BLSSignature
-    support_bits: HeadVoteSupportBits
 ```
 
 ### New `HeadVoteMessage`
@@ -546,7 +543,7 @@ upgrade and should be removed in a later upgrade.
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=15, gaps=(1, 6))
+    ACTIVE_FIELDS = active_fields(width=16, gaps=(1, 6))
 
     randao_reveal: BLSSignature
     graffiti: Bytes32
@@ -561,6 +558,8 @@ class BeaconBlockBody(ProgressiveContainer):
     parent_execution_requests: ExecutionRequests
     # [New in EIP8453]
     head_votes: HeadVotes
+    # [New in EIP8453]
+    head_vote_support: HeadVoteSupport
     # [New in EIP8453]
     legacy_attester_slashings: LegacyAttesterSlashings
 ```
@@ -1628,6 +1627,8 @@ def process_operations(
     assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
     # [New in EIP8453]
     assert len(body.head_votes) <= MAX_HEAD_VOTES
+    # [New in EIP8453]
+    assert len(body.head_vote_support) == len(body.head_votes)
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
@@ -1639,7 +1640,8 @@ def process_operations(
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
     for_ops(body.payload_attestations, process_payload_attestation)
     # [New in EIP8453]
-    for_ops(body.head_votes, process_head_vote)
+    for vote_index in range(len(body.head_votes)):
+        process_head_vote(state, body.head_votes[vote_index], body.head_vote_support[vote_index])
 ```
 
 ##### Legacy attester slashings
@@ -1714,7 +1716,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 which seats voted for the block of their slot, to weigh builder payments.
 
 ```python
-def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
+def process_head_vote(
+    state: BeaconState, vote: HeadVote, support_bits: HeadVoteSupportBits
+) -> None:
     data = vote.data
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
@@ -1725,8 +1729,8 @@ def process_head_vote(state: BeaconState, vote: HeadVote) -> None:
             voter_indices.append(index)
     assert len(voter_indices) > 0
 
-    assert len(vote.support_bits) == len(voter_indices)
-    for is_supported in vote.support_bits:
+    assert len(support_bits) == len(voter_indices)
+    for is_supported in support_bits:
         if is_supported:
             assert data.slot == state.slot - 1
 
