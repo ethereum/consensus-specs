@@ -10,6 +10,7 @@
   - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
   - [New `HeadVoteCommittee`](#new-headvotecommittee)
   - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
+  - [New `HeadVoteCommitteeIndices`](#new-headvotecommitteeindices)
   - [New `HeadVoteCommitteeWindow`](#new-headvotecommitteewindow)
   - [New `HeadVoteParticipation`](#new-headvoteparticipation)
   - [New `HeadVoteSupport`](#new-headvotesupport)
@@ -222,6 +223,17 @@ class HeadVoteCommitteeBits(BitVector):
     LENGTH = HEAD_VOTE_COMMITTEE_SIZE
 ```
 
+### New `HeadVoteCommitteeIndices`
+
+```python
+class HeadVoteCommitteeIndices(List[ValidatorIndex]):
+    """
+    The indices of the validators participating in a head vote.
+    """
+
+    LIMIT = HEAD_VOTE_COMMITTEE_SIZE
+```
+
 ### New `HeadVoteCommitteeWindow`
 
 ```python
@@ -260,8 +272,8 @@ class HeadVoteSupport(ProgressiveList[HeadVoteSupportBits]):
 ```python
 class HeadVoteSupportBits(ProgressiveBitList):
     """
-    One bit per seat that voted in a head vote, in seat order, set when the
-    proposer counted that seat's vote as support.
+    One bit per voter of a head vote, in the order of its ``voter_indices``,
+    set when the proposer counted that voter's vote as support.
     """
 ```
 
@@ -455,7 +467,7 @@ class HeadVoteData(Container):
 class HeadVote(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=3)
 
-    aggregation_bits: HeadVoteCommitteeBits
+    voter_indices: HeadVoteCommitteeIndices
     data: HeadVoteData
     signature: BLSSignature
 ```
@@ -1723,19 +1735,19 @@ def process_head_vote(
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
 
-    voter_indices: list[ValidatorIndex] = []
-    for position, index in enumerate(get_head_vote_committee(state, data.slot)):
-        if vote.aggregation_bits[position]:
-            voter_indices.append(index)
-    assert len(voter_indices) > 0
+    committee = get_head_vote_committee(state, data.slot)
+    assert len(vote.voter_indices) > 0
+    assert list(vote.voter_indices) == sorted(set(vote.voter_indices))
+    for index in vote.voter_indices:
+        assert index in committee
 
-    assert len(support_bits) == len(voter_indices)
+    assert len(support_bits) == len(vote.voter_indices)
     for is_supported in support_bits:
         if is_supported:
             assert data.slot == state.slot - 1
 
     # Verify signature
-    pubkeys = [state.validators[index].pubkey for index in voter_indices]
+    pubkeys = [state.validators[index].pubkey for index in vote.voter_indices]
     domain = get_domain(state, DOMAIN_HEAD_VOTE, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     assert bls.FastAggregateVerify(pubkeys, signing_root, vote.signature)
@@ -1746,8 +1758,8 @@ def process_head_vote(
             participation_index = SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH
         else:
             participation_index = data.slot % SLOTS_PER_EPOCH
-        for position in range(HEAD_VOTE_COMMITTEE_SIZE):
-            if vote.aggregation_bits[position]:
+        for position, index in enumerate(committee):
+            if index in vote.voter_indices:
                 state.head_vote_participation[participation_index][position] = Boolean(True)
 ```
 

@@ -190,11 +190,11 @@ in the previous and current epochs that add seats for the block of their slot,
 since these weigh builder payments.
 
 Set `block.body.head_vote_support` to one `HeadVoteSupportBits` per included
-aggregate, in the same order, with one bit per seat that voted in that
-aggregate, in seat order. Set a seat's bit if the proposer counted that seat's
-vote as support in its previous slot head-vote view. A counted vote must be of
-slot `block.slot - 1`, for a block in the accepted tree at proposal time whose
-slot is no later than the vote's slot. Otherwise, clear the bit.
+aggregate, in the same order, with one bit per voter in that aggregate, in the
+order of its `voter_indices`. Set a voter's bit if the proposer counted that
+voter's vote as support in its previous slot head-vote view. A counted vote must
+be of slot `block.slot - 1`, for a block in the accepted tree at proposal time
+whose slot is no later than the vote's slot. Otherwise, clear the bit.
 
 *Note*: A vote for an unknown block may be included with its support bits
 cleared.
@@ -464,8 +464,8 @@ types. The legacy aggregation helpers require adaptation to EIP-8453 committees.
 
 Construct `aggregate_vote` using `get_aggregate_head_vote` with head vote
 messages for the same slot and block root. A validator holding several seats in
-the committee has its bit set and its signature added once per seat, matching
-`process_head_vote`.
+the committee is listed and signs once, and its vote counts for each of its
+seats.
 
 ```python
 def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessage]) -> HeadVote:
@@ -478,19 +478,14 @@ def get_aggregate_head_vote(state: BeaconState, messages: Sequence[HeadVoteMessa
     signatures = {message.validator_index: message.signature for message in messages}
     assert len(signatures) == len(messages)
 
-    aggregation_bits = HeadVoteCommitteeBits()
-    seat_signatures: list[BLSSignature] = []
-    represented: set[ValidatorIndex] = set()
-    for position, validator_index in enumerate(get_head_vote_committee(state, data.slot)):
-        if validator_index in signatures:
-            aggregation_bits[position] = Boolean(True)
-            seat_signatures.append(signatures[validator_index])
-            represented.add(validator_index)
-    assert represented == set(signatures)
+    for validator_index in signatures:
+        assert validator_index in get_head_vote_committee(state, data.slot)
+
+    voter_indices = sorted(signatures)
     return HeadVote(
-        aggregation_bits=aggregation_bits,
+        voter_indices=HeadVoteCommitteeIndices(data=voter_indices),
         data=data,
-        signature=bls.Aggregate(seat_signatures),
+        signature=bls.Aggregate([signatures[index] for index in voter_indices]),
     )
 ```
 
