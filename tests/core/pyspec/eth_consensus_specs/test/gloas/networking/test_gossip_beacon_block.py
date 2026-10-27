@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -90,6 +91,8 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
         spec, state, anchor_root, signed_anchor
     )
     store.payloads[anchor_root] = signed_envelope.message
+    if is_post_heze(spec):
+        store.payload_inclusion_list_satisfaction[anchor_root] = True
     yield get_filename(signed_envelope), signed_envelope
     yield (
         "blocks",
