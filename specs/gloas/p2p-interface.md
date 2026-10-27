@@ -952,6 +952,13 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
+*Note*: The proposer for `bid.slot` SHOULD accept higher-value bids from the
+same builder. Otherwise, a builder could send a low-value bid to the proposer
+and a high-value bid to the rest of the network. Nodes that accepted the
+high-value bid would not forward competing bids with lower values, and the
+proposer would ignore the high-value bid, leaving it with only the low-value
+bid.
+
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
