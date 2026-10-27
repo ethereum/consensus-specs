@@ -69,7 +69,7 @@ def test_nonempty_omission_claims_commitment(spec, state):
         )
 
 
-def run_incomplete_inclusion_verdict(spec, state, verdict):
+def run_inclusion_verdict(spec, state, verdict):
     store, _, signed_envelope = setup_claimed_envelope(spec, state)
     envelope = signed_envelope.message
     root = envelope.beacon_block_root
@@ -116,16 +116,13 @@ def run_incomplete_inclusion_verdict(spec, state, verdict):
         assert engine.called
         assert store.payloads[root] == envelope
         assert store.payload_inclusion_list_satisfaction[root] is verdict
-        assert not spec.is_payload_inclusion_list_satisfied(store, root)
+        assert spec.is_payload_inclusion_list_satisfied(store, root) is verdict
         store.time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot + 1)
-        assert not spec.should_extend_payload(store, root)
-        if verdict is None:
-            other_root = spec.Root(b"\x77" * 32)
-            store.payload_inclusion_list_satisfaction[other_root] = None
-            # The adapter records the resolved verdict only for this block.
-            store.payload_inclusion_list_satisfaction[root] = True
-            assert spec.is_payload_inclusion_list_satisfied(store, root)
-            assert store.payload_inclusion_list_satisfaction[other_root] is None
+        store.payload_timeliness_vote[root] = [True] * spec.PTC_SIZE
+        store.payload_data_availability_vote[root] = [True] * spec.PTC_SIZE
+        assert spec.should_extend_payload(store, root) is verdict
+        other_root = spec.Root(b"\x77" * 32)
+        assert other_root not in store.payload_inclusion_list_satisfaction
 
     run_with_inclusion_list_store(spec, run)
 
@@ -133,13 +130,13 @@ def run_incomplete_inclusion_verdict(spec, state, verdict):
 @with_heze_and_later
 @spec_state_test
 def test_unsatisfied_inclusion_preserves_payload_validity(spec, state):
-    run_incomplete_inclusion_verdict(spec, state, verdict=False)
+    run_inclusion_verdict(spec, state, verdict=False)
 
 
 @with_heze_and_later
 @spec_state_test
-def test_pending_inclusion_preserves_payload_validity(spec, state):
-    run_incomplete_inclusion_verdict(spec, state, verdict=None)
+def test_satisfied_inclusion_permits_extension(spec, state):
+    run_inclusion_verdict(spec, state, verdict=True)
 
 
 @with_heze_and_later

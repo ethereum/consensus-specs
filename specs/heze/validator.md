@@ -128,9 +128,8 @@ whether fork choice extends the revealed payload in the following slot via
 
 ### Block and sidecar proposal
 
-Proposers SHOULD poll a revealed parent payload's pending inclusion check before
-selecting their parent at the start of the proposal slot. If it remains pending
-at that decision, they MUST use the empty-payload branch and proceed with the
+If no completed inclusion verdict is available when proposers select their
+parent at the start of the proposal slot, they MUST use the empty-payload branch and proceed with the
 scheduled proposal, selecting a bid or local build for that parent. They MUST
 NOT extend an unchecked payload or delay the proposal waiting for a verdict. A
 result arriving later updates fork choice but cannot change an already signed
