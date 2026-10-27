@@ -1445,13 +1445,12 @@ leads to the finalized block reported in the `Status` handshake.
 When `ExecutionPayloadEnvelopesByRange` is used to backfill the envelopes of
 blocks that precede the node's checkpoint, the envelope signature adds no
 security for the requesting node itself. Backfilled envelopes SHOULD be verified
-with `verify_execution_payload_envelope_consistency` and
-`compute_execution_block_hash`. Because builder indices are reusable and the
-node lacks historical beacon states, the signature can only be verified when
-`is_original_builder` returns `True` or
-`builder_index == BUILDER_INDEX_SELF_BUILD`; otherwise the envelope is stored
-and served as received, since the received signature is the only copy the node
-can pass on to peers that verify it.
+with `verify_execution_payload_envelope_consistency` and `is_valid_block_hash`.
+Because builder indices are reusable and the node lacks historical beacon
+states, the signature can only be verified when `is_original_builder` returns
+`True` or `builder_index == BUILDER_INDEX_SELF_BUILD`; otherwise the envelope is
+stored and served as received, since the received signature is the only copy the
+node can pass on to peers that verify it.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
