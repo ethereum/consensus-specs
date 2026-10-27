@@ -54,24 +54,25 @@ used to implement it with an external execution engine.
 def is_inclusion_list_satisfied(
     self: ExecutionEngine,
     execution_payload: ExecutionPayload,
-    inclusion_list_transactions: Sequence[Transaction],
+    inclusion_lists: Sequence[Sequence[Transaction]],
+    inclusion_list_exemptions: InclusionListExemptions,
 ) -> bool:
     """
-    Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
-    list constraints with respect to ``inclusion_list_transactions``.
+    Return ``True`` if and only if ``execution_payload`` satisfies the inclusion list
+    constraints with respect to ``inclusion_lists`` and ``inclusion_list_exemptions``.
     """
 ```
 
 #### Modified `notify_forkchoice_updated`
 
 *Note*: The only change made is to the `PayloadAttributes` container through the
-addition of `inclusion_list_transactions`. Otherwise,
-`notify_forkchoice_updated` inherits all prior functionality.
+addition of `inclusion_lists`. Otherwise, `notify_forkchoice_updated` inherits
+all prior functionality.
 
-*Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
-not empty, the payload build process MUST produce an execution payload that
-satisfies the inclusion list constraints with respect to
-`inclusion_list_transactions`.
+*Note*: If the `inclusion_lists` field of `payload_attributes` is not empty, the
+payload build process MUST produce an execution payload that satisfies the
+inclusion list constraints with respect to `inclusion_lists` and return any
+inclusion list exemptions.
 
 ```python
 def notify_forkchoice_updated(
@@ -88,7 +89,7 @@ def notify_forkchoice_updated(
 
 ### Modified `PayloadAttributes`
 
-`PayloadAttributes` is extended with the `inclusion_list_transactions` field.
+`PayloadAttributes` is extended with the `inclusion_lists` field.
 
 ```python
 @dataclass
@@ -101,7 +102,7 @@ class PayloadAttributes:
     slot_number: Uint64
     target_gas_limit: Uint64
     # [New in Heze:EIP7805]
-    inclusion_list_transactions: Sequence[Transaction]
+    inclusion_lists: Sequence[Sequence[Transaction]]
 ```
 
 ### Modified `Store`
@@ -188,15 +189,12 @@ def record_payload_inclusion_list_satisfaction(
     store: Store,
     root: Root,
     payload: ExecutionPayload,
+    inclusion_lists: Sequence[Sequence[Transaction]],
+    inclusion_list_exemptions: InclusionListExemptions,
     execution_engine: ExecutionEngine,
 ) -> None:
-    slot = store.blocks[root].slot - 1
-    dependent_root = get_shuffling_dependent_root(store, root, compute_epoch_at_slot(slot))
-    inclusion_list_transactions = get_inclusion_list_transactions(
-        get_inclusion_list_store(), slot, dependent_root, only_timely=True
-    )
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
-        payload, inclusion_list_transactions
+        payload, inclusion_lists, inclusion_list_exemptions
     )
     store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```
@@ -336,8 +334,24 @@ def on_execution_payload_envelope(
     # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints
     # If not, add this payload to the store as inclusion list constraints unsatisfied
+    slot = store.blocks[envelope.beacon_block_root].slot - 1
+    dependent_root = get_shuffling_dependent_root(
+        store, envelope.beacon_block_root, compute_epoch_at_slot(slot)
+    )
+    inclusion_lists = get_inclusion_lists(
+        get_inclusion_list_store(),
+        get_inclusion_list_committee(state, slot),
+        slot,
+        dependent_root,
+        only_timely=True,
+    )
     record_payload_inclusion_list_satisfaction(
-        store, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
+        store,
+        envelope.beacon_block_root,
+        envelope.payload,
+        inclusion_lists,
+        envelope.inclusion_list_exemptions,
+        EXECUTION_ENGINE,
     )
 
     # Add execution payload envelope to the store
