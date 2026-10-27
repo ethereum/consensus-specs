@@ -799,6 +799,106 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
 
 @with_all_phases
 @spec_state_test
+def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatch_after_seen(
+    spec, state
+):
+    """
+    Test that an aggregate with wrong aggregation bits size is rejected even
+    after a valid aggregate for the same data has already been seen.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", anchor_state
+
+    messages = []
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    next_slot(spec, state)
+
+    attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
+    signed_agg_1 = create_signed_aggregate_and_proof(spec, state, attestation)
+
+    yield get_filename(signed_agg_1), signed_agg_1
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
+
+    # First validation should pass and seed dedup state.
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_aggregate_and_proof=signed_agg_1,
+        current_time_ms=current_time_ms,
+        **kwargs,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_agg_1),
+            "expected": "valid",
+        }
+    )
+
+    # Build a second aggregate for the same data from a different aggregator so
+    # that only the aggregation bits length rule can produce the verdict, then
+    # modify its aggregation_bits to have wrong length.
+    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    assert len(committee) > 1, "Need committee size > 1 for this test"
+    other_aggregator_index = next(
+        index for index in committee if index != signed_agg_1.message.aggregator_index
+    )
+    signed_agg_2 = create_signed_aggregate_and_proof(
+        spec, state, attestation, aggregator_index=other_aggregator_index
+    )
+    wrong_size = len(committee) + 5
+    wrong_bits = [False] * wrong_size
+    wrong_bits[0] = True
+    signed_agg_2.message.aggregate.aggregation_bits = spec.AggregationBits(data=wrong_bits)
+
+    yield get_filename(signed_agg_2), signed_agg_2
+
+    # Dedup must not trigger (or fail) on bitsets of different length; the
+    # aggregate should reach the aggregation bits length rule and be rejected.
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
+    current_time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_aggregate_and_proof=signed_agg_2,
+        current_time_ms=current_time_ms,
+        **kwargs,
+    )
+    assert result == "reject"
+    assert reason == "aggregation bits length does not match committee size"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_agg_2),
+            "expected": "reject",
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_all_phases
+@spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     """
     Test that an aggregate with no participants is rejected.
