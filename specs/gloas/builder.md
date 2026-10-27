@@ -147,7 +147,9 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     actions.
 10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
-    balance to fulfill this bid and all pending payments.
+    balance to fulfill this bid and all pending payments. A later bid for the
+    same slot and parent is only propagated if its value exceeds the highest
+    value bid seen by at least `get_min_bid_increment`.
 11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
     execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
     be broadcast to the `execution_payload_bid` gossip topic.
