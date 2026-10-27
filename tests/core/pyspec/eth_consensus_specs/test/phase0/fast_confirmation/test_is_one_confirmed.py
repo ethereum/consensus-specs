@@ -1875,6 +1875,11 @@ def _run_committee_weight_matches_fork_choice_weight(spec, state, block_slot, nu
 def test_compute_committee_weight_between_slots_matches_fork_choice_weight_within_epoch(
     spec, state
 ):
+    """
+    The slot range is within a single epoch, each validator is assigned to at
+    most one slot in the range, so the committee weight is the sum of the
+    weights of the committees.
+    """
     yield from _run_committee_weight_matches_fork_choice_weight(
         spec, state, block_slot=2 * spec.SLOTS_PER_EPOCH + 2, number_of_slots=4
     )
@@ -1889,8 +1894,10 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_acros
     spec, state
 ):
     """
-    The slot range spans an epoch boundary without covering a full epoch,
-    validators assigned on both sides of the boundary are counted once.
+    The slot range spans an epoch boundary without covering a full epoch.
+    Validators assigned on both sides of the boundary are counted once in the
+    committee weight, as their single latest message is counted once in the
+    fork choice weight.
     """
     yield from _run_committee_weight_matches_fork_choice_weight(
         spec, state, block_slot=3 * spec.SLOTS_PER_EPOCH - 3, number_of_slots=5
@@ -1903,6 +1910,10 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_acros
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
 def test_compute_committee_weight_between_slots_matches_fork_choice_weight_full_epoch(spec, state):
+    """
+    The slot range covers a full epoch, so the committee weight is the total
+    active balance of the balance source.
+    """
     yield from _run_committee_weight_matches_fork_choice_weight(
         spec, state, block_slot=2 * spec.SLOTS_PER_EPOCH, number_of_slots=spec.SLOTS_PER_EPOCH
     )
