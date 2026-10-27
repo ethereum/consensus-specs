@@ -325,9 +325,14 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
 *Note*: `prepare_execution_payload` is modified to build on the parent's full
 payload or its empty variant, as decided by
 `should_build_on_full(store, head, state.slot)`, which determines the
-withdrawals source and the execution head for the new payload. When building on
-a full parent, `apply_parent_execution_payload` is called so that withdrawals
-are computed against the post-processing state.
+withdrawals source and the execution head for the new payload. The decision is
+made for the proposal slot `state.slot` rather than the wall-clock slot, so that
+a payload prepared during the previous slot agrees with the
+`signed_execution_payload_bid` constructed at the proposal slot. Since the PTC
+view of the parent can change until the proposal slot, the proposer SHOULD call
+`prepare_execution_payload` again once the parent's payload attestations are in.
+When building on a full parent, `apply_parent_execution_payload` is called so
+that withdrawals are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
