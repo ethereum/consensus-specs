@@ -87,7 +87,6 @@ class Seen:
     execution_payloads: dict[Hash32, ExecutionPayload]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
@@ -186,18 +185,12 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] This is the highest value bid seen for the slot and parent
+    # [IGNORE] The bid exceeds the highest bid seen for the slot and parent by the minimum increment
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
-        if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
-            raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
-
-    # [IGNORE] A later bid from the same builder exceeds the best bid seen by the minimum increment
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
         best_value = seen.best_execution_payload_bid[best_bid_key]
         if bid.value < best_value + get_min_bid_increment(best_value):
-            raise GossipIgnore("builder's later bid is below the minimum increment")
+            raise GossipIgnore("bid is below the minimum increment over the highest bid seen")
 
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
@@ -315,8 +308,7 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Update the highest-value bid for this slot/parent
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 
