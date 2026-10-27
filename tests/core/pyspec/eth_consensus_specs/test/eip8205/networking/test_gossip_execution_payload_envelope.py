@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -42,6 +43,7 @@ def _assert_envelope_preregistrations_gossip(spec, state, count, expected, reaso
     block.body.signed_execution_payload_bid.message.execution_requests_root = (
         execution_requests.hash_tree_root()
     )
+    commit_bid_to_execution_payload(spec, state, block, execution_requests)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message

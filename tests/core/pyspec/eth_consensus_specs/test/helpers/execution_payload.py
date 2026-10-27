@@ -499,11 +499,9 @@ def sign_execution_payload_envelope(spec, state, signed_block, envelope):
     )
 
 
-def build_signed_execution_payload_envelope(
-    spec, state, block_root, signed_block, execution_requests=None
-):
+def build_execution_payload_envelope(spec, state, block_root, block, execution_requests=None):
     # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
+    builder_index = block.body.signed_execution_payload_bid.message.builder_index
 
     # Create execution payload with fields matching the bid's commitments
     payload = build_empty_execution_payload(spec, state)
@@ -516,15 +514,54 @@ def build_signed_execution_payload_envelope(
         execution_requests = spec.ExecutionRequests()
 
     # Create the execution payload envelope message
-    envelope_message = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
         builder_index=builder_index,
         beacon_block_root=block_root,
-        parent_beacon_block_root=signed_block.message.parent_root,
+        parent_beacon_block_root=block.parent_root,
     )
 
+
+def build_signed_execution_payload_envelope(
+    spec, state, block_root, signed_block, execution_requests=None
+):
+    envelope_message = build_execution_payload_envelope(
+        spec, state, block_root, signed_block.message, execution_requests
+    )
     return sign_execution_payload_envelope(spec, state, signed_block, envelope_message)
+
+
+def compute_el_block_hash_for_envelope(spec, envelope):
+    requests_list = spec.get_execution_requests_list(envelope.execution_requests)
+    return compute_el_block_hash_with_new_fields(
+        spec,
+        envelope.payload,
+        envelope.parent_beacon_block_root,
+        compute_requests_hash(requests_list),
+    )
+
+
+def commit_bid_to_execution_payload(
+    spec, state, block, execution_requests=None, update_payload=None
+):
+    """
+    Commit the bid of ``block`` to the block hash of its envelope's payload, after
+    ``update_payload`` (if given) changes the payload. Call before signing the block.
+    """
+    post_state = state.copy()
+    spec.process_slots(post_state, block.slot)
+    spec.process_block(post_state, block)
+    envelope = build_execution_payload_envelope(
+        spec, post_state, spec.Root(), block, execution_requests
+    )
+    if update_payload is not None:
+        update_payload(envelope.payload)
+
+    bid = block.body.signed_execution_payload_bid.message
+    bid.block_hash = compute_el_block_hash_for_envelope(spec, envelope)
+    if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD:
+        block.body.signed_execution_payload_bid = sign_execution_payload_bid(spec, state, bid)
 
 
 def compute_execution_payload_bid(spec, state, payload, execution_requests=None):

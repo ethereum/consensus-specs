@@ -4,7 +4,11 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
+    build_execution_payload_envelope,
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
+    compute_el_block_hash_for_envelope,
+    sign_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -17,20 +21,34 @@ from eth_consensus_specs.test.helpers.gossip import (
     setup_store_with_failed_block,
     wrap_genesis_block,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
-def setup_store_with_block(spec, state):
-    """Apply one block to the genesis store. Returns store, blocks, block_root."""
+def setup_store_with_block(spec, state, execution_requests=None, update_payload=None):
+    """
+    Apply one block to the genesis store and build its envelope. Returns store,
+    blocks, signed_envelope.
+    """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     block = build_empty_block_for_next_slot(spec, state)
+    if execution_requests is not None:
+        block.body.signed_execution_payload_bid.message.execution_requests_root = (
+            execution_requests.hash_tree_root()
+        )
+    commit_bid_to_execution_payload(spec, state, block, execution_requests, update_payload)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
-    return store, [signed_anchor, signed_block], signed_block, block_root
+
+    envelope = build_execution_payload_envelope(
+        spec, state, block_root, signed_block.message, execution_requests
+    )
+    if update_payload is not None:
+        update_payload(envelope.payload)
+    signed_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
+    return store, [signed_anchor, signed_block], signed_envelope
 
 
 @with_gloas_and_later
@@ -40,14 +58,13 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -74,7 +91,7 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, _block_root = setup_store_with_block(spec, state)
+    store, blocks, _ = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
@@ -85,9 +102,7 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     # store, so its signature stays valid over the final message and the only
     # failing condition is the unseen block (order-independent).
     unknown_root = spec.Root(b"\xab" * 32)
-    signed_envelope = build_signed_execution_payload_envelope(
-        spec, state, unknown_root, signed_block
-    )
+    signed_envelope = build_signed_execution_payload_envelope(spec, state, unknown_root, blocks[-1])
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -115,14 +130,13 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -162,15 +176,18 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    def update_payload(payload):
+        payload.slot_number += 1
+
+    store, blocks, signed_envelope = setup_store_with_block(
+        spec, state, update_payload=update_payload
+    )
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.message.payload.slot_number = spec.Uint64(state.slot + 1)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -198,15 +215,17 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.message.payload.block_hash = spec.Hash32(b"\xcd" * 32)
+    envelope = signed_envelope.message
+    envelope.payload.transactions.append(spec.Transaction(data=list(b"\x99" * 128)))
+    envelope.payload.block_hash = compute_el_block_hash_for_envelope(spec, envelope)
+    signed_envelope = sign_execution_payload_envelope(spec, state, blocks[-1], envelope)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -234,14 +253,13 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     signed_envelope.signature = spec.BLSSignature()
     yield get_filename(signed_envelope), signed_envelope
 
@@ -270,7 +288,8 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
+    block_root = blocks[-1].message.hash_tree_root()
     # Advance the finalized checkpoint past the block's slot so the envelope
     # appears to be from a pre-finalized slot.
     store.finalized_checkpoint = spec.Checkpoint(
@@ -291,7 +310,6 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     )
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -319,7 +337,9 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, signed_anchor, signed_block = setup_store_with_failed_block(spec, state)
+    block = build_empty_block_for_next_slot(spec, state)
+    commit_bid_to_execution_payload(spec, state, block)
+    store, signed_anchor, signed_block = setup_store_with_failed_block(spec, state, block=block)
     block_root = signed_block.message.hash_tree_root()
     yield "state", anchor_state
     yield get_filename(signed_anchor), signed_anchor
@@ -362,15 +382,14 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    bid_builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
+    bid_builder_index = blocks[-1].message.body.signed_execution_payload_bid.message.builder_index
     # Pick any builder index that differs from the bid's. We subtract 1 instead
     # of adding so the value stays inside Uint64 range when the bid uses the
     # max-value sentinel BUILDER_INDEX_SELF_BUILD.
@@ -402,18 +421,27 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    # Use execution_requests with a non-empty deposits list so its root differs
+    # from the bid's empty execution_requests_root.
+    non_empty_requests = spec.ExecutionRequests(
+        deposits=spec.DepositRequests.of(spec.DepositRequest())
+    )
+    block = build_empty_block_for_next_slot(spec, state)
+    commit_bid_to_execution_payload(spec, state, block, non_empty_requests)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    block_root = signed_block.message.hash_tree_root()
+    store.blocks[block_root] = signed_block.message
+    store.block_states[block_root] = state.copy()
+    blocks = [signed_anchor, signed_block]
+
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    # Use execution_requests with a non-empty deposits list so its root differs
-    # from the bid's empty execution_requests_root.
-    non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests.of(spec.DepositRequest())
-    )
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, block_root, signed_block, execution_requests=non_empty_requests
     )
@@ -447,27 +475,15 @@ def _assert_envelope_requests(spec, state, execution_requests, expected, reason=
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    signed_anchor = wrap_genesis_block(spec, anchor_block)
-    block = build_empty_block_for_next_slot(spec, state)
-    block.body.signed_execution_payload_bid.message.execution_requests_root = (
-        execution_requests.hash_tree_root()
+    store, blocks, signed_envelope = setup_store_with_block(
+        spec, state, execution_requests=execution_requests
     )
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    block_root = signed_block.message.hash_tree_root()
-    store.blocks[block_root] = signed_block.message
-    store.block_states[block_root] = state.copy()
-    blocks = [signed_anchor, signed_block]
-
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(
-        spec, state, block_root, signed_block, execution_requests=execution_requests
-    )
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -493,25 +509,18 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    def update_payload(payload):
+        payload.withdrawals = make_progressive_list(spec.Withdrawals, count)
+
+    store, blocks, signed_envelope = setup_store_with_block(
+        spec, state, update_payload=update_payload
+    )
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    # Set the payload's withdrawals, then re-sign so the withdrawal count is the only
-    # check under test.
-    envelope = signed_envelope.message
-    envelope.payload.withdrawals = make_progressive_list(spec.Withdrawals, count)
-    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        privkey = privkeys[signed_block.message.proposer_index]
-    else:
-        privkey = builder_privkeys[envelope.builder_index]
-    signed_envelope.signature = spec.get_execution_payload_envelope_signature(
-        state, envelope, privkey
-    )
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
@@ -642,3 +651,40 @@ def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, st
     """An envelope whose payload carries more withdrawals than the limit is rejected."""
     count = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1
     yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_invalid_block_hash(spec, state):
+    """An envelope whose payload.block_hash is not computed correctly is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    envelope = signed_envelope.message
+    envelope.payload.transactions.append(spec.Transaction(data=list(b"\x99" * 128)))
+    signed_envelope = sign_execution_payload_envelope(spec, state, blocks[-1], envelope)
+    yield get_filename(signed_envelope), signed_envelope
+
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == "reject"
+    assert reason == "payload's block hash is not computed correctly"
+    messages.append(
+        {
+            "message": get_filename(signed_envelope),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages

@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_sl
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -60,6 +61,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     next_slots(spec, fork_state, b_slot - fork_state.slot - 1)
     b_block = build_empty_block_for_next_slot(spec, fork_state)
     assert b_block.slot == b_slot
+    commit_bid_to_execution_payload(spec, fork_state, b_block)
     signed_b = state_transition_and_sign_block(spec, fork_state, b_block)
     b_root = signed_b.message.hash_tree_root()
     yield from tick_and_add_block(spec, store, signed_b, test_steps)
@@ -207,6 +209,7 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
     next_slots(spec, fork_state, b_slot - fork_state.slot - 1)
     b_block = build_empty_block_for_next_slot(spec, fork_state)
     assert b_block.slot == b_slot
+    commit_bid_to_execution_payload(spec, fork_state, b_block)
     signed_b = state_transition_and_sign_block(spec, fork_state, b_block)
     b_root = signed_b.message.hash_tree_root()
     yield from tick_and_add_block(spec, store, signed_b, test_steps)
@@ -331,6 +334,7 @@ def test_get_filtered_node_tree_contains_both_viable_childless_variants(spec, st
 
     # Build block B directly on the justified state (passes FFG test)
     b_block = build_empty_block_for_next_slot(spec, state)
+    commit_bid_to_execution_payload(spec, state, b_block)
     signed_b = state_transition_and_sign_block(spec, state, b_block)
     b_root = signed_b.message.hash_tree_root()
     yield from tick_and_add_block(spec, store, signed_b, test_steps)
