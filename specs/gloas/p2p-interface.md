@@ -28,6 +28,7 @@
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
+  - [New `is_original_builder`](#new-is_original_builder)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -421,6 +422,17 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
+```
+
+### New `is_original_builder`
+
+```python
+def is_original_builder(state: BeaconState, builder_index: BuilderIndex, slot: Slot) -> bool:
+    if builder_index >= len(state.builders):
+        return False
+    builder = state.builders[builder_index]
+    # The builder already held the index at the envelope's epoch
+    return builder.deposit_epoch < compute_epoch_at_slot(slot)
 ```
 
 ### New `verify_attestation_payload_status`
@@ -1429,6 +1441,17 @@ head block, the payload is part of the chain if the head `ForkChoiceNode` has
 envelopes for blocks whose `ForkChoiceNode` in that chain has `payload_status`
 equal to `PAYLOAD_STATUS_EMPTY`. For slots before the finalization, that chain
 leads to the finalized block reported in the `Status` handshake.
+
+When `ExecutionPayloadEnvelopesByRange` is used to backfill the envelopes of
+blocks that precede the node's checkpoint, the envelope signature adds no
+security for the requesting node itself. Backfilled envelopes SHOULD be verified
+with `verify_execution_payload_envelope_consistency` and
+`compute_execution_block_hash`. Because builder indices are reusable and the
+node lacks historical beacon states, the signature can only be verified when
+`is_original_builder` returns `True` or
+`builder_index == BUILDER_INDEX_SELF_BUILD`; otherwise the envelope is stored
+and served as received, since the received signature is the only copy the node
+can pass on to peers that verify it.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
