@@ -874,6 +874,14 @@ def validate_execution_payload_envelope_gossip(
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
 
+    # [REJECT] The payload's block hash is computed correctly
+    if not EXECUTION_ENGINE.is_valid_block_hash(
+        payload,
+        envelope.parent_beacon_block_root,
+        get_execution_requests_list(envelope.execution_requests),
+    ):
+        raise GossipReject("payload's block hash is not computed correctly")
+
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
         raise GossipReject("invalid envelope signature")
