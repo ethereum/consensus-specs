@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    misc_balances,
     never_bls,
     only_generator,
     single_phase,
@@ -1842,7 +1843,9 @@ def _assert_committee_weight_matches_fork_choice_weight(spec, fcr, block_b):
     return start_slot, end_slot, balance_source
 
 
-def _run_committee_weight_matches_fork_choice_weight(spec, state, block_slot, number_of_slots):
+def _run_committee_weight_matches_fork_choice_weight(
+    spec, state, block_slot, number_of_slots, expect_repeated_assignments=False
+):
     """
     1. Build a chain with 100% participation up to ``block_slot``.
     2. Propose block B at ``block_slot`` and ``number_of_slots - 1`` descendants,
@@ -1859,18 +1862,35 @@ def _run_committee_weight_matches_fork_choice_weight(spec, state, block_slot, nu
     for _ in range(number_of_slots - 1):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-    start_slot, end_slot, _ = _assert_committee_weight_matches_fork_choice_weight(
+    start_slot, end_slot, balance_source = _assert_committee_weight_matches_fork_choice_weight(
         spec, fcr, block_b
     )
     assert end_slot == start_slot + number_of_slots - 1
+
+    # Check preconditions
+    committees = [
+        spec.get_slot_committee(fcr.store, spec.Slot(slot))
+        for slot in range(start_slot, end_slot + 1)
+    ]
+    participants = set().union(*committees)
+    # Participants have different effective balances
+    assert len({balance_source.validators[index].effective_balance for index in participants}) > 1
+    # Some validators are assigned to more than one slot in the range
+    if expect_repeated_assignments:
+        assert sum(len(committee) for committee in committees) > len(participants)
 
     yield from fcr.get_test_artefacts()
 
 
 @only_generator("too slow")
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
 @never_bls
 def test_compute_committee_weight_between_slots_matches_fork_choice_weight_within_epoch(
     spec, state
@@ -1887,8 +1907,13 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_withi
 
 @only_generator("too slow")
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
 @never_bls
 def test_compute_committee_weight_between_slots_matches_fork_choice_weight_across_epoch_boundary(
     spec, state
@@ -1900,14 +1925,23 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_acros
     fork choice weight.
     """
     yield from _run_committee_weight_matches_fork_choice_weight(
-        spec, state, block_slot=3 * spec.SLOTS_PER_EPOCH - 3, number_of_slots=5
+        spec,
+        state,
+        block_slot=3 * spec.SLOTS_PER_EPOCH - 3,
+        number_of_slots=5,
+        expect_repeated_assignments=True,
     )
 
 
 @only_generator("too slow")
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
 @never_bls
 def test_compute_committee_weight_between_slots_matches_fork_choice_weight_full_epoch(spec, state):
     """
