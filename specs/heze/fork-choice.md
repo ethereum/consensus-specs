@@ -18,7 +18,6 @@
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
   - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
   - [Modified `should_extend_payload`](#modified-should_extend_payload)
-  - [New `is_current_slot_payload_decision`](#new-is_current_slot_payload_decision)
   - [Modified `get_payload_status_tiebreaker`](#modified-get_payload_status_tiebreaker)
   - [New `get_inclusion_list_due_ms`](#new-get_inclusion_list_due_ms)
 - [Handlers](#handlers)
@@ -246,19 +245,6 @@ def should_extend_payload(store: Store, root: Root) -> bool:
     )
 ```
 
-### New `is_current_slot_payload_decision`
-
-*Note*: This predicate identifies the case where a block from the current slot
-cannot have received any attestations yet, so neither its *empty* nor its *full*
-node carries weight.
-
-```python
-def is_current_slot_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
-    is_current_slot = store.blocks[node.root].slot == get_current_slot(store)
-    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
-    return is_current_slot and is_payload_decision
-```
-
 ### Modified `get_payload_status_tiebreaker`
 
 *Note*: `get_payload_status_tiebreaker` is modified to not prefer the *full*
@@ -276,7 +262,9 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
             return Uint8(2)
         return Uint8(0)
     # [New in Heze:EIP7805]
-    elif is_current_slot_payload_decision(store, node):
+    is_current_slot = store.blocks[node.root].slot == get_current_slot(store)
+    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
+    if is_current_slot and is_payload_decision:
         # To decide on a payload from the current slot, choose
         # between FULL and EMPTY based on `is_payload_inclusion_list_satisfied`
         if node.payload_status == PAYLOAD_STATUS_EMPTY:
@@ -284,8 +272,7 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
         if is_payload_inclusion_list_satisfied(store, node.root):
             return Uint8(2)
         return Uint8(0)
-    else:
-        return node.payload_status
+    return node.payload_status
 ```
 
 ### New `get_inclusion_list_due_ms`
