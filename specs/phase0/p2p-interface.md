@@ -969,30 +969,38 @@ def validate_attester_slashing_gossip(
     if any(index >= len(state.validators) for index in attestation_1.attesting_indices):
         raise GossipReject("validator index out of range in indexed attestation 1")
 
-    # [REJECT] The first indexed attestation has valid properties
-    if not is_valid_indexed_attestation(state, attestation_1):
-        raise GossipReject("invalid indexed attestation 1")
-
     # [REJECT] All validator indices in the second indexed attestation are valid
     if any(index >= len(state.validators) for index in attestation_2.attesting_indices):
         raise GossipReject("validator index out of range in indexed attestation 2")
+
+    # [REJECT] At least one validator in the intersection is slashable
+    current_epoch = get_current_epoch(state)
+    slashable_validator_indices = {
+        index
+        for index in slashable_indices
+        if is_slashable_validator(state.validators[index], current_epoch)
+    }
+    if len(slashable_validator_indices) == 0:
+        raise GossipReject("no slashable validators in intersection")
+
+    # [IGNORE] At least one slashable validator in the intersection has not yet been seen
+    new_slashable_validator_indices = slashable_validator_indices.difference(
+        seen.attester_slashing_indices
+    )
+    if len(new_slashable_validator_indices) == 0:
+        raise GossipIgnore("all slashable validators in intersection already seen")
+
+    # [REJECT] The first indexed attestation has valid properties
+    if not is_valid_indexed_attestation(state, attestation_1):
+        raise GossipReject("invalid indexed attestation 1")
 
     # [REJECT] The second indexed attestation has valid properties
     if not is_valid_indexed_attestation(state, attestation_2):
         raise GossipReject("invalid indexed attestation 2")
 
-    # [REJECT] At least one validator in the intersection is slashable
-    slashable_any = False
-    current_epoch = get_current_epoch(state)
-    for index in slashable_indices:
-        if is_slashable_validator(state.validators[index], current_epoch):
-            slashable_any = True
-            break
-    if not slashable_any:
-        raise GossipReject("no slashable validators in intersection")
-
-    # Mark these indices as seen
-    seen.attester_slashing_indices.update(slashable_indices)
+    # Mark only the slashable validators as seen. The other indices in the intersection are
+    # not slashed by this attester slashing and must not shield a later one that slashes them
+    seen.attester_slashing_indices.update(slashable_validator_indices)
 ```
 
 ##### Attestation subnets
