@@ -550,7 +550,8 @@ def commit_bid_to_execution_payload(
     ``update_payload`` (if given) changes the payload. Call before signing the block.
     """
     post_state = state.copy()
-    spec.process_slots(post_state, block.slot)
+    if post_state.slot < block.slot:
+        spec.process_slots(post_state, block.slot)
     spec.process_block(post_state, block)
     envelope = build_execution_payload_envelope(
         spec, post_state, spec.Root(), block, execution_requests
