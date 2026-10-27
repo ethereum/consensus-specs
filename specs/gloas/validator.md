@@ -216,8 +216,8 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
-    `should_build_on_full(store, head, get_current_slot(store))` is true,
-    otherwise `state.latest_execution_payload_bid.parent_block_hash`.
+    `should_build_on_full(store, head, state.slot)` is true, otherwise
+    `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
   - The `bid.prev_randao` equals
     `get_randao_mix(state, get_current_epoch(state))`.
@@ -252,8 +252,8 @@ parent's execution payload. The proposer constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to `ExecutionRequests.empty()`.
-- If `should_build_on_full(store, head, get_current_slot(store))` returns `True`
-  (the proposer is building on the parent's full payload), set
+- If `should_build_on_full(store, head, state.slot)` returns `True` (the
+  proposer is building on the parent's full payload), set
   `parent_execution_requests` to `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to `ExecutionRequests.empty()`.
@@ -324,9 +324,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
 
 *Note*: `prepare_execution_payload` is modified to build on the parent's full
 payload or its empty variant, as decided by
-`should_build_on_full(store, head, get_current_slot(store))`, which determines
-the withdrawals source and the execution head for the new payload. When building
-on a full parent, `apply_parent_execution_payload` is called so that withdrawals
+`should_build_on_full(store, head, state.slot)`, which determines the
+withdrawals source and the execution head for the new payload. When building on
+a full parent, `apply_parent_execution_payload` is called so that withdrawals
 are computed against the post-processing state.
 
 ```python
@@ -345,7 +345,7 @@ def prepare_execution_payload(
 ) -> PayloadId | None:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head, get_current_slot(store)):
+    if should_build_on_full(store, head, state.slot):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = state.copy()
