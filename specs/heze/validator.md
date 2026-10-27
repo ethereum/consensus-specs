@@ -8,6 +8,7 @@
 - [Configs](#configs)
 - [Helpers](#helpers)
   - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [New `get_inclusion_list`](#new-get_inclusion_list)
@@ -41,6 +42,19 @@ validator" to implement Heze.
 @dataclass
 class GetInclusionListResponse:
     inclusion_list_transactions: Sequence[Transaction]
+```
+
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse:
+    execution_payload: ExecutionPayload
+    block_value: Uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]
+    # [New in Heze:EIP7805]
+    omission_claims: Sequence[OmissionClaim]
 ```
 
 ## Protocols
@@ -106,7 +120,25 @@ list committee slot.
 
 All validator responsibilities remain unchanged other than those noted below.
 
+Omission claims are checked after payload reveal, through
+`on_execution_payload_envelope`. Beacon block voting and payload timeliness
+attestations retain the Gloas duties; inclusion list satisfaction determines
+whether fork choice extends the revealed payload in the following slot via
+`should_extend_payload`.
+
 ### Block and sidecar proposal
+
+If no completed inclusion verdict is available when proposers select their
+parent at the start of the proposal slot, they MUST use the empty-payload branch and proceed with the
+scheduled proposal, selecting a bid or local build for that parent. They MUST
+NOT extend an unchecked payload or delay the proposal waiting for a verdict. A
+result arriving later updates fork choice but cannot change an already signed
+proposal.
+
+This fallback preserves beacon-chain progress, but slow checks can discard an
+honest execution payload. Before activation, full-pipeline benchmarks must show
+that the selected work caps fit the extension-decision window, including indexed
+state reconstruction and any required re-execution.
 
 #### Constructing the `BeaconBlockBody`
 
@@ -140,7 +172,7 @@ and non-equivocating inclusion lists they have observed.
 ##### ExecutionPayload
 
 `prepare_execution_payload` is updated from the Gloas specification to provide
-the inclusion list transactions.
+separate inclusion lists.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
@@ -164,7 +196,9 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head, get_current_slot(store)):
+    # [New in Heze:EIP7805]
+    inclusion_satisfied = store.payload_inclusion_list_satisfaction.get(head.root, True)
+    if should_build_on_full(store, head, get_current_slot(store)) and inclusion_satisfied is True:
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = state.copy()
@@ -176,6 +210,19 @@ def prepare_execution_payload(
         withdrawals = state.payload_expected_withdrawals
         head_block_hash = parent_bid.parent_block_hash
 
+    # [New in Heze:EIP7805]
+    inclusion_list_slot = state.slot - 1
+    dependent_root = get_shuffling_dependent_root(
+        store, head.root, compute_epoch_at_slot(inclusion_list_slot)
+    )
+    inclusion_lists = get_inclusion_lists(
+        get_inclusion_list_store(),
+        get_inclusion_list_committee(state, inclusion_list_slot),
+        inclusion_list_slot,
+        dependent_root,
+        only_timely=False,
+    )
+
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state.genesis_time, state.slot),
@@ -186,12 +233,7 @@ def prepare_execution_payload(
         slot_number=state.slot,
         target_gas_limit=target_gas_limit,
         # [New in Heze:EIP7805]
-        inclusion_list_transactions=get_inclusion_list_transactions(
-            get_inclusion_list_store(),
-            state.slot - 1,
-            get_shuffling_dependent_root(store, head.root, compute_epoch_at_slot(state.slot - 1)),
-            only_timely=False,
-        ),
+        inclusion_lists=inclusion_lists,
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=head_block_hash,

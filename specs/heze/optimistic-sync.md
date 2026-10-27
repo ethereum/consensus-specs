@@ -23,15 +23,17 @@ list satisfaction. It extends the
 
 #### New How to track inclusion list satisfaction
 
-When optimistically importing a block:
+While execution validation is incomplete, the consensus engine MUST retain the
+exact `engine_newPayloadV6` inputs, including the separate ILs and revealed
+claims, and record `None` in `store.payload_inclusion_list_satisfaction`.
+Retries use these inputs, not a later IL view. A `VALID` response includes a
+completed boolean inclusion verdict; an `INVALIDATED` execution response
+records `False`.
 
-- The
-  [`is_inclusion_list_satisfied`](./fork-choice.md#new-is_inclusion_list_satisfied)
-  function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
-  An `INVALIDATED` response MUST return `False`.
+The verdict is recorded only for the associated beacon block; ancestors and
+other blocks sharing its execution hash are unchanged. Forkchoice responses
+report execution validity only. Retained inputs MAY be discarded once the
+verdict is recorded or the block is invalidated or pruned from fork choice.
 
-When a block transitions from `NOT_VALIDATED` -> `VALID`, the response from the
-execution engine also indicates whether the block's execution payload satisfies
-the inclusion list constraints. The consensus engine MUST record the result for
-that block. The recorded inclusion list satisfaction of its ancestors remains
-unchanged.
+An unavailable verdict does not prevent optimistic import, but MUST NOT be
+treated as satisfaction for payload extension or validator duties requiring it.
