@@ -59,21 +59,27 @@ its root, since the root is not checked at registration.
 
 ### Leaf index rules
 
-A signer must never sign two different messages at the same leaf index, and
-chooses how it allocates leaf indices to messages. Leaf index
-`PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of possession: a signer
-must not sign at it any message other than the `PQKeyPossession` of its key for
-its validator's BLS public key, and must not prove the same key for two
-validators. Signing is deterministic, so producing the proof again for a later
-registration of the same key reuses no leaf.
+A signer must never sign twice at the same leaf index of a key, and chooses how
+it allocates leaf indices to messages. Signing is not assumed to be
+deterministic, so signing the same message twice at one leaf index is also a
+reuse. Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
+possession: a signer must not sign at it anything other than the
+`PQKeyPossession` of its key for its validator's BLS public key. Since it signs
+there only once, it keeps that proof and resubmits the same bytes in every
+registration of the key, and cannot prove the key for a second validator.
 
 ### Constructing the registration
 
 The validator assembles a `PQKeyRegistration` holding its own `validator_index`,
 its keys, and its current entry of `state.pq_key_change_epochs` as
-`previous_change_epoch`. It proves possession of the leanXMSS key, signs the
-registration with its **signing key**, and broadcasts the resulting
-`SignedPQKeyRegistration` on the `pq_key_registration` global topic.
+`previous_change_epoch`. It attaches its proof of possession of the leanXMSS
+key, signs the registration with its **signing key**, and broadcasts the
+resulting `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
+
+The proof is produced once per key, the first time the key is registered, with
+the function below. Every later registration of the key, for example after the
+including block is orphaned or for a change of the VRF root alone, carries the
+same stored proof.
 
 ```python
 def get_pq_possession_proof(

@@ -288,22 +288,23 @@ class BeaconState(ProgressiveContainer):
 
 #### Hash-based primitives
 
-This upgrade uses two hash-based primitives over Keccak-256: leanXMSS, a
-stateful signature scheme with a lifetime of `2**32` leaf indices, and a VRF
-tree, a Merkle tree of `2**32` leaf secrets. Only their interface is specified
-here. Key generation, signing, and opening are not consensus-critical.
+This upgrade uses two hash-based primitives through the interface below: a
+stateful signature scheme, leanXMSS, and a verifiable random function, a VRF
+tree. Their constructions are specified outside this upgrade. Key generation,
+signing, and opening are not consensus-critical.
 
 - `def xmss.Verify(public_key: XMSSPublicKey, message: Bytes32, signature: XMSSSignature) -> bool`:
   return whether `signature` is a valid signature of `message` under
-  `public_key`, at the leaf index it carries.
+  `public_key`, at the leaf index it carries. Return `False`, without raising,
+  for a key or signature that does not decode.
 - `def vrf.Verify(root: VRFRoot, index: Uint32, opening: bytes) -> Optional[Bytes32]`:
   return the output of the VRF tree with root `root` at `index` if `opening` is
   a valid opening of it, and `None` otherwise. This upgrade does not call it.
 
-Signatures are unforgeable as long as no leaf index of a key signs two different
-messages, and signing the same message at the same leaf index with the same key
-produces the same signature. For a given root and index, at most one VRF output
-verifies.
+Signatures are unforgeable as long as each leaf index of a key signs at most
+once. Signing is not assumed to be deterministic, so signing the same message
+twice at one leaf index is also a reuse. For a given root and index, at most one
+VRF output verifies, unless a hash collision is known.
 
 #### New `xmss_signature_index`
 
