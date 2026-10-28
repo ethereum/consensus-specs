@@ -144,11 +144,16 @@ def validate_pq_key_registration_gossip(
     if is_future_epoch(store, EIP8450_FORK_EPOCH, current_time_ms):
         raise GossipIgnore("current epoch is pre-eip8450")
 
+    state = store.block_states[get_head(store).root]
+
+    # [IGNORE] The head state is at or after the EIP-8450 fork, so that it has
+    # ``pq_public_keys`` and ``pq_key_change_epochs``
+    if get_current_epoch(state) < EIP8450_FORK_EPOCH:
+        raise GossipIgnore("head state is pre-eip8450")
+
     # [REJECT] The keys use a supported version
     if public_keys.version != PQ_KEYS_VERSION_1:
         raise GossipReject("unsupported post-quantum keys version")
-
-    state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
     if index >= len(state.validators):

@@ -102,6 +102,21 @@ def test_gossip_pq_key_registration__ignore_pre_fork(spec, state):
 
 
 @with_eip8450_and_later
+@spec_configured_state_test({"EIP8450_FORK_EPOCH": 1}, activate_at_genesis=True)
+def test_gossip_pq_key_registration__ignore_pre_fork_head_state(spec, state):
+    # The clock has reached the fork epoch, but no block of the fork epoch has
+    # been imported, so the head state has not been upgraded
+    signed_registration = get_signed_pq_key_registration(spec, state, validator_index=0)
+    assert spec.get_current_epoch(state) < spec.config.EIP8450_FORK_EPOCH
+    yield from run_pq_key_registration_gossip(
+        spec,
+        state,
+        [(signed_registration, "ignore", "head state is pre-eip8450")],
+        epoch=spec.config.EIP8450_FORK_EPOCH,
+    )
+
+
+@with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
 def test_gossip_pq_key_registration__reject_unsupported_version(spec, state):
     public_keys = get_pq_public_keys(spec, 0)
