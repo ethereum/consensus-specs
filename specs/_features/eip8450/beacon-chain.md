@@ -165,6 +165,10 @@ class PQKeyRegistrations(ProgressiveList[SignedPQKeyRegistration]):
 | `MAX_PQ_KEY_REGISTRATIONS` | `Uint64(2**3)` (= 8)  |
 | `MIN_PQ_KEY_CHANGE_DELAY`  | `Epoch(2**8)` (= 256) |
 
+*Note*: In every preset, `MIN_PQ_KEY_CHANGE_DELAY` must be at least `1`, since
+replay protection relies on a change being applied in a later epoch than the
+change it names.
+
 ## Containers
 
 ### New containers
@@ -468,8 +472,11 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
 *Note*: The same operation registers keys for a validator that has none and
 replaces the keys of a registered validator. Each registration names the epoch
-of the validator's last change, and every change sets that epoch to the current
-one, so a registration applies at most once.
+of the validator's last change. A first registration stores the current epoch,
+which is never `FAR_FUTURE_EPOCH`. With a delay of at least one epoch, a later
+change is applied in an epoch after the change it names. Every applied
+registration therefore moves the stored epoch forward, and none can be included
+twice.
 
 ```python
 def process_pq_key_registration(
