@@ -90,8 +90,6 @@ def is_data_available(beacon_block_root: Root) -> bool:
     # The p2p network does not guarantee sidecar retrieval outside of
     # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
-    # Each sidecar must belong to the given block: its header must hash to
-    # `beacon_block_root` and its commitments must be included in that block
     return all(
         hash_tree_root(column_sidecar.signed_block_header.message) == beacon_block_root
         and verify_data_column_sidecar(column_sidecar)
