@@ -1,4 +1,5 @@
 from collections import defaultdict
+from contextlib import contextmanager
 from functools import lru_cache
 from random import randbytes
 
@@ -123,10 +124,11 @@ def sign_inclusion_list(spec, state, inclusion_list):
     return spec.SignedInclusionList(message=inclusion_list, signature=signature)
 
 
-def run_with_inclusion_list_store(spec, func):
+@contextmanager
+def cached_inclusion_list_store(spec):
     """
-    This helper runs the given ``func`` with monkeypatched ``cached_or_new_inclusion_list_store``
-    that returns cached inclusion list store, or a new one if none exists.
+    Monkeypatch ``cached_or_new_inclusion_list_store`` to return a cached
+    inclusion list store, or a new one if none exists.
     """
 
     @lru_cache(maxsize=1)
@@ -140,7 +142,15 @@ def run_with_inclusion_list_store(spec, func):
     spec.cached_or_new_inclusion_list_store = cached_or_new_inclusion_list_store
 
     try:
-        func()
+        yield
     finally:
         spec.cached_or_new_inclusion_list_store = cached_or_new_inclusion_list_store_backup
         cached_or_new_inclusion_list_store.cache_clear()
+
+
+def run_with_inclusion_list_store(spec, func):
+    """
+    This helper runs the given ``func`` with a cached inclusion list store.
+    """
+    with cached_inclusion_list_store(spec):
+        func()

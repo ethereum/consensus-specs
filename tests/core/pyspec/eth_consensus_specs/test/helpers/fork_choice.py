@@ -507,6 +507,36 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     test_steps.append(step)
 
 
+def get_inclusion_list_file_name(signed_inclusion_list):
+    return f"inclusion_list_{encode_hex(signed_inclusion_list.hash_tree_root())}"
+
+
+def add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=True):
+    inclusion_list_file_name = get_inclusion_list_file_name(signed_inclusion_list)
+    yield inclusion_list_file_name, signed_inclusion_list
+
+    if not valid:
+        expect_assertion_error(lambda: spec.on_inclusion_list(store, signed_inclusion_list))
+        test_steps.append({"inclusion_list": inclusion_list_file_name, "valid": False})
+        return
+
+    spec.on_inclusion_list(store, signed_inclusion_list)
+    test_steps.append({"inclusion_list": inclusion_list_file_name})
+
+
+def add_payload_inclusion_list_satisfaction_check(store, block_root, test_steps):
+    test_steps.append(
+        {
+            "checks": {
+                "payload_inclusion_list_satisfaction": {
+                    "block_root": encode_hex(block_root),
+                    "satisfied": bool(store.payload_inclusion_list_satisfaction[block_root]),
+                },
+            }
+        }
+    )
+
+
 def add_payload_vote_checks(store, block_root, test_steps):
     timeliness = [None if v is None else bool(v) for v in store.payload_timeliness_vote[block_root]]
     availability = [
