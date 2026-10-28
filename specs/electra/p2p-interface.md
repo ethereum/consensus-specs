@@ -431,6 +431,9 @@ validation logic is otherwise unchanged.
 
 #### Attestation subnets
 
+Unaggregated attestations are sent as `SingleAttestation`s to the subnet topic
+`beacon_attestation_{compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.committee_index)}`.
+
 ##### Modified `beacon_attestation_{subnet_id}`
 
 *Note*: This function is modified per EIP-7549. The topic now propagates
