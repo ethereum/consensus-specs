@@ -216,6 +216,8 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
+    execution_payload_bids: dict[tuple[Slot, Hash32, Root, BuilderIndex], Gwei]
+    # [New in Gloas:EIP7732]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
@@ -400,12 +402,12 @@ def is_gas_limit_target_compatible(
 ### New `get_min_bid_increment`
 
 ```python
-def get_min_bid_increment(best_value: Gwei) -> Gwei:
+def get_min_bid_increment(previous_value: Gwei) -> Gwei:
     """
-    Return the amount by which a bid must exceed the highest value bid seen
+    Return the amount by which a builder's bid must exceed its previous bid
     for the slot and parent.
     """
-    increment = best_value // 100 * MIN_BID_INCREMENT_PERCENT
+    increment = previous_value // 100 * MIN_BID_INCREMENT_PERCENT
     return Gwei(min(max(increment, MIN_BID_INCREMENT_FLOOR), MIN_BID_INCREMENT_CAP))
 ```
 
@@ -979,12 +981,18 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] The bid exceeds the highest bid seen for the slot and parent by the minimum increment
+    # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
-        best_value = seen.best_execution_payload_bid[best_bid_key]
-        if bid.value < best_value + get_min_bid_increment(best_value):
-            raise GossipIgnore("bid is below the minimum increment over the highest bid seen")
+        if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
+            raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
+
+    # [IGNORE] The bid exceeds the builder's previous bid by the minimum increment
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    if bid_key in seen.execution_payload_bids:
+        previous_value = seen.execution_payload_bids[bid_key]
+        if bid.value < previous_value + get_min_bid_increment(previous_value):
+            raise GossipIgnore("bid is below the minimum increment over the builder's previous bid")
 
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
@@ -1088,7 +1096,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Update the highest-value bid for this slot/parent
+    # Record the builder's bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bids[bid_key] = bid.value
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 

@@ -106,16 +106,13 @@ def _seed_bid_context(
     return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
 
 
-def _run_later_bid(
-    spec, state, first_value, later_value, expected, reason=None, later_builder_index=1
-):
+def _run_bids(spec, state, bids):
     """
-    Validate a first bid from builder 0 and then a later bid for the same slot
-    and parent, by default from another builder, asserting the later bid's
-    outcome.
+    Validate ``(builder_index, value, expected, reason)`` bids for the same
+    slot and parent in order, asserting each outcome.
 
-    The first bid is fully valid and seeds the best-bid cache, so the later bid
-    is judged on its value alone.
+    The first bid is fully valid and seeds ``seen``, so later bids are judged
+    on their builder and value alone.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -140,10 +137,7 @@ def _run_later_bid(
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
-    for builder_index, value, delay_ms, expected_result, expected_reason in (
-        (0, first_value, 40, "valid", None),
-        (later_builder_index, later_value, 10, expected, reason),
-    ):
+    for i, (builder_index, value, expected_result, expected_reason) in enumerate(bids):
         signed_bid = build_signed_bid(
             spec,
             state,
@@ -157,7 +151,7 @@ def _run_later_bid(
         )
         yield get_filename(signed_bid), signed_bid
 
-        current_time_ms += delay_ms
+        current_time_ms += 40 if i == 0 else 10
         result, result_reason = run_validate_gossip(
             spec,
             seen=seen,
@@ -812,100 +806,24 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_at_min_increment(spec, state):
-    """A bid exactly at the minimum increment over the highest bid seen is valid."""
+def test_gossip_execution_payload_bid__valid_higher_value_other_builder(spec, state):
+    """A bid from another builder only needs to be higher than the highest bid seen."""
     best = spec.Gwei(10**8)
-    increment = spec.get_min_bid_increment(best)
-    assert spec.config.MIN_BID_INCREMENT_FLOOR < increment < spec.config.MIN_BID_INCREMENT_CAP
-    yield from _run_later_bid(spec, state, best, best + increment, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_below_min_increment(spec, state):
-    """A bid one gwei below the minimum increment over the highest bid seen is ignored."""
-    best = spec.Gwei(10**8)
-    increment = spec.get_min_bid_increment(best)
-    assert spec.config.MIN_BID_INCREMENT_FLOOR < increment < spec.config.MIN_BID_INCREMENT_CAP
-    yield from _run_later_bid(
-        spec,
-        state,
-        best,
-        best + increment - 1,
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
-    )
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_at_min_increment_floor(spec, state):
-    """The floor applies when the percentage increment over a low highest bid is smaller."""
-    best = spec.Gwei(10**6)
-    increment = spec.get_min_bid_increment(best)
-    assert increment == spec.config.MIN_BID_INCREMENT_FLOOR
-    assert best * spec.config.MIN_BID_INCREMENT_PERCENT // 100 < increment
-    yield from _run_later_bid(spec, state, best, best + increment, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_below_min_increment_floor(spec, state):
-    """A bid that clears the percentage increment but not the floor is ignored."""
-    best = spec.Gwei(10**6)
-    increment = spec.get_min_bid_increment(best)
-    assert increment == spec.config.MIN_BID_INCREMENT_FLOOR
-    assert best * spec.config.MIN_BID_INCREMENT_PERCENT // 100 < increment
-    yield from _run_later_bid(
-        spec,
-        state,
-        best,
-        best + increment - 1,
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
-    )
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_at_min_increment_cap(spec, state):
-    """The cap applies when the percentage increment over a high highest bid is larger."""
-    best = spec.Gwei(5 * 10**8)
-    increment = spec.get_min_bid_increment(best)
-    assert increment == spec.config.MIN_BID_INCREMENT_CAP
-    assert best * spec.config.MIN_BID_INCREMENT_PERCENT // 100 > increment
-    yield from _run_later_bid(spec, state, best, best + increment, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_below_min_increment_cap(spec, state):
-    """A bid one gwei below the capped increment is ignored."""
-    best = spec.Gwei(5 * 10**8)
-    increment = spec.get_min_bid_increment(best)
-    assert increment == spec.config.MIN_BID_INCREMENT_CAP
-    assert best * spec.config.MIN_BID_INCREMENT_PERCENT // 100 > increment
-    yield from _run_later_bid(
-        spec,
-        state,
-        best,
-        best + increment - 1,
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
-    )
+    yield from _run_bids(spec, state, [(0, best, "valid", None), (1, best + 1, "valid", None)])
 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
     """A bid equal to the highest bid seen is ignored."""
-    yield from _run_later_bid(
+    best = spec.Gwei(10**8)
+    yield from _run_bids(
         spec,
         state,
-        spec.Gwei(10**8),
-        spec.Gwei(10**8),
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
+        [
+            (0, best, "valid", None),
+            (1, best, "ignore", "bid is not the highest value bid seen for this slot and parent"),
+        ],
     )
 
 
@@ -913,39 +831,160 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_lower_value(spec, state):
     """A bid below the highest bid seen is ignored."""
-    yield from _run_later_bid(
+    best = spec.Gwei(10**8)
+    yield from _run_bids(
         spec,
         state,
-        spec.Gwei(10**8),
-        spec.Gwei(10),
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
+        [
+            (0, best, "valid", None),
+            (1, 10, "ignore", "bid is not the highest value bid seen for this slot and parent"),
+        ],
     )
 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_same_builder_at_min_increment(spec, state):
-    """A builder can raise its own bid by the minimum increment."""
-    best = spec.Gwei(10**8)
-    increment = spec.get_min_bid_increment(best)
-    yield from _run_later_bid(spec, state, best, best + increment, "valid", later_builder_index=0)
+    """A builder's later bid exactly at the minimum increment over its previous bid is valid."""
+    previous = spec.Gwei(10**8)
+    increment = spec.get_min_bid_increment(previous)
+    assert spec.config.MIN_BID_INCREMENT_FLOOR < increment < spec.config.MIN_BID_INCREMENT_CAP
+    yield from _run_bids(
+        spec, state, [(0, previous, "valid", None), (0, previous + increment, "valid", None)]
+    )
 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_same_builder_below_min_increment(spec, state):
-    """A builder's own later bid is held to the same increment as any other bid."""
-    best = spec.Gwei(10**8)
-    increment = spec.get_min_bid_increment(best)
-    yield from _run_later_bid(
+    """A builder's later bid one gwei below the minimum increment is ignored."""
+    previous = spec.Gwei(10**8)
+    increment = spec.get_min_bid_increment(previous)
+    assert spec.config.MIN_BID_INCREMENT_FLOOR < increment < spec.config.MIN_BID_INCREMENT_CAP
+    yield from _run_bids(
         spec,
         state,
-        best,
-        best + increment - 1,
-        "ignore",
-        "bid is below the minimum increment over the highest bid seen",
-        later_builder_index=0,
+        [
+            (0, previous, "valid", None),
+            (
+                0,
+                previous + increment - 1,
+                "ignore",
+                "bid is below the minimum increment over the builder's previous bid",
+            ),
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_same_builder_at_min_increment_floor(spec, state):
+    """The floor applies when the percentage increment over a low previous bid is smaller."""
+    previous = spec.Gwei(10**6)
+    increment = spec.get_min_bid_increment(previous)
+    assert increment == spec.config.MIN_BID_INCREMENT_FLOOR
+    assert previous * spec.config.MIN_BID_INCREMENT_PERCENT // 100 < increment
+    yield from _run_bids(
+        spec, state, [(0, previous, "valid", None), (0, previous + increment, "valid", None)]
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_same_builder_below_min_increment_floor(spec, state):
+    """A builder's later bid that clears the percentage increment but not the floor is ignored."""
+    previous = spec.Gwei(10**6)
+    increment = spec.get_min_bid_increment(previous)
+    assert increment == spec.config.MIN_BID_INCREMENT_FLOOR
+    assert previous * spec.config.MIN_BID_INCREMENT_PERCENT // 100 < increment
+    yield from _run_bids(
+        spec,
+        state,
+        [
+            (0, previous, "valid", None),
+            (
+                0,
+                previous + increment - 1,
+                "ignore",
+                "bid is below the minimum increment over the builder's previous bid",
+            ),
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_same_builder_at_min_increment_cap(spec, state):
+    """The cap applies when the percentage increment over a high previous bid is larger."""
+    previous = spec.Gwei(5 * 10**8)
+    increment = spec.get_min_bid_increment(previous)
+    assert increment == spec.config.MIN_BID_INCREMENT_CAP
+    assert previous * spec.config.MIN_BID_INCREMENT_PERCENT // 100 > increment
+    yield from _run_bids(
+        spec, state, [(0, previous, "valid", None), (0, previous + increment, "valid", None)]
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_same_builder_below_min_increment_cap(spec, state):
+    """A builder's later bid one gwei below the capped increment is ignored."""
+    previous = spec.Gwei(5 * 10**8)
+    increment = spec.get_min_bid_increment(previous)
+    assert increment == spec.config.MIN_BID_INCREMENT_CAP
+    assert previous * spec.config.MIN_BID_INCREMENT_PERCENT // 100 > increment
+    yield from _run_bids(
+        spec,
+        state,
+        [
+            (0, previous, "valid", None),
+            (
+                0,
+                previous + increment - 1,
+                "ignore",
+                "bid is below the minimum increment over the builder's previous bid",
+            ),
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_same_builder_increment_over_own_bid(spec, state):
+    """The increment is measured against the builder's previous bid, not the highest bid seen."""
+    previous = spec.Gwei(10**8)
+    increment = spec.get_min_bid_increment(previous)
+    assert previous + increment < previous + 1 + spec.get_min_bid_increment(previous + 1)
+    yield from _run_bids(
+        spec,
+        state,
+        [
+            (0, previous, "valid", None),
+            (1, previous + 1, "valid", None),
+            (0, previous + increment, "valid", None),
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_same_builder_increment_below_highest(spec, state):
+    """A builder's raise that clears its own increment but not the highest bid seen is ignored."""
+    previous = spec.Gwei(10**8)
+    increment = spec.get_min_bid_increment(previous)
+    yield from _run_bids(
+        spec,
+        state,
+        [
+            (0, previous, "valid", None),
+            (1, 2 * previous, "valid", None),
+            (
+                0,
+                previous + increment,
+                "ignore",
+                "bid is not the highest value bid seen for this slot and parent",
+            ),
+        ],
     )
 
 
