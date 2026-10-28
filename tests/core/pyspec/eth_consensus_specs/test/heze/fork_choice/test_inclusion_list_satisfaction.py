@@ -341,6 +341,63 @@ def test_equivocation_after_due_cancels_timely_inclusion_list(spec, state):
     yield "steps", test_steps
 
 
+def _add_duplicate_inclusion_list(second_time_into_slot_ms_fn):
+    def add_inclusion_lists(spec, store, state, test_steps):
+        inclusion_list = _get_inclusion_list(spec, store, state)
+        yield from add_inclusion_list(spec, store, inclusion_list, test_steps)
+        time_into_slot_ms = second_time_into_slot_ms_fn(spec)
+        if time_into_slot_ms is not None:
+            _tick_into_slot(spec, store, state.slot, time_into_slot_ms, test_steps)
+        yield from add_inclusion_list(spec, store, inclusion_list, test_steps)
+        return [inclusion_list]
+
+    return add_inclusion_lists
+
+
+@with_heze_and_later
+@spec_state_test
+def test_duplicate_inclusion_list_is_enforced(spec, state):
+    """
+    Test that receiving the same inclusion list twice is not an equivocation,
+    so the inclusion list still constrains the payload.
+    """
+    with cached_inclusion_list_store(spec):
+        store, block_root, test_steps = yield from _run_inclusion_list_scenario(
+            spec,
+            state,
+            _add_duplicate_inclusion_list(lambda spec: None),
+            _no_transactions,
+        )
+
+    assert not store.payload_inclusion_list_satisfaction[block_root]
+    assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_EMPTY
+
+    yield "steps", test_steps
+
+
+@with_heze_and_later
+@spec_state_test
+def test_duplicate_inclusion_list_after_due_keeps_timeliness(spec, state):
+    """
+    Test that receiving a timely inclusion list again after the inclusion list
+    due does not make it untimely.
+    """
+    with cached_inclusion_list_store(spec):
+        store, block_root, test_steps = yield from _run_inclusion_list_scenario(
+            spec,
+            state,
+            _add_duplicate_inclusion_list(
+                lambda spec: (spec.get_inclusion_list_due_ms() + 999) // 1000 * 1000
+            ),
+            _no_transactions,
+        )
+
+    assert not store.payload_inclusion_list_satisfaction[block_root]
+    assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_EMPTY
+
+    yield "steps", test_steps
+
+
 #
 # Epoch boundary
 #
