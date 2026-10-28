@@ -23,6 +23,7 @@
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
+  - [Broadcast attestation](#broadcast-attestation)
 - [Attestation aggregation](#attestation-aggregation)
   - [Construct aggregate](#construct-aggregate)
 
@@ -283,6 +284,16 @@ updated field assignments:
 - Set `attestation.committee_index` to the index associated with the validator's
   committee.
 - Set `attestation.attester_index` to the index of the validator.
+
+### Broadcast attestation
+
+The `subnet_id` for the `attestation` is now calculated with
+`attestation.committee_index` instead of `attestation.data.index`:
+
+- Let
+  `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`.
+- Let
+  `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.committee_index)`.
 
 ## Attestation aggregation
 
