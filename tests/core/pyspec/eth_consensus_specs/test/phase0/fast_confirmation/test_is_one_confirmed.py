@@ -1535,7 +1535,7 @@ def test_is_one_confirmed_passes_with_precise_committee_weight(spec, state):
 def test_is_one_confirmed_fails_with_precise_committee_weight(spec, state):
     """
     This test engineers a scenario where the precise committee weight for a
-    three-slot range is lower than the estimated weight would be.
+    three-slot range is higher than the estimated weight would be.
 
     1. Custom state with one large validator and 63 small validators.
     2. Run chain through epoch 1 and 2 with 100% participation.
