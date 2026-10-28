@@ -76,9 +76,9 @@ def test_recover_matrix(spec):
     assert recovered_matrix == matrix
 
 
-def run_is_data_available_peerdas_test(spec, blob_data):
+def run_is_data_available_peerdas_test(spec, signed_block, blob_data):
     def callback():
-        yield spec.is_data_available(spec.Root(b"\x00" * 32))
+        yield spec.is_data_available(spec.hash_tree_root(signed_block.message))
 
     return next(with_blob_data(spec, blob_data, callback))
 
@@ -94,7 +94,7 @@ def test_is_data_available_peerdas(spec, state):
     sidecars = get_data_column_sidecars(spec, signed_block, blobs)
     blob_data = BlobData(blobs, blob_kzg_proofs, sidecars, kzg_commitments)
 
-    result = run_is_data_available_peerdas_test(spec, blob_data)
+    result = run_is_data_available_peerdas_test(spec, signed_block, blob_data)
 
     assert result is True, "Data should be available for the block with blob data"
 
