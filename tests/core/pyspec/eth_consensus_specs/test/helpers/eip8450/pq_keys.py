@@ -28,7 +28,6 @@ def get_pq_public_keys(spec, validator_index, generation=0, vrf_generation=None)
     if vrf_generation is None:
         vrf_generation = generation
     return spec.PQPublicKeys(
-        version=spec.PQ_KEYS_VERSION_1,
         xmss_public_key=xmss.SkToPk(get_xmss_secret_key(validator_index, generation)),
         vrf_root=get_vrf_root(spec, validator_index, vrf_generation),
     )

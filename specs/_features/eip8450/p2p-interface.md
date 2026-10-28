@@ -151,10 +151,6 @@ def validate_pq_key_registration_gossip(
     if get_current_epoch(state) < EIP8450_FORK_EPOCH:
         raise GossipIgnore("head state is pre-eip8450")
 
-    # [REJECT] The keys use a supported version
-    if public_keys.version != PQ_KEYS_VERSION_1:
-        raise GossipReject("unsupported post-quantum keys version")
-
     # [REJECT] The validator index is valid
     if index >= len(state.validators):
         raise GossipReject("validator index out of range")

@@ -44,15 +44,14 @@ a validator index.
 
 ### Generating the keys
 
-The validator generates a leanXMSS key and a VRF tree as defined by version
-`PQ_KEYS_VERSION_1` of EIP-CRYPTO. The leanXMSS secret key is a 32-byte seed.
-Key derivation and signing use the following functions, which are not
-consensus-critical:
+The validator generates a leanXMSS key and a VRF tree. The leanXMSS secret key
+is a 32-byte seed. Key derivation and signing use the following functions, which
+are not consensus-critical:
 
 - `def xmss.SkToPk(secret_key: Bytes32) -> XMSSPublicKey`: derive the public key
-  of `secret_key`, as defined by EIP-CRYPTO.
+  of `secret_key`.
 - `def xmss.Sign(secret_key: Bytes32, message: Bytes32, index: Uint32) -> XMSSSignature`:
-  sign `message` at leaf index `index`, as defined by EIP-CRYPTO.
+  sign `message` at leaf index `index`.
 
 The leanXMSS seed and the VRF leaf secrets should not be derived from the
 validator's BLS key. A validator should check its VRF tree before registering
@@ -60,25 +59,21 @@ its root, since the root is not checked at registration.
 
 ### Leaf index rules
 
-A signer must follow the leaf-index rules of EIP-CRYPTO and must never sign two
-different messages at the same leaf index. Leaf index `PQ_POSSESSION_XMSS_INDEX`
-is reserved for the proof of possession: a signer must not sign at it any
-message other than the `PQKeyPossession` of its key for its validator's BLS
-public key, and must not prove the same key for two validators. Signing is
-deterministic, so producing the proof again for a later registration of the same
-key reuses no leaf.
-
-How the other leaf indices are allocated to messages is defined by the upgrade
-that switches duties to the key.
+A signer must never sign two different messages at the same leaf index, and
+chooses how it allocates leaf indices to messages. Leaf index
+`PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of possession: a signer
+must not sign at it any message other than the `PQKeyPossession` of its key for
+its validator's BLS public key, and must not prove the same key for two
+validators. Signing is deterministic, so producing the proof again for a later
+registration of the same key reuses no leaf.
 
 ### Constructing the registration
 
 The validator assembles a `PQKeyRegistration` holding its own `validator_index`,
-its keys with `version` set to `PQ_KEYS_VERSION_1`, and its current entry of
-`state.pq_key_change_epochs` as `previous_change_epoch`. It proves possession of
-the leanXMSS key, signs the registration with its **signing key**, and
-broadcasts the resulting `SignedPQKeyRegistration` on the `pq_key_registration`
-global topic.
+its keys, and its current entry of `state.pq_key_change_epochs` as
+`previous_change_epoch`. It proves possession of the leanXMSS key, signs the
+registration with its **signing key**, and broadcasts the resulting
+`SignedPQKeyRegistration` on the `pq_key_registration` global topic.
 
 ```python
 def get_pq_possession_proof(

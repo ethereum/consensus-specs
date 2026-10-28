@@ -4,7 +4,6 @@ from eth_consensus_specs.test.context import (
     with_eip8450_and_later,
 )
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
-    get_pq_public_keys,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
     register_pq_keys,
@@ -113,21 +112,6 @@ def test_gossip_pq_key_registration__ignore_pre_fork_head_state(spec, state):
         state,
         [(signed_registration, "ignore", "head state is pre-eip8450")],
         epoch=spec.config.EIP8450_FORK_EPOCH,
-    )
-
-
-@with_eip8450_and_later
-@spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_unsupported_version(spec, state):
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.version = spec.PQ_KEYS_VERSION_UNSET
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=0, public_keys=public_keys
-    )
-    yield from run_pq_key_registration_gossip(
-        spec,
-        state,
-        [(signed_registration, "reject", "unsupported post-quantum keys version")],
     )
 
 

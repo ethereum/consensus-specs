@@ -14,7 +14,6 @@
   - [New `PQKeyRegistrations`](#new-pqkeyregistrations)
 - [Constants](#constants)
   - [Domains](#domains)
-  - [Cryptography](#cryptography)
   - [Registry](#registry)
 - [Presets](#presets)
   - [Post-quantum key registry](#post-quantum-key-registry)
@@ -29,7 +28,7 @@
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
-    - [leanXMSS signatures](#leanxmss-signatures)
+    - [Hash-based primitives](#hash-based-primitives)
     - [New `xmss_signature_index`](#new-xmss_signature_index)
   - [Misc](#misc)
     - [New `get_pq_possession_signing_root`](#new-get_pq_possession_signing_root)
@@ -56,7 +55,7 @@ part of the EIP-8450 upgrade.
 Each validator registers two hash-based commitments, bound to its existing
 validator index: a leanXMSS public key, used for every message the validator
 signs once duties switch to it, and the root of a VRF tree, which fixes one
-verifiable random output per index. Both are defined by EIP-CRYPTO.
+verifiable random output per index.
 
 Registration is a new beacon block operation carrying the keys and a proof of
 possession under the leanXMSS key. It is authorized by the validator's BLS
@@ -73,10 +72,10 @@ authenticated with them in this upgrade.
 ```python
 class XMSSPublicKey(ByteVector):
     """
-    A leanXMSS public key, as encoded by EIP-CRYPTO.
+    A leanXMSS public key.
     """
 
-    LENGTH = XMSS_PUBLIC_KEY_SIZE
+    LENGTH = 32
 ```
 
 ### New `XMSSSignature`
@@ -84,21 +83,19 @@ class XMSSPublicKey(ByteVector):
 ```python
 class XMSSSignature(ByteVector):
     """
-    A leanXMSS signature, as encoded by EIP-CRYPTO.
+    A leanXMSS signature.
     """
 
-    LENGTH = XMSS_SIGNATURE_SIZE
+    LENGTH = 2404
 ```
 
 ### New `VRFRoot`
 
 ```python
-class VRFRoot(ByteVector):
+class VRFRoot(Bytes32):
     """
-    The root of a VRF tree, as defined by EIP-CRYPTO.
+    The root of a VRF tree.
     """
-
-    LENGTH = VRF_HASH_SIZE
 ```
 
 ### New `ValidatorPQPublicKeys`
@@ -106,8 +103,8 @@ class VRFRoot(ByteVector):
 ```python
 class ValidatorPQPublicKeys(ProgressiveList[PQPublicKeys]):
     """
-    The registered post-quantum keys of every validator, by validator index. An
-    entry of version ``PQ_KEYS_VERSION_UNSET`` marks a validator without keys.
+    The registered post-quantum keys of every validator, by validator index. A
+    validator without keys holds the all-zero entry.
     """
 ```
 
@@ -140,20 +137,10 @@ class PQKeyRegistrations(ProgressiveList[SignedPQKeyRegistration]):
 | `DOMAIN_PQ_KEY_REGISTRATION` | `DomainType("0x12000000")` |
 | `DOMAIN_PQ_KEY_POSSESSION`   | `DomainType("0x13000000")` |
 
-### Cryptography
-
-| Name                   | Value          |
-| ---------------------- | -------------- |
-| `XMSS_PUBLIC_KEY_SIZE` | `Uint64(32)`   |
-| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)` |
-| `VRF_HASH_SIZE`        | `Uint64(32)`   |
-
 ### Registry
 
 | Name                       | Value       |
 | -------------------------- | ----------- |
-| `PQ_KEYS_VERSION_UNSET`    | `Uint8(0)`  |
-| `PQ_KEYS_VERSION_1`        | `Uint8(1)`  |
 | `PQ_POSSESSION_XMSS_INDEX` | `Uint32(0)` |
 
 ## Presets
@@ -177,8 +164,6 @@ change it names.
 
 ```python
 class PQPublicKeys(Container):
-    # Version of EIP-CRYPTO that the keys use, or ``PQ_KEYS_VERSION_UNSET``
-    version: Uint8
     xmss_public_key: XMSSPublicKey
     vrf_root: VRFRoot
 ```
@@ -301,22 +286,31 @@ class BeaconState(ProgressiveContainer):
 
 ### Crypto
 
-#### leanXMSS signatures
+#### Hash-based primitives
 
-This upgrade uses leanXMSS signatures of version `PQ_KEYS_VERSION_1` of
-EIP-CRYPTO. Only verification is consensus-critical, and it is used through the
-following function:
+This upgrade uses two hash-based primitives over Keccak-256: leanXMSS, a
+stateful signature scheme with a lifetime of `2**32` leaf indices, and a VRF
+tree, a Merkle tree of `2**32` leaf secrets. Only their interface is specified
+here. Key generation, signing, and opening are not consensus-critical.
 
 - `def xmss.Verify(public_key: XMSSPublicKey, message: Bytes32, signature: XMSSSignature) -> bool`:
-  the `xmss_verify` function of EIP-CRYPTO.
+  return whether `signature` is a valid signature of `message` under
+  `public_key`, at the leaf index it carries.
+- `def vrf.Verify(root: VRFRoot, index: Uint32, opening: bytes) -> Optional[Bytes32]`:
+  return the output of the VRF tree with root `root` at `index` if `opening` is
+  a valid opening of it, and `None` otherwise. This upgrade does not call it.
+
+Signatures are unforgeable as long as no leaf index of a key signs two different
+messages, and signing the same message at the same leaf index with the same key
+produces the same signature. For a given root and index, at most one VRF output
+verifies.
 
 #### New `xmss_signature_index`
 
 ```python
 def xmss_signature_index(signature: XMSSSignature) -> Uint32:
     """
-    Return the leaf index that ``signature`` was produced at, as encoded by
-    EIP-CRYPTO.
+    Return the leaf index that ``signature`` carries, in its first four bytes.
     """
     return Uint32(int.from_bytes(signature[0:4], "little"))
 ```
@@ -356,7 +350,7 @@ def is_pq_registered(state: BeaconState, index: ValidatorIndex) -> bool:
     """
     Check if the validator at ``index`` has registered post-quantum keys.
     """
-    return state.pq_public_keys[index].version != PQ_KEYS_VERSION_UNSET
+    return state.pq_key_change_epochs[index] != FAR_FUTURE_EPOCH
 ```
 
 #### New `is_pq_public_key_in_use`
@@ -374,7 +368,7 @@ def is_pq_public_key_in_use(
     leanXMSS key of ``public_keys``.
     """
     for index, entry in enumerate(state.pq_public_keys):
-        if index == excluded_index or entry.version == PQ_KEYS_VERSION_UNSET:
+        if index == excluded_index or not is_pq_registered(state, ValidatorIndex(index)):
             continue
         if entry.xmss_public_key == public_keys.xmss_public_key:
             return True
@@ -490,7 +484,6 @@ def process_pq_key_registration(
     validator = state.validators[index]
     # Verify the validator has not initiated an exit
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    assert public_keys.version == PQ_KEYS_VERSION_1
 
     # Verify the registration applies to the current entry of the validator
     last_change_epoch = state.pq_key_change_epochs[index]

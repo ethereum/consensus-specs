@@ -223,28 +223,6 @@ def test_invalid_exit_initiated(spec, state):
 
 @with_eip8450_and_later
 @spec_state_test
-def test_invalid_version_unset(spec, state):
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.version = spec.PQ_KEYS_VERSION_UNSET
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=0, public_keys=public_keys
-    )
-    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
-
-
-@with_eip8450_and_later
-@spec_state_test
-def test_invalid_version_unknown(spec, state):
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.version = spec.PQ_KEYS_VERSION_1 + 1
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=0, public_keys=public_keys
-    )
-    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
-
-
-@with_eip8450_and_later
-@spec_state_test
 def test_invalid_previous_change_epoch_unregistered(spec, state):
     advance_epochs(spec, state, 1)
     signed_registration = get_signed_pq_key_registration(
