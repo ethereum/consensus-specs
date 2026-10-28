@@ -1,6 +1,7 @@
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
+from itertools import chain
 from math import ceil
 from pathlib import Path
 from typing import Any
@@ -157,7 +158,7 @@ class MutationGroupTestGroup(TestGroup):
         bls_active = self.bls_active
         debug = self.debug
 
-        spec, test_data, events = make_test_context(
+        spec, test_data, events, config_part = make_test_context(
             self.mutation_group.test_dna_base,
             self.fork_name,
             self.preset_name,
@@ -176,7 +177,9 @@ class MutationGroupTestGroup(TestGroup):
                     spec, test_data, events, mut_seed, bls_active=bls_active
                 )
 
-            yield collect_test_case_result_from_iterator(test_case, parts_iter)
+            yield collect_test_case_result_from_iterator(
+                test_case, chain((config_part,), parts_iter)
+            )
 
 
 def collect_test_case_result_from_iterator(
@@ -237,13 +240,13 @@ def make_test_context(
         events = make_events(spec, test_data)
         yield (spec, test_data, events)
 
-    ((spec, test_data, events),) = get_spec_test_data_and_events(
+    config_part, (spec, test_data, events) = get_spec_test_data_and_events(
         phase=fork_name,
         preset=preset_name,
         bls_active=bls_active,
     )
 
-    return spec, test_data, events
+    return spec, test_data, events, TestCasePart(config_part)
 
 
 @spec_test
