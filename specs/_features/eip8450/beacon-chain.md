@@ -1,0 +1,511 @@
+# EIP-8450 -- The Beacon Chain
+
+*Note*: This document is a work-in-progress for researchers and implementers.
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Introduction](#introduction)
+- [Types](#types)
+  - [New `XMSSPublicKey`](#new-xmsspublickey)
+  - [New `XMSSSignature`](#new-xmsssignature)
+  - [New `VRFRoot`](#new-vrfroot)
+  - [New `ValidatorPQPublicKeys`](#new-validatorpqpublickeys)
+  - [New `ValidatorPQKeyChangeEpochs`](#new-validatorpqkeychangeepochs)
+  - [New `PQKeyRegistrations`](#new-pqkeyregistrations)
+- [Constants](#constants)
+  - [Domains](#domains)
+  - [Cryptography](#cryptography)
+  - [Registry](#registry)
+- [Presets](#presets)
+  - [Post-quantum key registry](#post-quantum-key-registry)
+- [Containers](#containers)
+  - [New containers](#new-containers)
+    - [`PQPublicKeys`](#pqpublickeys)
+    - [`PQKeyRegistration`](#pqkeyregistration)
+    - [`PQKeyPossession`](#pqkeypossession)
+    - [`SignedPQKeyRegistration`](#signedpqkeyregistration)
+  - [Modified containers](#modified-containers)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconState`](#beaconstate)
+- [Helpers](#helpers)
+  - [Crypto](#crypto)
+    - [leanXMSS signatures](#leanxmss-signatures)
+    - [New `xmss_signature_index`](#new-xmss_signature_index)
+  - [Misc](#misc)
+    - [New `get_pq_possession_signing_root`](#new-get_pq_possession_signing_root)
+  - [Predicates](#predicates)
+    - [New `is_pq_registered`](#new-is_pq_registered)
+    - [New `is_pq_public_key_in_use`](#new-is_pq_public_key_in_use)
+    - [New `is_valid_pq_possession_proof`](#new-is_valid_pq_possession_proof)
+  - [Validator registry](#validator-registry)
+    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Block processing](#block-processing)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
+      - [Post-quantum key registrations](#post-quantum-key-registrations)
+        - [New `process_pq_key_registration`](#new-process_pq_key_registration)
+
+<!-- mdformat-toc end -->
+
+## Introduction
+
+This upgrade adds a post-quantum public key registry to the beacon state, as
+part of the EIP-8450 upgrade.
+
+Each validator registers two hash-based commitments, bound to its existing
+validator index: a leanXMSS public key, used for every message the validator
+signs once duties switch to it, and the root of a VRF tree, which fixes one
+verifiable random output per index. Both are defined by EIP-CRYPTO.
+
+Registration is a new beacon block operation carrying the keys and a proof of
+possession under the leanXMSS key. It is authorized by the validator's BLS
+signing key, which can also replace registered keys, at most once every
+`MIN_PQ_KEY_CHANGE_DELAY` epochs. The registered keys are dormant: no duty is
+authenticated with them in this upgrade.
+
+*Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
+
+## Types
+
+### New `XMSSPublicKey`
+
+```python
+class XMSSPublicKey(ByteVector):
+    """
+    A leanXMSS public key, as encoded by EIP-CRYPTO.
+    """
+
+    LENGTH = XMSS_PUBLIC_KEY_SIZE
+```
+
+### New `XMSSSignature`
+
+```python
+class XMSSSignature(ByteVector):
+    """
+    A leanXMSS signature, as encoded by EIP-CRYPTO.
+    """
+
+    LENGTH = XMSS_SIGNATURE_SIZE
+```
+
+### New `VRFRoot`
+
+```python
+class VRFRoot(ByteVector):
+    """
+    The root of a VRF tree, as defined by EIP-CRYPTO.
+    """
+
+    LENGTH = VRF_HASH_SIZE
+```
+
+### New `ValidatorPQPublicKeys`
+
+```python
+class ValidatorPQPublicKeys(ProgressiveList[PQPublicKeys]):
+    """
+    The registered post-quantum keys of every validator, by validator index. An
+    entry of version ``PQ_KEYS_VERSION_UNSET`` marks a validator without keys.
+    """
+```
+
+### New `ValidatorPQKeyChangeEpochs`
+
+```python
+class ValidatorPQKeyChangeEpochs(ProgressiveList[Epoch]):
+    """
+    The epoch of the last registration or change of every validator's keys, by
+    validator index. ``FAR_FUTURE_EPOCH`` marks a validator that has never
+    registered keys.
+    """
+```
+
+### New `PQKeyRegistrations`
+
+```python
+class PQKeyRegistrations(ProgressiveList[SignedPQKeyRegistration]):
+    """
+    The post-quantum key registrations included in a beacon block.
+    """
+```
+
+## Constants
+
+### Domains
+
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
+| `DOMAIN_PQ_KEY_REGISTRATION` | `DomainType("0x12000000")` |
+| `DOMAIN_PQ_KEY_POSSESSION`   | `DomainType("0x13000000")` |
+
+### Cryptography
+
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `XMSS_PUBLIC_KEY_SIZE` | `Uint64(32)`   |
+| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)` |
+| `VRF_HASH_SIZE`        | `Uint64(32)`   |
+
+### Registry
+
+| Name                       | Value       |
+| -------------------------- | ----------- |
+| `PQ_KEYS_VERSION_UNSET`    | `Uint8(0)`  |
+| `PQ_KEYS_VERSION_1`        | `Uint8(1)`  |
+| `PQ_POSSESSION_XMSS_INDEX` | `Uint32(0)` |
+
+## Presets
+
+### Post-quantum key registry
+
+| Name                       | Value                 |
+| -------------------------- | --------------------- |
+| `MAX_PQ_KEY_REGISTRATIONS` | `Uint64(2**3)` (= 8)  |
+| `MIN_PQ_KEY_CHANGE_DELAY`  | `Epoch(2**8)` (= 256) |
+
+## Containers
+
+### New containers
+
+#### `PQPublicKeys`
+
+```python
+class PQPublicKeys(Container):
+    # Version of EIP-CRYPTO that the keys use, or ``PQ_KEYS_VERSION_UNSET``
+    version: Uint8
+    xmss_public_key: XMSSPublicKey
+    vrf_root: VRFRoot
+```
+
+#### `PQKeyRegistration`
+
+```python
+class PQKeyRegistration(Container):
+    validator_index: ValidatorIndex
+    public_keys: PQPublicKeys
+    # Epoch of the validator's last change, or ``FAR_FUTURE_EPOCH`` if it has
+    # never registered keys
+    previous_change_epoch: Epoch
+```
+
+#### `PQKeyPossession`
+
+*Note*: The validator is named by its BLS public key, which never changes and is
+known before the validator has an index. The message does not depend on the rest
+of the registration, so a key signs it only once.
+
+```python
+class PQKeyPossession(Container):
+    validator_pubkey: BLSPubkey
+    xmss_public_key: XMSSPublicKey
+```
+
+#### `SignedPQKeyRegistration`
+
+```python
+class SignedPQKeyRegistration(Container):
+    message: PQKeyRegistration
+    # Signature of the ``PQKeyPossession`` by the registered leanXMSS key
+    possession: XMSSSignature
+    # Signature of ``message`` by the validator's BLS signing key
+    signature: BLSSignature
+```
+
+### Modified containers
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=14, gaps=(1, 6))
+
+    randao_reveal: BLSSignature
+    graffiti: Bytes32
+    proposer_slashings: ProposerSlashings
+    attester_slashings: AttesterSlashings
+    attestations: Attestations
+    voluntary_exits: VoluntaryExits
+    sync_aggregate: SyncAggregate
+    bls_to_execution_changes: BLSToExecutionChanges
+    signed_execution_payload_bid: SignedExecutionPayloadBid
+    payload_attestations: PayloadAttestations
+    parent_execution_requests: ExecutionRequests
+    # [New in EIP8450]
+    pq_key_registrations: PQKeyRegistrations
+```
+
+#### `BeaconState`
+
+*Note*: The keys are stored in lists parallel to `validators`, so the
+`Validator` container and its generalized indices are unchanged.
+
+```python
+class BeaconState(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 28))
+
+    genesis_time: Uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    latest_block_header: BeaconBlockHeader
+    block_roots: BlockRoots
+    state_roots: StateRoots
+    historical_roots: HistoricalRoots
+    validators: Validators
+    balances: Balances
+    randao_mixes: RandaoMixes
+    slashings: Slashings
+    previous_epoch_participation: EpochParticipation
+    current_epoch_participation: EpochParticipation
+    justification_bits: JustificationBits
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    inactivity_scores: InactivityScores
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    latest_block_hash: Hash32
+    next_withdrawal_index: WithdrawalIndex
+    next_withdrawal_validator_index: ValidatorIndex
+    historical_summaries: HistoricalSummaries
+    deposit_balance_to_consume: Gwei
+    exit_balance_to_consume: Gwei
+    earliest_exit_epoch: Epoch
+    consolidation_balance_to_consume: Gwei
+    earliest_consolidation_epoch: Epoch
+    pending_deposits: PendingDeposits
+    pending_partial_withdrawals: PendingPartialWithdrawals
+    pending_consolidations: PendingConsolidations
+    proposer_lookahead: ProposerLookahead
+    builders: Builders
+    next_withdrawal_builder_index: BuilderIndex
+    execution_payload_availability: ExecutionPayloadAvailability
+    builder_pending_payments: BuilderPendingPayments
+    builder_pending_withdrawals: BuilderPendingWithdrawals
+    latest_execution_payload_bid: ExecutionPayloadBid
+    payload_expected_withdrawals: Withdrawals
+    ptc_window: PayloadTimelinessCommitteeWindow
+    # [New in EIP8450]
+    pq_public_keys: ValidatorPQPublicKeys
+    # [New in EIP8450]
+    pq_key_change_epochs: ValidatorPQKeyChangeEpochs
+```
+
+## Helpers
+
+### Crypto
+
+#### leanXMSS signatures
+
+This upgrade uses leanXMSS signatures of version `PQ_KEYS_VERSION_1` of
+EIP-CRYPTO. Only verification is consensus-critical, and it is used through the
+following function:
+
+- `def xmss.Verify(public_key: XMSSPublicKey, message: Bytes32, signature: XMSSSignature) -> bool`:
+  the `xmss_verify` function of EIP-CRYPTO.
+
+#### New `xmss_signature_index`
+
+```python
+def xmss_signature_index(signature: XMSSSignature) -> Uint32:
+    """
+    Return the leaf index that ``signature`` was produced at, as encoded by
+    EIP-CRYPTO.
+    """
+    return Uint32(int.from_bytes(signature[0:4], "little"))
+```
+
+### Misc
+
+#### New `get_pq_possession_signing_root`
+
+*Note*: The domain uses the genesis fork version, so a proof of possession stays
+valid across forks.
+
+```python
+def get_pq_possession_signing_root(
+    state: BeaconState, validator_pubkey: BLSPubkey, xmss_public_key: XMSSPublicKey
+) -> Root:
+    """
+    Return the signing root of the ``PQKeyPossession`` of ``xmss_public_key`` for
+    the validator holding ``validator_pubkey``.
+    """
+    possession = PQKeyPossession(
+        validator_pubkey=validator_pubkey,
+        xmss_public_key=xmss_public_key,
+    )
+    domain = compute_domain(
+        DOMAIN_PQ_KEY_POSSESSION,
+        genesis_validators_root=state.genesis_validators_root,
+    )
+    return compute_signing_root(possession, domain)
+```
+
+### Predicates
+
+#### New `is_pq_registered`
+
+```python
+def is_pq_registered(state: BeaconState, index: ValidatorIndex) -> bool:
+    """
+    Check if the validator at ``index`` has registered post-quantum keys.
+    """
+    return state.pq_public_keys[index].version != PQ_KEYS_VERSION_UNSET
+```
+
+#### New `is_pq_public_key_in_use`
+
+*Note*: The validator being registered is excluded, so it can keep its leanXMSS
+key while changing its VRF root. Clients are expected to maintain a map from
+registered keys to validator indices, as they do for BLS public keys.
+
+```python
+def is_pq_public_key_in_use(
+    state: BeaconState, public_keys: PQPublicKeys, excluded_index: ValidatorIndex
+) -> bool:
+    """
+    Check if a validator other than ``excluded_index`` has registered the
+    leanXMSS key of ``public_keys``.
+    """
+    for index, entry in enumerate(state.pq_public_keys):
+        if index == excluded_index or entry.version == PQ_KEYS_VERSION_UNSET:
+            continue
+        if entry.xmss_public_key == public_keys.xmss_public_key:
+            return True
+    return False
+```
+
+#### New `is_valid_pq_possession_proof`
+
+*Note*: Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
+possession.
+
+```python
+def is_valid_pq_possession_proof(
+    state: BeaconState,
+    validator_pubkey: BLSPubkey,
+    xmss_public_key: XMSSPublicKey,
+    proof: XMSSSignature,
+) -> bool:
+    """
+    Check if ``proof`` is a signature, by ``xmss_public_key``, of the key itself
+    for the validator holding ``validator_pubkey``.
+    """
+    if xmss_signature_index(proof) != PQ_POSSESSION_XMSS_INDEX:
+        return False
+
+    signing_root = get_pq_possession_signing_root(state, validator_pubkey, xmss_public_key)
+    return xmss.Verify(xmss_public_key, signing_root, proof)
+```
+
+### Validator registry
+
+#### Modified `add_validator_to_registry`
+
+*Note*: The function `add_validator_to_registry` is modified to initialize the
+items in the `pq_public_keys` and `pq_key_change_epochs` lists, preserving the
+invariant that they have one entry per validator.
+
+```python
+def add_validator_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: Gwei
+) -> None:
+    index = get_index_for_new_validator(state)
+    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
+    set_or_append_list(state.validators, index, validator)
+    set_or_append_list(state.balances, index, amount)
+    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
+    set_or_append_list(state.inactivity_scores, index, Uint64(0))
+    # [New in EIP8450]
+    set_or_append_list(state.pq_public_keys, index, PQPublicKeys.empty())
+    # [New in EIP8450]
+    set_or_append_list(state.pq_key_change_epochs, index, FAR_FUTURE_EPOCH)
+```
+
+## Beacon chain state transition function
+
+### Block processing
+
+#### Operations
+
+##### Modified `process_operations`
+
+*Note*: Registrations are processed after every other operation of the block,
+and after the parent's execution requests, so a registration for a validator
+whose exit is initiated earlier in the same block is invalid.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
+    def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
+        for operation in operations:
+            fn(state, operation, *args)
+
+    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
+    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
+    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
+    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
+    assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
+    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
+    # [New in EIP8450]
+    assert len(body.pq_key_registrations) <= MAX_PQ_KEY_REGISTRATIONS
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation, parent_slot)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.payload_attestations, process_payload_attestation)
+    # [New in EIP8450]
+    for_ops(body.pq_key_registrations, process_pq_key_registration)
+```
+
+##### Post-quantum key registrations
+
+###### New `process_pq_key_registration`
+
+*Note*: The same operation registers keys for a validator that has none and
+replaces the keys of a registered validator. Each registration names the epoch
+of the validator's last change, and every change sets that epoch to the current
+one, so a registration applies at most once.
+
+```python
+def process_pq_key_registration(
+    state: BeaconState, signed_registration: SignedPQKeyRegistration
+) -> None:
+    registration = signed_registration.message
+    index = registration.validator_index
+    public_keys = registration.public_keys
+
+    assert index < len(state.validators)
+    validator = state.validators[index]
+    # Verify the validator has not initiated an exit
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    assert public_keys.version == PQ_KEYS_VERSION_1
+
+    # Verify the registration applies to the current entry of the validator
+    last_change_epoch = state.pq_key_change_epochs[index]
+    assert registration.previous_change_epoch == last_change_epoch
+
+    # Changes of registered keys are rate-limited
+    if is_pq_registered(state, index):
+        assert get_current_epoch(state) >= last_change_epoch + MIN_PQ_KEY_CHANGE_DELAY
+
+    # Fork-agnostic domain since registrations are valid across forks
+    domain = compute_domain(
+        DOMAIN_PQ_KEY_REGISTRATION,
+        genesis_validators_root=state.genesis_validators_root,
+    )
+    signing_root = compute_signing_root(registration, domain)
+    assert bls.Verify(validator.pubkey, signing_root, signed_registration.signature)
+
+    assert not is_pq_public_key_in_use(state, public_keys, index)
+    assert is_valid_pq_possession_proof(
+        state, validator.pubkey, public_keys.xmss_public_key, signed_registration.possession
+    )
+
+    state.pq_public_keys[index] = public_keys
+    state.pq_key_change_epochs[index] = get_current_epoch(state)
+```

@@ -57,6 +57,7 @@ Operations:
 | `builder_deposit_request`        | `BuilderDepositRequest`              | `builder_deposit_request`        | `process_builder_deposit_request(state, builder_deposit_request)` (new in Gloas)                  |
 | `builder_exit_request`           | `BuilderExitRequest`                 | `builder_exit_request`           | `process_builder_exit_request(state, builder_exit_request)` (new in Gloas)                        |
 | `randao_commitment_registration` | `SignedRandaoCommitmentRegistration` | `randao_commitment_registration` | `process_randao_commitment_registration(state, randao_commitment_registration)` (new in EIP-8321) |
+| `pq_key_registration`            | `SignedPQKeyRegistration`            | `pq_key_registration`            | `process_pq_key_registration(state, pq_key_registration)` (new in EIP-8450)                       |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`),
 but processed in the same manner, and hence included here.

@@ -214,6 +214,13 @@ _MESSAGE_INFO = {
         "file_prefix": "randao_commitment_registration",
         "validation_fn": "validate_randao_commitment_registration_gossip",
     },
+    ###########################################################################
+    # eip8450
+    ###########################################################################
+    "SignedPQKeyRegistration": {
+        "file_prefix": "pq_key_registration",
+        "validation_fn": "validate_pq_key_registration_gossip",
+    },
 }
 
 
