@@ -128,6 +128,17 @@ def test_get_data_column_sidecars(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+def test_get_data_column_sidecars_no_blobs(spec, state):
+    rng = random.Random(1234)
+    block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=0)
+    signed_block = sign_block(spec, state, block)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
+
+    assert len(sidecars) == 0, "Should return no sidecars for a block without blobs"
+
+
+@with_fulu_and_later
+@spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
     rng = random.Random(1234)
     block, blobs, _, _ = build_block_with_blobs(spec, state, rng=rng, blob_count=2)
