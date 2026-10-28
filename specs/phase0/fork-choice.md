@@ -572,9 +572,9 @@ def milliseconds_to_seconds(milliseconds: Uint64) -> Uint64:
 ```python
 def get_slot_component_duration_ms(basis_points: Uint64) -> Uint64:
     """
-    Calculate the duration of a slot component in milliseconds.
+    Calculate the duration of a slot component, rounded to the nearest millisecond.
     """
-    return basis_points * SLOT_DURATION_MS // BASIS_POINTS
+    return (basis_points * SLOT_DURATION_MS + BASIS_POINTS // 2) // BASIS_POINTS
 ```
 
 #### `get_attestation_due_ms`

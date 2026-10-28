@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
-from types import FunctionType, ModuleType
+from types import CellType, FunctionType, ModuleType
 from typing import Any
 
 import pytest
@@ -794,22 +794,29 @@ def get_copy_of_spec(spec):
     meet a `Slot` from the other -- so a state prepared before the override
     could not be handed to a function after it.
 
-    Only the functions are remade, over a namespace of their own, which is what
-    lets them read the overridden config. Everything else is shared, so a value
-    made under either spec is at home in both.
+    Only the functions are remade with a namespace and closures of their own,
+    which is what lets them read the overridden config. Everything else is
+    shared, so a value made under either spec is at home in both.
     """
     module = ModuleType(spec.__name__)
     namespace = module.__dict__
     namespace.update(vars(spec))
+
+    def copy_value(value):
+        if isinstance(value, LRU):
+            return LRU(size=value.get_size())
+        if value.__globals__ is not vars(spec):
+            return value
+
+        closure = value.__closure__
+        if closure is not None:
+            closure = tuple(CellType(copy_value(cell.cell_contents)) for cell in closure)
+
+        return FunctionType(value.__code__, namespace, value.__name__, value.__defaults__, closure)
+
     for name, value in list(namespace.items()):
-        if isinstance(value, FunctionType) and value.__globals__ is vars(spec):
-            namespace[name] = FunctionType(
-                value.__code__,
-                namespace,
-                value.__name__,
-                value.__defaults__,
-                value.__closure__,
-            )
+        if isinstance(value, FunctionType):
+            namespace[name] = copy_value(value)
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
