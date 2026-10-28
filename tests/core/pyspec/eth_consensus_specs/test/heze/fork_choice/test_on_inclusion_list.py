@@ -2,19 +2,26 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
     with_heze_and_later,
+    with_presets,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block
+from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_inclusion_list,
+    add_signed_empty_block,
     get_genesis_forkchoice_store_and_block,
     setup_one_block_store,
+    tick_and_add_block,
     tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.inclusion_list import (
     cached_inclusion_list_store,
     get_sample_inclusion_list,
     get_sample_signed_inclusion_list,
+    get_sample_signed_inclusion_list_for_dependent_root,
     sign_inclusion_list,
 )
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def _run_on_inclusion_list(
@@ -210,34 +217,151 @@ def test_on_inclusion_list_dependent_root_is_head(spec, state):
     yield "steps", test_steps
 
 
+def _run_on_inclusion_list_with_dependent_block(spec, state, get_dependent_block_slot, valid):
+    """
+    Add blocks up to the first slot of epoch ``MIN_SEED_LOOKAHEAD + 1`` and run
+    ``on_inclusion_list`` in that slot for an inclusion list whose dependent
+    block is the block at ``get_dependent_block_slot(spec, epoch)``.
+    """
+    with cached_inclusion_list_store(spec):
+        test_steps = []
+        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+        yield "anchor_state", state
+        yield "anchor_block", anchor_block
+
+        epoch = spec.MIN_SEED_LOOKAHEAD + 1
+        dependent_block_slot = get_dependent_block_slot(spec, epoch)
+        while state.slot < spec.compute_start_slot_at_epoch(epoch):
+            block_root, _, _ = yield from add_signed_empty_block(spec, store, state, test_steps)
+            if state.slot == dependent_block_slot:
+                dependent_root = block_root
+
+        # A committee member under the dependent block's shuffling, so that only
+        # the dependent root checks can fail
+        signed_inclusion_list = get_sample_signed_inclusion_list_for_dependent_root(
+            spec, store, state.slot, dependent_root
+        )
+        yield from add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=valid)
+
+    yield "steps", test_steps
+
+
 @with_heze_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_inclusion_list_dependent_root_at_dependent_slot(spec, state):
+    """
+    Test that an inclusion list whose dependent block is at the shuffling
+    dependent slot, the last slot before the lookahead epoch, is stored.
+    """
+    yield from _run_on_inclusion_list_with_dependent_block(
+        spec,
+        state,
+        lambda spec, epoch: spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1,
+        valid=True,
+    )
+
+
+@with_heze_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
 def test_on_inclusion_list_dependent_root_superseded(spec, state):
     """
     Test that an inclusion list whose dependent block has a descendant at or
     before the shuffling dependent slot is rejected.
     """
+    yield from _run_on_inclusion_list_with_dependent_block(
+        spec,
+        state,
+        lambda spec, epoch: spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 2,
+        valid=False,
+    )
+
+
+@with_heze_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_inclusion_list_dependent_root_at_lookahead_start_slot(spec, state):
+    """
+    Test that an inclusion list whose dependent block is at the first slot of
+    the lookahead epoch, one slot after the shuffling dependent slot, is rejected.
+    """
+    yield from _run_on_inclusion_list_with_dependent_block(
+        spec,
+        state,
+        lambda spec, epoch: spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD),
+        valid=False,
+    )
+
+
+@with_heze_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_inclusion_list_dependent_root_valid_after_descendant_block(spec, state):
+    """
+    Test that an inclusion list rejected because its dependent block is neither
+    the head nor has a descendant after the shuffling dependent slot is stored
+    once such a descendant is known.
+    """
     with cached_inclusion_list_store(spec):
-        store, _, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+        test_steps = []
+        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+        yield "anchor_state", state
+        yield "anchor_block", anchor_block
 
-        # The genesis block is superseded by its child at slot 1
         epoch = spec.MIN_SEED_LOOKAHEAD + 1
-        superseded_root = signed_block.message.parent_root
-        dependent_slot = spec.compute_shuffling_dependent_slot(epoch)
-        assert not spec.is_valid_dependent_root(store, superseded_root, dependent_slot)
-        tick_store_to_slot(spec, store, spec.compute_start_slot_at_epoch(epoch), test_steps)
+        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
+        while state.slot < dependent_slot - 1:
+            yield from add_signed_empty_block(spec, store, state, test_steps)
+        fork_root, fork_state = spec.get_head(store).root, state.copy()
+        yield from add_signed_empty_block(spec, store, state, test_steps)
 
-        # Pick a committee member under the superseded block's shuffling so that
-        # only the dependent root check fails
-        dependent_state = store.block_states[superseded_root].copy()
-        spec.process_slots(dependent_state, spec.compute_shuffling_lookahead_start_slot(epoch))
-        inclusion_list = get_sample_inclusion_list(
-            spec, store, dependent_state, slot=spec.get_current_slot(store)
+        inclusion_list_slot = spec.compute_start_slot_at_epoch(epoch)
+        tick_store_to_slot(spec, store, inclusion_list_slot, test_steps)
+        signed_inclusion_list = get_sample_signed_inclusion_list_for_dependent_root(
+            spec, store, inclusion_list_slot, fork_root
         )
-        assert inclusion_list.dependent_root != superseded_root
-        inclusion_list.dependent_root = superseded_root
-        signed_inclusion_list = sign_inclusion_list(spec, dependent_state, inclusion_list)
+        assert not spec.is_valid_dependent_root(store, fork_root, dependent_slot)
         yield from add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=False)
+
+        # A block skipping the dependent slot makes the fork block a dependent root
+        block = build_empty_block(spec, fork_state, slot=inclusion_list_slot)
+        signed_block = state_transition_and_sign_block(spec, fork_state, block)
+        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        assert spec.is_valid_dependent_root(store, fork_root, dependent_slot)
+        yield from add_inclusion_list(spec, store, signed_inclusion_list, test_steps)
+
+    yield "steps", test_steps
+
+
+@with_heze_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_on_inclusion_list_previous_slot_in_previous_epoch(spec, state):
+    """
+    Test that an inclusion list for the last slot of an epoch, received in the
+    first slot of the next epoch, is checked against its own epoch's shuffling
+    dependent slot and stored.
+    """
+    with cached_inclusion_list_store(spec):
+        test_steps = []
+        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+        yield "anchor_state", state
+        yield "anchor_block", anchor_block
+
+        epoch = spec.MIN_SEED_LOOKAHEAD + 1
+        while state.slot < spec.compute_start_slot_at_epoch(epoch + 1) - 1:
+            yield from add_signed_empty_block(spec, store, state, test_steps)
+
+        signed_inclusion_list = get_sample_signed_inclusion_list(spec, store, state)
+        assert spec.compute_epoch_at_slot(signed_inclusion_list.message.slot) == epoch
+        tick_store_to_slot(spec, store, state.slot + 1, test_steps)
+        yield from add_inclusion_list(spec, store, signed_inclusion_list, test_steps)
+
+        inclusion_list = signed_inclusion_list.message
+        key = (inclusion_list.slot, inclusion_list.dependent_root)
+        entry = spec.get_inclusion_list_store().inclusion_lists[key][inclusion_list.validator_index]
+        assert not entry.timely
 
     yield "steps", test_steps
 
@@ -275,3 +399,21 @@ def test_on_inclusion_list_invalid_signature(spec, state):
         yield from add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=False)
 
     yield "steps", test_steps
+
+
+@with_heze_and_later
+@spec_state_test
+def test_on_inclusion_list_validator_in_last_beacon_committee(spec, state):
+    """
+    Test that an inclusion list from a member of the last beacon committee of
+    its slot is stored.
+    """
+
+    def modify_inclusion_list(spec, store, state, inclusion_list):
+        epoch = spec.compute_epoch_at_slot(inclusion_list.slot)
+        committee_index = spec.get_committee_count_per_slot(state, epoch) - 1
+        inclusion_list.validator_index = spec.get_beacon_committee(
+            state, inclusion_list.slot, spec.CommitteeIndex(committee_index)
+        )[-1]
+
+    yield from _run_on_inclusion_list(spec, state, modify_inclusion_list)
