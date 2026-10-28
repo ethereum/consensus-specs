@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    misc_balances,
     never_bls,
     only_generator,
     single_phase,
@@ -1804,5 +1805,264 @@ def test_is_one_confirmed_passes_inactive_non_attester_not_in_balance_source(spe
 
     # With head_state (active): would FAIL
     assert not spec.is_one_confirmed(store, head_state, block_b)
+
+    yield from fcr.get_test_artefacts()
+
+
+"""
+Test compute_committee_weight_between_slots
+"""
+
+
+def _assert_committee_weight_matches_fork_choice_weight(spec, fcr, block_b):
+    """
+    Check that the maximum support used by ``compute_safety_threshold`` for B
+    equals the weight ``get_head`` assigns to B, given that every member of the
+    committees from B's slot up to the previous slot has voted for B or its
+    descendant. Return the slot range and the balance source.
+    """
+    store, fcr_store = fcr.store, fcr.fcr_store
+
+    # Same slot range as compute_safety_threshold
+    start_slot = fcr.get_parent(block_b).slot + 1
+    end_slot = fcr.current_slot() - 1
+    assert start_slot == store.blocks[block_b].slot
+
+    # is_one_confirmed and get_weight read balances from the same state
+    assert fcr_store.current_epoch_observed_justified_checkpoint == store.justified_checkpoint
+    balance_source = spec.get_current_balance_source(fcr_store)
+    # Proposer boost does not contribute to the weight
+    assert store.proposer_boost_root == spec.Root()
+
+    committee_weight = spec.compute_committee_weight_between_slots(
+        store, balance_source, start_slot, end_slot
+    )
+    fork_choice_weight = spec.get_weight(store, spec.get_node_for_root(block_b))
+    assert committee_weight == fork_choice_weight
+
+    return start_slot, end_slot, balance_source
+
+
+def _run_committee_weight_matches_fork_choice_weight(
+    spec, state, block_slot, number_of_slots, expect_repeated_assignments=False
+):
+    """
+    1. Build a chain with 100% participation up to ``block_slot``.
+    2. Propose block B at ``block_slot`` and ``number_of_slots - 1`` descendants,
+       every committee votes for the head, so all of them support B.
+    3. Check that the committee weight matches the fork choice weight of B.
+    """
+    fcr = FCRTest(spec, seed=1)
+    fcr.initialize(state)
+
+    while fcr.current_slot() < block_slot:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    for _ in range(number_of_slots - 1):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    start_slot, end_slot, balance_source = _assert_committee_weight_matches_fork_choice_weight(
+        spec, fcr, block_b
+    )
+    assert end_slot == start_slot + number_of_slots - 1
+
+    # Check preconditions
+    committees = [
+        spec.get_slot_committee(fcr.store, spec.Slot(slot))
+        for slot in range(start_slot, end_slot + 1)
+    ]
+    participants = set().union(*committees)
+    # Participants have different effective balances
+    assert len({balance_source.validators[index].effective_balance for index in participants}) > 1
+    # Some validators are assigned to more than one slot in the range
+    if expect_repeated_assignments:
+        assert sum(len(committee) for committee in committees) > len(participants)
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_compute_committee_weight_between_slots_matches_fork_choice_weight_within_epoch(
+    spec, state
+):
+    """
+    The slot range is within a single epoch, each validator is assigned to at
+    most one slot in the range, so the committee weight is the sum of the
+    weights of the committees.
+    """
+    yield from _run_committee_weight_matches_fork_choice_weight(
+        spec, state, block_slot=2 * spec.SLOTS_PER_EPOCH + 2, number_of_slots=4
+    )
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_compute_committee_weight_between_slots_matches_fork_choice_weight_across_epoch_boundary(
+    spec, state
+):
+    """
+    The slot range spans an epoch boundary without covering a full epoch.
+    Validators assigned on both sides of the boundary are counted once in the
+    committee weight, as their single latest message is counted once in the
+    fork choice weight.
+    """
+    yield from _run_committee_weight_matches_fork_choice_weight(
+        spec,
+        state,
+        block_slot=3 * spec.SLOTS_PER_EPOCH - 3,
+        number_of_slots=5,
+        expect_repeated_assignments=True,
+    )
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=misc_balances,
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_compute_committee_weight_between_slots_matches_fork_choice_weight_full_epoch(spec, state):
+    """
+    The slot range covers a full epoch, so the committee weight is the total
+    active balance of the balance source.
+    """
+    yield from _run_committee_weight_matches_fork_choice_weight(
+        spec, state, block_slot=2 * spec.SLOTS_PER_EPOCH, number_of_slots=spec.SLOTS_PER_EPOCH
+    )
+
+
+@only_generator("too slow")
+@with_electra_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=default_balances,
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+@never_bls
+def test_compute_committee_weight_between_slots_matches_fork_choice_weight_inactive_in_balance_source(
+    spec, state
+):
+    """
+    1. Deposit a new validator with large balance.
+    2. Move to the last slot before its activation epoch.
+    3. Propose block B so that the slot range of the safety threshold is in the
+       activation epoch and includes the slot the new validator is assigned to.
+       The new validator votes for B, it is active in the head state but not
+       in the balance source.
+    4. Check that the committee weight leaves the new validator out, exactly as
+       the fork choice weight does, and that both match.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, _ = fcr.initialize(state)
+
+    # Move to Epoch 2 Slot 1
+    while fcr.current_slot() < 2 * spec.SLOTS_PER_EPOCH + 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Create a block with a new validator deposit
+    new_val_index = len(state.validators)
+    new_val_balance = 8 * spec.MIN_ACTIVATION_BALANCE
+    withdrawal_credentials = spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    deposit = prepare_deposit_request(
+        spec,
+        new_val_index,
+        new_val_balance,
+        withdrawal_credentials=withdrawal_credentials,
+        signed=True,
+    )
+    fcr.add_and_apply_block(deposit_requests=[deposit])
+    fcr.attest()
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Wait for a new validator to get onboarded
+    while fcr.current_slot() < 10 * spec.SLOTS_PER_EPOCH:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert len(store.block_states[fcr.head_root()].validators) > new_val_index
+
+    # Run to the last slot before the activation epoch
+    while True:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+        activation_epoch = (
+            store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+        )
+        if (
+            activation_epoch != spec.FAR_FUTURE_EPOCH
+            and fcr.current_slot() + 1 == spec.compute_start_slot_at_epoch(activation_epoch)
+        ):
+            break
+
+    # Find the slot the new validator is assigned to in the activation epoch
+    activation_start_slot = spec.compute_start_slot_at_epoch(activation_epoch)
+    new_val_slot = None
+    for slot in range(activation_start_slot, activation_start_slot + spec.SLOTS_PER_EPOCH):
+        if new_val_index in spec.get_slot_committee(store, spec.Slot(slot)):
+            new_val_slot = spec.Slot(slot)
+            break
+    assert new_val_slot is not None
+
+    # Two-slot range within the activation epoch that includes the new validator's slot
+    block_slot = max(activation_start_slot, new_val_slot - 1)
+    while fcr.current_slot() < block_slot:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    start_slot, end_slot, balance_source = _assert_committee_weight_matches_fork_choice_weight(
+        spec, fcr, block_b
+    )
+
+    # Check preconditions
+    assert start_slot <= new_val_slot <= end_slot
+    assert not spec.is_full_validator_set_covered(start_slot, end_slot)
+    participants = set()
+    for slot in range(start_slot, end_slot + 1):
+        participants.update(spec.get_slot_committee(store, spec.Slot(slot)))
+    assert new_val_index in participants
+    # New validator voted for B
+    assert spec.is_ancestor(
+        store,
+        spec.get_supported_node(store, store.latest_messages[new_val_index]),
+        spec.get_node_for_root(block_b),
+    )
+    # New validator is active in the head state, but not in the balance source
+    head_state = store.block_states[fcr.head_root()]
+    assert spec.is_active_validator(
+        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+    )
+    assert not spec.is_active_validator(
+        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+    )
+    # Counting the new validator would make the committee weight exceed the fork choice weight
+    committee_weight = spec.compute_committee_weight_between_slots(
+        store, balance_source, start_slot, end_slot
+    )
+    assert spec.get_total_balance(balance_source, participants) == (
+        committee_weight + balance_source.validators[new_val_index].effective_balance
+    )
 
     yield from fcr.get_test_artefacts()
