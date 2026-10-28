@@ -543,11 +543,11 @@ def compute_el_block_hash_for_envelope(spec, envelope):
 
 
 def commit_bid_to_execution_payload(
-    spec, state, block, execution_requests=None, update_payload=None
+    spec, state, block, execution_requests=None, update_envelope=None
 ):
     """
     Commit the bid of ``block`` to the block hash of its envelope's payload, after
-    ``update_payload`` (if given) changes the payload. Call before signing the block.
+    ``update_envelope`` (if given) changes the envelope. Call before signing the block.
     """
     post_state = state.copy()
     if post_state.slot < block.slot:
@@ -556,8 +556,8 @@ def commit_bid_to_execution_payload(
     envelope = build_execution_payload_envelope(
         spec, post_state, spec.Root(), block, execution_requests
     )
-    if update_payload is not None:
-        update_payload(envelope.payload)
+    if update_envelope is not None:
+        update_envelope(envelope)
 
     bid = block.body.signed_execution_payload_bid.message
     bid.block_hash = compute_el_block_hash_for_envelope(spec, envelope)
