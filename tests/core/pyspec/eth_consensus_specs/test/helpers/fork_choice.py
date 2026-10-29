@@ -784,6 +784,19 @@ def add_signed_empty_block(spec, store, state, test_steps):
     return root, store.block_states[root], signed_block
 
 
+def setup_genesis_store(spec, state):
+    """
+    Bootstrap a fork choice store with the genesis anchor.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    return store, test_steps
+
+
 def setup_one_block_store(spec, state):
     """
     Bootstrap a fork choice store with the genesis anchor plus an empty block at slot 1.

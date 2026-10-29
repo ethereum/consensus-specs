@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_inclusion_list,
     add_signed_empty_block,
-    get_genesis_forkchoice_store_and_block,
+    setup_genesis_store,
     setup_one_block_store,
     tick_and_add_block,
     tick_store_to_slot,
@@ -205,10 +205,7 @@ def test_on_inclusion_list_dependent_root_is_head(spec, state):
     descendants, is stored.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         signed_inclusion_list = get_sample_signed_inclusion_list(spec, store, state)
         assert signed_inclusion_list.message.dependent_root == spec.get_head(store).root
@@ -224,10 +221,7 @@ def _run_on_inclusion_list_with_dependent_block(spec, state, get_dependent_block
     block is the block at ``get_dependent_block_slot(spec, epoch)``.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         epoch = spec.MIN_SEED_LOOKAHEAD + 1
         dependent_block_slot = get_dependent_block_slot(spec, epoch)
@@ -304,10 +298,7 @@ def test_on_inclusion_list_dependent_root_valid_after_descendant_block(spec, sta
     once such a descendant is known.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         epoch = spec.MIN_SEED_LOOKAHEAD + 1
         dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
@@ -344,10 +335,7 @@ def test_on_inclusion_list_previous_slot_in_previous_epoch(spec, state):
     dependent slot and stored.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         epoch = spec.MIN_SEED_LOOKAHEAD + 1
         while state.slot < spec.compute_start_slot_at_epoch(epoch + 1) - 1:

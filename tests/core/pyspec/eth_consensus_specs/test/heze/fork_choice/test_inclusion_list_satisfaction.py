@@ -21,9 +21,9 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     add_payload_vote_checks,
     add_signed_empty_block,
     check_head_against_root,
-    get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     output_head_check,
+    setup_genesis_store,
     setup_one_block_store,
     tick_and_add_block,
     tick_and_run_on_attestation,
@@ -71,15 +71,19 @@ def _add_payload(spec, store, state, test_steps, transactions=(), block=None):
     return block_root
 
 
+def _check_head(spec, store, block_root, payload_status, test_steps):
+    check_head_against_root(spec, store, block_root)
+    assert spec.get_head(store).payload_status == payload_status
+    output_head_check(spec, store, test_steps)
+
+
 def _check_head_payload_extended(spec, store, block_root, extended, test_steps):
     """
     Tick to the slot after ``block_root`` and check whether fork choice extends its payload.
     """
     tick_store_to_slot(spec, store, store.blocks[block_root].slot + 1, test_steps)
-    check_head_against_root(spec, store, block_root)
     status = spec.PAYLOAD_STATUS_FULL if extended else spec.PAYLOAD_STATUS_EMPTY
-    assert spec.get_head(store).payload_status == status
-    output_head_check(spec, store, test_steps)
+    _check_head(spec, store, block_root, status, test_steps)
 
 
 def _run_inclusion_list_scenario(spec, state, add_inclusion_lists, satisfied, after_payload=None):
@@ -90,10 +94,7 @@ def _run_inclusion_list_scenario(spec, state, add_inclusion_lists, satisfied, af
     ``satisfied`` and extended in the next slot only if it is.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         inclusion_list_state = state.copy()
         transactions = yield from add_inclusion_lists(spec, store, state, test_steps)
@@ -589,10 +590,7 @@ def _setup_forked_dependent_roots(spec, state):
     at different slots so that no proposer equivocates.
     Return the first slot of that epoch and each fork's state and dependent root.
     """
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
+    store, test_steps = yield from setup_genesis_store(spec, state)
 
     epoch = spec.MIN_SEED_LOOKAHEAD + 1
     dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
@@ -745,10 +743,7 @@ def test_child_of_unsatisfied_full_parent_is_not_head(spec, state):
     but fork choice does not extend the parent's payload in the child's slot.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         yield from _add_timely_inclusion_lists(1)(spec, store, state, test_steps)
         parent_root = yield from _add_payload(spec, store, state, test_steps)
@@ -763,9 +758,7 @@ def test_child_of_unsatisfied_full_parent_is_not_head(spec, state):
 
         assert store.proposer_boost_root == signed_child.message.hash_tree_root()
         assert spec.is_parent_node_full(store, signed_child.message)
-        check_head_against_root(spec, store, parent_root)
-        assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_EMPTY
-        output_head_check(spec, store, test_steps)
+        _check_head(spec, store, parent_root, spec.PAYLOAD_STATUS_EMPTY, test_steps)
 
     yield "steps", test_steps
 
@@ -779,10 +772,7 @@ def test_satisfied_child_of_unsatisfied_parent_is_head(spec, state):
     next slot.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         yield from _add_timely_inclusion_lists(1)(spec, store, state, test_steps)
         parent_root = yield from _add_payload(spec, store, state, test_steps)
@@ -802,9 +792,7 @@ def test_satisfied_child_of_unsatisfied_parent_is_head(spec, state):
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
         assert spec.get_current_slot(store) == state.slot + 1
 
-        check_head_against_root(spec, store, child_root)
-        assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_FULL
-        output_head_check(spec, store, test_steps)
+        _check_head(spec, store, child_root, spec.PAYLOAD_STATUS_FULL, test_steps)
 
     yield "steps", test_steps
 
@@ -817,18 +805,13 @@ def test_unsatisfied_payload_is_head_in_its_own_slot(spec, state):
     inclusion list satisfaction only decides whether the next slot extends it.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         yield from _add_timely_inclusion_lists(1)(spec, store, state, test_steps)
         block_root = yield from _add_payload(spec, store, state, test_steps)
 
         assert not store.payload_inclusion_list_satisfaction[block_root]
-        check_head_against_root(spec, store, block_root)
-        assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_FULL
-        output_head_check(spec, store, test_steps)
+        _check_head(spec, store, block_root, spec.PAYLOAD_STATUS_FULL, test_steps)
 
     yield "steps", test_steps
 
@@ -879,10 +862,7 @@ def test_attestations_for_full_extend_unsatisfied_payload(spec, state):
     decision slot.
     """
     with cached_inclusion_list_store(spec):
-        test_steps = []
-        store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        yield "anchor_state", state
-        yield "anchor_block", anchor_block
+        store, test_steps = yield from setup_genesis_store(spec, state)
 
         yield from _add_timely_inclusion_lists(1)(spec, store, state, test_steps)
         block_root = yield from _add_payload(spec, store, state, test_steps)
@@ -906,9 +886,6 @@ def test_attestations_for_full_extend_unsatisfied_payload(spec, state):
             assert attestation.data.beacon_block_root == block_root
             yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
             assert spec.get_current_slot(store) == state.slot + 1
-
-            check_head_against_root(spec, store, block_root)
-            assert spec.get_head(store).payload_status == payload_status
-            output_head_check(spec, store, test_steps)
+            _check_head(spec, store, block_root, payload_status, test_steps)
 
     yield "steps", test_steps
