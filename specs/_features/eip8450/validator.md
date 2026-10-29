@@ -68,8 +68,11 @@ possession: a signer must not sign at it anything other than the
 use each leanXMSS key in at most one registration, for one validator, and must
 not register a key that it has registered before. Its proof is therefore signed
 once. Consensus does not record earlier keys, so returning to an earlier key, or
-registering a key that another validator has released, is valid on chain, but it
-needs a second proof at leaf `PQ_POSSESSION_XMSS_INDEX`.
+registering a key that another validator has released, is valid on chain.
+Returning to an earlier key needs either a second proof at leaf
+`PQ_POSSESSION_XMSS_INDEX` or the stored first one, and registering a key that
+another validator released needs a proof of a different message at that leaf.
+The signer rules forbid both, so a signer never has to keep old proofs.
 
 ### Constructing the registration
 

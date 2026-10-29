@@ -167,7 +167,7 @@ def test_success_key_released_by_other_validator(spec, state):
     """
     Consensus accepts a key that another validator held and released through a
     change, since earlier keys are not recorded. Honest signers never do this:
-    it needs a second proof at leaf ``PQ_POSSESSION_XMSS_INDEX``.
+    it needs a proof of a different message at leaf ``PQ_POSSESSION_XMSS_INDEX``.
     """
     owner_index, registrant_index = 0, 1
     released_keys = register_pq_keys(spec, state, owner_index, generation=0)
@@ -194,8 +194,9 @@ def test_success_key_released_by_other_validator(spec, state):
 def test_success_return_to_earlier_own_key(spec, state):
     """
     Consensus accepts a validator returning to a key it held before, since
-    earlier keys are not recorded. Honest signers never do this: it needs a
-    second proof at leaf ``PQ_POSSESSION_XMSS_INDEX``.
+    earlier keys are not recorded. It needs either a second proof at leaf
+    ``PQ_POSSESSION_XMSS_INDEX`` or the stored first one, and honest signers
+    never do it.
     """
     validator_index = 0
     earlier_keys = register_pq_keys(spec, state, validator_index, generation=0)
