@@ -64,9 +64,12 @@ it allocates leaf indices to messages. Signing is not assumed to be
 deterministic, so signing the same message twice at one leaf index is also a
 reuse. Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
 possession: a signer must not sign at it anything other than the
-`PQKeyPossession` of its key for its validator's BLS public key. Every
-registration carries a new key, so a signer signs each proof once, and resubmits
-a registration that is not included unchanged.
+`PQKeyPossession` of its key for its validator's BLS public key. A signer must
+use each leanXMSS key in at most one registration, for one validator, and must
+not register a key that it has registered before. Its proof is therefore signed
+once. Consensus does not record earlier keys, so returning to an earlier key, or
+registering a key that another validator has released, is valid on chain, but it
+needs a second proof at leaf `PQ_POSSESSION_XMSS_INDEX`.
 
 ### Constructing the registration
 
@@ -76,11 +79,12 @@ its keys, and its current entry of `state.pq_key_change_epochs` as
 key, signs the registration with its **signing key**, and broadcasts the
 resulting `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
 
-Every registration carries a new leanXMSS key, one that no validator holds,
-including the validator itself, so a change of the VRF root alone also needs a
-new leanXMSS key. The proof is produced once per key with the function below. A
-registration that is not included, for example because its block is orphaned, is
-resubmitted unchanged, with the same proof bytes.
+Consensus rejects a leanXMSS key that a validator currently holds, including the
+validator itself, so a change of the VRF root alone also needs a new leanXMSS
+key. The proof is produced once per key with the function below. A registration
+that is not included, for example because its block is orphaned, stays in the
+operation pools and is included later with the same bytes. It is never signed
+again.
 
 ```python
 def get_pq_possession_proof(

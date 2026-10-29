@@ -163,12 +163,17 @@ def test_success_all_zero_key_with_unregistered_validators(spec, state):
 
 @with_eip8450_and_later
 @spec_state_test
-def test_success_key_freed_by_owner_change(spec, state):
+def test_success_key_released_by_other_validator(spec, state):
+    """
+    Consensus accepts a key that another validator held and released through a
+    change, since earlier keys are not recorded. Honest signers never do this:
+    it needs a second proof at leaf ``PQ_POSSESSION_XMSS_INDEX``.
+    """
     owner_index, registrant_index = 0, 1
-    freed_keys = register_pq_keys(spec, state, owner_index, generation=0)
+    released_keys = register_pq_keys(spec, state, owner_index, generation=0)
     advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
 
-    # The owner moves to a new key, which frees its old one
+    # The owner moves to a new key, which releases its old one
     owner_change = get_signed_pq_key_registration(
         spec, state, validator_index=owner_index, generation=1
     )
@@ -178,9 +183,34 @@ def test_success_key_freed_by_owner_change(spec, state):
         spec,
         state,
         validator_index=registrant_index,
-        public_keys=freed_keys,
+        public_keys=released_keys,
         xmss_secret_key=get_xmss_secret_key(owner_index, generation=0),
     )
+    yield from run_pq_key_registration_processing(spec, state, signed_registration)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_success_return_to_earlier_own_key(spec, state):
+    """
+    Consensus accepts a validator returning to a key it held before, since
+    earlier keys are not recorded. Honest signers never do this: it needs a
+    second proof at leaf ``PQ_POSSESSION_XMSS_INDEX``.
+    """
+    validator_index = 0
+    earlier_keys = register_pq_keys(spec, state, validator_index, generation=0)
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+
+    change = get_signed_pq_key_registration(
+        spec, state, validator_index=validator_index, generation=1
+    )
+    spec.process_pq_key_registration(state, change)
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, validator_index=validator_index, generation=0
+    )
+    assert signed_registration.message.public_keys == earlier_keys
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 
