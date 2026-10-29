@@ -821,6 +821,23 @@ def test_gossip_execution_payload_envelope__reject_incorrect_timestamp(spec, sta
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_execution_payload_envelope__reject_empty_transaction(spec, state):
+    """An envelope whose payload contains an empty transaction is rejected."""
+
+    def update_envelope(envelope):
+        envelope.payload.transactions.append(spec.Transaction(data=list(b"\x99" * 128)))
+        envelope.payload.transactions.append(spec.Transaction())
+
+    yield from _assert_envelope_rejected(
+        spec,
+        state,
+        update_envelope,
+        "payload contains an empty transaction",
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_execution_payload_envelope__reject_withdrawals_mismatch(spec, state):
     """An envelope whose payload.withdrawals are not the expected withdrawals is rejected."""
 

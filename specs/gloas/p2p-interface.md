@@ -894,6 +894,10 @@ def validate_execution_payload_envelope_gossip(
     if payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
         raise GossipReject("incorrect execution payload timestamp")
 
+    # [REJECT] The payload contains no empty transactions
+    if any(len(transaction) == 0 for transaction in payload.transactions):
+        raise GossipReject("payload contains an empty transaction")
+
     # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
     if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
         raise GossipReject("payload's withdrawals do not match the expected withdrawals")
