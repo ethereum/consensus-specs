@@ -1265,11 +1265,14 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     fcr.attest()
     fcr.next_slot()
 
+    # The block must not be confirmed yet
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == p_root
+
     # Accumulate more support to confirm a block
     fcr.attest_and_next_slot_with_fast_confirmation()
 
     # The block must be confirmed
-    fcr.run_fast_confirmation()
     assert fcr_store.confirmed_root == b_root
 
     yield from fcr.get_test_artefacts()
