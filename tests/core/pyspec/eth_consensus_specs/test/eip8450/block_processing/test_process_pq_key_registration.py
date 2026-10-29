@@ -8,9 +8,12 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     activate_builders,
     builder_registry_index,
+    get_possession_signing_root,
+    get_pq_entry,
     get_pq_public_keys,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
+    is_registered,
     register_pq_keys,
     sign_pq_possession_at,
 )
@@ -39,9 +42,11 @@ def run_pq_key_registration_processing(spec, state, signed_registration, valid=T
 
     registration = signed_registration.message
     index = registration.index
-    assert spec.get_pq_public_keys(state, index) == registration.public_keys
-    assert spec.get_pq_key_change_epoch(state, index) == spec.get_current_epoch(state)
-    assert spec.is_pq_registered(state, index)
+    assert get_pq_entry(spec, state, index) == (
+        registration.public_keys,
+        spec.get_current_epoch(state),
+    )
+    assert is_registered(spec, state, index)
 
     yield "post", state
 
@@ -61,6 +66,9 @@ def advance_epochs(spec, state, epochs):
 @with_eip8450_and_later
 @spec_state_test
 def test_success_first_registration(spec, state):
+    # Every other entry holds the all-zero key, which does not block another key
+    assert all(entry == spec.PQPublicKeys() for entry in state.pq_public_keys)
+    assert all(entry == spec.PQPublicKeys() for entry in state.builder_pq_public_keys)
     signed_registration = get_signed_pq_key_registration(spec, state, index=0)
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
@@ -145,18 +153,16 @@ def test_success_change_keeping_vrf_root(spec, state):
 @with_eip8450_and_later
 @spec_state_test
 @never_bls
-def test_success_all_zero_key_with_unregistered_validators(spec, state):
-    # Unregistered validators hold the all-zero entry, which does not count as
-    # holding the all-zero key. The proof of possession is not checked, since no
-    # secret key produces the all-zero key.
+def test_invalid_all_zero_key(spec, state):
+    # The all-zero key marks an entry without keys, so it cannot be registered.
+    # Without BLS, the proof of possession passes, so only the all-zero check
+    # rejects it.
     public_keys = get_pq_public_keys(spec, 0)
     public_keys.xmss_public_key = spec.XMSSPublicKey()
-    assert state.pq_public_keys[1] == spec.PQPublicKeys()
-    assert not spec.is_pq_registered(state, 1)
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=0, public_keys=public_keys
     )
-    yield from run_pq_key_registration_processing(spec, state, signed_registration)
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 
 @with_eip8450_and_later
@@ -504,8 +510,8 @@ def test_invalid_possession_wrong_leaf_index(spec, state):
         spec.PQ_POSSESSION_XMSS_INDEX + 1,
     )
     public_keys = get_pq_public_keys(spec, validator_index)
-    signing_root = spec.get_pq_possession_signing_root(
-        state, state.validators[validator_index].pubkey, public_keys.xmss_public_key
+    signing_root = get_possession_signing_root(
+        spec, state, state.validators[validator_index].pubkey, public_keys.xmss_public_key
     )
     assert spec.xmss.Verify(public_keys.xmss_public_key, signing_root, possession)
 
@@ -746,20 +752,17 @@ def test_invalid_builder_reregister_own_key(spec, state):
 @with_eip8450_and_later
 @spec_state_test
 @never_bls
-def test_success_all_zero_key_with_unregistered_builders(spec, state):
-    # Unregistered builders hold the all-zero entry, which does not count as
-    # holding the all-zero key. The proof of possession is not checked, since no
-    # secret key produces the all-zero key.
+def test_invalid_builder_all_zero_key(spec, state):
+    # Without BLS, the proof of possession passes, so only the all-zero check
+    # rejects it
     activate_builders(spec, state)
-    assert state.builder_pq_public_keys[1] == spec.PQPublicKeys()
-    assert not spec.is_pq_registered(state, builder_registry_index(spec, 1))
     signed_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=builder_registry_index(spec, 0),
         public_keys=spec.PQPublicKeys(),
     )
-    yield from run_pq_key_registration_processing(spec, state, signed_registration)
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 
 @with_eip8450_and_later
@@ -794,6 +797,6 @@ def test_invalid_earlier_builder_registration_after_same_key_reenters(spec, stat
     add_builder_at_reused_index(spec, state, 0, builder_pubkeys[len(state.builders)])
     withdraw_builder(spec, state, 0)
     add_builder_at_reused_index(spec, state, 0, earlier_pubkey)
-    assert not spec.is_pq_registered(state, index)
+    assert not is_registered(spec, state, index)
     assert signed_registration.message.previous_change_epoch != state.builders[0].deposit_epoch
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)

@@ -205,6 +205,8 @@ def validate_pq_key_registration_gossip(
         if public_keys.vrf_root != VRFRoot():
             raise GossipReject("builder VRF root is not zero")
 
+        entry = state.builder_pq_public_keys[builder_index]
+        last_change_epoch = state.builder_pq_key_change_epochs[builder_index]
         pubkey = state.builders[builder_index].pubkey
     else:
         # [REJECT] The validator index is valid
@@ -216,6 +218,8 @@ def validate_pq_key_registration_gossip(
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             raise GossipReject("validator has initiated an exit")
 
+        entry = state.pq_public_keys[index]
+        last_change_epoch = state.pq_key_change_epochs[index]
         pubkey = validator.pubkey
 
     # [IGNORE] This is the first valid registration received for the pair
@@ -223,17 +227,21 @@ def validate_pq_key_registration_gossip(
         raise GossipIgnore("already seen post-quantum key registration for this pair")
 
     # [REJECT] The registration applies to the current entry
-    if registration.previous_change_epoch != get_pq_key_change_epoch(state, index):
+    if registration.previous_change_epoch != last_change_epoch:
         raise GossipReject("previous change epoch does not match")
 
     # [IGNORE] Changes of registered keys are rate-limited
-    if is_pq_registered(state, index) and is_future_epoch(
+    if entry.xmss_public_key != XMSSPublicKey() and is_future_epoch(
         store, registration.previous_change_epoch + MIN_PQ_KEY_CHANGE_DELAY, current_time_ms
     ):
         raise GossipIgnore("post-quantum key change delay has not passed")
 
+    # [REJECT] The leanXMSS key is not all-zero
+    if public_keys.xmss_public_key == XMSSPublicKey():
+        raise GossipReject("leanXMSS key is all-zero")
+
     # [REJECT] The leanXMSS key is not registered for any index
-    if is_pq_public_key_in_use(state, public_keys):
+    if is_pq_public_key_in_use(state, public_keys.xmss_public_key):
         raise GossipReject("leanXMSS key is already registered")
 
     # [REJECT] The signature is valid

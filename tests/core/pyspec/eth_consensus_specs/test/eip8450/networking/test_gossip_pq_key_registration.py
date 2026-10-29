@@ -338,3 +338,18 @@ def test_gossip_pq_key_registration__reject_builder_key_in_use_by_validator(spec
         state,
         [(signed_registration, "reject", "leanXMSS key is already registered")],
     )
+
+
+@with_eip8450_and_later
+@spec_configured_state_test({}, activate_at_genesis=True)
+def test_gossip_pq_key_registration__reject_all_zero_key(spec, state):
+    public_keys = get_pq_public_keys(spec, 0)
+    public_keys.xmss_public_key = spec.XMSSPublicKey()
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, index=0, public_keys=public_keys
+    )
+    yield from run_pq_key_registration_gossip(
+        spec,
+        state,
+        [(signed_registration, "reject", "leanXMSS key is all-zero")],
+    )

@@ -1,6 +1,6 @@
 from eth_consensus_specs.test.context import spec_state_test, with_eip8450_and_later
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
-from eth_consensus_specs.test.helpers.eip8450.pq_keys import register_pq_keys
+from eth_consensus_specs.test.helpers.eip8450.pq_keys import is_registered, register_pq_keys
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 
 
@@ -28,7 +28,7 @@ def test_new_validators_have_unset_pq_keys(spec, state):
     assert len(state.pq_public_keys) == len(state.validators)
     assert len(state.pq_key_change_epochs) == len(state.validators)
     for index in range(pre_validator_count, len(state.validators)):
-        assert not spec.is_pq_registered(state, index)
+        assert not is_registered(spec, state, index)
         assert state.pq_public_keys[index] == spec.PQPublicKeys()
         assert state.pq_key_change_epochs[index] == spec.FAR_FUTURE_EPOCH
     assert state.pq_public_keys[0] == registered_keys

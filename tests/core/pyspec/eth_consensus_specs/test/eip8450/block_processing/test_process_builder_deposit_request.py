@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.builder_deposit_requests import (
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     activate_builders,
     builder_registry_index,
+    is_registered,
     register_pq_keys,
 )
 
@@ -25,7 +26,7 @@ def test_new_builder_has_unset_pq_keys(spec, state):
     assert builder.pubkey == request.pubkey
     assert state.builder_pq_public_keys[pre_builder_count] == spec.PQPublicKeys()
     assert state.builder_pq_key_change_epochs[pre_builder_count] == builder.deposit_epoch
-    assert not spec.is_pq_registered(state, builder_registry_index(spec, pre_builder_count))
+    assert not is_registered(spec, state, builder_registry_index(spec, pre_builder_count))
 
 
 @with_eip8450_and_later
@@ -51,4 +52,4 @@ def test_reused_builder_index_resets_pq_keys(spec, state):
     assert state.builders[0].deposit_epoch == spec.get_current_epoch(state)
     assert state.builder_pq_public_keys[0] == spec.PQPublicKeys()
     assert state.builder_pq_key_change_epochs[0] == state.builders[0].deposit_epoch
-    assert not spec.is_pq_registered(state, index)
+    assert not is_registered(spec, state, index)

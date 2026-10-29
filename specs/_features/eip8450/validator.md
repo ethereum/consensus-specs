@@ -98,7 +98,12 @@ def get_pq_possession_proof(
     state: BeaconState, pubkey: BLSPubkey, xmss_secret_key: Bytes32
 ) -> XMSSSignature:
     xmss_public_key = xmss.SkToPk(xmss_secret_key)
-    signing_root = get_pq_possession_signing_root(state, pubkey, xmss_public_key)
+    possession = PQKeyPossession(pubkey=pubkey, xmss_public_key=xmss_public_key)
+    domain = compute_domain(
+        DOMAIN_PQ_KEY_POSSESSION,
+        genesis_validators_root=state.genesis_validators_root,
+    )
+    signing_root = compute_signing_root(possession, domain)
     return xmss.Sign(xmss_secret_key, signing_root, PQ_POSSESSION_XMSS_INDEX)
 ```
 

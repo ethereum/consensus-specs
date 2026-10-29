@@ -54,6 +54,39 @@ def get_registry_privkey(spec, state, index):
     return privkeys[index]
 
 
+def get_registry_lists(spec, state, index):
+    """
+    Return the keys list, the change epochs list, and the position in them of
+    the validator or flagged builder ``index``.
+    """
+    if spec.is_builder_index(index):
+        position = spec.convert_validator_index_to_builder_index(index)
+        return state.builder_pq_public_keys, state.builder_pq_key_change_epochs, position
+    return state.pq_public_keys, state.pq_key_change_epochs, index
+
+
+def get_pq_entry(spec, state, index):
+    """
+    Return the stored keys and change epoch of the validator or flagged builder
+    ``index``.
+    """
+    keys, change_epochs, position = get_registry_lists(spec, state, index)
+    return keys[position], change_epochs[position]
+
+
+def is_registered(spec, state, index):
+    keys, _ = get_pq_entry(spec, state, index)
+    return keys.xmss_public_key != spec.XMSSPublicKey()
+
+
+def get_possession_signing_root(spec, state, pubkey, xmss_public_key):
+    possession = spec.PQKeyPossession(pubkey=pubkey, xmss_public_key=xmss_public_key)
+    domain = spec.compute_domain(
+        spec.DOMAIN_PQ_KEY_POSSESSION, genesis_validators_root=state.genesis_validators_root
+    )
+    return spec.compute_signing_root(possession, domain)
+
+
 def builder_registry_index(spec, builder_index):
     """
     Return the registration index of a builder, with ``BUILDER_INDEX_FLAG`` set.
@@ -83,7 +116,7 @@ def get_signed_pq_key_registration(
     if public_keys is None:
         public_keys = get_pq_public_keys(spec, index, generation, vrf_generation)
     if previous_change_epoch is None:
-        previous_change_epoch = spec.get_pq_key_change_epoch(state, index)
+        _, previous_change_epoch = get_pq_entry(spec, state, index)
     if privkey is None:
         privkey = get_registry_privkey(spec, state, index)
     if possession is None:
@@ -108,7 +141,7 @@ def sign_pq_possession_at(spec, state, pubkey, xmss_secret_key, index):
     Return a signature of the ``PQKeyPossession`` of the key at leaf ``index``.
     """
     xmss_public_key = xmss.SkToPk(xmss_secret_key)
-    signing_root = spec.get_pq_possession_signing_root(state, pubkey, xmss_public_key)
+    signing_root = get_possession_signing_root(spec, state, pubkey, xmss_public_key)
     return spec.XMSSSignature(xmss.Sign(xmss_secret_key, signing_root, index))
 
 
@@ -118,8 +151,9 @@ def register_pq_keys(spec, state, index, generation=0):
     ``state``, skipping processing.
     """
     public_keys = get_pq_public_keys(spec, index, generation)
-    spec.set_pq_public_keys(state, index, public_keys, spec.get_current_epoch(state))
-    assert spec.is_pq_registered(state, index)
+    keys, change_epochs, position = get_registry_lists(spec, state, index)
+    keys[position] = public_keys
+    change_epochs[position] = spec.get_current_epoch(state)
     return public_keys
 
 

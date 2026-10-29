@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     get_pq_public_keys,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
+    is_registered,
 )
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
@@ -292,8 +293,8 @@ def test_validator_and_builder_pq_key_registrations(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=registrations)
     yield from run_block_with_registrations(spec, state, block)
 
-    assert spec.is_pq_registered(state, validator_index)
-    assert spec.is_pq_registered(state, builder_registry_index(spec, 0))
+    assert is_registered(spec, state, validator_index)
+    assert is_registered(spec, state, builder_registry_index(spec, 0))
 
 
 @with_eip8450_and_later
