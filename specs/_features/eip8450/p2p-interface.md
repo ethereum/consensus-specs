@@ -197,9 +197,16 @@ def validate_pq_key_registration_gossip(
         if builder_index >= len(state.builders):
             raise GossipReject("builder index out of range")
 
-        # [REJECT] The builder is active
+        builder = state.builders[builder_index]
+
+        # [REJECT] The builder has not initiated an exit
+        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
+            raise GossipReject("builder has initiated an exit")
+
+        # [IGNORE] The builder's deposit epoch is finalized in the head state,
+        # which depends on the node's view of finality
         if not is_active_builder(state, builder_index):
-            raise GossipReject("builder is not active")
+            raise GossipIgnore("builder deposit is not yet finalized")
 
         # [REJECT] The builder registers a zero VRF root
         if public_keys.vrf_root != VRFRoot():
@@ -207,7 +214,7 @@ def validate_pq_key_registration_gossip(
 
         entry = state.builder_pq_public_keys[builder_index]
         last_change_epoch = state.builder_pq_key_change_epochs[builder_index]
-        pubkey = state.builders[builder_index].pubkey
+        pubkey = builder.pubkey
     else:
         # [REJECT] The validator index is valid
         if index >= len(state.validators):

@@ -292,15 +292,31 @@ def test_gossip_pq_key_registration__reject_builder_index_out_of_range(spec, sta
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_builder_not_active(spec, state):
-    assert not spec.is_active_builder(state, 0)
+def test_gossip_pq_key_registration__ignore_builder_deposit_not_finalized(spec, state):
+    # Whether the deposit is finalized depends on the node's view of finality
+    assert state.finalized_checkpoint.epoch <= state.builders[0].deposit_epoch
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=builder_registry_index(spec, 0)
     )
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "builder is not active")],
+        [(signed_registration, "ignore", "builder deposit is not yet finalized")],
+    )
+
+
+@with_eip8450_and_later
+@spec_configured_state_test({}, activate_at_genesis=True)
+def test_gossip_pq_key_registration__reject_builder_exit_initiated(spec, state):
+    activate_builders(spec, state)
+    spec.initiate_builder_exit(state, 0)
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, index=builder_registry_index(spec, 0)
+    )
+    yield from run_pq_key_registration_gossip(
+        spec,
+        state,
+        [(signed_registration, "reject", "builder has initiated an exit")],
     )
 
 

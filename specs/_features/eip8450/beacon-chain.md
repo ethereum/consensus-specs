@@ -518,10 +518,22 @@ marker: `FAR_FUTURE_EPOCH` for a validator, and for a builder its deposit epoch,
 which is before the finalized epoch of an active builder. With a delay of at
 least one epoch, a later change is applied in an epoch after the change it
 names. Every applied registration therefore moves the stored epoch forward, and
-none can be included twice. Builder indices are reused once a builder has
-withdrawn, so a builder's marker is its deposit epoch rather than
-`FAR_FUTURE_EPOCH`, and a registration signed for an earlier builder at the same
-index names an earlier epoch.
+none can be included twice.
+
+*Note*: Builder indices are reused once a builder has withdrawn, so a builder's
+marker is its deposit epoch rather than `FAR_FUTURE_EPOCH`. The earlier
+builder's last change is stored while it is active, so at or before its exit
+epoch, and its index is reassigned at least `MIN_BUILDER_WITHDRAWABILITY_DELAY`
+epochs after that exit. In every configuration,
+`MIN_BUILDER_WITHDRAWABILITY_DELAY` must be at least `1`, so that every
+registration signed for the earlier builder names an epoch before the new
+builder's deposit epoch, and never applies.
+
+*Note*: The builder's BLS public key is read after `parent_execution_requests`
+are applied, so it can differ from the pre-block key that clients use to
+batch-verify block signatures, but only when a builder deposit request in the
+same block reassigns the index. The new builder's deposit epoch is then the
+current epoch, so it is not active and the registration is invalid either way.
 
 ```python
 def process_pq_key_registration(

@@ -39,7 +39,8 @@ signs the registration with its BLS key using
 `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
 
 *Note*: A builder index is reused once its builder has withdrawn, and the new
-builder's entry starts at its own deposit epoch. A registration signed for an
-earlier builder at the same index names an earlier epoch and never applies, even
-if the new builder has the same BLS key. A builder that re-enters registers a
-new leanXMSS key.
+builder's entry starts at its own deposit epoch. Since
+`MIN_BUILDER_WITHDRAWABILITY_DELAY` must be at least `1`, a registration signed
+for an earlier builder at the same index names an earlier epoch and never
+applies, even if the new builder has the same BLS key. A builder that re-enters
+registers a new leanXMSS key.
