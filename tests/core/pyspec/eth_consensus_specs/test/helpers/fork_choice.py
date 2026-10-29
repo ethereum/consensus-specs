@@ -528,7 +528,31 @@ def add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=Tru
 
     if not valid:
         step["valid"] = False
+        test_steps.append(step)
+        return
+
     test_steps.append(step)
+    add_inclusion_list_entry_check(spec, signed_inclusion_list.message, test_steps)
+
+
+def add_inclusion_list_entry_check(spec, inclusion_list, test_steps):
+    inclusion_list_store = spec.get_inclusion_list_store()
+    key = (inclusion_list.slot, inclusion_list.dependent_root)
+    entry = inclusion_list_store.inclusion_lists[key][inclusion_list.validator_index]
+    equivocators = inclusion_list_store.equivocators.get(key, set())
+    test_steps.append(
+        {
+            "checks": {
+                "inclusion_list_entry": {
+                    "slot": int(inclusion_list.slot),
+                    "dependent_root": encode_hex(inclusion_list.dependent_root),
+                    "validator_index": int(inclusion_list.validator_index),
+                    "timely": bool(entry.timely),
+                    "equivocator": inclusion_list.validator_index in equivocators,
+                },
+            }
+        }
+    )
 
 
 def add_payload_inclusion_list_satisfaction_check(store, block_root, test_steps):

@@ -244,7 +244,8 @@ The file is located in the same folder (see below).
 This execution step is available for Heze and later forks.
 
 After this step, the inclusion list store may have been updated. Whether the
-inclusion list is timely depends on the time of the preceding `on_tick` step.
+inclusion list is timely depends on the store time: that of the preceding
+`on_tick` step, or the anchor time if there is none.
 
 The execution-layer client mock MUST answer `is_inclusion_list_satisfied` with
 `True` if and only if every inclusion list transaction is in the payload's
@@ -301,6 +302,13 @@ payload_data_availability_vote: {     -- [New in Gloas]
 payload_inclusion_list_satisfaction: {  -- [New in Heze]
     block_root: string,                 -- Encoded 32-byte beacon block root
     satisfied: bool                     -- store.payload_inclusion_list_satisfaction[block_root]
+}
+inclusion_list_entry: {                 -- [New in Heze]
+    slot: int,                          -- Slot of the stored inclusion list
+    dependent_root: string,             -- Encoded 32-byte dependent root of the stored inclusion list
+    validator_index: int,               -- Validator index of the stored inclusion list
+    timely: bool,                       -- Timeliness recorded when the inclusion list was first stored
+    equivocator: bool                   -- Whether the validator equivocated for this slot and dependent root
 }
 ```
 

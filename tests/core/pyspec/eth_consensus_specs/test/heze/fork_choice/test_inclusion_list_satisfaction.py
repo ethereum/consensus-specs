@@ -50,6 +50,14 @@ def _add_payload(spec, store, state, test_steps, transactions=(), block=None):
     """
     if block is None:
         block = build_empty_block_for_next_slot(spec, state)
+    # Payloads with different transactions must not share a block hash
+    block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
+        spec.BeaconBlockHeader(
+            slot=block.slot,
+            parent_root=block.parent_root,
+            body_root=spec.Transactions(data=transactions).hash_tree_root(),
+        ).hash_tree_root()
+    )
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     block_root = signed_block.message.hash_tree_root()
@@ -120,7 +128,7 @@ def _last_second_before_due_ms(spec):
 
 
 def _first_second_after_due_ms(spec):
-    return (spec.get_inclusion_list_due_ms() + 999) // 1000 * 1000
+    return (spec.get_inclusion_list_due_ms() // 1000 + 1) * 1000
 
 
 def _next_slot_ms(spec):
@@ -577,7 +585,8 @@ def _setup_forked_dependent_roots(spec, state):
     """
     Build two forks with different shuffling dependent roots for epoch
     ``MIN_SEED_LOOKAHEAD + 1``: fork A has a block at the shuffling dependent
-    slot and fork B skips it. Both forks have a block after the dependent slot.
+    slot and fork B skips it. Both forks have a block after the dependent slot,
+    at different slots so that no proposer equivocates.
     Return the first slot of that epoch and each fork's state and dependent root.
     """
     test_steps = []
@@ -590,7 +599,7 @@ def _setup_forked_dependent_roots(spec, state):
     while state.slot < dependent_slot - 1:
         fork_root, _, _ = yield from add_signed_empty_block(spec, store, state, test_steps)
     forks = []
-    for fork_slots in [[dependent_slot, dependent_slot + 1], [dependent_slot + 1]]:
+    for fork_slots in [[dependent_slot, dependent_slot + 2], [dependent_slot + 1]]:
         fork_state = state.copy()
         dependent_root = fork_root
         for slot in fork_slots:
@@ -667,7 +676,9 @@ def test_forked_dependent_roots_have_independent_satisfaction(spec, state):
             spec, store, slot + 1, forks, [transactions, transactions], test_steps
         )
 
-    assert store.payloads[root_a].payload.block_hash == store.payloads[root_b].payload.block_hash
+    assert (
+        store.payloads[root_a].payload.transactions == store.payloads[root_b].payload.transactions
+    )
     assert store.payload_inclusion_list_satisfaction[root_a]
     assert not store.payload_inclusion_list_satisfaction[root_b]
 
@@ -764,7 +775,8 @@ def test_child_of_unsatisfied_full_parent_is_not_head(spec, state):
 def test_satisfied_child_of_unsatisfied_parent_is_head(spec, state):
     """
     Test that a payload's satisfaction is not inherited from its unsatisfied
-    parent, so a satisfied child on the empty parent is the head in its own slot.
+    parent, so fork choice extends a satisfied child on the empty parent in the
+    next slot.
     """
     with cached_inclusion_list_store(spec):
         test_steps = []
@@ -773,19 +785,23 @@ def test_satisfied_child_of_unsatisfied_parent_is_head(spec, state):
         yield "anchor_block", anchor_block
 
         yield from _add_timely_inclusion_lists(1)(spec, store, state, test_steps)
-        # The child does not build on the parent's block hash, so it builds on the
-        # empty parent
-        parent = build_empty_block_for_next_slot(spec, state)
-        parent.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
-        parent_root = yield from _add_payload(spec, store, state, test_steps, block=parent)
+        parent_root = yield from _add_payload(spec, store, state, test_steps)
 
         transactions = yield from _add_timely_inclusion_lists(1, included=[0])(
             spec, store, state, test_steps
         )
         child_root = yield from _add_payload(spec, store, state, test_steps, transactions)
 
+        assert not spec.is_parent_node_full(store, store.blocks[child_root])
         assert not store.payload_inclusion_list_satisfaction[parent_root]
         assert store.payload_inclusion_list_satisfaction[child_root]
+
+        # Apply in slot 3 an attestation from slot 2 for the child
+        attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
+        assert attestation.data.beacon_block_root == child_root
+        yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
+        assert spec.get_current_slot(store) == state.slot + 1
+
         check_head_against_root(spec, store, child_root)
         assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_FULL
         output_head_check(spec, store, test_steps)
@@ -859,7 +875,8 @@ def test_ptc_votes_do_not_override_unsatisfied_payload(spec, state):
 def test_attestations_for_full_extend_unsatisfied_payload(spec, state):
     """
     Test that attestations voting full for the block of an unsatisfied payload
-    make fork choice extend that payload after the decision slot.
+    outweigh an empty vote and make fork choice extend that payload after the
+    decision slot.
     """
     with cached_inclusion_list_store(spec):
         test_steps = []
@@ -871,17 +888,27 @@ def test_attestations_for_full_extend_unsatisfied_payload(spec, state):
         block_root = yield from _add_payload(spec, store, state, test_steps)
         assert not store.payload_inclusion_list_satisfaction[block_root]
 
-        # Apply in slot 3 an attestation from slot 2 voting full
+        # Apply in slot 3 attestations from slot 2: one committee member votes
+        # empty, then the rest of the committee votes full
         transition_to(spec, state, state.slot + 1)
-        attestation = get_valid_attestation(
-            spec, state, slot=state.slot, payload_index=1, signed=True
-        )
-        assert attestation.data.beacon_block_root == block_root
-        yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
-        assert spec.get_current_slot(store) == state.slot + 1
+        for payload_index, participants, payload_status in [
+            (0, lambda committee: {min(committee)}, spec.PAYLOAD_STATUS_EMPTY),
+            (1, lambda committee: set(committee) - {min(committee)}, spec.PAYLOAD_STATUS_FULL),
+        ]:
+            attestation = get_valid_attestation(
+                spec,
+                state,
+                slot=state.slot,
+                payload_index=payload_index,
+                filter_participant_set=participants,
+                signed=True,
+            )
+            assert attestation.data.beacon_block_root == block_root
+            yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
+            assert spec.get_current_slot(store) == state.slot + 1
 
-        check_head_against_root(spec, store, block_root)
-        assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_FULL
-        output_head_check(spec, store, test_steps)
+            check_head_against_root(spec, store, block_root)
+            assert spec.get_head(store).payload_status == payload_status
+            output_head_check(spec, store, test_steps)
 
     yield "steps", test_steps

@@ -403,6 +403,7 @@ def test_on_inclusion_list_invalid_signature(spec, state):
 
 @with_heze_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="mainnet has one beacon committee per slot")
 def test_on_inclusion_list_validator_in_last_beacon_committee(spec, state):
     """
     Test that an inclusion list from a member of the last beacon committee of
@@ -412,6 +413,7 @@ def test_on_inclusion_list_validator_in_last_beacon_committee(spec, state):
     def modify_inclusion_list(spec, store, state, inclusion_list):
         epoch = spec.compute_epoch_at_slot(inclusion_list.slot)
         committee_index = spec.get_committee_count_per_slot(state, epoch) - 1
+        assert committee_index > 0
         inclusion_list.validator_index = spec.get_beacon_committee(
             state, inclusion_list.slot, spec.CommitteeIndex(committee_index)
         )[-1]
