@@ -511,17 +511,24 @@ def get_inclusion_list_file_name(signed_inclusion_list):
     return f"inclusion_list_{encode_hex(signed_inclusion_list.hash_tree_root())}"
 
 
+def run_on_inclusion_list(spec, store, signed_inclusion_list, valid=True):
+    if not valid:
+        expect_assertion_error(lambda: spec.on_inclusion_list(store, signed_inclusion_list))
+        return
+
+    spec.on_inclusion_list(store, signed_inclusion_list)
+
+
 def add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=True):
     inclusion_list_file_name = get_inclusion_list_file_name(signed_inclusion_list)
     yield inclusion_list_file_name, signed_inclusion_list
 
-    if not valid:
-        expect_assertion_error(lambda: spec.on_inclusion_list(store, signed_inclusion_list))
-        test_steps.append({"inclusion_list": inclusion_list_file_name, "valid": False})
-        return
+    run_on_inclusion_list(spec, store, signed_inclusion_list, valid=valid)
+    step = {"inclusion_list": inclusion_list_file_name}
 
-    spec.on_inclusion_list(store, signed_inclusion_list)
-    test_steps.append({"inclusion_list": inclusion_list_file_name})
+    if not valid:
+        step["valid"] = False
+    test_steps.append(step)
 
 
 def add_payload_inclusion_list_satisfaction_check(store, block_root, test_steps):

@@ -843,7 +843,7 @@ def _add_ptc_votes(spec, store, state, block_root, test_steps):
 
 @with_heze_and_later
 @spec_state_test
-@with_presets([MINIMAL], reason="one message per PTC member")
+@with_presets([MINIMAL], reason="too slow")
 def test_ptc_votes_do_not_override_unsatisfied_payload(spec, state):
     """
     Test that a PTC supermajority voting the payload present and its data
