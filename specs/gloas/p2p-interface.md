@@ -1444,7 +1444,7 @@ leads to the finalized block reported in the `Status` handshake.
 
 When `ExecutionPayloadEnvelopesByRange` is used to backfill the envelopes of
 blocks that precede the node's checkpoint, the envelope signature adds no
-security for the requesting node itself. Backfilled envelopes SHOULD be verified
+security for the requesting node itself. Backfilled envelopes MUST be verified
 with `verify_execution_payload_envelope_consistency` and `is_valid_block_hash`.
 Because builder indices are reusable and the node lacks historical beacon
 states, the signature can only be verified when `is_original_builder` returns
