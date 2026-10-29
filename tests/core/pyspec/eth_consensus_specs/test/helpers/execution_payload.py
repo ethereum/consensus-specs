@@ -245,8 +245,8 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
     if is_post_gloas(spec):
-        block_access_list_rlp = encode(bytearray(payload.block_access_list), Binary(0))
-        block_access_list_hash = keccak(block_access_list_rlp)
+        # The block access list is already RLP-encoded
+        block_access_list_hash = keccak(bytes(payload.block_access_list))
 
     return compute_el_header_block_hash(
         spec,
@@ -397,7 +397,8 @@ def build_empty_execution_payload(
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
     if is_post_gloas(spec):
-        payload.block_access_list = spec.BlockAccessList()
+        # An empty block access list, RLP-encoded
+        payload.block_access_list = spec.BlockAccessList(data=list(b"\xc0"))
         payload.slot_number = state.slot
 
     payload.block_hash = compute_el_block_hash(spec, payload, state, execution_requests)

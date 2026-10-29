@@ -33,19 +33,18 @@
 
 ## Introduction
 
-EIP-8198 ("Quick Slots") makes the slot duration fork-specific, with a first
-reduction from 12 to 10 seconds intended at the fork epoch. The duration
+EIP-8198 ("Quick Slots") makes the slot duration fork-specific. The duration
 schedule records the historical slot lengths. Intra-slot deadlines are
 configured separately in basis points of the slot duration at
 `EIP8198_FORK_EPOCH`; later forks may change the duties and their deadlines
 independently. The remaining duration-dependent parameters are rescaled by the
-ratio `r = get_slot_duration_ms(epoch) / get_slot_duration_ms(GENESIS_EPOCH)` to
-keep their wall-clock behavior constant: issuance and churn are per-epoch rates
-and scale by `r`, while the inactivity penalty scales by `r**2` so that the
-cumulative leak over a fixed wall-clock duration is unchanged. Each formula
+ratio `r = get_slot_duration_ms(epoch) / SLOT_DURATION_MS` to keep their
+wall-clock behavior constant: issuance and churn are per-epoch rates and scale
+by `r`, while the inactivity penalty scales by `r**2` so that the cumulative
+leak over a fixed wall-clock duration is approximately unchanged. Each formula
 applies the ratio inline rather than pre-computing rounded constants. Epoch- and
-slot-denominated quantities — withdrawability and slashing windows, sync
-committee periods, per-payload and per-epoch processing limits — keep their
+slot-denominated quantities (withdrawability and slashing windows, sync
+committee periods, per-payload and per-epoch processing limits) keep their
 counts, so their wall-clock spans scale with the slot duration.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
@@ -58,24 +57,25 @@ counts, so their wall-clock spans scale with the slot duration.
 | -------------------------- | --------------- |
 | `SLOT_DURATION_MS_EIP8198` | `Uint64(10000)` |
 
-The slot duration MUST be a positive multiple of `1000`, so that every slot
-boundary has an integer-second timestamp.
+The slot duration MUST be a positive multiple of `1000` so that
+`ExecutionPayload.timestamp` matches the slot start time in seconds.
 
-The intended first reduction is to 10 seconds on mainnet. Its epoch and
-accompanying blob parameters are not yet scheduled. Blob targets and limits must
-be chosen jointly with the execution layer; integer rounding does not in general
-preserve throughput per unit time exactly.
+The target and maximum blobs per block limit MUST be coordinated with the
+execution layer. Integer rounding may change blob throughput per unit time.
 
-Gas targets should be coordinated ahead of the upgrade, or as part of the
-upgrade's overall capacity increase, using the advisory `GAS_LIMIT_SCHEDULE` and
-proposer preferences. The usual gas-limit adjustment rule applies at the
-transition, so reaching a lower target requires advance coordination.
+Gas limit changes should be coordinated through `GAS_LIMIT_SCHEDULE` and
+proposer preferences ahead of the fork. Integer rounding may change gas
+throughput per unit time.
 
 ## Helpers
 
 ### Misc
 
 #### New `get_slot_durations`
+
+*Note*: This function returns slot durations with their activation epochs. A
+fork that changes the slot duration MUST add an entry with its activation epoch
+and slot duration.
 
 ```python
 def get_slot_durations() -> Sequence[tuple[Epoch, Uint64]]:
@@ -148,6 +148,10 @@ def compute_slot_at_time_ms(genesis_time_ms: Uint64, time_ms: Uint64) -> Slot:
 
 #### Modified `get_base_reward_per_increment`
 
+*Note*: Rewards, penalties and churn limits are scaled relative to
+`SLOT_DURATION_MS` rather than the slot duration at genesis, so they are also
+scaled on networks that activate EIP-8198 at genesis.
+
 ```python
 def get_base_reward_per_increment(
     state: BeaconState,
@@ -163,7 +167,7 @@ def get_base_reward_per_increment(
         EFFECTIVE_BALANCE_INCREMENT
         * BASE_REWARD_FACTOR
         * get_slot_duration_ms(epoch)
-        // get_slot_duration_ms(GENESIS_EPOCH)
+        // SLOT_DURATION_MS
         // integer_squareroot(get_total_active_balance(state))
     )
 ```
@@ -225,9 +229,10 @@ def get_flag_index_deltas(
 
 #### Modified `get_inactivity_penalty_deltas`
 
-*Note*: The inactivity penalty scales with the square of the epoch duration, so
-the cumulative penalty over a fixed wall-clock leak duration is unchanged. The
-penalty pays for the previous epoch and is priced at its slot duration.
+*Note*: The inactivity penalty is calculated for the previous epoch and scales
+with the square of the slot duration ratio, so the cumulative penalty over the
+same amount of time during an inactivity leak remains approximately unchanged
+after a slot duration change.
 
 ```python
 def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
@@ -249,7 +254,7 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], S
             penalty_denominator = (
                 INACTIVITY_SCORE_BIAS
                 * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
-                * get_slot_duration_ms(GENESIS_EPOCH) ** 2
+                * SLOT_DURATION_MS**2
                 // get_slot_duration_ms(previous_epoch) ** 2
             )
             penalties[index] += penalty_numerator // penalty_denominator
@@ -273,11 +278,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
     )
     # [Modified in EIP8198]
     churn = min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
@@ -297,11 +298,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     # [Modified in EIP8198]
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
@@ -316,11 +313,7 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
     churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     # [Modified in EIP8198]
-    churn = (
-        churn
-        * get_slot_duration_ms(get_current_epoch(state))
-        // get_slot_duration_ms(GENESIS_EPOCH)
-    )
+    churn = churn * get_slot_duration_ms(get_current_epoch(state)) // SLOT_DURATION_MS
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
