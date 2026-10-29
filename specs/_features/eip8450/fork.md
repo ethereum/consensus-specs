@@ -32,8 +32,9 @@ change is made to upgrade to EIP-8450.
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8450_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
-Every validator starts without registered keys, and registers by broadcasting a
-`SignedPQKeyRegistration`.
+Every validator and builder starts without registered keys, and registers by
+broadcasting a `SignedPQKeyRegistration`. A builder's change epoch starts at its
+deposit epoch, which marks a builder that has never registered keys.
 
 ```python
 def upgrade_to_eip8450(pre: heze.BeaconState) -> BeaconState:
@@ -91,6 +92,14 @@ def upgrade_to_eip8450(pre: heze.BeaconState) -> BeaconState:
         # [New in EIP8450]
         pq_key_change_epochs=ValidatorPQKeyChangeEpochs(
             data=[FAR_FUTURE_EPOCH for _ in pre.validators]
+        ),
+        # [New in EIP8450]
+        builder_pq_public_keys=BuilderPQPublicKeys(
+            data=[PQPublicKeys.empty() for _ in pre.builders]
+        ),
+        # [New in EIP8450]
+        builder_pq_key_change_epochs=BuilderPQKeyChangeEpochs(
+            data=[builder.deposit_epoch for builder in pre.builders]
         ),
     )
 

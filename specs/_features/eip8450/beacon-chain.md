@@ -11,6 +11,8 @@
   - [New `VRFRoot`](#new-vrfroot)
   - [New `ValidatorPQPublicKeys`](#new-validatorpqpublickeys)
   - [New `ValidatorPQKeyChangeEpochs`](#new-validatorpqkeychangeepochs)
+  - [New `BuilderPQPublicKeys`](#new-builderpqpublickeys)
+  - [New `BuilderPQKeyChangeEpochs`](#new-builderpqkeychangeepochs)
   - [New `PQKeyRegistrations`](#new-pqkeyregistrations)
 - [Constants](#constants)
   - [Domains](#domains)
@@ -32,12 +34,21 @@
     - [New `xmss_signature_index`](#new-xmss_signature_index)
   - [Misc](#misc)
     - [New `get_pq_possession_signing_root`](#new-get_pq_possession_signing_root)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [New `get_pq_unregistered_epoch`](#new-get_pq_unregistered_epoch)
+    - [New `get_pq_key_change_epoch`](#new-get_pq_key_change_epoch)
+    - [New `get_pq_public_keys`](#new-get_pq_public_keys)
+    - [New `get_pq_registry_indices`](#new-get_pq_registry_indices)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [New `set_pq_public_keys`](#new-set_pq_public_keys)
   - [Predicates](#predicates)
     - [New `is_pq_registered`](#new-is_pq_registered)
     - [New `is_pq_public_key_in_use`](#new-is_pq_public_key_in_use)
     - [New `is_valid_pq_possession_proof`](#new-is_valid_pq_possession_proof)
   - [Validator registry](#validator-registry)
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
+  - [Builder registry](#builder-registry)
+    - [Modified `add_builder_to_registry`](#modified-add_builder_to_registry)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Operations](#operations)
@@ -55,13 +66,14 @@ part of the EIP-8450 upgrade.
 Each validator registers two hash-based commitments, bound to its existing
 validator index: a leanXMSS public key, used for every message the validator
 signs once duties switch to it, and the root of a VRF tree, which fixes one
-verifiable random output per index.
+verifiable random output per index. Each builder registers a leanXMSS public key
+for its existing builder index through the same operation.
 
 Registration is a new beacon block operation carrying the keys and a proof of
-possession under the leanXMSS key. It is authorized by the validator's BLS
-signing key, which can also replace registered keys, at most once every
-`MIN_PQ_KEY_CHANGE_DELAY` epochs. The registered keys are dormant: no duty is
-authenticated with them in this upgrade.
+possession that binds the leanXMSS key to the BLS public key of the validator or
+builder. It is authorized by that BLS signing key, which can also replace
+registered keys, at most once every `MIN_PQ_KEY_CHANGE_DELAY` epochs. The
+registered keys are dormant: no duty is authenticated with them in this upgrade.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
@@ -119,6 +131,27 @@ class ValidatorPQKeyChangeEpochs(ProgressiveList[Epoch]):
     """
 ```
 
+### New `BuilderPQPublicKeys`
+
+```python
+class BuilderPQPublicKeys(ProgressiveList[PQPublicKeys]):
+    """
+    The registered post-quantum keys of every builder, by builder index. A
+    builder without keys holds the all-zero entry.
+    """
+```
+
+### New `BuilderPQKeyChangeEpochs`
+
+```python
+class BuilderPQKeyChangeEpochs(ProgressiveList[Epoch]):
+    """
+    The epoch of the last registration or change of every builder's keys, by
+    builder index. The builder's deposit epoch marks a builder that has never
+    registered keys.
+    """
+```
+
 ### New `PQKeyRegistrations`
 
 ```python
@@ -162,6 +195,9 @@ change it names.
 
 #### `PQPublicKeys`
 
+*Note*: A builder registers a zero `vrf_root`, since builders make no selection
+proofs.
+
 ```python
 class PQPublicKeys(Container):
     xmss_public_key: XMSSPublicKey
@@ -170,24 +206,28 @@ class PQPublicKeys(Container):
 
 #### `PQKeyRegistration`
 
+*Note*: An `index` with `BUILDER_INDEX_FLAG` set names a builder, as for builder
+withdrawals.
+
 ```python
 class PQKeyRegistration(Container):
-    validator_index: ValidatorIndex
+    # Validator index, or builder index with ``BUILDER_INDEX_FLAG`` set
+    index: ValidatorIndex
     public_keys: PQPublicKeys
-    # Epoch of the validator's last change, or ``FAR_FUTURE_EPOCH`` if it has
-    # never registered keys
+    # Epoch of the last change, or the never-registered marker of the index:
+    # ``FAR_FUTURE_EPOCH`` for a validator, the deposit epoch for a builder
     previous_change_epoch: Epoch
 ```
 
 #### `PQKeyPossession`
 
-*Note*: The validator is named by its BLS public key, which never changes and is
-known before the validator has an index. The message does not depend on the rest
-of the registration, so a key signs it only once.
+*Note*: The validator or builder is named by its BLS public key, which never
+changes and is known before it has an index. The message does not depend on the
+rest of the registration, so a key signs it only once.
 
 ```python
 class PQKeyPossession(Container):
-    validator_pubkey: BLSPubkey
+    pubkey: BLSPubkey
     xmss_public_key: XMSSPublicKey
 ```
 
@@ -198,7 +238,7 @@ class SignedPQKeyRegistration(Container):
     message: PQKeyRegistration
     # Signature of the ``PQKeyPossession`` by the registered leanXMSS key
     possession: XMSSSignature
-    # Signature of ``message`` by the validator's BLS signing key
+    # Signature of ``message`` by the BLS signing key of the validator or builder
     signature: BLSSignature
 ```
 
@@ -227,12 +267,13 @@ class BeaconBlockBody(ProgressiveContainer):
 
 #### `BeaconState`
 
-*Note*: The keys are stored in lists parallel to `validators`, so the
-`Validator` container and its generalized indices are unchanged.
+*Note*: The keys are stored in lists parallel to `validators` and `builders`, so
+the `Validator` and `Builder` containers and their generalized indices are
+unchanged.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 28))
+    ACTIVE_FIELDS = active_fields(width=50, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -280,6 +321,10 @@ class BeaconState(ProgressiveContainer):
     pq_public_keys: ValidatorPQPublicKeys
     # [New in EIP8450]
     pq_key_change_epochs: ValidatorPQKeyChangeEpochs
+    # [New in EIP8450]
+    builder_pq_public_keys: BuilderPQPublicKeys
+    # [New in EIP8450]
+    builder_pq_key_change_epochs: BuilderPQKeyChangeEpochs
 ```
 
 ## Helpers
@@ -325,14 +370,14 @@ valid across forks.
 
 ```python
 def get_pq_possession_signing_root(
-    state: BeaconState, validator_pubkey: BLSPubkey, xmss_public_key: XMSSPublicKey
+    state: BeaconState, pubkey: BLSPubkey, xmss_public_key: XMSSPublicKey
 ) -> Root:
     """
     Return the signing root of the ``PQKeyPossession`` of ``xmss_public_key`` for
-    the validator holding ``validator_pubkey``.
+    the validator or builder holding ``pubkey``.
     """
     possession = PQKeyPossession(
-        validator_pubkey=validator_pubkey,
+        pubkey=pubkey,
         xmss_public_key=xmss_public_key,
     )
     domain = compute_domain(
@@ -342,6 +387,89 @@ def get_pq_possession_signing_root(
     return compute_signing_root(possession, domain)
 ```
 
+### Beacon state accessors
+
+*Note*: An index with `BUILDER_INDEX_FLAG` set names a builder. The accessors
+below read and write the registry entry of a validator or builder index.
+
+#### New `get_pq_unregistered_epoch`
+
+*Note*: Builder indices are reused once a builder has withdrawn, so a builder's
+entry starts from its own deposit epoch rather than `FAR_FUTURE_EPOCH`. A
+registration signed for an earlier builder at the same index names an earlier
+epoch, so it does not apply.
+
+```python
+def get_pq_unregistered_epoch(state: BeaconState, index: ValidatorIndex) -> Epoch:
+    """
+    Return the stored change epoch of a validator or builder that has never
+    registered keys.
+    """
+    if is_builder_index(index):
+        return state.builders[convert_validator_index_to_builder_index(index)].deposit_epoch
+    return FAR_FUTURE_EPOCH
+```
+
+#### New `get_pq_key_change_epoch`
+
+```python
+def get_pq_key_change_epoch(state: BeaconState, index: ValidatorIndex) -> Epoch:
+    """
+    Return the stored change epoch of a validator or builder.
+    """
+    if is_builder_index(index):
+        return state.builder_pq_key_change_epochs[convert_validator_index_to_builder_index(index)]
+    return state.pq_key_change_epochs[index]
+```
+
+#### New `get_pq_public_keys`
+
+```python
+def get_pq_public_keys(state: BeaconState, index: ValidatorIndex) -> PQPublicKeys:
+    """
+    Return the registered keys of a validator or builder.
+    """
+    if is_builder_index(index):
+        return state.builder_pq_public_keys[convert_validator_index_to_builder_index(index)]
+    return state.pq_public_keys[index]
+```
+
+#### New `get_pq_registry_indices`
+
+```python
+def get_pq_registry_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    """
+    Return the indices of every validator and builder, with builder indices
+    flagged.
+    """
+    validator_indices = [ValidatorIndex(index) for index in range(len(state.validators))]
+    builder_indices = [
+        convert_builder_index_to_validator_index(BuilderIndex(index))
+        for index in range(len(state.builders))
+    ]
+    return validator_indices + builder_indices
+```
+
+### Beacon state mutators
+
+#### New `set_pq_public_keys`
+
+```python
+def set_pq_public_keys(
+    state: BeaconState, index: ValidatorIndex, public_keys: PQPublicKeys, epoch: Epoch
+) -> None:
+    """
+    Write the keys and the change epoch of a validator or builder.
+    """
+    if is_builder_index(index):
+        builder_index = convert_validator_index_to_builder_index(index)
+        state.builder_pq_public_keys[builder_index] = public_keys
+        state.builder_pq_key_change_epochs[builder_index] = epoch
+    else:
+        state.pq_public_keys[index] = public_keys
+        state.pq_key_change_epochs[index] = epoch
+```
+
 ### Predicates
 
 #### New `is_pq_registered`
@@ -349,31 +477,32 @@ def get_pq_possession_signing_root(
 ```python
 def is_pq_registered(state: BeaconState, index: ValidatorIndex) -> bool:
     """
-    Check if the validator at ``index`` has registered post-quantum keys.
+    Check if the validator or builder at ``index`` has registered post-quantum
+    keys.
     """
-    return state.pq_key_change_epochs[index] != FAR_FUTURE_EPOCH
+    return get_pq_key_change_epoch(state, index) != get_pq_unregistered_epoch(state, index)
 ```
 
 #### New `is_pq_public_key_in_use`
 
-*Note*: Consensus rejects a leanXMSS key that a validator currently holds,
-including the one registering, so a change never keeps the current key, and
-changing only the VRF root requires a new leanXMSS key. Earlier keys are not
+*Note*: Consensus rejects a leanXMSS key that a validator or builder currently
+holds, including the one registering, so a change never keeps the current key,
+and changing only the VRF root requires a new leanXMSS key. Earlier keys are not
 recorded, so a key that its holder has released can be registered again. The
 signer rules in the [validator guide](./validator.md#leaf-index-rules) forbid
-that. Clients are expected to maintain a map from registered keys to validator
-indices, as they do for BLS public keys.
+that. Clients are expected to maintain a map from registered keys to indices, as
+they do for BLS public keys.
 
 ```python
 def is_pq_public_key_in_use(state: BeaconState, public_keys: PQPublicKeys) -> bool:
     """
-    Check if any validator, including the one registering, has registered the
-    leanXMSS key of ``public_keys``.
+    Check if any validator or builder, including the one registering, has
+    registered the leanXMSS key of ``public_keys``.
     """
-    for index, entry in enumerate(state.pq_public_keys):
-        if not is_pq_registered(state, ValidatorIndex(index)):
+    for index in get_pq_registry_indices(state):
+        if not is_pq_registered(state, index):
             continue
-        if entry.xmss_public_key == public_keys.xmss_public_key:
+        if get_pq_public_keys(state, index).xmss_public_key == public_keys.xmss_public_key:
             return True
     return False
 ```
@@ -386,18 +515,18 @@ possession.
 ```python
 def is_valid_pq_possession_proof(
     state: BeaconState,
-    validator_pubkey: BLSPubkey,
+    pubkey: BLSPubkey,
     xmss_public_key: XMSSPublicKey,
     proof: XMSSSignature,
 ) -> bool:
     """
     Check if ``proof`` is a signature, by ``xmss_public_key``, of the key itself
-    for the validator holding ``validator_pubkey``.
+    for the validator or builder holding ``pubkey``.
     """
     if xmss_signature_index(proof) != PQ_POSSESSION_XMSS_INDEX:
         return False
 
-    signing_root = get_pq_possession_signing_root(state, validator_pubkey, xmss_public_key)
+    signing_root = get_pq_possession_signing_root(state, pubkey, xmss_public_key)
     return xmss.Verify(xmss_public_key, signing_root, proof)
 ```
 
@@ -426,6 +555,41 @@ def add_validator_to_registry(
     set_or_append_list(state.pq_key_change_epochs, index, FAR_FUTURE_EPOCH)
 ```
 
+### Builder registry
+
+#### Modified `add_builder_to_registry`
+
+*Note*: The function `add_builder_to_registry` is modified to write a fresh item
+in the `builder_pq_public_keys` and `builder_pq_key_change_epochs` lists at the
+builder's index, preserving the invariant that they have one entry per builder.
+A reused builder index gets a fresh entry, whose change epoch is the new
+builder's deposit epoch.
+
+```python
+def add_builder_to_registry(
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    version: Uint8,
+    execution_address: ExecutionAddress,
+    amount: Gwei,
+    slot: Slot,
+) -> None:
+    index = get_index_for_new_builder(state)
+    builder = Builder(
+        pubkey=pubkey,
+        version=version,
+        execution_address=execution_address,
+        balance=amount,
+        deposit_epoch=compute_epoch_at_slot(slot),
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
+    )
+    set_or_append_list(state.builders, index, builder)
+    # [New in EIP8450]
+    set_or_append_list(state.builder_pq_public_keys, index, PQPublicKeys.empty())
+    # [New in EIP8450]
+    set_or_append_list(state.builder_pq_key_change_epochs, index, builder.deposit_epoch)
+```
+
 ## Beacon chain state transition function
 
 ### Block processing
@@ -435,8 +599,8 @@ def add_validator_to_registry(
 ##### Modified `process_operations`
 
 *Note*: Registrations are processed after every other operation of the block,
-and after the parent's execution requests, so a registration for a validator
-whose exit is initiated earlier in the same block is invalid.
+and after the parent's execution requests, so a registration for a validator or
+builder whose exit is initiated earlier in the same block is invalid.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
@@ -467,29 +631,40 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
 ###### New `process_pq_key_registration`
 
-*Note*: The same operation registers keys for a validator that has none and
-replaces the keys of a registered validator. Each registration names the epoch
-of the validator's last change. A first registration stores the current epoch,
-which is never `FAR_FUTURE_EPOCH`. With a delay of at least one epoch, a later
-change is applied in an epoch after the change it names. Every applied
-registration therefore moves the stored epoch forward, and none can be included
-twice.
+*Note*: The same operation registers keys for a validator or builder that has
+none and replaces the keys of a registered one. Each registration names the
+epoch of the last change. A first registration stores the current epoch, which
+is never the never-registered marker: `FAR_FUTURE_EPOCH` for a validator, and
+for a builder its deposit epoch, which is before the finalized epoch of an
+active builder. With a delay of at least one epoch, a later change is applied in
+an epoch after the change it names. Every applied registration therefore moves
+the stored epoch forward, and none can be included twice.
 
 ```python
 def process_pq_key_registration(
     state: BeaconState, signed_registration: SignedPQKeyRegistration
 ) -> None:
     registration = signed_registration.message
-    index = registration.validator_index
+    index = registration.index
     public_keys = registration.public_keys
 
-    assert index < len(state.validators)
-    validator = state.validators[index]
-    # Verify the validator has not initiated an exit
-    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    if is_builder_index(index):
+        builder_index = convert_validator_index_to_builder_index(index)
+        assert builder_index < len(state.builders)
+        # Verify the builder is active, so its deposit epoch is finalized
+        assert is_active_builder(state, builder_index)
+        # Builders make no selection proofs, so they register no VRF root
+        assert public_keys.vrf_root == VRFRoot()
+        pubkey = state.builders[builder_index].pubkey
+    else:
+        assert index < len(state.validators)
+        validator = state.validators[index]
+        # Verify the validator has not initiated an exit
+        assert validator.exit_epoch == FAR_FUTURE_EPOCH
+        pubkey = validator.pubkey
 
-    # Verify the registration applies to the current entry of the validator
-    last_change_epoch = state.pq_key_change_epochs[index]
+    # Verify the registration applies to the current entry
+    last_change_epoch = get_pq_key_change_epoch(state, index)
     assert registration.previous_change_epoch == last_change_epoch
 
     # Changes of registered keys are rate-limited
@@ -502,13 +677,12 @@ def process_pq_key_registration(
         genesis_validators_root=state.genesis_validators_root,
     )
     signing_root = compute_signing_root(registration, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_registration.signature)
+    assert bls.Verify(pubkey, signing_root, signed_registration.signature)
 
     assert not is_pq_public_key_in_use(state, public_keys)
     assert is_valid_pq_possession_proof(
-        state, validator.pubkey, public_keys.xmss_public_key, signed_registration.possession
+        state, pubkey, public_keys.xmss_public_key, signed_registration.possession
     )
 
-    state.pq_public_keys[index] = public_keys
-    state.pq_key_change_epochs[index] = get_current_epoch(state)
+    set_pq_public_keys(state, index, public_keys, get_current_epoch(state))
 ```

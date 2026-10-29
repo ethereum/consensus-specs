@@ -61,6 +61,18 @@ def test_fork_many_next_epoch(spec, phases, state):
 
 
 @with_phases(phases=[HEZE], other_phases=[EIP8450])
+@spec_test
+@with_state
+@with_meta_tags(EIP8450_FORK_TEST_META_TAGS)
+def test_fork_builders_with_distinct_deposit_epochs(spec, phases, state):
+    for _ in range(3):
+        next_epoch(spec, state)
+    for index, builder in enumerate(state.builders):
+        builder.deposit_epoch = index % 4
+    yield from run_fork_test(phases[EIP8450], state)
+
+
+@with_phases(phases=[HEZE], other_phases=[EIP8450])
 @with_custom_state(balances_fn=low_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
 @spec_test
 @with_meta_tags(EIP8450_FORK_TEST_META_TAGS)

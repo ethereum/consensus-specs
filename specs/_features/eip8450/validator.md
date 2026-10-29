@@ -64,37 +64,38 @@ it allocates leaf indices to messages. Signing is not assumed to be
 deterministic, so signing the same message twice at one leaf index is also a
 reuse. Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
 possession: a signer must not sign at it anything other than the
-`PQKeyPossession` of its key for its validator's BLS public key. A signer must
-use each leanXMSS key in at most one registration, for one validator, and must
-not register a key that it has registered before. Its proof is therefore signed
-once. Consensus does not record earlier keys, so returning to an earlier key, or
-registering a key that another validator has released, is valid on chain.
-Returning to an earlier key needs either a second proof at leaf
-`PQ_POSSESSION_XMSS_INDEX` or the stored first one, and registering a key that
-another validator released needs a proof of a different message at that leaf.
-The signer rules forbid both, so a signer never has to keep old proofs.
+`PQKeyPossession` of its key for the BLS public key of its validator or builder.
+A signer must use each leanXMSS key in at most one registration, for one
+validator or builder, and must not register a key that it has registered before.
+Its proof is therefore signed once. Consensus does not record earlier keys, so
+returning to an earlier key, or registering a key that another validator or
+builder has released, is valid on chain. Returning to an earlier key needs
+either a second proof at leaf `PQ_POSSESSION_XMSS_INDEX` or the stored first
+one, and registering a key that another validator or builder released needs a
+proof of a different message at that leaf. The signer rules forbid both, so a
+signer never has to keep old proofs.
 
 ### Constructing the registration
 
-The validator assembles a `PQKeyRegistration` holding its own `validator_index`,
-its keys, and its current entry of `state.pq_key_change_epochs` as
+The validator assembles a `PQKeyRegistration` holding its own validator index as
+`index`, its keys, and its current entry of `state.pq_key_change_epochs` as
 `previous_change_epoch`. It attaches its proof of possession of the leanXMSS
 key, signs the registration with its **signing key**, and broadcasts the
 resulting `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
 
-Consensus rejects a leanXMSS key that a validator currently holds, including the
-validator itself, so a change of the VRF root alone also needs a new leanXMSS
-key. The proof is produced once per key with the function below. A registration
-that is not included, for example because its block is orphaned, stays in the
-operation pools and is included later with the same bytes. It is never signed
-again.
+Consensus rejects a leanXMSS key that a validator or builder currently holds,
+including the validator itself, so a change of the VRF root alone also needs a
+new leanXMSS key. The proof is produced once per key with the function below. A
+registration that is not included, for example because its block is orphaned,
+stays in the operation pools and is included later with the same bytes. It is
+never signed again.
 
 ```python
 def get_pq_possession_proof(
-    state: BeaconState, validator_pubkey: BLSPubkey, xmss_secret_key: Bytes32
+    state: BeaconState, pubkey: BLSPubkey, xmss_secret_key: Bytes32
 ) -> XMSSSignature:
     xmss_public_key = xmss.SkToPk(xmss_secret_key)
-    signing_root = get_pq_possession_signing_root(state, validator_pubkey, xmss_public_key)
+    signing_root = get_pq_possession_signing_root(state, pubkey, xmss_public_key)
     return xmss.Sign(xmss_secret_key, signing_root, PQ_POSSESSION_XMSS_INDEX)
 ```
 

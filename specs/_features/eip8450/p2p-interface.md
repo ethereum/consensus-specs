@@ -119,11 +119,11 @@ post-quantum key registrations on the network. Signed messages are sent in their
 entirety.
 
 *Note*: A registration that was valid when first received can become invalid
-before it is included, for example when another validator registers the same
-leanXMSS key first. The validator's `pq_key_change_epochs` entry then does not
-change, so the first-seen record would block every later registration for the
-pair. Nodes *may* clear the record for a pair once its first-seen registration
-is no longer valid against the finalized state.
+before it is included, for example when another validator or builder registers
+the same leanXMSS key first. The stored change epoch then does not change, so
+the first-seen record would block every later registration for the pair. Nodes
+*may* clear the record for a pair once its first-seen registration is no longer
+valid against the finalized state.
 
 ```python
 def validate_pq_key_registration_gossip(
@@ -137,7 +137,7 @@ def validate_pq_key_registration_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     registration = signed_registration.message
-    index = registration.validator_index
+    index = registration.index
     public_keys = registration.public_keys
 
     # [IGNORE] The current epoch is at or after the EIP-8450 fork epoch
@@ -147,25 +147,44 @@ def validate_pq_key_registration_gossip(
     state = store.block_states[get_head(store).root]
 
     # [IGNORE] The head state is at or after the EIP-8450 fork, so that it has
-    # ``pq_public_keys`` and ``pq_key_change_epochs``
+    # the registry lists of EIP-8450
     if get_current_epoch(state) < EIP8450_FORK_EPOCH:
         raise GossipIgnore("head state is pre-eip8450")
 
-    # [REJECT] The validator index is valid
-    if index >= len(state.validators):
-        raise GossipReject("validator index out of range")
+    if is_builder_index(index):
+        builder_index = convert_validator_index_to_builder_index(index)
 
-    # [REJECT] The validator has not initiated an exit
-    validator = state.validators[index]
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        raise GossipReject("validator has initiated an exit")
+        # [REJECT] The builder index is valid
+        if builder_index >= len(state.builders):
+            raise GossipReject("builder index out of range")
+
+        # [REJECT] The builder is active
+        if not is_active_builder(state, builder_index):
+            raise GossipReject("builder is not active")
+
+        # [REJECT] The builder registers a zero VRF root
+        if public_keys.vrf_root != VRFRoot():
+            raise GossipReject("builder VRF root is not zero")
+
+        pubkey = state.builders[builder_index].pubkey
+    else:
+        # [REJECT] The validator index is valid
+        if index >= len(state.validators):
+            raise GossipReject("validator index out of range")
+
+        # [REJECT] The validator has not initiated an exit
+        validator = state.validators[index]
+        if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            raise GossipReject("validator has initiated an exit")
+
+        pubkey = validator.pubkey
 
     # [IGNORE] This is the first valid registration received for the pair
     if (index, registration.previous_change_epoch) in seen.pq_key_registration_tuples:
         raise GossipIgnore("already seen post-quantum key registration for this pair")
 
-    # [REJECT] The registration applies to the current entry of the validator
-    if registration.previous_change_epoch != state.pq_key_change_epochs[index]:
+    # [REJECT] The registration applies to the current entry
+    if registration.previous_change_epoch != get_pq_key_change_epoch(state, index):
         raise GossipReject("previous change epoch does not match")
 
     # [IGNORE] Changes of registered keys are rate-limited
@@ -180,16 +199,16 @@ def validate_pq_key_registration_gossip(
         genesis_validators_root=state.genesis_validators_root,
     )
     signing_root = compute_signing_root(registration, domain)
-    if not bls.Verify(validator.pubkey, signing_root, signed_registration.signature):
+    if not bls.Verify(pubkey, signing_root, signed_registration.signature):
         raise GossipReject("invalid post-quantum key registration signature")
 
-    # [REJECT] The leanXMSS key is not registered by any validator
+    # [REJECT] The leanXMSS key is not registered by any validator or builder
     if is_pq_public_key_in_use(state, public_keys):
         raise GossipReject("leanXMSS key is already registered")
 
     # [REJECT] The proof of possession is valid
     if not is_valid_pq_possession_proof(
-        state, validator.pubkey, public_keys.xmss_public_key, signed_registration.possession
+        state, pubkey, public_keys.xmss_public_key, signed_registration.possession
     ):
         raise GossipReject("invalid proof of possession")
 

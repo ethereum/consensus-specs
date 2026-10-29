@@ -70,6 +70,15 @@ def run_fork_test(post_spec, pre_state):
     assert all(keys == post_spec.PQPublicKeys() for keys in post_state.pq_public_keys)
     assert all(epoch == post_spec.FAR_FUTURE_EPOCH for epoch in post_state.pq_key_change_epochs)
 
+    # Every builder starts without registered keys, at its deposit epoch
+    assert len(post_state.builder_pq_public_keys) == len(post_state.builders)
+    assert len(post_state.builder_pq_key_change_epochs) == len(post_state.builders)
+    assert all(keys == post_spec.PQPublicKeys() for keys in post_state.builder_pq_public_keys)
+    for builder, epoch in zip(
+        post_state.builders, post_state.builder_pq_key_change_epochs, strict=True
+    ):
+        assert epoch == builder.deposit_epoch
+
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.EIP8450_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)

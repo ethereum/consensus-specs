@@ -9,6 +9,8 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
+    activate_builders,
+    builder_registry_index,
     get_pq_public_keys,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
@@ -55,9 +57,7 @@ def assert_exit_initiated_by(spec, state, validator_index, apply_cause):
 @spec_state_test
 def test_pq_key_registration(spec, state):
     validator_index = get_non_proposer_indices(spec, state, 1)[0]
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
@@ -71,16 +71,14 @@ def test_pq_key_registration(spec, state):
 @spec_state_test
 def test_max_pq_key_registrations(spec, state):
     indices = get_non_proposer_indices(spec, state, spec.MAX_PQ_KEY_REGISTRATIONS)
-    registrations = [
-        get_signed_pq_key_registration(spec, state, validator_index=index) for index in indices
-    ]
+    registrations = [get_signed_pq_key_registration(spec, state, index=index) for index in indices]
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=registrations)
     yield from run_block_with_registrations(spec, state, block)
 
     for registration in registrations:
-        index = registration.message.validator_index
+        index = registration.message.index
         assert state.pq_public_keys[index] == registration.message.public_keys
 
 
@@ -88,9 +86,7 @@ def test_max_pq_key_registrations(spec, state):
 @spec_state_test
 def test_invalid_too_many_pq_key_registrations(spec, state):
     validator_index = get_non_proposer_indices(spec, state, 1)[0]
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.pq_key_registrations = spec.PQKeyRegistrations(
@@ -104,9 +100,7 @@ def test_invalid_too_many_pq_key_registrations(spec, state):
 def test_invalid_duplicate_registration_in_block(spec, state):
     # The first registration moves the stored epoch, so the second does not apply
     validator_index = get_non_proposer_indices(spec, state, 1)[0]
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.pq_key_registrations = spec.PQKeyRegistrations(
@@ -119,7 +113,7 @@ def test_invalid_duplicate_registration_in_block(spec, state):
 @spec_state_test
 def test_invalid_same_key_for_two_validators_in_block(spec, state):
     owner_index, other_index = get_non_proposer_indices(spec, state, 2)
-    owner_registration = get_signed_pq_key_registration(spec, state, validator_index=owner_index)
+    owner_registration = get_signed_pq_key_registration(spec, state, index=owner_index)
 
     # The second validator holds the same leanXMSS key, with its own valid proof
     public_keys = get_pq_public_keys(spec, other_index)
@@ -127,7 +121,7 @@ def test_invalid_same_key_for_two_validators_in_block(spec, state):
     other_registration = get_signed_pq_key_registration(
         spec,
         state,
-        validator_index=other_index,
+        index=other_index,
         public_keys=public_keys,
         xmss_secret_key=get_xmss_secret_key(owner_index),
     )
@@ -153,9 +147,7 @@ def test_invalid_registration_after_voluntary_exit_in_block(spec, state):
         validator_index,
         lambda copy: spec.process_voluntary_exit(copy, signed_exits[0]),
     )
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
@@ -177,9 +169,7 @@ def test_invalid_registration_after_proposer_slashing_in_block(spec, state):
         validator_index,
         lambda copy: spec.process_proposer_slashing(copy, proposer_slashing),
     )
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.proposer_slashings = spec.ProposerSlashings(data=[proposer_slashing])
@@ -201,9 +191,7 @@ def test_invalid_registration_after_attester_slashing_in_block(spec, state):
         validator_index,
         lambda copy: spec.process_attester_slashing(copy, attester_slashing),
     )
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.attester_slashings = spec.AttesterSlashings(data=[attester_slashing])
@@ -229,9 +217,7 @@ def test_invalid_registration_after_parent_withdrawal_request(spec, state):
         validator_index,
         lambda copy: spec.process_withdrawal_request(copy, withdrawal_request),
     )
-    signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index
-    )
+    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.parent_execution_requests = requests
@@ -269,7 +255,95 @@ def test_invalid_registration_after_parent_consolidation_request(spec, state):
         source_index,
         lambda copy: spec.process_consolidation_request(copy, consolidation_request),
     )
-    signed_registration = get_signed_pq_key_registration(spec, state, validator_index=source_index)
+    signed_registration = get_signed_pq_key_registration(spec, state, index=source_index)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
+    yield from run_block_with_registrations(spec, state, block, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_builder_pq_key_registration(spec, state):
+    activate_builders(spec, state)
+    index = builder_registry_index(spec, 0)
+    signed_registration = get_signed_pq_key_registration(spec, state, index=index)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
+    yield from run_block_with_registrations(spec, state, block)
+
+    assert state.builder_pq_public_keys[0] == signed_registration.message.public_keys
+    assert state.builder_pq_key_change_epochs[0] == spec.get_current_epoch(state)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_validator_and_builder_pq_key_registrations(spec, state):
+    activate_builders(spec, state)
+    validator_index = get_non_proposer_indices(spec, state, 1)[0]
+    registrations = [
+        get_signed_pq_key_registration(spec, state, index=validator_index),
+        get_signed_pq_key_registration(spec, state, index=builder_registry_index(spec, 0)),
+    ]
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(data=registrations)
+    yield from run_block_with_registrations(spec, state, block)
+
+    assert spec.is_pq_registered(state, validator_index)
+    assert spec.is_pq_registered(state, builder_registry_index(spec, 0))
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_invalid_same_key_for_validator_and_builder_in_block(spec, state):
+    activate_builders(spec, state)
+    validator_index = get_non_proposer_indices(spec, state, 1)[0]
+    validator_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
+
+    # The builder holds the same leanXMSS key, with its own valid proof
+    public_keys = spec.PQPublicKeys(
+        xmss_public_key=validator_registration.message.public_keys.xmss_public_key
+    )
+    builder_registration = get_signed_pq_key_registration(
+        spec,
+        state,
+        index=builder_registry_index(spec, 0),
+        public_keys=public_keys,
+        xmss_secret_key=get_xmss_secret_key(validator_index),
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(
+        data=[validator_registration, builder_registration]
+    )
+    yield from run_block_with_registrations(spec, state, block, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_invalid_registration_after_parent_builder_exit_request(spec, state):
+    activate_builders(spec, state)
+    builder_index = 0
+    builder = state.builders[builder_index]
+    assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
+
+    # The parent block is full, with a bid committing to the builder's exit
+    set_parent_block_full(spec, state)
+    exit_request = spec.BuilderExitRequest(
+        source_address=builder.execution_address,
+        pubkey=builder.pubkey,
+    )
+    requests = spec.ExecutionRequests(builder_exits=spec.BuilderExitRequests.of(exit_request))
+    state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(requests)
+    copy = state.copy()
+    spec.process_builder_exit_request(copy, exit_request)
+    assert not spec.is_active_builder(copy, builder_index)
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, index=builder_registry_index(spec, builder_index)
+    )
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.parent_execution_requests = requests

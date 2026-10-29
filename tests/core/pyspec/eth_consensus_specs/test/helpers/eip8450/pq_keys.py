@@ -1,42 +1,70 @@
 from hashlib import sha256
 
-from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys
 from eth_consensus_specs.utils import xmss
 
 
-def get_xmss_secret_key(validator_index, generation=0):
+def get_xmss_secret_key(index, generation=0):
     """
-    Return a deterministic leanXMSS seed for ``validator_index``. Each
-    ``generation`` gives the validator a different key.
+    Return a deterministic leanXMSS seed for the validator or flagged builder
+    ``index``. Each ``generation`` gives the index a different key.
     """
     return sha256(
-        b"xmss" + int(validator_index).to_bytes(8, "little") + int(generation).to_bytes(8, "little")
+        b"xmss" + int(index).to_bytes(8, "little") + int(generation).to_bytes(8, "little")
     ).digest()
 
 
-def get_vrf_root(spec, validator_index, generation=0):
+def get_vrf_root(spec, index, generation=0):
     return spec.VRFRoot(
         sha256(
-            b"vrf"
-            + int(validator_index).to_bytes(8, "little")
-            + int(generation).to_bytes(8, "little")
+            b"vrf" + int(index).to_bytes(8, "little") + int(generation).to_bytes(8, "little")
         ).digest()
     )
 
 
-def get_pq_public_keys(spec, validator_index, generation=0, vrf_generation=None):
+def get_pq_public_keys(spec, index, generation=0, vrf_generation=None):
+    """
+    Return the keys of the validator or flagged builder ``index``. Builders get a
+    zero VRF root.
+    """
     if vrf_generation is None:
         vrf_generation = generation
+    if spec.is_builder_index(index):
+        vrf_root = spec.VRFRoot()
+    else:
+        vrf_root = get_vrf_root(spec, index, vrf_generation)
     return spec.PQPublicKeys(
-        xmss_public_key=xmss.SkToPk(get_xmss_secret_key(validator_index, generation)),
-        vrf_root=get_vrf_root(spec, validator_index, vrf_generation),
+        xmss_public_key=xmss.SkToPk(get_xmss_secret_key(index, generation)),
+        vrf_root=vrf_root,
     )
+
+
+def get_registry_pubkey(spec, state, index):
+    """
+    Return the BLS public key of the validator or flagged builder ``index``.
+    """
+    if spec.is_builder_index(index):
+        return state.builders[spec.convert_validator_index_to_builder_index(index)].pubkey
+    return state.validators[index].pubkey
+
+
+def get_registry_privkey(spec, state, index):
+    if spec.is_builder_index(index):
+        return builder_pubkey_to_privkey[get_registry_pubkey(spec, state, index)]
+    return privkeys[index]
+
+
+def builder_registry_index(spec, builder_index):
+    """
+    Return the registration index of a builder, with ``BUILDER_INDEX_FLAG`` set.
+    """
+    return spec.convert_builder_index_to_validator_index(spec.BuilderIndex(builder_index))
 
 
 def get_signed_pq_key_registration(
     spec,
     state,
-    validator_index=0,
+    index=0,
     generation=0,
     vrf_generation=None,
     public_keys=None,
@@ -46,24 +74,25 @@ def get_signed_pq_key_registration(
     possession=None,
 ):
     """
-    Build a ``SignedPQKeyRegistration`` that is valid against ``state``, unless
-    one of the overrides makes it invalid.
+    Build a ``SignedPQKeyRegistration`` for the validator or flagged builder
+    ``index`` that is valid against ``state``, unless one of the overrides makes
+    it invalid.
     """
     if xmss_secret_key is None:
-        xmss_secret_key = get_xmss_secret_key(validator_index, generation)
+        xmss_secret_key = get_xmss_secret_key(index, generation)
     if public_keys is None:
-        public_keys = get_pq_public_keys(spec, validator_index, generation, vrf_generation)
+        public_keys = get_pq_public_keys(spec, index, generation, vrf_generation)
     if previous_change_epoch is None:
-        previous_change_epoch = state.pq_key_change_epochs[validator_index]
+        previous_change_epoch = spec.get_pq_key_change_epoch(state, index)
     if privkey is None:
-        privkey = privkeys[validator_index]
+        privkey = get_registry_privkey(spec, state, index)
     if possession is None:
         possession = spec.get_pq_possession_proof(
-            state, state.validators[validator_index].pubkey, xmss_secret_key
+            state, get_registry_pubkey(spec, state, index), xmss_secret_key
         )
 
     registration = spec.PQKeyRegistration(
-        validator_index=validator_index,
+        index=index,
         public_keys=public_keys,
         previous_change_epoch=previous_change_epoch,
     )
@@ -74,20 +103,31 @@ def get_signed_pq_key_registration(
     )
 
 
-def sign_pq_possession_at(spec, state, validator_pubkey, xmss_secret_key, index):
+def sign_pq_possession_at(spec, state, pubkey, xmss_secret_key, index):
     """
     Return a signature of the ``PQKeyPossession`` of the key at leaf ``index``.
     """
     xmss_public_key = xmss.SkToPk(xmss_secret_key)
-    signing_root = spec.get_pq_possession_signing_root(state, validator_pubkey, xmss_public_key)
+    signing_root = spec.get_pq_possession_signing_root(state, pubkey, xmss_public_key)
     return spec.XMSSSignature(xmss.Sign(xmss_secret_key, signing_root, index))
 
 
-def register_pq_keys(spec, state, validator_index, generation=0):
+def register_pq_keys(spec, state, index, generation=0):
     """
-    Register keys for the validator directly in ``state``, skipping processing.
+    Register keys for the validator or flagged builder ``index`` directly in
+    ``state``, skipping processing.
     """
-    public_keys = get_pq_public_keys(spec, validator_index, generation)
-    state.pq_public_keys[validator_index] = public_keys
-    state.pq_key_change_epochs[validator_index] = spec.get_current_epoch(state)
+    public_keys = get_pq_public_keys(spec, index, generation)
+    spec.set_pq_public_keys(state, index, public_keys, spec.get_current_epoch(state))
+    assert spec.is_pq_registered(state, index)
     return public_keys
+
+
+def activate_builders(spec, state):
+    """
+    Finalize past the genesis epoch, so that builders deposited at genesis are
+    active.
+    """
+    if spec.get_current_epoch(state) < 2:
+        state.slot = spec.compute_start_slot_at_epoch(2)
+    state.finalized_checkpoint.epoch = max(state.finalized_checkpoint.epoch, 1)
