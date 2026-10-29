@@ -64,9 +64,9 @@ it allocates leaf indices to messages. Signing is not assumed to be
 deterministic, so signing the same message twice at one leaf index is also a
 reuse. Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
 possession: a signer must not sign at it anything other than the
-`PQKeyPossession` of its key for its validator's BLS public key. Since it signs
-there only once, it keeps that proof and resubmits the same bytes in every
-registration of the key, and cannot prove the key for a second validator.
+`PQKeyPossession` of its key for its validator's BLS public key. Every
+registration carries a new key, so a signer signs each proof once, and resubmits
+a registration that is not included unchanged.
 
 ### Constructing the registration
 
@@ -76,10 +76,11 @@ its keys, and its current entry of `state.pq_key_change_epochs` as
 key, signs the registration with its **signing key**, and broadcasts the
 resulting `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
 
-The proof is produced once per key, the first time the key is registered, with
-the function below. Every later registration of the key, for example after the
-including block is orphaned or for a change of the VRF root alone, carries the
-same stored proof.
+Every registration carries a new leanXMSS key, one that no validator holds,
+including the validator itself, so a change of the VRF root alone also needs a
+new leanXMSS key. The proof is produced once per key with the function below. A
+registration that is not included, for example because its block is orphaned, is
+resubmitted unchanged, with the same proof bytes.
 
 ```python
 def get_pq_possession_proof(

@@ -183,9 +183,9 @@ def validate_pq_key_registration_gossip(
     if not bls.Verify(validator.pubkey, signing_root, signed_registration.signature):
         raise GossipReject("invalid post-quantum key registration signature")
 
-    # [REJECT] The leanXMSS key is not registered by another validator
-    if is_pq_public_key_in_use(state, public_keys, index):
-        raise GossipReject("leanXMSS key is registered by another validator")
+    # [REJECT] The leanXMSS key is not registered by any validator
+    if is_pq_public_key_in_use(state, public_keys):
+        raise GossipReject("leanXMSS key is already registered")
 
     # [REJECT] The proof of possession is valid
     if not is_valid_pq_possession_proof(

@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     expect_assertion_error,
+    never_bls,
     spec_state_test,
     with_eip8450_and_later,
 )
@@ -129,32 +130,34 @@ def test_success_change_after_delay(spec, state):
 
 @with_eip8450_and_later
 @spec_state_test
-def test_success_change_vrf_root_only(spec, state):
-    # The validator's own leanXMSS key does not count as in use
+def test_success_change_keeping_vrf_root(spec, state):
     validator_index = 0
     old_keys = register_pq_keys(spec, state, validator_index, generation=0)
     advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
 
     signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index, generation=0, vrf_generation=1
+        spec, state, validator_index=validator_index, generation=1, vrf_generation=0
     )
     new_keys = signed_registration.message.public_keys
-    assert new_keys.xmss_public_key == old_keys.xmss_public_key
-    assert new_keys.vrf_root != old_keys.vrf_root
+    assert new_keys.xmss_public_key != old_keys.xmss_public_key
+    assert new_keys.vrf_root == old_keys.vrf_root
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 
 @with_eip8450_and_later
 @spec_state_test
-def test_success_reregister_same_keys(spec, state):
-    validator_index = 0
-    old_keys = register_pq_keys(spec, state, validator_index, generation=0)
-    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
-
+@never_bls
+def test_success_all_zero_key_with_unregistered_validators(spec, state):
+    # Unregistered validators hold the all-zero entry, which does not count as
+    # holding the all-zero key. The proof of possession is not checked, since no
+    # secret key produces the all-zero key.
+    public_keys = get_pq_public_keys(spec, 0)
+    public_keys.xmss_public_key = spec.XMSSPublicKey()
+    assert state.pq_public_keys[1] == spec.PQPublicKeys()
+    assert not spec.is_pq_registered(state, 1)
     signed_registration = get_signed_pq_key_registration(
-        spec, state, validator_index=validator_index, generation=0
+        spec, state, validator_index=0, public_keys=public_keys
     )
-    assert signed_registration.message.public_keys == old_keys
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 
@@ -371,6 +374,38 @@ def test_invalid_key_in_use_with_different_vrf_root(spec, state):
         public_keys=public_keys,
         xmss_secret_key=get_xmss_secret_key(owner_index, generation=0),
     )
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_invalid_reregister_own_keys(spec, state):
+    # The validator's own current key counts as in use
+    validator_index = 0
+    old_keys = register_pq_keys(spec, state, validator_index, generation=0)
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, validator_index=validator_index, generation=0
+    )
+    assert signed_registration.message.public_keys == old_keys
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_invalid_change_vrf_root_only(spec, state):
+    # Changing the VRF root requires a new leanXMSS key
+    validator_index = 0
+    old_keys = register_pq_keys(spec, state, validator_index, generation=0)
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, validator_index=validator_index, generation=0, vrf_generation=1
+    )
+    new_keys = signed_registration.message.public_keys
+    assert new_keys.xmss_public_key == old_keys.xmss_public_key
+    assert new_keys.vrf_root != old_keys.vrf_root
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 

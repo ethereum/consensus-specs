@@ -356,20 +356,20 @@ def is_pq_registered(state: BeaconState, index: ValidatorIndex) -> bool:
 
 #### New `is_pq_public_key_in_use`
 
-*Note*: The validator being registered is excluded, so it can keep its leanXMSS
-key while changing its VRF root. Clients are expected to maintain a map from
-registered keys to validator indices, as they do for BLS public keys.
+*Note*: Every registration carries a leanXMSS key that no validator holds,
+including the one registering, so a change never reuses the current key or its
+proof. Changing only the VRF root requires a new leanXMSS key. Clients are
+expected to maintain a map from registered keys to validator indices, as they do
+for BLS public keys.
 
 ```python
-def is_pq_public_key_in_use(
-    state: BeaconState, public_keys: PQPublicKeys, excluded_index: ValidatorIndex
-) -> bool:
+def is_pq_public_key_in_use(state: BeaconState, public_keys: PQPublicKeys) -> bool:
     """
-    Check if a validator other than ``excluded_index`` has registered the
+    Check if any validator, including the one registering, has registered the
     leanXMSS key of ``public_keys``.
     """
     for index, entry in enumerate(state.pq_public_keys):
-        if index == excluded_index or not is_pq_registered(state, ValidatorIndex(index)):
+        if not is_pq_registered(state, ValidatorIndex(index)):
             continue
         if entry.xmss_public_key == public_keys.xmss_public_key:
             return True
@@ -502,7 +502,7 @@ def process_pq_key_registration(
     signing_root = compute_signing_root(registration, domain)
     assert bls.Verify(validator.pubkey, signing_root, signed_registration.signature)
 
-    assert not is_pq_public_key_in_use(state, public_keys, index)
+    assert not is_pq_public_key_in_use(state, public_keys)
     assert is_valid_pq_possession_proof(
         state, validator.pubkey, public_keys.xmss_public_key, signed_registration.possession
     )

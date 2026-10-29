@@ -235,7 +235,22 @@ def test_gossip_pq_key_registration__reject_key_in_use(spec, state):
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "leanXMSS key is registered by another validator")],
+        [(signed_registration, "reject", "leanXMSS key is already registered")],
+    )
+
+
+@with_eip8450_and_later
+@spec_configured_state_test({}, activate_at_genesis=True)
+def test_gossip_pq_key_registration__reject_own_key(spec, state):
+    register_pq_keys(spec, state, 0, generation=0)
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, validator_index=0, generation=0, vrf_generation=1
+    )
+    yield from run_pq_key_registration_gossip(
+        spec,
+        state,
+        [(signed_registration, "reject", "leanXMSS key is already registered")],
+        epoch=spec.MIN_PQ_KEY_CHANGE_DELAY,
     )
 
 
