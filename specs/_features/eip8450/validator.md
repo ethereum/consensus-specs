@@ -71,9 +71,12 @@ Its proof is therefore signed once. Consensus does not record earlier keys, so
 returning to an earlier key, or registering a key that another validator or
 builder has released, is valid on chain. Returning to an earlier key needs
 either a second proof at leaf `PQ_POSSESSION_XMSS_INDEX` or the stored first
-one, and registering a key that another validator or builder released needs a
-proof of a different message at that leaf. The signer rules forbid both, so a
-signer never has to keep old proofs.
+one. Taking a key that another registrant released needs a proof of a different
+message at that leaf, unless the two registrants share a BLS public key, in
+which case the released key's stored proof applies. A validator and a builder
+may share a BLS public key, since they enter through different deposit paths.
+Uniqueness only keeps them from holding one leanXMSS key at once, and the signer
+rules forbid all of these, so a signer never has to keep old proofs.
 
 ### Constructing the registration
 

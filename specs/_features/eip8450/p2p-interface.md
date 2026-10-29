@@ -8,6 +8,7 @@
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -82,6 +83,44 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+### Modified `verify_block_body_operation_limits`
+
+```python
+def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
+    """
+    Verify that each block body operation count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The proposer slashing count is within the limit
+    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [REJECT] The attester slashing count is within the limit
+    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [REJECT] The attestation count is within the limit
+    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [REJECT] The voluntary exit count is within the limit
+    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [REJECT] The payload attestation count is within the limit
+    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+
+    # [New in EIP8450]
+    # [REJECT] The PQ key registration count is within the limit
+    if len(body.pq_key_registrations) > MAX_PQ_KEY_REGISTRATIONS:
+        raise GossipReject("too many pq key registrations")
+```
+
 ## The gossip domain: gossipsub
 
 ### Topics and messages
@@ -119,11 +158,11 @@ post-quantum key registrations on the network. Signed messages are sent in their
 entirety.
 
 *Note*: A registration that was valid when first received can become invalid
-before it is included, for example when another validator or builder registers
-the same leanXMSS key first. The stored change epoch then does not change, so
-the first-seen record would block every later registration for the pair. Nodes
-*may* clear the record for a pair once its first-seen registration is no longer
-valid against the finalized state.
+before it is included, for example when the same leanXMSS key is registered for
+another index first. The stored change epoch then does not change, so the
+first-seen record would block every later registration for the pair. Nodes *may*
+clear the record for a pair once its first-seen registration is no longer valid
+against the finalized state.
 
 ```python
 def validate_pq_key_registration_gossip(
@@ -193,6 +232,10 @@ def validate_pq_key_registration_gossip(
     ):
         raise GossipIgnore("post-quantum key change delay has not passed")
 
+    # [REJECT] The leanXMSS key is not registered for any index
+    if is_pq_public_key_in_use(state, public_keys):
+        raise GossipReject("leanXMSS key is already registered")
+
     # [REJECT] The signature is valid
     domain = compute_domain(
         DOMAIN_PQ_KEY_REGISTRATION,
@@ -201,10 +244,6 @@ def validate_pq_key_registration_gossip(
     signing_root = compute_signing_root(registration, domain)
     if not bls.Verify(pubkey, signing_root, signed_registration.signature):
         raise GossipReject("invalid post-quantum key registration signature")
-
-    # [REJECT] The leanXMSS key is not registered by any validator or builder
-    if is_pq_public_key_in_use(state, public_keys):
-        raise GossipReject("leanXMSS key is already registered")
 
     # [REJECT] The proof of possession is valid
     if not is_valid_pq_possession_proof(

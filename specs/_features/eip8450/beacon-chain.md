@@ -488,10 +488,12 @@ def is_pq_registered(state: BeaconState, index: ValidatorIndex) -> bool:
 *Note*: Consensus rejects a leanXMSS key that a validator or builder currently
 holds, including the one registering, so a change never keeps the current key,
 and changing only the VRF root requires a new leanXMSS key. Earlier keys are not
-recorded, so a key that its holder has released can be registered again. The
-signer rules in the [validator guide](./validator.md#leaf-index-rules) forbid
-that. Clients are expected to maintain a map from registered keys to indices, as
-they do for BLS public keys.
+recorded, so a key that its holder has released can be registered again, by a
+validator and a builder that share a BLS public key even with the same proof
+bytes. The signer rules in the
+[validator guide](./validator.md#leaf-index-rules) forbid that. Clients are
+expected to maintain a map from registered keys to indices, as they do for BLS
+public keys.
 
 ```python
 def is_pq_public_key_in_use(state: BeaconState, public_keys: PQPublicKeys) -> bool:

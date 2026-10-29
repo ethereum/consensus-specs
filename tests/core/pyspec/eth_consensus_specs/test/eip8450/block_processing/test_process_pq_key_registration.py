@@ -223,6 +223,39 @@ def test_success_same_vrf_root_as_other_validator(spec, state):
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 
+@with_eip8450_and_later
+@spec_state_test
+def test_success_key_released_by_validator_to_builder_sharing_pubkey(spec, state):
+    """
+    A validator and a builder may share a BLS public key. Once the validator
+    releases a key through a change, consensus accepts the builder registering
+    it with the identical proof bytes. Honest signers never do this.
+    """
+    activate_builders(spec, state)
+    validator_index = 0
+    builder_index = 0
+    state.builders[builder_index].pubkey = state.validators[validator_index].pubkey
+
+    validator_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
+    spec.process_pq_key_registration(state, validator_registration)
+    released_keys = validator_registration.message.public_keys
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+    validator_change = get_signed_pq_key_registration(
+        spec, state, index=validator_index, generation=1
+    )
+    spec.process_pq_key_registration(state, validator_change)
+
+    signed_registration = get_signed_pq_key_registration(
+        spec,
+        state,
+        index=builder_registry_index(spec, builder_index),
+        public_keys=spec.PQPublicKeys(xmss_public_key=released_keys.xmss_public_key),
+        privkey=privkeys[validator_index],
+        possession=validator_registration.possession,
+    )
+    yield from run_pq_key_registration_processing(spec, state, signed_registration)
+
+
 #
 # Invalid registrations
 #
