@@ -67,8 +67,8 @@ def advance_epochs(spec, state, epochs):
 @spec_state_test
 def test_success_first_registration(spec, state):
     # Every other entry holds the all-zero key, which does not block another key
-    assert all(entry == spec.PQKeyMaterial() for entry in state.pq_key_material)
-    assert all(entry == spec.PQKeyMaterial() for entry in state.builder_pq_key_material)
+    assert all(entry == spec.PQKeyMaterial() for entry in state.post_quantum_key_material)
+    assert all(entry == spec.PQKeyMaterial() for entry in state.builder_post_quantum_key_material)
     signed_registration = get_signed_pq_key_registration(spec, state, index=0)
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
@@ -346,7 +346,7 @@ def test_invalid_replayed_registration_applied_in_genesis_epoch(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
     signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
     spec.process_pq_key_registration(state, signed_registration)
-    assert state.pq_key_change_epochs[validator_index] == spec.GENESIS_EPOCH
+    assert state.post_quantum_key_change_epochs[validator_index] == spec.GENESIS_EPOCH
 
     advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -562,8 +562,8 @@ def add_builder_at_reused_index(spec, state, builder_index, pubkey):
     )
     deposit_epoch = spec.get_current_epoch(state)
     assert state.builders[builder_index].deposit_epoch == deposit_epoch
-    assert state.builder_pq_key_material[builder_index] == spec.PQKeyMaterial()
-    assert state.builder_pq_key_change_epochs[builder_index] == deposit_epoch
+    assert state.builder_post_quantum_key_material[builder_index] == spec.PQKeyMaterial()
+    assert state.builder_post_quantum_key_change_epochs[builder_index] == deposit_epoch
     advance_epochs(spec, state, 2)
     state.finalized_checkpoint.epoch = deposit_epoch + 1
     assert spec.is_active_builder(state, builder_index)

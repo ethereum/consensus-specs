@@ -61,8 +61,12 @@ def get_registry_lists(spec, state, index):
     """
     if spec.is_builder_index(index):
         position = spec.convert_validator_index_to_builder_index(index)
-        return state.builder_pq_key_material, state.builder_pq_key_change_epochs, position
-    return state.pq_key_material, state.pq_key_change_epochs, index
+        return (
+            state.builder_post_quantum_key_material,
+            state.builder_post_quantum_key_change_epochs,
+            position,
+        )
+    return state.post_quantum_key_material, state.post_quantum_key_change_epochs, index
 
 
 def get_pq_entry(spec, state, index):

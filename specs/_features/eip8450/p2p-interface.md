@@ -212,8 +212,8 @@ def validate_pq_key_registration_gossip(
         if key_material.vrf_root != VRFRoot():
             raise GossipReject("builder VRF root is not zero")
 
-        entry = state.builder_pq_key_material[builder_index]
-        last_change_epoch = state.builder_pq_key_change_epochs[builder_index]
+        entry = state.builder_post_quantum_key_material[builder_index]
+        last_change_epoch = state.builder_post_quantum_key_change_epochs[builder_index]
         pubkey = builder.pubkey
     else:
         # [REJECT] The validator index is valid
@@ -225,8 +225,8 @@ def validate_pq_key_registration_gossip(
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             raise GossipReject("validator has initiated an exit")
 
-        entry = state.pq_key_material[index]
-        last_change_epoch = state.pq_key_change_epochs[index]
+        entry = state.post_quantum_key_material[index]
+        last_change_epoch = state.post_quantum_key_change_epochs[index]
         pubkey = validator.pubkey
 
     # [IGNORE] This is the first valid registration received for the pair

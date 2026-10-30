@@ -30,8 +30,8 @@ The builder assembles a `PQKeyRegistration` with:
   registered before, and `key_material.vrf_root` set to `VRFRoot()`, since
   builders make no selection proofs.
 - `previous_change_epoch` set to its current entry of
-  `state.builder_pq_key_change_epochs`, which is its deposit epoch until its
-  first registration.
+  `state.builder_post_quantum_key_change_epochs`, which is its deposit epoch
+  until its first registration.
 
 It attaches `get_pq_possession_proof(state, builder.pubkey, xmss_secret_key)`,
 signs the registration with its BLS key using

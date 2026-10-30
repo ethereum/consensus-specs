@@ -241,16 +241,16 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
         )
 
     if is_post_eip8450(spec):
-        state.pq_key_material = spec.ValidatorPQKeyMaterial(
+        state.post_quantum_key_material = spec.ValidatorPQKeyMaterial(
             data=[spec.PQKeyMaterial() for _ in validator_balances]
         )
-        state.pq_key_change_epochs = spec.ValidatorPQKeyChangeEpochs(
+        state.post_quantum_key_change_epochs = spec.ValidatorPQKeyChangeEpochs(
             data=[spec.FAR_FUTURE_EPOCH] * len(validator_balances)
         )
-        state.builder_pq_key_material = spec.BuilderPQKeyMaterial(
+        state.builder_post_quantum_key_material = spec.BuilderPQKeyMaterial(
             data=[spec.PQKeyMaterial() for _ in state.builders]
         )
-        state.builder_pq_key_change_epochs = spec.BuilderPQKeyChangeEpochs(
+        state.builder_post_quantum_key_change_epochs = spec.BuilderPQKeyChangeEpochs(
             data=[builder.deposit_epoch for builder in state.builders]
         )
 

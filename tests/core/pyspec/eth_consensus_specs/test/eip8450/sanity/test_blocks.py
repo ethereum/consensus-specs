@@ -64,8 +64,10 @@ def test_pq_key_registration(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
     yield from run_block_with_registrations(spec, state, block)
 
-    assert state.pq_key_material[validator_index] == signed_registration.message.key_material
-    assert state.pq_key_change_epochs[validator_index] == spec.get_current_epoch(state)
+    assert (
+        state.post_quantum_key_material[validator_index] == signed_registration.message.key_material
+    )
+    assert state.post_quantum_key_change_epochs[validator_index] == spec.get_current_epoch(state)
 
 
 @with_eip8450_and_later
@@ -80,7 +82,7 @@ def test_max_pq_key_registrations(spec, state):
 
     for registration in registrations:
         index = registration.message.index
-        assert state.pq_key_material[index] == registration.message.key_material
+        assert state.post_quantum_key_material[index] == registration.message.key_material
 
 
 @with_eip8450_and_later
@@ -275,8 +277,8 @@ def test_builder_pq_key_registration(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
     yield from run_block_with_registrations(spec, state, block)
 
-    assert state.builder_pq_key_material[0] == signed_registration.message.key_material
-    assert state.builder_pq_key_change_epochs[0] == spec.get_current_epoch(state)
+    assert state.builder_post_quantum_key_material[0] == signed_registration.message.key_material
+    assert state.builder_post_quantum_key_change_epochs[0] == spec.get_current_epoch(state)
 
 
 @with_eip8450_and_later

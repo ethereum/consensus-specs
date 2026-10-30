@@ -81,10 +81,11 @@ rules forbid all of these, so a signer never has to keep old proofs.
 ### Constructing the registration
 
 The validator assembles a `PQKeyRegistration` holding its own validator index as
-`index`, its keys, and its current entry of `state.pq_key_change_epochs` as
-`previous_change_epoch`. It attaches its proof of possession of the leanXMSS
-key, signs the registration with its **signing key**, and broadcasts the
-resulting `SignedPQKeyRegistration` on the `pq_key_registration` global topic.
+`index`, its keys, and its current entry of
+`state.post_quantum_key_change_epochs` as `previous_change_epoch`. It attaches
+its proof of possession of the leanXMSS key, signs the registration with its
+**signing key**, and broadcasts the resulting `SignedPQKeyRegistration` on the
+`pq_key_registration` global topic.
 
 Consensus rejects a leanXMSS key that a validator or builder currently holds,
 including the validator itself, so a change of the VRF root alone also needs a

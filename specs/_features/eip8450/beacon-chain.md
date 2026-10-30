@@ -309,13 +309,13 @@ class BeaconState(ProgressiveContainer):
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8450]
-    pq_key_material: ValidatorPQKeyMaterial
+    post_quantum_key_material: ValidatorPQKeyMaterial
     # [New in EIP8450]
-    pq_key_change_epochs: ValidatorPQKeyChangeEpochs
+    post_quantum_key_change_epochs: ValidatorPQKeyChangeEpochs
     # [New in EIP8450]
-    builder_pq_key_material: BuilderPQKeyMaterial
+    builder_post_quantum_key_material: BuilderPQKeyMaterial
     # [New in EIP8450]
-    builder_pq_key_change_epochs: BuilderPQKeyChangeEpochs
+    builder_post_quantum_key_change_epochs: BuilderPQKeyChangeEpochs
 ```
 
 ## Helpers
@@ -372,7 +372,7 @@ def is_pq_public_key_in_use(state: BeaconState, xmss_public_key: XMSSPublicKey) 
     """
     Check if any validator or builder holds ``xmss_public_key``.
     """
-    entries = list(state.pq_key_material) + list(state.builder_pq_key_material)
+    entries = list(state.post_quantum_key_material) + list(state.builder_post_quantum_key_material)
     return any(entry.xmss_public_key == xmss_public_key for entry in entries)
 ```
 
@@ -413,8 +413,8 @@ def is_valid_pq_possession_proof(
 #### Modified `add_validator_to_registry`
 
 *Note*: The function `add_validator_to_registry` is modified to initialize the
-items in the `pq_key_material` and `pq_key_change_epochs` lists, preserving the
-invariant that they have one entry per validator.
+items in the `post_quantum_key_material` and `post_quantum_key_change_epochs`
+lists, preserving the invariant that they have one entry per validator.
 
 ```python
 def add_validator_to_registry(
@@ -428,9 +428,9 @@ def add_validator_to_registry(
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8450]
-    set_or_append_list(state.pq_key_material, index, PQKeyMaterial.empty())
+    set_or_append_list(state.post_quantum_key_material, index, PQKeyMaterial.empty())
     # [New in EIP8450]
-    set_or_append_list(state.pq_key_change_epochs, index, FAR_FUTURE_EPOCH)
+    set_or_append_list(state.post_quantum_key_change_epochs, index, FAR_FUTURE_EPOCH)
 ```
 
 ### Builder registry
@@ -438,10 +438,10 @@ def add_validator_to_registry(
 #### Modified `add_builder_to_registry`
 
 *Note*: The function `add_builder_to_registry` is modified to write a fresh item
-in the `builder_pq_key_material` and `builder_pq_key_change_epochs` lists at the
-builder's index, preserving the invariant that they have one entry per builder.
-A reused builder index gets a fresh entry, whose change epoch is the new
-builder's deposit epoch.
+in the `builder_post_quantum_key_material` and
+`builder_post_quantum_key_change_epochs` lists at the builder's index,
+preserving the invariant that they have one entry per builder. A reused builder
+index gets a fresh entry, whose change epoch is the new builder's deposit epoch.
 
 ```python
 def add_builder_to_registry(
@@ -463,9 +463,9 @@ def add_builder_to_registry(
     )
     set_or_append_list(state.builders, index, builder)
     # [New in EIP8450]
-    set_or_append_list(state.builder_pq_key_material, index, PQKeyMaterial.empty())
+    set_or_append_list(state.builder_post_quantum_key_material, index, PQKeyMaterial.empty())
     # [New in EIP8450]
-    set_or_append_list(state.builder_pq_key_change_epochs, index, builder.deposit_epoch)
+    set_or_append_list(state.builder_post_quantum_key_change_epochs, index, builder.deposit_epoch)
 ```
 
 ## Beacon chain state transition function
@@ -551,16 +551,16 @@ def process_pq_key_registration(
         # Builders make no selection proofs, so they register no VRF root
         assert key_material.vrf_root == VRFRoot()
         pubkey = state.builders[index].pubkey
-        entries = state.builder_pq_key_material
-        change_epochs = state.builder_pq_key_change_epochs
+        entries = state.builder_post_quantum_key_material
+        change_epochs = state.builder_post_quantum_key_change_epochs
     else:
         index = registration.index
         assert index < len(state.validators)
         # Verify the validator has not initiated an exit
         assert state.validators[index].exit_epoch == FAR_FUTURE_EPOCH
         pubkey = state.validators[index].pubkey
-        entries = state.pq_key_material
-        change_epochs = state.pq_key_change_epochs
+        entries = state.post_quantum_key_material
+        change_epochs = state.post_quantum_key_change_epochs
 
     # Verify the registration applies to the current entry
     assert registration.previous_change_epoch == change_epochs[index]
