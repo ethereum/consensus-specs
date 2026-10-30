@@ -168,8 +168,8 @@ weight reaches zero is exited and keeps its stake. When finality is delayed,
 this is what lets the participating validators regain a quorum, and no rewards
 are paid until it does.
 
-*Note*: A quorum is two thirds of the total weight of the active validators.
-Every validator has the same weight, regardless of its balance, reduced only by
+*Note*: A quorum is two thirds of the total weight of the active validators. A
+validator's weight is proportional to its current effective balance, reduced by
 its inactivity score. Slashed validators count toward the total but not toward a
 quorum.
 
@@ -1179,30 +1179,32 @@ def get_unslashed_participating_indices(state: BeaconState, flag_index: int) -> 
 
 #### New `get_validator_weight`
 
-*Note*: Every validator has the same weight, regardless of its balance. A
-validator with no inactivity score has weight `EJECTION_INACTIVITY_SCORE**2`,
-which falls with the square of its score and reaches zero at
-`EJECTION_INACTIVITY_SCORE`.
+*Note*: A validator's weight is its current effective balance in increments,
+multiplied by `EJECTION_INACTIVITY_SCORE**2 - inactivity_score**2`. The weight
+reaches zero at `EJECTION_INACTIVITY_SCORE`. Weight calculations use `Uint256`
+to avoid overflow when summing weights and checking quorums.
 
 ```python
-def get_validator_weight(state: BeaconState, index: ValidatorIndex) -> Uint64:
+def get_validator_weight(state: BeaconState, index: ValidatorIndex) -> Uint256:
     """
     Return the weight of the validator at ``index`` in finality gadget quorums.
     """
+    increments = Uint256(state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT)
     inactivity_score = min(state.inactivity_scores[index], EJECTION_INACTIVITY_SCORE)
-    return (EJECTION_INACTIVITY_SCORE - inactivity_score) * (
+    inactivity_weight = (EJECTION_INACTIVITY_SCORE - inactivity_score) * (
         EJECTION_INACTIVITY_SCORE + inactivity_score
     )
+    return increments * Uint256(inactivity_weight)
 ```
 
 #### New `get_total_weight`
 
 ```python
-def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint64:
+def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint256:
     """
     Return the combined weight of the ``indices``.
     """
-    total_weight = Uint64(0)
+    total_weight = Uint256(0)
     for index in indices:
         total_weight += get_validator_weight(state, index)
     return total_weight
@@ -1211,7 +1213,7 @@ def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint64
 #### New `get_participating_weight`
 
 ```python
-def get_participating_weight(state: BeaconState, participation: HeightParticipation) -> Uint64:
+def get_participating_weight(state: BeaconState, participation: HeightParticipation) -> Uint256:
     """
     Return the combined weight of the active and unslashed validators marked in
     ``participation``.
