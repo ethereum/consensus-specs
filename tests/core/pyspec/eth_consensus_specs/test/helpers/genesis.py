@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_deneb,
     is_post_eip8148,
     is_post_eip8321,
+    is_post_eip8450,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -237,6 +238,20 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
     if is_post_eip8321(spec):
         state.randao_commitments = spec.RandaoCommitments(
             data=[spec.Bytes32()] * len(validator_balances)
+        )
+
+    if is_post_eip8450(spec):
+        state.post_quantum_key_material = spec.ValidatorPQKeyMaterial(
+            data=[spec.PQKeyMaterial() for _ in validator_balances]
+        )
+        state.post_quantum_key_change_epochs = spec.ValidatorPQKeyChangeEpochs(
+            data=[spec.FAR_FUTURE_EPOCH] * len(validator_balances)
+        )
+        state.builder_post_quantum_key_material = spec.BuilderPQKeyMaterial(
+            data=[spec.PQKeyMaterial() for _ in state.builders]
+        )
+        state.builder_post_quantum_key_change_epochs = spec.BuilderPQKeyChangeEpochs(
+            data=[builder.deposit_epoch for builder in state.builders]
         )
 
     if is_post_fulu(spec):

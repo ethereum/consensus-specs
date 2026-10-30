@@ -103,6 +103,7 @@ tree root:
 | `partial_data_column_header`            | `partial_data_column_header_`     | `PartialDataColumnHeader`            |
 | `partial_data_column_sidecar`           | `partial_data_column_sidecar_`    | `PartialDataColumnSidecar`           |
 | `randao_commitment_registration`        | `randao_commitment_registration_` | `SignedRandaoCommitmentRegistration` |
+| `pq_key_registration`                   | `pq_key_registration_`            | `SignedPQKeyRegistration`            |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
