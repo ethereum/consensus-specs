@@ -286,10 +286,10 @@ distinguished from votes submitted by that same validator in
 `[start_slot, end_slot]` interval. Due to committee shuffling near epoch
 boundary the following cases are possible:
 
-1. Validator assigned to `start_slot - 1` and `end_slot` votes for `node` in
-   `start_slot - 1` but does not vote in `end_slot`.
+1. Validator assigned to `start_slot - 1` and `end_slot` votes for any of the
+   `nodes` in `start_slot - 1` but does not vote in `end_slot`.
 2. Validator assigned to `start_slot` and `end_slot + 1` misses a vote in
-   `start_slot`, but votes for `node` in `end_slot + 1`.
+   `start_slot`, but votes for any of the `nodes` in `end_slot + 1`.
 
 In both cases the support would count a vote outside of the
 `[start_slot, end_slot]` range. This inaccuracy is acceptable as it does not
@@ -304,12 +304,12 @@ of slots are consistent with the `balance_source` validator set.
 def get_node_support_between_slots(
     store: Store,
     balance_source: BeaconState,
-    node: ForkChoiceNode,
+    nodes: set[ForkChoiceNode],
     start_slot: Slot,
     end_slot: Slot,
 ) -> Gwei:
     """
-    Return support of the node by validators assigned to slots
+    Return support of any of the ``nodes`` by validators assigned to slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
     participants: set[ValidatorIndex] = set()
@@ -333,11 +333,11 @@ def get_node_support_between_slots(
         sum(
             balance_source.validators[index].effective_balance
             for index in unslashed_and_active_indices
-            # Check that validator has voted in the support of the node
+            # Check that validator has voted in the support of any of the nodes
             # and has not been slashed
             if (
                 index in store.latest_messages
-                and get_supported_node(store, store.latest_messages[index]) == node
+                and get_supported_node(store, store.latest_messages[index]) in nodes
                 and index not in store.equivocating_indices
             )
         )
@@ -505,11 +505,11 @@ def compute_empty_slot_support_discount(
         return Gwei(0)
 
     # Discount votes supporting the parent block if they are from the committees of empty slots
-    parent_node = get_ancestor(store, get_node_for_root(block_root), parent_block.slot)
+    parent_block_node = get_node_for_root(block.parent_root)
     parent_support_in_empty_slots = get_node_support_between_slots(
         store,
         balance_source,
-        parent_node,
+        {parent_block_node},
         parent_block.slot + 1,
         block.slot - 1,
     )
