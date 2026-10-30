@@ -1,4 +1,4 @@
-# EIP-8453 -- Fork Choice Store
+# EIP-8453 -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
