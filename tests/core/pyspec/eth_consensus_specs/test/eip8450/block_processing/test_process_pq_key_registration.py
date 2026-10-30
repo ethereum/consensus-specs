@@ -338,6 +338,26 @@ def test_invalid_replayed_registration(spec, state):
 
 @with_eip8450_and_later
 @spec_state_test
+def test_invalid_replayed_registration_after_key_released(spec, state):
+    # A later change released the replayed registration's key, so only the
+    # previous change epoch rejects the replay
+    validator_index = 0
+    advance_epochs(spec, state, 1)
+    first = get_signed_pq_key_registration(spec, state, index=validator_index, generation=0)
+    spec.process_pq_key_registration(state, first)
+
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+    change = get_signed_pq_key_registration(spec, state, index=validator_index, generation=1)
+    spec.process_pq_key_registration(state, change)
+
+    advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
+    assert not spec.is_pq_public_key_in_use(state, first.message.key_material.xmss_public_key)
+    assert first.message.previous_change_epoch != state.post_quantum_key_change_epochs[0]
+    yield from run_pq_key_registration_processing(spec, state, first, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
 def test_invalid_replayed_registration_applied_in_genesis_epoch(spec, state):
     # A change in the genesis epoch stores ``GENESIS_EPOCH``, which differs from
     # the ``FAR_FUTURE_EPOCH`` that the registration names, so it cannot apply
@@ -378,10 +398,34 @@ def test_invalid_change_in_same_epoch(spec, state):
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 
+def sign_registration_with_domain(spec, registration, privkey, domain):
+    signing_root = spec.compute_signing_root(registration, domain)
+    return spec.bls.Sign(privkey, signing_root)
+
+
 @with_eip8450_and_later
 @spec_state_test
 @always_bls
 def test_invalid_bls_signature(spec, state):
+    # A valid signature by the registrant's key, of another message
+    signed_registration = get_signed_pq_key_registration(spec, state, index=0)
+    other_message = signed_registration.message.copy()
+    other_message.previous_change_epoch = spec.Epoch(0)
+    domain = spec.compute_domain(
+        spec.DOMAIN_PQ_KEY_REGISTRATION,
+        spec.config.GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
+    )
+    signed_registration.signature = sign_registration_with_domain(
+        spec, other_message, privkeys[0], domain
+    )
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+@always_bls
+def test_invalid_bls_signature_by_other_validator_key(spec, state):
     signed_registration = get_signed_pq_key_registration(spec, state, index=0, privkey=privkeys[1])
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
@@ -389,13 +433,31 @@ def test_invalid_bls_signature(spec, state):
 @with_eip8450_and_later
 @spec_state_test
 @always_bls
-def test_invalid_bls_signature_fork_domain(spec, state):
-    # The registration domain is fork-agnostic, so a signature over the current
-    # fork's domain is invalid
+def test_invalid_bls_signature_wrong_domain_type(spec, state):
+    signed_registration = get_signed_pq_key_registration(spec, state, index=0)
+    domain = spec.compute_domain(
+        spec.DOMAIN_PQ_KEY_POSSESSION,
+        spec.config.GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
+    )
+    signed_registration.signature = sign_registration_with_domain(
+        spec, signed_registration.message, privkeys[0], domain
+    )
+    yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+@always_bls
+def test_invalid_bls_signature_current_fork_version(spec, state):
+    # The registration domain uses the genesis fork version, so a signature over
+    # the current fork version's domain is invalid
+    assert state.fork.current_version != spec.config.GENESIS_FORK_VERSION
     signed_registration = get_signed_pq_key_registration(spec, state, index=0)
     domain = spec.get_domain(state, spec.DOMAIN_PQ_KEY_REGISTRATION)
-    signing_root = spec.compute_signing_root(signed_registration.message, domain)
-    signed_registration.signature = spec.bls.Sign(privkeys[0], signing_root)
+    signed_registration.signature = sign_registration_with_domain(
+        spec, signed_registration.message, privkeys[0], domain
+    )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 
@@ -577,6 +639,25 @@ def test_success_builder_first_registration(spec, state):
     signed_registration = get_signed_pq_key_registration(spec, state, index=index)
     assert signed_registration.message.key_material.vrf_root == spec.VRFRoot()
     assert signed_registration.message.previous_change_epoch == state.builders[0].deposit_epoch
+    yield from run_pq_key_registration_processing(spec, state, signed_registration)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_success_builder_first_registration_within_change_delay_of_deposit(spec, state):
+    # The change delay applies only to a builder that holds a key, so a first
+    # registration soon after the deposit epoch is accepted
+    activate_builders(spec, state)
+    withdraw_builder(spec, state, 0)
+    add_builder_at_reused_index(spec, state, 0, builder_pubkeys[len(state.builders)])
+    deposit_epoch = state.builders[0].deposit_epoch
+    assert deposit_epoch > spec.GENESIS_EPOCH
+    assert spec.get_current_epoch(state) < deposit_epoch + spec.MIN_PQ_KEY_CHANGE_DELAY
+
+    signed_registration = get_signed_pq_key_registration(
+        spec, state, index=builder_registry_index(spec, 0)
+    )
+    assert signed_registration.message.previous_change_epoch == deposit_epoch
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 

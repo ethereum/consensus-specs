@@ -31,7 +31,7 @@
 - [Helpers](#helpers)
   - [Crypto](#crypto)
     - [Hash-based primitives](#hash-based-primitives)
-    - [New `xmss_signature_index`](#new-xmss_signature_index)
+    - [New `get_xmss_signature_index`](#new-get_xmss_signature_index)
   - [Predicates](#predicates)
     - [New `is_pq_public_key_in_use`](#new-is_pq_public_key_in_use)
     - [New `is_valid_pq_possession_proof`](#new-is_valid_pq_possession_proof)
@@ -342,14 +342,14 @@ once. Signing is not assumed to be deterministic, so signing the same message
 twice at one leaf index is also a reuse. For a given root and index, at most one
 VRF output verifies, unless a hash collision is known.
 
-#### New `xmss_signature_index`
+#### New `get_xmss_signature_index`
 
 ```python
-def xmss_signature_index(signature: XMSSSignature) -> Uint32:
+def get_xmss_signature_index(signature: XMSSSignature) -> Uint32:
     """
     Return the leaf index that ``signature`` carries, in its first four bytes.
     """
-    return Uint32(int.from_bytes(signature[0:4], "little"))
+    return Uint32(int.from_bytes(signature[0:4], ENDIANNESS))
 ```
 
 ### Predicates
@@ -365,7 +365,8 @@ registered again, by a validator and a builder that share a BLS public key even
 with the same proof bytes. The signer rules in the
 [validator guide](./validator.md#leaf-index-rules) forbid that. Clients are
 expected to maintain a map from registered keys to indices, as they do for BLS
-public keys.
+public keys. Such a map removes a key when it is replaced or when its builder
+index is reassigned.
 
 ```python
 def is_pq_public_key_in_use(state: BeaconState, xmss_public_key: XMSSPublicKey) -> bool:
@@ -390,9 +391,10 @@ def is_valid_pq_possession_proof(
 ) -> bool:
     """
     Check if ``proof`` is a signature, by ``xmss_public_key``, of the key itself
-    for the validator or builder holding ``pubkey``.
+    for the validator or builder holding ``pubkey``, at leaf index
+    ``PQ_POSSESSION_XMSS_INDEX``.
     """
-    if xmss_signature_index(proof) != PQ_POSSESSION_XMSS_INDEX:
+    if get_xmss_signature_index(proof) != PQ_POSSESSION_XMSS_INDEX:
         return False
 
     possession = PQKeyPossession(
@@ -544,30 +546,30 @@ def process_pq_key_registration(
     key_material = registration.key_material
 
     if is_builder_index(registration.index):
-        index = convert_validator_index_to_builder_index(registration.index)
-        assert index < len(state.builders)
+        builder_index = convert_validator_index_to_builder_index(registration.index)
+        assert builder_index < len(state.builders)
         # Verify the builder is active, so its deposit epoch is finalized
-        assert is_active_builder(state, index)
+        assert is_active_builder(state, builder_index)
         # Builders make no selection proofs, so they register no VRF root
         assert key_material.vrf_root == VRFRoot()
-        pubkey = state.builders[index].pubkey
-        entries = state.builder_post_quantum_key_material
-        change_epochs = state.builder_post_quantum_key_change_epochs
+        pubkey = state.builders[builder_index].pubkey
+        stored_key = state.builder_post_quantum_key_material[builder_index].xmss_public_key
+        last_change_epoch = state.builder_post_quantum_key_change_epochs[builder_index]
     else:
-        index = registration.index
-        assert index < len(state.validators)
+        validator_index = registration.index
+        assert validator_index < len(state.validators)
         # Verify the validator has not initiated an exit
-        assert state.validators[index].exit_epoch == FAR_FUTURE_EPOCH
-        pubkey = state.validators[index].pubkey
-        entries = state.post_quantum_key_material
-        change_epochs = state.post_quantum_key_change_epochs
+        assert state.validators[validator_index].exit_epoch == FAR_FUTURE_EPOCH
+        pubkey = state.validators[validator_index].pubkey
+        stored_key = state.post_quantum_key_material[validator_index].xmss_public_key
+        last_change_epoch = state.post_quantum_key_change_epochs[validator_index]
 
     # Verify the registration applies to the current entry
-    assert registration.previous_change_epoch == change_epochs[index]
+    assert registration.previous_change_epoch == last_change_epoch
 
     # Changes of registered keys are rate-limited
-    if entries[index].xmss_public_key != XMSSPublicKey():
-        assert get_current_epoch(state) >= change_epochs[index] + MIN_PQ_KEY_CHANGE_DELAY
+    if stored_key != XMSSPublicKey():
+        assert get_current_epoch(state) >= last_change_epoch + MIN_PQ_KEY_CHANGE_DELAY
 
     domain = compute_domain(
         DOMAIN_PQ_KEY_REGISTRATION,
@@ -584,6 +586,10 @@ def process_pq_key_registration(
         state, pubkey, key_material.xmss_public_key, signed_registration.possession
     )
 
-    entries[index] = key_material
-    change_epochs[index] = get_current_epoch(state)
+    if is_builder_index(registration.index):
+        state.builder_post_quantum_key_material[builder_index] = key_material
+        state.builder_post_quantum_key_change_epochs[builder_index] = get_current_epoch(state)
+    else:
+        state.post_quantum_key_material[validator_index] = key_material
+        state.post_quantum_key_change_epochs[validator_index] = get_current_epoch(state)
 ```

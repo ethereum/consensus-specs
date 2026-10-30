@@ -164,6 +164,12 @@ first-seen record would block every later registration for the pair. Nodes *may*
 clear the record for a pair once its first-seen registration is no longer valid
 against the finalized state.
 
+*Note*: While the first-seen registration for a pair stays valid but is not
+included, a different registration for the same pair, for example one that
+corrects a faulty key, is ignored. A registrant that broadcasts a faulty key
+replaces it once that registration is included and `MIN_PQ_KEY_CHANGE_DELAY`
+epochs have passed.
+
 ```python
 def validate_pq_key_registration_gossip(
     seen: Seen,
@@ -193,9 +199,10 @@ def validate_pq_key_registration_gossip(
     if is_builder_index(index):
         builder_index = convert_validator_index_to_builder_index(index)
 
-        # [REJECT] The builder index is valid
+        # [IGNORE] The builder index exists in the head state. A recently
+        # deposited builder may not yet be in every node's head state.
         if builder_index >= len(state.builders):
-            raise GossipReject("builder index out of range")
+            raise GossipIgnore("builder index out of range")
 
         builder = state.builders[builder_index]
 
@@ -216,9 +223,10 @@ def validate_pq_key_registration_gossip(
         last_change_epoch = state.builder_post_quantum_key_change_epochs[builder_index]
         pubkey = builder.pubkey
     else:
-        # [REJECT] The validator index is valid
+        # [IGNORE] The validator index exists in the head state. A recently
+        # deposited validator may not yet be in every node's head state.
         if index >= len(state.validators):
-            raise GossipReject("validator index out of range")
+            raise GossipIgnore("validator index out of range")
 
         # [REJECT] The validator has not initiated an exit
         validator = state.validators[index]
@@ -233,9 +241,10 @@ def validate_pq_key_registration_gossip(
     if (index, registration.previous_change_epoch) in seen.pq_key_registration_tuples:
         raise GossipIgnore("already seen post-quantum key registration for this pair")
 
-    # [REJECT] The registration applies to the current entry
+    # [IGNORE] The registration applies to the current entry. A head that has not
+    # yet seen the last change, or has seen a later one, holds another epoch.
     if registration.previous_change_epoch != last_change_epoch:
-        raise GossipReject("previous change epoch does not match")
+        raise GossipIgnore("previous change epoch does not match")
 
     # [IGNORE] Changes of registered keys are rate-limited
     if entry.xmss_public_key != XMSSPublicKey() and is_future_epoch(
@@ -247,9 +256,10 @@ def validate_pq_key_registration_gossip(
     if key_material.xmss_public_key == XMSSPublicKey():
         raise GossipReject("leanXMSS key is all-zero")
 
-    # [REJECT] The leanXMSS key is not registered for any index
+    # [IGNORE] The leanXMSS key is not registered for any index. The holder of a
+    # key can differ between heads.
     if is_pq_public_key_in_use(state, key_material.xmss_public_key):
-        raise GossipReject("leanXMSS key is already registered")
+        raise GossipIgnore("leanXMSS key is already registered")
 
     # [REJECT] The signature is valid
     domain = compute_domain(

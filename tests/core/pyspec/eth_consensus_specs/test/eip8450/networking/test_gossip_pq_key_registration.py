@@ -118,13 +118,13 @@ def test_gossip_pq_key_registration__ignore_pre_fork_head_state(spec, state):
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_validator_index_out_of_range(spec, state):
+def test_gossip_pq_key_registration__ignore_validator_index_out_of_range(spec, state):
     signed_registration = get_signed_pq_key_registration(spec, state, index=0)
     signed_registration.message.index = len(state.validators)
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "validator index out of range")],
+        [(signed_registration, "ignore", "validator index out of range")],
     )
 
 
@@ -177,14 +177,14 @@ def test_gossip_pq_key_registration__invalid_does_not_mark_seen(spec, state):
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_previous_change_epoch_mismatch(spec, state):
+def test_gossip_pq_key_registration__ignore_previous_change_epoch_mismatch(spec, state):
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=0, previous_change_epoch=spec.Epoch(1)
     )
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "previous change epoch does not match")],
+        [(signed_registration, "ignore", "previous change epoch does not match")],
         epoch=1,
     )
 
@@ -216,7 +216,7 @@ def test_gossip_pq_key_registration__reject_invalid_signature(spec, state):
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_key_in_use(spec, state):
+def test_gossip_pq_key_registration__ignore_key_in_use(spec, state):
     owner_keys = register_pq_keys(spec, state, 0, generation=0)
     signed_registration = get_signed_pq_key_registration(
         spec,
@@ -228,13 +228,13 @@ def test_gossip_pq_key_registration__reject_key_in_use(spec, state):
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "leanXMSS key is already registered")],
+        [(signed_registration, "ignore", "leanXMSS key is already registered")],
     )
 
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_own_key(spec, state):
+def test_gossip_pq_key_registration__ignore_own_key(spec, state):
     register_pq_keys(spec, state, 0, generation=0)
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=0, generation=0, vrf_generation=1
@@ -242,7 +242,7 @@ def test_gossip_pq_key_registration__reject_own_key(spec, state):
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "leanXMSS key is already registered")],
+        [(signed_registration, "ignore", "leanXMSS key is already registered")],
         epoch=spec.MIN_PQ_KEY_CHANGE_DELAY,
     )
 
@@ -277,7 +277,7 @@ def test_gossip_pq_key_registration__valid_builder(spec, state):
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_builder_index_out_of_range(spec, state):
+def test_gossip_pq_key_registration__ignore_builder_index_out_of_range(spec, state):
     activate_builders(spec, state)
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=builder_registry_index(spec, 0)
@@ -286,7 +286,7 @@ def test_gossip_pq_key_registration__reject_builder_index_out_of_range(spec, sta
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "builder index out of range")],
+        [(signed_registration, "ignore", "builder index out of range")],
     )
 
 
@@ -339,7 +339,7 @@ def test_gossip_pq_key_registration__reject_builder_nonzero_vrf_root(spec, state
 
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
-def test_gossip_pq_key_registration__reject_builder_key_in_use_by_validator(spec, state):
+def test_gossip_pq_key_registration__ignore_builder_key_in_use_by_validator(spec, state):
     activate_builders(spec, state)
     validator_keys = register_pq_keys(spec, state, 0)
     signed_registration = get_signed_pq_key_registration(
@@ -352,7 +352,7 @@ def test_gossip_pq_key_registration__reject_builder_key_in_use_by_validator(spec
     yield from run_pq_key_registration_gossip(
         spec,
         state,
-        [(signed_registration, "reject", "leanXMSS key is already registered")],
+        [(signed_registration, "ignore", "leanXMSS key is already registered")],
     )
 
 

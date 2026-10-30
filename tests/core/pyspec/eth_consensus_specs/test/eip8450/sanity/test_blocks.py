@@ -88,13 +88,12 @@ def test_max_pq_key_registrations(spec, state):
 @with_eip8450_and_later
 @spec_state_test
 def test_invalid_too_many_pq_key_registrations(spec, state):
-    validator_index = get_non_proposer_indices(spec, state, 1)[0]
-    signed_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
+    # Each registration is valid on its own, so only the count rejects the block
+    indices = get_non_proposer_indices(spec, state, spec.MAX_PQ_KEY_REGISTRATIONS + 1)
+    registrations = [get_signed_pq_key_registration(spec, state, index=index) for index in indices]
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.pq_key_registrations = spec.PQKeyRegistrations(
-        data=[signed_registration] * (spec.MAX_PQ_KEY_REGISTRATIONS + 1)
-    )
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(data=registrations)
     yield from run_block_with_registrations(spec, state, block, valid=False)
 
 
@@ -109,6 +108,21 @@ def test_invalid_duplicate_registration_in_block(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(
         data=[signed_registration, signed_registration]
     )
+    yield from run_block_with_registrations(spec, state, block, valid=False)
+
+
+@with_eip8450_and_later
+@spec_state_test
+def test_invalid_two_registrations_for_same_index_in_block(spec, state):
+    # Two different, individually valid registrations for one index: the first
+    # moves the stored epoch, so the second no longer names it
+    validator_index = get_non_proposer_indices(spec, state, 1)[0]
+    first = get_signed_pq_key_registration(spec, state, index=validator_index, generation=0)
+    second = get_signed_pq_key_registration(spec, state, index=validator_index, generation=1)
+    assert first != second
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[first, second])
     yield from run_block_with_registrations(spec, state, block, valid=False)
 
 
