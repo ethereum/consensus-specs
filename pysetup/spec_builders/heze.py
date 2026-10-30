@@ -17,7 +17,7 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
         return """
 def cached_or_new_inclusion_list_store() -> InclusionListStore:
     return InclusionListStore(
-        inclusion_lists=defaultdict(dict),
+        inclusion_list_entries=defaultdict(dict),
         equivocators=defaultdict(set),
     )
 """
@@ -62,7 +62,8 @@ class NoopExecutionEngine(ExecutionEngine):
 
     def is_inclusion_list_satisfied(self: ExecutionEngine,
                                     execution_payload: ExecutionPayload,
-                                    inclusion_list_transactions: Sequence[Transaction]) -> bool:
+                                    inclusion_lists: Sequence[Sequence[Transaction]],
+                                    inclusion_list_exemptions: InclusionListExemptions) -> bool:
         return True
 
 

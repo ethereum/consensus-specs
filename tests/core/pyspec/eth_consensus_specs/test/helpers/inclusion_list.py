@@ -132,7 +132,7 @@ def run_with_inclusion_list_store(spec, func):
     @lru_cache(maxsize=1)
     def cached_or_new_inclusion_list_store():
         return spec.InclusionListStore(
-            inclusion_lists=defaultdict(dict),
+            inclusion_list_entries=defaultdict(dict),
             equivocators=defaultdict(set),
         )
 

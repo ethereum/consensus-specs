@@ -8,9 +8,11 @@
 - [Configs](#configs)
 - [Helpers](#helpers)
   - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
+  - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [New `get_inclusion_list`](#new-get_inclusion_list)
+    - [Modified `get_payload`](#modified-get_payload)
 - [Validator assignments](#validator-assignments)
   - [Inclusion list committee](#inclusion-list-committee)
   - [Lookahead](#lookahead)
@@ -43,6 +45,19 @@ class GetInclusionListResponse:
     inclusion_list_transactions: Sequence[Transaction]
 ```
 
+### Modified `GetPayloadResponse`
+
+```python
+@dataclass
+class GetPayloadResponse:
+    execution_payload: ExecutionPayload
+    block_value: Uint256
+    blobs_bundle: BlobsBundle
+    execution_requests: Sequence[bytes]
+    # [New in Heze:EIP7805]
+    inclusion_list_exemptions: InclusionListExemptions
+```
+
 ## Protocols
 
 ### `ExecutionEngine`
@@ -63,6 +78,19 @@ of the public mempool.
 def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
     Return inclusion list transactions (as Sequence[Transaction]) object.
+    """
+```
+
+#### Modified `get_payload`
+
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload, Uint256, BlobsBundle, execution requests (as Sequence[bytes])
+    and InclusionListExemptions objects.
     """
 ```
 
@@ -140,7 +168,7 @@ and non-equivocating inclusion lists they have observed.
 ##### ExecutionPayload
 
 `prepare_execution_payload` is updated from the Gloas specification to provide
-the inclusion list transactions.
+the inclusion lists.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
@@ -186,8 +214,9 @@ def prepare_execution_payload(
         slot_number=state.slot,
         target_gas_limit=target_gas_limit,
         # [New in Heze:EIP7805]
-        inclusion_list_transactions=get_inclusion_list_transactions(
+        inclusion_lists=get_inclusion_lists(
             get_inclusion_list_store(),
+            get_inclusion_list_committee(state, state.slot - 1),
             state.slot - 1,
             get_shuffling_dependent_root(store, head.root, compute_epoch_at_slot(state.slot - 1)),
             only_timely=False,
