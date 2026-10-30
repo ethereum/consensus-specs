@@ -101,7 +101,8 @@ def get_pq_possession_proof(
     possession = PQKeyPossession(pubkey=pubkey, xmss_public_key=xmss_public_key)
     domain = compute_domain(
         DOMAIN_PQ_KEY_POSSESSION,
-        genesis_validators_root=state.genesis_validators_root,
+        GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(possession, domain)
     return xmss.Sign(xmss_secret_key, signing_root, PQ_POSSESSION_XMSS_INDEX)
@@ -113,7 +114,8 @@ def get_pq_key_registration_signature(
 ) -> BLSSignature:
     domain = compute_domain(
         DOMAIN_PQ_KEY_REGISTRATION,
-        genesis_validators_root=state.genesis_validators_root,
+        GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(registration, domain)
     return bls.Sign(privkey, signing_root)

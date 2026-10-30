@@ -197,15 +197,14 @@ class PQKeyMaterial(Container):
 #### `PQKeyRegistration`
 
 *Note*: An `index` with `BUILDER_INDEX_FLAG` set names a builder, as for builder
-withdrawals.
+withdrawals. A `previous_change_epoch` of `FAR_FUTURE_EPOCH` for a validator, or
+of the builder's deposit epoch for a builder, indicates that it has never
+registered keys.
 
 ```python
 class PQKeyRegistration(Container):
-    # Validator index, or builder index with ``BUILDER_INDEX_FLAG`` set
     index: ValidatorIndex
     key_material: PQKeyMaterial
-    # Epoch of the last change, or the never-registered marker of the index:
-    # ``FAR_FUTURE_EPOCH`` for a validator, the deposit epoch for a builder
     previous_change_epoch: Epoch
 ```
 
@@ -223,12 +222,14 @@ class PQKeyPossession(Container):
 
 #### `SignedPQKeyRegistration`
 
+*Note*: `possession` is a signature of the `PQKeyPossession` by the registered
+leanXMSS key, and `signature` is a signature of `message` by the BLS signing key
+of the validator or builder.
+
 ```python
 class SignedPQKeyRegistration(Container):
     message: PQKeyRegistration
-    # Signature of the ``PQKeyPossession`` by the registered leanXMSS key
     possession: XMSSSignature
-    # Signature of ``message`` by the BLS signing key of the validator or builder
     signature: BLSSignature
 ```
 
@@ -378,8 +379,7 @@ def is_pq_public_key_in_use(state: BeaconState, xmss_public_key: XMSSPublicKey) 
 #### New `is_valid_pq_possession_proof`
 
 *Note*: Leaf index `PQ_POSSESSION_XMSS_INDEX` is reserved for the proof of
-possession. The domain uses the genesis fork version, so a proof stays valid
-across forks.
+possession.
 
 ```python
 def is_valid_pq_possession_proof(
@@ -401,7 +401,8 @@ def is_valid_pq_possession_proof(
     )
     domain = compute_domain(
         DOMAIN_PQ_KEY_POSSESSION,
-        genesis_validators_root=state.genesis_validators_root,
+        GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(possession, domain)
     return xmss.Verify(xmss_public_key, signing_root, proof)
@@ -568,10 +569,10 @@ def process_pq_key_registration(
     if entries[index].xmss_public_key != XMSSPublicKey():
         assert get_current_epoch(state) >= change_epochs[index] + MIN_PQ_KEY_CHANGE_DELAY
 
-    # Fork-agnostic domain since registrations are valid across forks
     domain = compute_domain(
         DOMAIN_PQ_KEY_REGISTRATION,
-        genesis_validators_root=state.genesis_validators_root,
+        GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(registration, domain)
     assert bls.Verify(pubkey, signing_root, signed_registration.signature)

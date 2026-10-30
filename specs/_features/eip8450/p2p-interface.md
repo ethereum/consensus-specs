@@ -254,7 +254,8 @@ def validate_pq_key_registration_gossip(
     # [REJECT] The signature is valid
     domain = compute_domain(
         DOMAIN_PQ_KEY_REGISTRATION,
-        genesis_validators_root=state.genesis_validators_root,
+        GENESIS_FORK_VERSION,
+        state.genesis_validators_root,
     )
     signing_root = compute_signing_root(registration, domain)
     if not bls.Verify(pubkey, signing_root, signed_registration.signature):
