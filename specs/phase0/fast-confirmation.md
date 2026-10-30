@@ -551,12 +551,12 @@ def compute_safety_threshold(store: Store, block_root: Root, balance_source: Bea
     support_discount = get_support_discount(store, balance_source, block_root)
     adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
 
+    # With precise committee weight computation
+    # support_discount must never exceed maximum_support
+    assert support_discount <= maximum_support
+
     # Return (maximum_support + proposer_score - support_discount) // 2 + adversarial_weight
-    # with an underflow guard
-    if support_discount < maximum_support + proposer_score + 2 * adversarial_weight:
-        return (maximum_support + proposer_score + 2 * adversarial_weight - support_discount) // 2
-    else:
-        return Gwei(0)
+    return (maximum_support + proposer_score + 2 * adversarial_weight - support_discount) // 2
 ```
 
 ##### `is_one_confirmed`
