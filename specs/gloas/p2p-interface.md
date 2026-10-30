@@ -27,6 +27,7 @@
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
+  - [New `get_min_bid_increment`](#new-get_min_bid_increment)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
@@ -79,9 +80,12 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                  |
-| ---------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
+| Name                        | Value                        |
+| --------------------------- | ---------------------------- |
+| `MAX_REQUEST_PAYLOADS`      | `Uint64(2**7)` (= 128)       |
+| `MIN_BID_INCREMENT_PERCENT` | `Uint64(3)`                  |
+| `MIN_BID_INCREMENT_FLOOR`   | `Gwei(10**5)` (= 100,000)    |
+| `MIN_BID_INCREMENT_CAP`     | `Gwei(10**7)` (= 10,000,000) |
 
 ## Types
 
@@ -212,7 +216,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bids: dict[tuple[Slot, Hash32, Root, BuilderIndex], Gwei]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -393,6 +397,18 @@ def is_gas_limit_target_compatible(
     if target_gas_limit > max_gas_limit:
         return gas_limit == max_gas_limit
     return gas_limit == target_gas_limit
+```
+
+### New `get_min_bid_increment`
+
+```python
+def get_min_bid_increment(previous_value: Gwei) -> Gwei:
+    """
+    Return the amount by which a builder's bid must exceed its previous bid
+    for the slot and parent.
+    """
+    increment = previous_value // 100 * MIN_BID_INCREMENT_PERCENT
+    return Gwei(min(max(increment, MIN_BID_INCREMENT_FLOOR), MIN_BID_INCREMENT_CAP))
 ```
 
 ### New `is_bid_compatible_with_head`
@@ -965,16 +981,18 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
-
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
         if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
             raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
+
+    # [IGNORE] The bid exceeds the builder's previous bid by the minimum increment
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    if bid_key in seen.execution_payload_bids:
+        previous_value = seen.execution_payload_bids[bid_key]
+        if bid.value < previous_value + get_min_bid_increment(previous_value):
+            raise GossipIgnore("bid is below the minimum increment over the builder's previous bid")
 
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
@@ -1078,16 +1096,10 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Record the builder's bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bids[bid_key] = bid.value
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
-
-*Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
-from malicious builders submitting numerous bids with minimal value increments.
-Possible strategies include: (1) only forwarding bids that exceed the current
-highest bid by a minimum threshold, or (2) forwarding only the highest observed
-bid at regular time intervals.
 
 ##### New `proposer_preferences`
 

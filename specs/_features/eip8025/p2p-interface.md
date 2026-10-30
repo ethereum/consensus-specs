@@ -57,7 +57,7 @@ class Seen:
     execution_payloads: dict[Hash32, ExecutionPayload]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bids: dict[tuple[Slot, Hash32, Root, BuilderIndex], Gwei]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in EIP8025]
