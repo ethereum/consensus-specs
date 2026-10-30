@@ -377,8 +377,8 @@ def get_viable_subtree(
     return [
         node
         for node in tree
-        # Viable nodes must be ancestors of forkchoice_root
-        # and descendants of at least one viable head belonging to the tree
+        # Nodes must be descendants of forkchoice_root
+        # and ancestors of at least one viable head belonging to the tree
         if is_ancestor(store, node, fg_frame.forkchoice_root)
         and any(is_ancestor(store, viable_head, node) for viable_head in viable_heads_in_tree)
     ]
