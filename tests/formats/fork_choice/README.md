@@ -18,11 +18,13 @@ components of the fork choice.
     - [`on_payload_info` execution step](#on_payload_info-execution-step)
     - [`on_execution_payload_envelope` execution step](#on_execution_payload_envelope-execution-step)
     - [`on_payload_attestation_message` execution step](#on_payload_attestation_message-execution-step)
+    - [`on_inclusion_list` execution step](#on_inclusion_list-execution-step)
     - [Checks step](#checks-step)
   - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
   - [`execution_payload_envelope_<32-byte-root>.ssz_snappy`](#execution_payload_envelope_32-byte-rootssz_snappy)
   - [`payload_attestation_message_<32-byte-root>.ssz_snappy`](#payload_attestation_message_32-byte-rootssz_snappy)
+  - [`inclusion_list_<32-byte-root>.ssz_snappy`](#inclusion_list_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
 <!-- mdformat-toc end -->
@@ -223,6 +225,32 @@ This execution step is available for Gloas and later forks.
 
 After this step, the `store` object may have been updated.
 
+#### `on_inclusion_list` execution step
+
+The parameter that is required for executing
+`on_inclusion_list(store, signed_inclusion_list)`.
+
+```yaml
+{
+    inclusion_list: string  -- the name of the `inclusion_list_<32-byte-root>.ssz_snappy` file.
+                               To execute `on_inclusion_list(store, signed_inclusion_list)` with the given inclusion list.
+    valid: bool             -- optional, default to `true`.
+                               If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+The file is located in the same folder (see below).
+
+This execution step is available for Heze and later forks.
+
+After this step, the inclusion list store may have been updated. Whether the
+inclusion list is timely depends on the store time: that of the preceding
+`on_tick` step, or the anchor time if there is none.
+
+The execution-layer client mock MUST answer `is_inclusion_list_satisfied` with
+`True` if and only if every inclusion list transaction is in the payload's
+`transactions`.
+
 #### Checks step
 
 The checks to verify the current status of `store`.
@@ -271,6 +299,17 @@ payload_data_availability_vote: {     -- [New in Gloas]
     block_root: string,               -- Encoded 32-byte beacon block root
     votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
 }
+payload_inclusion_list_satisfaction: {  -- [New in Heze]
+    block_root: string,                 -- Encoded 32-byte beacon block root
+    satisfied: bool                     -- store.payload_inclusion_list_satisfaction[block_root]
+}
+inclusion_list_entry: {                 -- [New in Heze]
+    slot: int,                          -- Slot of the stored inclusion list
+    dependent_root: string,             -- Encoded 32-byte dependent root of the stored inclusion list
+    validator_index: int,               -- Validator index of the stored inclusion list
+    timely: bool,                       -- Timeliness recorded when the inclusion list was first stored
+    equivocator: bool                   -- Whether the validator equivocated for this slot and dependent root
+}
 ```
 
 For example:
@@ -317,6 +356,12 @@ Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 
 Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
 
+### `inclusion_list_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given signed inclusion list.
+
+Each file is an SSZ-snappy encoded `SignedInclusionList`.
+
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
@@ -340,5 +385,8 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
      - For the `on_payload_attestation_message` execution step: look up the
        corresponding `payload_attestation_message_<root>.ssz_snappy` file and
        execute `on_payload_attestation_message(store, ptc_message)`.
+     - For the `on_inclusion_list` execution step: look up the corresponding
+       `inclusion_list_<root>.ssz_snappy` file and execute
+       `on_inclusion_list(store, signed_inclusion_list)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.
