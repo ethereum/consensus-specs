@@ -950,6 +950,10 @@ def validate_attester_slashing_gossip(
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
 
+    # [REJECT] Both indexed attestations carry at least one attesting index
+    if len(attestation_1.attesting_indices) == 0 or len(attestation_2.attesting_indices) == 0:
+        raise GossipReject("empty attesting indices in attester slashing")
+
     attesting_indices_1 = set(attestation_1.attesting_indices)
     attesting_indices_2 = set(attestation_2.attesting_indices)
     slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
