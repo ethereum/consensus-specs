@@ -32,6 +32,11 @@ change is made to upgrade to EIP-8148.
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
+*Note*: The threshold bytes of every existing compounding validator are cleared,
+so that every validator that exists at the fork starts at the default threshold
+regardless of what its credentials carried before. Only validators whose
+credentials have non-zero threshold bytes are changed.
+
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
 whose root differs from the extended type even for identical content; the
@@ -90,15 +95,12 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        # [New in EIP8148]
-        validator_sweep_thresholds=SweepThresholds(),
     )
 
+    # [New in EIP8148]
     for validator in post.validators:
         if has_compounding_withdrawal_credential(validator):
-            post.validator_sweep_thresholds.append(MAX_EFFECTIVE_BALANCE_ELECTRA)
-        else:
-            post.validator_sweep_thresholds.append(Gwei(0))
+            set_sweep_threshold(validator, MAX_EFFECTIVE_BALANCE_ELECTRA)
 
     return post
 ```
