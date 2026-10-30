@@ -28,7 +28,6 @@ def setup_store_with_block(spec, state):
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
-    store.payloads[block_root] = spec.ExecutionPayloadEnvelope(beacon_block_root=block_root)
 
     return store, block_root
 
@@ -73,24 +72,10 @@ def validate(spec, seen, store, signed_proof, proof_engine=None):
     )
 
 
-def get_proof_engine_input(spec, store, signed_proof):
+def get_proof_engine_input(spec, signed_proof):
     proof_envelope = signed_proof.message
-    state = store.block_states[proof_envelope.beacon_block_root]
-    payload_envelope = store.payloads[proof_envelope.beacon_block_root]
-    bid = state.latest_execution_payload_bid
-    new_payload_request = spec.NewPayloadRequest(
-        execution_payload=payload_envelope.payload,
-        versioned_hashes=spec.VersionedHashes(
-            data=[
-                spec.kzg_commitment_to_versioned_hash(commitment)
-                for commitment in bid.blob_kzg_commitments
-            ]
-        ),
-        parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
-        execution_requests=payload_envelope.execution_requests,
-    )
     public_input = spec.PublicInput(
-        new_payload_request_root=spec.hash_tree_root(new_payload_request),
+        beacon_block_root=proof_envelope.beacon_block_root,
         successful_validation=True,
         chain_id=spec.config.DEPOSIT_CHAIN_ID,
         schema_id=spec.STATELESS_INPUT_SCHEMA_ID,
@@ -167,39 +152,29 @@ def test_gossip_handles_missing_execution_proof_block_context(spec, state):
         "execution proof's beacon block has not been seen",
     )
 
-    # Ignore proofs for a known block until validation and payload processing complete.
+    # Ignore proofs for a known block until its post-state is available.
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     block_state = store.block_states.pop(block_root)
-    payload = store.payloads.pop(block_root)
-    assert validate(spec, get_seen(spec), store, signed_proof) == (
-        "ignore",
-        "execution proof's payload is unavailable",
-    )
-    store.block_states[block_root] = block_state
-    store.payloads[block_root] = payload
-
-    # Ignore proofs until the execution payload becomes available.
-    payload = store.payloads.pop(block_root)
     proof_engine = MockProofEngine()
     assert validate(spec, get_seen(spec), store, signed_proof, proof_engine) == (
         "ignore",
-        "execution proof's payload is unavailable",
+        "execution proof's beacon block has not been validated",
     )
     assert proof_engine.verifications == []
-    store.payloads[block_root] = payload
+    store.block_states[block_root] = block_state
 
 
 @with_eip8025_and_later
 @spec_state_test
-def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
+def test_gossip_applies_cheap_checks_before_state_lookup(spec, state):
     """
-    Apply message-local and deduplication checks before requiring the payload.
+    Apply message-local and deduplication checks before requiring the post-state.
     """
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
-    store.payloads.pop(block_root)
+    store.block_states.pop(block_root)
 
-    # Reject message-local structural failures without block or payload context.
+    # Reject message-local structural failures without block context.
     unknown_root = spec.Root(b"\xaa" * 32)
     empty_proof = make_signed_execution_proof_envelope(spec, state, unknown_root, proof_data=b"")
     assert validate(spec, get_seen(spec), store, empty_proof) == (
@@ -214,7 +189,7 @@ def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
         "unexpected execution proof type",
     )
 
-    # Ignore known duplicates without requiring the payload.
+    # Ignore known duplicates without requiring the post-state.
     proof_root = signed_proof.message.hash_tree_root()
     seen = get_seen(spec)
     seen.execution_proof_roots[block_root] = {proof_root}
@@ -245,10 +220,10 @@ def test_gossip_applies_cheap_checks_before_payload_lookup(spec, state):
         "proof already seen from this prover for this beacon block and proof type",
     )
 
-    # A supported, unseen proof still requires the payload.
+    # A supported, unseen proof still requires the post-state.
     assert validate(spec, get_seen(spec), store, signed_proof) == (
         "ignore",
-        "execution proof's payload is unavailable",
+        "execution proof's beacon block has not been validated",
     )
 
 
@@ -374,7 +349,6 @@ def test_verify_and_construct_execution_proof_from_envelope(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
     block_state = store.block_states[block_root]
-    payload_envelope = store.payloads[block_root]
 
     # Verify the execution proof envelope fields and the prover signature.
     spec.verify_execution_proof_envelope(
@@ -382,11 +356,9 @@ def test_verify_and_construct_execution_proof_from_envelope(spec, state):
         signed_proof,
     )
     # Construct the same execution proof expected by the proof engine.
-    assert spec.get_execution_proof(
-        block_state,
-        signed_proof.message,
-        payload_envelope,
-    ) == get_proof_engine_input(spec, store, signed_proof)
+    assert spec.get_execution_proof(signed_proof.message) == get_proof_engine_input(
+        spec, signed_proof
+    )
 
 
 @with_eip8025_and_later
@@ -400,7 +372,7 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
     seen = get_seen(spec)
     proof_root = spec.hash_tree_root(signed_proof.message)
     prover_key = (block_root, signed_proof.message.proof_type, signed_proof.validator_index)
-    proof = get_proof_engine_input(spec, store, signed_proof)
+    proof = get_proof_engine_input(spec, signed_proof)
     proof_engine = MockProofEngine(valid_proof_data=[proof.proof_data])
 
     # Gossip validation verifies the proof without mutating the fork-choice store.
@@ -438,7 +410,7 @@ def test_gossip_verifies_execution_proof_before_handler_stores_it(spec, state):
         "reject",
         "execution proof is invalid",
     )
-    expected_alternate_proof = get_proof_engine_input(spec, store, alternate_proof)
+    expected_alternate_proof = get_proof_engine_input(spec, alternate_proof)
     assert proof_engine.verifications == [proof, expected_alternate_proof]
     assert alternate_proof_root in seen.execution_proof_roots[block_root]
     assert alternate_prover_key in seen.execution_proof_provers
@@ -483,7 +455,7 @@ def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
     store, block_root = setup_store_with_block(spec, state)
     signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
 
-    # The handler requires the block, its post-state, and its execution payload.
+    # The handler requires the block and its post-state.
     block = store.blocks.pop(block_root)
     proof_engine = MockProofEngine()
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
@@ -493,14 +465,10 @@ def test_on_execution_proof_requires_block_context_and_valid_proof(spec, state):
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
     store.block_states[block_root] = block_state
 
-    payload = store.payloads.pop(block_root)
-    expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, proof_engine))
-    store.payloads[block_root] = payload
-
     # A failed proof-engine verification must not update the store.
     rejecting_engine = MockProofEngine(valid_proof_data=[])
     expect_assertion_error(lambda: spec.on_execution_proof(store, signed_proof, rejecting_engine))
-    proof = get_proof_engine_input(spec, store, signed_proof)
+    proof = get_proof_engine_input(spec, signed_proof)
     assert rejecting_engine.verifications == [proof]
     assert block_root not in store.execution_proofs
 

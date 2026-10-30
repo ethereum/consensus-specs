@@ -113,14 +113,10 @@ def on_execution_proof(
     state = store.block_states.get(beacon_block_root)
     assert state is not None
 
-    # The corresponding execution payload must be available
-    payload_envelope = store.payloads.get(beacon_block_root)
-    assert payload_envelope is not None
-
     # Only one verified proof is stored for each beacon block and proof type
     assert proof_envelope.proof_type not in store.execution_proofs.get(beacon_block_root, {})
 
-    process_execution_proof(state, signed_proof_envelope, payload_envelope, proof_engine)
+    process_execution_proof(state, signed_proof_envelope, proof_engine)
 
     # Store only proofs that pass downstream verification
     store.execution_proofs[beacon_block_root][proof_envelope.proof_type] = proof_envelope
