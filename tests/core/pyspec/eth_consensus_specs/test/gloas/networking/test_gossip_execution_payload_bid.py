@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.gloas.bid import (
     activate_builders,
@@ -3057,11 +3058,11 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
 
     parent_gas_limit = spec.Uint64(30_000_000)
-    payload_block_hash = spec.Hash32(b"\xaa" * 32)
     payload_block = build_empty_block_for_next_slot(spec, state)
     payload_bid = payload_block.body.signed_execution_payload_bid.message
-    payload_bid.block_hash = payload_block_hash
     payload_bid.gas_limit = parent_gas_limit
+    commit_bid_to_execution_payload(spec, state, payload_block)
+    payload_block_hash = payload_bid.block_hash
     signed_payload_block = state_transition_and_sign_block(spec, state, payload_block)
     payload_root = record_block_in_store(spec, store, signed_payload_block, state.copy())
     blocks.append(signed_payload_block)

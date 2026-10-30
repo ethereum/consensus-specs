@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -56,7 +57,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     deposit_block = build_empty_block_for_next_slot(spec, state)
     deposit_bid = deposit_block.body.signed_execution_payload_bid.message
     deposit_bid.execution_requests_root = spec.hash_tree_root(execution_requests)
-    deposit_bid.block_hash = spec.Hash32(b"\x42" * 32)
+    commit_bid_to_execution_payload(spec, state, deposit_block, execution_requests)
     signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
     deposit_block_root = signed_deposit_block.message.hash_tree_root()
 

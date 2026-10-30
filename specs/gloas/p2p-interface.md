@@ -855,9 +855,21 @@ def validate_execution_payload_envelope_gossip(
     if block.slot != payload.slot_number:
         raise GossipReject("block's slot does not match payload's slot number")
 
+    # [REJECT] The envelope's parent beacon block root matches the block's parent root
+    if envelope.parent_beacon_block_root != block.parent_root:
+        raise GossipReject("envelope's parent beacon block root does not match the block's")
+
     # [REJECT] The envelope is from the builder committed to by the bid
     if envelope.builder_index != bid.builder_index:
         raise GossipReject("envelope's builder index does not match the bid's builder index")
+
+    # [REJECT] The payload's previous randao matches the bid's previous randao
+    if payload.prev_randao != bid.prev_randao:
+        raise GossipReject("payload's previous randao does not match the bid's previous randao")
+
+    # [REJECT] The payload's gas limit matches the bid's gas limit
+    if payload.gas_limit != bid.gas_limit:
+        raise GossipReject("payload's gas limit does not match the bid's gas limit")
 
     # [REJECT] The payload's block hash matches the bid's block hash
     if payload.block_hash != bid.block_hash:
@@ -873,6 +885,30 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The payload builds on the execution head of the block's post-state
+    if payload.parent_hash != state.latest_block_hash:
+        raise GossipReject("payload's parent hash does not match the latest block hash")
+
+    # [REJECT] The payload's timestamp is correct with respect to the slot
+    if payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
+    # [REJECT] The payload contains no empty transactions
+    if any(len(transaction) == 0 for transaction in payload.transactions):
+        raise GossipReject("payload contains an empty transaction")
+
+    # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
+    if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
+        raise GossipReject("payload's withdrawals do not match the expected withdrawals")
+
+    # [REJECT] The payload's block hash is computed correctly
+    if not EXECUTION_ENGINE.is_valid_block_hash(
+        payload,
+        envelope.parent_beacon_block_root,
+        get_execution_requests_list(envelope.execution_requests),
+    ):
+        raise GossipReject("payload's block hash is not computed correctly")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
