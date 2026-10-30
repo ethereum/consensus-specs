@@ -25,10 +25,10 @@ def test_new_validators_have_unset_pq_keys(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert len(state.validators) == pre_validator_count + new_validator_count
-    assert len(state.pq_public_keys) == len(state.validators)
+    assert len(state.pq_key_material) == len(state.validators)
     assert len(state.pq_key_change_epochs) == len(state.validators)
     for index in range(pre_validator_count, len(state.validators)):
         assert not is_registered(spec, state, index)
-        assert state.pq_public_keys[index] == spec.PQPublicKeys()
+        assert state.pq_key_material[index] == spec.PQKeyMaterial()
         assert state.pq_key_change_epochs[index] == spec.FAR_FUTURE_EPOCH
-    assert state.pq_public_keys[0] == registered_keys
+    assert state.pq_key_material[0] == registered_keys

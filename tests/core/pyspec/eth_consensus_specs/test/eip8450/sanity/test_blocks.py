@@ -11,7 +11,7 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     activate_builders,
     builder_registry_index,
-    get_pq_public_keys,
+    get_pq_key_material,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
     is_registered,
@@ -64,7 +64,7 @@ def test_pq_key_registration(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
     yield from run_block_with_registrations(spec, state, block)
 
-    assert state.pq_public_keys[validator_index] == signed_registration.message.public_keys
+    assert state.pq_key_material[validator_index] == signed_registration.message.key_material
     assert state.pq_key_change_epochs[validator_index] == spec.get_current_epoch(state)
 
 
@@ -80,7 +80,7 @@ def test_max_pq_key_registrations(spec, state):
 
     for registration in registrations:
         index = registration.message.index
-        assert state.pq_public_keys[index] == registration.message.public_keys
+        assert state.pq_key_material[index] == registration.message.key_material
 
 
 @with_eip8450_and_later
@@ -117,13 +117,13 @@ def test_invalid_same_key_for_two_validators_in_block(spec, state):
     owner_registration = get_signed_pq_key_registration(spec, state, index=owner_index)
 
     # The second validator holds the same leanXMSS key, with its own valid proof
-    public_keys = get_pq_public_keys(spec, other_index)
-    public_keys.xmss_public_key = owner_registration.message.public_keys.xmss_public_key
+    key_material = get_pq_key_material(spec, other_index)
+    key_material.xmss_public_key = owner_registration.message.key_material.xmss_public_key
     other_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=other_index,
-        public_keys=public_keys,
+        key_material=key_material,
         xmss_secret_key=get_xmss_secret_key(owner_index),
     )
 
@@ -275,7 +275,7 @@ def test_builder_pq_key_registration(spec, state):
     block.body.pq_key_registrations = spec.PQKeyRegistrations(data=[signed_registration])
     yield from run_block_with_registrations(spec, state, block)
 
-    assert state.builder_pq_public_keys[0] == signed_registration.message.public_keys
+    assert state.builder_pq_key_material[0] == signed_registration.message.key_material
     assert state.builder_pq_key_change_epochs[0] == spec.get_current_epoch(state)
 
 
@@ -305,14 +305,14 @@ def test_invalid_same_key_for_validator_and_builder_in_block(spec, state):
     validator_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
 
     # The builder holds the same leanXMSS key, with its own valid proof
-    public_keys = spec.PQPublicKeys(
-        xmss_public_key=validator_registration.message.public_keys.xmss_public_key
+    key_material = spec.PQKeyMaterial(
+        xmss_public_key=validator_registration.message.key_material.xmss_public_key
     )
     builder_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=builder_registry_index(spec, 0),
-        public_keys=public_keys,
+        key_material=key_material,
         xmss_secret_key=get_xmss_secret_key(validator_index),
     )
 

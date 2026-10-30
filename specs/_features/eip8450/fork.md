@@ -88,14 +88,16 @@ def upgrade_to_eip8450(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8450]
-        pq_public_keys=ValidatorPQPublicKeys(data=[PQPublicKeys.empty() for _ in pre.validators]),
+        pq_key_material=ValidatorPQKeyMaterial(
+            data=[PQKeyMaterial.empty() for _ in pre.validators]
+        ),
         # [New in EIP8450]
         pq_key_change_epochs=ValidatorPQKeyChangeEpochs(
             data=[FAR_FUTURE_EPOCH for _ in pre.validators]
         ),
         # [New in EIP8450]
-        builder_pq_public_keys=BuilderPQPublicKeys(
-            data=[PQPublicKeys.empty() for _ in pre.builders]
+        builder_pq_key_material=BuilderPQKeyMaterial(
+            data=[PQKeyMaterial.empty() for _ in pre.builders]
         ),
         # [New in EIP8450]
         builder_pq_key_change_epochs=BuilderPQKeyChangeEpochs(

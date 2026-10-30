@@ -20,11 +20,11 @@ def test_new_builder_has_unset_pq_keys(spec, state):
     yield from run_builder_deposit_request_processing(spec, state, request)
 
     assert len(state.builders) == pre_builder_count + 1
-    assert len(state.builder_pq_public_keys) == len(state.builders)
+    assert len(state.builder_pq_key_material) == len(state.builders)
     assert len(state.builder_pq_key_change_epochs) == len(state.builders)
     builder = state.builders[pre_builder_count]
     assert builder.pubkey == request.pubkey
-    assert state.builder_pq_public_keys[pre_builder_count] == spec.PQPublicKeys()
+    assert state.builder_pq_key_material[pre_builder_count] == spec.PQKeyMaterial()
     assert state.builder_pq_key_change_epochs[pre_builder_count] == builder.deposit_epoch
     assert not is_registered(spec, state, builder_registry_index(spec, pre_builder_count))
 
@@ -50,6 +50,6 @@ def test_reused_builder_index_resets_pq_keys(spec, state):
     assert len(state.builders) == pre_builder_count
     assert state.builders[0].pubkey == request.pubkey
     assert state.builders[0].deposit_epoch == spec.get_current_epoch(state)
-    assert state.builder_pq_public_keys[0] == spec.PQPublicKeys()
+    assert state.builder_pq_key_material[0] == spec.PQKeyMaterial()
     assert state.builder_pq_key_change_epochs[0] == state.builders[0].deposit_epoch
     assert not is_registered(spec, state, index)

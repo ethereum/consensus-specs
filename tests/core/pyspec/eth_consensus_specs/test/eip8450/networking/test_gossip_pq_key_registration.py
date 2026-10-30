@@ -6,7 +6,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     activate_builders,
     builder_registry_index,
-    get_pq_public_keys,
+    get_pq_key_material,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
     register_pq_keys,
@@ -222,7 +222,7 @@ def test_gossip_pq_key_registration__reject_key_in_use(spec, state):
         spec,
         state,
         index=1,
-        public_keys=owner_keys,
+        key_material=owner_keys,
         xmss_secret_key=get_xmss_secret_key(0, generation=0),
     )
     yield from run_pq_key_registration_gossip(
@@ -325,10 +325,10 @@ def test_gossip_pq_key_registration__reject_builder_exit_initiated(spec, state):
 def test_gossip_pq_key_registration__reject_builder_nonzero_vrf_root(spec, state):
     activate_builders(spec, state)
     index = builder_registry_index(spec, 0)
-    public_keys = get_pq_public_keys(spec, index)
-    public_keys.vrf_root = spec.VRFRoot(b"\x01" * 32)
+    key_material = get_pq_key_material(spec, index)
+    key_material.vrf_root = spec.VRFRoot(b"\x01" * 32)
     signed_registration = get_signed_pq_key_registration(
-        spec, state, index=index, public_keys=public_keys
+        spec, state, index=index, key_material=key_material
     )
     yield from run_pq_key_registration_gossip(
         spec,
@@ -346,7 +346,7 @@ def test_gossip_pq_key_registration__reject_builder_key_in_use_by_validator(spec
         spec,
         state,
         index=builder_registry_index(spec, 0),
-        public_keys=spec.PQPublicKeys(xmss_public_key=validator_keys.xmss_public_key),
+        key_material=spec.PQKeyMaterial(xmss_public_key=validator_keys.xmss_public_key),
         xmss_secret_key=get_xmss_secret_key(0),
     )
     yield from run_pq_key_registration_gossip(
@@ -359,10 +359,10 @@ def test_gossip_pq_key_registration__reject_builder_key_in_use_by_validator(spec
 @with_eip8450_and_later
 @spec_configured_state_test({}, activate_at_genesis=True)
 def test_gossip_pq_key_registration__reject_all_zero_key(spec, state):
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.xmss_public_key = spec.XMSSPublicKey()
+    key_material = get_pq_key_material(spec, 0)
+    key_material.xmss_public_key = spec.XMSSPublicKey()
     signed_registration = get_signed_pq_key_registration(
-        spec, state, index=0, public_keys=public_keys
+        spec, state, index=0, key_material=key_material
     )
     yield from run_pq_key_registration_gossip(
         spec,

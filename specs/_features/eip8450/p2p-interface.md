@@ -177,7 +177,7 @@ def validate_pq_key_registration_gossip(
     """
     registration = signed_registration.message
     index = registration.index
-    public_keys = registration.public_keys
+    key_material = registration.key_material
 
     # [IGNORE] The current epoch is at or after the EIP-8450 fork epoch
     if is_future_epoch(store, EIP8450_FORK_EPOCH, current_time_ms):
@@ -209,10 +209,10 @@ def validate_pq_key_registration_gossip(
             raise GossipIgnore("builder deposit is not yet finalized")
 
         # [REJECT] The builder registers a zero VRF root
-        if public_keys.vrf_root != VRFRoot():
+        if key_material.vrf_root != VRFRoot():
             raise GossipReject("builder VRF root is not zero")
 
-        entry = state.builder_pq_public_keys[builder_index]
+        entry = state.builder_pq_key_material[builder_index]
         last_change_epoch = state.builder_pq_key_change_epochs[builder_index]
         pubkey = builder.pubkey
     else:
@@ -225,7 +225,7 @@ def validate_pq_key_registration_gossip(
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             raise GossipReject("validator has initiated an exit")
 
-        entry = state.pq_public_keys[index]
+        entry = state.pq_key_material[index]
         last_change_epoch = state.pq_key_change_epochs[index]
         pubkey = validator.pubkey
 
@@ -244,11 +244,11 @@ def validate_pq_key_registration_gossip(
         raise GossipIgnore("post-quantum key change delay has not passed")
 
     # [REJECT] The leanXMSS key is not all-zero
-    if public_keys.xmss_public_key == XMSSPublicKey():
+    if key_material.xmss_public_key == XMSSPublicKey():
         raise GossipReject("leanXMSS key is all-zero")
 
     # [REJECT] The leanXMSS key is not registered for any index
-    if is_pq_public_key_in_use(state, public_keys.xmss_public_key):
+    if is_pq_public_key_in_use(state, key_material.xmss_public_key):
         raise GossipReject("leanXMSS key is already registered")
 
     # [REJECT] The signature is valid
@@ -262,7 +262,7 @@ def validate_pq_key_registration_gossip(
 
     # [REJECT] The proof of possession is valid
     if not is_valid_pq_possession_proof(
-        state, pubkey, public_keys.xmss_public_key, signed_registration.possession
+        state, pubkey, key_material.xmss_public_key, signed_registration.possession
     ):
         raise GossipReject("invalid proof of possession")
 

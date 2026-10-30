@@ -26,8 +26,8 @@ with the builder's BLS public key in place of the validator's.
 The builder assembles a `PQKeyRegistration` with:
 
 - `index` set to `convert_builder_index_to_validator_index(builder_index)`.
-- `public_keys.xmss_public_key` set to a leanXMSS key that it has never
-  registered before, and `public_keys.vrf_root` set to `VRFRoot()`, since
+- `key_material.xmss_public_key` set to a leanXMSS key that it has never
+  registered before, and `key_material.vrf_root` set to `VRFRoot()`, since
   builders make no selection proofs.
 - `previous_change_epoch` set to its current entry of
   `state.builder_pq_key_change_epochs`, which is its deposit epoch until its

@@ -9,9 +9,9 @@
   - [New `XMSSPublicKey`](#new-xmsspublickey)
   - [New `XMSSSignature`](#new-xmsssignature)
   - [New `VRFRoot`](#new-vrfroot)
-  - [New `ValidatorPQPublicKeys`](#new-validatorpqpublickeys)
+  - [New `ValidatorPQKeyMaterial`](#new-validatorpqkeymaterial)
   - [New `ValidatorPQKeyChangeEpochs`](#new-validatorpqkeychangeepochs)
-  - [New `BuilderPQPublicKeys`](#new-builderpqpublickeys)
+  - [New `BuilderPQKeyMaterial`](#new-builderpqkeymaterial)
   - [New `BuilderPQKeyChangeEpochs`](#new-builderpqkeychangeepochs)
   - [New `PQKeyRegistrations`](#new-pqkeyregistrations)
 - [Constants](#constants)
@@ -21,7 +21,7 @@
   - [Post-quantum key registry](#post-quantum-key-registry)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`PQPublicKeys`](#pqpublickeys)
+    - [`PQKeyMaterial`](#pqkeymaterial)
     - [`PQKeyRegistration`](#pqkeyregistration)
     - [`PQKeyPossession`](#pqkeypossession)
     - [`SignedPQKeyRegistration`](#signedpqkeyregistration)
@@ -100,10 +100,10 @@ class VRFRoot(Bytes32):
     """
 ```
 
-### New `ValidatorPQPublicKeys`
+### New `ValidatorPQKeyMaterial`
 
 ```python
-class ValidatorPQPublicKeys(ProgressiveList[PQPublicKeys]):
+class ValidatorPQKeyMaterial(ProgressiveList[PQKeyMaterial]):
     """
     The registered post-quantum keys of every validator, by validator index. A
     validator without keys holds the all-zero entry.
@@ -121,10 +121,10 @@ class ValidatorPQKeyChangeEpochs(ProgressiveList[Epoch]):
     """
 ```
 
-### New `BuilderPQPublicKeys`
+### New `BuilderPQKeyMaterial`
 
 ```python
-class BuilderPQPublicKeys(ProgressiveList[PQPublicKeys]):
+class BuilderPQKeyMaterial(ProgressiveList[PQKeyMaterial]):
     """
     The registered post-quantum keys of every builder, by builder index. A
     builder without keys holds the all-zero entry.
@@ -183,13 +183,13 @@ change it names.
 
 ### New containers
 
-#### `PQPublicKeys`
+#### `PQKeyMaterial`
 
 *Note*: A builder registers a zero `vrf_root`, since builders make no selection
 proofs.
 
 ```python
-class PQPublicKeys(Container):
+class PQKeyMaterial(Container):
     xmss_public_key: XMSSPublicKey
     vrf_root: VRFRoot
 ```
@@ -203,7 +203,7 @@ withdrawals.
 class PQKeyRegistration(Container):
     # Validator index, or builder index with ``BUILDER_INDEX_FLAG`` set
     index: ValidatorIndex
-    public_keys: PQPublicKeys
+    key_material: PQKeyMaterial
     # Epoch of the last change, or the never-registered marker of the index:
     # ``FAR_FUTURE_EPOCH`` for a validator, the deposit epoch for a builder
     previous_change_epoch: Epoch
@@ -308,11 +308,11 @@ class BeaconState(ProgressiveContainer):
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8450]
-    pq_public_keys: ValidatorPQPublicKeys
+    pq_key_material: ValidatorPQKeyMaterial
     # [New in EIP8450]
     pq_key_change_epochs: ValidatorPQKeyChangeEpochs
     # [New in EIP8450]
-    builder_pq_public_keys: BuilderPQPublicKeys
+    builder_pq_key_material: BuilderPQKeyMaterial
     # [New in EIP8450]
     builder_pq_key_change_epochs: BuilderPQKeyChangeEpochs
 ```
@@ -371,7 +371,7 @@ def is_pq_public_key_in_use(state: BeaconState, xmss_public_key: XMSSPublicKey) 
     """
     Check if any validator or builder holds ``xmss_public_key``.
     """
-    entries = list(state.pq_public_keys) + list(state.builder_pq_public_keys)
+    entries = list(state.pq_key_material) + list(state.builder_pq_key_material)
     return any(entry.xmss_public_key == xmss_public_key for entry in entries)
 ```
 
@@ -412,7 +412,7 @@ def is_valid_pq_possession_proof(
 #### Modified `add_validator_to_registry`
 
 *Note*: The function `add_validator_to_registry` is modified to initialize the
-items in the `pq_public_keys` and `pq_key_change_epochs` lists, preserving the
+items in the `pq_key_material` and `pq_key_change_epochs` lists, preserving the
 invariant that they have one entry per validator.
 
 ```python
@@ -427,7 +427,7 @@ def add_validator_to_registry(
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
     # [New in EIP8450]
-    set_or_append_list(state.pq_public_keys, index, PQPublicKeys.empty())
+    set_or_append_list(state.pq_key_material, index, PQKeyMaterial.empty())
     # [New in EIP8450]
     set_or_append_list(state.pq_key_change_epochs, index, FAR_FUTURE_EPOCH)
 ```
@@ -437,7 +437,7 @@ def add_validator_to_registry(
 #### Modified `add_builder_to_registry`
 
 *Note*: The function `add_builder_to_registry` is modified to write a fresh item
-in the `builder_pq_public_keys` and `builder_pq_key_change_epochs` lists at the
+in the `builder_pq_key_material` and `builder_pq_key_change_epochs` lists at the
 builder's index, preserving the invariant that they have one entry per builder.
 A reused builder index gets a fresh entry, whose change epoch is the new
 builder's deposit epoch.
@@ -462,7 +462,7 @@ def add_builder_to_registry(
     )
     set_or_append_list(state.builders, index, builder)
     # [New in EIP8450]
-    set_or_append_list(state.builder_pq_public_keys, index, PQPublicKeys.empty())
+    set_or_append_list(state.builder_pq_key_material, index, PQKeyMaterial.empty())
     # [New in EIP8450]
     set_or_append_list(state.builder_pq_key_change_epochs, index, builder.deposit_epoch)
 ```
@@ -540,7 +540,7 @@ def process_pq_key_registration(
     state: BeaconState, signed_registration: SignedPQKeyRegistration
 ) -> None:
     registration = signed_registration.message
-    public_keys = registration.public_keys
+    key_material = registration.key_material
 
     if is_builder_index(registration.index):
         index = convert_validator_index_to_builder_index(registration.index)
@@ -548,9 +548,9 @@ def process_pq_key_registration(
         # Verify the builder is active, so its deposit epoch is finalized
         assert is_active_builder(state, index)
         # Builders make no selection proofs, so they register no VRF root
-        assert public_keys.vrf_root == VRFRoot()
+        assert key_material.vrf_root == VRFRoot()
         pubkey = state.builders[index].pubkey
-        keys = state.builder_pq_public_keys
+        entries = state.builder_pq_key_material
         change_epochs = state.builder_pq_key_change_epochs
     else:
         index = registration.index
@@ -558,14 +558,14 @@ def process_pq_key_registration(
         # Verify the validator has not initiated an exit
         assert state.validators[index].exit_epoch == FAR_FUTURE_EPOCH
         pubkey = state.validators[index].pubkey
-        keys = state.pq_public_keys
+        entries = state.pq_key_material
         change_epochs = state.pq_key_change_epochs
 
     # Verify the registration applies to the current entry
     assert registration.previous_change_epoch == change_epochs[index]
 
     # Changes of registered keys are rate-limited
-    if keys[index].xmss_public_key != XMSSPublicKey():
+    if entries[index].xmss_public_key != XMSSPublicKey():
         assert get_current_epoch(state) >= change_epochs[index] + MIN_PQ_KEY_CHANGE_DELAY
 
     # Fork-agnostic domain since registrations are valid across forks
@@ -577,12 +577,12 @@ def process_pq_key_registration(
     assert bls.Verify(pubkey, signing_root, signed_registration.signature)
 
     # Verify the leanXMSS key is new, and that its possession is proven
-    assert public_keys.xmss_public_key != XMSSPublicKey()
-    assert not is_pq_public_key_in_use(state, public_keys.xmss_public_key)
+    assert key_material.xmss_public_key != XMSSPublicKey()
+    assert not is_pq_public_key_in_use(state, key_material.xmss_public_key)
     assert is_valid_pq_possession_proof(
-        state, pubkey, public_keys.xmss_public_key, signed_registration.possession
+        state, pubkey, key_material.xmss_public_key, signed_registration.possession
     )
 
-    keys[index] = public_keys
+    entries[index] = key_material
     change_epochs[index] = get_current_epoch(state)
 ```

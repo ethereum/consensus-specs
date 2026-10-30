@@ -10,7 +10,7 @@ from eth_consensus_specs.test.helpers.eip8450.pq_keys import (
     builder_registry_index,
     get_possession_signing_root,
     get_pq_entry,
-    get_pq_public_keys,
+    get_pq_key_material,
     get_signed_pq_key_registration,
     get_xmss_secret_key,
     is_registered,
@@ -43,7 +43,7 @@ def run_pq_key_registration_processing(spec, state, signed_registration, valid=T
     registration = signed_registration.message
     index = registration.index
     assert get_pq_entry(spec, state, index) == (
-        registration.public_keys,
+        registration.key_material,
         spec.get_current_epoch(state),
     )
     assert is_registered(spec, state, index)
@@ -67,8 +67,8 @@ def advance_epochs(spec, state, epochs):
 @spec_state_test
 def test_success_first_registration(spec, state):
     # Every other entry holds the all-zero key, which does not block another key
-    assert all(entry == spec.PQPublicKeys() for entry in state.pq_public_keys)
-    assert all(entry == spec.PQPublicKeys() for entry in state.builder_pq_public_keys)
+    assert all(entry == spec.PQKeyMaterial() for entry in state.pq_key_material)
+    assert all(entry == spec.PQKeyMaterial() for entry in state.builder_pq_key_material)
     signed_registration = get_signed_pq_key_registration(spec, state, index=0)
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
@@ -144,7 +144,7 @@ def test_success_change_keeping_vrf_root(spec, state):
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=validator_index, generation=1, vrf_generation=0
     )
-    new_keys = signed_registration.message.public_keys
+    new_keys = signed_registration.message.key_material
     assert new_keys.xmss_public_key != old_keys.xmss_public_key
     assert new_keys.vrf_root == old_keys.vrf_root
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
@@ -157,10 +157,10 @@ def test_invalid_all_zero_key(spec, state):
     # The all-zero key marks an entry without keys, so it cannot be registered.
     # Without BLS, the proof of possession passes, so only the all-zero check
     # rejects it.
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.xmss_public_key = spec.XMSSPublicKey()
+    key_material = get_pq_key_material(spec, 0)
+    key_material.xmss_public_key = spec.XMSSPublicKey()
     signed_registration = get_signed_pq_key_registration(
-        spec, state, index=0, public_keys=public_keys
+        spec, state, index=0, key_material=key_material
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
@@ -185,7 +185,7 @@ def test_success_key_released_by_other_validator(spec, state):
         spec,
         state,
         index=registrant_index,
-        public_keys=released_keys,
+        key_material=released_keys,
         xmss_secret_key=get_xmss_secret_key(owner_index, generation=0),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
@@ -211,7 +211,7 @@ def test_success_return_to_earlier_own_key(spec, state):
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=validator_index, generation=0
     )
-    assert signed_registration.message.public_keys == earlier_keys
+    assert signed_registration.message.key_material == earlier_keys
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
 
@@ -221,10 +221,10 @@ def test_success_same_vrf_root_as_other_validator(spec, state):
     # VRF roots are not required to be unique
     other_keys = register_pq_keys(spec, state, 1, generation=0)
 
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.vrf_root = other_keys.vrf_root
+    key_material = get_pq_key_material(spec, 0)
+    key_material.vrf_root = other_keys.vrf_root
     signed_registration = get_signed_pq_key_registration(
-        spec, state, index=0, public_keys=public_keys
+        spec, state, index=0, key_material=key_material
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
@@ -244,7 +244,7 @@ def test_success_key_released_by_validator_to_builder_sharing_pubkey(spec, state
 
     validator_registration = get_signed_pq_key_registration(spec, state, index=validator_index)
     spec.process_pq_key_registration(state, validator_registration)
-    released_keys = validator_registration.message.public_keys
+    released_keys = validator_registration.message.key_material
     advance_epochs(spec, state, spec.MIN_PQ_KEY_CHANGE_DELAY)
     validator_change = get_signed_pq_key_registration(
         spec, state, index=validator_index, generation=1
@@ -255,7 +255,7 @@ def test_success_key_released_by_validator_to_builder_sharing_pubkey(spec, state
         spec,
         state,
         index=builder_registry_index(spec, builder_index),
-        public_keys=spec.PQPublicKeys(xmss_public_key=released_keys.xmss_public_key),
+        key_material=spec.PQKeyMaterial(xmss_public_key=released_keys.xmss_public_key),
         privkey=privkeys[validator_index],
         possession=validator_registration.possession,
     )
@@ -409,7 +409,7 @@ def test_invalid_key_in_use_by_other_validator(spec, state):
         spec,
         state,
         index=registrant_index,
-        public_keys=owner_keys,
+        key_material=owner_keys,
         xmss_secret_key=get_xmss_secret_key(owner_index, generation=0),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -421,13 +421,13 @@ def test_invalid_key_in_use_with_different_vrf_root(spec, state):
     owner_index, registrant_index = 0, 1
     owner_keys = register_pq_keys(spec, state, owner_index, generation=0)
 
-    public_keys = get_pq_public_keys(spec, registrant_index)
-    public_keys.xmss_public_key = owner_keys.xmss_public_key
+    key_material = get_pq_key_material(spec, registrant_index)
+    key_material.xmss_public_key = owner_keys.xmss_public_key
     signed_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=registrant_index,
-        public_keys=public_keys,
+        key_material=key_material,
         xmss_secret_key=get_xmss_secret_key(owner_index, generation=0),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -444,7 +444,7 @@ def test_invalid_reregister_own_keys(spec, state):
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=validator_index, generation=0
     )
-    assert signed_registration.message.public_keys == old_keys
+    assert signed_registration.message.key_material == old_keys
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
 
@@ -459,7 +459,7 @@ def test_invalid_change_vrf_root_only(spec, state):
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=validator_index, generation=0, vrf_generation=1
     )
-    new_keys = signed_registration.message.public_keys
+    new_keys = signed_registration.message.key_material
     assert new_keys.xmss_public_key == old_keys.xmss_public_key
     assert new_keys.vrf_root != old_keys.vrf_root
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -509,11 +509,11 @@ def test_invalid_possession_wrong_leaf_index(spec, state):
         xmss_secret_key,
         spec.PQ_POSSESSION_XMSS_INDEX + 1,
     )
-    public_keys = get_pq_public_keys(spec, validator_index)
+    key_material = get_pq_key_material(spec, validator_index)
     signing_root = get_possession_signing_root(
-        spec, state, state.validators[validator_index].pubkey, public_keys.xmss_public_key
+        spec, state, state.validators[validator_index].pubkey, key_material.xmss_public_key
     )
-    assert spec.xmss.Verify(public_keys.xmss_public_key, signing_root, possession)
+    assert spec.xmss.Verify(key_material.xmss_public_key, signing_root, possession)
 
     signed_registration = get_signed_pq_key_registration(
         spec, state, index=validator_index, possession=possession
@@ -562,7 +562,7 @@ def add_builder_at_reused_index(spec, state, builder_index, pubkey):
     )
     deposit_epoch = spec.get_current_epoch(state)
     assert state.builders[builder_index].deposit_epoch == deposit_epoch
-    assert state.builder_pq_public_keys[builder_index] == spec.PQPublicKeys()
+    assert state.builder_pq_key_material[builder_index] == spec.PQKeyMaterial()
     assert state.builder_pq_key_change_epochs[builder_index] == deposit_epoch
     advance_epochs(spec, state, 2)
     state.finalized_checkpoint.epoch = deposit_epoch + 1
@@ -575,7 +575,7 @@ def test_success_builder_first_registration(spec, state):
     activate_builders(spec, state)
     index = builder_registry_index(spec, 0)
     signed_registration = get_signed_pq_key_registration(spec, state, index=index)
-    assert signed_registration.message.public_keys.vrf_root == spec.VRFRoot()
+    assert signed_registration.message.key_material.vrf_root == spec.VRFRoot()
     assert signed_registration.message.previous_change_epoch == state.builders[0].deposit_epoch
     yield from run_pq_key_registration_processing(spec, state, signed_registration)
 
@@ -655,10 +655,10 @@ def test_invalid_builder_exit_initiated(spec, state):
 def test_invalid_builder_nonzero_vrf_root(spec, state):
     activate_builders(spec, state)
     index = builder_registry_index(spec, 0)
-    public_keys = get_pq_public_keys(spec, index)
-    public_keys.vrf_root = spec.VRFRoot(b"\x01" * 32)
+    key_material = get_pq_key_material(spec, index)
+    key_material.vrf_root = spec.VRFRoot(b"\x01" * 32)
     signed_registration = get_signed_pq_key_registration(
-        spec, state, index=index, public_keys=public_keys
+        spec, state, index=index, key_material=key_material
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 
@@ -707,12 +707,12 @@ def test_invalid_builder_key_in_use_by_validator(spec, state):
     activate_builders(spec, state)
     validator_keys = register_pq_keys(spec, state, 0, generation=0)
 
-    public_keys = spec.PQPublicKeys(xmss_public_key=validator_keys.xmss_public_key)
+    key_material = spec.PQKeyMaterial(xmss_public_key=validator_keys.xmss_public_key)
     signed_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=builder_registry_index(spec, 0),
-        public_keys=public_keys,
+        key_material=key_material,
         xmss_secret_key=get_xmss_secret_key(0, generation=0),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -725,13 +725,13 @@ def test_invalid_validator_key_in_use_by_builder(spec, state):
     builder_index = builder_registry_index(spec, 0)
     builder_keys = register_pq_keys(spec, state, builder_index, generation=0)
 
-    public_keys = get_pq_public_keys(spec, 0)
-    public_keys.xmss_public_key = builder_keys.xmss_public_key
+    key_material = get_pq_key_material(spec, 0)
+    key_material.xmss_public_key = builder_keys.xmss_public_key
     signed_registration = get_signed_pq_key_registration(
         spec,
         state,
         index=0,
-        public_keys=public_keys,
+        key_material=key_material,
         xmss_secret_key=get_xmss_secret_key(builder_index, generation=0),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
@@ -760,7 +760,7 @@ def test_invalid_builder_all_zero_key(spec, state):
         spec,
         state,
         index=builder_registry_index(spec, 0),
-        public_keys=spec.PQPublicKeys(),
+        key_material=spec.PQKeyMaterial(),
     )
     yield from run_pq_key_registration_processing(spec, state, signed_registration, valid=False)
 

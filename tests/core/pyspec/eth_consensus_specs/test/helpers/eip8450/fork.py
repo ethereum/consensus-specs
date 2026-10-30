@@ -65,15 +65,15 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) != getattr(post_state, field)
 
     # Every validator starts without registered keys
-    assert len(post_state.pq_public_keys) == len(post_state.validators)
+    assert len(post_state.pq_key_material) == len(post_state.validators)
     assert len(post_state.pq_key_change_epochs) == len(post_state.validators)
-    assert all(keys == post_spec.PQPublicKeys() for keys in post_state.pq_public_keys)
+    assert all(keys == post_spec.PQKeyMaterial() for keys in post_state.pq_key_material)
     assert all(epoch == post_spec.FAR_FUTURE_EPOCH for epoch in post_state.pq_key_change_epochs)
 
     # Every builder starts without registered keys, at its deposit epoch
-    assert len(post_state.builder_pq_public_keys) == len(post_state.builders)
+    assert len(post_state.builder_pq_key_material) == len(post_state.builders)
     assert len(post_state.builder_pq_key_change_epochs) == len(post_state.builders)
-    assert all(keys == post_spec.PQPublicKeys() for keys in post_state.builder_pq_public_keys)
+    assert all(keys == post_spec.PQKeyMaterial() for keys in post_state.builder_pq_key_material)
     for builder, epoch in zip(
         post_state.builders, post_state.builder_pq_key_change_epochs, strict=True
     ):

@@ -22,7 +22,7 @@ def get_vrf_root(spec, index, generation=0):
     )
 
 
-def get_pq_public_keys(spec, index, generation=0, vrf_generation=None):
+def get_pq_key_material(spec, index, generation=0, vrf_generation=None):
     """
     Return the keys of the validator or flagged builder ``index``. Builders get a
     zero VRF root.
@@ -33,7 +33,7 @@ def get_pq_public_keys(spec, index, generation=0, vrf_generation=None):
         vrf_root = spec.VRFRoot()
     else:
         vrf_root = get_vrf_root(spec, index, vrf_generation)
-    return spec.PQPublicKeys(
+    return spec.PQKeyMaterial(
         xmss_public_key=xmss.SkToPk(get_xmss_secret_key(index, generation)),
         vrf_root=vrf_root,
     )
@@ -61,8 +61,8 @@ def get_registry_lists(spec, state, index):
     """
     if spec.is_builder_index(index):
         position = spec.convert_validator_index_to_builder_index(index)
-        return state.builder_pq_public_keys, state.builder_pq_key_change_epochs, position
-    return state.pq_public_keys, state.pq_key_change_epochs, index
+        return state.builder_pq_key_material, state.builder_pq_key_change_epochs, position
+    return state.pq_key_material, state.pq_key_change_epochs, index
 
 
 def get_pq_entry(spec, state, index):
@@ -100,7 +100,7 @@ def get_signed_pq_key_registration(
     index=0,
     generation=0,
     vrf_generation=None,
-    public_keys=None,
+    key_material=None,
     xmss_secret_key=None,
     previous_change_epoch=None,
     privkey=None,
@@ -113,8 +113,8 @@ def get_signed_pq_key_registration(
     """
     if xmss_secret_key is None:
         xmss_secret_key = get_xmss_secret_key(index, generation)
-    if public_keys is None:
-        public_keys = get_pq_public_keys(spec, index, generation, vrf_generation)
+    if key_material is None:
+        key_material = get_pq_key_material(spec, index, generation, vrf_generation)
     if previous_change_epoch is None:
         _, previous_change_epoch = get_pq_entry(spec, state, index)
     if privkey is None:
@@ -126,7 +126,7 @@ def get_signed_pq_key_registration(
 
     registration = spec.PQKeyRegistration(
         index=index,
-        public_keys=public_keys,
+        key_material=key_material,
         previous_change_epoch=previous_change_epoch,
     )
     return spec.SignedPQKeyRegistration(
@@ -150,11 +150,11 @@ def register_pq_keys(spec, state, index, generation=0):
     Register keys for the validator or flagged builder ``index`` directly in
     ``state``, skipping processing.
     """
-    public_keys = get_pq_public_keys(spec, index, generation)
+    key_material = get_pq_key_material(spec, index, generation)
     keys, change_epochs, position = get_registry_lists(spec, state, index)
-    keys[position] = public_keys
+    keys[position] = key_material
     change_epochs[position] = spec.get_current_epoch(state)
-    return public_keys
+    return key_material
 
 
 def activate_builders(spec, state):
