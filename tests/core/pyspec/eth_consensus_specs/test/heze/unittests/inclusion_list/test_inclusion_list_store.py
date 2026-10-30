@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     default_activation_threshold,
+    expect_assertion_error,
     single_phase,
     spec_state_test,
     spec_test,
@@ -436,6 +437,81 @@ def test_inclusion_list_store_inclusion_list_due(spec, state):
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
             inclusion_list_store, state.slot, dependent_root
+        )
+
+        assert inclusion_list_transactions == []
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_on_inclusion_list_next_slot_within_clock_disparity(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+
+        next_slot = state.slot + 1
+        signed_inclusion_list = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, slot=next_slot
+        )
+
+        # The store is still in the previous slot, but within the clock disparity
+        # of the inclusion list's slot, as accepted by gossip.
+        time_ms = (
+            spec.compute_time_at_slot_ms(forkchoice_store.genesis_time_ms, next_slot)
+            - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+        )
+        spec.on_tick(forkchoice_store, time_ms)
+        assert spec.get_current_slot(forkchoice_store) == state.slot
+
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
+
+        # The early inclusion list is stored as timely.
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store,
+            next_slot,
+            signed_inclusion_list.message.dependent_root,
+            only_timely=True,
+        )
+
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list.message.transactions)
+
+    run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_on_inclusion_list_next_slot_outside_clock_disparity(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        advance_to_epoch_with_known_dependent_root(spec, state, forkchoice_store)
+        inclusion_list_store = spec.get_inclusion_list_store()
+
+        next_slot = state.slot + 1
+        signed_inclusion_list = get_sample_signed_inclusion_list(
+            spec, forkchoice_store, state, slot=next_slot
+        )
+
+        # The store is 1ms before the clock disparity of the inclusion list's slot.
+        time_ms = (
+            spec.compute_time_at_slot_ms(forkchoice_store.genesis_time_ms, next_slot)
+            - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+            - 1
+        )
+        spec.on_tick(forkchoice_store, time_ms)
+
+        expect_assertion_error(
+            lambda: spec.on_inclusion_list(forkchoice_store, signed_inclusion_list)
+        )
+
+        # The inclusion list is not stored.
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
+            inclusion_list_store,
+            next_slot,
+            signed_inclusion_list.message.dependent_root,
+            only_timely=False,
         )
 
         assert inclusion_list_transactions == []
