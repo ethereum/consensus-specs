@@ -79,9 +79,10 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                  |
-| ---------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
+| Name                   | Value                     | Description                                                   |
+| ---------------------- | ------------------------- | ------------------------------------------------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    | Maximum number of execution payloads in a single request      |
+| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) | Lower bound on the gas used by a single execution transaction |
 
 ## Types
 
@@ -873,6 +874,10 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The number of transactions is within the limit implied by the bid's gas limit
+    if len(payload.transactions) > bid.gas_limit // MIN_TRANSACTION_GAS:
+        raise GossipReject("too many transactions")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):

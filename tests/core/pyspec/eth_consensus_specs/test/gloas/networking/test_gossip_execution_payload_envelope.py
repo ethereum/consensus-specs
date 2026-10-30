@@ -642,3 +642,64 @@ def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, st
     """An envelope whose payload carries more withdrawals than the limit is rejected."""
     count = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1
     yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")
+
+
+def _assert_envelope_transactions(spec, state, extra, expected, reason=None):
+    """Assert an envelope whose payload carries the maximum transaction count plus ``extra``
+    returns ``expected``."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    # Set the payload's transactions, then re-sign so the transaction count is the only
+    # check under test.
+    envelope = signed_envelope.message
+    bid = signed_block.message.body.signed_execution_payload_bid.message
+    count = bid.gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    envelope.payload.transactions = make_progressive_list(spec.Transactions, count)
+    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        privkey = privkeys[signed_block.message.proposer_index]
+    else:
+        privkey = builder_privkeys[envelope.builder_index]
+    signed_envelope.signature = spec.get_execution_payload_envelope_signature(
+        state, envelope, privkey
+    )
+    yield get_filename(signed_envelope), signed_envelope
+
+    messages = []
+
+    result, reason_out = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == expected
+    assert reason_out == reason
+    message = {
+        "message": get_filename(signed_envelope),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_transactions(spec, state):
+    """An envelope with the maximum transaction count for the bid's gas limit is valid."""
+    yield from _assert_envelope_transactions(spec, state, 0, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_transactions(spec, state):
+    """An envelope with more transactions than the bid's gas limit allows is rejected."""
+    yield from _assert_envelope_transactions(spec, state, 1, "reject", "too many transactions")
