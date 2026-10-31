@@ -702,6 +702,7 @@ def validate_blob_sidecar_gossip(
     blob_sidecar: BlobSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a BlobSidecar for gossip propagation on a subnet.
@@ -739,9 +740,21 @@ def validate_blob_sidecar_gossip(
     if parent_root not in store.blocks:
         raise GossipIgnore("blob sidecar's parent has not been seen")
 
-    # [REJECT] The sidecar's block's parent passes validation
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[parent_root]
+
     if parent_root not in store.block_states:
-        raise GossipReject("blob sidecar's parent failed validation")
+        if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+            # [REJECT] The sidecar's block's parent failed validation and its execution payload is optimistic
+            raise GossipReject("blob sidecar's parent is invalid and its payload is optimistic")
+
+        # [IGNORE] The sidecar's block's parent failed validation and its execution payload is processed
+        raise GossipIgnore("blob sidecar's parent is invalid and its payload is processed")
+
+    # [IGNORE] The sidecar's block's parent passed validation but its execution payload is invalid
+    if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
+        raise GossipIgnore("blob sidecar's parent is valid and its payload is invalid")
 
     state = store.block_states[get_head(store).root]
 
