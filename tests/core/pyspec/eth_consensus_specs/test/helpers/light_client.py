@@ -169,40 +169,42 @@ def check_merkle_branch_equal(spec, new_spec, data, upgraded, gindex):
         assert upgraded == data
 
 
-def check_lc_header_equal(spec, new_spec, data, upgraded):
+def check_light_client_header_equal(spec, new_spec, data, upgraded):
     assert upgraded.beacon.slot == data.beacon.slot
     assert upgraded.beacon.hash_tree_root() == data.beacon.hash_tree_root()
     if is_post_capella(new_spec):
         if is_post_capella(spec):
-            assert new_spec.get_lc_execution_root(upgraded) == spec.get_lc_execution_root(data)
+            assert new_spec.get_light_client_execution_root(
+                upgraded
+            ) == spec.get_light_client_execution_root(data)
         else:
-            assert new_spec.get_lc_execution_root(upgraded) == new_spec.Root()
+            assert new_spec.get_light_client_execution_root(upgraded) == new_spec.Root()
 
 
-def upgrade_lc_header_to_new_spec(spec, new_spec, data, phases):
+def upgrade_light_client_header_to_new_spec(spec, new_spec, data, phases):
     upgraded = data
 
     if needs_upgrade_to_capella(spec, new_spec):
-        upgraded = phases[CAPELLA].upgrade_lc_header_to_capella(upgraded)
-        check_lc_header_equal(spec, phases[CAPELLA], data, upgraded)
+        upgraded = phases[CAPELLA].upgrade_light_client_header_to_capella(upgraded)
+        check_light_client_header_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
-        upgraded = phases[DENEB].upgrade_lc_header_to_deneb(upgraded)
-        check_lc_header_equal(spec, phases[DENEB], data, upgraded)
+        upgraded = phases[DENEB].upgrade_light_client_header_to_deneb(upgraded)
+        check_light_client_header_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
-        upgraded = phases[ELECTRA].upgrade_lc_header_to_electra(upgraded)
-        check_lc_header_equal(spec, phases[ELECTRA], data, upgraded)
+        upgraded = phases[ELECTRA].upgrade_light_client_header_to_electra(upgraded)
+        check_light_client_header_equal(spec, phases[ELECTRA], data, upgraded)
 
     if needs_upgrade_to_gloas(spec, new_spec):
-        upgraded = phases[GLOAS].upgrade_lc_header_to_gloas(upgraded)
-        check_lc_header_equal(spec, phases[GLOAS], data, upgraded)
+        upgraded = phases[GLOAS].upgrade_light_client_header_to_gloas(upgraded)
+        check_light_client_header_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
 
-def check_lc_bootstrap_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(spec, new_spec, data.header, upgraded.header)
+def check_light_client_bootstrap_equal(spec, new_spec, data, upgraded):
+    check_light_client_header_equal(spec, new_spec, data.header, upgraded.header)
     assert upgraded.current_sync_committee == data.current_sync_committee
     check_merkle_branch_equal(
         spec,
@@ -213,30 +215,30 @@ def check_lc_bootstrap_equal(spec, new_spec, data, upgraded):
     )
 
 
-def upgrade_lc_bootstrap_to_new_spec(spec, new_spec, data, phases):
+def upgrade_light_client_bootstrap_to_new_spec(spec, new_spec, data, phases):
     upgraded = data
 
     if needs_upgrade_to_capella(spec, new_spec):
-        upgraded = phases[CAPELLA].upgrade_lc_bootstrap_to_capella(upgraded)
-        check_lc_bootstrap_equal(spec, phases[CAPELLA], data, upgraded)
+        upgraded = phases[CAPELLA].upgrade_light_client_bootstrap_to_capella(upgraded)
+        check_light_client_bootstrap_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
-        upgraded = phases[DENEB].upgrade_lc_bootstrap_to_deneb(upgraded)
-        check_lc_bootstrap_equal(spec, phases[DENEB], data, upgraded)
+        upgraded = phases[DENEB].upgrade_light_client_bootstrap_to_deneb(upgraded)
+        check_light_client_bootstrap_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
-        upgraded = phases[ELECTRA].upgrade_lc_bootstrap_to_electra(upgraded)
-        check_lc_bootstrap_equal(spec, phases[ELECTRA], data, upgraded)
+        upgraded = phases[ELECTRA].upgrade_light_client_bootstrap_to_electra(upgraded)
+        check_light_client_bootstrap_equal(spec, phases[ELECTRA], data, upgraded)
 
     if needs_upgrade_to_gloas(spec, new_spec):
-        upgraded = phases[GLOAS].upgrade_lc_bootstrap_to_gloas(upgraded)
-        check_lc_bootstrap_equal(spec, phases[GLOAS], data, upgraded)
+        upgraded = phases[GLOAS].upgrade_light_client_bootstrap_to_gloas(upgraded)
+        check_light_client_bootstrap_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
 
-def check_lc_update_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
+def check_light_client_update_equal(spec, new_spec, data, upgraded):
+    check_light_client_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
     assert upgraded.next_sync_committee == data.next_sync_committee
     check_merkle_branch_equal(
         spec,
@@ -245,7 +247,9 @@ def check_lc_update_equal(spec, new_spec, data, upgraded):
         upgraded.next_sync_committee_branch,
         latest_next_sync_committee_gindex(new_spec),
     )
-    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
+    check_light_client_header_equal(
+        spec, new_spec, data.finalized_header, upgraded.finalized_header
+    )
     check_merkle_branch_equal(
         spec,
         new_spec,
@@ -257,31 +261,33 @@ def check_lc_update_equal(spec, new_spec, data, upgraded):
     assert upgraded.signature_slot == data.signature_slot
 
 
-def upgrade_lc_update_to_new_spec(spec, new_spec, data, phases):
+def upgrade_light_client_update_to_new_spec(spec, new_spec, data, phases):
     upgraded = data
 
     if needs_upgrade_to_capella(spec, new_spec):
-        upgraded = phases[CAPELLA].upgrade_lc_update_to_capella(upgraded)
-        check_lc_update_equal(spec, phases[CAPELLA], data, upgraded)
+        upgraded = phases[CAPELLA].upgrade_light_client_update_to_capella(upgraded)
+        check_light_client_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
-        upgraded = phases[DENEB].upgrade_lc_update_to_deneb(upgraded)
-        check_lc_update_equal(spec, phases[DENEB], data, upgraded)
+        upgraded = phases[DENEB].upgrade_light_client_update_to_deneb(upgraded)
+        check_light_client_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
-        upgraded = phases[ELECTRA].upgrade_lc_update_to_electra(upgraded)
-        check_lc_update_equal(spec, phases[ELECTRA], data, upgraded)
+        upgraded = phases[ELECTRA].upgrade_light_client_update_to_electra(upgraded)
+        check_light_client_update_equal(spec, phases[ELECTRA], data, upgraded)
 
     if needs_upgrade_to_gloas(spec, new_spec):
-        upgraded = phases[GLOAS].upgrade_lc_update_to_gloas(upgraded)
-        check_lc_update_equal(spec, phases[GLOAS], data, upgraded)
+        upgraded = phases[GLOAS].upgrade_light_client_update_to_gloas(upgraded)
+        check_light_client_update_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
 
-def check_lc_finality_update_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
-    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
+def check_light_client_finality_update_equal(spec, new_spec, data, upgraded):
+    check_light_client_header_equal(spec, new_spec, data.attested_header, upgraded.attested_header)
+    check_light_client_header_equal(
+        spec, new_spec, data.finalized_header, upgraded.finalized_header
+    )
     check_merkle_branch_equal(
         spec,
         new_spec,
@@ -293,58 +299,64 @@ def check_lc_finality_update_equal(spec, new_spec, data, upgraded):
     assert upgraded.signature_slot == data.signature_slot
 
 
-def upgrade_lc_finality_update_to_new_spec(spec, new_spec, data, phases):
+def upgrade_light_client_finality_update_to_new_spec(spec, new_spec, data, phases):
     upgraded = data
 
     if needs_upgrade_to_capella(spec, new_spec):
-        upgraded = phases[CAPELLA].upgrade_lc_finality_update_to_capella(upgraded)
-        check_lc_finality_update_equal(spec, phases[CAPELLA], data, upgraded)
+        upgraded = phases[CAPELLA].upgrade_light_client_finality_update_to_capella(upgraded)
+        check_light_client_finality_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
-        upgraded = phases[DENEB].upgrade_lc_finality_update_to_deneb(upgraded)
-        check_lc_finality_update_equal(spec, phases[DENEB], data, upgraded)
+        upgraded = phases[DENEB].upgrade_light_client_finality_update_to_deneb(upgraded)
+        check_light_client_finality_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
-        upgraded = phases[ELECTRA].upgrade_lc_finality_update_to_electra(upgraded)
-        check_lc_finality_update_equal(spec, phases[ELECTRA], data, upgraded)
+        upgraded = phases[ELECTRA].upgrade_light_client_finality_update_to_electra(upgraded)
+        check_light_client_finality_update_equal(spec, phases[ELECTRA], data, upgraded)
 
     if needs_upgrade_to_gloas(spec, new_spec):
-        upgraded = phases[GLOAS].upgrade_lc_finality_update_to_gloas(upgraded)
-        check_lc_finality_update_equal(spec, phases[GLOAS], data, upgraded)
+        upgraded = phases[GLOAS].upgrade_light_client_finality_update_to_gloas(upgraded)
+        check_light_client_finality_update_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
 
-def check_lc_store_equal(spec, new_spec, data, upgraded):
-    check_lc_header_equal(spec, new_spec, data.finalized_header, upgraded.finalized_header)
+def check_light_client_store_equal(spec, new_spec, data, upgraded):
+    check_light_client_header_equal(
+        spec, new_spec, data.finalized_header, upgraded.finalized_header
+    )
     assert upgraded.current_sync_committee == data.current_sync_committee
     assert upgraded.next_sync_committee == data.next_sync_committee
     if upgraded.best_valid_update is None:
         assert data.best_valid_update is None
     else:
-        check_lc_update_equal(spec, new_spec, data.best_valid_update, upgraded.best_valid_update)
-    check_lc_header_equal(spec, new_spec, data.optimistic_header, upgraded.optimistic_header)
+        check_light_client_update_equal(
+            spec, new_spec, data.best_valid_update, upgraded.best_valid_update
+        )
+    check_light_client_header_equal(
+        spec, new_spec, data.optimistic_header, upgraded.optimistic_header
+    )
     assert upgraded.previous_max_active_participants == data.previous_max_active_participants
     assert upgraded.current_max_active_participants == data.current_max_active_participants
 
 
-def upgrade_lc_store_to_new_spec(spec, new_spec, data, phases):
+def upgrade_light_client_store_to_new_spec(spec, new_spec, data, phases):
     upgraded = data
 
     if needs_upgrade_to_capella(spec, new_spec):
-        upgraded = phases[CAPELLA].upgrade_lc_store_to_capella(upgraded)
-        check_lc_store_equal(spec, phases[CAPELLA], data, upgraded)
+        upgraded = phases[CAPELLA].upgrade_light_client_store_to_capella(upgraded)
+        check_light_client_store_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
-        upgraded = phases[DENEB].upgrade_lc_store_to_deneb(upgraded)
-        check_lc_store_equal(spec, phases[DENEB], data, upgraded)
+        upgraded = phases[DENEB].upgrade_light_client_store_to_deneb(upgraded)
+        check_light_client_store_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
-        upgraded = phases[ELECTRA].upgrade_lc_store_to_electra(upgraded)
-        check_lc_store_equal(spec, phases[ELECTRA], data, upgraded)
+        upgraded = phases[ELECTRA].upgrade_light_client_store_to_electra(upgraded)
+        check_light_client_store_equal(spec, phases[ELECTRA], data, upgraded)
 
     if needs_upgrade_to_gloas(spec, new_spec):
-        upgraded = phases[GLOAS].upgrade_lc_store_to_gloas(upgraded)
-        check_lc_store_equal(spec, phases[GLOAS], data, upgraded)
+        upgraded = phases[GLOAS].upgrade_light_client_store_to_gloas(upgraded)
+        check_light_client_store_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
