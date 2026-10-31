@@ -440,8 +440,7 @@ def validate_light_client_update(
     if not is_finality_update(update):
         assert update.finalized_header == LightClientHeader.empty()
     else:
-        if update_finalized_slot == GENESIS_SLOT:
-            assert update.finalized_header == LightClientHeader.empty()
+        if update.finalized_header == LightClientHeader.empty():
             finalized_root = Bytes32()
         else:
             assert is_valid_light_client_header(update.finalized_header)
