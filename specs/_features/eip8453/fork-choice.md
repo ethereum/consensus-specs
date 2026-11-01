@@ -57,6 +57,7 @@
     - [New `compute_slow_lock`](#new-compute_slow_lock)
   - [Store mutators](#store-mutators)
     - [New `update_finality`](#new-update_finality)
+    - [New `add_lock`](#new-add_lock)
     - [New `update_locks_and_confirmation`](#new-update_locks_and_confirmation)
     - [New `record_block_receipt_time`](#new-record_block_receipt_time)
     - [New `record_payload_receipt_time`](#new-record_payload_receipt_time)
@@ -1225,6 +1226,20 @@ def update_finality(store: Store, state: BeaconState) -> None:
         store.finalized_checkpoint = state.finalized_checkpoint
 ```
 
+#### New `add_lock`
+
+*Note*: Locks can have multiple producers. The fast and slow confirmation locks
+below are two; other producers, such as a lock seeded at a fork transition,
+register locks the same way.
+
+```python
+def add_lock(store: Store, deadline: Uint64, node: ForkChoiceNode) -> None:
+    """
+    Register ``node`` as a lock that expires at ``deadline``.
+    """
+    store.locks[deadline] = node
+```
+
 #### New `update_locks_and_confirmation`
 
 ```python
@@ -1261,7 +1276,7 @@ def update_locks_and_confirmation(
             compute_time_at_slot_ms(store.genesis_time_ms, slot + SLOW_LOCK_WINDOW + 1)
             + get_head_vote_due_ms()
         )
-        store.locks[deadline] = lock
+        add_lock(store, deadline, lock)
 
     # Keep latest_confirmed if it remains in the FG frame and extends or equals confirmed.
     # Otherwise, replace it with confirmed.
@@ -1438,7 +1453,7 @@ def unlock(store: Store, slot: Slot, time_ms: Uint64) -> None:
                 if is_ancestor(store, lock, node) and not is_opposed_by_majority(node)
             }
             # Move to the deepest qualifying ancestor, preserving the deadline
-            store.locks[deadline] = get_deepest_node(store, fallback_path)
+            add_lock(store, deadline, get_deepest_node(store, fallback_path))
 ```
 
 ### `on_head_vote_message` helpers
