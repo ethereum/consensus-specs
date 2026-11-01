@@ -120,6 +120,14 @@ INCLUSION_LIST_DUE_BPS: 7500
 # 10000 milliseconds
 SLOT_DURATION_MS_EIP8198: 10000
 
+# EIP8453
+# 2500 basis points, 25% of SLOT_DURATION_MS
+HEAD_VOTE_DUE_BPS: 2500
+# 5000 basis points, 50% of SLOT_DURATION_MS
+SUPPORT_CUTOFF_BPS: 5000
+# 7500 basis points, 75% of SLOT_DURATION_MS
+VIEW_FREEZE_BPS: 7500
+
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
