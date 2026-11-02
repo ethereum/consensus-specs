@@ -1,11 +1,14 @@
 from eth_consensus_specs.test.context import (
     spec_state_test_with_matching_config,
+    with_all_phases_from_to,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.constants import ALLOWED_TEST_RUNNER_FORKS, GLOAS, HEZE
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.gloas.bid import (
     activate_builders,
     append_head_with_requests,
@@ -32,8 +35,30 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
+def _advance_to_inclusion_list_due(spec, store, bid_slot, current_time_ms):
+    """
+    From Heze, bids are ignored until the inclusion list deadline of the slot
+    before ``bid_slot``. Return ``current_time_ms`` moved up to that deadline.
+    """
+    if not is_post_heze(spec):
+        return current_time_ms
+    inclusion_list_due_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
+        + spec.get_inclusion_list_due_ms()
+    )
+    return max(current_time_ms, inclusion_list_due_time_ms)
+
+
 def _seed_bid_context(
-    spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True, seed_envelope=True
+    spec,
+    state,
+    store,
+    head_payload,
+    messages,
+    current_time_ms,
+    seed_prefs=True,
+    seed_envelope=True,
+    advance_to_inclusion_list_due=True,
 ):
     """
     Yield and validate the proposer preferences and payload envelope messages
@@ -45,6 +70,9 @@ def _seed_bid_context(
     bid validation condition, so tests can flip exactly the one condition
     under test. The expected outcome then does not depend on the order in
     which a client checks independent conditions.
+
+    Unless ``advance_to_inclusion_list_due`` is False, the returned time is
+    moved up to the earliest time a bid for ``proposal_slot`` is accepted.
 
     Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms).
     """
@@ -101,6 +129,11 @@ def _seed_bid_context(
                 "message": get_filename(head_payload),
                 "expected": result,
             }
+        )
+
+    if advance_to_inclusion_list_due:
+        current_time_ms = _advance_to_inclusion_list_due(
+            spec, store, proposal_slot, current_time_ms
         )
 
     return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
@@ -426,7 +459,15 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
         proposal_slot,
         parent_block_hash,
         current_time_ms,
-    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+    ) = yield from _seed_bid_context(
+        spec,
+        state,
+        store,
+        head_payload,
+        messages,
+        current_time_ms,
+        advance_to_inclusion_list_due=False,
+    )
     assert proposal_slot == bid_slot
 
     signed_bid = build_signed_bid(
@@ -464,7 +505,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_to(GLOAS, HEZE, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state):
     """A bid whose slot lands exactly on the lower clock-disparity edge is valid."""
@@ -2034,7 +2075,14 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     messages = []
     seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
         _seed_bid_context(
-            spec, state, store, head_payload, messages, current_time_ms, seed_prefs=False
+            spec,
+            state,
+            store,
+            head_payload,
+            messages,
+            current_time_ms,
+            seed_prefs=False,
+            advance_to_inclusion_list_due=False,
         )
     )
 
@@ -2243,6 +2291,9 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 50
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2402,6 +2453,9 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 50
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2502,6 +2556,9 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2603,6 +2660,9 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2708,6 +2768,9 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2811,6 +2874,9 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2911,6 +2977,9 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3026,6 +3095,9 @@ def _run_bid_gas_limit_scenario(
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3166,6 +3238,9 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     )
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3415,6 +3490,9 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,

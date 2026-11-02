@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     with_heze_and_later,
 )
 from eth_consensus_specs.test.gloas.networking.test_gossip_execution_payload_bid import (
+    _advance_to_inclusion_list_due,
     _seed_bid_context,
 )
 from eth_consensus_specs.test.helpers.gloas.bid import (
@@ -51,7 +52,15 @@ def _run_bid_inclusion_list_bits_scenario(
         proposal_slot,
         parent_block_hash,
         current_time_ms,
-    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+    ) = yield from _seed_bid_context(
+        spec,
+        state,
+        store,
+        head_payload,
+        messages,
+        current_time_ms,
+        advance_to_inclusion_list_due=False,
+    )
 
     inclusion_list_slot = spec.Slot(proposal_slot - 1)
     inclusion_list_committee = spec.get_inclusion_list_committee(state, inclusion_list_slot)
@@ -106,7 +115,7 @@ def _run_bid_inclusion_list_bits_scenario(
     # Gossip validation of the inclusion list only checks the message; the
     # bid's check reads the inclusion list store that on_inclusion_list
     # populates at the fork-choice layer, so record it there too.
-    current_time_ms += 40
+    current_time_ms = _advance_to_inclusion_list_due(spec, store, proposal_slot, current_time_ms)
     bid_result = bid_reason = None
 
     def _record_and_validate_bid():
@@ -159,4 +168,105 @@ def test_gossip_execution_payload_bid__ignore_inclusion_list_bits_not_inclusive(
         mark_includer=False,
         expected_result="ignore",
         expected_reason="bid's inclusion list bits is not inclusive",
+    )
+
+
+def _run_bid_inclusion_list_due_scenario(spec, state, offset_ms, expected_result, expected_reason):
+    """
+    Validate an otherwise valid bid ``offset_ms`` after the inclusion list
+    deadline of the slot before the bid's slot.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(
+        spec,
+        state,
+        store,
+        head_payload,
+        messages,
+        current_time_ms,
+        advance_to_inclusion_list_due=False,
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot - 1))
+        + spec.get_inclusion_list_due_ms()
+        + offset_ms
+    )
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == expected_result
+    assert reason == expected_reason
+    entry = {
+        "current_time_ms": int(current_time_ms),
+        "message": get_filename(signed_bid),
+        "expected": result,
+    }
+    if expected_reason is not None:
+        entry["reason"] = expected_reason
+    messages.append(entry)
+
+    yield "messages", "meta", messages
+
+
+@with_heze_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_before_inclusion_list_due(spec, state):
+    """A bid received 1ms before the previous slot's inclusion list deadline is ignored."""
+    yield from _run_bid_inclusion_list_due_scenario(
+        spec,
+        state,
+        offset_ms=-1,
+        expected_result="ignore",
+        expected_reason="bid is received before the inclusion list deadline",
+    )
+
+
+@with_heze_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_at_inclusion_list_due(spec, state):
+    """A bid received exactly at the previous slot's inclusion list deadline is valid."""
+    yield from _run_bid_inclusion_list_due_scenario(
+        spec,
+        state,
+        offset_ms=0,
+        expected_result="valid",
+        expected_reason=None,
     )
