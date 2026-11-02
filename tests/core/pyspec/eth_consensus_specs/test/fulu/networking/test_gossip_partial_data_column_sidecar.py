@@ -690,6 +690,67 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
 
 @with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
+def test_gossip_partial_data_column_sidecar__reject_too_many_commitments(spec, state):
+    """Test that a header with too many kzg_commitments is rejected."""
+    yield "topic", "meta", "partial_data_column_sidecar"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    max_blobs = get_max_blob_count(spec, state.slot + 1)
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, state, blob_count=max_blobs + 1)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
+    sidecar = sidecars[0]
+    partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
+    yield get_filename(group_id), group_id
+
+    yield get_filename(partial), partial
+
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
+
+    column_index = sidecar.index
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=partial,
+        current_time_ms=current_time_ms,
+        group_id=group_id,
+        column_index=column_index,
+    )
+    assert result == "reject"
+    assert reason == "header's kzg_commitments is too long"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "group_id": get_filename(group_id),
+                "column_index": int(column_index),
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(partial),
+                "expected": "reject",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_all_phases_from_to(FULU, GLOAS)
+@spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     """Test that a header from a future slot is ignored."""
     yield "topic", "meta", "partial_data_column_sidecar"

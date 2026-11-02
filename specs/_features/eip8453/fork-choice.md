@@ -191,7 +191,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payloads={},
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
-        payload_inclusion_list_satisfaction={},
+        payload_inclusion_list_satisfaction={anchor_root: True},
         # [New in EIP8453]
         max_height=anchor_height,
         block_receipt_times={anchor_root: time_ms},

@@ -27,9 +27,10 @@ def get_builder_withdrawal_credentials(spec, pubkey):
     return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256(pubkey)[12:]
 
 
-def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True):
+def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True, privkey=None):
     """Create a pending deposit with builder withdrawal credentials."""
-    privkey = builder_pubkey_to_privkey[pubkey]
+    if privkey is None:
+        privkey = builder_pubkey_to_privkey[pubkey]
     withdrawal_credentials = get_builder_withdrawal_credentials(spec, pubkey)
 
     deposit_data = build_deposit_data(
@@ -388,10 +389,42 @@ def test_fork_multiple_deposits_same_builder(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
-def test_fork_builder_deposit_with_existing_validator_pubkey_builder_creds(spec, phases, state):
+@always_bls
+def test_fork_builder_registration_and_topup_with_existing_validator_pubkey(spec, phases, state):
+    """Builder registration and an invalid-signature top-up leave the same-key validator intact."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    validator_pubkey = state.validators[0].pubkey
+    builder_deposit = create_pending_deposit_for_builder(
+        post_spec, validator_pubkey, amount, privkey=privkeys[0]
+    )
+    topup = create_pending_deposit_for_builder(
+        post_spec, validator_pubkey, amount * 2, signed=False, privkey=privkeys[0]
+    )
+    # A top-up cannot replace the builder's registered execution address.
+    topup.withdrawal_credentials = post_spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xcd" * 20
+    assert topup.withdrawal_credentials != builder_deposit.withdrawal_credentials
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, topup)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == validator_pubkey
+    assert post_state.builders[0].balance == amount * 3
+    assert post_state.builders[0].execution_address == builder_deposit.withdrawal_credentials[12:]
+    assert len(post_state.pending_deposits) == 0
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_invalid_builder_deposit_with_existing_validator_pubkey(spec, phases, state):
     """
-    Test fork with builder credentials but for an existing validator pubkey.
-    Should stay in pending deposits (not create a builder).
+    An invalid builder deposit for an existing validator stays queued, ahead of a later top-up.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -407,16 +440,21 @@ def test_fork_builder_deposit_with_existing_validator_pubkey_builder_creds(spec,
         signature=spec.bls.G2_POINT_AT_INFINITY,
         slot=spec.GENESIS_SLOT,
     )
-    state.pending_deposits = spec.PendingDeposits.of(pending_deposit)
+    validator_topup = spec.PendingDeposit(
+        pubkey=validator_pubkey,
+        withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20,
+        amount=amount * 2,
+        signature=spec.bls.G2_POINT_AT_INFINITY,
+        slot=spec.GENESIS_SLOT,
+    )
+    state.pending_deposits = spec.PendingDeposits.of(pending_deposit, validator_topup)
 
     post_state = yield from run_fork_test(post_spec, state)
 
-    # No builders should be created (pubkey is already a validator)
+    # An invalid builder registration falls back to the existing validator.
     assert len(post_state.builders) == 0
 
-    # Pending deposit should remain
-    assert len(post_state.pending_deposits) == 1
-    assert post_state.pending_deposits[0].pubkey == validator_pubkey
+    assert list(post_state.pending_deposits) == [pending_deposit, validator_topup]
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])
@@ -428,7 +466,7 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
     Test fork with two deposits for the same builder pubkey:
     - First deposit has builder credentials
     - Second deposit has non-builder credentials
-    Both should be applied to the builder.
+    Only the builder deposit should be applied to the builder.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -463,15 +501,33 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
 
     post_state = yield from run_fork_test(post_spec, state)
 
-    # One builder should be created
     assert len(post_state.builders) == 1
     assert post_state.builders[0].pubkey == builder_pubkey
+    assert post_state.builders[0].balance == amount
+    assert list(post_state.pending_deposits) == [non_builder_deposit]
 
-    # Balance should be the sum of both deposits
-    assert post_state.builders[0].balance == amount * 2
 
-    # Both pending deposits should be removed (applied to builder)
-    assert len(post_state.pending_deposits) == 0
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_builder_deposit_followed_by_invalid_validator_deposit(spec, phases, state):
+    """An invalid validator deposit also stays pending instead of funding a builder."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    builder_pubkey = builder_pubkeys[0]
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+    invalid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, builder_pubkey, amount, signed=False
+    )
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, invalid_validator_deposit)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].balance == amount
+    assert list(post_state.pending_deposits) == [invalid_validator_deposit]
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])
@@ -483,7 +539,7 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
     Test fork with two deposits for the same pubkey:
     - First deposit has validator credentials
     - Second deposit has builder credentials
-    Both deposits should stay in pending (no builder created).
+    The validator deposit stays pending and the builder deposit creates a builder.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -518,26 +574,29 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
 
     post_state = yield from run_fork_test(post_spec, state)
 
-    # No builder should be created (first valid deposit was for validator)
-    assert len(post_state.builders) == 0
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    assert post_state.builders[0].balance == amount
+    assert list(post_state.pending_deposits) == [validator_deposit]
 
-    # Both deposits should remain in pending
-    assert len(post_state.pending_deposits) == 2
-    assert post_state.pending_deposits[0].pubkey == builder_pubkey
+    processed_state = post_state.copy()
+    post_spec.process_pending_deposits(processed_state)
+    assert len(processed_state.pending_deposits) == 0
+    assert len(processed_state.validators) == len(post_state.validators) + 1
+    assert processed_state.validators[-1].pubkey == builder_pubkey
     assert (
-        post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
+        processed_state.validators[-1].withdrawal_credentials
+        == validator_deposit.withdrawal_credentials
     )
-    assert post_state.pending_deposits[1].pubkey == builder_pubkey
-    assert (
-        post_state.pending_deposits[1].withdrawal_credentials
-        == builder_deposit.withdrawal_credentials
-    )
+    assert processed_state.balances[-1] == amount
+    assert processed_state.builders == post_state.builders
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
 def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, phases, state):
     """
     Test fork with two deposits for the same pubkey:
@@ -569,7 +628,7 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
 
     post_state = yield from run_fork_test(post_spec, state)
 
-    # Builder should be created (invalid validator deposit doesn't claim the pubkey)
+    # Validator deposits do not prevent a valid builder registration.
     assert len(post_state.builders) == 1
     assert post_state.builders[0].pubkey == builder_pubkey
     assert post_state.builders[0].balance == amount
@@ -586,6 +645,7 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
 def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, phases, state):
     """
     Test fork with two builder deposits for the same pubkey:
@@ -629,6 +689,7 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
 def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, phases, state):
     """
     Test fork with two builder deposits for the same pubkey:
@@ -673,16 +734,16 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 @always_bls
-def test_fork_valid_then_invalid_validator_then_builder_deposit(spec, phases, state):
+def test_fork_valid_then_invalid_validator_then_invalid_builder_deposit(spec, phases, state):
     """
     Test fork with three deposits for the same unregistered pubkey:
     - First deposit has validator credentials with a valid signature
     - Second deposit has validator credentials with an invalid signature
-    - Third deposit has builder credentials with a valid signature
+    - Third deposit has builder credentials with an invalid signature
 
-    ``is_pending_validator`` is existential: a later invalid signature must not
-    erase an earlier valid validator deposit. All three deposits stay pending
-    and no builder is created.
+    The earlier valid validator deposit enables the invalid builder deposit's
+    validator fallback, despite the intervening invalid validator deposit.
+    All three deposits stay pending and no builder is created.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -694,7 +755,7 @@ def test_fork_valid_then_invalid_validator_then_builder_deposit(spec, phases, st
     invalid_validator_deposit = create_pending_deposit_for_unregistered_validator(
         post_spec, pubkey, amount, signed=False
     )
-    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount, signed=False)
 
     state.pending_deposits = spec.PendingDeposits.of(
         valid_validator_deposit,
@@ -729,15 +790,16 @@ def test_fork_valid_then_invalid_validator_then_builder_deposit(spec, phases, st
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 @always_bls
-def test_fork_invalid_then_valid_validator_then_builder_deposit(spec, phases, state):
+def test_fork_invalid_then_valid_validator_then_invalid_builder_deposit(spec, phases, state):
     """
     Test fork with three deposits for the same unregistered pubkey:
     - First deposit has validator credentials with an invalid signature
     - Second deposit has validator credentials with a valid signature
-    - Third deposit has builder credentials with a valid signature
+    - Third deposit has builder credentials with an invalid signature
 
-    The later valid validator deposit still claims the pubkey, so all three
-    deposits stay pending and no builder is created.
+    The valid validator deposit enables the invalid builder deposit's validator
+    fallback, despite the first invalid deposit. All three deposits stay pending
+    and no builder is created.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -749,7 +811,7 @@ def test_fork_invalid_then_valid_validator_then_builder_deposit(spec, phases, st
     valid_validator_deposit = create_pending_deposit_for_unregistered_validator(
         post_spec, pubkey, amount, signed=True
     )
-    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount)
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount, signed=False)
 
     state.pending_deposits = spec.PendingDeposits.of(
         invalid_validator_deposit,
@@ -790,8 +852,7 @@ def test_fork_mixed_validity_validator_deposits_surrounding_builder_deposits(spe
     - Invalid validator
     - Valid builder
 
-    Any earlier valid validator deposit claims the pubkey for the rest of the
-    queue. No builder is created and every deposit stays pending.
+    Only builder deposits fund the builder; all validator deposits remain queued in order.
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -819,20 +880,209 @@ def test_fork_mixed_validity_validator_deposits_surrounding_builder_deposits(spe
 
     post_state = yield from run_fork_test(post_spec, state)
 
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == amount * 2
+    assert list(post_state.pending_deposits) == [
+        valid_validator_deposit,
+        invalid_validator_deposit_1,
+        invalid_validator_deposit_2,
+    ]
+
+
+def run_fork_topup_order_test(spec, phases, state, order, retained_names, builder_amount):
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+    deposits = {
+        "validator": create_pending_deposit_for_unregistered_validator(post_spec, pubkey, amount),
+        "builder": create_pending_deposit_for_builder(post_spec, pubkey, amount * 3),
+        "topup": create_pending_deposit_for_builder(post_spec, pubkey, amount * 2, signed=False),
+    }
+    state.pending_deposits = spec.PendingDeposits(data=[deposits[name] for name in order])
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == builder_amount * amount
+    retained = [deposits[name] for name in retained_names]
+    assert list(post_state.pending_deposits) == retained
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_validator_topup_before_builder_registration_stays_pending(spec, phases, state):
+    """A later builder registration does not reclaim an earlier validator top-up."""
+    yield from run_fork_topup_order_test(
+        spec, phases, state, ("validator", "topup", "builder"), ("validator", "topup"), 3
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_builder_topup_overrides_earlier_pending_validator(spec, phases, state):
+    """An existing builder receives an invalid B0 top-up despite an earlier validator deposit."""
+    yield from run_fork_topup_order_test(
+        spec, phases, state, ("validator", "builder", "topup"), ("validator",), 5
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_invalid_topup_before_validator_and_builder_is_discarded(spec, phases, state):
+    """Later registrations cannot rescue an earlier invalid deposit for an unknown key."""
+    yield from run_fork_topup_order_test(
+        spec, phases, state, ("topup", "validator", "builder"), ("validator",), 3
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_invalid_validator_deposit_does_not_claim_builder_topup(spec, phases, state):
+    """An earlier invalid non-builder deposit cannot make an invalid B0 deposit a validator top-up."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+    invalid_validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount, signed=False
+    )
+    invalid_builder_deposit = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount, signed=False
+    )
+    state.pending_deposits = spec.PendingDeposits.of(
+        invalid_validator_deposit, invalid_builder_deposit
+    )
+
+    post_state = yield from run_fork_test(post_spec, state)
+
     assert len(post_state.builders) == 0
-    assert len(post_state.pending_deposits) == 5
-    assert post_state.pending_deposits[0].pubkey == pubkey
-    assert (
-        post_state.pending_deposits[0].withdrawal_credentials
-        == valid_validator_deposit.withdrawal_credentials
+    assert list(post_state.pending_deposits) == [invalid_validator_deposit]
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_existing_validator_valid_non_builder_topup_after_builder(spec, phases, state):
+    """A valid non-B0 top-up remains queued for an existing validator sharing a builder key."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = state.validators[0].pubkey
+    builder_deposit = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 2, privkey=privkeys[0]
     )
-    assert post_state.pending_deposits[1].signature == post_spec.bls.G2_POINT_AT_INFINITY
-    assert (
-        post_state.pending_deposits[2].withdrawal_credentials
-        == builder_deposit_1.withdrawal_credentials
+    validator_topup = create_pending_deposit_for_validator(post_spec, 0, amount * 3)
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, validator_topup)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == amount * 2
+    assert list(post_state.pending_deposits) == [validator_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_pending_validator_invalid_non_builder_topup_after_builder(spec, phases, state):
+    """The pending validator deposit and invalid non-B0 top-up stay queued in order."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    pubkey = builder_pubkeys[0]
+    validator_deposit = create_pending_deposit_for_unregistered_validator(post_spec, pubkey, amount)
+    builder_deposit = create_pending_deposit_for_builder(post_spec, pubkey, amount * 2)
+    validator_topup = create_pending_deposit_for_unregistered_validator(
+        post_spec, pubkey, amount * 3, signed=False
     )
-    assert post_state.pending_deposits[3].signature == post_spec.bls.G2_POINT_AT_INFINITY
-    assert (
-        post_state.pending_deposits[4].withdrawal_credentials
-        == builder_deposit_2.withdrawal_credentials
+    # Different credentials let the paired epoch test detect an overwrite from the top-up.
+    validator_topup.withdrawal_credentials = (
+        post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xcd" * 20
     )
+    state.pending_deposits = spec.PendingDeposits.of(
+        validator_deposit, builder_deposit, validator_topup
+    )
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == amount * 2
+    assert list(post_state.pending_deposits) == [validator_deposit, validator_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_existing_validator_invalid_builder_then_valid_builder(spec, phases, state):
+    """An invalid B0 top-up falls back to the validator before valid B0 registers a builder."""
+    post_spec = phases[GLOAS]
+    pubkey = state.validators[0].pubkey
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    invalid_topup = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 3, signed=False, privkey=privkeys[0]
+    )
+    builder_deposit = create_pending_deposit_for_builder(
+        post_spec, pubkey, amount * 2, privkey=privkeys[0]
+    )
+    state.pending_deposits = spec.PendingDeposits.of(invalid_topup, builder_deposit)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == pubkey
+    assert post_state.builders[0].balance == builder_deposit.amount
+    assert list(post_state.pending_deposits) == [invalid_topup]
+    assert list(post_state.validators) == list(state.validators)
+    assert list(post_state.balances) == list(state.balances)
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+@always_bls
+def test_fork_topups_to_non_latest_builders(spec, phases, state):
+    """B0 top-ups find their builder by pubkey even when newer builders follow it."""
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+    deposits = [
+        create_pending_deposit_for_builder(post_spec, builder_pubkeys[i], amount * (i + 1))
+        for i in range(3)
+    ]
+    invalid_topup_a = create_pending_deposit_for_builder(
+        post_spec, builder_pubkeys[0], amount * 4, signed=False
+    )
+    valid_topup_b = create_pending_deposit_for_builder(post_spec, builder_pubkeys[1], amount * 5)
+    state.pending_deposits = spec.PendingDeposits(data=deposits + [invalid_topup_a, valid_topup_b])
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert [builder.pubkey for builder in post_state.builders] == builder_pubkeys[:3]
+    assert [builder.balance for builder in post_state.builders] == [
+        amount * 5,
+        amount * 7,
+        amount * 3,
+    ]
+    assert list(post_state.pending_deposits) == []
