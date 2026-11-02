@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.execution_payload import commit_bid_to_execution_payload
 from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.state import next_epoch, state_transition_and_sign_block
 
@@ -716,6 +717,8 @@ def add_signed_empty_block(spec, store, state, test_steps):
     Build, sign, and submit an empty block at ``state.slot + 1``.
     """
     block = build_empty_block_for_next_slot(spec, state)
+    if is_post_gloas(spec):
+        commit_bid_to_execution_payload(spec, state, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
