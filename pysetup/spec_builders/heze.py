@@ -63,7 +63,10 @@ class NoopExecutionEngine(ExecutionEngine):
     def is_inclusion_list_satisfied(self: ExecutionEngine,
                                     execution_payload: ExecutionPayload,
                                     inclusion_list_transactions: Sequence[Transaction]) -> bool:
-        return True
+        return all(
+            transaction in execution_payload.transactions
+            for transaction in inclusion_list_transactions
+        )
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
