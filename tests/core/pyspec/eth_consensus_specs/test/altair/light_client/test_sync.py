@@ -598,6 +598,55 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     yield from finish_lc_sync_test(test)
 
 
+@with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(),
+    },
+)
+@spec_state_test_with_matching_config
+@with_presets([MINIMAL], reason="too slow")
+def test_empty_epochs_after_genesis(spec, state):
+    genesis_block = create_signed_genesis_block(spec, state)
+
+    # Start test, without blocks between genesis and the start of epoch 2
+    test = yield from setup_lc_sync_test(spec, state)
+    trusted_header = test.store.finalized_header.copy()
+
+    # Justify epoch 1, which has the genesis block as its checkpoint
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=False, fill_prev_epoch=True
+    )
+
+    # Justify epochs 2 and 3, finalizing epoch 1
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    attested_state = state.copy()
+    assert attested_state.finalized_checkpoint.epoch > spec.GENESIS_EPOCH
+    assert attested_state.finalized_checkpoint.root == genesis_block.message.hash_tree_root()
+
+    # Apply `LightClientUpdate` with the genesis block as `finalized_header`
+    sync_aggregate, _ = get_sync_aggregate(spec, state)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
+    update = yield from emit_update(
+        test, spec, state, block, attested_state, attested_block, genesis_block
+    )
+    assert update.finalized_header == spec.block_to_light_client_header(genesis_block)
+    assert test.store.finalized_header == trusted_header
+    assert test.store.next_sync_committee == attested_state.next_sync_committee
+    assert test.store.best_valid_update is None
+    assert test.store.optimistic_header.beacon.slot == attested_state.slot
+
+    # Finish test
+    yield from finish_lc_sync_test(test)
+
+
 @with_all_phases_from_to(ALTAIR, CAPELLA, other_phases=[CAPELLA])
 @spec_test
 @with_state
