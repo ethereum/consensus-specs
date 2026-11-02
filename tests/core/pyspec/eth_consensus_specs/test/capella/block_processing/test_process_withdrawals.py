@@ -25,7 +25,6 @@ from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
 from eth_consensus_specs.test.helpers.withdrawals import (
-    check_is_partially_withdrawable_validator,
     get_expected_withdrawals,
     prepare_expected_withdrawals,
     run_withdrawals_processing,
@@ -687,7 +686,9 @@ def test_success_no_max_effective_balance(spec, state):
     assert (
         validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
-    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -713,7 +714,9 @@ def test_success_no_excess_balance(spec, state):
     validator = state.validators[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
-    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -732,7 +735,9 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     # To be partially withdrawable, the validator needs both a maxed out effective balance and an excess balance
     validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
 
-    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -954,7 +959,9 @@ def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
         effective_balance=spec.MAX_EFFECTIVE_BALANCE,
         balance=spec.MAX_EFFECTIVE_BALANCE + 1,
     )
-    assert check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     next_slot(spec, state)
 
@@ -978,7 +985,9 @@ def test_partially_withdrawable_validator_legacy_exact_max(spec, state):
     """Test legacy validator whose balance is exactly MAX_EFFECTIVE_BALANCE"""
     validator_index = 0
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index)
-    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -1004,7 +1013,9 @@ def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
         effective_balance=spec.MAX_EFFECTIVE_BALANCE,
         balance=spec.MAX_EFFECTIVE_BALANCE - 1,
     )
-    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
+    assert not spec.is_partially_withdrawable_validator(
+        state.validators[validator_index], state.balances[validator_index]
+    )
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
