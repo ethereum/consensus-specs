@@ -40,6 +40,7 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
+  - [New `verify_execution_payload_envelope_consistency`](#new-verify_execution_payload_envelope_consistency)
   - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
   - [New `is_valid_dependent_root`](#new-is_valid_dependent_root)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
@@ -677,6 +678,35 @@ def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
     return compute_epoch_at_slot(latest_message.slot)
 ```
 
+### New `verify_execution_payload_envelope_consistency`
+
+```python
+def verify_execution_payload_envelope_consistency(
+    envelope: ExecutionPayloadEnvelope,
+    beacon_block_root: Root,
+    parent_beacon_block_root: Root,
+    slot: Slot,
+    parent_block_hash: Hash32,
+    bid: ExecutionPayloadBid,
+) -> None:
+    payload = envelope.payload
+
+    # Verify consistency with the beacon block
+    assert envelope.beacon_block_root == beacon_block_root
+    assert envelope.parent_beacon_block_root == parent_beacon_block_root
+
+    # Verify consistency with the committed bid
+    assert envelope.builder_index == bid.builder_index
+    assert payload.prev_randao == bid.prev_randao
+    assert payload.gas_limit == bid.gas_limit
+    assert payload.block_hash == bid.block_hash
+    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+
+    # Verify consistency with the slot and the parent execution payload
+    assert payload.slot_number == slot
+    assert payload.parent_hash == parent_block_hash
+```
+
 ### New `verify_execution_payload_envelope`
 
 ```python
@@ -691,23 +721,20 @@ def verify_execution_payload_envelope(
     # Verify signature
     assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
-    # Verify consistency with the beacon block
+    # Verify consistency with the beacon block, the bid and the parent payload
     header = state.latest_block_header.copy()
     header.state_root = hash_tree_root(state)
-    assert envelope.beacon_block_root == hash_tree_root(header)
-    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
-
-    # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
-    assert envelope.builder_index == bid.builder_index
-    assert payload.prev_randao == bid.prev_randao
-    assert payload.gas_limit == bid.gas_limit
-    assert payload.block_hash == bid.block_hash
-    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+    verify_execution_payload_envelope_consistency(
+        envelope,
+        hash_tree_root(header),
+        state.latest_block_header.parent_root,
+        state.slot,
+        state.latest_block_hash,
+        bid,
+    )
 
     # Verify the execution payload is valid
-    assert payload.slot_number == state.slot
-    assert payload.parent_hash == state.latest_block_hash
     assert payload.timestamp == compute_time_at_slot(state.genesis_time, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
