@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
-  - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
+  - [Modified `get_light_client_execution_root`](#modified-get_light_client_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- mdformat-toc end -->
@@ -24,10 +24,10 @@ Additional documents describe the impact of the upgrade on certain roles:
 
 ## Helpers
 
-### Modified `get_lc_execution_root`
+### Modified `get_light_client_execution_root`
 
 ```python
-def get_lc_execution_root(header: LightClientHeader) -> Root:
+def get_light_client_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
     # [New in Deneb]
@@ -78,7 +78,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
         )
 
     return is_valid_merkle_branch(
-        leaf=get_lc_execution_root(header),
+        leaf=get_light_client_execution_root(header),
         branch=header.execution_branch,
         depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
         index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),

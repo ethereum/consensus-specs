@@ -38,7 +38,7 @@ order to do so, that pre-Electra data needs to be locally upgraded to Electra
 before processing.
 
 ```python
-def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
+def upgrade_light_client_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
         execution=pre.execution,
@@ -47,9 +47,11 @@ def upgrade_lc_header_to_electra(pre: deneb.LightClientHeader) -> LightClientHea
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_electra(pre: deneb.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_light_client_bootstrap_to_electra(
+    pre: deneb.LightClientBootstrap,
+) -> LightClientBootstrap:
     return LightClientBootstrap(
-        header=upgrade_lc_header_to_electra(pre.header),
+        header=upgrade_light_client_header_to_electra(pre.header),
         current_sync_committee=pre.current_sync_committee,
         current_sync_committee_branch=CurrentSyncCommitteeBranch(
             data=normalize_merkle_branch(
@@ -60,16 +62,16 @@ def upgrade_lc_bootstrap_to_electra(pre: deneb.LightClientBootstrap) -> LightCli
 ```
 
 ```python
-def upgrade_lc_update_to_electra(pre: deneb.LightClientUpdate) -> LightClientUpdate:
+def upgrade_light_client_update_to_electra(pre: deneb.LightClientUpdate) -> LightClientUpdate:
     return LightClientUpdate(
-        attested_header=upgrade_lc_header_to_electra(pre.attested_header),
+        attested_header=upgrade_light_client_header_to_electra(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
         next_sync_committee_branch=NextSyncCommitteeBranch(
             data=normalize_merkle_branch(
                 pre.next_sync_committee_branch, NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
             )
         ),
-        finalized_header=upgrade_lc_header_to_electra(pre.finalized_header),
+        finalized_header=upgrade_light_client_header_to_electra(pre.finalized_header),
         finality_branch=FinalityBranch(
             data=normalize_merkle_branch(pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA)
         ),
@@ -79,12 +81,12 @@ def upgrade_lc_update_to_electra(pre: deneb.LightClientUpdate) -> LightClientUpd
 ```
 
 ```python
-def upgrade_lc_finality_update_to_electra(
+def upgrade_light_client_finality_update_to_electra(
     pre: deneb.LightClientFinalityUpdate,
 ) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
-        attested_header=upgrade_lc_header_to_electra(pre.attested_header),
-        finalized_header=upgrade_lc_header_to_electra(pre.finalized_header),
+        attested_header=upgrade_light_client_header_to_electra(pre.attested_header),
+        finalized_header=upgrade_light_client_header_to_electra(pre.finalized_header),
         finality_branch=FinalityBranch(
             data=normalize_merkle_branch(pre.finality_branch, FINALIZED_ROOT_GINDEX_ELECTRA)
         ),
@@ -94,11 +96,11 @@ def upgrade_lc_finality_update_to_electra(
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_electra(
+def upgrade_light_client_optimistic_update_to_electra(
     pre: deneb.LightClientOptimisticUpdate,
 ) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
-        attested_header=upgrade_lc_header_to_electra(pre.attested_header),
+        attested_header=upgrade_light_client_header_to_electra(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
@@ -111,17 +113,17 @@ before Electra based light client data can be processed. The `LightClientStore`
 upgrade MAY be performed before `ELECTRA_FORK_EPOCH`.
 
 ```python
-def upgrade_lc_store_to_electra(pre: deneb.LightClientStore) -> LightClientStore:
+def upgrade_light_client_store_to_electra(pre: deneb.LightClientStore) -> LightClientStore:
     if pre.best_valid_update is None:
         best_valid_update = None
     else:
-        best_valid_update = upgrade_lc_update_to_electra(pre.best_valid_update)
+        best_valid_update = upgrade_light_client_update_to_electra(pre.best_valid_update)
     return LightClientStore(
-        finalized_header=upgrade_lc_header_to_electra(pre.finalized_header),
+        finalized_header=upgrade_light_client_header_to_electra(pre.finalized_header),
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         best_valid_update=best_valid_update,
-        optimistic_header=upgrade_lc_header_to_electra(pre.optimistic_header),
+        optimistic_header=upgrade_light_client_header_to_electra(pre.optimistic_header),
         previous_max_active_participants=pre.previous_max_active_participants,
         current_max_active_participants=pre.current_max_active_participants,
     )
