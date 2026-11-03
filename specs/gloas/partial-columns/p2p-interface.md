@@ -126,6 +126,8 @@ def validate_partial_data_column_sidecar_gossip(
     # Removed `current_time_ms`
     group_id: PartialDataColumnGroupID,
     column_index: ColumnIndex,
+    # [Modified in Gloas:EIP7732]
+    # Removed `block_payload_statuses`
 ) -> None:
     """
     Validate a PartialDataColumnSidecar for gossip propagation on a subnet.

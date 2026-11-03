@@ -20,6 +20,9 @@ from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
+    get_spec_block_payload_statuses,
+    PAYLOAD_STATUS_INVALIDATED,
+    PAYLOAD_STATUS_NOT_VALIDATED,
     run_validate_gossip,
     wrap_genesis_block,
 )
@@ -88,6 +91,7 @@ def test_gossip_blob_sidecar__valid(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -142,6 +146,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "blob index out of range"
@@ -202,6 +207,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=wrong_subnet,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "blob sidecar is for wrong subnet"
@@ -260,6 +266,7 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "invalid proposer signature on blob sidecar block header"
@@ -317,6 +324,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "invalid blob sidecar inclusion proof"
@@ -374,6 +382,7 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "invalid blob kzg proof"
@@ -429,6 +438,7 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "blob sidecar is from a future slot"
@@ -484,6 +494,7 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -553,6 +564,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "blob sidecar is not from a slot greater than the latest finalized slot"
@@ -611,6 +623,7 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -670,6 +683,7 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "blob sidecar's parent has not been seen"
@@ -692,7 +706,10 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
 @with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
-    """Test that a blob sidecar whose parent failed validation is rejected."""
+    """
+    Test that a blob sidecar whose parent failed validation, and whose parent's
+    execution payload has not been validated, is rejected.
+    """
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
@@ -715,14 +732,20 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
 
     # Add the parent block to store.blocks but not store.block_states, matching
     # the reference-test encoding of a failed block.
-    store.blocks[signed_parent.message.hash_tree_root()] = signed_parent.message
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_NOT_VALIDATED}
 
     yield (
         "blocks",
         "meta",
         [
             {"block": get_filename(signed_anchor)},
-            {"block": get_filename(signed_parent), "failed": True},
+            {
+                "block": get_filename(signed_parent),
+                "failed": True,
+                "payload_status": PAYLOAD_STATUS_NOT_VALIDATED,
+            },
         ],
     )
 
@@ -746,9 +769,10 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "reject"
-    assert reason == "blob sidecar's parent failed validation"
+    assert reason == "blob sidecar's parent is invalid and its payload is optimistic"
 
     yield (
         "messages",
@@ -759,6 +783,176 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
                 "current_time_ms": int(current_time_ms),
                 "message": get_filename(blob_sidecar),
                 "expected": "reject",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_all_phases_from_to(DENEB, FULU)
+@spec_state_test
+def test_gossip_blob_sidecar__ignore_parent_failed_validation_payload_processed(spec, state):
+    """
+    Test that a blob sidecar whose parent failed validation because its execution
+    payload is invalid is ignored, as optimistic nodes forward it in good faith.
+    """
+    yield "topic", "meta", "blob_sidecar"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+
+    # Build the failed parent on a separate state copy so the yielded anchor state stays
+    # at slot 0 (its `latest_block_header` points at the genesis-equivalent anchor, not at
+    # `signed_parent`)
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
+
+    yield get_filename(signed_parent), signed_parent
+
+    # Add the parent block to store.blocks but not store.block_states, matching
+    # the reference-test encoding of a failed block.
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALIDATED}
+
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {
+                "block": get_filename(signed_parent),
+                "failed": True,
+                "payload_status": PAYLOAD_STATUS_INVALIDATED,
+            },
+        ],
+    )
+
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
+    blob_sidecar = sidecars[0]
+
+    yield get_filename(blob_sidecar), blob_sidecar
+
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
+    )
+
+    subnet_id = correct_subnet(spec, blob_sidecar)
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        blob_sidecar=blob_sidecar,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
+    )
+    assert result == "ignore"
+    assert reason == "blob sidecar's parent is invalid and its payload is processed"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "subnet_id": int(subnet_id),
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(blob_sidecar),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_all_phases_from_to(DENEB, FULU)
+@spec_state_test
+def test_gossip_blob_sidecar__ignore_parent_payload_invalid(spec, state):
+    """
+    Test that a blob sidecar whose parent passed validation but whose parent's
+    execution payload is invalid is ignored.
+    """
+    yield "topic", "meta", "blob_sidecar"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+
+    # Build the parent on a separate state copy so the yielded anchor state stays
+    # at slot 0 (its `latest_block_header` points at the genesis-equivalent anchor, not at
+    # `signed_parent`)
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
+
+    yield get_filename(signed_parent), signed_parent
+
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    store.block_states[parent_root] = parent_state.copy()
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALIDATED}
+
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {
+                "block": get_filename(signed_parent),
+                "payload_status": PAYLOAD_STATUS_INVALIDATED,
+            },
+        ],
+    )
+
+    block, blobs, _, blob_kzg_proofs = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block)
+    sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_proofs)
+    blob_sidecar = sidecars[0]
+
+    yield get_filename(blob_sidecar), blob_sidecar
+
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, blob_sidecar.signed_block_header.message.slot
+    )
+
+    subnet_id = correct_subnet(spec, blob_sidecar)
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        blob_sidecar=blob_sidecar,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
+    )
+    assert result == "ignore"
+    assert reason == "blob sidecar's parent is valid and its payload is invalid"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "subnet_id": int(subnet_id),
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(blob_sidecar),
+                "expected": "ignore",
                 "reason": reason,
             }
         ],
@@ -807,6 +1001,7 @@ def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "valid"
     messages.append(
@@ -827,6 +1022,7 @@ def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "already seen blob sidecar from this proposer for this slot and index"
@@ -902,6 +1098,7 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "blob sidecar is not from a higher slot than its parent"
@@ -964,6 +1161,7 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of blob sidecar's block"
@@ -1024,6 +1222,7 @@ def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
         blob_sidecar=blob_sidecar,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "blob sidecar proposer_index does not match expected proposer"

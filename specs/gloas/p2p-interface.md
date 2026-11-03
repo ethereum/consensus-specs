@@ -1300,6 +1300,8 @@ def validate_data_column_sidecar_gossip(
     sidecar: DataColumnSidecar,
     current_time_ms: Uint64,
     subnet_id: SubnetID,
+    # [Modified in Gloas:EIP7732]
+    # Removed `block_payload_statuses`
 ) -> None:
     """
     Validate a DataColumnSidecar for gossip propagation on a subnet.

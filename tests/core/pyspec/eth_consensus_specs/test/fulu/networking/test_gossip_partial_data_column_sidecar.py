@@ -28,6 +28,9 @@ from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
+    get_spec_block_payload_statuses,
+    PAYLOAD_STATUS_INVALIDATED,
+    PAYLOAD_STATUS_NOT_VALIDATED,
     run_validate_gossip,
     wrap_genesis_block,
 )
@@ -91,6 +94,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -160,6 +164,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -226,6 +231,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     messages.append(
@@ -247,6 +253,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -310,6 +317,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
         current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
         kwargs["current_time_ms"] = current_time_ms
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -383,6 +391,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
         current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
         kwargs["current_time_ms"] = current_time_ms
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -456,6 +465,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
         current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
         kwargs["current_time_ms"] = current_time_ms
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -528,6 +538,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     messages.append(
@@ -549,6 +560,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header differs from previously validated header"
@@ -607,6 +619,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header's block root does not match group id's block root"
@@ -668,6 +681,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header's kzg_commitments is empty"
@@ -729,6 +743,7 @@ def test_gossip_partial_data_column_sidecar__reject_too_many_commitments(spec, s
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header's kzg_commitments is too long"
@@ -789,6 +804,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "header is from a future slot"
@@ -859,6 +875,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "header is not from a slot greater than the latest finalized slot"
@@ -923,6 +940,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -985,6 +1003,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "invalid proposer signature on header"
@@ -1048,6 +1067,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "header's parent has not been seen"
@@ -1071,7 +1091,10 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
 @with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spec, state):
-    """Test that a header whose parent failed validation is rejected."""
+    """
+    Test that a header whose parent failed validation, and whose parent's
+    execution payload has not been validated, is rejected.
+    """
     yield "topic", "meta", "partial_data_column_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
@@ -1089,14 +1112,20 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
 
     yield get_filename(signed_parent), signed_parent
 
-    store.blocks[signed_parent.message.hash_tree_root()] = signed_parent.message
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_NOT_VALIDATED}
 
     yield (
         "blocks",
         "meta",
         [
             {"block": get_filename(signed_anchor)},
-            {"block": get_filename(signed_parent), "failed": True},
+            {
+                "block": get_filename(signed_parent),
+                "failed": True,
+                "payload_status": PAYLOAD_STATUS_NOT_VALIDATED,
+            },
         ],
     )
 
@@ -1124,9 +1153,10 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "reject"
-    assert reason == "header's parent failed validation"
+    assert reason == "header's parent is invalid and its payload is optimistic"
 
     yield (
         "messages",
@@ -1138,6 +1168,180 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
                 "current_time_ms": int(current_time_ms),
                 "message": get_filename(partial),
                 "expected": "reject",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_all_phases_from_to(FULU, GLOAS)
+@spec_state_test
+def test_gossip_partial_data_column_sidecar__ignore_parent_failed_validation_payload_processed(
+    spec, state
+):
+    """
+    Test that a header whose parent failed validation because its execution
+    payload is invalid is ignored, as optimistic nodes forward it in good faith.
+    """
+    yield "topic", "meta", "partial_data_column_sidecar"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
+
+    yield get_filename(signed_parent), signed_parent
+
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALIDATED}
+
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {
+                "block": get_filename(signed_parent),
+                "failed": True,
+                "payload_status": PAYLOAD_STATUS_INVALIDATED,
+            },
+        ],
+    )
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
+    sidecar = sidecars[0]
+    partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
+    yield get_filename(group_id), group_id
+
+    yield get_filename(partial), partial
+
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
+
+    column_index = sidecar.index
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=partial,
+        current_time_ms=current_time_ms,
+        group_id=group_id,
+        column_index=column_index,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
+    )
+    assert result == "ignore"
+    assert reason == "header's parent is invalid and its payload is processed"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "group_id": get_filename(group_id),
+                "column_index": int(column_index),
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(partial),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_all_phases_from_to(FULU, GLOAS)
+@spec_state_test
+def test_gossip_partial_data_column_sidecar__ignore_parent_payload_invalid(spec, state):
+    """
+    Test that a header whose parent passed validation but whose parent's
+    execution payload is invalid is ignored.
+    """
+    yield "topic", "meta", "partial_data_column_sidecar"
+
+    state = build_state_with_complete_transition(spec, state)
+    anchor_state = state.copy()
+    yield "state", anchor_state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
+
+    yield get_filename(signed_parent), signed_parent
+
+    parent_root = signed_parent.message.hash_tree_root()
+    store.blocks[parent_root] = signed_parent.message
+    store.block_states[parent_root] = parent_state.copy()
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALIDATED}
+
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {
+                "block": get_filename(signed_parent),
+                "payload_status": PAYLOAD_STATUS_INVALIDATED,
+            },
+        ],
+    )
+
+    block, blobs, _, _ = build_block_with_blobs_for_next_slot(spec, parent_state)
+    signed_block = sign_block(spec, parent_state, block, proposer_index=block.proposer_index)
+    sidecars = get_data_column_sidecars(spec, signed_block, blobs)
+    sidecar = sidecars[0]
+    partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
+    group_id = make_partial_data_column_group_id(spec, sidecar)
+    yield get_filename(group_id), group_id
+
+    yield get_filename(partial), partial
+
+    current_time_ms = spec.compute_time_at_slot_ms(
+        store.genesis_time_ms, sidecar.signed_block_header.message.slot
+    )
+
+    column_index = sidecar.index
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=partial,
+        current_time_ms=current_time_ms,
+        group_id=group_id,
+        column_index=column_index,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
+    )
+    assert result == "ignore"
+    assert reason == "header's parent is valid and its payload is invalid"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "group_id": get_filename(group_id),
+                "column_index": int(column_index),
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(partial),
+                "expected": "ignore",
                 "reason": reason,
             }
         ],
@@ -1203,6 +1407,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header is not from a higher slot than its parent"
@@ -1270,6 +1475,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of header's block"
@@ -1331,6 +1537,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "invalid header inclusion proof"
@@ -1397,6 +1604,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "header proposer_index does not match expected proposer"
@@ -1457,6 +1665,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "valid corresponding header has not been seen"
@@ -1525,6 +1734,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -1547,6 +1757,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "corresponding header is from a future slot"
@@ -1634,6 +1845,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
         current_time_ms=current_time_ms,
         group_id=group_id,
         column_index=column_index,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert (
@@ -1711,6 +1923,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
         kwargs["current_time_ms"] = current_time_ms
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         store=store,
@@ -1786,6 +1999,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
         current_time_ms += 500
         kwargs["seen"] = get_seen(spec)
         kwargs["current_time_ms"] = current_time_ms
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
         store=store,
