@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_configured_state_test,
     spec_state_test_with_matching_config,
     with_gloas_and_later,
@@ -821,6 +822,7 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+@always_bls
 def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
     """Preferences with an invalid signature are rejected."""
     anchor_state = state.copy()

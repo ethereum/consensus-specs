@@ -43,6 +43,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
@@ -192,7 +193,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         spec.process_operations(state, block.body, parent_slot)
     else:
         spec.process_operations(state, block.body)
-    if is_post_altair(spec):
+    if is_post_altair(spec) and not is_post_pq(spec):
         spec.process_sync_aggregate(state, block.body.sync_aggregate)
 
     # Insert post-state root

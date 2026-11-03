@@ -1,8 +1,11 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test_with_matching_config,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -27,6 +30,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_seen,
     run_validate_gossip,
 )
+from eth_consensus_specs.test.helpers.keys import get_filled_pubkey
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -1564,7 +1568,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
     builder_index = spec.BuilderIndex(0)
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
     builder = state.builders[builder_index]
-    unknown_pubkey = spec.BLSPubkey(b"\xab" * 48)
+    unknown_pubkey = get_filled_pubkey(spec, b"\xab")
     assert unknown_pubkey not in [b.pubkey for b in state.builders]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(
@@ -1797,7 +1801,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     """A bid whose blob KZG commitment count exceeds the per-epoch limit is rejected."""
@@ -1866,7 +1870,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     """A bid with exactly the per-epoch blob KZG commitment limit is valid.
@@ -2834,6 +2838,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+@always_bls
 def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     """A bid with an invalid signature is rejected once all other checks pass."""
     anchor_state = state.copy()

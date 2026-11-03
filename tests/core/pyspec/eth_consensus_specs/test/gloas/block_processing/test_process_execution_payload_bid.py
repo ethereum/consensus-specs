@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
     run_execution_payload_bid_processing,
 )
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
 )
@@ -158,7 +159,7 @@ def test_process_execution_payload_bid_blob_kzg_commitments_at_limit(spec, state
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_execution_payload_bid_invalid_signature(spec, state):
     """
@@ -329,7 +330,7 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
 
     # Sign the bid
     signed_bid = spec.SignedExecutionPayloadBid(
-        message=bid, signature=spec.bls.G2_POINT_AT_INFINITY
+        message=bid, signature=get_placeholder_signature(spec)
     )
 
     block.body.signed_execution_payload_bid = signed_bid

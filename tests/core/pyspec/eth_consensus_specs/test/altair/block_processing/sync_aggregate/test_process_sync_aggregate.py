@@ -7,7 +7,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
     with_custom_state,
     with_presets,
 )
@@ -15,8 +15,10 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
     MAINNET,
     MINIMAL,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -34,7 +36,7 @@ from eth_consensus_specs.test.helpers.voluntary_exits import (
 )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_bad_domain(spec, state):
@@ -55,7 +57,7 @@ def test_invalid_signature_bad_domain(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_missing_participant(spec, state):
@@ -80,7 +82,7 @@ def test_invalid_signature_missing_participant(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_no_participants(spec, state):
@@ -98,7 +100,7 @@ def test_invalid_signature_no_participants(spec, state):
 # No-participants, with valid signature, is tested in test_sync_committee_rewards_empty_participants already.
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_infinite_signature_with_all_participants(spec, state):
@@ -113,7 +115,7 @@ def test_invalid_signature_infinite_signature_with_all_participants(spec, state)
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_infinite_signature_with_single_participant(spec, state):
@@ -128,7 +130,7 @@ def test_invalid_signature_infinite_signature_with_single_participant(spec, stat
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_extra_participant(spec, state):
@@ -157,7 +159,7 @@ def is_duplicate_sync_committee(committee_indices):
     return len(dup) > 0
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="to create nonduplicate committee")
 @spec_test
 @with_custom_state(balances_fn=default_balances_electra, threshold_fn=default_activation_threshold)
@@ -174,7 +176,7 @@ def test_sync_committee_rewards_nonduplicate_committee(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state):
@@ -189,7 +191,7 @@ def test_sync_committee_rewards_duplicate_committee_no_participation(spec, state
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_half_participation(spec, state):
@@ -205,7 +207,7 @@ def test_sync_committee_rewards_duplicate_committee_half_participation(spec, sta
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_full_participation(spec, state):
@@ -262,7 +264,7 @@ def _run_sync_committee_selected_twice(
     return validator_index
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participate_first_one(
@@ -280,7 +282,7 @@ def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participat
     assert state.balances[validator_index] == 0
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participate_second_one(
@@ -301,7 +303,7 @@ def test_sync_committee_rewards_duplicate_committee_zero_balance_only_participat
     assert state.balances[validator_index] > 0
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_participate_first_one(
@@ -318,7 +320,7 @@ def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_p
     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="to create duplicate committee")
 @spec_state_test
 def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_participate_second_one(
@@ -335,7 +337,7 @@ def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_p
     assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
@@ -346,7 +348,7 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_rewards_empty_participants(spec, state):
@@ -356,7 +358,7 @@ def test_sync_committee_rewards_empty_participants(spec, state):
     yield from run_successful_sync_committee_test(spec, state, committee_indices, committee_bits)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_signature_past_block(spec, state):
@@ -394,7 +396,7 @@ def test_invalid_signature_past_block(spec, state):
     yield from run_sync_committee_processing(spec, state, invalid_block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
 @always_bls
@@ -435,7 +437,7 @@ def test_invalid_signature_previous_committee(spec, state):
     yield from run_sync_committee_processing(spec, state, block, expect_exception=True)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="too slow")
@@ -481,7 +483,7 @@ def test_valid_signature_future_committee(spec, state):
     yield from run_sync_committee_processing(spec, state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
@@ -527,7 +529,7 @@ def test_proposer_in_committee_without_participation(spec, state):
         )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
@@ -587,7 +589,7 @@ def _exit_validator_from_committee_and_transition_state(
     return exited_validator_index
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_with_participating_exited_member(spec, state):
@@ -626,7 +628,7 @@ def test_sync_committee_with_participating_exited_member(spec, state):
     yield from run_sync_committee_processing(spec, state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_with_nonparticipating_exited_member(spec, state):
@@ -669,7 +671,7 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     yield from run_sync_committee_processing(spec, state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_with_participating_withdrawable_member(spec, state):
@@ -708,7 +710,7 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
     yield from run_sync_committee_processing(spec, state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):

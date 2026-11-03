@@ -10,6 +10,8 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.keys import get_filled_pubkey
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
@@ -1059,7 +1061,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
     # Make consolidation with different source pubkey
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,
-        source_pubkey=b"\x00" * 48,
+        source_pubkey=get_filled_pubkey(spec, b"\x00"),
         target_pubkey=state.validators[target_index].pubkey,
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
@@ -1091,7 +1093,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
     consolidation = spec.ConsolidationRequest(
         source_address=b"\x33" * 20,
         source_pubkey=state.validators[source_index].pubkey,
-        target_pubkey=b"\x00" * 48,
+        target_pubkey=get_filled_pubkey(spec, b"\x00"),
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
@@ -1305,8 +1307,8 @@ def test_switch_to_compounding_unknown_source_pubkey(spec, state):
     # Make consolidation with different source pubkey
     consolidation = spec.ConsolidationRequest(
         source_address=source_address,
-        source_pubkey=b"\x00" * 48,
-        target_pubkey=b"\x00" * 48,
+        source_pubkey=get_filled_pubkey(spec, b"\x00"),
+        target_pubkey=get_filled_pubkey(spec, b"\x00"),
     )
 
     # Check the return condition
@@ -1429,7 +1431,7 @@ def run_switch_to_compounding_processing(spec, state, consolidation, success=Tru
             assert pending_deposit.pubkey == source_validator.pubkey
             assert pending_deposit.withdrawal_credentials == post_withdrawal_credentials
             assert pending_deposit.amount == (pre_balance - spec.MIN_ACTIVATION_BALANCE)
-            assert pending_deposit.signature == spec.G2_POINT_AT_INFINITY
+            assert pending_deposit.signature == get_placeholder_signature(spec)
             assert pending_deposit.slot == spec.GENESIS_SLOT
         # Check no consolidation has been initiated
         assert state.validators[source_index].exit_epoch == spec.FAR_FUTURE_EPOCH

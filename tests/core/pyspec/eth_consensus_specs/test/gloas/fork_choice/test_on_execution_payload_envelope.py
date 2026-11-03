@@ -18,7 +18,8 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_store_to_slot,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import builder_privkeys, get_filled_pubkey, privkeys
+from eth_consensus_specs.test.helpers.signatures import get_filled_signature, get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -64,7 +65,7 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
             privkey = builder_privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
     else:
-        signature = spec.BLSSignature()
+        signature = get_unsigned_signature(spec)
 
     return spec.SignedExecutionPayloadEnvelope(message=envelope, signature=signature)
 
@@ -246,10 +247,10 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
     non_empty_requests = spec.ExecutionRequests(
         deposits=spec.DepositRequests.of(
             spec.DepositRequest(
-                pubkey=spec.BLSPubkey(b"\x01" * 48),
+                pubkey=get_filled_pubkey(spec, b"\x01"),
                 withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
                 amount=spec.Gwei(32000000000),
-                signature=spec.BLSSignature(b"\x03" * 96),
+                signature=get_filled_signature(spec, b"\x03"),
                 index=spec.Uint64(0),
             )
         ),

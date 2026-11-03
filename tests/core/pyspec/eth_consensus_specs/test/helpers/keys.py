@@ -32,3 +32,12 @@ def get_builder_pubkeys(spec):
     The builder public keys of ``spec``'s signature scheme.
     """
     return xmss_builder_pubkeys if is_post_pq(spec) else builder_pubkeys
+
+
+def get_filled_pubkey(spec, byte):
+    """
+    The public key of ``spec``'s signature scheme with every byte set to ``byte``.
+    """
+    if is_post_pq(spec):
+        return spec.XMSSPubkey(byte * spec.XMSSPubkey.LENGTH)
+    return spec.BLSPubkey(byte * spec.BLSPubkey.LENGTH)

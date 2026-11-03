@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_gloas_and_later,
 )
@@ -7,7 +8,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -241,7 +242,7 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     """A block whose bid carries more KZG commitments than the per-epoch limit is rejected."""

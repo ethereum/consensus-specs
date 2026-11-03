@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     run_on_block,
     run_on_execution_payload_envelope,
 )
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -60,7 +61,7 @@ def _add_block_to_store(spec, state, execution_requests=None):
         if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
             block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
                 message=bid,
-                signature=spec.G2_POINT_AT_INFINITY,
+                signature=get_placeholder_signature(spec),
             )
 
     signed_block = state_transition_and_sign_block(spec, state, block)

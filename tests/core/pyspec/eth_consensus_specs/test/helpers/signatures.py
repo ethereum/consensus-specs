@@ -45,3 +45,12 @@ def get_unsigned_signature(spec):
     if is_post_pq(spec):
         return spec.XMSSSignature()
     return spec.BLSSignature()
+
+
+def get_filled_signature(spec, byte):
+    """
+    The signature of ``spec``'s signature scheme with every byte set to ``byte``.
+    """
+    if is_post_pq(spec):
+        return spec.XMSSSignature(byte * spec.XMSSSignature.LENGTH)
+    return spec.BLSSignature(byte * spec.BLSSignature.LENGTH)

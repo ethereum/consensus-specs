@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_fulu_and_later,
 )
@@ -20,6 +21,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.constants import (
     FULU,
     GLOAS,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -79,7 +81,7 @@ def _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments):
 # Tests for verify_data_column_sidecar
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__valid(spec, state):
@@ -87,7 +89,7 @@ def test_verify_data_column_sidecar__valid(spec, state):
     assert _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
@@ -101,7 +103,7 @@ def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_index(spec, state):
@@ -110,7 +112,7 @@ def test_verify_data_column_sidecar__invalid_index(spec, state):
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
@@ -119,7 +121,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, state):
@@ -131,7 +133,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, 
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_proofs(spec, state):
@@ -159,7 +161,7 @@ def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec
 # Tests for verify_data_column_sidecar_kzg_proofs
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
@@ -167,7 +169,7 @@ def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
     assert _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state):
@@ -176,7 +178,7 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state
     assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, state):
@@ -188,7 +190,7 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, s
     assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [PQ])
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state):

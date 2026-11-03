@@ -11,6 +11,8 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -169,11 +171,11 @@ def _build_block_with_execution_requests(spec, state, slot, execution_requests, 
     if parent_full:
         bid.block_hash = spec.Hash32(b"\x42" * 32)
 
-    # Self-build uses G2_POINT_AT_INFINITY as the bid signature.
+    # Self-build uses the placeholder signature as the bid signature.
     if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
             message=bid,
-            signature=spec.G2_POINT_AT_INFINITY,
+            signature=get_placeholder_signature(spec),
         )
 
     return block
@@ -470,8 +472,9 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     assert state.balances[validator_index] > spec.MIN_ACTIVATION_BALANCE
 
     # Snapshot balance-dependent assignments before the request is in flight.
-    pre_current_sync_root = spec.hash_tree_root(state.current_sync_committee)
-    pre_next_sync_root = spec.hash_tree_root(state.next_sync_committee)
+    if not is_post_pq(spec):
+        pre_current_sync_root = spec.hash_tree_root(state.current_sync_committee)
+        pre_next_sync_root = spec.hash_tree_root(state.next_sync_committee)
 
     yield "pre", state
 
@@ -538,10 +541,11 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     # With EPOCHS_PER_SYNC_COMMITTEE_PERIOD = 8 in minimal, the 0 -> 1 epoch
     # transition must not rotate the committees, and they must not have been
     # recomputed using a post-switch effective balance.
-    assert spec.hash_tree_root(state.current_sync_committee) == pre_current_sync_root
-    assert spec.hash_tree_root(state.next_sync_committee) == pre_next_sync_root
-    assert len(state.current_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
-    assert len(state.next_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
+    if not is_post_pq(spec):
+        assert spec.hash_tree_root(state.current_sync_committee) == pre_current_sync_root
+        assert spec.hash_tree_root(state.next_sync_committee) == pre_next_sync_root
+        assert len(state.current_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
+        assert len(state.next_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
 
     _assert_registry_integrity(spec, state, pre_state)
 

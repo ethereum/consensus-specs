@@ -2,12 +2,14 @@ from random import Random
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
 )
+from eth_consensus_specs.test.helpers.constants import ALTAIR, PQ
 from eth_consensus_specs.test.helpers.inactivity_scores import randomize_inactivity_scores
 from eth_consensus_specs.test.helpers.rewards import leaking
 from eth_consensus_specs.test.helpers.state import (
@@ -49,40 +51,40 @@ def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=None):
     yield "post", state
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee__full(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee__half(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(1212))
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee__empty(spec, state):
     next_epoch(spec, state)
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee_genesis__full(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=1.0)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee_genesis__half(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.5, rng=Random(2323))
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_sync_committee_committee_genesis__empty(spec, state):
     yield from run_sync_committee_sanity_test(spec, state, fraction_full=0.0)

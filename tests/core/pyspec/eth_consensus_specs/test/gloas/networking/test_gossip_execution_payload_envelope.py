@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -229,6 +230,7 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
 
 @with_gloas_and_later
 @spec_state_test
+@always_bls
 def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state):
     """An envelope with an invalid signature is rejected."""
     anchor_state = state.copy()

@@ -1,8 +1,9 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
 )
+from eth_consensus_specs.test.helpers.constants import ALTAIR, PQ
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -46,7 +47,7 @@ def create_valid_sync_committee_message(spec, state, validator_index, slot=None,
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_message__valid(spec, state):
@@ -92,7 +93,7 @@ def test_gossip_sync_committee_message__valid(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
     """Test that a sync committee message from a future slot is ignored."""
@@ -140,7 +141,7 @@ def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
     """Test that a sync committee message from a past slot is ignored."""
@@ -193,7 +194,7 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
     """Test that a sync committee message on the wrong subnet is rejected."""
@@ -242,7 +243,7 @@ def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec, state):
     """Test that a sync committee message with validator index out of range is rejected."""
@@ -290,7 +291,7 @@ def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
     """Test that a duplicate sync committee message is ignored."""
@@ -356,7 +357,7 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
     yield "messages", "meta", messages
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_message__reject_invalid_signature(spec, state):

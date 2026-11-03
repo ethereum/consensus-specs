@@ -24,7 +24,7 @@ from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra, is_post_gloas
-from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.keys import get_pubkeys
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
     next_slot,
@@ -542,7 +542,7 @@ def _insert_validator(spec, state, balance):
 
     validator_index = len(state.validators)
     validator = spec.Validator(
-        pubkey=pubkeys[validator_index],
+        pubkey=get_pubkeys(spec)[validator_index],
         withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x56" * 20,
         activation_eligibility_epoch=1,
         activation_epoch=2,

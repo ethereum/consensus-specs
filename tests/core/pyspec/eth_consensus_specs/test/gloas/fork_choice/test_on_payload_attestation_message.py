@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -42,7 +43,9 @@ def _build_signed_payload_attestation_message(
 
     domain = spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(data.slot))
     signing_root = spec.compute_signing_root(data, domain)
-    signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+    signature = sign(
+        spec, privkeys[validator_index], signing_root, slot, "LEAF_OFFSET_PTC_ATTESTER"
+    )
 
     return spec.PayloadAttestationMessage(
         validator_index=validator_index,
@@ -370,9 +373,9 @@ def test_on_payload_attestation_message_from_block(spec, state):
             aggregation_bits[i] = True
 
     sig_by_index = {m.validator_index: m.signature for m in ptc_messages}
-    aggregate_sig = spec.bls.Aggregate([sig_by_index[v] for v in ptc_list if v in voter_set])
+    aggregate_sig = aggregate(spec, [sig_by_index[v] for v in ptc_list if v in voter_set])
 
-    aggregate = spec.PayloadAttestation(
+    payload_attestation = spec.PayloadAttestation(
         aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=ptc_messages[0].data,
         signature=aggregate_sig,
@@ -380,7 +383,7 @@ def test_on_payload_attestation_message_from_block(spec, state):
 
     # Build the next block and add the aggregate
     block_n1 = build_empty_block_for_next_slot(spec, state)
-    block_n1.body.payload_attestations.append(aggregate)
+    block_n1.body.payload_attestations.append(payload_attestation)
     signed_block_n1 = state_transition_and_sign_block(spec, state, block_n1)
 
     # Apply block

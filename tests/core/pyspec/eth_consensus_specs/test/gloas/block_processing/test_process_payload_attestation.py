@@ -14,6 +14,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -90,7 +91,6 @@ def prepare_signed_payload_attestation(
     payload_attestation = spec.PayloadAttestation(
         aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=data,
-        signature=spec.BLSSignature(),
     )
 
     if valid_signature and attesting_indices:
@@ -102,11 +102,13 @@ def prepare_signed_payload_attestation(
         signatures = []
         for validator_index in attesting_indices:
             if validator_index < len(privkeys):
-                signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+                signature = sign(
+                    spec, privkeys[validator_index], signing_root, slot, "LEAF_OFFSET_PTC_ATTESTER"
+                )
                 signatures.append(signature)
 
         if signatures:
-            payload_attestation.signature = spec.bls.Aggregate(signatures)
+            payload_attestation.signature = aggregate(spec, signatures)
 
     return payload_attestation
 
@@ -254,6 +256,7 @@ def test_process_payload_attestation_too_old_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+@always_bls
 def test_process_payload_attestation_invalid_signature(spec, state):
     """
     Test payload attestation with invalid signature fails

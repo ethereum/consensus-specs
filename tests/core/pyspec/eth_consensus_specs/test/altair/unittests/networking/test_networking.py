@@ -1,13 +1,14 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
 )
+from eth_consensus_specs.test.helpers.constants import ALTAIR, PQ
 from eth_consensus_specs.test.helpers.state import (
     transition_to,
 )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_get_sync_subcommittee_pubkeys_current_sync_committee(state, spec):
     # Transition to the head of the next period
@@ -28,7 +29,7 @@ def test_get_sync_subcommittee_pubkeys_current_sync_committee(state, spec):
     assert spec.get_sync_subcommittee_pubkeys(state, subcommittee_index) == expect
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_get_sync_subcommittee_pubkeys_next_sync_committee(state, spec):
     # Transition to the end of the current period
