@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.fulu.state import (
     initialize_proposer_lookahead,
@@ -167,7 +168,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
     # Set genesis validators root for domain separation and chain versioning
     state.genesis_validators_root = spec.hash_tree_root(state.validators)
 
-    if is_post_altair(spec):
+    if is_post_altair(spec) and not is_post_pq(spec):
         # Fill in sync committees
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)

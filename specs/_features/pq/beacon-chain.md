@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [Modified `SyncCommitteePubkeys`](#modified-synccommitteepubkeys)
   - [New `XMSSAggregateSignature`](#new-xmssaggregatesignature)
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
@@ -39,8 +38,6 @@
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SingleAttestation`](#singleattestation)
-    - [`SyncAggregate`](#syncaggregate)
-    - [`SyncCommittee`](#synccommittee)
     - [`Validator`](#validator)
     - [`WithdrawalRequest`](#withdrawalrequest)
 - [Helpers](#helpers)
@@ -53,7 +50,6 @@
     - [Modified `is_valid_indexed_payload_attestation`](#modified-is_valid_indexed_payload_attestation)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [Modified `get_next_sync_committee`](#modified-get_next_sync_committee)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
   - [Validator registry](#validator-registry)
@@ -62,7 +58,10 @@
     - [Modified `add_builder_to_registry`](#modified-add_builder_to_registry)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
+  - [Epoch processing](#epoch-processing)
+    - [Modified `process_epoch`](#modified-process_epoch)
   - [Block processing](#block-processing)
+    - [Modified `process_block`](#modified-process_block)
     - [Modified `process_randao`](#modified-process_randao)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
@@ -77,8 +76,6 @@
         - [Modified `is_valid_deposit_signature`](#modified-is_valid_deposit_signature)
       - [Builder deposit requests](#builder-deposit-requests)
         - [Modified `is_valid_builder_deposit_signature`](#modified-is_valid_builder_deposit_signature)
-    - [Sync aggregate processing](#sync-aggregate-processing)
-      - [Modified `process_sync_aggregate`](#modified-process_sync_aggregate)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
@@ -89,6 +86,11 @@
 This upgrade replaces the BLS signatures used by validators and builders with
 leanXMSS, a hash-based signature scheme believed to be secure against a quantum
 adversary.
+
+This upgrade is meant as an emergency fork for when elliptic curve cryptography
+can no longer be trusted, so it keeps only what consensus needs. It removes sync
+committees, whose hundreds of signatures per slot serve only light clients, and
+with them the light client protocol.
 
 XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
@@ -115,18 +117,6 @@ move funds out of `0x00` withdrawal credentials.
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
-
-### Modified `SyncCommitteePubkeys`
-
-```python
-# [Modified in PQ]
-class SyncCommitteePubkeys(Vector[XMSSPubkey]):
-    """
-    The public keys of the sync committee members, in committee order.
-    """
-
-    LENGTH = SYNC_COMMITTEE_SIZE
-```
 
 ### New `XMSSAggregateSignature`
 
@@ -166,30 +156,23 @@ class XMSSSignature(ByteVector):
 | Name                   | Value                 |
 | ---------------------- | --------------------- |
 | `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`        |
-| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**5)` (= 32) |
+| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**4)` (= 16) |
 
 ### XMSS leaf offsets
 
-*Note*: The two sync committee offsets are each followed by one leaf per sync
-subcommittee, so that a validator in several subcommittees signs each one at its
-own leaf.
-
-| Name                                         | Value        |
-| -------------------------------------------- | ------------ |
-| `LEAF_OFFSET_BEACON_PROPOSER`                | `Uint64(0)`  |
-| `LEAF_OFFSET_RANDAO`                         | `Uint64(1)`  |
-| `LEAF_OFFSET_BEACON_ATTESTER`                | `Uint64(2)`  |
-| `LEAF_OFFSET_SELECTION_PROOF`                | `Uint64(3)`  |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`            | `Uint64(4)`  |
-| `LEAF_OFFSET_SYNC_COMMITTEE`                 | `Uint64(5)`  |
-| `LEAF_OFFSET_PTC_ATTESTER`                   | `Uint64(6)`  |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`           | `Uint64(7)`  |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`          | `Uint64(8)`  |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE`     | `Uint64(9)`  |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`                 | `Uint64(10)` |
-| `LEAF_OFFSET_DEPOSIT`                        | `Uint64(11)` |
-| `LEAF_OFFSET_SYNC_COMMITTEE_SELECTION_PROOF` | `Uint64(12)` |
-| `LEAF_OFFSET_CONTRIBUTION_AND_PROOF`         | `Uint64(16)` |
+| Name                                     | Value        |
+| ---------------------------------------- | ------------ |
+| `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)`  |
+| `LEAF_OFFSET_RANDAO`                     | `Uint64(1)`  |
+| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)`  |
+| `LEAF_OFFSET_SELECTION_PROOF`            | `Uint64(3)`  |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(4)`  |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(5)`  |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(6)`  |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(7)`  |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(8)`  |
+| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(9)`  |
+| `LEAF_OFFSET_DEPOSIT`                    | `Uint64(10)` |
 
 ## Presets
 
@@ -224,7 +207,7 @@ class Attestation(ProgressiveContainer):
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13)
+    ACTIVE_FIELDS = active_fields(width=13, gaps=(8,))
 
     # [Modified in PQ]
     randao_reveal: XMSSSignature
@@ -235,7 +218,8 @@ class BeaconBlockBody(ProgressiveContainer):
     attestations: Attestations
     deposits: Deposits
     voluntary_exits: VoluntaryExits
-    sync_aggregate: SyncAggregate
+    # [Modified in PQ]
+    # Removed `sync_aggregate`
     bls_to_execution_changes: BLSToExecutionChanges
     signed_execution_payload_bid: SignedExecutionPayloadBid
     payload_attestations: PayloadAttestations
@@ -246,7 +230,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=46)
+    ACTIVE_FIELDS = active_fields(width=46, gaps=(22, 23))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -270,8 +254,10 @@ class BeaconState(ProgressiveContainer):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     inactivity_scores: InactivityScores
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
+    # [Modified in PQ]
+    # Removed `current_sync_committee`
+    # [Modified in PQ]
+    # Removed `next_sync_committee`
     latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
@@ -512,24 +498,6 @@ class SingleAttestation(Container):
     signature: XMSSSignature
 ```
 
-#### `SyncAggregate`
-
-```python
-class SyncAggregate(Container):
-    sync_committee_bits: SyncCommitteeBits
-    # [Modified in PQ]
-    sync_committee_signature: XMSSAggregateSignature
-```
-
-#### `SyncCommittee`
-
-```python
-class SyncCommittee(Container):
-    pubkeys: SyncCommitteePubkeys
-    # [Modified in PQ]
-    # Removed `aggregate_pubkey`
-```
-
 #### `Validator`
 
 ```python
@@ -682,20 +650,6 @@ def is_pending_validator(
 
 ### Beacon state accessors
 
-#### Modified `get_next_sync_committee`
-
-```python
-def get_next_sync_committee(state: BeaconState) -> SyncCommittee:
-    """
-    Return the next sync committee, with possible pubkey duplicates.
-    """
-    indices = get_next_sync_committee_indices(state)
-    pubkeys = SyncCommitteePubkeys(data=[state.validators[index].pubkey for index in indices])
-    # [Modified in PQ]
-    # Removed `aggregate_pubkey`
-    return SyncCommittee(pubkeys=pubkeys)
-```
-
 ### Beacon state mutators
 
 #### Modified `queue_excess_active_balance`
@@ -811,7 +765,52 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
     return xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
 ```
 
+### Epoch processing
+
+#### Modified `process_epoch`
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_inactivity_updates(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_eth1_data_reset(state)
+    process_pending_deposits(state)
+    process_pending_consolidations(state)
+    process_builder_pending_payments(state)
+    process_effective_balance_updates(state)
+    process_slashings_reset(state)
+    process_randao_mixes_reset(state)
+    process_historical_summaries_update(state)
+    process_participation_flag_updates(state)
+    # [Modified in PQ]
+    # Removed `process_sync_committee_updates`
+    process_proposer_lookahead(state)
+    process_ptc_window(state)
+```
+
 ### Block processing
+
+#### Modified `process_block`
+
+*Note*: Without sync aggregates, the sync committee rewards are no longer
+issued, which lowers issuance by `SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR`.
+
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    parent_slot = state.latest_block_header.slot
+    process_parent_execution_payload(state, block)
+    process_block_header(state, block)
+    process_withdrawals(state)
+    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body, parent_slot)
+    # [Modified in PQ]
+    # Removed `process_sync_aggregate`
+```
 
 #### Modified `process_randao`
 
@@ -1070,56 +1069,6 @@ def is_valid_builder_deposit_signature(request: BuilderDepositRequest) -> bool:
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(GENESIS_SLOT, LEAF_OFFSET_DEPOSIT)
     return xmss.Verify(request.pubkey, leaf_index, signing_root, request.signature)
-```
-
-#### Sync aggregate processing
-
-##### Modified `process_sync_aggregate`
-
-*Note*: XMSS has no public key aggregation, so the participant keys are passed
-to `xmss.AggregateVerify` individually.
-
-```python
-def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
-    # Verify sync committee aggregate signature signing over the previous slot block root
-    committee_pubkeys = state.current_sync_committee.pubkeys
-    # [Modified in PQ]
-    participant_pubkeys = [
-        pubkey
-        for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits, strict=True)
-        if bit
-    ]
-    previous_slot = saturating_sub(state.slot, 1)
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
-    signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(previous_slot, LEAF_OFFSET_SYNC_COMMITTEE)
-    assert xmss.AggregateVerify(
-        participant_pubkeys, leaf_index, signing_root, sync_aggregate.sync_committee_signature
-    )
-
-    # Compute participant and proposer rewards
-    total_active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
-    total_base_rewards = get_base_reward_per_increment(state) * total_active_increments
-    max_participant_rewards = (
-        total_base_rewards * SYNC_REWARD_WEIGHT // WEIGHT_DENOMINATOR // Uint64(SLOTS_PER_EPOCH)
-    )
-    participant_reward = max_participant_rewards // SYNC_COMMITTEE_SIZE
-    proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
-
-    # Apply participant and proposer rewards
-    all_pubkeys = [validator.pubkey for validator in state.validators]
-    committee_indices = [
-        ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
-    ]
-    for participant_index, participation_bit in zip(
-        committee_indices, sync_aggregate.sync_committee_bits, strict=True
-    ):
-        if participation_bit:
-            increase_balance(state, participant_index, participant_reward)
-            increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
-        else:
-            decrease_balance(state, participant_index, participant_reward)
 ```
 
 #### Parent execution payload

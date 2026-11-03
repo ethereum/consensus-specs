@@ -11,7 +11,6 @@
   - [Modified `SignedProposerPreferences`](#modified-signedproposerpreferences)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Modified `get_sync_subcommittee_pubkeys`](#modified-get_sync_subcommittee_pubkeys)
   - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -20,14 +19,13 @@
       - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
       - [Modified `voluntary_exit`](#modified-voluntary_exit)
       - [Modified `proposer_slashing`](#modified-proposer_slashing)
-      - [Modified `sync_committee_contribution_and_proof`](#modified-sync_committee_contribution_and_proof)
+      - [Removed `sync_committee_contribution_and_proof`](#removed-sync_committee_contribution_and_proof)
       - [Modified `payload_attestation_message`](#modified-payload_attestation_message)
       - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
       - [Modified `proposer_preferences`](#modified-proposer_preferences)
     - [Attestation subnets](#attestation-subnets)
       - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
     - [Sync committee subnets](#sync-committee-subnets)
-      - [Modified `sync_committee_{subnet_id}`](#modified-sync_committee_subnet_id)
 
 <!-- mdformat-toc end -->
 
@@ -37,6 +35,9 @@ This document contains the consensus-layer networking specifications for PQ.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
+
+Sync committees are removed in PQ, and with them the light client protocol, so
+the light client topics and request/response methods are no longer used.
 
 ## Presets
 
@@ -93,30 +94,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
-```
-
-### Modified `get_sync_subcommittee_pubkeys`
-
-```python
-def get_sync_subcommittee_pubkeys(
-    state: BeaconState,
-    subcommittee_index: Uint64,
-    # [Modified in PQ]
-) -> Sequence[XMSSPubkey]:
-    # Committees assigned to `slot` sign for `slot - 1`
-    # This creates the exceptional logic below when transitioning between sync committee periods
-    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
-    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
-        next_slot_epoch
-    ):
-        sync_committee = state.current_sync_committee
-    else:
-        sync_committee = state.next_sync_committee
-
-    # Return pubkeys for the subcommittee index
-    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
-    i = subcommittee_index * sync_subcommittee_size
-    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
 ```
 
 ### Modified `verify_execution_requests_limits`
@@ -527,134 +504,9 @@ def validate_proposer_slashing_gossip(
     seen.proposer_slashing_indices.add(proposer_index)
 ```
 
-##### Modified `sync_committee_contribution_and_proof`
+##### Removed `sync_committee_contribution_and_proof`
 
-```python
-def validate_sync_committee_contribution_and_proof_gossip(
-    seen: Seen,
-    store: Store,
-    signed_contribution_and_proof: SignedContributionAndProof,
-    current_time_ms: Uint64,
-) -> None:
-    """
-    Validate a SignedContributionAndProof for gossip propagation.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    contribution_and_proof = signed_contribution_and_proof.message
-    contribution = contribution_and_proof.contribution
-
-    # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
-    # and subcommittee_index whose aggregation_bits is non-strict superset
-    # has not already been seen
-    contribution_key = (
-        contribution.slot,
-        contribution.beacon_block_root,
-        contribution.subcommittee_index,
-    )
-    contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
-    seen_bits = seen.sync_contribution_data.get(contribution_key, set())
-    if is_non_strict_superset(seen_bits, contribution_bits):
-        raise GossipIgnore("already seen contribution for this data")
-
-    # [IGNORE] The sync committee contribution is the first valid contribution received
-    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
-    # and subcommittee index contribution.subcommittee_index
-    aggregator_key = (
-        contribution.slot,
-        contribution_and_proof.aggregator_index,
-        contribution.subcommittee_index,
-    )
-    if aggregator_key in seen.sync_contribution_aggregator_slots:
-        raise GossipIgnore("already seen contribution from this aggregator")
-
-    # [IGNORE] The contribution's slot is for the current slot
-    if not is_current_slot(store, contribution.slot, current_time_ms):
-        raise GossipIgnore("contribution is not for the current slot")
-
-    # [REJECT] The subcommittee index is in the allowed range
-    if contribution.subcommittee_index >= SYNC_COMMITTEE_SUBNET_COUNT:
-        raise GossipReject("subcommittee index out of range")
-
-    # [REJECT] The contribution has participants
-    if not any(contribution.aggregation_bits):
-        raise GossipReject("contribution has no participants")
-
-    # [REJECT] The selection_proof selects the validator as an aggregator for the slot
-    if not is_sync_committee_aggregator(contribution_and_proof.selection_proof):
-        raise GossipReject("validator is not selected as aggregator")
-
-    state = store.block_states[get_head(store).root]
-
-    # [REJECT] The aggregator index is valid
-    if contribution_and_proof.aggregator_index >= len(state.validators):
-        raise GossipReject("aggregator index out of range")
-
-    # [REJECT] The aggregator is a member of the committee
-    aggregator_pubkey = state.validators[contribution_and_proof.aggregator_index].pubkey
-    subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
-    if aggregator_pubkey not in subcommittee_pubkeys:
-        raise GossipReject("aggregator is not a member of the committee")
-
-    # [REJECT] The contribution_and_proof.selection_proof is a valid signature
-    # of the SyncAggregatorSelectionData derived from the contribution
-    # by the validator with index contribution_and_proof.aggregator_index
-    selection_data = SyncAggregatorSelectionData(
-        slot=contribution.slot,
-        subcommittee_index=contribution.subcommittee_index,
-    )
-    domain = get_domain(
-        state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(contribution.slot)
-    )
-    signing_root = compute_signing_root(selection_data, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        contribution.slot,
-        LEAF_OFFSET_SYNC_COMMITTEE_SELECTION_PROOF + contribution.subcommittee_index,
-    )
-    if not xmss.Verify(
-        aggregator_pubkey, leaf_index, signing_root, contribution_and_proof.selection_proof
-    ):
-        raise GossipReject("invalid selection proof signature")
-
-    # [REJECT] The aggregator signature, signed_contribution_and_proof.signature, is valid
-    domain = get_domain(
-        state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot)
-    )
-    signing_root = compute_signing_root(contribution_and_proof, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        contribution.slot,
-        LEAF_OFFSET_CONTRIBUTION_AND_PROOF + contribution.subcommittee_index,
-    )
-    if not xmss.Verify(
-        aggregator_pubkey, leaf_index, signing_root, signed_contribution_and_proof.signature
-    ):
-        raise GossipReject("invalid aggregator signature")
-
-    # [REJECT] The aggregate signature is valid for the message beacon_block_root
-    # and the participant pubkeys derived from the participation info in
-    # aggregation_bits for the subcommittee specified by the
-    # contribution.subcommittee_index
-    participant_pubkeys = [
-        subcommittee_pubkeys[index]
-        for index, bit in enumerate(contribution.aggregation_bits)
-        if bit
-    ]
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
-    signing_root = compute_signing_root(contribution.beacon_block_root, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(contribution.slot, LEAF_OFFSET_SYNC_COMMITTEE)
-    if not xmss.AggregateVerify(
-        participant_pubkeys, leaf_index, signing_root, contribution.signature
-    ):
-        raise GossipReject("invalid aggregate signature")
-
-    # Mark this contribution as seen
-    seen.sync_contribution_aggregator_slots.add(aggregator_key)
-    if contribution_key not in seen.sync_contribution_data:
-        seen.sync_contribution_data[contribution_key] = set()
-    seen.sync_contribution_data[contribution_key].add(contribution_bits)
-```
+Sync committees are removed in PQ, so this topic is no longer used.
 
 ##### Modified `payload_attestation_message`
 
@@ -919,60 +771,5 @@ def validate_beacon_attestation_gossip(
 
 #### Sync committee subnets
 
-##### Modified `sync_committee_{subnet_id}`
-
-```python
-def validate_sync_committee_message_gossip(
-    seen: Seen,
-    store: Store,
-    sync_committee_message: SyncCommitteeMessage,
-    current_time_ms: Uint64,
-    subnet_id: SubnetID,
-) -> None:
-    """
-    Validate a SyncCommitteeMessage for gossip propagation on a subnet.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    # [IGNORE] There has been no other valid sync committee message for the declared slot
-    # for the validator referenced by sync_committee_message.validator_index
-    # (this validation is per topic so that for a given slot, multiple messages could be
-    # forwarded with the same validator_index as long as the subnet_ids are distinct)
-    message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
-    if message_key in seen.sync_message_validator_slots:
-        raise GossipIgnore("already seen message from this validator for this slot and subnet")
-
-    # [IGNORE] The message's slot is for the current slot
-    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
-        raise GossipIgnore("message is not for the current slot")
-
-    state = store.block_states[get_head(store).root]
-
-    # [REJECT] The validator index is valid
-    if sync_committee_message.validator_index >= len(state.validators):
-        raise GossipReject("validator index out of range")
-
-    # [REJECT] The subnet_id is valid for the given validator
-    # (this implies the validator is part of the broader current sync committee
-    # along with the correct subcommittee)
-    valid_subnets = compute_subnets_for_sync_committee(
-        state, sync_committee_message.validator_index
-    )
-    if subnet_id not in valid_subnets:
-        raise GossipReject("subnet_id is not valid for the validator")
-
-    # [REJECT] The signature is valid
-    validator = state.validators[sync_committee_message.validator_index]
-    domain = get_domain(
-        state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(sync_committee_message.slot)
-    )
-    signing_root = compute_signing_root(sync_committee_message.beacon_block_root, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(sync_committee_message.slot, LEAF_OFFSET_SYNC_COMMITTEE)
-    if not xmss.Verify(
-        validator.pubkey, leaf_index, signing_root, sync_committee_message.signature
-    ):
-        raise GossipReject("invalid sync committee message signature")
-
-    # Mark this message as seen
-    seen.sync_message_validator_slots.add(message_key)
-```
+Sync committees are removed in PQ, so the `sync_committee_{subnet_id}` topics
+are no longer used.

@@ -8,11 +8,7 @@
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
-    - [`ContributionAndProof`](#contributionandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
-    - [`SignedContributionAndProof`](#signedcontributionandproof)
-    - [`SyncCommitteeContribution`](#synccommitteecontribution)
-    - [`SyncCommitteeMessage`](#synccommitteemessage)
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [XMSS public key](#xmss-public-key)
@@ -38,13 +34,6 @@
       - [Aggregate signature](#aggregate-signature-1)
     - [Broadcast aggregate](#broadcast-aggregate)
   - [Sync committees](#sync-committees)
-    - [Sync committee messages](#sync-committee-messages)
-      - [Prepare sync committee message](#prepare-sync-committee-message)
-    - [Sync committee contributions](#sync-committee-contributions)
-      - [Aggregation selection](#aggregation-selection-1)
-      - [Construct sync committee contribution](#construct-sync-committee-contribution)
-        - [Signature](#signature-1)
-      - [Broadcast sync committee contribution](#broadcast-sync-committee-contribution)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
 - [Protection best practices](#protection-best-practices)
@@ -75,53 +64,11 @@ class AggregateAndProof(Container):
     selection_proof: XMSSSignature
 ```
 
-#### `ContributionAndProof`
-
-```python
-class ContributionAndProof(Container):
-    aggregator_index: ValidatorIndex
-    contribution: SyncCommitteeContribution
-    # [Modified in PQ]
-    selection_proof: XMSSSignature
-```
-
 #### `SignedAggregateAndProof`
 
 ```python
 class SignedAggregateAndProof(Container):
     message: AggregateAndProof
-    # [Modified in PQ]
-    signature: XMSSSignature
-```
-
-#### `SignedContributionAndProof`
-
-```python
-class SignedContributionAndProof(Container):
-    message: ContributionAndProof
-    # [Modified in PQ]
-    signature: XMSSSignature
-```
-
-#### `SyncCommitteeContribution`
-
-```python
-class SyncCommitteeContribution(Container):
-    slot: Slot
-    beacon_block_root: Root
-    subcommittee_index: Uint64
-    aggregation_bits: SyncSubcommitteeBits
-    # [Modified in PQ]
-    signature: XMSSAggregateSignature
-```
-
-#### `SyncCommitteeMessage`
-
-```python
-class SyncCommitteeMessage(Container):
-    slot: Slot
-    beacon_block_root: Root
-    validator_index: ValidatorIndex
     # [Modified in PQ]
     signature: XMSSSignature
 ```
@@ -255,33 +202,8 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ##### Sync committee
 
-Given a collection of the best seen `contributions` (with no repeating
-`subcommittee_index` values) and the `BeaconBlock` under construction, the
-proposer processes them as follows:
-
-```python
-def process_sync_committee_contributions(
-    block: BeaconBlock, contributions: set[SyncCommitteeContribution]
-) -> None:
-    sync_aggregate = SyncAggregate.empty()
-    signatures = []
-    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
-
-    for contribution in contributions:
-        subcommittee_index = contribution.subcommittee_index
-        for index, participated in enumerate(contribution.aggregation_bits):
-            if participated:
-                participant_index = sync_subcommittee_size * subcommittee_index + index
-                sync_aggregate.sync_committee_bits[participant_index] = Boolean(True)
-        signatures.append(contribution.signature)
-
-    # [Modified in PQ]
-    sync_aggregate.sync_committee_signature = XMSSAggregateSignature(
-        data=xmss.Aggregate(signatures)
-    )
-
-    block.body.sync_aggregate = sync_aggregate
-```
+Sync committees are removed in PQ, so the block body no longer has a
+`sync_aggregate`.
 
 ##### Signed execution payload bid
 
@@ -487,125 +409,7 @@ def get_aggregate_and_proof_signature(
 
 ### Sync committees
 
-#### Sync committee messages
-
-##### Prepare sync committee message
-
-```python
-def get_sync_committee_message(
-    state: BeaconState,
-    block_root: Root,
-    validator_index: ValidatorIndex,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> SyncCommitteeMessage:
-    epoch = get_current_epoch(state)
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
-    signing_root = compute_signing_root(block_root, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(state.slot, LEAF_OFFSET_SYNC_COMMITTEE)
-    signature = xmss.Sign(privkey, leaf_index, signing_root)
-
-    return SyncCommitteeMessage(
-        slot=state.slot,
-        beacon_block_root=block_root,
-        validator_index=validator_index,
-        signature=signature,
-    )
-```
-
-#### Sync committee contributions
-
-##### Aggregation selection
-
-*Note*: As with `is_aggregator`, a validator can grind its selection proof until
-`is_sync_committee_aggregator` selects it. This is an open issue.
-
-```python
-def get_sync_committee_selection_proof(
-    state: BeaconState,
-    slot: Slot,
-    subcommittee_index: Uint64,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> XMSSSignature:
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
-    signing_data = SyncAggregatorSelectionData(
-        slot=slot,
-        subcommittee_index=subcommittee_index,
-    )
-    signing_root = compute_signing_root(signing_data, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        slot, LEAF_OFFSET_SYNC_COMMITTEE_SELECTION_PROOF + subcommittee_index
-    )
-    return xmss.Sign(privkey, leaf_index, signing_root)
-```
-
-```python
-def is_sync_committee_aggregator(
-    # [Modified in PQ]
-    signature: XMSSSignature,
-) -> bool:
-    modulo = max(
-        1,
-        SYNC_COMMITTEE_SIZE
-        // SYNC_COMMITTEE_SUBNET_COUNT
-        // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE,
-    )
-    return bytes_to_uint64(sha256(signature)[0:8]) % modulo == 0
-```
-
-##### Construct sync committee contribution
-
-###### Signature
-
-Set `contribution.signature = aggregate_signature` where `aggregate_signature`
-is obtained by assembling the appropriate collection of `XMSSSignature`s from
-the set of `sync_committee_messages` and wrapping the result of
-`xmss.Aggregate()` in an `XMSSAggregateSignature`.
-
-##### Broadcast sync committee contribution
-
-```python
-def get_contribution_and_proof(
-    state: BeaconState,
-    aggregator_index: ValidatorIndex,
-    contribution: SyncCommitteeContribution,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> ContributionAndProof:
-    selection_proof = get_sync_committee_selection_proof(
-        state,
-        contribution.slot,
-        contribution.subcommittee_index,
-        privkey,
-    )
-    return ContributionAndProof(
-        aggregator_index=aggregator_index,
-        contribution=contribution,
-        selection_proof=selection_proof,
-    )
-```
-
-```python
-def get_contribution_and_proof_signature(
-    state: BeaconState,
-    contribution_and_proof: ContributionAndProof,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> XMSSSignature:
-    contribution = contribution_and_proof.contribution
-    domain = get_domain(
-        state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot)
-    )
-    signing_root = compute_signing_root(contribution_and_proof, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        contribution.slot, LEAF_OFFSET_CONTRIBUTION_AND_PROOF + contribution.subcommittee_index
-    )
-    return xmss.Sign(privkey, leaf_index, signing_root)
-```
+Sync committees are removed in PQ, so validators have no sync committee duties.
 
 ### Payload timeliness attestation
 

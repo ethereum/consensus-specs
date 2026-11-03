@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_electra,
     is_post_gloas,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.state import get_balance, next_epoch
@@ -102,7 +103,7 @@ def check_proposer_slashing_effect(
 
     sc_reward_for_slashed = sc_penalty_for_slashed = 0
     sc_reward_for_proposer = sc_penalty_for_proposer = 0
-    if is_post_altair(spec) and block is not None:
+    if is_post_altair(spec) and not is_post_pq(spec) and block is not None:
         committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits
         sc_reward_for_slashed, sc_penalty_for_slashed = (

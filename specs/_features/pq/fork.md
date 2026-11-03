@@ -11,7 +11,6 @@
   - [New `get_unique_pq_data`](#new-get_unique_pq_data)
   - [New `get_registered_xmss_pubkeys`](#new-get_registered_xmss_pubkeys)
   - [New `get_registered_builder_xmss_pubkeys`](#new-get_registered_builder_xmss_pubkeys)
-  - [New `upgrade_sync_committee_to_pq`](#new-upgrade_sync_committee_to_pq)
   - [New `upgrade_pending_deposits_to_pq`](#new-upgrade_pending_deposits_to_pq)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
@@ -105,25 +104,6 @@ def get_registered_builder_xmss_pubkeys(
         if registration.pq_data in unique_pq_data:
             registered_pubkeys[registration.builder_pubkey] = XMSSPubkey(registration.pq_data)
     return registered_pubkeys
-```
-
-### New `upgrade_sync_committee_to_pq`
-
-```python
-def upgrade_sync_committee_to_pq(
-    pre_validators: Sequence[eip8483.Validator],
-    post_validators: Sequence[Validator],
-    sync_committee: eip8483.SyncCommittee,
-) -> SyncCommittee:
-    """
-    Return ``sync_committee`` with each member's public key replaced by its
-    post-fork public key.
-    """
-    bls_pubkeys = [validator.pubkey for validator in pre_validators]
-    pubkeys = [
-        post_validators[bls_pubkeys.index(pubkey)].pubkey for pubkey in sync_committee.pubkeys
-    ]
-    return SyncCommittee(pubkeys=SyncCommitteePubkeys(data=pubkeys))
 ```
 
 ### New `upgrade_pending_deposits_to_pq`
@@ -256,13 +236,9 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         finalized_checkpoint=pre.finalized_checkpoint,
         inactivity_scores=pre.inactivity_scores,
         # [Modified in PQ]
-        current_sync_committee=upgrade_sync_committee_to_pq(
-            pre.validators, validators, pre.current_sync_committee
-        ),
+        # Removed `current_sync_committee`
         # [Modified in PQ]
-        next_sync_committee=upgrade_sync_committee_to_pq(
-            pre.validators, validators, pre.next_sync_committee
-        ),
+        # Removed `next_sync_committee`
         latest_block_hash=pre.latest_block_hash,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,

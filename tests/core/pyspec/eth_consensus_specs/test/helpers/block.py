@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.signatures import get_empty_aggregate, sign
@@ -124,7 +125,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
 
     apply_randao_reveal(spec, state, empty_block, proposer_index)
 
-    if is_post_altair(spec):
+    if is_post_altair(spec) and not is_post_pq(spec):
         empty_block.body.sync_aggregate.sync_committee_signature = get_empty_aggregate(spec)
 
     if is_post_gloas(spec):
@@ -177,7 +178,7 @@ def build_block_and_payload(
 
     apply_randao_reveal(spec, state, block, proposer_index)
 
-    if is_post_altair(spec):
+    if is_post_altair(spec) and not is_post_pq(spec):
         block.body.sync_aggregate.sync_committee_signature = get_empty_aggregate(spec)
 
     if not is_post_bellatrix(spec):

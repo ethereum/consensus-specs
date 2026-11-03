@@ -96,16 +96,9 @@ def run_fork_test(post_spec, pre_state):
             )
             assert post_validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH
 
-    # Sync committee members keep their positions under their new public keys
-    bls_pubkeys = [validator.pubkey for validator in pre_state.validators]
-    for pre_committee, post_committee in (
-        (pre_state.current_sync_committee, post_state.current_sync_committee),
-        (pre_state.next_sync_committee, post_state.next_sync_committee),
-    ):
-        for pre_pubkey, post_pubkey in zip(
-            pre_committee.pubkeys, post_committee.pubkeys, strict=True
-        ):
-            assert post_pubkey == post_state.validators[bls_pubkeys.index(pre_pubkey)].pubkey
+    # Sync committees are removed
+    assert not hasattr(post_state, "current_sync_committee")
+    assert not hasattr(post_state, "next_sync_committee")
 
     # Builders swap their BLS public key for their registered XMSS public key
     registered_builder_pubkeys = post_spec.get_registered_builder_xmss_pubkeys(pre_state)
