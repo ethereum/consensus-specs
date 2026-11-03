@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature, sign
 
 
 def find_upcoming_proposal_slot(spec, state):
@@ -55,8 +56,14 @@ def build_signed_proposer_preferences(
             spec.compute_epoch_at_slot(proposal_slot),
         )
         signing_root = spec.compute_signing_root(preferences, domain)
-        signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+        signature = sign(
+            spec,
+            privkeys[validator_index],
+            signing_root,
+            proposal_slot,
+            "LEAF_OFFSET_PROPOSER_PREFERENCES",
+        )
     else:
-        signature = spec.BLSSignature()
+        signature = get_unsigned_signature(spec)
 
     return spec.SignedProposerPreferences(message=preferences, signature=signature)

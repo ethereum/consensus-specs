@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_heze,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.test.helpers.signatures import get_empty_aggregate, sign
 from eth_consensus_specs.utils.bls import only_with_bls
 
 
@@ -51,7 +51,7 @@ def sign_randao_reveal(spec, state, block, proposer_index):
 
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
     signing_root = spec.compute_signing_root(spec.compute_epoch_at_slot(block.slot), domain)
-    block.body.randao_reveal = bls.Sign(privkey, signing_root)
+    block.body.randao_reveal = sign(spec, privkey, signing_root, block.slot, "LEAF_OFFSET_RANDAO")
 
 
 # Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
@@ -66,7 +66,9 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
     )
     signing_root = spec.compute_signing_root(block, domain)
 
-    signed_block.signature = bls.Sign(privkey, signing_root)
+    signed_block.signature = sign(
+        spec, privkey, signing_root, block.slot, "LEAF_OFFSET_BEACON_PROPOSER"
+    )
 
 
 def sign_block(spec, state, block, proposer_index=None):
@@ -123,7 +125,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
     apply_randao_reveal(spec, state, empty_block, proposer_index)
 
     if is_post_altair(spec):
-        empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
+        empty_block.body.sync_aggregate.sync_committee_signature = get_empty_aggregate(spec)
 
     if is_post_gloas(spec):
         signed_bid = build_empty_signed_execution_payload_bid(spec, state)
@@ -176,7 +178,7 @@ def build_block_and_payload(
     apply_randao_reveal(spec, state, block, proposer_index)
 
     if is_post_altair(spec):
-        block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
+        block.body.sync_aggregate.sync_committee_signature = get_empty_aggregate(spec)
 
     if not is_post_bellatrix(spec):
         return block, None

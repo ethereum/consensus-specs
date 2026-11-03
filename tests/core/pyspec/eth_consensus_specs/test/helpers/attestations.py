@@ -9,12 +9,12 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
     state_transition_and_sign_block,
 )
-from eth_consensus_specs.utils import bls
 
 
 def get_parent_slot(state):
@@ -166,7 +166,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: list
                 privkey,
             )
         )
-    return bls.Aggregate(signatures)
+    return aggregate(spec, signatures)
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
@@ -184,7 +184,7 @@ def sign_attestation(spec, state, attestation):
 def get_attestation_signature(spec, state, attestation_data, privkey):
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
-    return bls.Sign(privkey, signing_root)
+    return sign(spec, privkey, signing_root, attestation_data.slot, "LEAF_OFFSET_BEACON_ATTESTER")
 
 
 def to_single_attestation(spec, state, attestation, attester_index=None):

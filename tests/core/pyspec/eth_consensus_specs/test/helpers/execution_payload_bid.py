@@ -1,6 +1,10 @@
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.test.helpers.signatures import (
+    get_placeholder_signature,
+    get_unsigned_signature,
+)
 
 
 def run_execution_payload_bid_processing(spec, state, block, valid=True):
@@ -106,15 +110,15 @@ def prepare_signed_execution_payload_bid(
     if valid_signature:
         # Check if this is a self-build case
         if builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-            # Self-builds must use G2_POINT_AT_INFINITY
-            signature = spec.bls.G2_POINT_AT_INFINITY
+            # Self-builds must use the placeholder signature
+            signature = get_placeholder_signature(spec)
         else:
             # External builders use real signatures
             privkey = builder_privkeys[builder_index]
             signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
     else:
         # Invalid signature
-        signature = spec.BLSSignature()
+        signature = get_unsigned_signature(spec)
 
     return spec.SignedExecutionPayloadBid(
         message=bid,

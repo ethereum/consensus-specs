@@ -26,15 +26,16 @@ from eth_consensus_specs.test.helpers.fulu.state import (
 from eth_consensus_specs.test.helpers.gloas.state import (
     initialize_ptc_window,
 )
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_pubkeys, get_pubkeys, pubkeys
 
 GENESIS_ETH1_BLOCK_HASH = b"\xda" * 32
 
 
 def build_mock_builder(spec, i: int, balance: int):
+    pubkey = get_builder_pubkeys(spec)[i]
     return spec.Builder(
-        pubkey=builder_pubkeys[i],
-        execution_address=spec.ExecutionAddress(spec.sha256(builder_pubkeys[i])[12:]),
+        pubkey=pubkey,
+        execution_address=spec.ExecutionAddress(spec.sha256(pubkey)[12:]),
         balance=balance,
         deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
@@ -42,7 +43,7 @@ def build_mock_builder(spec, i: int, balance: int):
 
 
 def build_mock_validator(spec, i: int, balance: int):
-    active_pubkey = pubkeys[i]
+    active_pubkey = get_pubkeys(spec)[i]
     withdrawal_pubkey = pubkeys[((32 * 256) - 1 - i) % len(pubkeys)]
     if is_post_electra(spec):
         if balance > spec.MIN_ACTIVATION_BALANCE:

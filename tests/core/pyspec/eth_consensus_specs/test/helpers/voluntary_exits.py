@@ -3,7 +3,7 @@ from random import Random
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_deneb
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.test.helpers.signatures import sign
 
 
 def get_max_voluntary_exits(spec):
@@ -39,8 +39,10 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None)
         )
 
     signing_root = spec.compute_signing_root(voluntary_exit, domain)
+    slot = spec.compute_start_slot_at_epoch(voluntary_exit.epoch)
     return spec.SignedVoluntaryExit(
-        message=voluntary_exit, signature=bls.Sign(privkey, signing_root)
+        message=voluntary_exit,
+        signature=sign(spec, privkey, signing_root, slot, "LEAF_OFFSET_VOLUNTARY_EXIT"),
     )
 
 

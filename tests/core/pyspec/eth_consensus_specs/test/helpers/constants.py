@@ -21,6 +21,7 @@ EIP8148 = SpecForkName("eip8148")
 EIP8205 = SpecForkName("eip8205")
 EIP8321 = SpecForkName("eip8321")
 EIP8483 = SpecForkName("eip8483")
+PQ = SpecForkName("pq")
 
 #
 # SpecFork settings
@@ -43,6 +44,7 @@ ALL_PHASES = (
     EIP8205,
     EIP8321,
     EIP8483,
+    PQ,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0] + [GLOAS]
@@ -69,6 +71,7 @@ PREVIOUS_FORK_OF = {
     EIP8205: HEZE,
     EIP8321: HEZE,
     EIP8483: GLOAS,
+    PQ: EIP8483,
 }
 
 # For fork transition tests

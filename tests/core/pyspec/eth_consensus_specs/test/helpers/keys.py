@@ -1,4 +1,5 @@
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.utils import bls, xmss
 
 # Enough keys for 256 builders
 builder_privkeys = [2**15 + i + 1 for i in range(256)]
@@ -11,3 +12,23 @@ builder_pubkey_to_privkey = {
 privkeys = [i + 1 for i in range(32 * 256 + 1)]
 pubkeys = [bls.SkToPk(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys, strict=False)}
+
+# XMSS key generation takes minutes, so the XMSS keys are placeholders
+xmss_builder_pubkeys = [xmss.StubPk(privkey) for privkey in builder_privkeys]
+builder_pubkey_to_privkey.update(zip(xmss_builder_pubkeys, builder_privkeys, strict=True))
+xmss_pubkeys = [xmss.StubPk(privkey) for privkey in privkeys]
+pubkey_to_privkey.update(zip(xmss_pubkeys, privkeys, strict=True))
+
+
+def get_pubkeys(spec):
+    """
+    The validator public keys of ``spec``'s signature scheme.
+    """
+    return xmss_pubkeys if is_post_pq(spec) else pubkeys
+
+
+def get_builder_pubkeys(spec):
+    """
+    The builder public keys of ``spec``'s signature scheme.
+    """
+    return xmss_builder_pubkeys if is_post_pq(spec) else builder_pubkeys

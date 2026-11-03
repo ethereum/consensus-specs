@@ -2,7 +2,7 @@ import pytest
 
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
 from eth_consensus_specs.test.helpers.forks import is_post_heze
-from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import get_pubkeys, privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -67,7 +67,7 @@ def prepare_process_deposit_request(
 
     # Phase 2: Derive effective values
     index = validator_index if validator_index is not None else len(state.validators)
-    effective_pubkey = pubkey if pubkey is not None else pubkeys[index]
+    effective_pubkey = pubkey if pubkey is not None else get_pubkeys(spec)[index]
     effective_privkey = privkeys[index]
     effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
 
