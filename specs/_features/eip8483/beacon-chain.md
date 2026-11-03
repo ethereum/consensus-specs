@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `BuilderPQRegistrations`](#new-builderpqregistrations)
   - [New `PQRegistrationRequests`](#new-pqregistrationrequests)
   - [New `PQRegistrations`](#new-pqregistrations)
 - [Constants](#constants)
@@ -19,12 +20,14 @@
   - [New containers](#new-containers)
     - [`PQRegistrationRequest`](#pqregistrationrequest)
     - [`PQRegistration`](#pqregistration)
+    - [`BuilderPQRegistration`](#builderpqregistration)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Operations](#operations)
       - [New `process_pq_registration_request`](#new-process_pq_registration_request)
+      - [New `process_builder_pq_registration_request`](#new-process_builder_pq_registration_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
@@ -41,9 +44,25 @@ later request from the same owner overwrites the earlier one. This upgrade gives
 the 32 bytes no meaning. A later fork that migrates consensus to post-quantum
 signatures defines how they are used.
 
+*Note*: Unlike EIP-8483 as drafted, this feature also lets a builder register,
+with the builder's public key in place of the validator's and its execution
+address as the authority. Builders keep their balance across a post-quantum
+migration only if they can carry a key through it. Builder indices are reused,
+so a builder registration is keyed by public key rather than index.
+
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
+
+### New `BuilderPQRegistrations`
+
+```python
+class BuilderPQRegistrations(ProgressiveList[BuilderPQRegistration]):
+    """
+    The registered PQ material of builders, at most one entry per builder
+    public key.
+    """
+```
 
 ### New `PQRegistrationRequests`
 
@@ -87,7 +106,7 @@ class PQRegistrations(ProgressiveList[PQRegistration]):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=47)
+    ACTIVE_FIELDS = active_fields(width=48)
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -137,6 +156,8 @@ class BeaconState(ProgressiveContainer):
     ptc_window: PayloadTimelinessCommitteeWindow
     # [New in EIP8483]
     pq_registrations: PQRegistrations
+    # [New in EIP8483]
+    builder_pq_registrations: BuilderPQRegistrations
 ```
 
 #### `ExecutionRequests`
@@ -176,6 +197,14 @@ class PQRegistration(Container):
     pq_data: Bytes32
 ```
 
+#### `BuilderPQRegistration`
+
+```python
+class BuilderPQRegistration(Container):
+    builder_pubkey: BLSPubkey
+    pq_data: Bytes32
+```
+
 ## Beacon chain state transition function
 
 ### Block processing
@@ -212,7 +241,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 *Note*: Invalid requests are ignored. No validator status is checked, so
 pending, active, exited, and slashed validators can all register PQ material, as
-long as the request comes from their withdrawal address.
+long as the request comes from their withdrawal address. A request for a public
+key that is not a validator's is handled as a builder registration.
 
 ```python
 def process_pq_registration_request(
@@ -222,6 +252,7 @@ def process_pq_registration_request(
     validator_pubkeys = [validator.pubkey for validator in state.validators]
     request_pubkey = pq_registration_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
+        process_builder_pq_registration_request(state, pq_registration_request)
         return
     validator_index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
     validator = state.validators[validator_index]
@@ -244,6 +275,40 @@ def process_pq_registration_request(
     state.pq_registrations.append(
         PQRegistration(
             validator_index=validator_index,
+            pq_data=pq_registration_request.pq_data,
+        )
+    )
+```
+
+##### New `process_builder_pq_registration_request`
+
+*Note*: As for validators, no builder status is checked.
+
+```python
+def process_builder_pq_registration_request(
+    state: BeaconState, pq_registration_request: PQRegistrationRequest
+) -> None:
+    # Verify the builder exists
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
+    request_pubkey = pq_registration_request.validator_pubkey
+    if request_pubkey not in builder_pubkeys:
+        return
+    builder = state.builders[BuilderIndex(builder_pubkeys.index(request_pubkey))]
+
+    # Verify the request comes from the builder's execution address
+    if builder.execution_address != pq_registration_request.source_address:
+        return
+
+    # Overwrite an existing registration for this builder
+    for registration in state.builder_pq_registrations:
+        if registration.builder_pubkey == request_pubkey:
+            registration.pq_data = pq_registration_request.pq_data
+            return
+
+    # Otherwise append a new registration
+    state.builder_pq_registrations.append(
+        BuilderPQRegistration(
+            builder_pubkey=request_pubkey,
             pq_data=pq_registration_request.pq_data,
         )
     )

@@ -8,9 +8,10 @@ from eth_consensus_specs.test.helpers.constants import (
     PQ,
 )
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
-from eth_consensus_specs.test.helpers.keys import xmss_pubkeys
+from eth_consensus_specs.test.helpers.keys import xmss_builder_pubkeys, xmss_pubkeys
 from eth_consensus_specs.test.helpers.pq.fork import (
     PQ_FORK_TEST_META_TAGS,
+    register_builder_xmss_pubkeys,
     register_xmss_pubkeys,
     run_fork_test,
 )
@@ -27,12 +28,49 @@ from eth_consensus_specs.test.utils import with_meta_tags
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
 def test_fork_all_registered(spec, phases, state):
     register_xmss_pubkeys(spec, state)
+    register_builder_xmss_pubkeys(spec, state)
     post_state = yield from run_fork_test(phases[PQ], state)
 
     post_spec = phases[PQ]
     for index, validator in enumerate(post_state.validators):
         assert validator.pubkey == xmss_pubkeys[index]
         assert validator.exit_epoch == post_spec.FAR_FUTURE_EPOCH
+    assert len(post_state.builders) > 0
+    for index, builder in enumerate(post_state.builders):
+        assert builder.pubkey == xmss_builder_pubkeys[index]
+        assert builder.withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
+
+
+@with_phases(phases=[EIP8483], other_phases=[PQ])
+@spec_test
+@with_state
+@with_meta_tags(PQ_FORK_TEST_META_TAGS)
+def test_fork_builders_not_registered(spec, phases, state):
+    register_xmss_pubkeys(spec, state)
+    post_state = yield from run_fork_test(phases[PQ], state)
+
+    post_spec = phases[PQ]
+    assert len(post_state.builders) > 0
+    for builder in post_state.builders:
+        assert builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
+
+
+@with_phases(phases=[EIP8483], other_phases=[PQ])
+@spec_test
+@with_state
+@with_meta_tags(PQ_FORK_TEST_META_TAGS)
+def test_fork_builder_registers_validator_key(spec, phases, state):
+    register_xmss_pubkeys(spec, state)
+    register_builder_xmss_pubkeys(spec, state)
+    # Builder 0 registers the key of validator 0
+    state.builder_pq_registrations[0].pq_data = state.pq_registrations[0].pq_data
+    post_state = yield from run_fork_test(phases[PQ], state)
+
+    post_spec = phases[PQ]
+    assert post_state.validators[0].exit_epoch != post_spec.FAR_FUTURE_EPOCH
+    assert post_state.builders[0].withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
+    assert post_state.validators[1].exit_epoch == post_spec.FAR_FUTURE_EPOCH
+    assert post_state.builders[1].withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])

@@ -1,7 +1,7 @@
 from eth_consensus_specs.test.helpers.constants import (
     PQ,
 )
-from eth_consensus_specs.test.helpers.keys import xmss_pubkeys
+from eth_consensus_specs.test.helpers.keys import xmss_builder_pubkeys, xmss_pubkeys
 
 PQ_FORK_TEST_META_TAGS = {
     "fork": PQ,
@@ -17,6 +17,21 @@ def register_xmss_pubkeys(spec, state, indices=None):
     for index in indices:
         state.pq_registrations.append(
             spec.PQRegistration(validator_index=index, pq_data=xmss_pubkeys[index])
+        )
+
+
+def register_builder_xmss_pubkeys(spec, state, indices=None):
+    """
+    Add an EIP-8483 registration of each builder's XMSS public key.
+    """
+    if indices is None:
+        indices = range(len(state.builders))
+    for index in indices:
+        state.builder_pq_registrations.append(
+            spec.BuilderPQRegistration(
+                builder_pubkey=state.builders[index].pubkey,
+                pq_data=xmss_builder_pubkeys[index],
+            )
         )
 
 
@@ -66,7 +81,7 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Validators swap their BLS public key for their registered XMSS public key
-    registered_pubkeys = post_spec.get_registered_xmss_pubkeys(pre_state.pq_registrations)
+    registered_pubkeys = post_spec.get_registered_xmss_pubkeys(pre_state)
     for index, pre_validator in enumerate(pre_state.validators):
         post_validator = post_state.validators[index]
         assert post_validator.withdrawal_credentials == pre_validator.withdrawal_credentials
@@ -92,12 +107,17 @@ def run_fork_test(post_spec, pre_state):
         ):
             assert post_pubkey == post_state.validators[bls_pubkeys.index(pre_pubkey)].pubkey
 
-    # Builders have no registration, so they get an unusable key and exit
+    # Builders swap their BLS public key for their registered XMSS public key
+    registered_builder_pubkeys = post_spec.get_registered_builder_xmss_pubkeys(pre_state)
     assert len(post_state.builders) == len(pre_state.builders)
     for pre_builder, post_builder in zip(pre_state.builders, post_state.builders, strict=True):
-        assert post_builder.pubkey == post_spec.compute_unusable_xmss_pubkey(pre_builder.pubkey)
         assert post_builder.balance == pre_builder.balance
-        assert post_builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
+        if pre_builder.pubkey in registered_builder_pubkeys:
+            assert post_builder.pubkey == registered_builder_pubkeys[pre_builder.pubkey]
+            assert post_builder.withdrawable_epoch == pre_builder.withdrawable_epoch
+        else:
+            assert post_builder.pubkey == post_spec.compute_unusable_xmss_pubkey(pre_builder.pubkey)
+            assert post_builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.PQ_FORK_VERSION

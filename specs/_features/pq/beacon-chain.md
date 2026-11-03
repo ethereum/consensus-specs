@@ -296,6 +296,8 @@ class BeaconState(ProgressiveContainer):
     ptc_window: PayloadTimelinessCommitteeWindow
     # [Modified in PQ]
     # Removed `pq_registrations`
+    # [Modified in PQ]
+    # Removed `builder_pq_registrations`
 ```
 
 #### `Builder`

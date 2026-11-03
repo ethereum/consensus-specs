@@ -32,6 +32,8 @@ from eth_consensus_specs.utils import xmss
     @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
+            "BuilderPQRegistration",
+            "BuilderPQRegistrations",
             "PQRegistration",
             "PQRegistrationRequest",
             "PQRegistrationRequests",
@@ -43,6 +45,7 @@ from eth_consensus_specs.utils import xmss
         return {
             "eth_aggregate_pubkeys",
             "eth_fast_aggregate_verify",
+            "process_builder_pq_registration_request",
             "process_pq_registration_request",
             "upgrade_attestation_to_gloas",
             "upgrade_attester_slashing_to_gloas",
