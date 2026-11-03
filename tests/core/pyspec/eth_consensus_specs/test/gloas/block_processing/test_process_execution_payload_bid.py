@@ -1,12 +1,14 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob_tx,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
     run_execution_payload_bid_processing,
@@ -122,7 +124,7 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_execution_payload_bid_blob_kzg_commitments_at_limit(spec, state):
     """

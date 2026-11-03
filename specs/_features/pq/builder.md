@@ -47,6 +47,9 @@ rather than a new signature.
 two different bids for the same slot, so it cannot raise a bid it has broadcast
 or bid on more than one parent.
 
+*Note*: Blobs are disabled in PQ, so `bid.blob_kzg_commitments` MUST be empty
+and the payload MUST NOT contain blob transactions.
+
 ```python
 def get_execution_payload_bid_signature(
     state: BeaconState,
