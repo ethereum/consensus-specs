@@ -92,9 +92,9 @@ class PQRegistrations(ProgressiveList[PQRegistration]):
 
 ### Execution
 
-| Name                                       | Value                 | Description                                                                               |
-| ------------------------------------------ | --------------------- | ----------------------------------------------------------------------------------------- |
-| `MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**4)` (= 16) | *[New in EIP8483]* Maximum number of execution layer PQ registration requests per payload |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**4)` (= 16) |
 
 ## Containers
 

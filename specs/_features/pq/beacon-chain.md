@@ -180,9 +180,9 @@ class XMSSSignature(ByteVector):
 
 ### XMSS
 
-| Name                                | Value                         | Description                                                        |
-| ----------------------------------- | ----------------------------- | ------------------------------------------------------------------ |
-| `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` | `Uint64(2**20)` (= 1,048,576) | *[New in PQ]* Maximum size in bytes of an aggregate XMSS signature |
+| Name                                | Value                         |
+| ----------------------------------- | ----------------------------- |
+| `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` | `Uint64(2**20)` (= 1,048,576) |
 
 *Note*: `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` is a placeholder for the proof size
 of a succinct aggregation scheme. The reference concatenation fits at most
