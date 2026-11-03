@@ -682,14 +682,10 @@ def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
 ```python
 def verify_execution_payload_envelope(
     state: BeaconState,
-    signed_envelope: SignedExecutionPayloadEnvelope,
+    envelope: ExecutionPayloadEnvelope,
     execution_engine: ExecutionEngine,
 ) -> None:
-    envelope = signed_envelope.message
     payload = envelope.payload
-
-    # Verify signature
-    assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Verify consistency with the beacon block
     header = state.latest_block_header.copy()
@@ -1126,8 +1122,11 @@ def on_execution_payload_envelope(
 
     state = store.block_states[envelope.beacon_block_root]
 
+    # Verify the envelope signature
+    assert verify_execution_payload_envelope_signature(state, signed_envelope)
+
     # Verify the execution payload envelope
-    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
+    verify_execution_payload_envelope(state, envelope, EXECUTION_ENGINE)
 
     # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
