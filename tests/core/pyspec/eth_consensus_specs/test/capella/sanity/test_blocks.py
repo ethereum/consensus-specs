@@ -2,6 +2,7 @@ import random
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_capella_and_later,
     with_presets,
@@ -19,6 +20,7 @@ from eth_consensus_specs.test.helpers.constants import (
     FULU,
     GLOAS,
     MINIMAL,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -72,7 +74,7 @@ def test_invalid_is_execution_enabled_false(spec, state):
 #
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_state_test
 def test_bls_change(spec, state):
     index = 0
@@ -135,7 +137,7 @@ def test_deposit_and_bls_change(spec, state):
     assert validator_credentials[12:] == signed_address_change.message.to_execution_address
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_state_test
 def test_exit_and_bls_change(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -164,7 +166,7 @@ def test_exit_and_bls_change(spec, state):
     assert spec.is_fully_withdrawable_validator(validator, balance, validator.withdrawable_epoch)
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_state_test
 def test_invalid_duplicate_bls_changes_same_block(spec, state):
     index = 0
@@ -183,7 +185,7 @@ def test_invalid_duplicate_bls_changes_same_block(spec, state):
     yield "post", None
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_state_test
 def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_block(spec, state):
     index = 0

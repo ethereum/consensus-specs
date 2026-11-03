@@ -26,6 +26,7 @@ from eth_consensus_specs.utils import xmss
     def deprecate_presets(cls) -> set[str]:
         return {
             "EPOCHS_PER_SYNC_COMMITTEE_PERIOD",
+            "MAX_BLS_TO_EXECUTION_CHANGES",
             "MAX_ATTESTER_SLASHING_SIZE",
             "MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE",
@@ -45,6 +46,8 @@ from eth_consensus_specs.utils import xmss
     @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
+            "BLSToExecutionChange",
+            "BLSToExecutionChanges",
             "ContributionAndProof",
             "CurrentSyncCommitteeBranch",
             "ExecutionBranch",
@@ -61,6 +64,7 @@ from eth_consensus_specs.utils import xmss
             "PQRegistrationRequest",
             "PQRegistrationRequests",
             "PQRegistrations",
+            "SignedBLSToExecutionChange",
             "SignedContributionAndProof",
             "SyncAggregate",
             "SyncAggregatorSelectionData",
@@ -112,6 +116,7 @@ from eth_consensus_specs.utils import xmss
             "process_light_client_optimistic_update",
             "process_light_client_store_force_update",
             "process_light_client_update",
+            "process_bls_to_execution_change",
             "process_pq_registration_request",
             "process_sync_aggregate",
             "process_sync_committee_contributions",
@@ -126,6 +131,7 @@ from eth_consensus_specs.utils import xmss
             "upgrade_lc_store_to_gloas",
             "upgrade_lc_update_to_gloas",
             "upgrade_to_eip8483",
+            "validate_bls_to_execution_change_gossip",
             "validate_light_client_update",
             "validate_sync_committee_contribution_and_proof_gossip",
             "validate_sync_committee_message_gossip",

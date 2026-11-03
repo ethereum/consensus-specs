@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     HEZE,
     spec_state_test,
     spec_state_test_with_matching_config,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_gloas_and_later,
     with_phases,
@@ -27,6 +28,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
@@ -709,7 +711,7 @@ def test_invalid_too_many_voluntary_exits(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_max_bls_to_execution_changes(spec, state):
     num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES
@@ -728,7 +730,7 @@ def test_max_bls_to_execution_changes(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_invalid_too_many_bls_to_execution_changes(spec, state):
     num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES + 1

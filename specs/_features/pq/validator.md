@@ -20,6 +20,7 @@
       - [Randao reveal](#randao-reveal)
       - [Attestations](#attestations)
       - [Sync committee](#sync-committee)
+      - [BLS to execution changes](#bls-to-execution-changes)
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Execution requests](#execution-requests)
     - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
@@ -204,6 +205,11 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 Sync committees are removed in PQ, so the block body no longer has a
 `sync_aggregate`.
+
+##### BLS to execution changes
+
+`BLSToExecutionChange` is disabled in PQ, so the block body no longer has
+`bls_to_execution_changes`.
 
 ##### Signed execution payload bid
 

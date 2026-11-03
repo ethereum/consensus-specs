@@ -698,7 +698,7 @@ def test_gossip_beacon_block__reject_too_many_voluntary_exits(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__valid_max_bls_to_execution_changes(spec, state):
     """A block with the maximum number of BLS to execution changes is valid."""
@@ -711,7 +711,7 @@ def test_gossip_beacon_block__valid_max_bls_to_execution_changes(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_bls_to_execution_changes(spec, state):
     """A block with more BLS to execution changes than the limit is rejected."""

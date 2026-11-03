@@ -11,6 +11,7 @@
   - [Modified `SignedProposerPreferences`](#modified-signedproposerpreferences)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
   - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -96,6 +97,44 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+### Modified `verify_block_body_operation_limits`
+
+*Note*: These checks MAY be performed when deserializing `BeaconBlockBody`.
+
+```python
+def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
+    """
+    Verify that each block body operation count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The proposer slashing count is within the limit
+    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [REJECT] The attester slashing count is within the limit
+    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [REJECT] The attestation count is within the limit
+    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [REJECT] The block contains no deposits
+    if len(body.deposits) != 0:
+        raise GossipReject("block must not contain deposits")
+
+    # [REJECT] The voluntary exit count is within the limit
+    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [Modified in PQ]
+    # Removed the BLS to execution change limit
+
+    # [REJECT] The payload attestation count is within the limit
+    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+```
+
 ### Modified `verify_execution_requests_limits`
 
 *Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
@@ -133,7 +172,7 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
 Topics follow the same specification as in prior upgrades. Every topic whose
 message holds a validator or builder signature is updated to the modified type,
 which carries an XMSS signature instead. The `bls_to_execution_change` topic is
-unchanged.
+removed, because `BLSToExecutionChange` is disabled.
 
 #### Global topics
 

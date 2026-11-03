@@ -70,6 +70,7 @@
       - [Modified `verify_execution_payload_bid_signature`](#modified-verify_execution_payload_bid_signature)
       - [Modified `process_execution_payload_bid`](#modified-process_execution_payload_bid)
     - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
       - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Deposit requests](#deposit-requests)
@@ -111,9 +112,9 @@ EIP-8483 before the fork. Each registration holds the validator's XMSS public
 key. Validators that did not register are exited at the fork. See
 [the fork document](./fork.md) for details.
 
-`BLSToExecutionChange` keeps its BLS signature, because it is signed with the
-withdrawal key rather than the validator's signing key, and is the only way to
-move funds out of `0x00` withdrawal credentials.
+`BLSToExecutionChange` is disabled, because its BLS signature could be forged.
+Balances behind `0x00` withdrawal credentials stay locked until a later upgrade
+adds a quantum-safe way to change them.
 
 *Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -209,7 +210,7 @@ class Attestation(ProgressiveContainer):
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13, gaps=(8,))
+    ACTIVE_FIELDS = active_fields(width=13, gaps=(8, 9))
 
     # [Modified in PQ]
     randao_reveal: XMSSSignature
@@ -222,7 +223,8 @@ class BeaconBlockBody(ProgressiveContainer):
     voluntary_exits: VoluntaryExits
     # [Modified in PQ]
     # Removed `sync_aggregate`
-    bls_to_execution_changes: BLSToExecutionChanges
+    # [Modified in PQ]
+    # Removed `bls_to_execution_changes`
     signed_execution_payload_bid: SignedExecutionPayloadBid
     payload_attestations: PayloadAttestations
     parent_execution_requests: ExecutionRequests
@@ -959,6 +961,33 @@ def process_execution_payload_bid(
 ```
 
 #### Operations
+
+##### Modified `process_operations`
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
+    assert len(body.deposits) == 0
+
+    def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
+        for operation in operations:
+            fn(state, operation, *args)
+
+    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
+    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
+    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
+    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
+    # [Modified in PQ]
+    # Removed the BLS to execution change limit
+    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation, parent_slot)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    # [Modified in PQ]
+    # Removed `process_bls_to_execution_change`
+    for_ops(body.payload_attestations, process_payload_attestation)
+```
 
 ##### Modified `process_proposer_slashing`
 

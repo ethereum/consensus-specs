@@ -29,6 +29,11 @@ sign for, and its exit is initiated. EIP-8483 ignores a registration whose key
 is already registered, so every registered key is unique. An exited builder can
 register again with an XMSS builder deposit.
 
+*Note*: A validator with `0x00` withdrawal credentials has no withdrawal address
+to register from, so it is exited. `BLSToExecutionChange` is disabled in PQ, so
+its balance stays locked until a later upgrade adds a quantum-safe way to change
+its credentials.
+
 ## Configs
 
 Warning: this configuration is not definitive.
