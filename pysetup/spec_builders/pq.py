@@ -45,8 +45,6 @@ from eth_consensus_specs.utils import xmss
     @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
-            "BuilderPQRegistration",
-            "BuilderPQRegistrations",
             "ContributionAndProof",
             "CurrentSyncCommitteeBranch",
             "ExecutionBranch",
@@ -110,7 +108,6 @@ from eth_consensus_specs.utils import xmss
             "is_sync_committee_update",
             "is_valid_light_client_header",
             "next_sync_committee_gindex_at_slot",
-            "process_builder_pq_registration_request",
             "process_light_client_finality_update",
             "process_light_client_optimistic_update",
             "process_light_client_store_force_update",

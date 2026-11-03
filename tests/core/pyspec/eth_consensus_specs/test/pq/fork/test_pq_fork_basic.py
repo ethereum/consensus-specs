@@ -62,8 +62,8 @@ def test_fork_builders_not_registered(spec, phases, state):
 def test_fork_builder_registers_validator_key(spec, phases, state):
     register_xmss_pubkeys(spec, state)
     register_builder_xmss_pubkeys(spec, state)
-    # Builder 0 registers the key of validator 0
-    state.builder_pq_registrations[0].pq_data = state.pq_registrations[0].pq_data
+    # Builder 0, registered right after the validators, registers the key of validator 0
+    state.pq_registrations[len(state.validators)].pq_data = state.pq_registrations[0].pq_data
     post_state = yield from run_fork_test(phases[PQ], state)
 
     post_spec = phases[PQ]

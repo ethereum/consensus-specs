@@ -27,9 +27,9 @@ def register_builder_xmss_pubkeys(spec, state, indices=None):
     if indices is None:
         indices = range(len(state.builders))
     for index in indices:
-        state.builder_pq_registrations.append(
-            spec.BuilderPQRegistration(
-                builder_pubkey=state.builders[index].pubkey,
+        state.pq_registrations.append(
+            spec.PQRegistration(
+                validator_index=spec.convert_builder_index_to_validator_index(index),
                 pq_data=xmss_builder_pubkeys[index],
             )
         )
@@ -101,12 +101,13 @@ def run_fork_test(post_spec, pre_state):
     assert not hasattr(post_state, "next_sync_committee")
 
     # Builders swap their BLS public key for their registered XMSS public key
-    registered_builder_pubkeys = post_spec.get_registered_builder_xmss_pubkeys(pre_state)
     assert len(post_state.builders) == len(pre_state.builders)
-    for pre_builder, post_builder in zip(pre_state.builders, post_state.builders, strict=True):
+    for builder_index, pre_builder in enumerate(pre_state.builders):
+        post_builder = post_state.builders[builder_index]
+        registration_index = post_spec.convert_builder_index_to_validator_index(builder_index)
         assert post_builder.balance == pre_builder.balance
-        if pre_builder.pubkey in registered_builder_pubkeys:
-            assert post_builder.pubkey == registered_builder_pubkeys[pre_builder.pubkey]
+        if registration_index in registered_pubkeys:
+            assert post_builder.pubkey == registered_pubkeys[registration_index]
             assert post_builder.withdrawable_epoch == pre_builder.withdrawable_epoch
         else:
             assert post_builder.pubkey == post_spec.compute_unusable_xmss_pubkey(pre_builder.pubkey)

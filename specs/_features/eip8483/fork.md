@@ -97,8 +97,6 @@ def upgrade_to_eip8483(pre: gloas.BeaconState) -> BeaconState:
         ptc_window=pre.ptc_window,
         # [New in EIP8483]
         pq_registrations=PQRegistrations(),
-        # [New in EIP8483]
-        builder_pq_registrations=BuilderPQRegistrations(),
     )
 
     return post
