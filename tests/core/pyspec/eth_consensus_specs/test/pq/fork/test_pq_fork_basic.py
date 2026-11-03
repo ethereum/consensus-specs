@@ -59,18 +59,17 @@ def test_fork_builders_not_registered(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
-def test_fork_builder_registers_validator_key(spec, phases, state):
+def test_fork_builder_shares_validator_pubkey(spec, phases, state):
+    state.builders[0].pubkey = state.validators[0].pubkey
     register_xmss_pubkeys(spec, state)
     register_builder_xmss_pubkeys(spec, state)
-    # Builder 0, registered right after the validators, registers the key of validator 0
-    state.pq_registrations[len(state.validators)].pq_data = state.pq_registrations[0].pq_data
     post_state = yield from run_fork_test(phases[PQ], state)
 
     post_spec = phases[PQ]
-    assert post_state.validators[0].exit_epoch != post_spec.FAR_FUTURE_EPOCH
-    assert post_state.builders[0].withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
-    assert post_state.validators[1].exit_epoch == post_spec.FAR_FUTURE_EPOCH
-    assert post_state.builders[1].withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
+    assert post_state.validators[0].pubkey == xmss_pubkeys[0]
+    assert post_state.validators[0].exit_epoch == post_spec.FAR_FUTURE_EPOCH
+    assert post_state.builders[0].pubkey == xmss_builder_pubkeys[0]
+    assert post_state.builders[0].withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])
@@ -98,26 +97,6 @@ def test_fork_partially_registered(spec, phases, state):
     for index, validator in enumerate(post_state.validators):
         is_registered = index in registered_indices
         assert (validator.exit_epoch == post_spec.FAR_FUTURE_EPOCH) == is_registered
-
-
-@with_phases(phases=[EIP8483], other_phases=[PQ])
-@spec_test
-@with_state
-@with_meta_tags(PQ_FORK_TEST_META_TAGS)
-def test_fork_duplicate_registration(spec, phases, state):
-    register_xmss_pubkeys(spec, state)
-    # Validator 1 registers the key of validator 0
-    state.pq_registrations[1].pq_data = state.pq_registrations[0].pq_data
-    post_state = yield from run_fork_test(phases[PQ], state)
-
-    post_spec = phases[PQ]
-    for index in (0, 1):
-        assert post_state.validators[index].pubkey == post_spec.compute_unusable_xmss_pubkey(
-            state.validators[index].pubkey
-        )
-        assert post_state.validators[index].exit_epoch != post_spec.FAR_FUTURE_EPOCH
-    assert post_state.validators[2].pubkey == xmss_pubkeys[2]
-    assert post_state.validators[2].exit_epoch == post_spec.FAR_FUTURE_EPOCH
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])

@@ -37,18 +37,25 @@ This upgrade adds an execution layer triggered request with which the execution
 address of a validator or builder registers 32 bytes of opaque post-quantum
 material for it, as part of the EIP-8483 upgrade.
 
-The beacon state stores one `(pubkey, pq_data)` pair per public key. A later
-request from the same owner overwrites the earlier one. This upgrade gives the
-32 bytes no meaning. A later fork that migrates consensus to post-quantum
-signatures defines how they are used.
+The beacon state stores one `(role, pubkey, pq_data)` entry per role and public
+key. A later request from the same owner overwrites the earlier one. This
+upgrade gives the 32 bytes no meaning. A later fork that migrates consensus to
+post-quantum signatures defines how they are used.
 
 *Note*: Unlike EIP-8483 as drafted, this feature also lets a builder register,
 since builders keep their balance across a post-quantum migration only if they
 can carry a key through it. A request carries a `role` that says whether its
 public key is a validator's or a builder's. A validator registration is
 authorized by the validator's withdrawal address, and a builder registration by
-the builder's execution address. Registrations are keyed by public key rather
-than index, which serves both and is unaffected by builder index reuse.
+the builder's execution address. Registrations are keyed by role and public key
+rather than index, which serves both and is unaffected by builder index reuse.
+The role is part of the key because a builder may share a validator's public
+key.
+
+*Note*: Unlike EIP-8483 as drafted, a request is ignored if its `pq_data` is
+already registered, for either role. The material is public, so otherwise anyone
+could register a copy of someone else's material for their own validator or
+builder, and the migration fork could not give each its own key.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -68,7 +75,7 @@ class PQRegistrationRequests(ProgressiveList[PQRegistrationRequest]):
 ```python
 class PQRegistrations(ProgressiveList[PQRegistration]):
     """
-    The registered PQ material, at most one entry per public key.
+    The registered PQ material, at most one entry per role and public key.
     """
 ```
 
@@ -190,6 +197,7 @@ class PQRegistrationRequest(Container):
 
 ```python
 class PQRegistration(Container):
+    role: Uint8
     pubkey: BLSPubkey
     pq_data: Bytes32
 ```
@@ -230,7 +238,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 *Note*: Invalid requests are ignored. No status is checked, so pending, active,
 exited, and slashed validators and builders can all register PQ material, as
-long as the request comes from their withdrawal address or execution address.
+long as the request comes from their withdrawal address or execution address and
+the material is not already registered.
 
 ```python
 def process_pq_registration_request(
@@ -264,15 +273,22 @@ def process_pq_registration_request(
     else:
         return
 
-    # Overwrite an existing registration for this public key
+    # Verify the PQ material is not already registered
+    registered_pq_data = [registration.pq_data for registration in state.pq_registrations]
+    if pq_registration_request.pq_data in registered_pq_data:
+        return
+
+    # Overwrite an existing registration for this role and public key
     for registration in state.pq_registrations:
-        if registration.pubkey == request_pubkey:
+        is_same_role = registration.role == pq_registration_request.role
+        if is_same_role and registration.pubkey == request_pubkey:
             registration.pq_data = pq_registration_request.pq_data
             return
 
     # Otherwise append a new registration
     state.pq_registrations.append(
         PQRegistration(
+            role=pq_registration_request.role,
             pubkey=request_pubkey,
             pq_data=pq_registration_request.pq_data,
         )

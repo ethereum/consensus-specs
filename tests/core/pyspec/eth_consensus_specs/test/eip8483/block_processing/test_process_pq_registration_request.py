@@ -263,3 +263,84 @@ def test_process_pq_registration_request__reused_builder_index_is_not_registered
     assert state.builders[0].pubkey == request.pubkey
     registered_pubkeys = [registration.pubkey for registration in state.pq_registrations]
     assert request.pubkey not in registered_pubkeys
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__builder_shares_validator_pubkey(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    state.builders[0].pubkey = state.validators[0].pubkey
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    )
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request)
+
+    assert [
+        (registration.role, registration.pubkey, registration.pq_data)
+        for registration in state.pq_registrations
+    ] == [
+        (spec.PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[0].pubkey, b"\x22" * 32),
+        (spec.PQ_REGISTRATION_ROLE_BUILDER, state.validators[0].pubkey, b"\x33" * 32),
+    ]
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__pq_data_already_registered(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    )
+    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__pq_data_already_registered_by_validator(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    )
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__resubmitted_registration(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    )
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__overwritten_pq_data_can_be_registered(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    )
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    )
+    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request)
+
+    assert [
+        (registration.pubkey, registration.pq_data) for registration in state.pq_registrations
+    ] == [
+        (state.validators[0].pubkey, b"\x33" * 32),
+        (state.validators[1].pubkey, b"\x22" * 32),
+    ]

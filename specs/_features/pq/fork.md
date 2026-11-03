@@ -24,10 +24,10 @@ Validators and builders register their XMSS public key before the fork, as the
 `pq_data` of an [EIP-8483](../eip8483/beacon-chain.md) registration. At the
 fork, each registered key replaces the BLS public key it was registered for.
 
-A validator or builder without a usable registration gets a public key that
-nobody can sign for, and its exit is initiated. A registration is unusable when
-its key would go to more than one validator or builder, because public keys must
-stay unique. An exited builder can register again with an XMSS builder deposit.
+A validator or builder without a registration gets a public key that nobody can
+sign for, and its exit is initiated. EIP-8483 ignores a registration whose key
+is already registered, so every registered key is unique. An exited builder can
+register again with an XMSS builder deposit.
 
 ## Configs
 
@@ -53,29 +53,20 @@ def compute_unusable_xmss_pubkey(bls_pubkey: BLSPubkey) -> XMSSPubkey:
 
 ### New `get_registered_xmss_pubkeys`
 
+*Note*: A builder may share a validator's BLS public key, so registrations are
+looked up by role.
+
 ```python
-def get_registered_xmss_pubkeys(pre: eip8483.BeaconState) -> dict[BLSPubkey, XMSSPubkey]:
+def get_registered_xmss_pubkeys(
+    pre: eip8483.BeaconState, role: Uint8
+) -> dict[BLSPubkey, XMSSPubkey]:
     """
-    Return the XMSS public key registered for each BLS public key, leaving out
-    every key that would be shared by more than one validator or builder.
+    Return the XMSS public key registered for each BLS public key with ``role``.
     """
-    registered_pq_data: dict[BLSPubkey, Bytes32] = {}
-    for registration in pre.pq_registrations:
-        registered_pq_data[registration.pubkey] = registration.pq_data
-
-    bls_pubkeys = [validator.pubkey for validator in pre.validators] + [
-        builder.pubkey for builder in pre.builders
-    ]
-    assignment_counts: dict[Bytes32, int] = {}
-    for bls_pubkey in bls_pubkeys:
-        if bls_pubkey in registered_pq_data:
-            pq_data = registered_pq_data[bls_pubkey]
-            assignment_counts[pq_data] = assignment_counts.get(pq_data, 0) + 1
-
     registered_pubkeys: dict[BLSPubkey, XMSSPubkey] = {}
-    for bls_pubkey, pq_data in registered_pq_data.items():
-        if assignment_counts.get(pq_data, 0) == 1:
-            registered_pubkeys[bls_pubkey] = XMSSPubkey(pq_data)
+    for registration in pre.pq_registrations:
+        if registration.role == role:
+            registered_pubkeys[registration.pubkey] = XMSSPubkey(registration.pq_data)
     return registered_pubkeys
 ```
 
@@ -139,7 +130,8 @@ cannot recompute it because the state stores only the commitment.
 ```python
 def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
     epoch = eip8483.get_current_epoch(pre)
-    registered_pubkeys = get_registered_xmss_pubkeys(pre)
+    registered_pubkeys = get_registered_xmss_pubkeys(pre, PQ_REGISTRATION_ROLE_VALIDATOR)
+    registered_builder_pubkeys = get_registered_xmss_pubkeys(pre, PQ_REGISTRATION_ROLE_BUILDER)
 
     validators = Validators()
     for pre_validator in pre.validators:
@@ -162,8 +154,8 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
 
     builders = Builders()
     for pre_builder in pre.builders:
-        if pre_builder.pubkey in registered_pubkeys:
-            builder_pubkey = registered_pubkeys[pre_builder.pubkey]
+        if pre_builder.pubkey in registered_builder_pubkeys:
+            builder_pubkey = registered_builder_pubkeys[pre_builder.pubkey]
         else:
             builder_pubkey = compute_unusable_xmss_pubkey(pre_builder.pubkey)
         builders.append(
@@ -242,14 +234,15 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
     upgrade_pending_deposits_to_pq(pre, post)
 
     # [New in PQ]
-    xmss_pubkeys = set(registered_pubkeys.values())
+    validator_xmss_pubkeys = set(registered_pubkeys.values())
     for index, validator in enumerate(post.validators):
-        if validator.pubkey not in xmss_pubkeys:
+        if validator.pubkey not in validator_xmss_pubkeys:
             initiate_validator_exit(post, ValidatorIndex(index))
 
     # [New in PQ]
+    builder_xmss_pubkeys = set(registered_builder_pubkeys.values())
     for builder_index, builder in enumerate(post.builders):
-        is_registered = builder.pubkey in xmss_pubkeys
+        is_registered = builder.pubkey in builder_xmss_pubkeys
         if not is_registered and builder.withdrawable_epoch == FAR_FUTURE_EPOCH:
             initiate_builder_exit(post, BuilderIndex(builder_index))
 
