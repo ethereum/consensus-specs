@@ -26,7 +26,6 @@
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Operations](#operations)
       - [New `process_pq_registration_request`](#new-process_pq_registration_request)
-      - [Modified `add_builder_to_registry`](#modified-add_builder_to_registry)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
@@ -35,21 +34,21 @@
 ## Introduction
 
 This upgrade adds an execution layer triggered request with which the execution
-address in a validator's withdrawal credentials registers 32 bytes of opaque
-post-quantum material for that validator, as part of the EIP-8483 upgrade.
+address of a validator or builder registers 32 bytes of opaque post-quantum
+material for it, as part of the EIP-8483 upgrade.
 
-The beacon state stores one `(validator_index, pq_data)` pair per validator. A
-later request from the same owner overwrites the earlier one. This upgrade gives
-the 32 bytes no meaning. A later fork that migrates consensus to post-quantum
+The beacon state stores one `(pubkey, pq_data)` pair per public key. A later
+request from the same owner overwrites the earlier one. This upgrade gives the
+32 bytes no meaning. A later fork that migrates consensus to post-quantum
 signatures defines how they are used.
 
 *Note*: Unlike EIP-8483 as drafted, this feature also lets a builder register,
 since builders keep their balance across a post-quantum migration only if they
 can carry a key through it. A request carries a `role` that says whether its
-public key is a validator's or a builder's. A builder registration is authorized
-by the builder's execution address and stored under the builder's index in
-validator index form, as in `convert_builder_index_to_validator_index`. Builder
-indices are reused, so a new builder clears the registration left at its index.
+public key is a validator's or a builder's. A validator registration is
+authorized by the validator's withdrawal address, and a builder registration by
+the builder's execution address. Registrations are keyed by public key rather
+than index, which serves both and is unaffected by builder index reuse.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -69,7 +68,7 @@ class PQRegistrationRequests(ProgressiveList[PQRegistrationRequest]):
 ```python
 class PQRegistrations(ProgressiveList[PQRegistration]):
     """
-    The registered PQ material, at most one entry per validator or builder.
+    The registered PQ material, at most one entry per public key.
     """
 ```
 
@@ -191,7 +190,7 @@ class PQRegistrationRequest(Container):
 
 ```python
 class PQRegistration(Container):
-    validator_index: ValidatorIndex
+    pubkey: BLSPubkey
     pq_data: Bytes32
 ```
 
@@ -245,8 +244,7 @@ def process_pq_registration_request(
         validator_pubkeys = [validator.pubkey for validator in state.validators]
         if request_pubkey not in validator_pubkeys:
             return
-        registration_index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
-        validator = state.validators[registration_index]
+        validator = state.validators[validator_pubkeys.index(request_pubkey)]
 
         # Verify the request comes from the validator's withdrawal address
         has_correct_credential = has_execution_withdrawal_credential(validator)
@@ -258,66 +256,26 @@ def process_pq_registration_request(
         builder_pubkeys = [builder.pubkey for builder in state.builders]
         if request_pubkey not in builder_pubkeys:
             return
-        builder_index = BuilderIndex(builder_pubkeys.index(request_pubkey))
+        builder = state.builders[builder_pubkeys.index(request_pubkey)]
 
         # Verify the request comes from the builder's execution address
-        if state.builders[builder_index].execution_address != source_address:
+        if builder.execution_address != source_address:
             return
-        registration_index = convert_builder_index_to_validator_index(builder_index)
     else:
         return
 
-    # Overwrite an existing registration for this index
+    # Overwrite an existing registration for this public key
     for registration in state.pq_registrations:
-        if registration.validator_index == registration_index:
+        if registration.pubkey == request_pubkey:
             registration.pq_data = pq_registration_request.pq_data
             return
 
     # Otherwise append a new registration
     state.pq_registrations.append(
         PQRegistration(
-            validator_index=registration_index,
+            pubkey=request_pubkey,
             pq_data=pq_registration_request.pq_data,
         )
-    )
-```
-
-##### Modified `add_builder_to_registry`
-
-*Note*: A new builder can reuse the index of an exited builder, so the PQ
-material registered at that index is cleared.
-
-```python
-def add_builder_to_registry(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    version: Uint8,
-    execution_address: ExecutionAddress,
-    amount: Gwei,
-    slot: Slot,
-) -> None:
-    builder_index = get_index_for_new_builder(state)
-    # [New in EIP8483]
-    registration_index = convert_builder_index_to_validator_index(builder_index)
-    # [New in EIP8483]
-    state.pq_registrations = PQRegistrations(
-        data=[
-            registration
-            for registration in state.pq_registrations
-            if registration.validator_index != registration_index
-        ]
-    )
-    set_or_append_list(
-        state.builders,
-        builder_index,
-        Builder(
-            pubkey=pubkey,
-            version=version,
-            execution_address=execution_address,
-            balance=amount,
-            deposit_epoch=compute_epoch_at_slot(slot),
-            withdrawable_epoch=FAR_FUTURE_EPOCH,
-        ),
     )
 ```
 

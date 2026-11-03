@@ -54,7 +54,7 @@ def test_process_pq_registration_request__success(spec, state):
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
-    assert state.pq_registrations[0].validator_index == 0
+    assert state.pq_registrations[0].pubkey == state.validators[0].pubkey
     assert state.pq_registrations[0].pq_data == b"\x22" * 32
 
 
@@ -69,7 +69,7 @@ def test_process_pq_registration_request__compounding_credentials(spec, state):
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
-    assert state.pq_registrations[0].validator_index == 0
+    assert state.pq_registrations[0].pubkey == state.validators[0].pubkey
 
 
 @with_phases([EIP8483])
@@ -99,7 +99,10 @@ def test_process_pq_registration_request__registrations_for_two_validators(spec,
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
-    assert [registration.validator_index for registration in state.pq_registrations] == [1, 0]
+    assert [registration.pubkey for registration in state.pq_registrations] == [
+        state.validators[1].pubkey,
+        state.validators[0].pubkey,
+    ]
 
 
 @with_phases([EIP8483])
@@ -183,9 +186,8 @@ def test_process_pq_registration_request__builder_success(spec, state):
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
-    registration = state.pq_registrations[0]
-    assert registration.validator_index == spec.convert_builder_index_to_validator_index(0)
-    assert registration.pq_data == b"\x22" * 32
+    assert state.pq_registrations[0].pubkey == state.builders[0].pubkey
+    assert state.pq_registrations[0].pq_data == b"\x22" * 32
 
 
 @with_phases([EIP8483])
@@ -199,9 +201,9 @@ def test_process_pq_registration_request__builder_and_validator(spec, state):
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
-    assert [registration.validator_index for registration in state.pq_registrations] == [
-        0,
-        spec.convert_builder_index_to_validator_index(0),
+    assert [registration.pubkey for registration in state.pq_registrations] == [
+        state.validators[0].pubkey,
+        state.builders[0].pubkey,
     ]
 
 
@@ -240,7 +242,7 @@ def test_process_pq_registration_request__builder_wrong_source_address(spec, sta
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_pq_registration_request__reused_builder_index_clears_registration(spec, state):
+def test_process_pq_registration_request__reused_builder_index_is_not_registered(spec, state):
     spec.process_pq_registration_request(
         state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
     )
@@ -259,4 +261,5 @@ def test_process_pq_registration_request__reused_builder_index_clears_registrati
     yield "post", state
 
     assert state.builders[0].pubkey == request.pubkey
-    assert len(state.pq_registrations) == 0
+    registered_pubkeys = [registration.pubkey for registration in state.pq_registrations]
+    assert request.pubkey not in registered_pubkeys

@@ -16,7 +16,7 @@ def register_xmss_pubkeys(spec, state, indices=None):
         indices = range(len(state.validators))
     for index in indices:
         state.pq_registrations.append(
-            spec.PQRegistration(validator_index=index, pq_data=xmss_pubkeys[index])
+            spec.PQRegistration(pubkey=state.validators[index].pubkey, pq_data=xmss_pubkeys[index])
         )
 
 
@@ -29,7 +29,7 @@ def register_builder_xmss_pubkeys(spec, state, indices=None):
     for index in indices:
         state.pq_registrations.append(
             spec.PQRegistration(
-                validator_index=spec.convert_builder_index_to_validator_index(index),
+                pubkey=state.builders[index].pubkey,
                 pq_data=xmss_builder_pubkeys[index],
             )
         )
@@ -87,8 +87,8 @@ def run_fork_test(post_spec, pre_state):
         assert post_validator.withdrawal_credentials == pre_validator.withdrawal_credentials
         assert post_validator.effective_balance == pre_validator.effective_balance
         assert post_validator.activation_epoch == pre_validator.activation_epoch
-        if index in registered_pubkeys:
-            assert post_validator.pubkey == registered_pubkeys[index]
+        if pre_validator.pubkey in registered_pubkeys:
+            assert post_validator.pubkey == registered_pubkeys[pre_validator.pubkey]
             assert post_validator.exit_epoch == pre_validator.exit_epoch
         else:
             assert post_validator.pubkey == post_spec.compute_unusable_xmss_pubkey(
@@ -102,12 +102,10 @@ def run_fork_test(post_spec, pre_state):
 
     # Builders swap their BLS public key for their registered XMSS public key
     assert len(post_state.builders) == len(pre_state.builders)
-    for builder_index, pre_builder in enumerate(pre_state.builders):
-        post_builder = post_state.builders[builder_index]
-        registration_index = post_spec.convert_builder_index_to_validator_index(builder_index)
+    for pre_builder, post_builder in zip(pre_state.builders, post_state.builders, strict=True):
         assert post_builder.balance == pre_builder.balance
-        if registration_index in registered_pubkeys:
-            assert post_builder.pubkey == registered_pubkeys[registration_index]
+        if pre_builder.pubkey in registered_pubkeys:
+            assert post_builder.pubkey == registered_pubkeys[pre_builder.pubkey]
             assert post_builder.withdrawable_epoch == pre_builder.withdrawable_epoch
         else:
             assert post_builder.pubkey == post_spec.compute_unusable_xmss_pubkey(pre_builder.pubkey)
