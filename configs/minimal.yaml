@@ -66,6 +66,9 @@ EIP8198_FORK_EPOCH: 18446744073709551615
 # [customized] EIP8483
 EIP8483_FORK_VERSION: 0xe8483001
 EIP8483_FORK_EPOCH: 18446744073709551615
+# [customized] PQ
+PQ_FORK_VERSION: 0xe0000001
+PQ_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------

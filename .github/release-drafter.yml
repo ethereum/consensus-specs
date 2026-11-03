@@ -53,6 +53,9 @@ categories:
   - title: EIP-8483
     when:
       label: eip8483
+  - title: PQ
+    when:
+      label: pq
 
   # Testing
   - title: Testing

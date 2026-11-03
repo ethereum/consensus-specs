@@ -14,6 +14,7 @@ from .fulu import FuluSpecBuilder
 from .gloas import GloasSpecBuilder
 from .heze import HezeSpecBuilder
 from .phase0 import Phase0SpecBuilder
+from .pq import PQSpecBuilder
 
 spec_builders = {
     builder.fork: builder
@@ -34,5 +35,6 @@ spec_builders = {
         EIP8205SpecBuilder,
         EIP8321SpecBuilder,
         EIP8483SpecBuilder,
+        PQSpecBuilder,
     )
 }

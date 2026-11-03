@@ -1,0 +1,978 @@
+# PQ -- Networking
+
+*Note*: This document is a work-in-progress for researchers and implementers.
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Introduction](#introduction)
+- [Presets](#presets)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+- [Containers](#containers)
+  - [Modified `SignedProposerPreferences`](#modified-signedproposerpreferences)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `get_sync_subcommittee_pubkeys`](#modified-get_sync_subcommittee_pubkeys)
+  - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [Modified `beacon_block`](#modified-beacon_block)
+      - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [Modified `voluntary_exit`](#modified-voluntary_exit)
+      - [Modified `proposer_slashing`](#modified-proposer_slashing)
+      - [Modified `sync_committee_contribution_and_proof`](#modified-sync_committee_contribution_and_proof)
+      - [Modified `payload_attestation_message`](#modified-payload_attestation_message)
+      - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
+      - [Modified `proposer_preferences`](#modified-proposer_preferences)
+    - [Attestation subnets](#attestation-subnets)
+      - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+    - [Sync committee subnets](#sync-committee-subnets)
+      - [Modified `sync_committee_{subnet_id}`](#modified-sync_committee_subnet_id)
+
+<!-- mdformat-toc end -->
+
+## Introduction
+
+This document contains the consensus-layer networking specifications for PQ.
+
+The specification of these changes continues in the same format as the network
+specifications of previous upgrades, and assumes them as pre-requisite.
+
+## Presets
+
+### Type-specific SSZ bounds
+
+*[New in PQ]*
+
+These constants supersede the
+[Gloas type-specific SSZ bounds](../../gloas/p2p-interface.md#type-specific-ssz-bounds),
+which were sized for BLS signatures.
+
+| Name                                       | Value                         |
+| ------------------------------------------ | ----------------------------- |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1069929)` (= ~1 MiB)  |
+| `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(4194584)` (= ~4 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB) |
+
+## Containers
+
+### Modified `SignedProposerPreferences`
+
+```python
+class SignedProposerPreferences(Container):
+    message: ProposerPreferences
+    # [Modified in PQ]
+    signature: XMSSSignature
+```
+
+## Helpers
+
+### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= PQ_FORK_EPOCH:
+        return PQ_FORK_VERSION
+    if epoch >= EIP8483_FORK_EPOCH:
+        return EIP8483_FORK_VERSION
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+### Modified `get_sync_subcommittee_pubkeys`
+
+```python
+def get_sync_subcommittee_pubkeys(
+    state: BeaconState,
+    subcommittee_index: Uint64,
+    # [Modified in PQ]
+) -> Sequence[XMSSPubkey]:
+    # Committees assigned to `slot` sign for `slot - 1`
+    # This creates the exceptional logic below when transitioning between sync committee periods
+    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
+        next_slot_epoch
+    ):
+        sync_committee = state.current_sync_committee
+    else:
+        sync_committee = state.next_sync_committee
+
+    # Return pubkeys for the subcommittee index
+    sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
+    i = subcommittee_index * sync_subcommittee_size
+    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
+```
+
+### Modified `verify_execution_requests_limits`
+
+*Note*: These checks MAY be performed when deserializing `ExecutionRequests`.
+
+```python
+def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> None:
+    """
+    Verify that each execution request count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The withdrawal request count is within the limit
+    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawal requests")
+
+    # [REJECT] The consolidation request count is within the limit
+    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many consolidation requests")
+
+    # [REJECT] The builder deposit request count is within the limit
+    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder deposit requests")
+
+    # [REJECT] The builder exit request count is within the limit
+    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder exit requests")
+
+    # [Modified in PQ]
+    # Removed the PQ registration request limit
+```
+
+## The gossip domain: gossipsub
+
+### Topics and messages
+
+Topics follow the same specification as in prior upgrades. Every topic whose
+message holds a validator or builder signature is updated to the modified type,
+which carries an XMSS signature instead. The `bls_to_execution_change` topic is
+unchanged.
+
+#### Global topics
+
+##### Modified `beacon_block`
+
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
+    bid = block.body.signed_execution_payload_bid.message
+
+    # [IGNORE] The block is the first block with valid signature received for the slot and proposer
+    proposer_slot_key = (block.slot, block.proposer_index)
+    if proposer_slot_key in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this slot and proposer")
+
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
+
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
+
+    # [REJECT] The block body operation counts are within their limits
+    verify_block_body_operation_limits(block.body)
+
+    # [REJECT] The parent execution request counts are within their limits
+    verify_execution_requests_limits(block.body.parent_execution_requests)
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's parent passes validation
+    if block.parent_root not in store.block_states:
+        raise GossipReject("block's parent is invalid")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_BEACON_PROPOSER)
+    if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [IGNORE] If the parent block is full, the parent payload is valid
+    # (MAY be queued until the parent payload is verified)
+    if is_parent_node_full(store, block):
+        if not is_payload_verified(store, block.parent_root):
+            raise GossipIgnore("parent payload is not verified")
+
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block.parent_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
+
+    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
+    if len(bid.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
+
+    # [REJECT] The bid's parent equals the block's parent
+    if bid.parent_block_root != block.parent_root:
+        raise GossipReject("bid's parent does not equal block's parent")
+
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer_index does not match expected proposer")
+
+    # [REJECT] If the parent is not full, the bid builds on the parent's execution head
+    if not is_parent_node_full(store, block):
+        if bid.parent_block_hash != parent_state.latest_block_hash:
+            raise GossipReject("bid does not build on the parent's execution head")
+
+    # Mark this block as seen
+    seen.proposer_slots.add(proposer_slot_key)
+```
+
+##### Modified `beacon_aggregate_and_proof`
+
+```python
+def validate_beacon_aggregate_and_proof_gossip(
+    seen: Seen,
+    store: Store,
+    signed_aggregate_and_proof: SignedAggregateAndProof,
+    current_time_ms: Uint64,
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
+) -> None:
+    """
+    Validate a SignedAggregateAndProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    aggregate_and_proof = signed_aggregate_and_proof.message
+    aggregate = aggregate_and_proof.aggregate
+    aggregation_bits = aggregate.aggregation_bits
+
+    # [REJECT] The aggregate attestation's data index is 0 or 1
+    if aggregate.data.index > 1:
+        raise GossipReject("aggregate data index must be 0 or 1")
+
+    # [REJECT] Exactly one committee is specified by the committee bits
+    committee_indices = get_committee_indices(aggregate.committee_bits)
+    if len(committee_indices) != 1:
+        raise GossipReject("aggregate committee bits must specify exactly one committee")
+    index = committee_indices[0]
+
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+    aggregate_data_root = hash_tree_root(aggregate.data)
+    aggregate_cache_key = (aggregate_data_root, index)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
+    seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
+
+    # [IGNORE] This is the first valid aggregate for this epoch and aggregator
+    aggregator_index = aggregate_and_proof.aggregator_index
+    target_epoch = aggregate.data.target.epoch
+    aggregator_epoch_key = (target_epoch, aggregator_index)
+    if aggregator_epoch_key in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate for this epoch and aggregator")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = aggregate.data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The committee index is within the expected range
+    committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
+    if index >= committee_count:
+        raise GossipReject("committee index out of range")
+
+    # [IGNORE] The aggregate attestation's slot is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, aggregate.data.slot, current_time_ms):
+        raise GossipIgnore("aggregate slot is from a future slot")
+
+    # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
+    attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
+        raise GossipIgnore("aggregate epoch is not current or previous epoch")
+
+    # [REJECT] The aggregate attestation's epoch matches its target
+    if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [REJECT] The number of aggregation bits matches the committee size
+    committee = get_beacon_committee(state, aggregate.data.slot, index)
+    if len(aggregation_bits) != len(committee):
+        raise GossipReject("aggregation bits length does not match committee size")
+
+    # [REJECT] The aggregate attestation has participants
+    attesting_indices = get_attesting_indices(state, aggregate)
+    if len(attesting_indices) < 1:
+        raise GossipReject("aggregate has no participants")
+
+    # [REJECT] The selection proof selects the validator as an aggregator
+    if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
+
+    # [REJECT] The aggregator is a member of the committee
+    if aggregator_index not in committee:
+        raise GossipReject("aggregator is not a member of the committee")
+
+    # [REJECT] The selection proof signature is valid
+    aggregator = state.validators[aggregator_index]
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate.data.slot, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_SELECTION_PROOF)
+    if not xmss.Verify(
+        aggregator.pubkey, leaf_index, signing_root, aggregate_and_proof.selection_proof
+    ):
+        raise GossipReject("invalid selection proof signature")
+
+    # [REJECT] The aggregator signature is valid
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
+    if not xmss.Verify(
+        aggregator.pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature
+    ):
+        raise GossipReject("invalid aggregator signature")
+
+    # [REJECT] The aggregate signature is valid
+    if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
+        raise GossipReject("invalid aggregate signature")
+
+    # [REJECT] The target block is an ancestor of the LMD vote block
+    checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)
+    if checkpoint_block != aggregate.data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # The attested payload status is consistent with the block's execution payload
+    verify_attestation_payload_status(store, aggregate.data, block_payload_statuses)
+
+    # Mark this aggregate as seen
+    seen.aggregator_epochs.add(aggregator_epoch_key)
+    if aggregate_cache_key not in seen.aggregate_data_roots:
+        seen.aggregate_data_roots[aggregate_cache_key] = set()
+    seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
+```
+
+##### Modified `voluntary_exit`
+
+```python
+def validate_voluntary_exit_gossip(
+    seen: Seen,
+    store: Store,
+    signed_voluntary_exit: SignedVoluntaryExit,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedVoluntaryExit for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    voluntary_exit = signed_voluntary_exit.message
+    validator_index = voluntary_exit.validator_index
+
+    # [IGNORE] The voluntary exit is the first valid voluntary exit received for the validator
+    if validator_index in seen.voluntary_exit_indices:
+        raise GossipIgnore("already seen voluntary exit for this validator")
+
+    # [IGNORE] The voluntary exit epoch is not in the future
+    if is_future_epoch(store, voluntary_exit.epoch, current_time_ms):
+        raise GossipIgnore("voluntary exit epoch is in the future")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The validator index is valid
+    if validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    validator = state.validators[validator_index]
+    current_epoch = get_current_epoch(state)
+
+    # [IGNORE] The validator has not already initiated exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        raise GossipIgnore("validator has already initiated exit")
+
+    # [REJECT] The validator is active
+    if not is_active_validator(validator, current_epoch):
+        raise GossipReject("validator is not active")
+
+    # [REJECT] The validator has been active long enough
+    if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        raise GossipReject("validator has not been active long enough")
+
+    # [IGNORE] The validator has no pending partial withdrawals
+    if get_pending_balance_to_withdraw(state, validator_index) != 0:
+        raise GossipIgnore("validator has pending partial withdrawals")
+
+    # [REJECT] The signature is valid
+    domain = compute_domain(
+        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
+    )
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(
+        compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
+    )
+    if not xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
+        raise GossipReject("invalid voluntary exit signature")
+
+    # Mark this voluntary exit as seen
+    seen.voluntary_exit_indices.add(validator_index)
+```
+
+##### Modified `proposer_slashing`
+
+```python
+def validate_proposer_slashing_gossip(
+    seen: Seen,
+    store: Store,
+    proposer_slashing: ProposerSlashing,
+) -> None:
+    """
+    Validate a ProposerSlashing for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+    proposer_index = header_1.proposer_index
+
+    # [IGNORE] The proposer slashing is the first valid proposer slashing received for this proposer
+    if proposer_index in seen.proposer_slashing_indices:
+        raise GossipIgnore("already seen proposer slashing for this proposer")
+
+    # [REJECT] The header slots match
+    if header_1.slot != header_2.slot:
+        raise GossipReject("header slots do not match")
+
+    # [REJECT] The header proposer indices match
+    if header_1.proposer_index != header_2.proposer_index:
+        raise GossipReject("header proposer indices do not match")
+
+    # [REJECT] The headers are different
+    if header_1 == header_2:
+        raise GossipReject("headers are not different")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The proposer index is a valid validator index
+    if proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer is slashable
+    proposer = state.validators[proposer_index]
+    if not is_slashable_validator(proposer, get_current_epoch(state)):
+        raise GossipReject("proposer is not slashable")
+
+    # [REJECT] The signatures are valid
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(
+            state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
+        )
+        signing_root = compute_signing_root(signed_header.message, domain)
+        # [Modified in PQ]
+        leaf_index = compute_xmss_leaf_index(
+            signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
+        )
+        if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature):
+            raise GossipReject("invalid proposer slashing signature")
+
+    # Mark this proposer slashing as seen
+    seen.proposer_slashing_indices.add(proposer_index)
+```
+
+##### Modified `sync_committee_contribution_and_proof`
+
+```python
+def validate_sync_committee_contribution_and_proof_gossip(
+    seen: Seen,
+    store: Store,
+    signed_contribution_and_proof: SignedContributionAndProof,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedContributionAndProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    contribution_and_proof = signed_contribution_and_proof.message
+    contribution = contribution_and_proof.contribution
+
+    # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
+    # and subcommittee_index whose aggregation_bits is non-strict superset
+    # has not already been seen
+    contribution_key = (
+        contribution.slot,
+        contribution.beacon_block_root,
+        contribution.subcommittee_index,
+    )
+    contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
+    seen_bits = seen.sync_contribution_data.get(contribution_key, set())
+    if is_non_strict_superset(seen_bits, contribution_bits):
+        raise GossipIgnore("already seen contribution for this data")
+
+    # [IGNORE] The sync committee contribution is the first valid contribution received
+    # for the slot contribution.slot, aggregator with index contribution_and_proof.aggregator_index,
+    # and subcommittee index contribution.subcommittee_index
+    aggregator_key = (
+        contribution.slot,
+        contribution_and_proof.aggregator_index,
+        contribution.subcommittee_index,
+    )
+    if aggregator_key in seen.sync_contribution_aggregator_slots:
+        raise GossipIgnore("already seen contribution from this aggregator")
+
+    # [IGNORE] The contribution's slot is for the current slot
+    if not is_current_slot(store, contribution.slot, current_time_ms):
+        raise GossipIgnore("contribution is not for the current slot")
+
+    # [REJECT] The subcommittee index is in the allowed range
+    if contribution.subcommittee_index >= SYNC_COMMITTEE_SUBNET_COUNT:
+        raise GossipReject("subcommittee index out of range")
+
+    # [REJECT] The contribution has participants
+    if not any(contribution.aggregation_bits):
+        raise GossipReject("contribution has no participants")
+
+    # [REJECT] The selection_proof selects the validator as an aggregator for the slot
+    if not is_sync_committee_aggregator(contribution_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The aggregator index is valid
+    if contribution_and_proof.aggregator_index >= len(state.validators):
+        raise GossipReject("aggregator index out of range")
+
+    # [REJECT] The aggregator is a member of the committee
+    aggregator_pubkey = state.validators[contribution_and_proof.aggregator_index].pubkey
+    subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
+    if aggregator_pubkey not in subcommittee_pubkeys:
+        raise GossipReject("aggregator is not a member of the committee")
+
+    # [REJECT] The contribution_and_proof.selection_proof is a valid signature
+    # of the SyncAggregatorSelectionData derived from the contribution
+    # by the validator with index contribution_and_proof.aggregator_index
+    selection_data = SyncAggregatorSelectionData(
+        slot=contribution.slot,
+        subcommittee_index=contribution.subcommittee_index,
+    )
+    domain = get_domain(
+        state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(contribution.slot)
+    )
+    signing_root = compute_signing_root(selection_data, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(
+        contribution.slot,
+        LEAF_OFFSET_SYNC_COMMITTEE_SELECTION_PROOF + contribution.subcommittee_index,
+    )
+    if not xmss.Verify(
+        aggregator_pubkey, leaf_index, signing_root, contribution_and_proof.selection_proof
+    ):
+        raise GossipReject("invalid selection proof signature")
+
+    # [REJECT] The aggregator signature, signed_contribution_and_proof.signature, is valid
+    domain = get_domain(
+        state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot)
+    )
+    signing_root = compute_signing_root(contribution_and_proof, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(
+        contribution.slot,
+        LEAF_OFFSET_CONTRIBUTION_AND_PROOF + contribution.subcommittee_index,
+    )
+    if not xmss.Verify(
+        aggregator_pubkey, leaf_index, signing_root, signed_contribution_and_proof.signature
+    ):
+        raise GossipReject("invalid aggregator signature")
+
+    # [REJECT] The aggregate signature is valid for the message beacon_block_root
+    # and the participant pubkeys derived from the participation info in
+    # aggregation_bits for the subcommittee specified by the
+    # contribution.subcommittee_index
+    participant_pubkeys = [
+        subcommittee_pubkeys[index]
+        for index, bit in enumerate(contribution.aggregation_bits)
+        if bit
+    ]
+    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
+    signing_root = compute_signing_root(contribution.beacon_block_root, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(contribution.slot, LEAF_OFFSET_SYNC_COMMITTEE)
+    if not xmss.AggregateVerify(
+        participant_pubkeys, leaf_index, signing_root, contribution.signature
+    ):
+        raise GossipReject("invalid aggregate signature")
+
+    # Mark this contribution as seen
+    seen.sync_contribution_aggregator_slots.add(aggregator_key)
+    if contribution_key not in seen.sync_contribution_data:
+        seen.sync_contribution_data[contribution_key] = set()
+    seen.sync_contribution_data[contribution_key].add(contribution_bits)
+```
+
+##### Modified `payload_attestation_message`
+
+```python
+def validate_payload_attestation_message_gossip(
+    seen: Seen,
+    store: Store,
+    payload_attestation_message: PayloadAttestationMessage,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a PayloadAttestationMessage for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    data = payload_attestation_message.data
+    validator_index = payload_attestation_message.validator_index
+
+    # [REJECT] The payload attestation's slot is at or after the Gloas fork
+    if compute_epoch_at_slot(data.slot) < GLOAS_FORK_EPOCH:
+        raise GossipReject("payload attestation's slot is pre-gloas")
+
+    # [IGNORE] This is the first valid payload attestation from this validator index
+    payload_attestation_key = (data.slot, validator_index)
+    if payload_attestation_key in seen.payload_attestation_validators:
+        raise GossipIgnore("already seen payload attestation from this validator")
+
+    # [IGNORE] The payload attestation's slot is for the current slot
+    if not is_current_slot(store, data.slot, current_time_ms):
+        raise GossipIgnore("payload attestation is not for the current slot")
+
+    # [IGNORE] The payload attestation's block has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    if data.beacon_block_root not in store.blocks:
+        raise GossipIgnore("payload attestation's block has not been seen")
+
+    # [REJECT] The payload attestation's block passes validation
+    if data.beacon_block_root not in store.block_states:
+        raise GossipReject("payload attestation's block failed validation")
+
+    # [IGNORE] The payload attestation's block is at the assigned slot
+    if store.blocks[data.beacon_block_root].slot != data.slot:
+        raise GossipIgnore("payload attestation's block is not at the assigned slot")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The validator index is valid
+    if validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    # [REJECT] The validator is a member of the payload timeliness committee
+    if validator_index not in get_ptc(state, data.slot):
+        raise GossipReject("validator is not in the payload timeliness committee")
+
+    # [REJECT] The signature is valid
+    validator = state.validators[validator_index]
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
+    signing_root = compute_signing_root(data, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
+    if not xmss.Verify(
+        validator.pubkey, leaf_index, signing_root, payload_attestation_message.signature
+    ):
+        raise GossipReject("invalid payload attestation signature")
+
+    # Mark this payload_attestation as seen
+    seen.payload_attestation_validators.add(payload_attestation_key)
+```
+
+##### Modified `execution_payload_bid`
+
+*Note*: A builder signs all of its bids for a slot at the same leaf, so it must
+not sign two different bids for the same slot. In particular, it cannot bid on
+two different parents in the same slot, even though this topic accepts one bid
+per parent.
+
+##### Modified `proposer_preferences`
+
+*Note*: A proposer signs its preferences for a slot at the same leaf, so it must
+not sign preferences for the same proposal slot under two different dependent
+roots, even though this topic accepts one message per dependent root.
+
+```python
+def validate_proposer_preferences_gossip(
+    seen: Seen,
+    store: Store,
+    signed_proposer_preferences: SignedProposerPreferences,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedProposerPreferences for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    preferences = signed_proposer_preferences.message
+
+    # [IGNORE] These are the first valid preferences seen for this dependent root and slot
+    prefs_key = (preferences.proposal_slot, preferences.dependent_root)
+    if prefs_key in seen.proposer_preferences:
+        raise GossipIgnore("already seen preferences for this dependent root and proposal slot")
+
+    # [IGNORE] The proposal epoch is after the Gloas upgrade
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+    if proposal_epoch < GLOAS_FORK_EPOCH:
+        raise GossipIgnore("proposal epoch is pre-gloas")
+
+    # [IGNORE] The proposal slot has not started yet
+    if is_past_slot(store, preferences.proposal_slot, current_time_ms):
+        raise GossipIgnore("proposal slot has already started")
+
+    # [IGNORE] The proposer for the proposal slot is known
+    lookahead_start_slot = compute_shuffling_lookahead_start_slot(proposal_epoch)
+    if is_future_slot(store, lookahead_start_slot, current_time_ms):
+        raise GossipIgnore("proposer for the proposal slot is not yet known")
+
+    # [IGNORE] The dependent block has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    if preferences.dependent_root not in store.blocks:
+        raise GossipIgnore("dependent block has not been seen")
+
+    # [IGNORE] The dependent block passes validation
+    if preferences.dependent_root not in store.block_states:
+        raise GossipIgnore("dependent block failed validation")
+
+    # [REJECT] The dependent block's slot is not after the shuffling dependent slot
+    dependent_slot = compute_shuffling_dependent_slot(proposal_epoch)
+    if store.blocks[preferences.dependent_root].slot > dependent_slot:
+        raise GossipReject("dependent block is after the shuffling dependent slot")
+
+    # [IGNORE] The dependent block is a possible dependent block for the proposer lookahead
+    if not is_valid_dependent_root(store, preferences.dependent_root, dependent_slot):
+        raise GossipIgnore("dependent block is not a possible dependent block")
+
+    state = store.block_states[preferences.dependent_root].copy()
+    if state.slot < lookahead_start_slot:
+        process_slots(state, lookahead_start_slot)
+
+    # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
+    lookahead_index = preferences.proposal_slot - lookahead_start_slot
+    if state.proposer_lookahead[lookahead_index] != preferences.validator_index:
+        raise GossipReject("validator is not the proposer for the given slot")
+
+    # [REJECT] The signature is valid
+    validator = state.validators[preferences.validator_index]
+    domain = compute_domain(
+        DOMAIN_PROPOSER_PREFERENCES,
+        compute_fork_version(proposal_epoch),
+        state.genesis_validators_root,
+    )
+    signing_root = compute_signing_root(preferences, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(
+        preferences.proposal_slot, LEAF_OFFSET_PROPOSER_PREFERENCES
+    )
+    if not xmss.Verify(
+        validator.pubkey, leaf_index, signing_root, signed_proposer_preferences.signature
+    ):
+        raise GossipReject("invalid proposer preferences signature")
+
+    # Mark these preferences as seen
+    seen.proposer_preferences[prefs_key] = preferences
+```
+
+#### Attestation subnets
+
+##### Modified `beacon_attestation_{subnet_id}`
+
+```python
+def validate_beacon_attestation_gossip(
+    seen: Seen,
+    store: Store,
+    attestation: SingleAttestation,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
+) -> None:
+    """
+    Validate a SingleAttestation for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    data = attestation.data
+    committee_index = attestation.committee_index
+    attester_index = attestation.attester_index
+    target_epoch = data.target.epoch
+
+    # [IGNORE] No other valid attestation seen for this target epoch and validator
+    attestation_epoch_key = (target_epoch, attester_index)
+    if attestation_epoch_key in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation for this epoch and validator")
+
+    # [REJECT] The attestation's data index is 0 or 1
+    if data.index > 1:
+        raise GossipReject("attestation data index must be 0 or 1")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    block_root = data.beacon_block_root
+    if block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The committee index is within the expected range
+    committees_per_slot = get_committee_count_per_slot(state, target_epoch)
+    if committee_index >= committees_per_slot:
+        raise GossipReject("committee index out of range")
+
+    # [REJECT] The attestation is for the correct subnet
+    expected_subnet = compute_subnet_for_attestation(
+        committees_per_slot, data.slot, committee_index
+    )
+    if expected_subnet != subnet_id:
+        raise GossipReject("attestation is for wrong subnet")
+
+    # [IGNORE] The attestation's slot is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if is_future_slot(store, data.slot, current_time_ms):
+        raise GossipIgnore("attestation slot is from a future slot")
+
+    # [IGNORE] The attestation's epoch is either the current or previous epoch
+    attestation_epoch = compute_epoch_at_slot(data.slot)
+    if not is_current_or_previous_epoch(store, attestation_epoch, current_time_ms):
+        raise GossipIgnore("attestation epoch is not current or previous epoch")
+
+    # [REJECT] The attestation's epoch matches its target
+    if target_epoch != compute_epoch_at_slot(data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [REJECT] The attester is a member of the committee
+    committee = get_beacon_committee(state, data.slot, committee_index)
+    if attester_index not in committee:
+        raise GossipReject("attester is not a member of the committee")
+
+    # [REJECT] The attestation signature is valid
+    attester = state.validators[attester_index]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
+    signing_root = compute_signing_root(data, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    if not xmss.Verify(attester.pubkey, leaf_index, signing_root, attestation.signature):
+        raise GossipReject("invalid attestation signature")
+
+    # [REJECT] The attestation's target block is an ancestor of the LMD vote block
+    target_checkpoint_block = get_checkpoint_block(store, block_root, target_epoch)
+    if target_checkpoint_block != data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The current finalized checkpoint is an ancestor of the block
+    finalized_epoch = store.finalized_checkpoint.epoch
+    finalized_checkpoint_block = get_checkpoint_block(store, block_root, finalized_epoch)
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # The attested payload status is consistent with the block's execution payload
+    verify_attestation_payload_status(store, data, block_payload_statuses)
+
+    # Mark this attestation as seen
+    seen.attestation_validator_epochs.add(attestation_epoch_key)
+```
+
+#### Sync committee subnets
+
+##### Modified `sync_committee_{subnet_id}`
+
+```python
+def validate_sync_committee_message_gossip(
+    seen: Seen,
+    store: Store,
+    sync_committee_message: SyncCommitteeMessage,
+    current_time_ms: Uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a SyncCommitteeMessage for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    # [IGNORE] There has been no other valid sync committee message for the declared slot
+    # for the validator referenced by sync_committee_message.validator_index
+    # (this validation is per topic so that for a given slot, multiple messages could be
+    # forwarded with the same validator_index as long as the subnet_ids are distinct)
+    message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
+    if message_key in seen.sync_message_validator_slots:
+        raise GossipIgnore("already seen message from this validator for this slot and subnet")
+
+    # [IGNORE] The message's slot is for the current slot
+    if not is_current_slot(store, sync_committee_message.slot, current_time_ms):
+        raise GossipIgnore("message is not for the current slot")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The validator index is valid
+    if sync_committee_message.validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    # [REJECT] The subnet_id is valid for the given validator
+    # (this implies the validator is part of the broader current sync committee
+    # along with the correct subcommittee)
+    valid_subnets = compute_subnets_for_sync_committee(
+        state, sync_committee_message.validator_index
+    )
+    if subnet_id not in valid_subnets:
+        raise GossipReject("subnet_id is not valid for the validator")
+
+    # [REJECT] The signature is valid
+    validator = state.validators[sync_committee_message.validator_index]
+    domain = get_domain(
+        state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(sync_committee_message.slot)
+    )
+    signing_root = compute_signing_root(sync_committee_message.beacon_block_root, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(sync_committee_message.slot, LEAF_OFFSET_SYNC_COMMITTEE)
+    if not xmss.Verify(
+        validator.pubkey, leaf_index, signing_root, sync_committee_message.signature
+    ):
+        raise GossipReject("invalid sync committee message signature")
+
+    # Mark this message as seen
+    seen.sync_message_validator_slots.add(message_key)
+```

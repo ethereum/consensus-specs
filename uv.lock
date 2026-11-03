@@ -507,6 +507,7 @@ dependencies = [
     { name = "blake3" },
     { name = "eth-ssz-specs" },
     { name = "eth-utils" },
+    { name = "ethlib" },
     { name = "frozendict" },
     { name = "lru-dict" },
     { name = "marko" },
@@ -554,6 +555,7 @@ requires-dist = [
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
     { name = "eth-ssz-specs", specifier = "==0.1.0" },
     { name = "eth-utils", specifier = "==6.0.0" },
+    { name = "ethlib", git = "https://github.com/ethereum/ethlib?rev=862185680cf23ccf54d44eb25b63b26c5020597b" },
     { name = "frozendict", specifier = "==2.5.1" },
     { name = "lru-dict", specifier = "==1.4.1" },
     { name = "marko", specifier = "==2.2.5" },
@@ -634,6 +636,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/e9/1b/0b8548da7b31eba87
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/45/a20b907227b9d1aea2e36f7b12818d055629ca9bc65fc282b45738f28ca3/eth_utils-6.0.0-py3-none-any.whl", hash = "sha256:63cf48ee32c45541cb5748751909a8345c470432fb6f0fed4bd7c53fd6400469", size = 102473, upload-time = "2026-03-25T17:11:49.953Z" },
 ]
+
+[[package]]
+name = "ethlib"
+version = "0.2.0"
+source = { git = "https://github.com/ethereum/ethlib?rev=862185680cf23ccf54d44eb25b63b26c5020597b#862185680cf23ccf54d44eb25b63b26c5020597b" }
 
 [[package]]
 name = "execnet"
