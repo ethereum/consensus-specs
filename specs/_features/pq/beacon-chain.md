@@ -778,8 +778,8 @@ def is_valid_indexed_attestation(
         or list(indices) != sorted(set(indices))
     ):
         return False
-    # Verify aggregate signature
     # [Modified in PQ]
+    # Verify aggregate signature
     pubkeys = [state.pq_validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
@@ -1199,8 +1199,8 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     """
     Initiate the exit of the builder with index ``index``.
     """
-    # Set builder exit epoch
     # [Modified in PQ]
+    # Set builder exit epoch
     builder = state.pq_builders[builder_index]
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
@@ -1212,8 +1212,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Initiate the exit of the validator with index ``index``.
     """
-    # Return if validator already initiated exit
     # [Modified in PQ]
+    # Return if validator already initiated exit
     validator = state.pq_validators[index]
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
@@ -1310,8 +1310,8 @@ def process_epoch(state: BeaconState) -> None:
 
 ```python
 def process_effective_balance_updates(state: BeaconState) -> None:
-    # Update effective balances with hysteresis
     # [Modified in PQ]
+    # Update effective balances with hysteresis
     for index, validator in enumerate(state.pq_validators):
         balance = state.balances[index]
         HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
@@ -1455,8 +1455,8 @@ def process_registry_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     activation_epoch = compute_activation_exit_epoch(current_epoch)
 
-    # Process activation eligibility, ejections, and activations
     # [Modified in PQ]
+    # Process activation eligibility, ejections, and activations
     for index, validator in enumerate(state.pq_validators):
         if is_eligible_for_activation_queue(validator):
             validator.activation_eligibility_epoch = current_epoch + 1
@@ -1557,8 +1557,8 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         body_root=hash_tree_root(block.body),
     )
 
-    # Verify proposer is not slashed
     # [Modified in PQ]
+    # Verify proposer is not slashed
     proposer = state.pq_validators[block.proposer_index]
     assert not proposer.slashed
 ```
@@ -1674,8 +1674,8 @@ def process_execution_payload_bid(
     else:
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
-        # Verify that the builder is a payload builder
         # [Modified in PQ]
+        # Verify that the builder is a payload builder
         assert state.pq_builders[builder_index].version == PAYLOAD_BUILDER_VERSION
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
@@ -1777,8 +1777,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert header_1.proposer_index == header_2.proposer_index
     # Verify the headers are different
     assert header_1 != header_2
-    # Verify the proposer is slashable
     # [Modified in PQ]
+    # Verify the proposer is slashable
     proposer = state.pq_validators[header_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Verify signatures
@@ -2259,8 +2259,8 @@ def update_next_withdrawal_validator_index(
 ) -> None:
     # Update the next validator index to start the next withdrawal sweep
     if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
         # [Modified in PQ]
+        # Next sweep starts after the latest withdrawal's validator index
         next_validator_index = (withdrawals[-1].validator_index + 1) % len(state.pq_validators)
         state.next_withdrawal_validator_index = next_validator_index
     else:

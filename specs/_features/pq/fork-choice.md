@@ -117,8 +117,8 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool =
     attesting_indices = sorted(get_attesting_indices(target_state, attestation))
     assert len(attesting_indices) > 0
 
-    # Update latest messages for attesting indices
     # [Modified in PQ]
+    # Update latest messages for attesting indices
     update_latest_messages(store, attesting_indices, attestation)
 ```
 
