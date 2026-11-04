@@ -34,7 +34,7 @@ def get_empty_aggregate(spec):
 def get_placeholder_signature(spec):
     """
     The signature placed where there is nothing to sign, such as a self-build
-    bid or a pending deposit created by the protocol.
+    bid.
     """
     if is_post_pq(spec):
         return spec.XMSSSignature()
@@ -48,12 +48,3 @@ def get_unsigned_signature(spec):
     if is_post_pq(spec):
         return spec.XMSSSignature()
     return spec.BLSSignature()
-
-
-def get_filled_signature(spec, byte):
-    """
-    The signature of ``spec``'s signature scheme with every byte set to ``byte``.
-    """
-    if is_post_pq(spec):
-        return spec.XMSSSignature(byte * spec.XMSSSignature.LENGTH)
-    return spec.BLSSignature(byte * spec.BLSSignature.LENGTH)

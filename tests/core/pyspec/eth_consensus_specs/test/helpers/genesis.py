@@ -27,24 +27,49 @@ from eth_consensus_specs.test.helpers.fulu.state import (
 from eth_consensus_specs.test.helpers.gloas.state import (
     initialize_ptc_window,
 )
-from eth_consensus_specs.test.helpers.keys import get_builder_pubkeys, get_pubkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import (
+    builder_pubkeys,
+    pubkeys,
+    xmss_builder_pubkeys,
+    xmss_pubkeys,
+)
 
 GENESIS_ETH1_BLOCK_HASH = b"\xda" * 32
 
 
 def build_mock_builder(spec, i: int, balance: int):
-    pubkey = get_builder_pubkeys(spec)[i]
     return spec.Builder(
-        pubkey=pubkey,
-        execution_address=spec.ExecutionAddress(spec.sha256(pubkey)[12:]),
+        pubkey=builder_pubkeys[i],
+        execution_address=spec.ExecutionAddress(spec.sha256(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
     )
 
 
+def build_mock_pq_data(spec, state):
+    pq_data = spec.PQDataList()
+    for index, validator in enumerate(state.validators):
+        pq_data.append(
+            spec.PQData(
+                role=spec.PQ_REGISTRATION_ROLE_VALIDATOR,
+                bls_pubkey=validator.pubkey,
+                xmss_pubkey=xmss_pubkeys[index],
+            )
+        )
+    for index, builder in enumerate(state.builders):
+        pq_data.append(
+            spec.PQData(
+                role=spec.PQ_REGISTRATION_ROLE_BUILDER,
+                bls_pubkey=builder.pubkey,
+                xmss_pubkey=xmss_builder_pubkeys[index],
+            )
+        )
+    return pq_data
+
+
 def build_mock_validator(spec, i: int, balance: int):
-    active_pubkey = get_pubkeys(spec)[i]
+    active_pubkey = pubkeys[i]
     withdrawal_pubkey = pubkeys[((32 * 256) - 1 - i) % len(pubkeys)]
     if is_post_electra(spec):
         if balance > spec.MIN_ACTIVATION_BALANCE:
@@ -240,6 +265,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
         state.randao_commitments = spec.RandaoCommitments(
             data=[spec.Bytes32()] * len(validator_balances)
         )
+
+    if is_post_pq(spec):
+        state.pq_data = build_mock_pq_data(spec, state)
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list

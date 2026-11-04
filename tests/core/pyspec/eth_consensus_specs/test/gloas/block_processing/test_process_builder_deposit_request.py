@@ -5,7 +5,7 @@ from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     run_builder_deposit_request_processing,
 )
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, get_pubkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
 from eth_consensus_specs.utils import bls
 
 
@@ -231,7 +231,7 @@ def test_process_builder_deposit_request__new_builder_pubkey_is_validator(spec, 
     registries are keyed independently, so one pubkey may be both.
     """
     validator_pubkey = state.validators[0].pubkey
-    assert validator_pubkey == get_pubkeys(spec)[0]
+    assert validator_pubkey == pubkeys[0]
     amount = spec.MIN_DEPOSIT_AMOUNT
     pre_builder_count = len(state.builders)
 

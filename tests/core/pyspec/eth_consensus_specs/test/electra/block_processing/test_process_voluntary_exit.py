@@ -6,7 +6,6 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
 from eth_consensus_specs.test.helpers.constants import MAINNET
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
-from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
     sign_voluntary_exit,
@@ -364,7 +363,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
             pubkey=validator.pubkey,
             withdrawal_credentials=validator.withdrawal_credentials,
             amount=spec.EFFECTIVE_BALANCE_INCREMENT,
-            signature=get_placeholder_signature(spec),
+            signature=spec.bls.G2_POINT_AT_INFINITY,
             slot=spec.GENESIS_SLOT,
         )
     )

@@ -19,7 +19,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
     is_post_heze,
 )
-from eth_consensus_specs.test.helpers.keys import get_pubkeys, privkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -337,7 +337,7 @@ def get_random_deposit_requests(spec, state, rng, num_deposits=None):
         deposit, _, _ = build_deposit(
             spec,
             deposit_data_leaves,
-            get_pubkeys(spec)[index],
+            pubkeys[index],
             privkeys[index],
             rng.randint(spec.EFFECTIVE_BALANCE_INCREMENT, 2 * spec.MAX_EFFECTIVE_BALANCE_ELECTRA),
             withdrawal_credentials=withdrawal_credentials,

@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Becoming a builder](#becoming-a-builder)
-  - [Submit deposit](#submit-deposit)
 - [Builder activities](#builder-activities)
   - [Constructing the `SignedExecutionPayloadBid`](#constructing-the-signedexecutionpayloadbid)
   - [Constructing the `SignedExecutionPayloadEnvelope`](#constructing-the-signedexecutionpayloadenvelope)
@@ -23,21 +21,10 @@ is the 32-byte seed from which its XMSS key is derived. As for validators, an
 XMSS key MUST NOT sign two different messages at the same leaf, because that
 exposes the leaf and lets others forge signatures at it.
 
-## Becoming a builder
-
-### Submit deposit
-
-The builder deposit request is unchanged, except that:
-
-- `pubkey` is the builder's XMSS public key.
-- `signature` is an XMSS proof of possession over the corresponding
-  `DepositMessage` under `DOMAIN_BUILDER_DEPOSIT`, signed at the leaf
-  `compute_xmss_leaf_index(GENESIS_SLOT, LEAF_OFFSET_DEPOSIT)`.
-
-*Note*: Every deposit is signed at the same leaf, so a key MUST NOT sign two
-different deposit messages. The signature of a top-up deposit for an existing
-builder is not checked, so a top-up SHOULD carry the empty `XMSSSignature()`
-rather than a new signature.
+A builder keeps its BLS public key as its identifier, and signs with the XMSS
+key it registered with EIP-8483 before the upgrade, using the builder role. A
+builder without a registration is exited at the upgrade, and there is no way yet
+to register an XMSS public key after it.
 
 ## Builder activities
 

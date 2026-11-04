@@ -12,7 +12,6 @@
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [XMSS public key](#xmss-public-key)
-  - [Submit deposit](#submit-deposit)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
@@ -48,8 +47,10 @@ validator" to implement PQ.
 
 Validators sign with leanXMSS instead of BLS. Every message is signed at the
 leaf that `compute_xmss_leaf_index` assigns to its slot and type. A validator
-that is active before the upgrade keeps validating only if it registered its
-XMSS public key with EIP-8483. See [the fork document](./fork.md) for details.
+keeps its BLS public key as its identifier, and signs with the XMSS key it
+registered with EIP-8483 before the upgrade, which `state.pq_data` holds. A
+validator without a registration is exited at the upgrade. See
+[the fork document](./fork.md) for details.
 
 ## Containers
 
@@ -80,24 +81,17 @@ class SignedAggregateAndProof(Container):
 
 #### XMSS public key
 
-Validator public keys are leanXMSS public keys. A private key, `privkey`, is a
-32-byte seed from which the key is derived. It must be securely generated along
-with the resultant `pubkey`. This `privkey` must be "hot", that is, constantly
-available to sign data throughout the lifetime of the validator.
+A validator's XMSS private key, `privkey`, is a 32-byte seed from which its
+leanXMSS key is derived. It must be securely generated along with the resultant
+XMSS public key. This `privkey` must be "hot", that is, constantly available to
+sign data throughout the lifetime of the validator.
 
-### Submit deposit
+The XMSS public key is registered with EIP-8483 before the upgrade, as the first
+32 bytes of the registration's `pq_data`. The remaining 32 bytes are the
+validator's VRF data.
 
-Deposits are submitted as described in the
-[Phase 0 document](../../phase0/validator.md#submit-deposit), except that
-`signature` is the result of `xmss.Sign` of the
-`compute_signing_root(deposit_message, domain)` with
-`domain=compute_domain(DOMAIN_DEPOSIT)`, at the leaf
-`compute_xmss_leaf_index(GENESIS_SLOT, LEAF_OFFSET_DEPOSIT)`.
-
-*Note*: Every deposit is signed at the same leaf, so a key MUST NOT sign two
-different deposit messages. The signature of a top-up deposit for an existing
-validator is not checked, so a top-up SHOULD carry the empty `XMSSSignature()`
-rather than a new signature.
+*Note*: There is no way yet to register an XMSS public key after the upgrade, so
+a validator that deposits after the upgrade cannot sign.
 
 ## Beacon chain responsibilities
 

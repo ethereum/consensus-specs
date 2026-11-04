@@ -30,7 +30,6 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_seen,
     run_validate_gossip,
 )
-from eth_consensus_specs.test.helpers.keys import get_filled_pubkey
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -1568,7 +1567,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
     builder_index = spec.BuilderIndex(0)
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
     builder = state.builders[builder_index]
-    unknown_pubkey = get_filled_pubkey(spec, b"\xab")
+    unknown_pubkey = spec.BLSPubkey(b"\xab" * 48)
     assert unknown_pubkey not in [b.pubkey for b in state.builders]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(

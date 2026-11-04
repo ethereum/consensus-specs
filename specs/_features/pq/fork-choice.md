@@ -92,7 +92,8 @@ def on_payload_attestation_message(
         domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
         signing_root = compute_signing_root(data, domain)
         leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-        assert xmss.Verify(validator.pubkey, leaf_index, signing_root, ptc_message.signature)
+        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+        assert xmss.Verify(pubkey, leaf_index, signing_root, ptc_message.signature)
 
     # Update the votes for the block
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]

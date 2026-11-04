@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.helpers.deposits import sign_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, get_builder_pubkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -68,7 +68,7 @@ def prepare_process_builder_deposit_request(
 
     # Phase 2: Derive effective values
     index = builder_index if builder_index is not None else len(state.builders)
-    effective_pubkey = pubkey if pubkey is not None else get_builder_pubkeys(spec)[index]
+    effective_pubkey = pubkey if pubkey is not None else builder_pubkeys[index]
     effective_privkey = builder_pubkey_to_privkey[effective_pubkey]
     effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
     if withdrawal_credentials is not None:

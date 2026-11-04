@@ -14,12 +14,10 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
-    get_builder_pubkeys,
-    get_pubkeys,
+    builder_pubkeys,
     privkeys,
     pubkeys,
 )
-from eth_consensus_specs.test.helpers.signatures import sign
 from eth_consensus_specs.test.helpers.state import get_balance
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
@@ -75,9 +73,7 @@ def sign_deposit_data(spec, deposit_data, privkey, fork_version=None):
     else:
         domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
     signing_root = spec.compute_signing_root(deposit_message, domain)
-    deposit_data.signature = sign(
-        spec, privkey, signing_root, spec.GENESIS_SLOT, "LEAF_OFFSET_DEPOSIT"
-    )
+    deposit_data.signature = bls.Sign(privkey, signing_root)
 
 
 def build_deposit(spec, deposit_data_list, pubkey, privkey, amount, withdrawal_credentials, signed):
@@ -227,7 +223,7 @@ def prepare_deposit_request(
         index = validator_index
 
     if pubkey is None:
-        pubkey = get_pubkeys(spec)[validator_index]
+        pubkey = pubkeys[validator_index]
 
     if privkey is None:
         privkey = privkeys[validator_index]
@@ -264,7 +260,7 @@ def sign_builder_deposit_request(spec, request, privkey):
     )
     domain = spec.compute_domain(spec.DOMAIN_BUILDER_DEPOSIT)
     signing_root = spec.compute_signing_root(deposit_message, domain)
-    return sign(spec, privkey, signing_root, spec.GENESIS_SLOT, "LEAF_OFFSET_DEPOSIT")
+    return bls.Sign(privkey, signing_root)
 
 
 def prepare_builder_deposit_request(
@@ -285,7 +281,7 @@ def prepare_builder_deposit_request(
     if pubkey is None:
         # Find a pubkey that doesn't exist in state.builders
         existing_pubkeys = {builder.pubkey for builder in state.builders}
-        for pk in get_builder_pubkeys(spec):
+        for pk in builder_pubkeys:
             if pk not in existing_pubkeys:
                 pubkey = pk
                 break
@@ -327,7 +323,7 @@ def prepare_pending_deposit(
     Create a pending deposit for the given validator, depositing the given amount.
     """
     if pubkey is None:
-        pubkey = get_pubkeys(spec)[validator_index]
+        pubkey = pubkeys[validator_index]
 
     if privkey is None:
         privkey = privkeys[validator_index]

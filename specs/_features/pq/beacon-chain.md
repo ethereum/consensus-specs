@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [New `PQDataList`](#new-pqdatalist)
   - [New `XMSSAggregateSignature`](#new-xmssaggregatesignature)
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
@@ -19,26 +20,19 @@
     - [`Attestation`](#attestation)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
-    - [`Builder`](#builder)
-    - [`BuilderDepositRequest`](#builderdepositrequest)
-    - [`BuilderExitRequest`](#builderexitrequest)
-    - [`DepositData`](#depositdata)
-    - [`DepositMessage`](#depositmessage)
-    - [`DepositRequest`](#depositrequest)
     - [`ExecutionRequests`](#executionrequests)
     - [`IndexedAttestation`](#indexedattestation)
     - [`IndexedPayloadAttestation`](#indexedpayloadattestation)
     - [`PayloadAttestation`](#payloadattestation)
     - [`PayloadAttestationMessage`](#payloadattestationmessage)
-    - [`PendingDeposit`](#pendingdeposit)
     - [`SignedBeaconBlock`](#signedbeaconblock)
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SingleAttestation`](#singleattestation)
-    - [`Validator`](#validator)
-    - [`WithdrawalRequest`](#withdrawalrequest)
+  - [New containers](#new-containers)
+    - [`PQData`](#pqdata)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
@@ -47,14 +41,8 @@
   - [Predicates](#predicates)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
     - [Modified `is_valid_indexed_payload_attestation`](#modified-is_valid_indexed_payload_attestation)
-    - [Modified `is_pending_validator`](#modified-is_pending_validator)
   - [Beacon state accessors](#beacon-state-accessors)
-  - [Beacon state mutators](#beacon-state-mutators)
-    - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
-  - [Validator registry](#validator-registry)
-    - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
-    - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
-    - [Modified `add_builder_to_registry`](#modified-add_builder_to_registry)
+    - [New `get_xmss_pubkey`](#new-get_xmss_pubkey)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
   - [Epoch processing](#epoch-processing)
@@ -72,10 +60,6 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
       - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
-      - [Deposit requests](#deposit-requests)
-        - [Modified `is_valid_deposit_signature`](#modified-is_valid_deposit_signature)
-      - [Builder deposit requests](#builder-deposit-requests)
-        - [Modified `is_valid_builder_deposit_signature`](#modified-is_valid_builder_deposit_signature)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
@@ -106,10 +90,16 @@ values, produced and checked by `xmss.Aggregate` and `xmss.AggregateVerify`. The
 reference implementation concatenates signatures as a stand-in for a succinct
 aggregation scheme.
 
-Validators move to XMSS keys through the post-quantum material registered with
-EIP-8483 before the fork. Each registration holds the validator's XMSS public
-key. Validators that did not register are exited at the fork. See
-[the fork document](./fork.md) for details.
+Validators and builders keep their BLS public keys as identifiers, so execution
+layer requests and deposits still refer to them by BLS public key. Their XMSS
+public keys and VRF data, registered with EIP-8483 before the fork, are stored
+in `state.pq_data`, and every signature is verified against the XMSS public key
+found there. Validators and builders that did not register are exited at the
+fork. See [the fork document](./fork.md) for details.
+
+*Note*: A validator or builder that deposits after the fork has no entry in
+`state.pq_data`, so it cannot sign. Deposits also still carry a BLS proof of
+possession. A way to register keys after the fork is left open.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 Balances behind `0x00` withdrawal credentials stay locked until a later upgrade
@@ -122,6 +112,16 @@ producing them at the fork. Pending consolidations still complete.
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
+
+### New `PQDataList`
+
+```python
+class PQDataList(ProgressiveList[PQData]):
+    """
+    The post-quantum keys and VRF data of validators and builders, at most one
+    entry per role and BLS public key.
+    """
+```
 
 ### New `XMSSAggregateSignature`
 
@@ -165,19 +165,18 @@ class XMSSSignature(ByteVector):
 
 ### XMSS leaf offsets
 
-| Name                                     | Value        |
-| ---------------------------------------- | ------------ |
-| `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)`  |
-| `LEAF_OFFSET_RANDAO`                     | `Uint64(1)`  |
-| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)`  |
-| `LEAF_OFFSET_SELECTION_PROOF`            | `Uint64(3)`  |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(4)`  |
-| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(5)`  |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(6)`  |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(7)`  |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(8)`  |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(9)`  |
-| `LEAF_OFFSET_DEPOSIT`                    | `Uint64(10)` |
+| Name                                     | Value       |
+| ---------------------------------------- | ----------- |
+| `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)` |
+| `LEAF_OFFSET_RANDAO`                     | `Uint64(1)` |
+| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)` |
+| `LEAF_OFFSET_SELECTION_PROOF`            | `Uint64(3)` |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(4)` |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(5)` |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(6)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(7)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(8)` |
+| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(9)` |
 
 ## Presets
 
@@ -236,7 +235,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=46, gaps=(22, 23))
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(22, 23, 46))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -288,81 +287,8 @@ class BeaconState(ProgressiveContainer):
     ptc_window: PayloadTimelinessCommitteeWindow
     # [Modified in PQ]
     # Removed `pq_registrations`
-```
-
-#### `Builder`
-
-```python
-class Builder(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    version: Uint8
-    execution_address: ExecutionAddress
-    balance: Gwei
-    deposit_epoch: Epoch
-    withdrawable_epoch: Epoch
-```
-
-#### `BuilderDepositRequest`
-
-```python
-class BuilderDepositRequest(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    # [Modified in PQ]
-    signature: XMSSSignature
-```
-
-#### `BuilderExitRequest`
-
-```python
-class BuilderExitRequest(Container):
-    source_address: ExecutionAddress
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-```
-
-#### `DepositData`
-
-*Note*: `signature` is over `DepositMessage`.
-
-```python
-class DepositData(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    # [Modified in PQ]
-    signature: XMSSSignature
-```
-
-#### `DepositMessage`
-
-```python
-class DepositMessage(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-```
-
-#### `DepositRequest`
-
-*Note*: The existing deposit contract only accepts a 48-byte public key and a
-96-byte signature, so it must be updated, or a new one deployed, before deposits
-can carry an XMSS public key and signature.
-
-```python
-class DepositRequest(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    # [Modified in PQ]
-    signature: XMSSSignature
-    index: Uint64
+    # [New in PQ]
+    pq_data: PQDataList
 ```
 
 #### `ExecutionRequests`
@@ -427,19 +353,6 @@ class PayloadAttestationMessage(Container):
     signature: XMSSSignature
 ```
 
-#### `PendingDeposit`
-
-```python
-class PendingDeposit(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    amount: Gwei
-    # [Modified in PQ]
-    signature: XMSSSignature
-    slot: Slot
-```
-
 #### `SignedBeaconBlock`
 
 ```python
@@ -496,29 +409,16 @@ class SingleAttestation(Container):
     signature: XMSSSignature
 ```
 
-#### `Validator`
+### New containers
+
+#### `PQData`
 
 ```python
-class Validator(Container):
-    # [Modified in PQ]
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    effective_balance: Gwei
-    slashed: Boolean
-    activation_eligibility_epoch: Epoch
-    activation_epoch: Epoch
-    exit_epoch: Epoch
-    withdrawable_epoch: Epoch
-```
-
-#### `WithdrawalRequest`
-
-```python
-class WithdrawalRequest(Container):
-    source_address: ExecutionAddress
-    # [Modified in PQ]
-    validator_pubkey: XMSSPubkey
-    amount: Gwei
+class PQData(Container):
+    role: Uint8
+    bls_pubkey: BLSPubkey
+    xmss_pubkey: XMSSPubkey
+    vrf_data: Bytes32
 ```
 
 ## Helpers
@@ -587,7 +487,11 @@ def is_valid_indexed_attestation(
     ):
         return False
     # Verify aggregate signature
-    pubkeys = [state.validators[index].pubkey for index in indices]
+    # [Modified in PQ]
+    pubkeys = [
+        get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[index].pubkey)
+        for index in indices
+    ]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     # [Modified in PQ]
@@ -611,7 +515,11 @@ def is_valid_indexed_payload_attestation(
         return False
 
     # Verify aggregate signature
-    pubkeys = [state.validators[index].pubkey for index in indices]
+    # [Modified in PQ]
+    pubkeys = [
+        get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[index].pubkey)
+        for index in indices
+    ]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     # [Modified in PQ]
@@ -619,133 +527,23 @@ def is_valid_indexed_payload_attestation(
     return xmss.AggregateVerify(pubkeys, leaf_index, signing_root, attestation.signature)
 ```
 
-#### Modified `is_pending_validator`
-
-*Note*: This function naively revalidates deposit signatures on every call.
-Implementations SHOULD cache verification results to avoid repeated work.
-
-```python
-def is_pending_validator(
-    pending_deposits: Sequence[PendingDeposit],
-    # [Modified in PQ]
-    pubkey: XMSSPubkey,
-) -> bool:
-    """
-    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
-    """
-    for pending_deposit in pending_deposits:
-        if pending_deposit.pubkey != pubkey:
-            continue
-        if is_valid_deposit_signature(
-            pending_deposit.pubkey,
-            pending_deposit.withdrawal_credentials,
-            pending_deposit.amount,
-            pending_deposit.signature,
-        ):
-            return True
-    return False
-```
-
 ### Beacon state accessors
 
-### Beacon state mutators
+#### New `get_xmss_pubkey`
 
-#### Modified `queue_excess_active_balance`
-
-```python
-def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> None:
-    balance = state.balances[index]
-    if balance > MIN_ACTIVATION_BALANCE:
-        excess_balance = balance - MIN_ACTIVATION_BALANCE
-        state.balances[index] = MIN_ACTIVATION_BALANCE
-        validator = state.validators[index]
-        # Use an empty signature as a signature field placeholder
-        # and GENESIS_SLOT to distinguish from a pending deposit request
-        state.pending_deposits.append(
-            PendingDeposit(
-                pubkey=validator.pubkey,
-                withdrawal_credentials=validator.withdrawal_credentials,
-                amount=excess_balance,
-                # [Modified in PQ]
-                signature=XMSSSignature(),
-                slot=GENESIS_SLOT,
-            )
-        )
-```
-
-### Validator registry
-
-#### Modified `get_validator_from_deposit`
+*Note*: The linear scan is for specification clarity. Implementations SHOULD
+cache the XMSS public key of each validator and builder.
 
 ```python
-def get_validator_from_deposit(
-    # [Modified in PQ]
-    pubkey: XMSSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: Gwei,
-) -> Validator:
-    validator = Validator(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        effective_balance=Gwei(0),
-        slashed=Boolean(False),
-        activation_eligibility_epoch=FAR_FUTURE_EPOCH,
-        activation_epoch=FAR_FUTURE_EPOCH,
-        exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-    )
-
-    max_effective_balance = get_max_effective_balance(validator)
-    validator.effective_balance = min(
-        amount - amount % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance
-    )
-
-    return validator
-```
-
-#### Modified `add_validator_to_registry`
-
-```python
-def add_validator_to_registry(
-    state: BeaconState,
-    # [Modified in PQ]
-    pubkey: XMSSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: Gwei,
-) -> None:
-    index = get_index_for_new_validator(state)
-    validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
-    set_or_append_list(state.validators, index, validator)
-    set_or_append_list(state.balances, index, amount)
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.inactivity_scores, index, Uint64(0))
-```
-
-#### Modified `add_builder_to_registry`
-
-```python
-def add_builder_to_registry(
-    state: BeaconState,
-    # [Modified in PQ]
-    pubkey: XMSSPubkey,
-    version: Uint8,
-    execution_address: ExecutionAddress,
-    amount: Gwei,
-    slot: Slot,
-) -> None:
-    set_or_append_list(
-        state.builders,
-        get_index_for_new_builder(state),
-        Builder(
-            pubkey=pubkey,
-            version=version,
-            execution_address=execution_address,
-            balance=amount,
-            deposit_epoch=compute_epoch_at_slot(slot),
-            withdrawable_epoch=FAR_FUTURE_EPOCH,
-        ),
-    )
+def get_xmss_pubkey(state: BeaconState, role: Uint8, bls_pubkey: BLSPubkey) -> XMSSPubkey:
+    """
+    Return the XMSS public key registered for ``bls_pubkey`` with ``role``, or
+    the empty public key, which no signature verifies against, if there is none.
+    """
+    for entry in state.pq_data:
+        if entry.role == role and entry.bls_pubkey == bls_pubkey:
+            return entry.xmss_pubkey
+    return XMSSPubkey()
 ```
 
 ## Beacon chain state transition function
@@ -760,7 +558,8 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
     )
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(signed_block.message.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    return xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+    return xmss.Verify(pubkey, leaf_index, signing_root, signed_block.signature)
 ```
 
 ### Epoch processing
@@ -824,7 +623,8 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(state.slot, LEAF_OFFSET_RANDAO)
-    assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, body.randao_reveal)
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+    assert xmss.Verify(pubkey, leaf_index, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), sha256(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -866,9 +666,15 @@ def verify_execution_payload_envelope_signature(
     builder_index = signed_envelope.message.builder_index
     if builder_index == BUILDER_INDEX_SELF_BUILD:
         validator_index = state.latest_block_header.proposer_index
-        pubkey = state.validators[validator_index].pubkey
+        # [Modified in PQ]
+        pubkey = get_xmss_pubkey(
+            state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[validator_index].pubkey
+        )
     else:
-        pubkey = state.builders[builder_index].pubkey
+        # [Modified in PQ]
+        pubkey = get_xmss_pubkey(
+            state, PQ_REGISTRATION_ROLE_BUILDER, state.builders[builder_index].pubkey
+        )
 
     signing_root = compute_signing_root(
         signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
@@ -894,7 +700,8 @@ def verify_execution_payload_bid_signature(
     )
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(signed_bid.message.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_BID)
-    return xmss.Verify(builder.pubkey, leaf_index, signing_root, signed_bid.signature)
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_BUILDER, builder.pubkey)
+    return xmss.Verify(pubkey, leaf_index, signing_root, signed_bid.signature)
 ```
 
 ##### Modified `process_execution_payload_bid`
@@ -1015,7 +822,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature)
+        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+        assert xmss.Verify(pubkey, leaf_index, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
 ```
@@ -1045,56 +853,10 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     leaf_index = compute_xmss_leaf_index(
         compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
     )
-    assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    assert xmss.Verify(pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
-```
-
-##### Deposit requests
-
-###### Modified `is_valid_deposit_signature`
-
-*Note*: A deposit is signed at the deposit leaf of the genesis slot, a leaf that
-no other message uses. A depositor must sign only one deposit message per key.
-
-```python
-def is_valid_deposit_signature(
-    # [Modified in PQ]
-    pubkey: XMSSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: Gwei,
-    # [Modified in PQ]
-    signature: XMSSSignature,
-) -> bool:
-    deposit_message = DepositMessage(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        amount=amount,
-    )
-    # Fork-agnostic domain since deposits are valid across forks
-    domain = compute_domain(DOMAIN_DEPOSIT)
-    signing_root = compute_signing_root(deposit_message, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(GENESIS_SLOT, LEAF_OFFSET_DEPOSIT)
-    return xmss.Verify(pubkey, leaf_index, signing_root, signature)
-```
-
-##### Builder deposit requests
-
-###### Modified `is_valid_builder_deposit_signature`
-
-```python
-def is_valid_builder_deposit_signature(request: BuilderDepositRequest) -> bool:
-    deposit_message = DepositMessage(
-        pubkey=request.pubkey,
-        withdrawal_credentials=request.withdrawal_credentials,
-        amount=request.amount,
-    )
-    domain = compute_domain(DOMAIN_BUILDER_DEPOSIT)
-    signing_root = compute_signing_root(deposit_message, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(GENESIS_SLOT, LEAF_OFFSET_DEPOSIT)
-    return xmss.Verify(request.pubkey, leaf_index, signing_root, request.signature)
 ```
 
 #### Parent execution payload

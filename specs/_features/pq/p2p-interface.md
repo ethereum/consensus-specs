@@ -235,7 +235,8 @@ def validate_beacon_block_gossip(
     signing_root = compute_signing_root(block, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_beacon_block.signature):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
     # [IGNORE] If the parent block is full, the parent payload is valid
@@ -377,9 +378,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     signing_root = compute_signing_root(aggregate.data.slot, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_SELECTION_PROOF)
-    if not xmss.Verify(
-        aggregator.pubkey, leaf_index, signing_root, aggregate_and_proof.selection_proof
-    ):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, aggregator.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, aggregate_and_proof.selection_proof):
         raise GossipReject("invalid selection proof signature")
 
     # [REJECT] The aggregator signature is valid
@@ -387,9 +387,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
-    if not xmss.Verify(
-        aggregator.pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature
-    ):
+    if not xmss.Verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
     # [REJECT] The aggregate signature is valid
@@ -475,7 +473,8 @@ def validate_voluntary_exit_gossip(
     leaf_index = compute_xmss_leaf_index(
         compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
     )
-    if not xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
         raise GossipReject("invalid voluntary exit signature")
 
     # Mark this voluntary exit as seen
@@ -535,7 +534,8 @@ def validate_proposer_slashing_gossip(
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature):
+        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+        if not xmss.Verify(pubkey, leaf_index, signing_root, signed_header.signature):
             raise GossipReject("invalid proposer slashing signature")
 
     # Mark this proposer slashing as seen
@@ -604,9 +604,8 @@ def validate_payload_attestation_message_gossip(
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    if not xmss.Verify(
-        validator.pubkey, leaf_index, signing_root, payload_attestation_message.signature
-    ):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, payload_attestation_message.signature):
         raise GossipReject("invalid payload attestation signature")
 
     # Mark this payload_attestation as seen
@@ -831,9 +830,8 @@ def validate_proposer_preferences_gossip(
     leaf_index = compute_xmss_leaf_index(
         preferences.proposal_slot, LEAF_OFFSET_PROPOSER_PREFERENCES
     )
-    if not xmss.Verify(
-        validator.pubkey, leaf_index, signing_root, signed_proposer_preferences.signature
-    ):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")
 
     # Mark these preferences as seen
@@ -920,7 +918,8 @@ def validate_beacon_attestation_gossip(
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_BEACON_ATTESTER)
-    if not xmss.Verify(attester.pubkey, leaf_index, signing_root, attestation.signature):
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, attester.pubkey)
+    if not xmss.Verify(pubkey, leaf_index, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block

@@ -15,8 +15,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.execution_requests import get_non_empty_execution_requests
 from eth_consensus_specs.test.helpers.forks import is_post_pq
-from eth_consensus_specs.test.helpers.keys import get_filled_pubkey, get_pubkeys
-from eth_consensus_specs.test.helpers.signatures import get_filled_signature
+from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.withdrawals import set_parent_block_full
 
 
@@ -250,17 +249,17 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     requests = spec.ExecutionRequests(
         deposits=spec.DepositRequests.of(
             spec.DepositRequest(
-                pubkey=get_filled_pubkey(spec, b"\x01"),
+                pubkey=spec.BLSPubkey(b"\x01" * 48),
                 withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
                 amount=spec.Gwei(32_000_000_000),
-                signature=get_filled_signature(spec, b"\x03"),
+                signature=spec.BLSSignature(b"\x03" * 96),
                 index=spec.Uint64(0),
             )
         ),
         withdrawals=spec.WithdrawalRequests.of(
             spec.WithdrawalRequest(
                 source_address=spec.ExecutionAddress(b"\x04" * 20),
-                validator_pubkey=get_filled_pubkey(spec, b"\x05"),
+                validator_pubkey=spec.BLSPubkey(b"\x05" * 48),
                 amount=spec.Gwei(16_000_000_000),
             )
         ),
@@ -269,8 +268,8 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
         requests.consolidations = spec.ConsolidationRequests.of(
             spec.ConsolidationRequest(
                 source_address=spec.ExecutionAddress(b"\x06" * 20),
-                source_pubkey=get_filled_pubkey(spec, b"\x07"),
-                target_pubkey=get_filled_pubkey(spec, b"\x08"),
+                source_pubkey=spec.BLSPubkey(b"\x07" * 48),
+                target_pubkey=spec.BLSPubkey(b"\x08" * 48),
             )
         )
 
@@ -315,7 +314,7 @@ def test_process_parent_execution_payload__builder_credential_deposits_queued(sp
     their withdrawal credentials. Deposit requests never create builders.
     """
     new_validator_index = len(state.validators)
-    new_validator_pubkey = get_pubkeys(spec)[new_validator_index]
+    new_validator_pubkey = pubkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # First deposit: regular validator credentials with valid signature

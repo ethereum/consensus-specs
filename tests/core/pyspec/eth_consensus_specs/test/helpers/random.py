@@ -6,7 +6,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_electra,
 )
-from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential_with_balance,
@@ -204,7 +203,7 @@ def set_some_pending_deposits(spec, state, rng):
                 pubkey=validator.pubkey,
                 withdrawal_credentials=validator.withdrawal_credentials,
                 amount=amount,
-                signature=get_placeholder_signature(spec),
+                signature=spec.bls.G2_POINT_AT_INFINITY,
                 slot=spec.GENESIS_SLOT,
             )
             state.pending_deposits.append(pending_deposit)

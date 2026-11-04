@@ -8,7 +8,6 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
 from eth_consensus_specs.test.helpers.constants import MINIMAL
-from eth_consensus_specs.test.helpers.keys import get_filled_pubkey
 from eth_consensus_specs.test.helpers.state import (
     get_validator_index_by_pubkey,
 )
@@ -292,7 +291,7 @@ def test_unknown_pubkey(spec, state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = rng.choice(spec.get_active_validator_indices(state, current_epoch))
     address = b"\x22" * 20
-    pubkey = get_filled_pubkey(spec, b"\x23")
+    pubkey = spec.BLSPubkey(b"\x23" * 48)
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     withdrawal_request = spec.WithdrawalRequest(
         source_address=address,

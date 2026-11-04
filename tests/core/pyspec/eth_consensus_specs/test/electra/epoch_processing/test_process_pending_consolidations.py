@@ -6,7 +6,6 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_epoch_processing_with,
 )
-from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
 )
@@ -265,7 +264,7 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
         pubkey=source.pubkey,
         withdrawal_credentials=source.withdrawal_credentials,
         amount=spec.MIN_ACTIVATION_BALANCE,
-        signature=get_placeholder_signature(spec),
+        signature=spec.bls.G2_POINT_AT_INFINITY,
         slot=spec.GENESIS_SLOT,
     )
     state.pending_deposits.append(pending_deposit)

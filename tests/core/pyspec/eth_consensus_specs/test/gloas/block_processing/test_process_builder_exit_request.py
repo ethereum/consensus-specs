@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
-from eth_consensus_specs.test.helpers.keys import get_builder_pubkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from eth_consensus_specs.test.helpers.state import next_slots
 
 
@@ -76,7 +76,7 @@ def test_process_builder_exit_request__unknown_pubkey(spec, state):
     # Use a pubkey that is not in the builder registry
     existing_pubkeys = {builder.pubkey for builder in state.builders}
     unknown_pubkey = None
-    for pk in get_builder_pubkeys(spec):
+    for pk in builder_pubkeys:
         if pk not in existing_pubkeys:
             unknown_pubkey = pk
             break
