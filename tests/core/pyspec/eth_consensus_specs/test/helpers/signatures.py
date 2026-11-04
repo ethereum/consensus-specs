@@ -8,7 +8,10 @@ def sign(spec, privkey, signing_root, slot, leaf_offset):
     ``slot`` for the ``leaf_offset`` constant named by its string.
     """
     if is_post_pq(spec):
-        leaf_index = spec.compute_xmss_leaf_index(slot, getattr(spec, leaf_offset))
+        # The stub ignores the leaf, and a message far in the future has no leaf
+        leaf_index = 0
+        if xmss.xmss_active:
+            leaf_index = spec.compute_xmss_leaf_index(slot, getattr(spec, leaf_offset))
         return spec.XMSSSignature(xmss.Sign(privkey, leaf_index, signing_root))
     return bls.Sign(privkey, signing_root)
 
