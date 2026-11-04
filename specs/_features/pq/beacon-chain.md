@@ -50,6 +50,7 @@
     - [Modified `is_valid_indexed_payload_attestation`](#modified-is_valid_indexed_payload_attestation)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_active_validator_indices`](#modified-get_active_validator_indices)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
   - [Validator registry](#validator-registry)
@@ -59,6 +60,7 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
   - [Epoch processing](#epoch-processing)
+    - [Modified `get_eligible_validator_indices`](#modified-get_eligible_validator_indices)
     - [Modified `process_epoch`](#modified-process_epoch)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -109,7 +111,9 @@ aggregation scheme.
 
 Validators move to XMSS keys through the post-quantum material registered with
 EIP-8483 before the fork. Each registration holds the validator's XMSS public
-key. Validators that did not register are exited at the fork. See
+key. Validators that did not register become inert at the fork: they keep their
+stake and status, but have no duties, no consensus weight, and no rewards or
+penalties, until they exit through a withdrawal request. See
 [the fork document](./fork.md) for details.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
@@ -517,6 +521,8 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch
+    # [New in PQ]
+    inert: Boolean
 ```
 
 #### `WithdrawalRequest`
@@ -656,6 +662,26 @@ def is_pending_validator(
 
 ### Beacon state accessors
 
+#### Modified `get_active_validator_indices`
+
+*Note*: Inert validators are left out, so they are never assigned duties and do
+not count towards the total active balance. They remain active for
+`is_active_validator`, so they can still exit through a withdrawal request.
+
+```python
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+    """
+    Return the sequence of active validator indices at ``epoch``, leaving out
+    inert validators.
+    """
+    return [
+        ValidatorIndex(index)
+        for index, validator in enumerate(state.validators)
+        # [Modified in PQ]
+        if is_active_validator(validator, epoch) and not validator.inert
+    ]
+```
+
 ### Beacon state mutators
 
 #### Modified `queue_excess_active_balance`
@@ -701,6 +727,8 @@ def get_validator_from_deposit(
         activation_epoch=FAR_FUTURE_EPOCH,
         exit_epoch=FAR_FUTURE_EPOCH,
         withdrawable_epoch=FAR_FUTURE_EPOCH,
+        # [New in PQ]
+        inert=Boolean(False),
     )
 
     max_effective_balance = get_max_effective_balance(validator)
@@ -772,6 +800,25 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
 ```
 
 ### Epoch processing
+
+#### Modified `get_eligible_validator_indices`
+
+*Note*: Inert validators cannot sign, so they get no rewards or penalties.
+
+```python
+def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    previous_epoch = get_previous_epoch(state)
+    return [
+        ValidatorIndex(index)
+        for index, validator in enumerate(state.validators)
+        # [Modified in PQ]
+        if not validator.inert
+        and (
+            is_active_validator(validator, previous_epoch)
+            or (validator.slashed and previous_epoch + 1 < validator.withdrawable_epoch)
+        )
+    ]
+```
 
 #### Modified `process_epoch`
 

@@ -10,6 +10,7 @@
   - [New `compute_unusable_xmss_pubkey`](#new-compute_unusable_xmss_pubkey)
   - [New `get_registered_xmss_pubkeys`](#new-get_registered_xmss_pubkeys)
   - [New `upgrade_pending_deposits_to_pq`](#new-upgrade_pending_deposits_to_pq)
+  - [New `compute_proposer_lookahead`](#new-compute_proposer_lookahead)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,14 +26,17 @@ Validators and builders register their XMSS public key before the fork, as the
 fork, each registered key replaces the BLS public key it was registered for.
 
 A validator or builder without a registration gets a public key that nobody can
-sign for, and its exit is initiated. EIP-8483 ignores a registration whose key
-is already registered, so every registered key is unique. An exited builder can
-register again with an XMSS builder deposit.
+sign for. Such a validator becomes inert: it keeps its stake and status, but has
+no duties, no consensus weight, and no rewards or penalties. It can leave with
+an exit request from its withdrawal address, or wait for a later upgrade that
+lets it register a key. Such a builder keeps its balance but cannot sign bids,
+and can leave with a builder exit request. EIP-8483 ignores a registration whose
+key is already registered, so every registered key is unique.
 
 *Note*: A validator with `0x00` withdrawal credentials has no withdrawal address
-to register from, so it is exited. `BLSToExecutionChange` is disabled in PQ, so
-its balance stays locked until a later upgrade adds a quantum-safe way to change
-its credentials.
+to register from or to request an exit with, so its exit is initiated at the
+fork. `BLSToExecutionChange` is disabled in PQ, so its balance stays locked
+until a later upgrade adds a quantum-safe way to change its credentials.
 
 ## Configs
 
@@ -80,8 +84,8 @@ def get_registered_xmss_pubkeys(
 *Note*: A pending deposit for a public key that is not yet in the registry
 cannot be applied after the fork, because its proof of possession is a BLS
 signature. Such a validator is added to the registry at the fork without a
-balance, and its deposit is queued as a top-up. It has no registered key, so its
-exit is initiated with the other unregistered validators.
+balance, and its deposit is queued as a top-up. It has no registered key, so it
+is inert like the other unregistered validators.
 
 ```python
 def upgrade_pending_deposits_to_pq(pre: eip8483.BeaconState, post: BeaconState) -> None:
@@ -92,12 +96,14 @@ def upgrade_pending_deposits_to_pq(pre: eip8483.BeaconState, post: BeaconState) 
                 deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
             ):
                 continue
+            index = get_index_for_new_validator(post)
             add_validator_to_registry(
                 post,
                 compute_unusable_xmss_pubkey(deposit.pubkey),
                 deposit.withdrawal_credentials,
                 Gwei(0),
             )
+            post.validators[index].inert = Boolean(True)
             bls_pubkeys.append(deposit.pubkey)
 
         validator = post.validators[bls_pubkeys.index(deposit.pubkey)]
@@ -112,6 +118,21 @@ def upgrade_pending_deposits_to_pq(pre: eip8483.BeaconState, post: BeaconState) 
         )
 ```
 
+### New `compute_proposer_lookahead`
+
+```python
+def compute_proposer_lookahead(state: BeaconState) -> ProposerLookahead:
+    """
+    Return the proposer indices for the full available lookahead starting from
+    the current epoch.
+    """
+    current_epoch = get_current_epoch(state)
+    lookahead: list[ValidatorIndex] = []
+    for i in range(MIN_SEED_LOOKAHEAD + 1):
+        lookahead.extend(get_beacon_proposer_indices(state, current_epoch + i))
+    return ProposerLookahead(data=lookahead)
+```
+
 ## Fork to PQ
 
 ### Fork trigger
@@ -124,8 +145,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == PQ_FORK_EPOCH`, an irregular state change
 is made to upgrade to PQ.
 
-*Note*: Exits are initiated through the exit churn, so unregistered validators
-remain in the active set, unable to sign, until their exit epoch.
+*Note*: The proposer lookahead and the PTC window were computed before the fork,
+when inert validators still had duties, so they are recomputed.
 
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
@@ -154,6 +175,8 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
                 activation_epoch=pre_validator.activation_epoch,
                 exit_epoch=pre_validator.exit_epoch,
                 withdrawable_epoch=pre_validator.withdrawable_epoch,
+                # [New in PQ]
+                inert=Boolean(pre_validator.pubkey not in registered_pubkeys),
             )
         )
 
@@ -239,17 +262,14 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
     upgrade_pending_deposits_to_pq(pre, post)
 
     # [New in PQ]
-    validator_xmss_pubkeys = set(registered_pubkeys.values())
     for index, validator in enumerate(post.validators):
-        if validator.pubkey not in validator_xmss_pubkeys:
+        if validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX:
             initiate_validator_exit(post, ValidatorIndex(index))
 
     # [New in PQ]
-    builder_xmss_pubkeys = set(registered_builder_pubkeys.values())
-    for builder_index, builder in enumerate(post.builders):
-        is_registered = builder.pubkey in builder_xmss_pubkeys
-        if not is_registered and builder.withdrawable_epoch == FAR_FUTURE_EPOCH:
-            initiate_builder_exit(post, BuilderIndex(builder_index))
+    post.proposer_lookahead = compute_proposer_lookahead(post)
+    # [New in PQ]
+    post.ptc_window = initialize_ptc_window(post)
 
     return post
 ```
