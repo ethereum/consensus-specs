@@ -10,6 +10,7 @@ class EIP8483SpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.gloas import {preset_name} as gloas
+from eth_consensus_specs.utils.ssz.bytes import Bytes64
 """
 
     @classmethod

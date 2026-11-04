@@ -71,7 +71,7 @@ def get_registered_xmss_pubkeys(
     registered_pubkeys: dict[BLSPubkey, XMSSPubkey] = {}
     for registration in pre.pq_registrations:
         if registration.role == role:
-            registered_pubkeys[registration.pubkey] = XMSSPubkey(registration.pq_data)
+            registered_pubkeys[registration.pubkey] = XMSSPubkey(registration.pq_data[:32])
     return registered_pubkeys
 ```
 

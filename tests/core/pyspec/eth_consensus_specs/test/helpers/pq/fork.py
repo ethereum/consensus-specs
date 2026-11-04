@@ -19,7 +19,7 @@ def register_xmss_pubkeys(spec, state, indices=None):
             spec.PQRegistration(
                 role=spec.PQ_REGISTRATION_ROLE_VALIDATOR,
                 pubkey=state.validators[index].pubkey,
-                pq_data=xmss_pubkeys[index],
+                pq_data=xmss_pubkeys[index] + bytes(32),
             )
         )
 
@@ -35,7 +35,7 @@ def register_builder_xmss_pubkeys(spec, state, indices=None):
             spec.PQRegistration(
                 role=spec.PQ_REGISTRATION_ROLE_BUILDER,
                 pubkey=state.builders[index].pubkey,
-                pq_data=xmss_builder_pubkeys[index],
+                pq_data=xmss_builder_pubkeys[index] + bytes(32),
             )
         )
 

@@ -34,13 +34,17 @@
 ## Introduction
 
 This upgrade adds an execution layer triggered request with which the execution
-address of a validator or builder registers 32 bytes of opaque post-quantum
-material for it, as part of the EIP-8483 upgrade.
+address of a validator or builder registers 64 bytes of post-quantum material
+for it, as part of the EIP-8483 upgrade: an XMSS public key followed by VRF
+data.
 
 The beacon state stores one `(role, pubkey, pq_data)` entry per role and public
-key. A later request from the same owner overwrites the earlier one. This
-upgrade gives the 32 bytes no meaning. A later fork that migrates consensus to
-post-quantum signatures defines how they are used.
+key. A later request from the same owner overwrites the earlier one. A later
+fork that migrates consensus to post-quantum signatures defines how the material
+is used.
+
+*Note*: Unlike EIP-8483 as drafted, the material is 64 bytes rather than 32, so
+it can carry VRF data next to the XMSS public key.
 
 *Note*: Unlike EIP-8483 as drafted, this feature also lets a builder register,
 since builders keep their balance across a post-quantum migration only if they
@@ -52,10 +56,10 @@ rather than index, which serves both and is unaffected by builder index reuse.
 The role is part of the key because a builder may share a validator's public
 key.
 
-*Note*: Unlike EIP-8483 as drafted, a request is ignored if its `pq_data` is
-already registered, for either role. The material is public, so otherwise anyone
-could register a copy of someone else's material for their own validator or
-builder, and the migration fork could not give each its own key.
+*Note*: Unlike EIP-8483 as drafted, a request is ignored if the XMSS public key
+in its `pq_data` is already registered, for either role. The material is public,
+so otherwise anyone could register a copy of someone else's key for their own
+validator or builder, and the migration fork could not give each its own key.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -181,7 +185,7 @@ class ExecutionRequests(ProgressiveContainer):
 
 #### `PQRegistrationRequest`
 
-*Note*: The SSZ serialization of `PQRegistrationRequest` is the 101-byte record
+*Note*: The SSZ serialization of `PQRegistrationRequest` is the 133-byte record
 returned by the predeploy contract. Unlike EIP-8483 as drafted, it carries a
 `role`, and the public key is named `pubkey` since it may be a builder's.
 
@@ -190,7 +194,7 @@ class PQRegistrationRequest(Container):
     source_address: ExecutionAddress
     role: Uint8
     pubkey: BLSPubkey
-    pq_data: Bytes32
+    pq_data: Bytes64
 ```
 
 #### `PQRegistration`
@@ -199,7 +203,7 @@ class PQRegistrationRequest(Container):
 class PQRegistration(Container):
     role: Uint8
     pubkey: BLSPubkey
-    pq_data: Bytes32
+    pq_data: Bytes64
 ```
 
 ## Beacon chain state transition function
@@ -239,7 +243,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 *Note*: Invalid requests are ignored. No status is checked, so pending, active,
 exited, and slashed validators and builders can all register PQ material, as
 long as the request comes from their withdrawal address or execution address and
-the material is not already registered.
+its XMSS public key is not already registered.
 
 ```python
 def process_pq_registration_request(
@@ -273,9 +277,9 @@ def process_pq_registration_request(
     else:
         return
 
-    # Verify the PQ material is not already registered
-    registered_pq_data = [registration.pq_data for registration in state.pq_registrations]
-    if pq_registration_request.pq_data in registered_pq_data:
+    # Verify the XMSS public key in the PQ material is not already registered
+    registered_xmss_pubkeys = [registration.pq_data[:32] for registration in state.pq_registrations]
+    if pq_registration_request.pq_data[:32] in registered_xmss_pubkeys:
         return
 
     # Overwrite an existing registration for this role and public key

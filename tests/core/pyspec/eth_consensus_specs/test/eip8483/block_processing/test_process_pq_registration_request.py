@@ -49,13 +49,13 @@ def run_pq_registration_request_processing(spec, state, pq_registration_request,
 @spec_state_test
 def test_process_pq_registration_request__success(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
     assert state.pq_registrations[0].pubkey == state.validators[0].pubkey
-    assert state.pq_registrations[0].pq_data == b"\x22" * 32
+    assert state.pq_registrations[0].pq_data == b"\x22" * 64
 
 
 @with_phases([EIP8483])
@@ -64,7 +64,7 @@ def test_process_pq_registration_request__compounding_credentials(spec, state):
     state.validators[0].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
-    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
@@ -77,14 +77,14 @@ def test_process_pq_registration_request__compounding_credentials(spec, state):
 def test_process_pq_registration_request__overwrites_registration(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x33" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
-    assert state.pq_registrations[0].pq_data == b"\x33" * 32
+    assert state.pq_registrations[0].pq_data == b"\x33" * 64
 
 
 @with_phases([EIP8483])
@@ -93,9 +93,9 @@ def test_process_pq_registration_request__registrations_for_two_validators(spec,
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     set_execution_withdrawal_address(spec, state, 1, b"\x11" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 1, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 1, b"\x22" * 64)
     )
-    request = prepare_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x33" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
@@ -110,7 +110,7 @@ def test_process_pq_registration_request__registrations_for_two_validators(spec,
 def test_process_pq_registration_request__exited_validator(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.initiate_validator_exit(state, 0)
-    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
@@ -124,7 +124,7 @@ def test_process_pq_registration_request__unknown_pubkey(spec, state):
         source_address=b"\x11" * 20,
         role=spec.PQ_REGISTRATION_ROLE_VALIDATOR,
         pubkey=pubkeys[len(state.validators)],
-        pq_data=b"\x22" * 32,
+        pq_data=b"\x22" * 64,
     )
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -137,7 +137,7 @@ def test_process_pq_registration_request__bls_withdrawal_credentials(spec, state
         spec.BLS_WITHDRAWAL_PREFIX + spec.sha256(state.validators[0].pubkey)[1:]
     )
     request = prepare_pq_registration_request(
-        spec, state, 0, b"\x22" * 32, source_address=b"\x11" * 20
+        spec, state, 0, b"\x22" * 64, source_address=b"\x11" * 20
     )
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -148,7 +148,7 @@ def test_process_pq_registration_request__bls_withdrawal_credentials(spec, state
 def test_process_pq_registration_request__wrong_source_address(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     request = prepare_pq_registration_request(
-        spec, state, 0, b"\x22" * 32, source_address=b"\x44" * 20
+        spec, state, 0, b"\x22" * 64, source_address=b"\x44" * 20
     )
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -172,7 +172,7 @@ def prepare_builder_pq_registration_request(
 @spec_state_test
 def test_process_pq_registration_request__unknown_role(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     request.role = 2
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -181,13 +181,13 @@ def test_process_pq_registration_request__unknown_role(spec, state):
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_pq_registration_request__builder_success(spec, state):
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
     assert state.pq_registrations[0].pubkey == state.builders[0].pubkey
-    assert state.pq_registrations[0].pq_data == b"\x22" * 32
+    assert state.pq_registrations[0].pq_data == b"\x22" * 64
 
 
 @with_phases([EIP8483])
@@ -195,9 +195,9 @@ def test_process_pq_registration_request__builder_success(spec, state):
 def test_process_pq_registration_request__builder_and_validator(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
@@ -211,20 +211,20 @@ def test_process_pq_registration_request__builder_and_validator(spec, state):
 @spec_state_test
 def test_process_pq_registration_request__builder_overwrites_registration(spec, state):
     spec.process_pq_registration_request(
-        state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert len(state.pq_registrations) == 1
-    assert state.pq_registrations[0].pq_data == b"\x33" * 32
+    assert state.pq_registrations[0].pq_data == b"\x33" * 64
 
 
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_pq_registration_request__builder_pubkey_with_validator_role(spec, state):
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 64)
     request.role = spec.PQ_REGISTRATION_ROLE_VALIDATOR
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -234,7 +234,7 @@ def test_process_pq_registration_request__builder_pubkey_with_validator_role(spe
 @spec_state_test
 def test_process_pq_registration_request__builder_wrong_source_address(spec, state):
     request = prepare_builder_pq_registration_request(
-        spec, state, 0, b"\x22" * 32, source_address=b"\x44" * 20
+        spec, state, 0, b"\x22" * 64, source_address=b"\x44" * 20
     )
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
@@ -244,7 +244,7 @@ def test_process_pq_registration_request__builder_wrong_source_address(spec, sta
 @spec_state_test
 def test_process_pq_registration_request__reused_builder_index_is_not_registered(spec, state):
     spec.process_pq_registration_request(
-        state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
     assert len(state.pq_registrations) == 1
 
@@ -271,9 +271,9 @@ def test_process_pq_registration_request__builder_shares_validator_pubkey(spec, 
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     state.builders[0].pubkey = state.validators[0].pubkey
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
@@ -281,8 +281,8 @@ def test_process_pq_registration_request__builder_shares_validator_pubkey(spec, 
         (registration.role, registration.pubkey, registration.pq_data)
         for registration in state.pq_registrations
     ] == [
-        (spec.PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[0].pubkey, b"\x22" * 32),
-        (spec.PQ_REGISTRATION_ROLE_BUILDER, state.validators[0].pubkey, b"\x33" * 32),
+        (spec.PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[0].pubkey, b"\x22" * 64),
+        (spec.PQ_REGISTRATION_ROLE_BUILDER, state.validators[0].pubkey, b"\x33" * 64),
     ]
 
 
@@ -292,9 +292,9 @@ def test_process_pq_registration_request__pq_data_already_registered(spec, state
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
 
@@ -304,9 +304,9 @@ def test_process_pq_registration_request__pq_data_already_registered(spec, state
 def test_process_pq_registration_request__pq_data_already_registered_by_validator(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
 
@@ -316,9 +316,9 @@ def test_process_pq_registration_request__pq_data_already_registered_by_validato
 def test_process_pq_registration_request__resubmitted_registration(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
 
@@ -329,18 +329,32 @@ def test_process_pq_registration_request__overwritten_pq_data_can_be_registered(
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
     spec.process_pq_registration_request(
-        state, prepare_pq_registration_request(spec, state, 0, b"\x33" * 32)
+        state, prepare_pq_registration_request(spec, state, 0, b"\x33" * 64)
     )
-    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32)
+    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 64)
 
     yield from run_pq_registration_request_processing(spec, state, request)
 
     assert [
         (registration.pubkey, registration.pq_data) for registration in state.pq_registrations
     ] == [
-        (state.validators[0].pubkey, b"\x33" * 32),
-        (state.validators[1].pubkey, b"\x22" * 32),
+        (state.validators[0].pubkey, b"\x33" * 64),
+        (state.validators[1].pubkey, b"\x22" * 64),
     ]
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_pq_registration_request__xmss_pubkey_already_registered(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 64)
+    )
+    # Same XMSS public key, different VRF data
+    request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32 + b"\x33" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request, valid=False)
