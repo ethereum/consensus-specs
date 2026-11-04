@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
+  - [Modified `on_attestation`](#modified-on_attestation)
   - [Modified `on_payload_attestation_message`](#modified-on_payload_attestation_message)
 - [Helpers](#helpers)
   - [Modified `calculate_committee_fraction`](#modified-calculate_committee_fraction)
@@ -20,7 +21,9 @@
 This is the modification of the fork-choice accompanying the PQ upgrade.
 
 Blocks no longer carry payload attestations, so the votes of the payload
-timeliness committee reach fork choice only from the wire.
+timeliness committee reach fork choice only from the wire. Attestations no
+longer carry a signature, so `on_attestation` takes the signature of an
+attestation from the wire separately.
 
 ## Handlers
 
@@ -88,6 +91,44 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Eagerly compute unrealized justification and finality.
     compute_pulled_up_tip(store, block_root)
+```
+
+### Modified `on_attestation`
+
+*Note*: An attestation carries no signature. The `stark` of the block that
+includes an attestation proves its signature, so only an attestation from the
+wire comes with a `signature` to check.
+
+```python
+def on_attestation(
+    store: Store,
+    attestation: Attestation,
+    is_from_block: bool = False,
+    # [New in PQ]
+    signature: XMSSAggregateSignature | None = None,
+) -> None:
+    """
+    Run ``on_attestation`` upon receiving a new attestation from either within a block or directly on the wire.
+
+    An ``attestation`` that is asserted as invalid may be valid at a later time,
+    consider scheduling it for later processing in such case.
+    """
+    validate_on_attestation(store, attestation, is_from_block)
+
+    store_target_checkpoint_state(store, attestation.data.target)
+
+    # Get state at the `target` to fully validate attestation
+    target_state = store.checkpoint_states[attestation.data.target]
+    # [Modified in PQ]
+    attesting_indices = sorted(get_attesting_indices(target_state, attestation))
+    if not is_from_block:
+        assert signature is not None
+        indexed_attestation = get_indexed_attestation(target_state, attestation, signature)
+        assert is_valid_indexed_attestation(target_state, indexed_attestation)
+
+    # Update latest messages for attesting indices
+    # [Modified in PQ]
+    update_latest_messages(store, attesting_indices, attestation)
 ```
 
 ### Modified `on_payload_attestation_message`

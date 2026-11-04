@@ -8,6 +8,7 @@
 - [Types](#types)
   - [New `PQBuilders`](#new-pqbuilders)
   - [New `PQValidators`](#new-pqvalidators)
+  - [New `StarkProof`](#new-starkproof)
   - [New `XMSSAggregateSignature`](#new-xmssaggregatesignature)
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
@@ -34,9 +35,13 @@
   - [New containers](#new-containers)
     - [`PQBuilder`](#pqbuilder)
     - [`PQValidator`](#pqvalidator)
+- [Dataclasses](#dataclasses)
+  - [New dataclasses](#new-dataclasses)
+    - [`XMSSAggregateStatement`](#xmssaggregatestatement)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
+    - [STARK proofs](#stark-proofs)
   - [Misc](#misc)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
     - [Modified `can_builder_cover_bid`](#modified-can_builder_cover_bid)
@@ -56,6 +61,8 @@
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
     - [Modified `is_slashable_validator`](#modified-is_slashable_validator)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
+    - [New `get_attestation_statement`](#new-get_attestation_statement)
     - [Modified `get_active_validator_indices`](#modified-get_active_validator_indices)
     - [Modified `get_base_reward`](#modified-get_base_reward)
     - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
@@ -76,12 +83,13 @@
     - [Modified `process_participation_flag_updates`](#modified-process_participation_flag_updates)
     - [Modified `process_pending_consolidations`](#modified-process_pending_consolidations)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
+    - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
     - [Modified `process_registry_updates`](#modified-process_registry_updates)
     - [Modified `process_rewards_and_penalties`](#modified-process_rewards_and_penalties)
     - [Modified `process_slashings`](#modified-process_slashings)
-    - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
+    - [Modified `process_block_header`](#modified-process_block_header)
     - [Modified `process_randao`](#modified-process_randao)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
@@ -91,6 +99,7 @@
       - [Modified `process_execution_payload_bid`](#modified-process_execution_payload_bid)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
+      - [New `process_stark`](#new-process_stark)
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
       - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Attestations](#attestations)
@@ -111,8 +120,7 @@
       - [Modified `get_pending_partial_withdrawals`](#modified-get_pending_partial_withdrawals)
       - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
       - [Modified `update_next_withdrawal_builder_index`](#modified-update_next_withdrawal_builder_index)
-    - [Modified `process_block_header`](#modified-process_block_header)
-    - [Modified `update_next_withdrawal_validator_index`](#modified-update_next_withdrawal_validator_index)
+      - [Modified `update_next_withdrawal_validator_index`](#modified-update_next_withdrawal_validator_index)
 
 <!-- mdformat-toc end -->
 
@@ -171,6 +179,11 @@ Blocks no longer carry payload attestations, which spares proposers from
 aggregating them. The payload timeliness committee still broadcasts its votes,
 which fork choice uses as before.
 
+Attestations no longer carry a signature. A block instead carries one `stark`
+proof of the aggregate signatures of all its attestations, which replaces
+verifying each attestation's aggregate in turn. Aggregates on the wire carry
+their signature in `AggregateAndProof`.
+
 *Note*: This specification is built upon [Prereg](../prereg/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -192,6 +205,17 @@ class PQValidators(ProgressiveList[PQValidator]):
     """
     The validator registry, which replaces ``Validators`` from PQ onwards.
     """
+```
+
+### New `StarkProof`
+
+```python
+class StarkProof(ByteList):
+    """
+    A STARK proof of the aggregate signatures of a block's attestations.
+    """
+
+    LIMIT = MAX_STARK_PROOF_SIZE
 ```
 
 ### New `XMSSAggregateSignature`
@@ -255,10 +279,14 @@ class XMSSSignature(ByteVector):
 | Name                                | Value                         |
 | ----------------------------------- | ----------------------------- |
 | `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` | `Uint64(2**20)` (= 1,048,576) |
+| `MAX_STARK_PROOF_SIZE`              | `Uint64(2**20)` (= 1,048,576) |
 
-*Note*: `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` is a placeholder for the proof size
-of a succinct aggregation scheme. The reference concatenation fits at most
-`MAX_XMSS_AGGREGATE_SIGNATURE_SIZE // XMSS_SIGNATURE_SIZE` signatures.
+*Note*: `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` and `MAX_STARK_PROOF_SIZE` are
+placeholders for the proof sizes of a succinct aggregation scheme and a STARK.
+The reference concatenation fits at most
+`MAX_XMSS_AGGREGATE_SIGNATURE_SIZE // XMSS_SIGNATURE_SIZE` signatures in an
+aggregate, and `MAX_STARK_PROOF_SIZE // XMSS_SIGNATURE_SIZE` signatures in a
+proof.
 
 ### Max operations per block
 
@@ -274,12 +302,12 @@ of a succinct aggregation scheme. The reference concatenation fits at most
 
 ```python
 class Attestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=4)
+    ACTIVE_FIELDS = active_fields(width=4, gaps=(2,))
 
     aggregation_bits: AggregationBits
     data: AttestationData
     # [Modified in PQ]
-    signature: XMSSAggregateSignature
+    # Removed `signature`
     committee_bits: CommitteeBits
 ```
 
@@ -287,7 +315,7 @@ class Attestation(ProgressiveContainer):
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13, gaps=(8, 9, 11))
+    ACTIVE_FIELDS = active_fields(width=14, gaps=(8, 9, 11))
 
     # [Modified in PQ]
     randao_reveal: XMSSSignature
@@ -306,6 +334,8 @@ class BeaconBlockBody(ProgressiveContainer):
     # [Modified in PQ]
     # Removed `payload_attestations`
     parent_execution_requests: ExecutionRequests
+    # [New in PQ]
+    stark: StarkProof
 ```
 
 #### `BeaconState`
@@ -495,6 +525,20 @@ class PQValidator(Container):
     withdrawable_epoch: Epoch
 ```
 
+## Dataclasses
+
+### New dataclasses
+
+#### `XMSSAggregateStatement`
+
+```python
+@dataclass
+class XMSSAggregateStatement:
+    pubkeys: Sequence[XMSSPubkey]
+    leaf_index: Uint64
+    message: Bytes32
+```
+
 ## Helpers
 
 ### Crypto
@@ -524,6 +568,27 @@ The above functions are accessed through the `xmss` module, e.g. `xmss.Verify`.
 *Note*: The reference implementation of `Aggregate` concatenates its inputs. It
 stands in for a succinct aggregation scheme, which would change the encoding of
 `XMSSAggregateSignature` but not how these functions are used.
+
+#### STARK proofs
+
+This upgrade adds the following functions to prove many aggregates at once:
+
+- `def ProveAggregates(statements: Sequence[XMSSAggregateStatement], aggregates: Sequence[XMSSAggregateSignature]) -> StarkProof`
+- `def VerifyAggregates(statements: Sequence[XMSSAggregateStatement], proof: StarkProof) -> bool`
+
+`VerifyAggregates` returns `True` only if `proof` proves, for each statement, an
+aggregate that
+`xmss.AggregateVerify(statement.pubkeys, statement.leaf_index, statement.message, aggregate)`
+accepts. `ProveAggregates` takes those aggregates in the order of the
+statements.
+
+The above functions are accessed through the `stark` module, e.g.
+`stark.VerifyAggregates`.
+
+*Note*: The reference implementation of `ProveAggregates` concatenates the
+aggregates, and `VerifyAggregates` checks each of them in turn. It stands in for
+a STARK, which would change the encoding of `StarkProof` but not how these
+functions are used.
 
 ### Misc
 
@@ -825,6 +890,47 @@ def is_slashable_validator(
 ```
 
 ### Beacon state accessors
+
+#### Modified `get_indexed_attestation`
+
+```python
+def get_indexed_attestation(
+    state: BeaconState,
+    attestation: Attestation,
+    # [New in PQ]
+    signature: XMSSAggregateSignature,
+) -> IndexedAttestation:
+    """
+    Return the indexed attestation corresponding to ``attestation`` and its
+    aggregate ``signature``.
+    """
+    attesting_indices = get_attesting_indices(state, attestation)
+
+    return IndexedAttestation(
+        attesting_indices=AttestingIndices(data=sorted(attesting_indices)),
+        data=attestation.data,
+        # [Modified in PQ]
+        signature=signature,
+    )
+```
+
+#### New `get_attestation_statement`
+
+```python
+def get_attestation_statement(
+    state: BeaconState, attestation: Attestation
+) -> XMSSAggregateStatement:
+    """
+    Return the statement that the aggregate signature of ``attestation`` proves.
+    """
+    attesting_indices = sorted(get_attesting_indices(state, attestation))
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+    return XMSSAggregateStatement(
+        pubkeys=[state.pq_validators[index].pubkey for index in attesting_indices],
+        leaf_index=compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER),
+        message=compute_signing_root(attestation.data, domain),
+    )
+```
 
 #### Modified `get_active_validator_indices`
 
@@ -1536,11 +1642,23 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
     for_ops(body.attestations, process_attestation, parent_slot)
+    # [New in PQ]
+    process_stark(state, body)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     # [Modified in PQ]
     # Removed `process_bls_to_execution_change`
     # [Modified in PQ]
     # Removed `process_payload_attestation`
+```
+
+##### New `process_stark`
+
+```python
+def process_stark(state: BeaconState, body: BeaconBlockBody) -> None:
+    statements = [
+        get_attestation_statement(state, attestation) for attestation in body.attestations
+    ]
+    assert stark.VerifyAggregates(statements, body.stark)
 ```
 
 ##### Modified `process_proposer_slashing`
@@ -1613,6 +1731,9 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
 
 ###### Modified `process_attestation`
 
+*Note*: An attestation no longer carries a signature, so `process_stark`
+verifies the signatures of all attestations in the block instead.
+
 ```python
 def process_attestation(
     state: BeaconState,
@@ -1645,9 +1766,6 @@ def process_attestation(
     participation_flag_indices = get_attestation_participation_flag_indices(
         state, data, state.slot - data.slot, parent_slot
     )
-
-    # Verify signature
-    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 
     if data.target.epoch == get_current_epoch(state):
         current_epoch_target = True

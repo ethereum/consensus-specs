@@ -40,8 +40,32 @@ def get_aggregator_index(spec, state, slot, committee_index):
 
 def get_aggregate_and_proof(spec, state, aggregator_index, aggregate, privkey):
     if is_post_pq(spec):
-        return spec.get_aggregate_and_proof(aggregator_index, aggregate)
+        aggregate_signature = get_attestation_aggregate_signature(spec, state, aggregate)
+        return spec.get_aggregate_and_proof(aggregator_index, aggregate, aggregate_signature)
     return spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
+
+
+def get_attestation_aggregate_signature(spec, state, attestation):
+    """
+    The aggregate signature of the participants of ``attestation``, which from
+    PQ onwards no longer carries it.
+    """
+    participants = spec.get_attesting_indices(state, attestation)
+    return sign_aggregate_attestation(spec, state, attestation.data, participants)
+
+
+def get_indexed_attestation(spec, state, attestation, signed=True):
+    """
+    The indexed attestation of ``attestation``. From PQ onwards it takes the
+    aggregate signature of the participants, or the empty aggregate if unsigned.
+    """
+    if is_post_pq(spec):
+        if signed:
+            signature = get_attestation_aggregate_signature(spec, state, attestation)
+        else:
+            signature = spec.XMSSAggregateSignature()
+        return spec.get_indexed_attestation(state, attestation, signature)
+    return spec.get_indexed_attestation(state, attestation)
 
 
 def get_parent_slot(state):
@@ -203,6 +227,8 @@ def sign_indexed_attestation(spec, state, indexed_attestation):
 
 
 def sign_attestation(spec, state, attestation):
+    if is_post_pq(spec):
+        return
     participants = spec.get_attesting_indices(state, attestation)
 
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)

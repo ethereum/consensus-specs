@@ -12,12 +12,14 @@ def build_max_size_attestation(spec):
     aggregation_bits = spec.AggregationBits(
         data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
-    return spec.Attestation(
+    attestation = spec.Attestation(
         aggregation_bits=spec.AggregationBits(data=aggregation_bits),
         data=spec.AttestationData(),
-        signature=build_max_size_aggregate_signature(spec),
         committee_bits=spec.CommitteeBits(),
     )
+    if not is_post_pq(spec):
+        attestation.signature = build_max_size_aggregate_signature(spec)
+    return attestation
 
 
 def build_max_size_indexed_attestation(spec):
@@ -52,7 +54,9 @@ def build_max_size_signed_aggregate_and_proof(spec):
         aggregator_index=spec.ValidatorIndex(0),
         aggregate=build_max_size_attestation(spec),
     )
-    if not is_post_pq(spec):
+    if is_post_pq(spec):
+        aggregate_and_proof.aggregate_signature = build_max_size_aggregate_signature(spec)
+    else:
         aggregate_and_proof.selection_proof = get_unsigned_signature(spec)
     return spec.SignedAggregateAndProof(
         message=aggregate_and_proof,

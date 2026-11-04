@@ -426,7 +426,11 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("invalid aggregator signature")
 
     # [REJECT] The aggregate signature is valid
-    if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
+    # [Modified in PQ]
+    indexed_attestation = get_indexed_attestation(
+        state, aggregate, aggregate_and_proof.aggregate_signature
+    )
+    if not is_valid_indexed_attestation(state, indexed_attestation):
         raise GossipReject("invalid aggregate signature")
 
     # [REJECT] The target block is an ancestor of the LMD vote block

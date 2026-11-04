@@ -1,0 +1,63 @@
+from dataclasses import dataclass
+
+import pytest
+
+from . import stark, xmss
+from .test_xmss import LEAF_INDEX, MESSAGE, OTHER_PUBKEY, PUBKEY, SIGNATURE
+
+
+@dataclass
+class Statement:
+    pubkeys: list
+    leaf_index: int
+    message: bytes
+
+
+@pytest.fixture(autouse=True)
+def active_xmss():
+    old_state = xmss.xmss_active
+    xmss.xmss_active = True
+    yield
+    xmss.xmss_active = old_state
+
+
+def test_verify_aggregates():
+    statements = [
+        Statement([PUBKEY], LEAF_INDEX, MESSAGE),
+        Statement([PUBKEY, PUBKEY], LEAF_INDEX, MESSAGE),
+    ]
+    aggregates = [xmss.Aggregate([SIGNATURE]), xmss.Aggregate([SIGNATURE, SIGNATURE])]
+    proof = stark.ProveAggregates(statements, aggregates)
+    assert stark.VerifyAggregates(statements, proof)
+
+
+def test_verify_aggregates_empty():
+    assert stark.VerifyAggregates([], stark.ProveAggregates([], []))
+
+
+def test_verify_aggregates_wrong_pubkey():
+    statements = [Statement([OTHER_PUBKEY], LEAF_INDEX, MESSAGE)]
+    proof = stark.ProveAggregates(statements, [xmss.Aggregate([SIGNATURE])])
+    assert not stark.VerifyAggregates(statements, proof)
+
+
+def test_verify_aggregates_missing_aggregate():
+    statements = [
+        Statement([PUBKEY], LEAF_INDEX, MESSAGE),
+        Statement([PUBKEY], LEAF_INDEX, MESSAGE),
+    ]
+    proof = xmss.Aggregate([SIGNATURE])
+    assert not stark.VerifyAggregates(statements, proof)
+
+
+def test_verify_aggregates_trailing_bytes():
+    statements = [Statement([PUBKEY], LEAF_INDEX, MESSAGE)]
+    proof = stark.ProveAggregates(statements, [xmss.Aggregate([SIGNATURE])]) + b"\x00"
+    assert not stark.VerifyAggregates(statements, proof)
+
+
+def test_inactive_stubs():
+    xmss.xmss_active = False
+    assert stark.ProveAggregates([], []) == stark.STUB_PROOF
+    statements = [Statement([OTHER_PUBKEY], LEAF_INDEX, MESSAGE)]
+    assert stark.VerifyAggregates(statements, b"")

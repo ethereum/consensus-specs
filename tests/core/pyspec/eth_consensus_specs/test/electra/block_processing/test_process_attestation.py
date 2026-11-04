@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_attestation,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
 )
@@ -162,7 +163,9 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
     attestation_1 = get_valid_attestation(spec, state, index=1, signed=True)
 
     # Create an on chain aggregate
-    aggregate = spec.Attestation(data=attestation_1.data, signature=attestation_1.signature)
+    aggregate = spec.Attestation(data=attestation_1.data)
+    if not is_post_pq(spec):
+        aggregate.signature = attestation_1.signature
     aggregate.committee_bits[0] = True
     aggregate.committee_bits[1] = True
     aggregate.aggregation_bits = spec.AggregationBits(

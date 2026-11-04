@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_indexed_attestation,
     get_valid_attestation,
     next_epoch_with_attestations,
 )
@@ -437,8 +438,8 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     attestation = get_valid_attestation(spec, state_1, slot=block_eqv.slot, signed=True)
     assert spec.is_slashable_attestation_data(attestation.data, attestation_eqv.data)
 
-    indexed_attestation = spec.get_indexed_attestation(state_1, attestation)
-    indexed_attestation_eqv = spec.get_indexed_attestation(state_eqv, attestation_eqv)
+    indexed_attestation = get_indexed_attestation(spec, state_1, attestation)
+    indexed_attestation_eqv = get_indexed_attestation(spec, state_eqv, attestation_eqv)
     attester_slashing = spec.AttesterSlashing(
         attestation_1=indexed_attestation, attestation_2=indexed_attestation_eqv
     )

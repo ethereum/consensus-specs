@@ -19,6 +19,7 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Attestations](#attestations)
+      - [Stark](#stark)
       - [Sync committee](#sync-committee)
       - [BLS to execution changes](#bls-to-execution-changes)
       - [Payload attestations](#payload-attestations)
@@ -69,6 +70,8 @@ class AggregateAndProof(Container):
     aggregate: Attestation
     # [Modified in PQ]
     # Removed `selection_proof`
+    # [New in PQ]
+    aggregate_signature: XMSSAggregateSignature
 ```
 
 #### `SignedAggregateAndProof`
@@ -190,11 +193,6 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
         for b in a.aggregation_bits:
             aggregation_bits.append(b)
 
-    # [Modified in PQ]
-    signature = XMSSAggregateSignature(
-        data=xmss.Aggregate([aggregate.signature for aggregate in aggregates])
-    )
-
     committee_indices = [
         get_committee_indices(aggregate.committee_bits)[0] for aggregate in aggregates
     ]
@@ -204,9 +202,28 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     return Attestation(
         aggregation_bits=AggregationBits(data=aggregation_bits),
         data=data,
-        signature=signature,
+        # [Modified in PQ]
+        # Removed `signature`
         committee_bits=CommitteeBits(data=committee_bits),
     )
+```
+
+##### Stark
+
+The proposer combines the `aggregate_signature` of the network aggregates behind
+each on chain aggregate with `xmss.Aggregate`, in the order of
+`body.attestations`. It then sets `body.stark` to the result of
+`get_block_stark(state, body.attestations, aggregate_signatures)`, where `state`
+is the state at the slot of the block.
+
+```python
+def get_block_stark(
+    state: BeaconState,
+    attestations: Sequence[Attestation],
+    aggregate_signatures: Sequence[XMSSAggregateSignature],
+) -> StarkProof:
+    statements = [get_attestation_statement(state, attestation) for attestation in attestations]
+    return stark.ProveAggregates(statements, aggregate_signatures)
 ```
 
 ##### Sync committee
@@ -327,8 +344,8 @@ def get_block_signature(
 
 ##### Aggregate signature
 
-Set `attestation.signature = attestation_signature` where
-`attestation_signature` is obtained from:
+An attestation carries no signature. The validator broadcasts it as a
+`SingleAttestation`, whose `signature` is obtained from:
 
 ```python
 def get_attestation_signature(
@@ -378,12 +395,15 @@ MUST NOT sign more than one `AggregateAndProof`.
 
 ##### Aggregate signature
 
-Set `aggregate_attestation.signature = aggregate_signature` where
-`aggregate_signature` is obtained from:
+An attestation carries no signature, so the aggregator obtains the
+`aggregate_signature` of `aggregate_attestation` from the signatures of the
+attestations it aggregates:
 
 ```python
-def get_aggregate_signature(attestations: Sequence[Attestation]) -> XMSSAggregateSignature:
-    signatures = [attestation.signature for attestation in attestations]
+def get_aggregate_signature(
+    # [Modified in PQ]
+    signatures: Sequence[XMSSSignature],
+) -> XMSSAggregateSignature:
     # [Modified in PQ]
     return XMSSAggregateSignature(data=xmss.Aggregate(signatures))
 ```
@@ -398,12 +418,16 @@ def get_aggregate_and_proof(
     aggregate: Attestation,
     # [Modified in PQ]
     # Removed `privkey`
+    # [New in PQ]
+    aggregate_signature: XMSSAggregateSignature,
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
         # [Modified in PQ]
         # Removed `selection_proof`
+        # [New in PQ]
+        aggregate_signature=aggregate_signature,
     )
 ```
 

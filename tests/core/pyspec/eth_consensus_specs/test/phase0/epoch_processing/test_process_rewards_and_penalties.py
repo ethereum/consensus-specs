@@ -14,6 +14,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import (
     add_attestations_to_state,
+    get_indexed_attestation,
     get_valid_attestation,
     prepare_state_with_attestations,
     sign_attestation,
@@ -308,7 +309,7 @@ def test_duplicate_attestation(spec, state):
     """
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    indexed_attestation = spec.get_indexed_attestation(state, attestation)
+    indexed_attestation = get_indexed_attestation(spec, state, attestation)
     participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0
@@ -348,7 +349,7 @@ def test_duplicate_participants_different_attestation_1(spec, state):
     incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
-    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    indexed_attestation = get_indexed_attestation(spec, state, correct_attestation)
     participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0
@@ -390,7 +391,7 @@ def test_duplicate_participants_different_attestation_2(spec, state):
     incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
-    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    indexed_attestation = get_indexed_attestation(spec, state, correct_attestation)
     participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0
@@ -433,7 +434,7 @@ def test_duplicate_participants_different_attestation_3(spec, state):
     incorrect_attestation.data.beacon_block_root = b"\x42" * 32
     sign_attestation(spec, state, incorrect_attestation)
 
-    indexed_attestation = spec.get_indexed_attestation(state, correct_attestation)
+    indexed_attestation = get_indexed_attestation(spec, state, correct_attestation)
     participants = get_indexed_attestation_participants(spec, indexed_attestation)
 
     assert len(participants) > 0

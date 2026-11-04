@@ -10,7 +10,7 @@ class PQSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.prereg import {preset_name} as prereg
-from eth_consensus_specs.utils import xmss
+from eth_consensus_specs.utils import stark, xmss
 """
 
     @classmethod

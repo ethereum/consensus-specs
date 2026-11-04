@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_aggregate_attestation,
     sign_attestation,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.registry import set_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -250,7 +251,10 @@ def test_invalid_future_target_epoch(spec, state):
     )  # target epoch will be too new to handle
 
     # manually add signature for correct participants
-    attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
+    if not is_post_pq(spec):
+        attestation.signature = sign_aggregate_attestation(
+            spec, state, attestation.data, participants
+        )
 
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
