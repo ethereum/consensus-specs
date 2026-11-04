@@ -1,10 +1,10 @@
-from eth_consensus_specs.test.helpers.constants import ELECTRA, PQ
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
     with_all_phases_from_except,
     with_electra_and_later,
 )
+from eth_consensus_specs.test.helpers.constants import ELECTRA, PQ
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_pending_deposit,
     run_pending_deposit_applying,

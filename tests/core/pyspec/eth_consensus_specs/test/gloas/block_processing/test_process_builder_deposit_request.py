@@ -1,4 +1,3 @@
-from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
@@ -10,6 +9,7 @@ from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
 from eth_consensus_specs.test.helpers.registry import get_builders

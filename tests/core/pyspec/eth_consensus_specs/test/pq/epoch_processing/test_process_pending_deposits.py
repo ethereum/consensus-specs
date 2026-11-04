@@ -24,9 +24,7 @@ def test_new_validator_deposit_postponed(spec, state):
 def test_top_up_behind_new_validator_deposit(spec, state):
     new_index = len(state.validators)
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
-    new_deposit = prepare_pending_deposit(
-        spec, new_index, spec.MIN_ACTIVATION_BALANCE, signed=True
-    )
+    new_deposit = prepare_pending_deposit(spec, new_index, spec.MIN_ACTIVATION_BALANCE, signed=True)
     top_up = prepare_pending_deposit(spec, 0, amount)
     state.pending_deposits.append(new_deposit)
     state.pending_deposits.append(top_up)
