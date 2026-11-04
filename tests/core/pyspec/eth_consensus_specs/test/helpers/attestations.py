@@ -568,7 +568,9 @@ def cached_prepare_state_with_attestations(spec, state):
 
 
 def get_max_attestations(spec):
-    if is_post_electra(spec):
+    if is_post_pq(spec):
+        return spec.MAX_ATTESTATIONS_PQ
+    elif is_post_electra(spec):
         return spec.MAX_ATTESTATIONS_ELECTRA
     else:
         return spec.MAX_ATTESTATIONS

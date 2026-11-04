@@ -29,6 +29,7 @@ from eth_consensus_specs.utils import xmss
     def deprecate_presets(cls) -> set[str]:
         return {
             "EPOCHS_PER_SYNC_COMMITTEE_PERIOD",
+            "MAX_ATTESTATIONS_ELECTRA",
             "MAX_BLS_TO_EXECUTION_CHANGES",
             "MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD",
             "MAX_PAYLOAD_ATTESTATIONS",

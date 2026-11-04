@@ -3,7 +3,10 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.attestations import get_valid_attestation_at_slot
+from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
+    get_valid_attestation_at_slot,
+)
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.execution_payload import (
@@ -110,8 +113,8 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     # block-level maximum per block
     branch_state = b_state.copy()
     branch_root = b_root
-    for att_start in range(0, len(slot_attestations), spec.MAX_ATTESTATIONS_ELECTRA):
-        attestations = slot_attestations[att_start : att_start + spec.MAX_ATTESTATIONS_ELECTRA]
+    for att_start in range(0, len(slot_attestations), get_max_attestations(spec)):
+        attestations = slot_attestations[att_start : att_start + get_max_attestations(spec)]
         # The block must be built after the latest attested slot so that the
         # attestation inclusion delay is satisfied
         branch_slot = attestations[-1].data.slot + 1
@@ -255,8 +258,8 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
     branch_state = b_state.copy()
     branch_root = b_root
     first_branch_block = None
-    for att_start in range(0, len(slot_attestations), spec.MAX_ATTESTATIONS_ELECTRA):
-        attestations = slot_attestations[att_start : att_start + spec.MAX_ATTESTATIONS_ELECTRA]
+    for att_start in range(0, len(slot_attestations), get_max_attestations(spec)):
+        attestations = slot_attestations[att_start : att_start + get_max_attestations(spec)]
         branch_slot = attestations[-1].data.slot + 1
         next_slots(spec, branch_state, branch_slot - branch_state.slot - 1)
         branch_block = build_empty_block_for_next_slot(spec, branch_state)

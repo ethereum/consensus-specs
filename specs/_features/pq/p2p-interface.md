@@ -126,8 +126,9 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
     if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
         raise GossipReject("too many attester slashings")
 
+    # [Modified in PQ]
     # [REJECT] The attestation count is within the limit
-    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+    if len(body.attestations) > MAX_ATTESTATIONS_PQ:
         raise GossipReject("too many attestations")
 
     # [REJECT] The block contains no deposits

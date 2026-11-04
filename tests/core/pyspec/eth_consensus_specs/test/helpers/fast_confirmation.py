@@ -5,6 +5,7 @@ from random import Random
 from eth_utils import encode_hex
 
 from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
     get_valid_attestations_for_block_at_slot,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
@@ -193,10 +194,7 @@ class FCRTest:
         self.recent_attestations = []
 
     def max_attestations(self):
-        if is_post_electra(self.spec):
-            return self.spec.MAX_ATTESTATIONS_ELECTRA
-        else:
-            return self.spec.MAX_ATTESTATIONS
+        return get_max_attestations(self.spec)
 
     def get_parent_payload(self, parent_root):
         assert is_post_bellatrix(self.spec)

@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     with_all_phases_from_to,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.attestations import get_max_attestations
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
@@ -627,7 +628,7 @@ def test_gossip_beacon_block__valid_max_attestations(spec, state):
 
     def mutate(spec, block):
         block.body.attestations = make_progressive_list(
-            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA
+            spec.Attestations, get_max_attestations(spec)
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -640,7 +641,7 @@ def test_gossip_beacon_block__reject_too_many_attestations(spec, state):
 
     def mutate(spec, block):
         block.body.attestations = make_progressive_list(
-            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA + 1
+            spec.Attestations, get_max_attestations(spec) + 1
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "reject", "too many attestations")

@@ -15,6 +15,7 @@
   - [XMSS leaf offsets](#xmss-leaf-offsets)
 - [Presets](#presets)
   - [XMSS](#xmss-1)
+  - [Max operations per block](#max-operations-per-block)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`Attestation`](#attestation)
@@ -189,6 +190,12 @@ class XMSSSignature(ByteVector):
 *Note*: `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE` is a placeholder for the proof size
 of a succinct aggregation scheme. The reference concatenation fits at most
 `MAX_XMSS_AGGREGATE_SIGNATURE_SIZE // XMSS_SIGNATURE_SIZE` signatures.
+
+### Max operations per block
+
+| Name                  | Value                 |
+| --------------------- | --------------------- |
+| `MAX_ATTESTATIONS_PQ` | `Uint64(2**4)` (= 16) |
 
 ## Containers
 
@@ -727,7 +734,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
     assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
     assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
-    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
+    # [Modified in PQ]
+    assert len(body.attestations) <= MAX_ATTESTATIONS_PQ
     assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
     # [Modified in PQ]
     # Removed the BLS to execution change limit
