@@ -371,12 +371,12 @@ def get_random_withdrawal_requests(spec, state, rng, num_withdrawals=None):
 
         address = rng.getrandbits(160).to_bytes(20, "big")
         validator_index = rng.choice(active_validator_indices)
-        validator = get_validators(spec, state)[validator_index]
+        validator = state.validators[validator_index]
         validator_balance = state.balances[validator_index]
         withdrawal_requests.append(
             spec.WithdrawalRequest(
                 source_address=address,
-                validator_pubkey=state.validators[validator_index].pubkey,
+                validator_pubkey=validator.pubkey,
                 amount=rng.randint(0, validator_balance),
             )
         )
@@ -396,13 +396,13 @@ def get_random_consolidation_requests(spec, state, rng, num_consolidations=None)
         source_address = rng.getrandbits(160).to_bytes(20, "big")
         source_index = rng.choice(active_validator_indices)
         target_index = rng.choice(active_validator_indices)
-        source_validator = get_validators(spec, state)[source_index]
-        target_validator = get_validators(spec, state)[target_index]
+        source_validator = state.validators[source_index]
+        target_validator = state.validators[target_index]
         consolidation_requests.append(
             spec.ConsolidationRequest(
                 source_address=source_address,
-                source_pubkey=state.validators[source_index].pubkey,
-                target_pubkey=state.validators[target_index].pubkey,
+                source_pubkey=source_validator.pubkey,
+                target_pubkey=target_validator.pubkey,
             )
         )
 

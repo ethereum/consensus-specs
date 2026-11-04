@@ -154,8 +154,8 @@ def assert_process_builder_deposit_request(
 
     # Find the builder by pubkey
     builder_index = None
-    for i, builder in enumerate(get_builders(spec, state)):
-        if state.builders[i].pubkey == builder_deposit_request.pubkey:
+    for i, builder in enumerate(state.builders):
+        if builder.pubkey == builder_deposit_request.pubkey:
             builder_index = i
             break
 
@@ -165,8 +165,8 @@ def assert_process_builder_deposit_request(
 
     # Check if this was a new builder or top-up
     pre_builder_index = None
-    for i, builder in enumerate(get_builders(spec, pre_state)):
-        if pre_state.builders[i].pubkey == builder_deposit_request.pubkey:
+    for i, builder in enumerate(pre_state.builders):
+        if builder.pubkey == builder_deposit_request.pubkey:
             pre_builder_index = i
             break
 

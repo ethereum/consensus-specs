@@ -467,7 +467,8 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
         builder_exits=spec.BuilderExitRequests(
             data=[
                 spec.BuilderExitRequest(
-                    source_address=builder.execution_address, pubkey=state.builders[builder_index].pubkey
+                    source_address=builder.execution_address,
+                    pubkey=state.builders[builder_index].pubkey,
                 )
             ]
         )
@@ -516,7 +517,8 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
         builder_exits=spec.BuilderExitRequests(
             data=[
                 spec.BuilderExitRequest(
-                    source_address=builder.execution_address, pubkey=state.builders[builder_index].pubkey
+                    source_address=builder.execution_address,
+                    pubkey=state.builders[builder_index].pubkey,
                 )
             ]
         )
@@ -600,8 +602,8 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     assert topped_up_builder.balance == existing_builder_pre_balance + top_up_amount
 
     new_builder_index = None
-    for i, builder in enumerate(get_builders(spec, state)):
-        if state.builders[i].pubkey == builder_deposit_request_2.pubkey:
+    for i, builder in enumerate(state.builders):
+        if builder.pubkey == builder_deposit_request_2.pubkey:
             new_builder_index = i
             break
 
