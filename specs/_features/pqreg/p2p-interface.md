@@ -1,4 +1,4 @@
-# Prereg -- Networking
+# PQReg -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -13,7 +13,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specifications for Prereg.
+This document contains the consensus-layer networking specifications for PQReg.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -27,8 +27,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= PREREG_FORK_EPOCH:
-        return PREREG_FORK_VERSION
+    if epoch >= PQREG_FORK_EPOCH:
+        return PQREG_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:
@@ -72,13 +72,13 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many builder exit requests")
 
-    # [New in Prereg]
+    # [New in PQReg]
     # [REJECT] The validator PQ registration request count is within the limit
     validator_pq_registrations = execution_requests.validator_pq_registrations
     if len(validator_pq_registrations) > MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many validator PQ registration requests")
 
-    # [New in Prereg]
+    # [New in PQReg]
     # [REJECT] The builder PQ registration request count is within the limit
     builder_pq_registrations = execution_requests.builder_pq_registrations
     if len(builder_pq_registrations) > MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:

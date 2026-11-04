@@ -14,7 +14,7 @@ from .gloas import GloasSpecBuilder
 from .heze import HezeSpecBuilder
 from .phase0 import Phase0SpecBuilder
 from .pq import PQSpecBuilder
-from .prereg import PreregSpecBuilder
+from .pqreg import PQRegSpecBuilder
 
 spec_builders = {
     builder.fork: builder
@@ -34,7 +34,7 @@ spec_builders = {
         EIP8198SpecBuilder,
         EIP8205SpecBuilder,
         EIP8321SpecBuilder,
-        PreregSpecBuilder,
+        PQRegSpecBuilder,
         PQSpecBuilder,
     )
 }

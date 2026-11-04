@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_phases
-from eth_consensus_specs.test.helpers.constants import PREREG
+from eth_consensus_specs.test.helpers.constants import PQREG
 
 
 def prepare_builder_pq_registration_request(
@@ -38,7 +38,7 @@ def run_builder_pq_registration_request_processing(spec, state, request, valid=T
         assert state == pre_state
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__success(spec, state):
     request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
@@ -50,7 +50,7 @@ def test_process_builder_pq_registration_request__success(spec, state):
     assert state.builder_pq_registrations[0].pq_data == b"\x22" * 32
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__overwrites_registration(spec, state):
     spec.process_builder_pq_registration_request(
@@ -64,7 +64,7 @@ def test_process_builder_pq_registration_request__overwrites_registration(spec, 
     assert state.builder_pq_registrations[0].pq_data == b"\x33" * 32
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__registrations_for_two_builders(spec, state):
     spec.process_builder_pq_registration_request(
@@ -80,7 +80,7 @@ def test_process_builder_pq_registration_request__registrations_for_two_builders
     ]
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__unknown_pubkey(spec, state):
     request = spec.BuilderPQRegistrationRequest(
@@ -93,7 +93,7 @@ def test_process_builder_pq_registration_request__unknown_pubkey(spec, state):
     yield from run_builder_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__wrong_source_address(spec, state):
     request = prepare_builder_pq_registration_request(
@@ -103,7 +103,7 @@ def test_process_builder_pq_registration_request__wrong_source_address(spec, sta
     yield from run_builder_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_builder(spec, state):
     spec.process_builder_pq_registration_request(
@@ -114,7 +114,7 @@ def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_buil
     yield from run_builder_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_validator(spec, state):
     state.validator_pq_registrations.append(
@@ -127,7 +127,7 @@ def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_vali
     assert len(state.builder_pq_registrations) == 1
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_builder_pq_registration_request__builder_shares_validator_pubkey(spec, state):
     state.builders[0].pubkey = state.validators[0].pubkey

@@ -20,7 +20,7 @@ EIP8025 = SpecForkName("eip8025")
 EIP8148 = SpecForkName("eip8148")
 EIP8205 = SpecForkName("eip8205")
 EIP8321 = SpecForkName("eip8321")
-PREREG = SpecForkName("prereg")
+PQREG = SpecForkName("pqreg")
 PQ = SpecForkName("pq")
 
 #
@@ -43,7 +43,7 @@ ALL_PHASES = (
     EIP8148,
     EIP8205,
     EIP8321,
-    PREREG,
+    PQREG,
     PQ,
 )
 # The forks that have light client specs
@@ -70,8 +70,8 @@ PREVIOUS_FORK_OF = {
     EIP8148: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
-    PREREG: GLOAS,
-    PQ: PREREG,
+    PQREG: GLOAS,
+    PQ: PQREG,
 }
 
 # For fork transition tests

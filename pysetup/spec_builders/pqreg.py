@@ -1,10 +1,10 @@
-from pysetup.constants import PREREG
+from pysetup.constants import PQREG
 
 from .base import BaseSpecBuilder
 
 
-class PreregSpecBuilder(BaseSpecBuilder):
-    fork: str = PREREG
+class PQRegSpecBuilder(BaseSpecBuilder):
+    fork: str = PQREG
 
     @classmethod
     def imports(cls, preset_name: str):

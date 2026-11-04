@@ -1,4 +1,4 @@
-# Prereg -- Honest Validator
+# PQReg -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -15,7 +15,7 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-validator" to implement Prereg.
+validator" to implement PQReg.
 
 ## Beacon chain responsibilities
 
@@ -37,9 +37,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     consolidations = ConsolidationRequests()
     builder_deposits = BuilderDepositRequests()
     builder_exits = BuilderExitRequests()
-    # [New in Prereg]
+    # [New in PQReg]
     validator_pq_registrations = ValidatorPQRegistrationRequests()
-    # [New in Prereg]
+    # [New in PQReg]
     builder_pq_registrations = BuilderPQRegistrationRequests()
 
     request_types = [
@@ -48,9 +48,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         CONSOLIDATION_REQUEST_TYPE,
         BUILDER_DEPOSIT_REQUEST_TYPE,
         BUILDER_EXIT_REQUEST_TYPE,
-        # [New in Prereg]
+        # [New in PQReg]
         VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE,
-        # [New in Prereg]
+        # [New in PQReg]
         BUILDER_PQ_REGISTRATION_REQUEST_TYPE,
     ]
 
@@ -77,12 +77,12 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
             builder_deposits = ssz_deserialize(BuilderDepositRequests, request_data)
         elif request_type == BUILDER_EXIT_REQUEST_TYPE:
             builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
-        # [New in Prereg]
+        # [New in PQReg]
         elif request_type == VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE:
             validator_pq_registrations = ssz_deserialize(
                 ValidatorPQRegistrationRequests, request_data
             )
-        # [New in Prereg]
+        # [New in PQReg]
         elif request_type == BUILDER_PQ_REGISTRATION_REQUEST_TYPE:
             builder_pq_registrations = ssz_deserialize(BuilderPQRegistrationRequests, request_data)
 
@@ -92,9 +92,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         consolidations=consolidations,
         builder_deposits=builder_deposits,
         builder_exits=builder_exits,
-        # [New in Prereg]
+        # [New in PQReg]
         validator_pq_registrations=validator_pq_registrations,
-        # [New in Prereg]
+        # [New in PQReg]
         builder_pq_registrations=builder_pq_registrations,
     )
 ```

@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_phases
-from eth_consensus_specs.test.helpers.constants import PREREG
+from eth_consensus_specs.test.helpers.constants import PQREG
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
 
@@ -45,7 +45,7 @@ def run_validator_pq_registration_request_processing(spec, state, request, valid
         assert state == pre_state
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__success(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -58,7 +58,7 @@ def test_process_validator_pq_registration_request__success(spec, state):
     assert state.validator_pq_registrations[0].pq_data == b"\x22" * 64
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__compounding_credentials(spec, state):
     state.validators[0].withdrawal_credentials = (
@@ -72,7 +72,7 @@ def test_process_validator_pq_registration_request__compounding_credentials(spec
     assert state.validator_pq_registrations[0].validator_index == 0
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__overwrites_registration(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -87,7 +87,7 @@ def test_process_validator_pq_registration_request__overwrites_registration(spec
     assert state.validator_pq_registrations[0].pq_data == b"\x33" * 64
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__registrations_for_two_validators(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -105,7 +105,7 @@ def test_process_validator_pq_registration_request__registrations_for_two_valida
     ]
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__exited_validator(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -117,7 +117,7 @@ def test_process_validator_pq_registration_request__exited_validator(spec, state
     assert len(state.validator_pq_registrations) == 1
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__unknown_pubkey(spec, state):
     request = spec.ValidatorPQRegistrationRequest(
@@ -129,7 +129,7 @@ def test_process_validator_pq_registration_request__unknown_pubkey(spec, state):
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__bls_withdrawal_credentials(spec, state):
     state.validators[0].withdrawal_credentials = (
@@ -142,7 +142,7 @@ def test_process_validator_pq_registration_request__bls_withdrawal_credentials(s
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__wrong_source_address(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -153,7 +153,7 @@ def test_process_validator_pq_registration_request__wrong_source_address(spec, s
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__pq_data_already_registered(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -166,7 +166,7 @@ def test_process_validator_pq_registration_request__pq_data_already_registered(s
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__resubmitted_registration(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -178,7 +178,7 @@ def test_process_validator_pq_registration_request__resubmitted_registration(spe
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__overwritten_pq_data_can_be_registered(
     spec, state
@@ -204,7 +204,7 @@ def test_process_validator_pq_registration_request__overwritten_pq_data_can_be_r
     ]
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__xmss_pubkey_already_registered(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -218,7 +218,7 @@ def test_process_validator_pq_registration_request__xmss_pubkey_already_register
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__vrf_data_already_registered(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
@@ -233,7 +233,7 @@ def test_process_validator_pq_registration_request__vrf_data_already_registered(
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__builder_pubkey(spec, state):
     builder = state.builders[0]
@@ -247,7 +247,7 @@ def test_process_validator_pq_registration_request__builder_pubkey(spec, state):
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
-@with_phases([PREREG])
+@with_phases([PQREG])
 @spec_state_test
 def test_process_validator_pq_registration_request__xmss_pubkey_registered_by_builder(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)

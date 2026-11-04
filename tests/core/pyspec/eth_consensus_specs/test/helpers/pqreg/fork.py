@@ -1,16 +1,16 @@
 from eth_consensus_specs.test.helpers.constants import (
-    PREREG,
+    PQREG,
 )
 
-PREREG_FORK_TEST_META_TAGS = {
-    "fork": PREREG,
+PQREG_FORK_TEST_META_TAGS = {
+    "fork": PQREG,
 }
 
 
 def run_fork_test(post_spec, pre_state):
     yield "pre", pre_state
 
-    post_state = post_spec.upgrade_to_prereg(pre_state.copy())
+    post_state = post_spec.upgrade_to_pqreg(pre_state.copy())
 
     # Stable fields
     stable_fields = [
@@ -72,7 +72,7 @@ def run_fork_test(post_spec, pre_state):
     assert len(post_state.builder_pq_registrations) == 0
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
-    assert post_state.fork.current_version == post_spec.config.PREREG_FORK_VERSION
+    assert post_state.fork.current_version == post_spec.config.PQREG_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
 
     yield "post", post_state

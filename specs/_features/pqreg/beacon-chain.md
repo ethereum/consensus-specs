@@ -1,4 +1,4 @@
-# Prereg -- The Beacon Chain
+# PQReg -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -175,9 +175,9 @@ class BeaconState(ProgressiveContainer):
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
-    # [New in Prereg]
+    # [New in PQReg]
     validator_pq_registrations: ValidatorPQRegistrations
-    # [New in Prereg]
+    # [New in PQReg]
     builder_pq_registrations: BuilderPQRegistrations
 ```
 
@@ -192,9 +192,9 @@ class ExecutionRequests(ProgressiveContainer):
     consolidations: ConsolidationRequests
     builder_deposits: BuilderDepositRequests
     builder_exits: BuilderExitRequests
-    # [New in Prereg]
+    # [New in PQReg]
     validator_pq_registrations: ValidatorPQRegistrationRequests
-    # [New in Prereg]
+    # [New in PQReg]
     builder_pq_registrations: BuilderPQRegistrationRequests
 ```
 
@@ -259,9 +259,9 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
         (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
         (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
-        # [New in Prereg]
+        # [New in PQReg]
         (VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE, execution_requests.validator_pq_registrations),
-        # [New in Prereg]
+        # [New in PQReg]
         (BUILDER_PQ_REGISTRATION_REQUEST_TYPE, execution_requests.builder_pq_registrations),
     ]
 
@@ -385,12 +385,12 @@ def apply_parent_execution_payload(
     assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
-    # [New in Prereg]
+    # [New in PQReg]
     assert (
         len(requests.validator_pq_registrations)
         <= MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD
     )
-    # [New in Prereg]
+    # [New in PQReg]
     assert (
         len(requests.builder_pq_registrations) <= MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD
     )
@@ -425,9 +425,9 @@ def apply_parent_execution_payload(
     for_ops(requests.consolidations, process_consolidation_request)
     for_ops(requests.builder_deposits, process_builder_deposit_request)
     for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in Prereg]
+    # [New in PQReg]
     for_ops(requests.validator_pq_registrations, process_validator_pq_registration_request)
-    # [New in Prereg]
+    # [New in PQReg]
     for_ops(requests.builder_pq_registrations, process_builder_pq_registration_request)
 
     # Update parent payload availability and latest block hash

@@ -13,7 +13,7 @@ from .constants import (
     HEZE,
     PHASE0,
     PQ,
-    PREREG,
+    PQREG,
     PREVIOUS_FORK_OF,
 )
 
@@ -82,8 +82,8 @@ def is_post_eip8321(spec):
     return is_post_fork(spec.fork, EIP8321)
 
 
-def is_post_prereg(spec):
-    return is_post_fork(spec.fork, PREREG)
+def is_post_pqreg(spec):
+    return is_post_fork(spec.fork, PQREG)
 
 
 def is_post_pq(spec):

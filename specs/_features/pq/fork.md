@@ -22,15 +22,15 @@
 This document describes the process of the PQ upgrade.
 
 Before the fork, validators register their XMSS public key and VRF data, and
-builders their XMSS public key, through [Prereg](../prereg/beacon-chain.md)
+builders their XMSS public key, through [PQReg](../pqreg/beacon-chain.md)
 registrations. At the fork, every validator is copied into `state.pq_validators`
 and every builder into `state.pq_builders`, at the same index, with its
 registered material. `state.validators` and `state.builders` are frozen from
 then on and only serve to find a validator or builder by BLS public key.
 
 A validator or builder without a registration gets the empty XMSS public key,
-which no signature verifies against, and has its exit initiated. Prereg ignores
-a registration whose XMSS public key is already registered by another validator,
+which no signature verifies against, and has its exit initiated. PQReg ignores a
+registration whose XMSS public key is already registered by another validator,
 or by another builder, so no two validators and no two builders share an XMSS
 public key.
 
@@ -53,7 +53,7 @@ Warning: this configuration is not definitive.
 ### New `get_registered_validator_pq_data`
 
 ```python
-def get_registered_validator_pq_data(pre: prereg.BeaconState) -> dict[ValidatorIndex, Bytes64]:
+def get_registered_validator_pq_data(pre: pqreg.BeaconState) -> dict[ValidatorIndex, Bytes64]:
     """
     Return the PQ material registered for each validator index.
     """
@@ -66,7 +66,7 @@ def get_registered_validator_pq_data(pre: prereg.BeaconState) -> dict[ValidatorI
 ### New `get_registered_builder_pq_data`
 
 ```python
-def get_registered_builder_pq_data(pre: prereg.BeaconState) -> dict[BLSPubkey, Bytes32]:
+def get_registered_builder_pq_data(pre: pqreg.BeaconState) -> dict[BLSPubkey, Bytes32]:
     """
     Return the PQ material registered for each builder public key.
     """
@@ -79,7 +79,7 @@ def get_registered_builder_pq_data(pre: prereg.BeaconState) -> dict[BLSPubkey, B
 ### New `compute_pq_validators`
 
 ```python
-def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
+def compute_pq_validators(pre: pqreg.BeaconState) -> PQValidators:
     registered = get_registered_validator_pq_data(pre)
     pq_validators = PQValidators()
     for index, validator in enumerate(pre.validators):
@@ -103,7 +103,7 @@ def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
 ### New `compute_pq_builders`
 
 ```python
-def compute_pq_builders(pre: prereg.BeaconState) -> PQBuilders:
+def compute_pq_builders(pre: pqreg.BeaconState) -> PQBuilders:
     registered = get_registered_builder_pq_data(pre)
     pq_builders = PQBuilders()
     for builder in pre.builders:
@@ -141,8 +141,8 @@ whose root differs from the PQ type even for identical content. The upgrade
 cannot recompute it because the state stores only the commitment.
 
 ```python
-def upgrade_to_pq(pre: prereg.BeaconState) -> BeaconState:
-    epoch = prereg.get_current_epoch(pre)
+def upgrade_to_pq(pre: pqreg.BeaconState) -> BeaconState:
+    epoch = pqreg.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,

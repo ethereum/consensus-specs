@@ -103,12 +103,12 @@ eip8321:
       - 'presets/*/eip8321.yaml'
       - 'pysetup/spec_builders/eip8321.py'
 
-prereg:
+pqreg:
   - changed-files:
     - any-glob-to-any-file:
-      - 'specs/_features/prereg/**'
-      - 'presets/*/prereg.yaml'
-      - 'pysetup/spec_builders/prereg.py'
+      - 'specs/_features/pqreg/**'
+      - 'presets/*/pqreg.yaml'
+      - 'pysetup/spec_builders/pqreg.py'
 
 pq:
   - changed-files:

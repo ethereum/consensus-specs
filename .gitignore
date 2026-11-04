@@ -25,7 +25,7 @@ tests/core/pyspec/eth_consensus_specs/fulu/
 tests/core/pyspec/eth_consensus_specs/gloas/
 tests/core/pyspec/eth_consensus_specs/heze/
 tests/core/pyspec/eth_consensus_specs/eip*/
-tests/core/pyspec/eth_consensus_specs/prereg/
+tests/core/pyspec/eth_consensus_specs/pqreg/
 tests/core/pyspec/eth_consensus_specs/pq/
 
 # coverage reports

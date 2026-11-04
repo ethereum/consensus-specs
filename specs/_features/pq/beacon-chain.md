@@ -198,7 +198,7 @@ verifying each attestation's aggregate in turn. An aggregate on the wire carries
 a `stark` of its own in `AggregateAndProof`, and the proposer merges those into
 the block's `stark`.
 
-*Note*: This specification is built upon [Prereg](../prereg/beacon-chain.md),
+*Note*: This specification is built upon [PQReg](../pqreg/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types

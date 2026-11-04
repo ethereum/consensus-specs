@@ -9,7 +9,7 @@ class PQSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.prereg import {preset_name} as prereg
+from eth_consensus_specs.pqreg import {preset_name} as pqreg
 from eth_consensus_specs.utils import stark, xmss
 """
 
@@ -206,7 +206,7 @@ compute_balance_weighted_selection = cache_this(
             "upgrade_lc_optimistic_update_to_gloas",
             "upgrade_lc_store_to_gloas",
             "upgrade_lc_update_to_gloas",
-            "upgrade_to_prereg",
+            "upgrade_to_pqreg",
             "validate_bls_to_execution_change_gossip",
             "validate_light_client_update",
             "validate_sync_committee_contribution_and_proof_gossip",

@@ -18,7 +18,7 @@ from .constants import (
     HEZE,
     PHASE0,
     PQ,
-    PREREG,
+    PQREG,
 )
 
 PREVIOUS_FORK_OF = {
@@ -37,8 +37,8 @@ PREVIOUS_FORK_OF = {
     EIP8198: HEZE,
     EIP8205: HEZE,
     EIP8321: HEZE,
-    PREREG: GLOAS,
-    PQ: PREREG,
+    PQREG: GLOAS,
+    PQ: PQREG,
 }
 
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())

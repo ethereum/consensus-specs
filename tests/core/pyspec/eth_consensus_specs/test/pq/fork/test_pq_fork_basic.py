@@ -5,7 +5,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     PQ,
-    PREREG,
+    PQREG,
 )
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.keys import xmss_builder_pubkeys, xmss_pubkeys
@@ -22,7 +22,7 @@ from eth_consensus_specs.test.helpers.state import (
 from eth_consensus_specs.test.utils import with_meta_tags
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -41,7 +41,7 @@ def test_fork_all_registered(spec, phases, state):
         assert builder.withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -56,7 +56,7 @@ def test_fork_builders_not_registered(spec, phases, state):
         assert builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -73,7 +73,7 @@ def test_fork_builder_shares_validator_pubkey(spec, phases, state):
     assert post_state.pq_builders[0].withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -86,7 +86,7 @@ def test_fork_no_registrations(spec, phases, state):
         assert validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -101,7 +101,7 @@ def test_fork_partially_registered(spec, phases, state):
         assert (validator.exit_epoch == post_spec.FAR_FUTURE_EPOCH) == is_registered
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -113,7 +113,7 @@ def test_fork_pending_top_up_deposit(spec, phases, state):
     yield from run_fork_test(phases[PQ], state)
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -126,7 +126,7 @@ def test_fork_pending_new_validator_deposit(spec, phases, state):
     yield from run_fork_test(phases[PQ], state)
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
@@ -136,7 +136,7 @@ def test_fork_next_epoch(spec, phases, state):
     yield from run_fork_test(phases[PQ], state)
 
 
-@with_phases(phases=[PREREG], other_phases=[PQ])
+@with_phases(phases=[PQREG], other_phases=[PQ])
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
