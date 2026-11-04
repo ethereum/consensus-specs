@@ -279,7 +279,9 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 *Note*: Invalid requests are ignored. No status is checked, so pending, active,
 exited, and slashed validators can all register PQ material, as long as the
 request comes from their withdrawal address and its XMSS public key and VRF data
-are not already registered.
+are not already registered. A validator that registers again must change both
+its XMSS public key and its VRF data, because each is checked against every
+registration, including its own.
 
 ```python
 def process_validator_pq_registration_request(
@@ -293,9 +295,7 @@ def process_validator_pq_registration_request(
     validator = state.validators[validator_index]
 
     # Verify the request comes from the validator's withdrawal address
-    has_correct_credential = has_execution_withdrawal_credential(validator)
-    is_correct_source_address = validator.withdrawal_credentials[12:] == request.source_address
-    if not (has_correct_credential and is_correct_source_address):
+    if validator.withdrawal_credentials[12:] != request.source_address:
         return
 
     # Verify the XMSS public key is not already registered
