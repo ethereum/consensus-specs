@@ -207,8 +207,6 @@ def upgrade_to_pq(pre: pqreg.BeaconState) -> BeaconState:
         pq_validators=compute_pq_validators(pre),
         # [New in PQ]
         pq_builders=compute_pq_builders(pre),
-        # [New in PQ]
-        pending_builder_deposits=PendingDeposits(),
     )
 
     # [New in PQ]

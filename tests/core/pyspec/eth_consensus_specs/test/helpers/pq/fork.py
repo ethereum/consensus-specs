@@ -135,7 +135,6 @@ def run_fork_test(post_spec, pre_state):
         else:
             assert post_builder.pubkey == post_spec.XMSSPubkey()
             assert post_builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
-    assert len(post_state.pending_builder_deposits) == 0
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.PQ_FORK_VERSION

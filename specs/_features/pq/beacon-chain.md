@@ -172,9 +172,8 @@ registered. Validators and builders that did not register are exited at the
 fork. See [the fork document](./fork.md) for details.
 
 Execution layer requests still name validators and builders by BLS public key,
-which the new registries do not hold. Withdrawal and builder exit requests are
-therefore ignored, and every builder deposit waits in
-`state.pending_builder_deposits`, until a later upgrade changes the system
+which the new registries do not hold. Withdrawal, builder deposit, and builder
+exit requests are therefore ignored until a later upgrade changes the system
 contracts to name them by XMSS public key.
 
 *Note*: Pending deposits still find their validator by BLS public key in
@@ -381,7 +380,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=51, gaps=(22, 23, 46, 47))
+    ACTIVE_FIELDS = active_fields(width=50, gaps=(22, 23, 46, 47))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -439,8 +438,6 @@ class BeaconState(ProgressiveContainer):
     pq_validators: PQValidators
     # [New in PQ]
     pq_builders: PQBuilders
-    # [New in PQ]
-    pending_builder_deposits: PendingDeposits
 ```
 
 #### `ExecutionRequests`
@@ -1939,25 +1936,14 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ###### Modified `process_builder_deposit_request`
 
 *Note*: A builder deposit names its builder by BLS public key, which
-`state.pq_builders` does not hold, so it waits in
-`state.pending_builder_deposits`, which no function processes yet.
+`state.pq_builders` does not hold, so it is ignored and its amount is not
+credited.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
-    # Ignore deposits with unexpected withdrawal credential prefixes
-    if not is_builder_withdrawal_credential(request.withdrawal_credentials):
-        return
-
     # [Modified in PQ]
-    state.pending_builder_deposits.append(
-        PendingDeposit(
-            pubkey=request.pubkey,
-            withdrawal_credentials=request.withdrawal_credentials,
-            amount=request.amount,
-            signature=request.signature,
-            slot=state.slot,
-        )
-    )
+    # Removed the processing of the request
+    pass
 ```
 
 ##### Builder exit requests
