@@ -502,7 +502,7 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
     assert get_builders(spec, state)[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_parent_execution_payload__older_than_previous_epoch_builder_exit_no_payment(
     spec, state
@@ -681,7 +681,7 @@ def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reus
         assert get_builders(spec, state)[i] == builder
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_parent_execution_payload__builder_exit_request(spec, state):
     """

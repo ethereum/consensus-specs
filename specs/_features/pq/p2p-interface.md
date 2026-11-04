@@ -786,15 +786,6 @@ def validate_execution_payload_bid_gossip(
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
 
-    # [IGNORE] The parent's payload does not try to exit the builder
-    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
-        envelope = store.payloads[bid.parent_block_root]
-        for request in envelope.execution_requests.builder_exits:
-            # [Modified in PQ]
-            if request.pubkey == state.builders[bid.builder_index].pubkey:
-                if request.source_address == builder.execution_address:
-                    raise GossipIgnore("builder may exit")
-
     # [REJECT] The bid signature is valid
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")

@@ -264,7 +264,7 @@ def test_process_builder_deposit_request__new_builder_pubkey_is_validator(spec, 
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__top_up(spec, state):
     """
@@ -300,7 +300,7 @@ def test_process_builder_deposit_request__top_up(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__top_up_large(spec, state):
     """Test large top-up deposit for an existing builder."""
@@ -316,7 +316,7 @@ def test_process_builder_deposit_request__top_up_large(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__top_up_single_builder(spec, state):
     """
@@ -357,7 +357,7 @@ def test_process_builder_deposit_request__top_up_single_builder(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__top_up_last_index(spec, state):
     """
@@ -396,7 +396,7 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, state):
     """
@@ -844,7 +844,7 @@ def test_process_builder_deposit_request__no_reuse_nonzero_balance(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__exited_builder_top_up_zero_balance(spec, state):
     """
@@ -895,7 +895,7 @@ def test_process_builder_deposit_request__exited_builder_top_up_zero_balance(spe
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_builder_deposit_request__exited_builder_top_up_nonzero_balance(spec, state):
     """

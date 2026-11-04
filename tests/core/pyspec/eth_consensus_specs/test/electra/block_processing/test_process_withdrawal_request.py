@@ -3,11 +3,12 @@ import random
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
     spec_state_test,
+    with_all_phases_from_except,
     with_electra_and_later,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     get_validator_index_by_pubkey,
@@ -94,7 +95,7 @@ def compute_amount_to_withdraw(spec, state, index, amount):
 # Modified tests from 7002. Just testing EL-triggered exits, not partial withdrawals
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_basic_withdrawal_request(spec, state):
     rng = random.Random(1337)
@@ -115,7 +116,7 @@ def test_basic_withdrawal_request(spec, state):
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_basic_withdrawal_request_with_first_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -135,7 +136,7 @@ def test_basic_withdrawal_request_with_first_validator(spec, state):
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_basic_withdrawal_request_with_compounding_credentials(spec, state):
     rng = random.Random(1338)
@@ -156,7 +157,7 @@ def test_basic_withdrawal_request_with_compounding_credentials(spec, state):
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], "need full partial withdrawal queue")
 def test_basic_withdrawal_request_with_full_partial_withdrawal_queue(spec, state):
@@ -310,7 +311,7 @@ def test_unknown_pubkey(spec, state):
 # Partial withdrawals tests
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_basic_partial_withdrawal_request(spec, state):
@@ -341,7 +342,7 @@ def test_basic_partial_withdrawal_request(spec, state):
     assert state.earliest_exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
@@ -372,7 +373,7 @@ def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
     assert state.earliest_exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state):
@@ -404,7 +405,7 @@ def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state)
     assert state.earliest_exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
@@ -444,7 +445,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
     assert state.earliest_exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(spec, state):
@@ -483,7 +484,7 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(spe
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_high_balance(spec, state):
@@ -521,7 +522,7 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     assert state.earliest_exit_epoch == exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_high_amount(spec, state):
@@ -553,7 +554,7 @@ def test_partial_withdrawal_request_with_high_amount(spec, state):
     assert state.earliest_exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets([MINIMAL])
 def test_partial_withdrawal_request_with_low_amount(spec, state):

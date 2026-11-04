@@ -171,15 +171,17 @@ transition reads and writes only the new registries, and `state.validators` and
 registered. Validators and builders that did not register are exited at the
 fork. See [the fork document](./fork.md) for details.
 
-Execution layer requests and deposits still name validators and builders by BLS
-public key. The frozen registries keep those keys, so a request finds its index
-there and acts on the record at that index in the new registry.
+Execution layer requests still name validators and builders by BLS public key,
+which the new registries do not hold. Withdrawal and builder exit requests are
+therefore ignored, and every builder deposit waits in
+`state.pending_builder_deposits`, until a later upgrade changes the system
+contracts to name them by XMSS public key.
 
-*Note*: A deposit for a public key that is not in the registry cannot create a
-validator, because it carries no XMSS public key. It stays in
+*Note*: Pending deposits still find their validator by BLS public key in
+`state.validators`. A deposit for a public key that is not in the registry
+cannot create a validator, because it carries no XMSS public key. It stays in
 `state.pending_deposits` and is postponed every epoch without consuming churn. A
-builder deposit for a new public key waits in `state.pending_builder_deposits`.
-A way to register keys after the fork is left open.
+way to register keys after the fork is left open.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 Balances behind `0x00` withdrawal credentials stay locked until a later upgrade
@@ -1919,9 +1921,9 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 
 ###### Modified `process_builder_deposit_request`
 
-*Note*: A builder deposit for a new public key carries no XMSS public key, so it
-cannot create a builder. It waits in `state.pending_builder_deposits`, which no
-function processes yet.
+*Note*: A builder deposit names its builder by BLS public key, which
+`state.pq_builders` does not hold, so it waits in
+`state.pending_builder_deposits`, which no function processes yet.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
@@ -1929,129 +1931,44 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     if not is_builder_withdrawal_credential(request.withdrawal_credentials):
         return
 
-    builder_pubkeys = [builder.pubkey for builder in state.builders]
-    if request.pubkey not in builder_pubkeys:
-        # [Modified in PQ]
-        state.pending_builder_deposits.append(
-            PendingDeposit(
-                pubkey=request.pubkey,
-                withdrawal_credentials=request.withdrawal_credentials,
-                amount=request.amount,
-                signature=request.signature,
-                slot=state.slot,
-            )
+    # [Modified in PQ]
+    state.pending_builder_deposits.append(
+        PendingDeposit(
+            pubkey=request.pubkey,
+            withdrawal_credentials=request.withdrawal_credentials,
+            amount=request.amount,
+            signature=request.signature,
+            slot=state.slot,
         )
-    else:
-        builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
-        # [Modified in PQ]
-        builder = state.pq_builders[builder_index]
-
-        # If exited and swept, reset the withdrawable epoch
-        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH and builder.balance == 0:
-            epoch = get_current_epoch(state)
-            builder.withdrawable_epoch = epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
-
-        # Increase balance by deposit amount
-        builder.balance += request.amount
+    )
 ```
 
 ##### Builder exit requests
 
 ###### Modified `process_builder_exit_request`
 
+*Note*: A builder exit request names its builder by BLS public key, which
+`state.pq_builders` does not hold, so it is ignored.
+
 ```python
 def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest) -> None:
-    builder_pubkeys = [builder.pubkey for builder in state.builders]
-    if request.pubkey not in builder_pubkeys:
-        return
-
-    builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
     # [Modified in PQ]
-    builder = state.pq_builders[builder_index]
-
-    if not is_active_builder(state, builder_index):
-        return
-    if builder.execution_address != request.source_address:
-        return
-    if get_pending_balance_to_withdraw_for_builder(state, builder_index) != 0:
-        return
-
-    initiate_builder_exit(state, builder_index)
+    # Removed the processing of the request
+    pass
 ```
 
 ##### Execution-layer withdrawal requests
 
 ###### Modified `process_withdrawal_request`
 
+*Note*: A withdrawal request names its validator by BLS public key, which
+`state.pq_validators` does not hold, so it is ignored.
+
 ```python
 def process_withdrawal_request(state: BeaconState, withdrawal_request: WithdrawalRequest) -> None:
-    amount = withdrawal_request.amount
-    is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
-
-    # If partial withdrawal queue is full, only full exits are processed
-    if (
-        len(state.pending_partial_withdrawals) == PENDING_PARTIAL_WITHDRAWALS_LIMIT
-        and not is_full_exit_request
-    ):
-        return
-
-    validator_pubkeys = [validator.pubkey for validator in state.validators]
-    # Verify pubkey exists
-    request_pubkey = withdrawal_request.validator_pubkey
-    if request_pubkey not in validator_pubkeys:
-        return
-    index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
     # [Modified in PQ]
-    validator = state.pq_validators[index]
-
-    # Verify withdrawal credentials
-    has_correct_credential = has_execution_withdrawal_credential(validator)
-    is_correct_source_address = (
-        validator.withdrawal_credentials[12:] == withdrawal_request.source_address
-    )
-    if not (has_correct_credential and is_correct_source_address):
-        return
-    # Verify the validator is active
-    if not is_active_validator(validator, get_current_epoch(state)):
-        return
-    # Verify exit has not been initiated
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        return
-    # Verify the validator has been active long enough
-    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
-        return
-
-    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, index)
-
-    if is_full_exit_request:
-        # Only exit validator if it has no pending withdrawals in the queue
-        if pending_balance_to_withdraw == 0:
-            initiate_validator_exit(state, index)
-        return
-
-    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-    has_excess_balance = (
-        state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
-    )
-
-    # Only allow partial withdrawals with compounding withdrawal credentials
-    if (
-        has_compounding_withdrawal_credential(validator)
-        and has_sufficient_effective_balance
-        and has_excess_balance
-    ):
-        to_withdraw = min(
-            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw, amount
-        )
-        exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
-        withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        state.pending_partial_withdrawals.append(
-            PendingPartialWithdrawal(
-                validator_index=index,
-                amount=to_withdraw,
-                withdrawable_epoch=withdrawable_epoch,
-            )
-        )
+    # Removed the processing of the request
+    pass
 ```
 
 #### Parent execution payload

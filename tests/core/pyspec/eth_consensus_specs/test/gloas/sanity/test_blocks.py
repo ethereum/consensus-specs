@@ -994,7 +994,7 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
         )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, state):
     """

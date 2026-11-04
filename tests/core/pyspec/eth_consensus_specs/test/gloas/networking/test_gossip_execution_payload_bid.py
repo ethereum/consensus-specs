@@ -1474,7 +1474,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spec, state):
     """A bid from a builder that the full parent's payload exits is ignored.
@@ -1712,7 +1712,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(spec, state):
     """A bid is ignored when a pending balance would block the requested exit.

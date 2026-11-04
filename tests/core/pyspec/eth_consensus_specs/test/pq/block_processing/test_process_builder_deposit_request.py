@@ -27,7 +27,7 @@ def test_new_builder_deposit_kept_pending(spec, state):
 
 @with_phases([PQ])
 @spec_state_test
-def test_builder_top_up(spec, state):
+def test_builder_top_up_kept_pending(spec, state):
     amount = spec.MIN_DEPOSIT_AMOUNT
     pre_balance = state.pq_builders[0].balance
     request = prepare_process_builder_deposit_request(
@@ -36,6 +36,8 @@ def test_builder_top_up(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, request)
 
-    assert state.pq_builders[0].balance == pre_balance + amount
+    assert state.pq_builders[0].balance == pre_balance
     assert state.builders[0].balance == pre_balance
-    assert len(state.pending_builder_deposits) == 0
+    assert len(state.pending_builder_deposits) == 1
+    assert state.pending_builder_deposits[0].pubkey == request.pubkey
+    assert state.pending_builder_deposits[0].amount == amount

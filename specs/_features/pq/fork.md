@@ -26,7 +26,8 @@ builders their XMSS public key, through [PQReg](../pqreg/beacon-chain.md)
 registrations. At the fork, every validator is copied into `state.pq_validators`
 and every builder into `state.pq_builders`, at the same index, with its
 registered material. `state.validators` and `state.builders` are frozen from
-then on and only serve to find a validator or builder by BLS public key.
+then on, and only pending deposits still find a validator by BLS public key in
+`state.validators`.
 
 A validator or builder without a registration gets the empty XMSS public key,
 which no signature verifies against, and has its exit initiated. PQReg ignores a
