@@ -25,6 +25,7 @@
   - [Modified `Transaction`](#modified-transaction)
   - [Modified `Transactions`](#modified-transactions)
   - [Modified `Validators`](#modified-validators)
+  - [Modified `VersionedHashes`](#modified-versionedhashes)
   - [Modified `VoluntaryExits`](#modified-voluntaryexits)
   - [Modified `WithdrawalRequests`](#modified-withdrawalrequests)
   - [Modified `Withdrawals`](#modified-withdrawals)
@@ -378,6 +379,18 @@ class Validators(ProgressiveList[Validator]):
     """
     The validator registry.
     """
+```
+
+### Modified `VersionedHashes`
+
+```python
+# [Modified in Gloas:EIP7688]
+class VersionedHashes(ProgressiveList[VersionedHash]):
+    """
+    The versioned hashes for blobs associated with an execution payload.
+    """
+
+    LIMIT = MAX_BLOB_COMMITMENTS_PER_BLOCK
 ```
 
 ### Modified `VoluntaryExits`
