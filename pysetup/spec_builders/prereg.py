@@ -1,10 +1,10 @@
-from pysetup.constants import EIP8483
+from pysetup.constants import PREREG
 
 from .base import BaseSpecBuilder
 
 
-class EIP8483SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP8483
+class PreregSpecBuilder(BaseSpecBuilder):
+    fork: str = PREREG
 
     @classmethod
     def imports(cls, preset_name: str):

@@ -89,8 +89,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= PQ_FORK_EPOCH:
         return PQ_FORK_VERSION
-    if epoch >= EIP8483_FORK_EPOCH:
-        return EIP8483_FORK_VERSION
+    if epoch >= PREREG_FORK_EPOCH:
+        return PREREG_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:

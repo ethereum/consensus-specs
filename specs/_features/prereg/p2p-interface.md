@@ -1,4 +1,4 @@
-# EIP-8483 -- Networking
+# Prereg -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -13,8 +13,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specifications for
-EIP-8483.
+This document contains the consensus-layer networking specifications for Prereg.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -28,8 +27,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP8483_FORK_EPOCH:
-        return EIP8483_FORK_VERSION
+    if epoch >= PREREG_FORK_EPOCH:
+        return PREREG_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:
@@ -73,7 +72,7 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many builder exit requests")
 
-    # [New in EIP8483]
+    # [New in Prereg]
     # [REJECT] The PQ registration request count is within the limit
     if len(execution_requests.pq_registrations) > MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many PQ registration requests")

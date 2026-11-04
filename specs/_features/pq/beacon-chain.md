@@ -110,7 +110,7 @@ Blocks no longer carry payload attestations, which spares proposers from
 aggregating them. The payload timeliness committee still broadcasts its votes,
 which fork choice uses as before.
 
-*Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
+*Note*: This specification is built upon [Prereg](../prereg/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types

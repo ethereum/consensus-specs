@@ -107,7 +107,7 @@ jobs:
           - eip8148
           - eip8205
           - eip8321
-          - eip8483
+          - prereg
           - pq
     steps:
       - name: Checkout repository

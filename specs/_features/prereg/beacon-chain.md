@@ -1,4 +1,4 @@
-# EIP-8483 -- The Beacon Chain
+# Prereg -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -35,8 +35,7 @@
 
 This upgrade adds an execution layer triggered request with which the execution
 address of a validator or builder registers 64 bytes of post-quantum material
-for it, as part of the EIP-8483 upgrade: an XMSS public key followed by VRF
-data.
+for it, as described by EIP-8483: an XMSS public key followed by VRF data.
 
 The beacon state stores one `(role, pubkey, pq_data)` entry per role and public
 key. A later request from the same owner overwrites the earlier one. A later
@@ -162,7 +161,7 @@ class BeaconState(ProgressiveContainer):
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
-    # [New in EIP8483]
+    # [New in Prereg]
     pq_registrations: PQRegistrations
 ```
 
@@ -177,7 +176,7 @@ class ExecutionRequests(ProgressiveContainer):
     consolidations: ConsolidationRequests
     builder_deposits: BuilderDepositRequests
     builder_exits: BuilderExitRequests
-    # [New in EIP8483]
+    # [New in Prereg]
     pq_registrations: PQRegistrationRequests
 ```
 
@@ -225,7 +224,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
         (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
         (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
-        # [New in EIP8483]
+        # [New in Prereg]
         (PQ_REGISTRATION_REQUEST_TYPE, execution_requests.pq_registrations),
     ]
 
@@ -321,7 +320,7 @@ def apply_parent_execution_payload(
     assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
-    # [New in EIP8483]
+    # [New in Prereg]
     assert len(requests.pq_registrations) <= MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD
 
     # Settle the builder payment before the requests so that a builder exit
@@ -354,7 +353,7 @@ def apply_parent_execution_payload(
     for_ops(requests.consolidations, process_consolidation_request)
     for_ops(requests.builder_deposits, process_builder_deposit_request)
     for_ops(requests.builder_exits, process_builder_exit_request)
-    # [New in EIP8483]
+    # [New in Prereg]
     for_ops(requests.pq_registrations, process_pq_registration_request)
 
     # Update parent payload availability and latest block hash

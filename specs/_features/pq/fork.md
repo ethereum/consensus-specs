@@ -20,13 +20,12 @@
 This document describes the process of the PQ upgrade.
 
 Validators and builders register their XMSS public key and VRF data before the
-fork, as the `pq_data` of an [EIP-8483](../eip8483/beacon-chain.md)
-registration. At the fork, each registration becomes an entry in
-`state.pq_data`. Validators and builders keep their BLS public keys, which
-identify their entries.
+fork, as the `pq_data` of a [Prereg](../prereg/beacon-chain.md) registration. At
+the fork, each registration becomes an entry in `state.pq_data`. Validators and
+builders keep their BLS public keys, which identify their entries.
 
 A validator or builder without an entry for its role has its exit initiated.
-EIP-8483 ignores a registration whose XMSS public key is already registered, so
+Prereg ignores a registration whose XMSS public key is already registered, so
 every XMSS public key is unique.
 
 *Note*: A validator with `0x00` withdrawal credentials has no withdrawal address
@@ -48,7 +47,7 @@ Warning: this configuration is not definitive.
 ### New `upgrade_pq_registrations_to_pq`
 
 ```python
-def upgrade_pq_registrations_to_pq(pre: eip8483.BeaconState) -> PQDataList:
+def upgrade_pq_registrations_to_pq(pre: prereg.BeaconState) -> PQDataList:
     pq_data = PQDataList()
     for registration in pre.pq_registrations:
         pq_data.append(
@@ -93,8 +92,8 @@ whose root differs from the PQ type even for identical content. The upgrade
 cannot recompute it because the state stores only the commitment.
 
 ```python
-def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
-    epoch = eip8483.get_current_epoch(pre)
+def upgrade_to_pq(pre: prereg.BeaconState) -> BeaconState:
+    epoch = prereg.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,

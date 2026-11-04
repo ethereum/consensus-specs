@@ -1,4 +1,4 @@
-# EIP-8483 -- Fork Logic
+# Prereg -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -6,31 +6,31 @@
 
 - [Introduction](#introduction)
 - [Configs](#configs)
-- [Fork to EIP-8483](#fork-to-eip-8483)
+- [Fork to Prereg](#fork-to-prereg)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the process of the EIP-8483 upgrade.
+This document describes the process of the Prereg upgrade.
 
 ## Configs
 
 Warning: this configuration is not definitive.
 
-| Name                   | Value                                 |
-| ---------------------- | ------------------------------------- |
-| `EIP8483_FORK_VERSION` | `Version("0xe8483000")`               |
-| `EIP8483_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                  | Value                                 |
+| --------------------- | ------------------------------------- |
+| `PREREG_FORK_VERSION` | `Version("0xe8483000")`               |
+| `PREREG_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to EIP-8483
+## Fork to Prereg
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == EIP8483_FORK_EPOCH`, an irregular state
-change is made to upgrade to EIP-8483.
+`compute_epoch_at_slot(state.slot) == PREREG_FORK_EPOCH`, an irregular state
+change is made to upgrade to Prereg.
 
 The upgrade occurs after the completion of the inner loop of `process_slots`
-that sets `state.slot` equal to `EIP8483_FORK_EPOCH * SLOTS_PER_EPOCH`.
+that sets `state.slot` equal to `PREREG_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
@@ -40,7 +40,7 @@ coordinated upgrade that activates this feature must define how the first
 post-fork block validates a full pre-fork parent.
 
 ```python
-def upgrade_to_eip8483(pre: gloas.BeaconState) -> BeaconState:
+def upgrade_to_prereg(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
 
     post = BeaconState(
@@ -49,8 +49,8 @@ def upgrade_to_eip8483(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in EIP8483]
-            current_version=EIP8483_FORK_VERSION,
+            # [Modified in Prereg]
+            current_version=PREREG_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,
@@ -95,7 +95,7 @@ def upgrade_to_eip8483(pre: gloas.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        # [New in EIP8483]
+        # [New in Prereg]
         pq_registrations=PQRegistrations(),
     )
 

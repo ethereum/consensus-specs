@@ -24,7 +24,6 @@ from .helpers.constants import (
     EIP8148,
     EIP8205,
     EIP8321,
-    EIP8483,
     ELECTRA,
     FULU,
     GLOAS,
@@ -34,6 +33,7 @@ from .helpers.constants import (
     PHASE0,
     POST_FORK_OF,
     PQ,
+    PREREG,
 )
 from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas, is_post_pq
 from .helpers.genesis import create_genesis_state
@@ -767,7 +767,7 @@ with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_R
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip8483_and_later = with_all_phases_from(EIP8483, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_prereg_and_later = with_all_phases_from(PREREG, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_pq_and_later = with_all_phases_from(PQ, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])

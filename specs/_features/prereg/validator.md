@@ -1,4 +1,4 @@
-# EIP-8483 -- Honest Validator
+# Prereg -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -15,7 +15,7 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-validator" to implement EIP-8483.
+validator" to implement Prereg.
 
 ## Beacon chain responsibilities
 
@@ -37,7 +37,7 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     consolidations = ConsolidationRequests()
     builder_deposits = BuilderDepositRequests()
     builder_exits = BuilderExitRequests()
-    # [New in EIP8483]
+    # [New in Prereg]
     pq_registrations = PQRegistrationRequests()
 
     request_types = [
@@ -46,7 +46,7 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         CONSOLIDATION_REQUEST_TYPE,
         BUILDER_DEPOSIT_REQUEST_TYPE,
         BUILDER_EXIT_REQUEST_TYPE,
-        # [New in EIP8483]
+        # [New in Prereg]
         PQ_REGISTRATION_REQUEST_TYPE,
     ]
 
@@ -73,7 +73,7 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
             builder_deposits = ssz_deserialize(BuilderDepositRequests, request_data)
         elif request_type == BUILDER_EXIT_REQUEST_TYPE:
             builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
-        # [New in EIP8483]
+        # [New in Prereg]
         elif request_type == PQ_REGISTRATION_REQUEST_TYPE:
             pq_registrations = ssz_deserialize(PQRegistrationRequests, request_data)
 
@@ -83,7 +83,7 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         consolidations=consolidations,
         builder_deposits=builder_deposits,
         builder_exits=builder_exits,
-        # [New in EIP8483]
+        # [New in Prereg]
         pq_registrations=pq_registrations,
     )
 ```

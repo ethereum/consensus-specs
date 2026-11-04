@@ -50,9 +50,9 @@ categories:
   - title: EIP-8321
     when:
       label: eip8321
-  - title: EIP-8483
+  - title: Prereg
     when:
-      label: eip8483
+      label: prereg
   - title: PQ
     when:
       label: pq
