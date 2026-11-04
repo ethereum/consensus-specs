@@ -9,6 +9,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 
 @with_all_phases_from_to(PHASE0, FULU)
@@ -122,13 +123,16 @@ def test_top_up__max_effective_balance(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE
-    state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    get_validators(spec, state)[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     if not is_post_electra(spec):
         assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE + amount
-        assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+        assert (
+            get_validators(spec, state)[validator_index].effective_balance
+            == spec.MAX_EFFECTIVE_BALANCE
+        )
 
 
 @with_all_phases_from_to(PHASE0, FULU)
@@ -141,14 +145,17 @@ def test_top_up__less_effective_balance(spec, state):
     initial_balance = spec.MAX_EFFECTIVE_BALANCE - 1000
     initial_effective_balance = spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     state.balances[validator_index] = initial_balance
-    state.validators[validator_index].effective_balance = initial_effective_balance
+    get_validators(spec, state)[validator_index].effective_balance = initial_effective_balance
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     if not is_post_electra(spec):
         assert state.balances[validator_index] == initial_balance + amount
         # unchanged effective balance
-        assert state.validators[validator_index].effective_balance == initial_effective_balance
+        assert (
+            get_validators(spec, state)[validator_index].effective_balance
+            == initial_effective_balance
+        )
 
 
 @with_all_phases_from_to(PHASE0, FULU)
@@ -161,14 +168,17 @@ def test_top_up__zero_balance(spec, state):
     initial_balance = 0
     initial_effective_balance = 0
     state.balances[validator_index] = initial_balance
-    state.validators[validator_index].effective_balance = initial_effective_balance
+    get_validators(spec, state)[validator_index].effective_balance = initial_effective_balance
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
     if not is_post_electra(spec):
         assert state.balances[validator_index] == initial_balance + amount
         # unchanged effective balance
-        assert state.validators[validator_index].effective_balance == initial_effective_balance
+        assert (
+            get_validators(spec, state)[validator_index].effective_balance
+            == initial_effective_balance
+        )
 
 
 @with_all_phases_from_to(PHASE0, FULU)

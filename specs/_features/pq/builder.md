@@ -21,8 +21,8 @@ is the 32-byte seed from which its XMSS key is derived. As for validators, an
 XMSS key MUST NOT sign two different messages at the same leaf, because that
 exposes the leaf and lets others forge signatures at it.
 
-A builder keeps its BLS public key as its identifier, and signs with the XMSS
-key it registered with EIP-8483 before the upgrade, using the builder role. A
+At the upgrade, each builder moves to `state.pq_builders` at the same index,
+with the XMSS public key it registered with EIP-8483 using the builder role. A
 builder without a registration is exited at the upgrade, and there is no way yet
 to register an XMSS public key after it.
 

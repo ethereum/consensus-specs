@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.deposits import (
     run_deposit_processing,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block
 from eth_consensus_specs.test.helpers.withdrawals import set_validator_fully_withdrawable
 
@@ -25,9 +26,9 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
     assert state.balances[validator_index] > 0
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0
-    assert state.validators[validator_index].effective_balance > 0
+    assert get_validators(spec, state)[validator_index].effective_balance > 0
     next_epoch_via_block(spec, state)
-    assert state.validators[validator_index].effective_balance == 0
+    assert get_validators(spec, state)[validator_index].effective_balance == 0
 
     # Make a top-up balance to validator
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
@@ -45,9 +46,9 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         assert pending_deposit.slot == spec.GENESIS_SLOT
     else:
         assert state.balances[validator_index] == amount
-        assert state.validators[validator_index].effective_balance == 0
+        assert get_validators(spec, state)[validator_index].effective_balance == 0
 
-    validator = state.validators[validator_index]
+    validator = get_validators(spec, state)[validator_index]
     balance = state.balances[validator_index]
     current_epoch = spec.get_current_epoch(state)
 

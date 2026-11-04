@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_custom_state,
     with_electra_and_later,
@@ -12,10 +13,16 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
-from eth_consensus_specs.test.helpers.constants import ELECTRA, HEZE, MINIMAL
+from eth_consensus_specs.test.helpers.constants import (
+    ELECTRA,
+    HEZE,
+    MINIMAL,
+    PQ,
+)
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.forks import is_post_heze
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     advance_finality_to,
     next_epoch_with_full_participation,
@@ -78,9 +85,9 @@ def _check_pending_deposits_induced_new_validators(
     # Eth1 bridge deposits should induce new validators in the first place
     for index, deposit in enumerate(eth1_bridge_deposits):
         validator_index = pre_validator_count + index
-        validator = state.validators[validator_index]
+        validator = get_validators(spec, state)[validator_index]
         assert state.balances[validator_index] == deposit.amount
-        assert validator.pubkey == deposit.pubkey
+        assert state.validators[validator_index].pubkey == deposit.pubkey
         # Effective balance is updated after pending deposits by process_effective_balance_updates
         assert validator.effective_balance == spec.Gwei(0)
         assert validator.withdrawal_credentials == deposit.withdrawal_credentials
@@ -88,9 +95,9 @@ def _check_pending_deposits_induced_new_validators(
     # then deposit requests go
     for index, deposit in enumerate(deposit_requests):
         validator_index = pre_validator_count + len(eth1_bridge_deposits) + index
-        validator = state.validators[validator_index]
+        validator = get_validators(spec, state)[validator_index]
         assert state.balances[validator_index] == deposit.amount
-        assert validator.pubkey == deposit.pubkey
+        assert state.validators[validator_index].pubkey == deposit.pubkey
         assert validator.withdrawal_credentials == deposit.withdrawal_credentials
         # Validators induced from deposit requests get instant update of the EB
         assert validator.effective_balance == deposit.amount
@@ -164,7 +171,7 @@ def test_process_pending_deposits_eth1_bridge_transition_complete(spec, state):
     assert state.deposit_balance_to_consume == 0
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_process_pending_deposits_not_finalized(spec, state):
     # complete eth1 bridge transition
@@ -212,7 +219,7 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
     # set pending deposits to the maximum
     amount = spec.EFFECTIVE_BALANCE_INCREMENT * 1
     for i in range(spec.MAX_PENDING_DEPOSITS_PER_EPOCH + 2):
-        wc = state.validators[i].withdrawal_credentials
+        wc = get_validators(spec, state)[i].withdrawal_credentials
         pd = prepare_pending_deposit(spec, i, amount, withdrawal_credentials=wc, signed=True)
         state.pending_deposits.append(pd)
     new_pending_deposits = state.pending_deposits.copy()
@@ -482,7 +489,7 @@ def test_process_pending_deposits_withdrawable_validator(spec, state):
     # Initiate the validator's exit
     spec.initiate_validator_exit(state, index)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
-    withdrawable_epoch = state.validators[index].withdrawable_epoch
+    withdrawable_epoch = get_validators(spec, state)[index].withdrawable_epoch
     state.slot = spec.compute_start_slot_at_epoch(withdrawable_epoch + 1)
 
     yield from run_process_pending_deposits(spec, state)
@@ -506,7 +513,7 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
     # Initiate the first validator's exit
     spec.initiate_validator_exit(state, 0)
     # Set epoch to withdrawable epoch + 1 to allow processing of the deposit
-    withdraw_epoch = state.validators[0].withdrawable_epoch
+    withdraw_epoch = get_validators(spec, state)[0].withdrawable_epoch
     state.slot = spec.compute_start_slot_at_epoch(withdraw_epoch + 1)
     # Don't use run_epoch_processing_with to avoid penalties being applied
     yield "pre", state

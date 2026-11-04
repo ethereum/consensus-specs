@@ -14,6 +14,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import next_epoch
 
@@ -135,7 +136,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
         if offset == 0:
             random_bytes = spec.sha256(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
         candidate_index = indices[i % total]
-        effective_balance = state.validators[candidate_index].effective_balance
+        effective_balance = get_validators(spec, state)[candidate_index].effective_balance
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
         weight = effective_balance * MAX_RANDOM_VALUE
         threshold = spec.MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
@@ -389,7 +390,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     assert limit > 0
 
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
-    for validator in state.validators:
+    for validator in get_validators(spec, state):
         validator.effective_balance = low_balance
     # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
     state.ptc_window = initialize_ptc_window(spec, state)

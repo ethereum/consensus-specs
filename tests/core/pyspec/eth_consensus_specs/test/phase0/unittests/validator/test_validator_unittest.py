@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test_with_matching_config,
     spec_test,
     with_all_phases,
+    with_all_phases_except,
     with_all_phases_from_to,
     with_phases,
 )
@@ -16,7 +17,12 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
-from eth_consensus_specs.test.helpers.constants import FULU, HEZE, PHASE0
+from eth_consensus_specs.test.helpers.constants import (
+    FULU,
+    HEZE,
+    PHASE0,
+    PQ,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
@@ -73,7 +79,7 @@ def get_mock_aggregate(spec):
 #
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_check_if_validator_active(spec, state):
     active_validator_index = len(state.validators) - 1

@@ -8,7 +8,10 @@ from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_sl
 from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     prepare_process_builder_deposit_request,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
+from eth_consensus_specs.test.helpers.constants import (
+    GLOAS,
+    PQ,
+)
 from eth_consensus_specs.test.helpers.deposits import (
     make_withdrawal_credentials,
     prepare_deposit_request,
@@ -16,6 +19,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 from eth_consensus_specs.test.helpers.execution_requests import get_non_empty_execution_requests
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import get_builders, get_validators
 from eth_consensus_specs.test.helpers.withdrawals import set_parent_block_full
 
 
@@ -281,7 +285,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     pre_pending_deposits_len = len(state.pending_deposits)
     pre_pending_partial_withdrawals_len = len(state.pending_partial_withdrawals)
     pre_pending_consolidations_len = len(state.pending_consolidations)
-    pre_validators = [v.copy() for v in state.validators]
+    pre_validators = [v.copy() for v in get_validators(spec, state)]
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
@@ -300,7 +304,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     assert len(state.pending_consolidations) == pre_pending_consolidations_len
     assert len(state.validators) == len(pre_validators)
     for i, pre_v in enumerate(pre_validators):
-        post_v = state.validators[i]
+        post_v = get_validators(spec, state)[i]
         assert post_v.exit_epoch == pre_v.exit_epoch
         assert post_v.withdrawable_epoch == pre_v.withdrawable_epoch
         assert post_v.withdrawal_credentials == pre_v.withdrawal_credentials
@@ -458,12 +462,12 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
     builder_index = 0
     value = spec.Gwei(50_000_000)
     fee_recipient = spec.ExecutionAddress(b"\xab" * 20)
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests(
             data=[
                 spec.BuilderExitRequest(
-                    source_address=builder.execution_address, pubkey=builder.pubkey
+                    source_address=builder.execution_address, pubkey=state.builders[builder_index].pubkey
                 )
             ]
         )
@@ -494,7 +498,7 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
     assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
     assert state.builder_pending_withdrawals[pre_pending_withdrawals_len].amount == value
     assert spec.is_active_builder(state, builder_index)
-    assert state.builders[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert get_builders(spec, state)[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_gloas_and_later
@@ -507,12 +511,12 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
     parent's bid had no payment, even if the parent is older than the previous epoch.
     """
     builder_index = 0
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests(
             data=[
                 spec.BuilderExitRequest(
-                    source_address=builder.execution_address, pubkey=builder.pubkey
+                    source_address=builder.execution_address, pubkey=state.builders[builder_index].pubkey
                 )
             ]
         )
@@ -539,7 +543,7 @@ def test_process_parent_execution_payload__older_than_previous_epoch_builder_exi
     assert not spec.is_active_builder(state, builder_index)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_builder_slot(
     spec, state
@@ -552,9 +556,9 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     pre_builder_count = len(state.builders)
     pre_pending_deposits_len = len(state.pending_deposits)
 
-    state.builders[0].withdrawable_epoch = spec.get_current_epoch(state)
-    state.builders[0].balance = spec.Gwei(0)
-    existing_builder_pre_balance = state.builders[0].balance
+    get_builders(spec, state)[0].withdrawable_epoch = spec.get_current_epoch(state)
+    get_builders(spec, state)[0].balance = spec.Gwei(0)
+    existing_builder_pre_balance = get_builders(spec, state)[0].balance
 
     top_up_amount = spec.MIN_DEPOSIT_AMOUNT
     new_builder_amount = spec.MIN_DEPOSIT_AMOUNT
@@ -591,22 +595,22 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     assert len(state.pending_deposits) == pre_pending_deposits_len
     assert len(state.builders) == pre_builder_count + 1
 
-    topped_up_builder = state.builders[0]
-    assert topped_up_builder.pubkey == existing_builder_pubkey
+    topped_up_builder = get_builders(spec, state)[0]
+    assert state.builders[0].pubkey == existing_builder_pubkey
     assert topped_up_builder.balance == existing_builder_pre_balance + top_up_amount
 
     new_builder_index = None
-    for i, builder in enumerate(state.builders):
-        if builder.pubkey == builder_deposit_request_2.pubkey:
+    for i, builder in enumerate(get_builders(spec, state)):
+        if state.builders[i].pubkey == builder_deposit_request_2.pubkey:
             new_builder_index = i
             break
 
     assert new_builder_index is not None
     assert new_builder_index != 0
-    assert state.builders[new_builder_index].balance == new_builder_amount
+    assert get_builders(spec, state)[new_builder_index].balance == new_builder_amount
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reuse(spec, state):
     """
@@ -621,11 +625,13 @@ def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reus
     pre_builder_count = len(state.builders)
     pre_pending_deposits_len = len(state.pending_deposits)
 
-    state.builders[reused_index].withdrawable_epoch = spec.get_current_epoch(state)
-    state.builders[reused_index].balance = spec.Gwei(0)
+    get_builders(spec, state)[reused_index].withdrawable_epoch = spec.get_current_epoch(state)
+    get_builders(spec, state)[reused_index].balance = spec.Gwei(0)
     reused_pubkey = state.builders[reused_index].pubkey
     other_builders = [
-        (i, state.builders[i].copy()) for i in range(pre_builder_count) if i != reused_index
+        (i, get_builders(spec, state)[i].copy())
+        for i in range(pre_builder_count)
+        if i != reused_index
     ]
 
     builder_deposit_request_1 = prepare_process_builder_deposit_request(
@@ -666,11 +672,11 @@ def test_process_parent_execution_payload__duplicate_new_builder_after_slot_reus
     ]
     assert matching_indices == [reused_index]
     assert reused_pubkey not in [builder.pubkey for builder in state.builders]
-    assert state.builders[reused_index].balance == amount * 2
-    assert state.builders[reused_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert get_builders(spec, state)[reused_index].balance == amount * 2
+    assert get_builders(spec, state)[reused_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
     for i, builder in other_builders:
-        assert state.builders[i] == builder
+        assert get_builders(spec, state)[i] == builder
 
 
 @with_gloas_and_later
@@ -683,16 +689,16 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
     builder_index = 0
 
     # Finalize the builder's deposit epoch so that it is active
-    state.finalized_checkpoint.epoch = state.builders[builder_index].deposit_epoch + 1
+    state.finalized_checkpoint.epoch = get_builders(spec, state)[builder_index].deposit_epoch + 1
     assert spec.is_active_builder(state, builder_index)
     assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
 
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(
             spec.BuilderExitRequest(
                 source_address=builder.execution_address,
-                pubkey=builder.pubkey,
+                pubkey=state.builders[builder_index].pubkey,
             )
         ),
     )
@@ -710,7 +716,7 @@ def test_process_parent_execution_payload__builder_exit_request(spec, state):
     # The builder exit was initiated
     assert not spec.is_active_builder(state, builder_index)
     expected_withdrawable = current_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
-    assert state.builders[builder_index].withdrawable_epoch == expected_withdrawable
+    assert get_builders(spec, state)[builder_index].withdrawable_epoch == expected_withdrawable
 
 
 @with_gloas_and_later

@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.proposer_slashings import (
     prepare_process_proposer_slashing,
     run_proposer_slashing_processing,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_epoch, next_slots
 
 
@@ -489,7 +490,7 @@ def test_invalid_proposer_is_not_activated(spec, state):
 
     # set proposer to be not active yet
     proposer_index = proposer_slashing.signed_header_1.message.proposer_index
-    state.validators[proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
+    get_validators(spec, state)[proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
 
     pre_state = state.copy()
 
@@ -537,7 +538,7 @@ def test_invalid_proposer_is_slashed(spec, state):
 
     # set proposer to slashed
     proposer_index = proposer_slashing.signed_header_1.message.proposer_index
-    state.validators[proposer_index].slashed = True
+    get_validators(spec, state)[proposer_index].slashed = True
 
     pre_state = state.copy()
 
@@ -619,7 +620,7 @@ def test_invalid_proposer_is_withdrawn(spec, state):
     # set proposer withdrawable_epoch in past
     current_epoch = spec.get_current_epoch(state)
     proposer_index = proposer_slashing.signed_header_1.message.proposer_index
-    state.validators[proposer_index].withdrawable_epoch = current_epoch - 1
+    get_validators(spec, state)[proposer_index].withdrawable_epoch = current_epoch - 1
 
     pre_state = state.copy()
 

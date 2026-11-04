@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import append_validator, get_validators
 from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
 
@@ -44,12 +45,12 @@ def run_test_activation_churn_limit(spec, state):
             withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
             effective_balance=balance,
         )
-        state.validators.append(validator)
+        append_validator(spec, state, validator)
         state.balances.append(balance)
         state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.inactivity_scores.append(0)
-        state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
+        get_validators(spec, state)[index].activation_epoch = spec.FAR_FUTURE_EPOCH
         if is_post_eip8148(spec):
             state.validator_sweep_thresholds.append(spec.Gwei(0))
 
@@ -67,9 +68,9 @@ def run_test_activation_churn_limit(spec, state):
         # all eligible validators have been activated
         if index < validator_count_0 + churn_limit_0 or is_post_electra(spec):
             # The eligible validators within the activation churn limit should have been activated
-            assert state.validators[index].activation_epoch < spec.FAR_FUTURE_EPOCH
+            assert get_validators(spec, state)[index].activation_epoch < spec.FAR_FUTURE_EPOCH
         else:
-            assert state.validators[index].activation_epoch == spec.FAR_FUTURE_EPOCH
+            assert get_validators(spec, state)[index].activation_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_deneb_and_later

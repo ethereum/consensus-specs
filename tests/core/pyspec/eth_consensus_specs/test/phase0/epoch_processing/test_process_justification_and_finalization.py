@@ -5,6 +5,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_altair
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block, next_slot, transition_to
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
@@ -59,7 +60,7 @@ def add_mock_attestations(
             aggregation_bits = [0] * len(committee)
             for v in range(len(committee) * 2 // 3 + 1):
                 if remaining_balance > 0:
-                    remaining_balance -= int(state.validators[v].effective_balance)
+                    remaining_balance -= int(get_validators(spec, state)[v].effective_balance)
                     aggregation_bits[v] = 1
                 else:
                     break
@@ -342,7 +343,7 @@ def test_balance_threshold_with_exited_validators(spec, state):
         if rng.choice([True, False]):
             continue
 
-        validator = state.validators[index]
+        validator = get_validators(spec, state)[index]
         validator.exit_epoch = epoch
         validator.withdrawable_epoch = epoch + 1
         validator.withdrawable_epoch = (

@@ -55,6 +55,7 @@ from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
     get_valid_proposer_slashings,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     get_balance,
     next_epoch,
@@ -459,7 +460,7 @@ def test_proposer_self_slashing(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    assert not state.validators[block.proposer_index].slashed
+    assert not get_validators(spec, state)[block.proposer_index].slashed
 
     proposer_slashing = get_valid_proposer_slashing(
         spec, state, slashed_index=block.proposer_index, signed_1=True, signed_2=True
@@ -470,7 +471,7 @@ def test_proposer_self_slashing(spec, state):
     # the proposer was not slashed before the body, thus the block is valid.
     signed_block = state_transition_and_sign_block(spec, state, block)
     # The proposer slashed themselves.
-    assert state.validators[block.proposer_index].slashed
+    assert get_validators(spec, state)[block.proposer_index].slashed
 
     yield "blocks", [signed_block]
     yield "post", state
@@ -484,7 +485,7 @@ def test_proposer_slashing(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_index = proposer_slashing.signed_header_1.message.proposer_index
 
-    assert not state.validators[slashed_index].slashed
+    assert not get_validators(spec, state)[slashed_index].slashed
 
     yield "pre", state
 
@@ -507,7 +508,7 @@ def test_proposer_slashing(spec, state):
 def test_invalid_duplicate_proposer_slashings_same_block(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_index = proposer_slashing.signed_header_1.message.proposer_index
-    assert not state.validators[slashed_index].slashed
+    assert not get_validators(spec, state)[slashed_index].slashed
 
     yield "pre", state
 
@@ -541,7 +542,7 @@ def test_invalid_similar_proposer_slashings_same_block(spec, state):
         signed_1=True,
         signed_2=True,
     )
-    assert not state.validators[slashed_index].slashed
+    assert not get_validators(spec, state)[slashed_index].slashed
 
     yield "pre", state
 
@@ -583,7 +584,7 @@ def test_multiple_different_proposer_slashings_same_block(spec, state):
 
 def check_attester_slashing_effect(spec, pre_state, state, slashed_indices):
     for slashed_index in slashed_indices:
-        slashed_validator = state.validators[slashed_index]
+        slashed_validator = get_validators(spec, state)[slashed_index]
         assert slashed_validator.slashed
         assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
         assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -604,7 +605,7 @@ def test_attester_slashing(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
 
-    assert not any(state.validators[i].slashed for i in slashed_indices)
+    assert not any(get_validators(spec, state)[i].slashed for i in slashed_indices)
 
     yield "pre", state
 
@@ -634,7 +635,7 @@ def test_invalid_duplicate_attester_slashing_same_block(spec, state):
     attester_slashings = [attester_slashing, attester_slashing.copy()]
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
 
-    assert not any(state.validators[i].slashed for i in slashed_indices)
+    assert not any(get_validators(spec, state)[i].slashed for i in slashed_indices)
 
     yield "pre", state
 
@@ -680,7 +681,7 @@ def test_multiple_attester_slashings_no_overlap(spec, state):
     )
     attester_slashings = [attester_slashing_1, attester_slashing_2]
 
-    assert not any(state.validators[i].slashed for i in full_indices)
+    assert not any(get_validators(spec, state)[i].slashed for i in full_indices)
 
     yield "pre", state
 
@@ -728,7 +729,7 @@ def test_multiple_attester_slashings_partial_overlap(spec, state):
     )
     attester_slashings = [attester_slashing_1, attester_slashing_2]
 
-    assert not any(state.validators[i].slashed for i in full_indices)
+    assert not any(get_validators(spec, state)[i].slashed for i in full_indices)
 
     yield "pre", state
 
@@ -761,7 +762,7 @@ def test_invalid_proposer_and_attester_slashings_same_validator(spec, state):
     attester_slashing = get_valid_attester_slashing_by_indices(
         spec, state, [slashed_index], signed_1=True, signed_2=True
     )
-    assert not state.validators[slashed_index].slashed
+    assert not get_validators(spec, state)[slashed_index].slashed
 
     yield "pre", state
 
@@ -803,8 +804,8 @@ def test_proposer_and_attester_slashings_partial_overlap(spec, state):
     block.body.proposer_slashings.append(proposer_slashing)
     block.body.attester_slashings.append(attester_slashing)
 
-    assert not state.validators[other_index].slashed
-    assert not state.validators[overlap_index].slashed
+    assert not get_validators(spec, state)[other_index].slashed
+    assert not get_validators(spec, state)[overlap_index].slashed
 
     yield "pre", state
 
@@ -818,8 +819,8 @@ def test_proposer_and_attester_slashings_partial_overlap(spec, state):
     slashings_index = spec.get_current_epoch(state) % spec.EPOCHS_PER_SLASHINGS_VECTOR
     assert state.slashings[slashings_index] == (
         pre_state.slashings[slashings_index]
-        + pre_state.validators[other_index].effective_balance
-        + pre_state.validators[overlap_index].effective_balance
+        + get_validators(spec, pre_state)[other_index].effective_balance
+        + get_validators(spec, pre_state)[overlap_index].effective_balance
     )
 
 
@@ -828,7 +829,7 @@ def test_proposer_and_attester_slashings_partial_overlap(spec, state):
 def test_proposer_after_inactive_index(spec, state):
     # disable some low validator index to check after for
     inactive_index = 10
-    state.validators[inactive_index].exit_epoch = spec.get_current_epoch(state)
+    get_validators(spec, state)[inactive_index].exit_epoch = spec.get_current_epoch(state)
 
     # skip forward, get brand new proposers
     next_epoch_via_block(spec, state)
@@ -856,7 +857,7 @@ def test_high_proposer_index(spec, state):
     for i in range(len(state.validators) // 3):
         if is_post_fulu(spec) and i in state.proposer_lookahead:
             continue
-        state.validators[i].exit_epoch = current_epoch
+        get_validators(spec, state)[i].exit_epoch = current_epoch
 
     # skip forward, get brand new proposers
     state.slot = spec.SLOTS_PER_EPOCH * 2
@@ -1112,7 +1113,7 @@ def test_voluntary_exit(spec, state):
     initiate_exit_block.body.voluntary_exits = spec.VoluntaryExits(data=signed_exits)
     signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
-    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert get_validators(spec, state)[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     # Process within epoch transition
     exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
@@ -1121,7 +1122,7 @@ def test_voluntary_exit(spec, state):
     yield "blocks", [signed_initiate_exit_block, signed_exit_block]
     yield "post", state
 
-    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert get_validators(spec, state)[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases
@@ -1165,7 +1166,7 @@ def test_multiple_different_validator_exits_same_block(spec, state):
     signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
     for index in validator_indices:
-        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert get_validators(spec, state)[index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     # Process within epoch transition
     exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
@@ -1175,7 +1176,7 @@ def test_multiple_different_validator_exits_same_block(spec, state):
     yield "post", state
 
     for index in validator_indices:
-        assert state.validators[index].exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert get_validators(spec, state)[index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases
@@ -1199,10 +1200,10 @@ def test_balance_driven_status_transitions(spec, state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
 
-    assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert get_validators(spec, state)[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    state.validators[validator_index].effective_balance = spec.config.EJECTION_BALANCE
+    get_validators(spec, state)[validator_index].effective_balance = spec.config.EJECTION_BALANCE
 
     yield "pre", state
 
@@ -1213,7 +1214,7 @@ def test_balance_driven_status_transitions(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert get_validators(spec, state)[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
 # Requires always_bls because historical root period and sync committee period is same length

@@ -20,6 +20,7 @@ from eth_consensus_specs.test.helpers.constants import (
     MINIMAL,
     PQ,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
     state_transition_and_sign_block,
@@ -248,7 +249,7 @@ def _run_sync_committee_selected_twice(
 
     # Set validator's balance
     state.balances[validator_index] = pre_balance
-    state.validators[validator_index].effective_balance = min(
+    get_validators(spec, state)[validator_index].effective_balance = min(
         pre_balance - pre_balance % spec.EFFECTIVE_BALANCE_INCREMENT,
         spec.MAX_EFFECTIVE_BALANCE,
     )
@@ -572,12 +573,12 @@ def _exit_validator_from_committee_and_transition_state(
     spec, state, committee_indices, rng, target_epoch_provider, withdrawable_offset=1
 ):
     exited_validator_index = rng.sample(committee_indices, 1)[0]
-    validator = state.validators[exited_validator_index]
+    validator = get_validators(spec, state)[exited_validator_index]
     current_epoch = spec.get_current_epoch(state)
     validator.exit_epoch = current_epoch
     validator.withdrawable_epoch = validator.exit_epoch + withdrawable_offset
 
-    target_epoch = target_epoch_provider(state.validators[exited_validator_index])
+    target_epoch = target_epoch_provider(get_validators(spec, state)[exited_validator_index])
     target_slot = spec.compute_start_slot_at_epoch(target_epoch)
     transition_to(spec, state, target_slot)
 
@@ -612,7 +613,7 @@ def test_sync_committee_with_participating_exited_member(spec, state):
     )
 
     current_epoch = spec.get_current_epoch(state)
-    assert current_epoch < state.validators[exited_index].withdrawable_epoch
+    assert current_epoch < get_validators(spec, state)[exited_index].withdrawable_epoch
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -652,7 +653,7 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     exited_pubkey = state.validators[exited_index].pubkey
 
     current_epoch = spec.get_current_epoch(state)
-    assert current_epoch < state.validators[exited_index].withdrawable_epoch
+    assert current_epoch < get_validators(spec, state)[exited_index].withdrawable_epoch
 
     exited_committee_index = list(state.current_sync_committee.pubkeys).index(exited_pubkey)
     block = build_empty_block_for_next_slot(spec, state)
@@ -694,7 +695,7 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
     )
 
     current_epoch = spec.get_current_epoch(state)
-    assert current_epoch > state.validators[exited_index].withdrawable_epoch
+    assert current_epoch > get_validators(spec, state)[exited_index].withdrawable_epoch
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.sync_aggregate = spec.SyncAggregate(
@@ -734,7 +735,7 @@ def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
     exited_pubkey = state.validators[exited_index].pubkey
 
     current_epoch = spec.get_current_epoch(state)
-    assert current_epoch > state.validators[exited_index].withdrawable_epoch
+    assert current_epoch > get_validators(spec, state)[exited_index].withdrawable_epoch
 
     target_committee_index = list(state.current_sync_committee.pubkeys).index(exited_pubkey)
     block = build_empty_block_for_next_slot(spec, state)

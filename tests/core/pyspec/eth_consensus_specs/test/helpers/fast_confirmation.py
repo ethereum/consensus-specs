@@ -34,6 +34,7 @@ from eth_consensus_specs.test.helpers.genesis import (
     GENESIS_ETH1_BLOCK_HASH,
     get_sample_genesis_execution_payload,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
@@ -497,7 +498,9 @@ class FCRTest:
         if slashing_indices is None:
             assert slashing_percentage is not None
             slashing_count = len(state.validators) * slashing_percentage // 100
-            unslashed_indices = [idx for idx, val in enumerate(state.validators) if not val.slashed]
+            unslashed_indices = [
+                idx for idx, val in enumerate(get_validators(self.spec, state)) if not val.slashed
+            ]
             self.rng.shuffle(unslashed_indices)
             slashing_indices = unslashed_indices[:slashing_count]
         else:

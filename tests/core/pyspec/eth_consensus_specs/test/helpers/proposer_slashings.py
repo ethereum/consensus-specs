@@ -9,6 +9,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import get_balance, next_epoch
 from eth_consensus_specs.test.helpers.sync_committee import (
     compute_committee_indices,
@@ -63,8 +64,8 @@ def check_proposer_slashing_effect(
           payment's proposer, left intact otherwise
     """
     current_epoch = spec.get_current_epoch(state)
-    pre_validator = pre_state.validators[slashed_index]
-    post_validator = state.validators[slashed_index]
+    pre_validator = get_validators(spec, pre_state)[slashed_index]
+    post_validator = get_validators(spec, state)[slashed_index]
 
     # Verify slashed flag
     assert post_validator.slashed
@@ -202,7 +203,7 @@ def get_valid_proposer_slashings(spec, state, num_slashings):
     proposer_slashings = []
     for i in range(num_slashings):
         slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
-        assert not state.validators[slashed_index].slashed
+        assert not get_validators(spec, state)[slashed_index].slashed
 
         proposer_slashing = get_valid_proposer_slashing(
             spec, state, slashed_index=slashed_index, signed_1=True, signed_2=True
@@ -348,20 +349,20 @@ def prepare_process_proposer_slashing(
         signed_header_2 = spec.SignedBeaconBlockHeader(message=header_2)
 
     if proposer_slashed is not None:
-        state.validators[effective_proposer_1].slashed = proposer_slashed
+        get_validators(spec, state)[effective_proposer_1].slashed = proposer_slashed
 
     if proposer_activation_epoch_offset is not None:
-        state.validators[effective_proposer_1].activation_epoch = (
+        get_validators(spec, state)[effective_proposer_1].activation_epoch = (
             current_epoch + proposer_activation_epoch_offset
         )
 
     if proposer_withdrawable_epoch_offset is not None:
-        state.validators[effective_proposer_1].withdrawable_epoch = (
+        get_validators(spec, state)[effective_proposer_1].withdrawable_epoch = (
             current_epoch + proposer_withdrawable_epoch_offset
         )
 
     if proposer_exit_epoch_offset is not None:
-        state.validators[effective_proposer_1].exit_epoch = (
+        get_validators(spec, state)[effective_proposer_1].exit_epoch = (
             current_epoch + proposer_exit_epoch_offset
         )
 
@@ -369,7 +370,9 @@ def prepare_process_proposer_slashing(
         state.balances[effective_proposer_1] = proposer_balance
 
     if proposer_effective_balance is not None:
-        state.validators[effective_proposer_1].effective_balance = proposer_effective_balance
+        get_validators(spec, state)[
+            effective_proposer_1
+        ].effective_balance = proposer_effective_balance
 
     # Set builder payment (GLOAS+)
     # Uses slot from header_1, consistent with spec's process_proposer_slashing

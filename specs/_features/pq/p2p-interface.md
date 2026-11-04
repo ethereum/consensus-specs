@@ -27,6 +27,7 @@
       - [Modified `payload_attestation_message`](#modified-payload_attestation_message)
       - [Modified `execution_payload_bid`](#modified-execution_payload_bid)
       - [Modified `proposer_preferences`](#modified-proposer_preferences)
+      - [Modified `attester_slashing`](#modified-attester_slashing)
     - [Attestation subnets](#attestation-subnets)
       - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
     - [Sync committee subnets](#sync-committee-subnets)
@@ -267,16 +268,16 @@ def validate_beacon_block_gossip(
     state = store.block_states[get_head(store).root]
 
     # [REJECT] The proposer index is a valid validator index
-    if block.proposer_index >= len(state.validators):
+    # [Modified in PQ]
+    if block.proposer_index >= len(state.pq_validators):
         raise GossipReject("proposer index out of range")
 
     # [REJECT] The proposer signature is valid
-    proposer = state.validators[block.proposer_index]
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(block, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+    pubkey = state.pq_validators[block.proposer_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
@@ -416,12 +417,11 @@ def validate_beacon_aggregate_and_proof_gossip(
     # Removed the selection proof signature check
 
     # [REJECT] The aggregator signature is valid
-    aggregator = state.validators[aggregator_index]
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, aggregator.pubkey)
+    pubkey = state.pq_validators[aggregator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
@@ -477,10 +477,12 @@ def validate_voluntary_exit_gossip(
     state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
-    if validator_index >= len(state.validators):
+    # [Modified in PQ]
+    if validator_index >= len(state.pq_validators):
         raise GossipReject("validator index out of range")
 
-    validator = state.validators[validator_index]
+    # [Modified in PQ]
+    validator = state.pq_validators[validator_index]
     current_epoch = get_current_epoch(state)
 
     # [IGNORE] The validator has not already initiated exit
@@ -508,7 +510,7 @@ def validate_voluntary_exit_gossip(
     leaf_index = compute_xmss_leaf_index(
         compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
     )
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    pubkey = state.pq_validators[validator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
         raise GossipReject("invalid voluntary exit signature")
 
@@ -551,11 +553,13 @@ def validate_proposer_slashing_gossip(
     state = store.block_states[get_head(store).root]
 
     # [REJECT] The proposer index is a valid validator index
-    if proposer_index >= len(state.validators):
+    # [Modified in PQ]
+    if proposer_index >= len(state.pq_validators):
         raise GossipReject("proposer index out of range")
 
     # [REJECT] The proposer is slashable
-    proposer = state.validators[proposer_index]
+    # [Modified in PQ]
+    proposer = state.pq_validators[proposer_index]
     if not is_slashable_validator(proposer, get_current_epoch(state)):
         raise GossipReject("proposer is not slashable")
 
@@ -569,7 +573,7 @@ def validate_proposer_slashing_gossip(
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
+        pubkey = state.pq_validators[proposer_index].pubkey
         if not xmss.Verify(pubkey, leaf_index, signing_root, signed_header.signature):
             raise GossipReject("invalid proposer slashing signature")
 
@@ -626,7 +630,8 @@ def validate_payload_attestation_message_gossip(
     state = store.block_states[get_head(store).root]
 
     # [REJECT] The validator index is valid
-    if validator_index >= len(state.validators):
+    # [Modified in PQ]
+    if validator_index >= len(state.pq_validators):
         raise GossipReject("validator index out of range")
 
     # [REJECT] The validator is a member of the payload timeliness committee
@@ -634,12 +639,11 @@ def validate_payload_attestation_message_gossip(
         raise GossipReject("validator is not in the payload timeliness committee")
 
     # [REJECT] The signature is valid
-    validator = state.validators[validator_index]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    pubkey = state.pq_validators[validator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, payload_attestation_message.signature):
         raise GossipReject("invalid payload attestation signature")
 
@@ -754,10 +758,12 @@ def validate_execution_payload_bid_gossip(
     process_slots(state, bid.slot)
 
     # [REJECT] The builder index is valid
-    if bid.builder_index >= len(state.builders):
+    # [Modified in PQ]
+    if bid.builder_index >= len(state.pq_builders):
         raise GossipReject("builder index out of range")
 
-    builder = state.builders[bid.builder_index]
+    # [Modified in PQ]
+    builder = state.pq_builders[bid.builder_index]
 
     # [REJECT] The builder is a payload builder
     if builder.version != PAYLOAD_BUILDER_VERSION:
@@ -775,7 +781,8 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
         envelope = store.payloads[bid.parent_block_root]
         for request in envelope.execution_requests.builder_exits:
-            if request.pubkey == builder.pubkey:
+            # [Modified in PQ]
+            if request.pubkey == state.builders[bid.builder_index].pubkey:
                 if request.source_address == builder.execution_address:
                     raise GossipIgnore("builder may exit")
 
@@ -854,7 +861,6 @@ def validate_proposer_preferences_gossip(
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The signature is valid
-    validator = state.validators[preferences.validator_index]
     domain = compute_domain(
         DOMAIN_PROPOSER_PREFERENCES,
         compute_fork_version(proposal_epoch),
@@ -865,12 +871,75 @@ def validate_proposer_preferences_gossip(
     leaf_index = compute_xmss_leaf_index(
         preferences.proposal_slot, LEAF_OFFSET_PROPOSER_PREFERENCES
     )
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    pubkey = state.pq_validators[preferences.validator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_proposer_preferences.signature):
         raise GossipReject("invalid proposer preferences signature")
 
     # Mark these preferences as seen
     seen.proposer_preferences[prefs_key] = preferences
+```
+
+##### Modified `attester_slashing`
+
+```python
+def validate_attester_slashing_gossip(
+    seen: Seen,
+    store: Store,
+    attester_slashing: AttesterSlashing,
+) -> None:
+    """
+    Validate an AttesterSlashing for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    attestation_1 = attester_slashing.attestation_1
+    attestation_2 = attester_slashing.attestation_2
+
+    attesting_indices_1 = set(attestation_1.attesting_indices)
+    attesting_indices_2 = set(attestation_2.attesting_indices)
+    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
+
+    # [IGNORE] At least one index in the intersection has not yet been seen
+    new_indices = slashable_indices.difference(seen.attester_slashing_indices)
+    if len(new_indices) == 0:
+        raise GossipIgnore("all attester slashing indices already seen")
+
+    # [REJECT] The attestation data is slashable (double vote or surround vote)
+    if not is_slashable_attestation_data(attestation_1.data, attestation_2.data):
+        raise GossipReject("attestation data is not slashable")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] All validator indices in the first indexed attestation are valid
+    # [Modified in PQ]
+    if any(index >= len(state.pq_validators) for index in attestation_1.attesting_indices):
+        raise GossipReject("validator index out of range in indexed attestation 1")
+
+    # [REJECT] The first indexed attestation has valid properties
+    if not is_valid_indexed_attestation(state, attestation_1):
+        raise GossipReject("invalid indexed attestation 1")
+
+    # [REJECT] All validator indices in the second indexed attestation are valid
+    # [Modified in PQ]
+    if any(index >= len(state.pq_validators) for index in attestation_2.attesting_indices):
+        raise GossipReject("validator index out of range in indexed attestation 2")
+
+    # [REJECT] The second indexed attestation has valid properties
+    if not is_valid_indexed_attestation(state, attestation_2):
+        raise GossipReject("invalid indexed attestation 2")
+
+    # [REJECT] At least one validator in the intersection is slashable
+    slashable_any = False
+    current_epoch = get_current_epoch(state)
+    for index in slashable_indices:
+        # [Modified in PQ]
+        if is_slashable_validator(state.pq_validators[index], current_epoch):
+            slashable_any = True
+            break
+    if not slashable_any:
+        raise GossipReject("no slashable validators in intersection")
+
+    # Mark these indices as seen
+    seen.attester_slashing_indices.update(slashable_indices)
 ```
 
 #### Attestation subnets
@@ -953,12 +1022,11 @@ def validate_beacon_attestation_gossip(
         raise GossipReject("attester is not a member of the committee")
 
     # [REJECT] The attestation signature is valid
-    attester = state.validators[attester_index]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_BEACON_ATTESTER)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, attester.pubkey)
+    pubkey = state.pq_validators[attester_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")
 

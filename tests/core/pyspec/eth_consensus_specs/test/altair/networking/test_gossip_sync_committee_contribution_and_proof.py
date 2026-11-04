@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import transition_to
 from eth_consensus_specs.utils import bls
 
@@ -47,10 +48,10 @@ def get_other_sync_committee_aggregator(spec, state, subcommittee_index, exclude
     """
     subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(state, subcommittee_index)
     excluded_indices = set(excluded_indices)
-    for validator_index, validator in enumerate(state.validators):
+    for validator_index, validator in enumerate(get_validators(spec, state)):
         if validator_index in excluded_indices:
             continue
-        if validator.pubkey not in subcommittee_pubkeys:
+        if state.validators[validator_index].pubkey not in subcommittee_pubkeys:
             continue
         selection_proof = spec.get_sync_committee_selection_proof(
             state,
@@ -697,8 +698,8 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
 
     second_pubkey = subcommittee_pubkeys[second_bit]
     second_validator_index = None
-    for vi, v in enumerate(state.validators):
-        if v.pubkey == second_pubkey:
+    for vi, v in enumerate(get_validators(spec, state)):
+        if state.validators[vi].pubkey == second_pubkey:
             second_validator_index = vi
             break
 
@@ -829,8 +830,8 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
 
     second_pubkey = subcommittee_pubkeys[second_bit]
     second_validator_index = None
-    for vi, v in enumerate(state.validators):
-        if v.pubkey == second_pubkey:
+    for vi, v in enumerate(get_validators(spec, state)):
+        if state.validators[vi].pubkey == second_pubkey:
             second_validator_index = vi
             break
 

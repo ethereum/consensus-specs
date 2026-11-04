@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_aggregate_attestation,
     sign_attestation,
 )
+from eth_consensus_specs.test.helpers.registry import set_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
     next_slots,
@@ -160,7 +161,7 @@ def reduce_state_committee_count_from_max(spec, state):
         spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
         >= spec.MAX_COMMITTEES_PER_SLOT
     ):
-        state.validators = spec.Validators(data=state.validators[: len(state.validators) // 2])
+        set_validators(spec, state, state.validators[: len(state.validators) // 2])
         state.balances = spec.Balances(data=state.balances[: len(state.balances) // 2])
 
 

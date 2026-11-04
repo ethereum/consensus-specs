@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     simulate_lookahead,
@@ -28,7 +29,7 @@ def run_test_effective_balance_increase_changes_lookahead(
     for validator_index in active_validator_indices:
         # Set compounding withdrawal credentials for the validator
         set_compounding_withdrawal_credential(spec, state, validator_index)
-        state.validators[validator_index].effective_balance = 32000000000
+        get_validators(spec, state)[validator_index].effective_balance = 32000000000
         # Set balance to close the next hysteresis threshold
         state.balances[validator_index] = 33250000000 - 1
 

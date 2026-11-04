@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_to,
     run_epoch_processing_with,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
 )
@@ -30,10 +31,10 @@ def test_basic_pending_consolidation(spec, state):
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
     # Set the target withdrawal credential to eth1
     eth1_withdrawal_credential = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    state.validators[target_index].withdrawal_credentials = eth1_withdrawal_credential
+    get_validators(spec, state)[target_index].withdrawal_credentials = eth1_withdrawal_credential
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
@@ -55,7 +56,7 @@ def test_consolidation_not_yet_withdrawable_validator(spec, state):
     )
     # Set the target to eth1 withdrawal credentials
     eth1_withdrawal_credential = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    state.validators[target_index].withdrawal_credentials = eth1_withdrawal_credential
+    get_validators(spec, state)[target_index].withdrawal_credentials = eth1_withdrawal_credential
     # Initiate exit of source validator
     spec.initiate_validator_exit(state, source_index)
 
@@ -89,15 +90,15 @@ def test_skip_consolidation_when_source_slashed(spec, state):
     )
 
     eth1_withdrawal_credential = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    state.validators[target0_index].withdrawal_credentials = eth1_withdrawal_credential
-    state.validators[target1_index].withdrawal_credentials = eth1_withdrawal_credential
+    get_validators(spec, state)[target0_index].withdrawal_credentials = eth1_withdrawal_credential
+    get_validators(spec, state)[target1_index].withdrawal_credentials = eth1_withdrawal_credential
 
     # Set withdrawable epoch of sources to current epoch to allow processing
-    state.validators[source0_index].withdrawable_epoch = spec.get_current_epoch(state)
-    state.validators[source1_index].withdrawable_epoch = spec.get_current_epoch(state)
+    get_validators(spec, state)[source0_index].withdrawable_epoch = spec.get_current_epoch(state)
+    get_validators(spec, state)[source1_index].withdrawable_epoch = spec.get_current_epoch(state)
 
     # set first source as slashed
-    state.validators[source0_index].slashed = True
+    get_validators(spec, state)[source0_index].slashed = True
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
 
     # first pending consolidation should not be processed
@@ -124,13 +125,15 @@ def test_all_consolidation_cases_together(spec, state):
     )
     # Set withdrawable epoch to current epoch for first and last source validators
     for i in [0, 2]:
-        state.validators[source_index[i]].withdrawable_epoch = current_epoch
+        get_validators(spec, state)[source_index[i]].withdrawable_epoch = current_epoch
     # Set second source validator as slashed
-    state.validators[source_index[1]].slashed = True
+    get_validators(spec, state)[source_index[1]].slashed = True
     # Set targets withdrawal credentials to eth1
     eth1_withdrawal_credential = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     for i in range(4):
-        state.validators[target_index[i]].withdrawal_credentials = eth1_withdrawal_credential
+        get_validators(spec, state)[
+            target_index[i]
+        ].withdrawal_credentials = eth1_withdrawal_credential
     # Initiate exit of third source validator
     spec.initiate_validator_exit(state, 2)
 
@@ -158,7 +161,7 @@ def test_pending_consolidation_future_epoch(spec, state):
     # initiate source exit
     spec.initiate_validator_exit(state, source_index)
     # set withdrawable_epoch to exit_epoch + 1
-    state.validators[source_index].withdrawable_epoch = state.validators[
+    get_validators(spec, state)[source_index].withdrawable_epoch = get_validators(spec, state)[
         source_index
     ].exit_epoch + spec.Epoch(1)
     # append pending consolidation
@@ -167,10 +170,10 @@ def test_pending_consolidation_future_epoch(spec, state):
     )
     # Set the target withdrawal credential to eth1
     eth1_withdrawal_credential = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    state.validators[target_index].withdrawal_credentials = eth1_withdrawal_credential
+    get_validators(spec, state)[target_index].withdrawal_credentials = eth1_withdrawal_credential
 
     # Advance to withdrawable_epoch - 1 with full participation
-    target_epoch = state.validators[source_index].withdrawable_epoch - spec.Epoch(1)
+    target_epoch = get_validators(spec, state)[source_index].withdrawable_epoch - spec.Epoch(1)
     while spec.get_current_epoch(state) < target_epoch:
         next_epoch_with_full_participation(spec, state)
 
@@ -201,7 +204,7 @@ def test_pending_consolidation_compounding_creds(spec, state):
     # initiate source exit
     spec.initiate_validator_exit(state, source_index)
     # set withdrawable_epoch to exit_epoch + 1
-    state.validators[source_index].withdrawable_epoch = state.validators[
+    get_validators(spec, state)[source_index].withdrawable_epoch = get_validators(spec, state)[
         source_index
     ].exit_epoch + spec.Epoch(1)
     # append pending consolidation
@@ -209,15 +212,15 @@ def test_pending_consolidation_compounding_creds(spec, state):
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set the source and the target withdrawal credential to compounding
-    state.validators[source_index].withdrawal_credentials = (
+    get_validators(spec, state)[source_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
-    state.validators[target_index].withdrawal_credentials = (
+    get_validators(spec, state)[target_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x12" * 20
     )
 
     # Advance to withdrawable_epoch - 1 with full participation
-    target_epoch = state.validators[source_index].withdrawable_epoch - spec.Epoch(1)
+    target_epoch = get_validators(spec, state)[source_index].withdrawable_epoch - spec.Epoch(1)
     while spec.get_current_epoch(state) < target_epoch:
         next_epoch_with_full_participation(spec, state)
 
@@ -253,7 +256,7 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     # initiate source exit
     spec.initiate_validator_exit(state, source_index)
     # set withdrawable_epoch to exit_epoch + 1
-    source = state.validators[source_index]
+    source = get_validators(spec, state)[source_index]
     source.withdrawable_epoch = source.exit_epoch + spec.Epoch(1)
     # append pending consolidation
     state.pending_consolidations.append(
@@ -261,7 +264,7 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     )
     # append pending deposit
     pending_deposit = spec.PendingDeposit(
-        pubkey=source.pubkey,
+        pubkey=state.validators[source_index].pubkey,
         withdrawal_credentials=source.withdrawal_credentials,
         amount=spec.MIN_ACTIVATION_BALANCE,
         signature=spec.bls.G2_POINT_AT_INFINITY,
@@ -269,10 +272,10 @@ def test_pending_consolidation_with_pending_deposit(spec, state):
     )
     state.pending_deposits.append(pending_deposit)
     # Set the source and the target withdrawal credential to compounding
-    state.validators[source_index].withdrawal_credentials = (
+    get_validators(spec, state)[source_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
     )
-    state.validators[target_index].withdrawal_credentials = (
+    get_validators(spec, state)[target_index].withdrawal_credentials = (
         spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x12" * 20
     )
 
@@ -313,20 +316,21 @@ def test_pending_consolidation_source_balance_less_than_max_effective(spec, stat
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
     # Set source and target withdrawal credential to eth1
     set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
     set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
     # Set the source balance to be less than effective_balance
     pre_balance_source = (
-        state.validators[source_index].effective_balance - spec.EFFECTIVE_BALANCE_INCREMENT // 8
+        get_validators(spec, state)[source_index].effective_balance
+        - spec.EFFECTIVE_BALANCE_INCREMENT // 8
     )
     state.balances[source_index] = pre_balance_source
 
     pre_balance_target = state.balances[target_index]
 
     assert state.balances[source_index] < spec.get_max_effective_balance(
-        state.validators[source_index]
+        get_validators(spec, state)[source_index]
     )
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
@@ -348,18 +352,22 @@ def test_pending_consolidation_source_balance_greater_than_max_effective(spec, s
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
     # Set source and target withdrawal credential to eth1
     set_eth1_withdrawal_credential_with_balance(spec, state, source_index)
     set_eth1_withdrawal_credential_with_balance(spec, state, target_index)
     # Set the source balance to be greater than effective_balance
     excess_source_balance = spec.EFFECTIVE_BALANCE_INCREMENT // 8
-    pre_balance_source = state.validators[source_index].effective_balance + excess_source_balance
+    pre_balance_source = (
+        get_validators(spec, state)[source_index].effective_balance + excess_source_balance
+    )
     state.balances[source_index] = pre_balance_source
 
     pre_balance_target = state.balances[target_index]
 
-    source_max_effective_balance = spec.get_max_effective_balance(state.validators[source_index])
+    source_max_effective_balance = spec.get_max_effective_balance(
+        get_validators(spec, state)[source_index]
+    )
     assert state.balances[source_index] > source_max_effective_balance
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
@@ -381,20 +389,21 @@ def test_pending_consolidation_source_balance_less_than_max_effective_compoundin
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
     # Set source and target withdrawal credential to compounding
     set_compounding_withdrawal_credential_with_balance(spec, state, source_index)
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
     # Set the source balance to be less than effective_balance
     pre_balance_source = (
-        state.validators[source_index].effective_balance - spec.EFFECTIVE_BALANCE_INCREMENT // 8
+        get_validators(spec, state)[source_index].effective_balance
+        - spec.EFFECTIVE_BALANCE_INCREMENT // 8
     )
     state.balances[source_index] = pre_balance_source
 
     pre_balance_target = state.balances[target_index]
 
     assert state.balances[source_index] < spec.get_max_effective_balance(
-        state.validators[source_index]
+        get_validators(spec, state)[source_index]
     )
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
@@ -416,18 +425,22 @@ def test_pending_consolidation_source_balance_greater_than_max_effective_compoun
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
     # Set source and target withdrawal credential to compounding
     set_compounding_withdrawal_credential_with_balance(spec, state, source_index)
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
     # Set the source balance to be greater than effective_balance
     excess_source_balance = spec.EFFECTIVE_BALANCE_INCREMENT // 8
-    pre_balance_source = state.validators[source_index].effective_balance + excess_source_balance
+    pre_balance_source = (
+        get_validators(spec, state)[source_index].effective_balance + excess_source_balance
+    )
     state.balances[source_index] = pre_balance_source
 
     pre_balance_target = state.balances[target_index]
 
-    source_max_effective_balance = spec.get_max_effective_balance(state.validators[source_index])
+    source_max_effective_balance = spec.get_max_effective_balance(
+        get_validators(spec, state)[source_index]
+    )
     assert state.balances[source_index] > source_max_effective_balance
 
     yield from run_epoch_processing_with(spec, state, "process_pending_consolidations")
@@ -461,7 +474,7 @@ def prepare_consolidation_and_state(
         spec.PendingConsolidation(source_index=source_index, target_index=target_index)
     )
     # Set withdrawable epoch to current epoch to allow processing
-    state.validators[source_index].withdrawable_epoch = current_epoch
+    get_validators(spec, state)[source_index].withdrawable_epoch = current_epoch
 
     # Set source and target withdrawal credentials
     if creds_type == "eth1":
@@ -471,7 +484,7 @@ def prepare_consolidation_and_state(
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Set source balances
-    source = state.validators[source_index]
+    source = get_validators(spec, state)[source_index]
     max_eb = spec.get_max_effective_balance(source)
     if eb_to_min_ab == "<":
         source.effective_balance = spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
@@ -520,7 +533,8 @@ def run_balance_computation_test(spec, state, instance_tuples):
     for source_index in range(0, max_index, 2):
         target_index = source_index + 1
         consolidated_balance = min(
-            pre_state.validators[source_index].effective_balance, pre_state.balances[source_index]
+            get_validators(spec, pre_state)[source_index].effective_balance,
+            pre_state.balances[source_index],
         )
         assert (
             state.balances[source_index] == pre_state.balances[source_index] - consolidated_balance

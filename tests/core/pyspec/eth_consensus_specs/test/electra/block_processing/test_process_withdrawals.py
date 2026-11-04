@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
@@ -265,7 +266,7 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.validators[pending_withdrawal.validator_index].effective_balance = (
+    get_validators(spec, state)[pending_withdrawal.validator_index].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 
@@ -297,7 +298,7 @@ def test_full_pending_withdrawals_but_first_skipped_low_effective_balance(spec, 
     )
 
     # For the first pending withdrawal, set the validator to insufficient effective balance
-    state.validators[0].effective_balance = (
+    get_validators(spec, state)[0].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 

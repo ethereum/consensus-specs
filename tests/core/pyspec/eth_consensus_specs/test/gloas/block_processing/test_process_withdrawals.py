@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.builders import add_builder_to_registry
+from eth_consensus_specs.test.helpers.registry import get_builders, get_validators
 from eth_consensus_specs.test.helpers.withdrawals import (
     assert_process_withdrawals,
     check_is_partially_withdrawable_validator,
@@ -30,7 +31,7 @@ def test_single_builder_withdrawal(spec, state):
     Test processing a single builder withdrawal.
 
     Input State Configured:
-        - state.builders[0]: Builder exists in registry with sufficient balance
+        - get_builders(spec, state)[0]: Builder exists in registry with sufficient balance
         - builder_pending_withdrawals: Contains 1 entry for builder 0
         - builder_pending_withdrawals[0].amount: 1 ETH
         - builders[0].balance: >= amount
@@ -73,7 +74,7 @@ def test_multiple_builder_withdrawals(spec, state):
     Test processing multiple builder withdrawals.
 
     Input State Configured:
-        - state.builders[0,1,2]: Builders exist in registry with sufficient balance
+        - get_builders(spec, state)[0,1,2]: Builders exist in registry with sufficient balance
         - builder_pending_withdrawals: Contains 3 entries for builders 0, 1, 2
         - builder_pending_withdrawals[*].amount: 0.5 ETH each
         - builders[0,1,2].balance: >= amount
@@ -118,7 +119,7 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
     Test builder withdrawal with insufficient balance.
 
     Input State Configured:
-        - state.builders[0]: Builder exists with only 1 ETH balance
+        - get_builders(spec, state)[0]: Builder exists with only 1 ETH balance
         - builder_pending_withdrawals: Contains 1 entry requesting 5 ETH
         - builders[0].balance: 1 ETH (insufficient for requested 5 ETH)
 
@@ -166,7 +167,7 @@ def test_builder_withdrawal_insufficient_balance_realistic_bounds(spec, state):
     realistic builder balances (builders need MIN_DEPOSIT_AMOUNT to be active).
 
     Input State Configured:
-        - state.builders[0]: Builder with balance = MIN_DEPOSIT_AMOUNT + 122 Gwei
+        - get_builders(spec, state)[0]: Builder with balance = MIN_DEPOSIT_AMOUNT + 122 Gwei
         - builder_pending_withdrawals: Contains 1 entry requesting MIN_DEPOSIT_AMOUNT + 123 Gwei
         - builders[0].balance: Insufficient by exactly 1 Gwei
 
@@ -474,7 +475,7 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     validator sweep withdrawals.
 
     Input State Configured:
-        - state.builders[0..N]: Builders exist in registry with sufficient balance
+        - get_builders(spec, state)[0..N]: Builders exist in registry with sufficient balance
         - builder_pending_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD + 2 entries
         - validators[*].balances: Capped to prevent sweep withdrawals
 
@@ -497,12 +498,15 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     capped_validator_balances = {
         i: min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
         for i in range(len(state.validators))
-        if state.validators[i].withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+        if get_validators(spec, state)[i].withdrawal_credentials[0:1]
+        == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     }
 
     # Builder balances, ensure at least enough for withdrawal
     builder_balance_values = {
-        i: max(state.builders[i].balance, withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+        i: max(
+            get_builders(spec, state)[i].balance, withdrawal_amount + spec.MIN_ACTIVATION_BALANCE
+        )
         for i in builder_indices
     }
 
@@ -700,7 +704,7 @@ def test_builder_uses_fee_recipient_address(spec, state):
     Builder withdrawal should use fee_recipient address from BuilderPendingWithdrawal.
 
     Input State Configured:
-        - state.builders[0]: Builder exists with custom execution_address (0xab * 20)
+        - get_builders(spec, state)[0]: Builder exists with custom execution_address (0xab * 20)
         - builders[0].balance: Sufficient for withdrawal
         - builder_pending_withdrawals[0].fee_recipient: Custom address from builder
 
@@ -854,7 +858,7 @@ def test_all_builder_withdrawals_zero_balance(spec, state):
     Builders with zero balance - withdrawals still processed but with zero deduction.
 
     Input State Configured:
-        - state.builders[0,1]: Builders exist with zero balance
+        - get_builders(spec, state)[0,1]: Builders exist with zero balance
         - builder_pending_withdrawals: 2 entries requesting MIN_ACTIVATION_BALANCE each
         - validators[0].withdrawable_epoch: <= current_epoch (sweep eligible)
 
@@ -911,7 +915,7 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
     Exactly MAX-1 builder withdrawals should leave exactly 1 slot for regular withdrawal.
 
     Input State Configured:
-        - state.builders[0..MAX-2]: Builders exist in registry with sufficient balance
+        - get_builders(spec, state)[0..MAX-2]: Builders exist in registry with sufficient balance
         - builder_pending_withdrawals: MAX-1 entries
         - validators[0, 1, 2].withdrawable_epoch: <= current_epoch (sweep eligible)
         - next_withdrawal_validator_index: Set to first sweep validator
@@ -980,7 +984,7 @@ def test_builder_zero_withdrawal_amount(spec, state):
     Builder withdrawal with amount = 0 produces a withdrawal entry with 0 amount.
 
     Input State Configured:
-        - state.builders[0]: Builder with balance in registry
+        - get_builders(spec, state)[0]: Builder with balance in registry
         - builder_pending_withdrawals: 1 entry with amount = 0
 
     Output State Verified:
@@ -1054,17 +1058,19 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
     withdrawal_amount = spec.Gwei(1_000_000_000)
     state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
     for builder_index in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
-        state.builders[builder_index].balance = withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        get_builders(spec, state)[builder_index].balance = (
+            withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        )
         state.builder_pending_withdrawals.append(
             spec.BuilderPendingWithdrawal(
                 builder_index=spec.BuilderIndex(builder_index),
-                fee_recipient=state.builders[builder_index].execution_address,
+                fee_recipient=get_builders(spec, state)[builder_index].execution_address,
                 amount=withdrawal_amount,
             )
         )
 
     # Setup: Cap validator balances to prevent any sweep withdrawals
-    for i, validator in enumerate(state.validators):
+    for i, validator in enumerate(get_validators(spec, state)):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
@@ -1518,7 +1524,7 @@ def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
     already populated payload_expected_withdrawals.
 
     Input State Configured:
-        - state.builders[0]: Builder with pending withdrawal (1 ETH)
+        - get_builders(spec, state)[0]: Builder with pending withdrawal (1 ETH)
         - payload_expected_withdrawals: Populated by a prior full-parent pass
         - next_withdrawal_index: Advanced by the prior pass
         - latest_block_hash: != latest_execution_payload_bid.block_hash (parent EMPTY)

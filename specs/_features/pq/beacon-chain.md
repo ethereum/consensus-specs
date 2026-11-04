@@ -6,7 +6,8 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [New `PQDataList`](#new-pqdatalist)
+  - [New `PQBuilders`](#new-pqbuilders)
+  - [New `PQValidators`](#new-pqvalidators)
   - [New `XMSSAggregateSignature`](#new-xmssaggregatesignature)
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
@@ -31,20 +32,54 @@
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SingleAttestation`](#singleattestation)
   - [New containers](#new-containers)
-    - [`PQData`](#pqdata)
+    - [`PQBuilder`](#pqbuilder)
+    - [`PQValidator`](#pqvalidator)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
   - [Misc](#misc)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
+    - [Modified `can_builder_cover_bid`](#modified-can_builder_cover_bid)
+    - [Modified `compute_balance_weighted_selection`](#modified-compute_balance_weighted_selection)
+    - [Modified `get_max_effective_balance`](#modified-get_max_effective_balance)
   - [Predicates](#predicates)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
+    - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
+    - [Modified `has_eth1_withdrawal_credential`](#modified-has_eth1_withdrawal_credential)
+    - [Modified `has_execution_withdrawal_credential`](#modified-has_execution_withdrawal_credential)
+    - [Modified `is_active_builder`](#modified-is_active_builder)
+    - [Modified `is_active_validator`](#modified-is_active_validator)
+    - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
+    - [Modified `is_eligible_for_activation_queue`](#modified-is_eligible_for_activation_queue)
+    - [Modified `is_eligible_for_partial_withdrawals`](#modified-is_eligible_for_partial_withdrawals)
+    - [Modified `is_fully_withdrawable_validator`](#modified-is_fully_withdrawable_validator)
+    - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
+    - [Modified `is_slashable_validator`](#modified-is_slashable_validator)
   - [Beacon state accessors](#beacon-state-accessors)
-    - [New `get_xmss_pubkey`](#new-get_xmss_pubkey)
+    - [Modified `get_active_validator_indices`](#modified-get_active_validator_indices)
+    - [Modified `get_base_reward`](#modified-get_base_reward)
+    - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
+    - [Modified `get_eligible_validator_indices`](#modified-get_eligible_validator_indices)
+    - [Modified `get_flag_index_deltas`](#modified-get_flag_index_deltas)
+    - [Modified `get_inactivity_penalty_deltas`](#modified-get_inactivity_penalty_deltas)
+    - [Modified `get_total_balance`](#modified-get_total_balance)
+    - [Modified `get_unslashed_participating_indices`](#modified-get_unslashed_participating_indices)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [Modified `initiate_builder_exit`](#modified-initiate_builder_exit)
+    - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
+    - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [Modified `process_effective_balance_updates`](#modified-process_effective_balance_updates)
+    - [Modified `process_participation_flag_updates`](#modified-process_participation_flag_updates)
+    - [Modified `process_pending_consolidations`](#modified-process_pending_consolidations)
+    - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
+    - [Modified `process_registry_updates`](#modified-process_registry_updates)
+    - [Modified `process_rewards_and_penalties`](#modified-process_rewards_and_penalties)
+    - [Modified `process_slashings`](#modified-process_slashings)
+    - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
     - [Modified `process_randao`](#modified-process_randao)
@@ -58,8 +93,26 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
       - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
+      - [Attestations](#attestations)
+        - [Modified `process_attestation`](#modified-process_attestation)
+      - [Modified `process_attester_slashing`](#modified-process_attester_slashing)
+      - [Builder deposit requests](#builder-deposit-requests)
+        - [Modified `process_builder_deposit_request`](#modified-process_builder_deposit_request)
+      - [Builder exit requests](#builder-exit-requests)
+        - [Modified `process_builder_exit_request`](#modified-process_builder_exit_request)
+      - [Execution-layer withdrawal requests](#execution-layer-withdrawal-requests)
+        - [Modified `process_withdrawal_request`](#modified-process_withdrawal_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+    - [Withdrawals](#withdrawals)
+      - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
+      - [Modified `get_builder_balance_after_withdrawals`](#modified-get_builder_balance_after_withdrawals)
+      - [Modified `get_builders_sweep_withdrawals`](#modified-get_builders_sweep_withdrawals)
+      - [Modified `get_pending_partial_withdrawals`](#modified-get_pending_partial_withdrawals)
+      - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
+      - [Modified `update_next_withdrawal_builder_index`](#modified-update_next_withdrawal_builder_index)
+    - [Modified `process_block_header`](#modified-process_block_header)
+    - [Modified `update_next_withdrawal_validator_index`](#modified-update_next_withdrawal_validator_index)
 
 <!-- mdformat-toc end -->
 
@@ -88,16 +141,24 @@ values, produced and checked by `xmss.Aggregate` and `xmss.AggregateVerify`. The
 reference implementation concatenates signatures as a stand-in for a succinct
 aggregation scheme.
 
-Validators and builders keep their BLS public keys as identifiers, so execution
-layer requests and deposits still refer to them by BLS public key. Their XMSS
-public keys and VRF data, registered with EIP-8483 before the fork, are stored
-in `state.pq_data`, and every signature is verified against the XMSS public key
-found there. Validators and builders that did not register are exited at the
-fork. See [the fork document](./fork.md) for details.
+The validator and builder registries move to `state.pq_validators` and
+`state.pq_builders`, whose records carry the XMSS public key registered with
+EIP-8483 before the fork, and for validators the registered VRF data. The fork
+copies every validator and builder into them at the same index. From then on the
+state transition reads and writes only the new registries, and
+`state.validators` and `state.builders` are frozen. Validators and builders that
+did not register are exited at the fork. See [the fork document](./fork.md) for
+details.
 
-*Note*: A validator or builder that deposits after the fork has no entry in
-`state.pq_data`, so it cannot sign. Deposits also still carry a BLS proof of
-possession. A way to register keys after the fork is left open.
+Execution layer requests and deposits still name validators and builders by BLS
+public key. The frozen registries keep those keys, so a request finds its index
+there and acts on the record at that index in the new registry.
+
+*Note*: A deposit for a public key that is not in the registry cannot create a
+validator, because it carries no XMSS public key. It stays in
+`state.pending_deposits` and is postponed every epoch without consuming churn. A
+builder deposit for a new public key waits in `state.pending_builder_deposits`.
+A way to register keys after the fork is left open.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 Balances behind `0x00` withdrawal credentials stay locked until a later upgrade
@@ -115,13 +176,21 @@ which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
 
-### New `PQDataList`
+### New `PQBuilders`
 
 ```python
-class PQDataList(ProgressiveList[PQData]):
+class PQBuilders(ProgressiveList[PQBuilder]):
     """
-    The post-quantum keys and VRF data of validators and builders, at most one
-    entry per role and BLS public key.
+    The builder registry, which replaces ``Builders`` from PQ onwards.
+    """
+```
+
+### New `PQValidators`
+
+```python
+class PQValidators(ProgressiveList[PQValidator]):
+    """
+    The validator registry, which replaces ``Validators`` from PQ onwards.
     """
 ```
 
@@ -243,7 +312,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=48, gaps=(22, 23, 46))
+    ACTIVE_FIELDS = active_fields(width=50, gaps=(22, 23, 46))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -296,7 +365,11 @@ class BeaconState(ProgressiveContainer):
     # [Modified in PQ]
     # Removed `pq_registrations`
     # [New in PQ]
-    pq_data: PQDataList
+    pq_validators: PQValidators
+    # [New in PQ]
+    pq_builders: PQBuilders
+    # [New in PQ]
+    pending_builder_deposits: PendingDeposits
 ```
 
 #### `ExecutionRequests`
@@ -395,14 +468,31 @@ class SingleAttestation(Container):
 
 ### New containers
 
-#### `PQData`
+#### `PQBuilder`
 
 ```python
-class PQData(Container):
-    role: Uint8
-    bls_pubkey: BLSPubkey
-    xmss_pubkey: XMSSPubkey
+class PQBuilder(Container):
+    pubkey: XMSSPubkey
+    version: Uint8
+    execution_address: ExecutionAddress
+    balance: Gwei
+    deposit_epoch: Epoch
+    withdrawable_epoch: Epoch
+```
+
+#### `PQValidator`
+
+```python
+class PQValidator(Container):
+    pubkey: XMSSPubkey
     vrf_data: Bytes32
+    withdrawal_credentials: Bytes32
+    effective_balance: Gwei
+    slashed: Boolean
+    activation_eligibility_epoch: Epoch
+    activation_epoch: Epoch
+    exit_epoch: Epoch
+    withdrawable_epoch: Epoch
 ```
 
 ## Helpers
@@ -451,6 +541,76 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     return Uint64(slot * XMSS_LEAVES_PER_SLOT + leaf_offset)
 ```
 
+#### Modified `can_builder_cover_bid`
+
+```python
+def can_builder_cover_bid(
+    state: BeaconState, builder_index: BuilderIndex, bid_amount: Gwei
+) -> bool:
+    # [Modified in PQ]
+    builder_balance = state.pq_builders[builder_index].balance
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
+    if builder_balance < min_balance:
+        return False
+    return builder_balance - min_balance >= bid_amount
+```
+
+#### Modified `compute_balance_weighted_selection`
+
+```python
+def compute_balance_weighted_selection(
+    state: BeaconState,
+    indices: Sequence[ValidatorIndex],
+    seed: Bytes32,
+    size: Uint64,
+    shuffle_indices: bool,
+) -> Sequence[ValidatorIndex]:
+    """
+    Return ``size`` indices sampled by effective balance, using ``indices``
+    as candidates. If ``shuffle_indices`` is ``True``, candidate indices
+    are themselves sampled from ``indices`` by shuffling it, otherwise
+    ``indices`` is traversed in order. The returned list can contain duplicates.
+    """
+    MAX_RANDOM_VALUE = 2**16 - 1
+    total = Uint64(len(indices))
+    assert total > 0
+    # [Modified in PQ]
+    effective_balances = [state.pq_validators[index].effective_balance for index in indices]
+    selected: list[ValidatorIndex] = []
+    i = Uint64(0)
+    while len(selected) < size:
+        offset = i % 16 * 2
+        if offset == 0:
+            random_bytes = sha256(seed + uint_to_bytes(i // 16))
+        next_index = i % total
+        if shuffle_indices:
+            next_index = compute_shuffled_index(next_index, total, seed)
+        weight = effective_balances[next_index] * MAX_RANDOM_VALUE
+        random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
+        threshold = MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+        if weight >= threshold:
+            selected.append(indices[next_index])
+        i += 1
+    return selected
+```
+
+#### Modified `get_max_effective_balance`
+
+```python
+def get_max_effective_balance(
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> Gwei:
+    """
+    Get max effective balance for ``validator``.
+    """
+    if has_compounding_withdrawal_credential(validator):
+        return MAX_EFFECTIVE_BALANCE_ELECTRA
+    else:
+        return MIN_ACTIVATION_BALANCE
+```
+
 ### Predicates
 
 #### Modified `is_valid_indexed_attestation`
@@ -472,10 +632,7 @@ def is_valid_indexed_attestation(
         return False
     # Verify aggregate signature
     # [Modified in PQ]
-    pubkeys = [
-        get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[index].pubkey)
-        for index in indices
-    ]
+    pubkeys = [state.pq_validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     # [Modified in PQ]
@@ -483,23 +640,424 @@ def is_valid_indexed_attestation(
     return xmss.AggregateVerify(pubkeys, leaf_index, signing_root, indexed_attestation.signature)
 ```
 
-### Beacon state accessors
-
-#### New `get_xmss_pubkey`
-
-*Note*: The linear scan is for specification clarity. Implementations SHOULD
-cache the XMSS public key of each validator and builder.
+#### Modified `has_compounding_withdrawal_credential`
 
 ```python
-def get_xmss_pubkey(state: BeaconState, role: Uint8, bls_pubkey: BLSPubkey) -> XMSSPubkey:
+def has_compounding_withdrawal_credential(
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> bool:
     """
-    Return the XMSS public key registered for ``bls_pubkey`` with ``role``, or
-    the empty public key, which no signature verifies against, if there is none.
+    Check if ``validator`` has an 0x02 prefixed "compounding" withdrawal credential.
     """
-    for entry in state.pq_data:
-        if entry.role == role and entry.bls_pubkey == bls_pubkey:
-            return entry.xmss_pubkey
-    return XMSSPubkey()
+    return is_compounding_withdrawal_credential(validator.withdrawal_credentials)
+```
+
+#### Modified `has_eth1_withdrawal_credential`
+
+```python
+def has_eth1_withdrawal_credential(
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> bool:
+    """
+    Check if ``validator`` has an 0x01 prefixed "eth1" withdrawal credential.
+    """
+    return validator.withdrawal_credentials[:1] == ETH1_ADDRESS_WITHDRAWAL_PREFIX
+```
+
+#### Modified `has_execution_withdrawal_credential`
+
+```python
+def has_execution_withdrawal_credential(
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> bool:
+    """
+    Check if ``validator`` has a 0x01 or 0x02 prefixed withdrawal credential.
+    """
+    return (
+        has_eth1_withdrawal_credential(validator)  # 0x01
+        or has_compounding_withdrawal_credential(validator)  # 0x02
+    )
+```
+
+#### Modified `is_active_builder`
+
+```python
+def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
+    """
+    Check if the builder at ``builder_index`` is active for the given ``state``.
+    """
+    # [Modified in PQ]
+    builder = state.pq_builders[builder_index]
+    return (
+        # Placement in builder list is finalized
+        builder.deposit_epoch < state.finalized_checkpoint.epoch
+        # Has not initiated exit
+        and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
+    )
+```
+
+#### Modified `is_active_validator`
+
+```python
+def is_active_validator(
+    # [Modified in PQ]
+    validator: PQValidator,
+    epoch: Epoch,
+) -> bool:
+    """
+    Check if ``validator`` is active.
+    """
+    return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+#### Modified `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(
+    state: BeaconState,
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
+```
+
+#### Modified `is_eligible_for_activation_queue`
+
+```python
+def is_eligible_for_activation_queue(
+    # [Modified in PQ]
+    validator: PQValidator,
+) -> bool:
+    """
+    Check if ``validator`` is eligible to be placed into the activation queue.
+    """
+    return (
+        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+        and validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    )
+```
+
+#### Modified `is_eligible_for_partial_withdrawals`
+
+```python
+def is_eligible_for_partial_withdrawals(
+    # [Modified in PQ]
+    validator: PQValidator,
+    balance: Gwei,
+) -> bool:
+    """
+    Check if ``validator`` can process a pending partial withdrawal.
+    """
+    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    has_excess_balance = balance > MIN_ACTIVATION_BALANCE
+    return (
+        validator.exit_epoch == FAR_FUTURE_EPOCH
+        and has_sufficient_effective_balance
+        and has_excess_balance
+    )
+```
+
+#### Modified `is_fully_withdrawable_validator`
+
+```python
+def is_fully_withdrawable_validator(
+    # [Modified in PQ]
+    validator: PQValidator,
+    balance: Gwei,
+    epoch: Epoch,
+) -> bool:
+    """
+    Check if ``validator`` is fully withdrawable.
+    """
+    return (
+        has_execution_withdrawal_credential(validator)
+        and validator.withdrawable_epoch <= epoch
+        and balance > 0
+    )
+```
+
+#### Modified `is_partially_withdrawable_validator`
+
+```python
+def is_partially_withdrawable_validator(
+    # [Modified in PQ]
+    validator: PQValidator,
+    balance: Gwei,
+) -> bool:
+    """
+    Check if ``validator`` is partially withdrawable.
+    """
+    max_effective_balance = get_max_effective_balance(validator)
+    has_max_effective_balance = validator.effective_balance == max_effective_balance
+    has_excess_balance = balance > max_effective_balance
+    return (
+        has_execution_withdrawal_credential(validator)
+        and has_max_effective_balance
+        and has_excess_balance
+    )
+```
+
+#### Modified `is_slashable_validator`
+
+```python
+def is_slashable_validator(
+    # [Modified in PQ]
+    validator: PQValidator,
+    epoch: Epoch,
+) -> bool:
+    """
+    Check if ``validator`` is slashable.
+    """
+    return (not validator.slashed) and (
+        validator.activation_epoch <= epoch < validator.withdrawable_epoch
+    )
+```
+
+### Beacon state accessors
+
+#### Modified `get_active_validator_indices`
+
+```python
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+    """
+    Return the sequence of active validator indices at ``epoch``.
+    """
+    return [
+        ValidatorIndex(index)
+        # [Modified in PQ]
+        for index, validator in enumerate(state.pq_validators)
+        if is_active_validator(validator, epoch)
+    ]
+```
+
+#### Modified `get_base_reward`
+
+```python
+def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    """
+    Return the base reward for the validator defined by ``index`` with respect to the current ``state``.
+    """
+    # [Modified in PQ]
+    increments = state.pq_validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    return increments * get_base_reward_per_increment(state)
+```
+
+#### Modified `get_beacon_proposer_indices`
+
+```python
+def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerIndices:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    indices = [
+        index
+        for index in get_active_validator_indices(state, epoch)
+        # [Modified in PQ]
+        if not state.pq_validators[index].slashed
+    ]
+    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+    return compute_proposer_indices(state, epoch, seed, indices)
+```
+
+#### Modified `get_eligible_validator_indices`
+
+```python
+def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    previous_epoch = get_previous_epoch(state)
+    return [
+        ValidatorIndex(index)
+        # [Modified in PQ]
+        for index, validator in enumerate(state.pq_validators)
+        if is_active_validator(validator, previous_epoch)
+        or (validator.slashed and previous_epoch + 1 < validator.withdrawable_epoch)
+    ]
+```
+
+#### Modified `get_flag_index_deltas`
+
+```python
+def get_flag_index_deltas(
+    state: BeaconState, flag_index: int
+) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return the deltas for a given ``flag_index`` by scanning through the participation flags.
+    """
+    # [Modified in PQ]
+    rewards = [Gwei(0)] * len(state.pq_validators)
+    # [Modified in PQ]
+    penalties = [Gwei(0)] * len(state.pq_validators)
+    previous_epoch = get_previous_epoch(state)
+    unslashed_participating_indices = get_unslashed_participating_indices(
+        state, flag_index, previous_epoch
+    )
+    weight = PARTICIPATION_FLAG_WEIGHTS[flag_index]
+    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
+    unslashed_participating_increments = (
+        unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    )
+    active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    for index in get_eligible_validator_indices(state):
+        base_reward = get_base_reward(state, index)
+        if index in unslashed_participating_indices:
+            if not is_in_inactivity_leak(state):
+                reward_numerator = base_reward * weight * unslashed_participating_increments
+                rewards[index] += reward_numerator // (active_increments * WEIGHT_DENOMINATOR)
+        elif flag_index != TIMELY_HEAD_FLAG_INDEX:
+            penalties[index] += base_reward * weight // WEIGHT_DENOMINATOR
+    return rewards, penalties
+```
+
+#### Modified `get_inactivity_penalty_deltas`
+
+```python
+def get_inactivity_penalty_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence[Gwei]]:
+    """
+    Return the inactivity penalty deltas by considering timely target participation flags and inactivity scores.
+    """
+    # [Modified in PQ]
+    rewards = [Gwei(0)] * len(state.pq_validators)
+    # [Modified in PQ]
+    penalties = [Gwei(0)] * len(state.pq_validators)
+    previous_epoch = get_previous_epoch(state)
+    matching_target_indices = get_unslashed_participating_indices(
+        state, TIMELY_TARGET_FLAG_INDEX, previous_epoch
+    )
+    for index in get_eligible_validator_indices(state):
+        if index not in matching_target_indices:
+            penalty_numerator = (
+                # [Modified in PQ]
+                state.pq_validators[index].effective_balance * state.inactivity_scores[index]
+            )
+            penalty_denominator = INACTIVITY_SCORE_BIAS * INACTIVITY_PENALTY_QUOTIENT_BELLATRIX
+            penalties[index] += penalty_numerator // penalty_denominator
+    return rewards, penalties
+```
+
+#### Modified `get_total_balance`
+
+```python
+def get_total_balance(state: BeaconState, indices: set[ValidatorIndex]) -> Gwei:
+    """
+    Return the combined effective balance of the ``indices``.
+    ``EFFECTIVE_BALANCE_INCREMENT`` Gwei minimum to avoid divisions by zero.
+    Math safe up to ~10B ETH, after which this overflows Uint64.
+    """
+    return Gwei(
+        max(
+            EFFECTIVE_BALANCE_INCREMENT,
+            # [Modified in PQ]
+            sum([state.pq_validators[index].effective_balance for index in indices]),
+        )
+    )
+```
+
+#### Modified `get_unslashed_participating_indices`
+
+```python
+def get_unslashed_participating_indices(
+    state: BeaconState, flag_index: int, epoch: Epoch
+) -> set[ValidatorIndex]:
+    """
+    Return the set of validator indices that are both active and unslashed for the given ``flag_index`` and ``epoch``.
+    """
+    assert epoch in (get_previous_epoch(state), get_current_epoch(state))
+    if epoch == get_current_epoch(state):
+        epoch_participation = state.current_epoch_participation
+    else:
+        epoch_participation = state.previous_epoch_participation
+    active_validator_indices = get_active_validator_indices(state, epoch)
+    participating_indices = [
+        index
+        for index in active_validator_indices
+        if has_flag(epoch_participation[index], flag_index)
+    ]
+    # [Modified in PQ]
+    return set(filter(lambda index: not state.pq_validators[index].slashed, participating_indices))
+```
+
+### Beacon state mutators
+
+#### Modified `initiate_builder_exit`
+
+```python
+def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> None:
+    """
+    Initiate the exit of the builder with index ``index``.
+    """
+    # Set builder exit epoch
+    # [Modified in PQ]
+    builder = state.pq_builders[builder_index]
+    builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+```
+
+#### Modified `initiate_validator_exit`
+
+```python
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Initiate the exit of the validator with index ``index``.
+    """
+    # Return if validator already initiated exit
+    # [Modified in PQ]
+    validator = state.pq_validators[index]
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+
+    # Compute exit queue epoch [Modified in Electra:EIP7251]
+    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, validator.effective_balance)
+
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = exit_queue_epoch
+    validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+```
+
+#### Modified `slash_validator`
+
+```python
+def slash_validator(
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: ValidatorIndex | None = None,
+) -> None:
+    """
+    Slash the validator with index ``slashed_index``.
+    """
+    epoch = get_current_epoch(state)
+    initiate_validator_exit(state, slashed_index)
+    # [Modified in PQ]
+    validator = state.pq_validators[slashed_index]
+    validator.slashed = Boolean(True)
+    validator.withdrawable_epoch = max(
+        validator.withdrawable_epoch, epoch + EPOCHS_PER_SLASHINGS_VECTOR
+    )
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA
+    decrease_balance(state, slashed_index, slashing_penalty)
+
+    # Apply proposer and whistleblower rewards
+    proposer_index = get_beacon_proposer_index(state)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblower_reward = validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
+    proposer_reward = whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
+
+    # Remove pending builder payments for blocks proposed by the slashed validator
+    for payment_index, payment in enumerate(state.builder_pending_payments):
+        if payment.proposer_index == slashed_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment.empty()
 ```
 
 ## Beacon chain state transition function
@@ -508,14 +1066,14 @@ def get_xmss_pubkey(state: BeaconState, role: Uint8, bls_pubkey: BLSPubkey) -> X
 
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
-    proposer = state.validators[signed_block.message.proposer_index]
+    # [Modified in PQ]
+    proposer = state.pq_validators[signed_block.message.proposer_index]
     signing_root = compute_signing_root(
         signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER)
     )
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(signed_block.message.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
-    return xmss.Verify(pubkey, leaf_index, signing_root, signed_block.signature)
+    return xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
 ```
 
 ### Epoch processing
@@ -544,6 +1102,215 @@ def process_epoch(state: BeaconState) -> None:
     process_ptc_window(state)
 ```
 
+#### Modified `process_effective_balance_updates`
+
+```python
+def process_effective_balance_updates(state: BeaconState) -> None:
+    # Update effective balances with hysteresis
+    # [Modified in PQ]
+    for index, validator in enumerate(state.pq_validators):
+        balance = state.balances[index]
+        HYSTERESIS_INCREMENT = Uint64(EFFECTIVE_BALANCE_INCREMENT // HYSTERESIS_QUOTIENT)
+        DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_DOWNWARD_MULTIPLIER
+        UPWARD_THRESHOLD = HYSTERESIS_INCREMENT * HYSTERESIS_UPWARD_MULTIPLIER
+        max_effective_balance = get_max_effective_balance(validator)
+
+        if (
+            balance + DOWNWARD_THRESHOLD < validator.effective_balance
+            or validator.effective_balance + UPWARD_THRESHOLD < balance
+        ):
+            validator.effective_balance = min(
+                balance - balance % EFFECTIVE_BALANCE_INCREMENT, max_effective_balance
+            )
+```
+
+#### Modified `process_participation_flag_updates`
+
+```python
+def process_participation_flag_updates(state: BeaconState) -> None:
+    state.previous_epoch_participation = state.current_epoch_participation
+    state.current_epoch_participation = EpochParticipation(
+        # [Modified in PQ]
+        data=[ParticipationFlags(0b0000_0000) for _ in range(len(state.pq_validators))]
+    )
+```
+
+#### Modified `process_pending_consolidations`
+
+```python
+def process_pending_consolidations(state: BeaconState) -> None:
+    next_epoch = get_current_epoch(state) + 1
+    next_pending_consolidation = 0
+    for pending_consolidation in state.pending_consolidations:
+        # [Modified in PQ]
+        source_validator = state.pq_validators[pending_consolidation.source_index]
+        if source_validator.slashed:
+            next_pending_consolidation += 1
+            continue
+        if source_validator.withdrawable_epoch > next_epoch:
+            break
+
+        # Calculate the consolidated balance
+        source_effective_balance = min(
+            state.balances[pending_consolidation.source_index], source_validator.effective_balance
+        )
+
+        # Move active balance to target. Excess balance is withdrawable.
+        decrease_balance(state, pending_consolidation.source_index, source_effective_balance)
+        increase_balance(state, pending_consolidation.target_index, source_effective_balance)
+        next_pending_consolidation += 1
+
+    state.pending_consolidations = state.pending_consolidations[next_pending_consolidation:]
+```
+
+#### Modified `process_pending_deposits`
+
+```python
+def process_pending_deposits(state: BeaconState) -> None:
+    next_epoch = get_current_epoch(state) + 1
+    # Deposits still consume the activation-only churn budget in Gloas.
+    available_for_processing = state.deposit_balance_to_consume + get_activation_churn_limit(state)
+    processed_amount = 0
+    next_deposit_index = 0
+    deposits_to_postpone = []
+    is_churn_limit_reached = False
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+
+    for deposit in state.pending_deposits:
+        # Check if deposit has been finalized, otherwise, stop processing.
+        if deposit.slot > finalized_slot:
+            break
+
+        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
+            break
+
+        # Read validator state
+        is_validator_exited = False
+        is_validator_withdrawn = False
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
+        if deposit.pubkey in validator_pubkeys:
+            # [Modified in PQ]
+            validator = state.pq_validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
+            is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
+            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
+
+        # [Modified in PQ]
+        if deposit.pubkey not in validator_pubkeys:
+            # A new validator has no XMSS public key, postpone the deposit without consuming churn
+            deposits_to_postpone.append(deposit)
+        elif is_validator_withdrawn:
+            # Deposited balance will never become active. Increase balance but do not consume churn
+            apply_pending_deposit(state, deposit)
+        elif is_validator_exited:
+            # Validator is exiting, postpone the deposit until after withdrawable epoch
+            deposits_to_postpone.append(deposit)
+        else:
+            # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
+            is_churn_limit_reached = processed_amount + deposit.amount > available_for_processing
+            if is_churn_limit_reached:
+                break
+
+            # Consume churn and apply deposit.
+            processed_amount += deposit.amount
+            apply_pending_deposit(state, deposit)
+
+        # Regardless of how the deposit was handled, we move on in the queue.
+        next_deposit_index += 1
+
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+
+    # Accumulate churn only if the churn limit has been hit.
+    if is_churn_limit_reached:
+        state.deposit_balance_to_consume = available_for_processing - processed_amount
+    else:
+        state.deposit_balance_to_consume = Gwei(0)
+```
+
+#### Modified `apply_pending_deposit`
+
+*Note*: `process_pending_deposits` postpones every deposit for a new public key,
+so a pending deposit is only ever applied to an existing validator.
+
+```python
+def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
+    """
+    Applies ``deposit`` to the ``state``.
+    """
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    # [Modified in PQ]
+    # Removed the creation of a new validator
+    validator_index = ValidatorIndex(validator_pubkeys.index(deposit.pubkey))
+    increase_balance(state, validator_index, deposit.amount)
+```
+
+#### Modified `process_registry_updates`
+
+```python
+def process_registry_updates(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    activation_epoch = compute_activation_exit_epoch(current_epoch)
+
+    # Process activation eligibility, ejections, and activations
+    # [Modified in PQ]
+    for index, validator in enumerate(state.pq_validators):
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = current_epoch + 1
+        elif (
+            is_active_validator(validator, current_epoch)
+            and validator.effective_balance <= EJECTION_BALANCE
+        ):
+            initiate_validator_exit(state, ValidatorIndex(index))
+        elif is_eligible_for_activation(state, validator):
+            validator.activation_epoch = activation_epoch
+```
+
+#### Modified `process_rewards_and_penalties`
+
+```python
+def process_rewards_and_penalties(state: BeaconState) -> None:
+    # No rewards are applied at the end of `GENESIS_EPOCH` because rewards are for work done in the previous epoch
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
+    flag_deltas = [
+        get_flag_index_deltas(state, flag_index)
+        for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS))
+    ]
+    deltas = flag_deltas + [get_inactivity_penalty_deltas(state)]
+    for rewards, penalties in deltas:
+        # [Modified in PQ]
+        for index in range(len(state.pq_validators)):
+            increase_balance(state, ValidatorIndex(index), rewards[index])
+            decrease_balance(state, ValidatorIndex(index), penalties[index])
+```
+
+#### Modified `process_slashings`
+
+```python
+def process_slashings(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
+    total_balance = get_total_active_balance(state)
+    adjusted_total_slashing_balance = min(
+        Gwei(sum(state.slashings)) * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX, total_balance
+    )
+    increment = (
+        EFFECTIVE_BALANCE_INCREMENT  # Factored out from total balance to avoid Uint64 overflow
+    )
+    penalty_per_effective_balance_increment = adjusted_total_slashing_balance // (
+        total_balance // increment
+    )
+    # [Modified in PQ]
+    for index, validator in enumerate(state.pq_validators):
+        if (
+            validator.slashed
+            and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch
+        ):
+            effective_balance_increments = validator.effective_balance // increment
+            penalty = penalty_per_effective_balance_increment * effective_balance_increments
+            decrease_balance(state, ValidatorIndex(index), penalty)
+```
+
 ### Block processing
 
 #### Modified `process_block`
@@ -565,6 +1332,33 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # Removed `process_sync_aggregate`
 ```
 
+#### Modified `process_block_header`
+
+```python
+def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # Verify that the slots match
+    assert block.slot == state.slot
+    # Verify that the block is newer than latest block header
+    assert block.slot > state.latest_block_header.slot
+    # Verify that proposer index is the correct index
+    assert block.proposer_index == get_beacon_proposer_index(state)
+    # Verify that the parent matches
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
+    # Cache current block as the new latest block
+    state.latest_block_header = BeaconBlockHeader(
+        slot=block.slot,
+        proposer_index=block.proposer_index,
+        parent_root=block.parent_root,
+        state_root=Root(),  # Overwritten in the next process_slot call
+        body_root=hash_tree_root(block.body),
+    )
+
+    # Verify proposer is not slashed
+    # [Modified in PQ]
+    proposer = state.pq_validators[block.proposer_index]
+    assert not proposer.slashed
+```
+
 #### Modified `process_randao`
 
 *Note*: XMSS signatures are not unique. A proposer can grind the randomizer of
@@ -575,12 +1369,12 @@ hash-based commit-reveal such as EIP-8321 would close this gap.
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    # [Modified in PQ]
+    proposer = state.pq_validators[get_beacon_proposer_index(state)]
     signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(state.slot, LEAF_OFFSET_RANDAO)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
-    assert xmss.Verify(pubkey, leaf_index, signing_root, body.randao_reveal)
+    assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), sha256(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -623,14 +1417,10 @@ def verify_execution_payload_envelope_signature(
     if builder_index == BUILDER_INDEX_SELF_BUILD:
         validator_index = state.latest_block_header.proposer_index
         # [Modified in PQ]
-        pubkey = get_xmss_pubkey(
-            state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[validator_index].pubkey
-        )
+        pubkey = state.pq_validators[validator_index].pubkey
     else:
         # [Modified in PQ]
-        pubkey = get_xmss_pubkey(
-            state, PQ_REGISTRATION_ROLE_BUILDER, state.builders[builder_index].pubkey
-        )
+        pubkey = state.pq_builders[builder_index].pubkey
 
     signing_root = compute_signing_root(
         signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
@@ -650,14 +1440,14 @@ def verify_execution_payload_envelope_signature(
 def verify_execution_payload_bid_signature(
     state: BeaconState, signed_bid: SignedExecutionPayloadBid
 ) -> bool:
-    builder = state.builders[signed_bid.message.builder_index]
+    # [Modified in PQ]
+    builder = state.pq_builders[signed_bid.message.builder_index]
     signing_root = compute_signing_root(
         signed_bid.message, get_domain(state, DOMAIN_BEACON_BUILDER)
     )
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(signed_bid.message.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_BID)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_BUILDER, builder.pubkey)
-    return xmss.Verify(pubkey, leaf_index, signing_root, signed_bid.signature)
+    return xmss.Verify(builder.pubkey, leaf_index, signing_root, signed_bid.signature)
 ```
 
 ##### Modified `process_execution_payload_bid`
@@ -681,7 +1471,8 @@ def process_execution_payload_bid(
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
         # Verify that the builder is a payload builder
-        assert state.builders[builder_index].version == PAYLOAD_BUILDER_VERSION
+        # [Modified in PQ]
+        assert state.pq_builders[builder_index].version == PAYLOAD_BUILDER_VERSION
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
         # Verify that the bid signature is valid
@@ -769,7 +1560,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     # Verify the headers are different
     assert header_1 != header_2
     # Verify the proposer is slashable
-    proposer = state.validators[header_1.proposer_index]
+    # [Modified in PQ]
+    proposer = state.pq_validators[header_1.proposer_index]
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Verify signatures
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
@@ -781,8 +1573,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, proposer.pubkey)
-        assert xmss.Verify(pubkey, leaf_index, signing_root, signed_header.signature)
+        assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
 ```
@@ -792,7 +1583,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
 ```python
 def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
     voluntary_exit = signed_voluntary_exit.message
-    validator = state.validators[voluntary_exit.validator_index]
+    # [Modified in PQ]
+    validator = state.pq_validators[voluntary_exit.validator_index]
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify exit has not been initiated
@@ -812,10 +1604,253 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     leaf_index = compute_xmss_leaf_index(
         compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
     )
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
-    assert xmss.Verify(pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
+    assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
+```
+
+##### Attestations
+
+###### Modified `process_attestation`
+
+```python
+def process_attestation(
+    state: BeaconState,
+    attestation: Attestation,
+    parent_slot: Slot,
+) -> None:
+    data = attestation.data
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+
+    assert data.index < 2
+    committee_indices = get_committee_indices(attestation.committee_bits)
+    committee_offset = 0
+    for committee_index in committee_indices:
+        assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
+        committee = get_beacon_committee(state, data.slot, committee_index)
+        committee_attesters = {
+            attester_index
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
+        }
+        assert len(committee_attesters) > 0
+        committee_offset += len(committee)
+
+    # Bitfield length matches total number of participants
+    assert len(attestation.aggregation_bits) == committee_offset
+
+    # Participation flag indices
+    participation_flag_indices = get_attestation_participation_flag_indices(
+        state, data, state.slot - data.slot, parent_slot
+    )
+
+    # Verify signature
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+
+    if data.target.epoch == get_current_epoch(state):
+        current_epoch_target = True
+        epoch_participation = state.current_epoch_participation
+        payment = state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH]
+    else:
+        current_epoch_target = False
+        epoch_participation = state.previous_epoch_participation
+        payment = state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH]
+
+    proposer_reward_numerator = 0
+    for index in get_attesting_indices(state, attestation):
+        had_no_participation = epoch_participation[index] == 0b0000_0000
+        will_set_new_flag = False
+
+        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
+            if flag_index in participation_flag_indices and not has_flag(
+                epoch_participation[index], flag_index
+            ):
+                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
+                proposer_reward_numerator += get_base_reward(state, index) * weight
+                will_set_new_flag = True
+
+        if (
+            will_set_new_flag
+            and had_no_participation
+            and is_attestation_same_slot(state, data)
+            and payment.withdrawal.amount > 0
+        ):
+            # [Modified in PQ]
+            payment.weight += state.pq_validators[index].effective_balance
+
+    # Reward proposer
+    proposer_reward_denominator = (
+        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    )
+    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+
+    # Update builder payment weight
+    if current_epoch_target:
+        state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH] = payment
+    else:
+        state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
+```
+
+##### Modified `process_attester_slashing`
+
+```python
+def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
+    attestation_1 = attester_slashing.attestation_1
+    attestation_2 = attester_slashing.attestation_2
+    assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
+    assert is_valid_indexed_attestation(state, attestation_1)
+    assert is_valid_indexed_attestation(state, attestation_2)
+
+    slashed_any = False
+    indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)
+    for index in sorted(indices):
+        # [Modified in PQ]
+        if is_slashable_validator(state.pq_validators[index], get_current_epoch(state)):
+            slash_validator(state, index)
+            slashed_any = True
+    assert slashed_any
+```
+
+##### Builder deposit requests
+
+###### Modified `process_builder_deposit_request`
+
+*Note*: A builder deposit for a new public key carries no XMSS public key, so it
+cannot create a builder. It waits in `state.pending_builder_deposits`, which no
+function processes yet.
+
+```python
+def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+    # Ignore deposits with unexpected withdrawal credential prefixes
+    if not is_builder_withdrawal_credential(request.withdrawal_credentials):
+        return
+
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
+    if request.pubkey not in builder_pubkeys:
+        # [Modified in PQ]
+        state.pending_builder_deposits.append(
+            PendingDeposit(
+                pubkey=request.pubkey,
+                withdrawal_credentials=request.withdrawal_credentials,
+                amount=request.amount,
+                signature=request.signature,
+                slot=state.slot,
+            )
+        )
+    else:
+        builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
+        # [Modified in PQ]
+        builder = state.pq_builders[builder_index]
+
+        # If exited and swept, reset the withdrawable epoch
+        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH and builder.balance == 0:
+            epoch = get_current_epoch(state)
+            builder.withdrawable_epoch = epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
+
+        # Increase balance by deposit amount
+        builder.balance += request.amount
+```
+
+##### Builder exit requests
+
+###### Modified `process_builder_exit_request`
+
+```python
+def process_builder_exit_request(state: BeaconState, request: BuilderExitRequest) -> None:
+    builder_pubkeys = [builder.pubkey for builder in state.builders]
+    if request.pubkey not in builder_pubkeys:
+        return
+
+    builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
+    # [Modified in PQ]
+    builder = state.pq_builders[builder_index]
+
+    if not is_active_builder(state, builder_index):
+        return
+    if builder.execution_address != request.source_address:
+        return
+    if get_pending_balance_to_withdraw_for_builder(state, builder_index) != 0:
+        return
+
+    initiate_builder_exit(state, builder_index)
+```
+
+##### Execution-layer withdrawal requests
+
+###### Modified `process_withdrawal_request`
+
+```python
+def process_withdrawal_request(state: BeaconState, withdrawal_request: WithdrawalRequest) -> None:
+    amount = withdrawal_request.amount
+    is_full_exit_request = amount == FULL_EXIT_REQUEST_AMOUNT
+
+    # If partial withdrawal queue is full, only full exits are processed
+    if (
+        len(state.pending_partial_withdrawals) == PENDING_PARTIAL_WITHDRAWALS_LIMIT
+        and not is_full_exit_request
+    ):
+        return
+
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    # Verify pubkey exists
+    request_pubkey = withdrawal_request.validator_pubkey
+    if request_pubkey not in validator_pubkeys:
+        return
+    index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
+    # [Modified in PQ]
+    validator = state.pq_validators[index]
+
+    # Verify withdrawal credentials
+    has_correct_credential = has_execution_withdrawal_credential(validator)
+    is_correct_source_address = (
+        validator.withdrawal_credentials[12:] == withdrawal_request.source_address
+    )
+    if not (has_correct_credential and is_correct_source_address):
+        return
+    # Verify the validator is active
+    if not is_active_validator(validator, get_current_epoch(state)):
+        return
+    # Verify exit has not been initiated
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    # Verify the validator has been active long enough
+    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+
+    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, index)
+
+    if is_full_exit_request:
+        # Only exit validator if it has no pending withdrawals in the queue
+        if pending_balance_to_withdraw == 0:
+            initiate_validator_exit(state, index)
+        return
+
+    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    has_excess_balance = (
+        state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
+    )
+
+    # Only allow partial withdrawals with compounding withdrawal credentials
+    if (
+        has_compounding_withdrawal_credential(validator)
+        and has_sufficient_effective_balance
+        and has_excess_balance
+    ):
+        to_withdraw = min(
+            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw, amount
+        )
+        exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
+        withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        state.pending_partial_withdrawals.append(
+            PendingPartialWithdrawal(
+                validator_index=index,
+                amount=to_withdraw,
+                withdrawable_epoch=withdrawable_epoch,
+            )
+        )
 ```
 
 #### Parent execution payload
@@ -881,4 +1916,220 @@ def apply_parent_execution_payload(
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+```
+
+#### Withdrawals
+
+##### Modified `apply_withdrawals`
+
+```python
+def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> None:
+    for withdrawal in withdrawals:
+        if is_builder_index(withdrawal.validator_index):
+            builder_index = convert_validator_index_to_builder_index(withdrawal.validator_index)
+            # [Modified in PQ]
+            state.pq_builders[builder_index].balance = saturating_sub(
+                # [Modified in PQ]
+                state.pq_builders[builder_index].balance,
+                withdrawal.amount,
+            )
+        else:
+            decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+```
+
+##### Modified `get_builder_balance_after_withdrawals`
+
+```python
+def get_builder_balance_after_withdrawals(
+    state: BeaconState, builder_index: BuilderIndex, withdrawals: Sequence[Withdrawal]
+) -> Gwei:
+    validator_index = convert_builder_index_to_validator_index(builder_index)
+    withdrawn = Gwei(
+        sum(
+            withdrawal.amount
+            for withdrawal in withdrawals
+            if withdrawal.validator_index == validator_index
+        )
+    )
+    # [Modified in PQ]
+    return saturating_sub(state.pq_builders[builder_index].balance, withdrawn)
+```
+
+##### Modified `get_builders_sweep_withdrawals`
+
+```python
+def get_builders_sweep_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    epoch = get_current_epoch(state)
+    # [Modified in PQ]
+    builders_limit = min(len(state.pq_builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
+
+    processed_count = Uint64(0)
+    withdrawals: list[Withdrawal] = []
+    builder_index = state.next_withdrawal_builder_index
+    for _ in range(builders_limit):
+        all_withdrawals = list(prior_withdrawals) + withdrawals
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
+        if has_reached_limit:
+            break
+
+        # [Modified in PQ]
+        builder = state.pq_builders[builder_index]
+        balance = get_builder_balance_after_withdrawals(state, builder_index, all_withdrawals)
+        if builder.withdrawable_epoch <= epoch and balance > 0:
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=convert_builder_index_to_validator_index(builder_index),
+                    address=builder.execution_address,
+                    amount=balance,
+                )
+            )
+            withdrawal_index += 1
+
+        # [Modified in PQ]
+        builder_index = (builder_index + 1) % len(state.pq_builders)
+        processed_count += 1
+
+    return withdrawals, withdrawal_index, processed_count
+```
+
+##### Modified `get_pending_partial_withdrawals`
+
+```python
+def get_pending_partial_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    epoch = get_current_epoch(state)
+    withdrawals_limit = min(
+        len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+        MAX_WITHDRAWALS_PER_PAYLOAD - 1,
+    )
+    assert len(prior_withdrawals) <= withdrawals_limit
+
+    processed_count = Uint64(0)
+    withdrawals: list[Withdrawal] = []
+    for withdrawal in state.pending_partial_withdrawals:
+        all_withdrawals = list(prior_withdrawals) + withdrawals
+        is_withdrawable = withdrawal.withdrawable_epoch <= epoch
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
+        if not is_withdrawable or has_reached_limit:
+            break
+
+        validator_index = withdrawal.validator_index
+        # [Modified in PQ]
+        validator = state.pq_validators[validator_index]
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
+        if is_eligible_for_partial_withdrawals(validator, balance):
+            withdrawal_amount = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=validator_index,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=withdrawal_amount,
+                )
+            )
+            withdrawal_index += 1
+
+        processed_count += 1
+
+    return withdrawals, withdrawal_index, processed_count
+```
+
+##### Modified `get_validators_sweep_withdrawals`
+
+```python
+def get_validators_sweep_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> tuple[Sequence[Withdrawal], WithdrawalIndex, Uint64]:
+    epoch = get_current_epoch(state)
+    # [Modified in PQ]
+    validators_limit = min(len(state.pq_validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    # There must be at least one space reserved for validator sweep withdrawals
+    assert len(prior_withdrawals) < withdrawals_limit
+
+    processed_count = Uint64(0)
+    withdrawals: list[Withdrawal] = []
+    validator_index = state.next_withdrawal_validator_index
+    for _ in range(validators_limit):
+        all_withdrawals = list(prior_withdrawals) + withdrawals
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
+        if has_reached_limit:
+            break
+
+        # [Modified in PQ]
+        validator = state.pq_validators[validator_index]
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
+        if is_fully_withdrawable_validator(validator, balance, epoch):
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=validator_index,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=balance,
+                )
+            )
+            withdrawal_index += 1
+        elif is_partially_withdrawable_validator(validator, balance):
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    validator_index=validator_index,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=balance - get_max_effective_balance(validator),
+                )
+            )
+            withdrawal_index += 1
+
+        # [Modified in PQ]
+        validator_index = (validator_index + 1) % len(state.pq_validators)
+        processed_count += 1
+
+    return withdrawals, withdrawal_index, processed_count
+```
+
+##### Modified `update_next_withdrawal_builder_index`
+
+```python
+def update_next_withdrawal_builder_index(
+    state: BeaconState, processed_builders_sweep_count: Uint64
+) -> None:
+    # [Modified in PQ]
+    if len(state.pq_builders) > 0:
+        # Update the next builder index to start the next withdrawal sweep
+        next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
+        # [Modified in PQ]
+        next_builder_index = next_index % len(state.pq_builders)
+        state.next_withdrawal_builder_index = next_builder_index
+```
+
+##### Modified `update_next_withdrawal_validator_index`
+
+```python
+def update_next_withdrawal_validator_index(
+    state: BeaconState, withdrawals: Sequence[Withdrawal]
+) -> None:
+    # Update the next validator index to start the next withdrawal sweep
+    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        # Next sweep starts after the latest withdrawal's validator index
+        # [Modified in PQ]
+        next_validator_index = (withdrawals[-1].validator_index + 1) % len(state.pq_validators)
+        state.next_withdrawal_validator_index = next_validator_index
+    else:
+        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
+        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+        # [Modified in PQ]
+        next_validator_index = next_index % len(state.pq_validators)
+        state.next_withdrawal_validator_index = next_validator_index
 ```

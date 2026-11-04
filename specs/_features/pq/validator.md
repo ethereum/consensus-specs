@@ -12,6 +12,7 @@
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [XMSS public key](#xmss-public-key)
+  - [Modified `check_if_validator_active`](#modified-check_if_validator_active)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
@@ -39,6 +40,7 @@
   - [Sync committees](#sync-committees)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
+  - [Modified `get_validators_custody_requirement`](#modified-get_validators_custody_requirement)
 - [Protection best practices](#protection-best-practices)
 
 <!-- mdformat-toc end -->
@@ -49,11 +51,11 @@ This document represents the changes to be made in the code of an "honest
 validator" to implement PQ.
 
 Validators sign with leanXMSS instead of BLS. Every message is signed at the
-leaf that `compute_xmss_leaf_index` assigns to its slot and type. A validator
-keeps its BLS public key as its identifier, and signs with the XMSS key it
-registered with EIP-8483 before the upgrade, which `state.pq_data` holds. A
-validator without a registration is exited at the upgrade. See
-[the fork document](./fork.md) for details.
+leaf that `compute_xmss_leaf_index` assigns to its slot and type. At the
+upgrade, each validator moves to `state.pq_validators` at the same index, with
+the XMSS public key it registered with EIP-8483. A validator without a
+registration is exited at the upgrade. See [the fork document](./fork.md) for
+details.
 
 ## Containers
 
@@ -95,6 +97,15 @@ validator's VRF data.
 
 *Note*: There is no way yet to register an XMSS public key after the upgrade, so
 a validator that deposits after the upgrade cannot sign.
+
+### Modified `check_if_validator_active`
+
+```python
+def check_if_validator_active(state: BeaconState, validator_index: ValidatorIndex) -> bool:
+    # [Modified in PQ]
+    validator = state.pq_validators[validator_index]
+    return is_active_validator(validator, get_current_epoch(state))
+```
 
 ## Beacon chain responsibilities
 
@@ -433,6 +444,21 @@ def get_payload_attestation_message_signature(
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_PTC_ATTESTER)
     return xmss.Sign(privkey, leaf_index, signing_root)
+```
+
+### Modified `get_validators_custody_requirement`
+
+```python
+def get_validators_custody_requirement(
+    state: BeaconState, validator_indices: Sequence[ValidatorIndex]
+) -> Uint64:
+    total_node_balance = sum(
+        # [Modified in PQ]
+        state.pq_validators[index].effective_balance
+        for index in validator_indices
+    )
+    count = total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    return min(max(count, VALIDATOR_CUSTODY_REQUIREMENT), NUMBER_OF_CUSTODY_GROUPS)
 ```
 
 ## Protection best practices

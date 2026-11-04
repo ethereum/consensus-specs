@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     Slashing,
     SlotSequence,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 """
 Test is_confirmed_chain_safe
@@ -84,7 +85,10 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     # Compute slashed balance
     # 25% of 2 slots * (len(validators) // SLOTS_PER_EPOCH * effective_balance)
     slashed_balance = 2 * (
-        len(state.validators) // spec.Uint64(S) * state.validators[0].effective_balance // 4
+        len(state.validators)
+        // spec.Uint64(S)
+        * get_validators(spec, state)[0].effective_balance
+        // 4
     )
 
     # Add a half of slashed balance back to the safety threshold

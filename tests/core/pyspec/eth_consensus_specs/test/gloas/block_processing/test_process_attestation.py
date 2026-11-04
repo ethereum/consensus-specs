@@ -10,6 +10,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 )
 from eth_consensus_specs.test.helpers.block import apply_empty_block
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
     transition_to_slot_via_block,
@@ -265,7 +266,9 @@ def test_builder_payment_weight_tracking(spec, state):
         attestation.aggregation_bits[i] = i == 0
 
     attesting_validator_index = committee[0]
-    expected_weight_increase = state.validators[attesting_validator_index].effective_balance
+    expected_weight_increase = get_validators(spec, state)[
+        attesting_validator_index
+    ].effective_balance
     assert expected_weight_increase > 0
 
     sign_attestation(spec, state, attestation)
@@ -318,7 +321,7 @@ def test_builder_payment_weight_no_double_counting(spec, state):
         attestation1.aggregation_bits[i] = i == 0
 
     attesting_validator_index = committee[0]
-    assert state.validators[attesting_validator_index].effective_balance > 0
+    assert get_validators(spec, state)[attesting_validator_index].effective_balance > 0
 
     sign_attestation(spec, state, attestation1)
 
@@ -344,7 +347,7 @@ def test_builder_payment_weight_no_double_counting(spec, state):
     after_first_weight = state.builder_pending_payments[payment_slot_index].weight
     attesting_validator_index = committee[0]
     expected_weight_after_first = (
-        initial_weight + state.validators[attesting_validator_index].effective_balance
+        initial_weight + get_validators(spec, state)[attesting_validator_index].effective_balance
     )
     assert after_first_weight == expected_weight_after_first
     assert after_first_weight > initial_weight, "First attestation should have increased the weight"
@@ -553,7 +556,7 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
     # Assert weight is set for the previous epoch, not current one
-    expected_weight = state.validators[attester].effective_balance
+    expected_weight = get_validators(spec, state)[attester].effective_balance
     assert state.builder_pending_payments[previous_epoch_idx].weight == expected_weight
     assert state.builder_pending_payments[current_epoch_idx].weight == 0
 
@@ -625,8 +628,8 @@ def test_builder_payment_weight_accumulates(spec, state):
         signed=True,
     )
 
-    first_weight = state.validators[first_attester].effective_balance
-    second_weight = state.validators[second_attester].effective_balance
+    first_weight = get_validators(spec, state)[first_attester].effective_balance
+    second_weight = get_validators(spec, state)[second_attester].effective_balance
     assert first_weight > 0
     assert second_weight > 0
 

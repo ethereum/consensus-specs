@@ -7,8 +7,9 @@
 - [Introduction](#introduction)
 - [Configs](#configs)
 - [Helpers](#helpers)
-  - [New `upgrade_pq_registrations_to_pq`](#new-upgrade_pq_registrations_to_pq)
-  - [New `get_pq_data_pubkeys`](#new-get_pq_data_pubkeys)
+  - [New `get_registered_pq_data`](#new-get_registered_pq_data)
+  - [New `compute_pq_validators`](#new-compute_pq_validators)
+  - [New `compute_pq_builders`](#new-compute_pq_builders)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -21,12 +22,16 @@ This document describes the process of the PQ upgrade.
 
 Validators and builders register their XMSS public key and VRF data before the
 fork, as the `pq_data` of a [Prereg](../prereg/beacon-chain.md) registration. At
-the fork, each registration becomes an entry in `state.pq_data`. Validators and
-builders keep their BLS public keys, which identify their entries.
+the fork, every validator is copied into `state.pq_validators` and every builder
+into `state.pq_builders`, at the same index, with its registered XMSS public
+key. Validators also take their registered VRF data, and builders drop theirs.
+`state.validators` and `state.builders` are frozen from then on and only serve
+to find a validator or builder by BLS public key.
 
-A validator or builder without an entry for its role has its exit initiated.
-Prereg ignores a registration whose XMSS public key is already registered, so
-every XMSS public key is unique.
+A validator or builder without a registration gets the empty XMSS public key,
+which no signature verifies against, and has its exit initiated. Prereg ignores
+a registration whose XMSS public key is already registered, so every registered
+XMSS public key is unique.
 
 *Note*: A validator with `0x00` withdrawal credentials has no withdrawal address
 to register from, so it is exited. `BLSToExecutionChange` is disabled in PQ, so
@@ -44,31 +49,63 @@ Warning: this configuration is not definitive.
 
 ## Helpers
 
-### New `upgrade_pq_registrations_to_pq`
+### New `get_registered_pq_data`
 
 ```python
-def upgrade_pq_registrations_to_pq(pre: prereg.BeaconState) -> PQDataList:
-    pq_data = PQDataList()
+def get_registered_pq_data(pre: prereg.BeaconState, role: Uint8) -> dict[BLSPubkey, Bytes64]:
+    """
+    Return the PQ material registered for each BLS public key with ``role``.
+    """
+    registered: dict[BLSPubkey, Bytes64] = {}
     for registration in pre.pq_registrations:
-        pq_data.append(
-            PQData(
-                role=registration.role,
-                bls_pubkey=registration.pubkey,
-                xmss_pubkey=XMSSPubkey(registration.pq_data[:32]),
-                vrf_data=Bytes32(registration.pq_data[32:]),
-            )
-        )
-    return pq_data
+        if registration.role == role:
+            registered[registration.pubkey] = registration.pq_data
+    return registered
 ```
 
-### New `get_pq_data_pubkeys`
+### New `compute_pq_validators`
 
 ```python
-def get_pq_data_pubkeys(state: BeaconState, role: Uint8) -> set[BLSPubkey]:
-    """
-    Return the BLS public keys with an entry in ``state.pq_data`` for ``role``.
-    """
-    return {entry.bls_pubkey for entry in state.pq_data if entry.role == role}
+def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
+    registered = get_registered_pq_data(pre, PQ_REGISTRATION_ROLE_VALIDATOR)
+    pq_validators = PQValidators()
+    for validator in pre.validators:
+        pq_data = registered.get(validator.pubkey, Bytes64())
+        pq_validators.append(
+            PQValidator(
+                pubkey=XMSSPubkey(pq_data[:32]),
+                vrf_data=Bytes32(pq_data[32:]),
+                withdrawal_credentials=validator.withdrawal_credentials,
+                effective_balance=validator.effective_balance,
+                slashed=validator.slashed,
+                activation_eligibility_epoch=validator.activation_eligibility_epoch,
+                activation_epoch=validator.activation_epoch,
+                exit_epoch=validator.exit_epoch,
+                withdrawable_epoch=validator.withdrawable_epoch,
+            )
+        )
+    return pq_validators
+```
+
+### New `compute_pq_builders`
+
+```python
+def compute_pq_builders(pre: prereg.BeaconState) -> PQBuilders:
+    registered = get_registered_pq_data(pre, PQ_REGISTRATION_ROLE_BUILDER)
+    pq_builders = PQBuilders()
+    for builder in pre.builders:
+        pq_data = registered.get(builder.pubkey, Bytes64())
+        pq_builders.append(
+            PQBuilder(
+                pubkey=XMSSPubkey(pq_data[:32]),
+                version=builder.version,
+                execution_address=builder.execution_address,
+                balance=builder.balance,
+                deposit_epoch=builder.deposit_epoch,
+                withdrawable_epoch=builder.withdrawable_epoch,
+            )
+        )
+    return pq_builders
 ```
 
 ## Fork to PQ
@@ -152,19 +189,21 @@ def upgrade_to_pq(pre: prereg.BeaconState) -> BeaconState:
         # [Modified in PQ]
         # Removed `pq_registrations`
         # [New in PQ]
-        pq_data=upgrade_pq_registrations_to_pq(pre),
+        pq_validators=compute_pq_validators(pre),
+        # [New in PQ]
+        pq_builders=compute_pq_builders(pre),
+        # [New in PQ]
+        pending_builder_deposits=PendingDeposits(),
     )
 
     # [New in PQ]
-    registered_pubkeys = get_pq_data_pubkeys(post, PQ_REGISTRATION_ROLE_VALIDATOR)
-    for index, validator in enumerate(post.validators):
-        if validator.pubkey not in registered_pubkeys:
+    for index, validator in enumerate(post.pq_validators):
+        if validator.pubkey == XMSSPubkey():
             initiate_validator_exit(post, ValidatorIndex(index))
 
     # [New in PQ]
-    registered_builder_pubkeys = get_pq_data_pubkeys(post, PQ_REGISTRATION_ROLE_BUILDER)
-    for builder_index, builder in enumerate(post.builders):
-        is_registered = builder.pubkey in registered_builder_pubkeys
+    for builder_index, builder in enumerate(post.pq_builders):
+        is_registered = builder.pubkey != XMSSPubkey()
         if not is_registered and builder.withdrawable_epoch == FAR_FUTURE_EPOCH:
             initiate_builder_exit(post, BuilderIndex(builder_index))
 

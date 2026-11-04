@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_fulu
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     cause_effective_balance_decrease_below_threshold,
     simulate_lookahead,
@@ -38,7 +39,7 @@ def test_effective_decrease_balance_updates_lookahead(spec, state):
         spec, state, validator_change_index, validator_change_threshold
     )
 
-    pre_eb = state.validators[validator_change_index].effective_balance
+    pre_eb = get_validators(spec, state)[validator_change_index].effective_balance
 
     # Transition to the last slot of the epoch
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
@@ -50,7 +51,7 @@ def test_effective_decrease_balance_updates_lookahead(spec, state):
     spec.process_slots(state, state.slot + 1)
     yield "post", state
 
-    post_eb = state.validators[validator_change_index].effective_balance
+    post_eb = get_validators(spec, state)[validator_change_index].effective_balance
 
     assert pre_eb != post_eb, "Effective balance should have changed."
     assert post_eb < validator_change_threshold, "Effective balance should be below the threshold."

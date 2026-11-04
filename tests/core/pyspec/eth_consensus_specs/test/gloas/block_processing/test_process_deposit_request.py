@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.deposit_requests import (
     prepare_process_deposit_request,
     run_deposit_request_processing,
 )
+from eth_consensus_specs.test.helpers.registry import get_builders
 
 #
 # In Gloas, deposit requests never create or top up builders. Builders are
@@ -91,7 +92,7 @@ def test_process_deposit_request__builder_pubkey_queued(spec, state):
         expected_pending_deposit_amount=amount,
     )
     # The existing builder must be untouched
-    assert state.builders[0] == pre_state.builders[0]
+    assert get_builders(spec, state)[0] == get_builders(spec, pre_state)[0]
 
 
 @with_gloas_and_later
@@ -132,4 +133,4 @@ def test_process_deposit_request__builder_pubkey_validator_credentials(spec, sta
         expected_pending_deposit_credentials=withdrawal_credentials,
     )
     # The existing builder must be untouched
-    assert state.builders[0] == pre_state.builders[0]
+    assert get_builders(spec, state)[0] == get_builders(spec, pre_state)[0]

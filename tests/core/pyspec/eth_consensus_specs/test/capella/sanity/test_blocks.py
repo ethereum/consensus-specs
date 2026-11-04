@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import append_validator, get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
     next_slot,
@@ -79,7 +80,7 @@ def test_invalid_is_execution_enabled_false(spec, state):
 def test_bls_change(spec, state):
     index = 0
     signed_address_change = get_signed_address_change(spec, state, validator_index=index)
-    pre_credentials = state.validators[index].withdrawal_credentials
+    pre_credentials = get_validators(spec, state)[index].withdrawal_credentials
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
@@ -90,7 +91,7 @@ def test_bls_change(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    post_credentials = state.validators[index].withdrawal_credentials
+    post_credentials = get_validators(spec, state)[index].withdrawal_credentials
     assert pre_credentials != post_credentials
     assert post_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     assert post_credentials[1:12] == b"\x00" * 11
@@ -130,7 +131,7 @@ def test_deposit_and_bls_change(spec, state):
 
     assert len(state.validators) == initial_registry_len + 1
     assert len(state.balances) == initial_balances_len + 1
-    validator_credentials = state.validators[validator_index].withdrawal_credentials
+    validator_credentials = get_validators(spec, state)[validator_index].withdrawal_credentials
     assert deposit_credentials != validator_credentials
     assert validator_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     assert validator_credentials[1:12] == b"\x00" * 11
@@ -158,7 +159,7 @@ def test_exit_and_bls_change(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    validator = state.validators[index]
+    validator = get_validators(spec, state)[index]
     balance = state.balances[index]
     current_epoch = spec.get_current_epoch(state)
     assert not spec.is_fully_withdrawable_validator(validator, balance, current_epoch)
@@ -496,9 +497,9 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0
-    assert state.validators[validator_index].effective_balance > 0
+    assert get_validators(spec, state)[validator_index].effective_balance > 0
     next_epoch_via_block(spec, state)
-    assert state.validators[validator_index].effective_balance == 0
+    assert get_validators(spec, state)[validator_index].effective_balance == 0
 
     # Make a top-up deposit to validator
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
@@ -516,7 +517,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
         balance += state.pending_deposits[0].amount
 
     assert spec.is_fully_withdrawable_validator(
-        state.validators[validator_index], balance, spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], balance, spec.get_current_epoch(state)
     )
 
     # Apply an empty block
@@ -526,7 +527,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
     # With mainnet preset, it holds
     if len(state.validators) <= spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP:
         assert not spec.is_fully_withdrawable_validator(
-            state.validators[validator_index],
+            get_validators(spec, state)[validator_index],
             state.balances[validator_index],
             spec.get_current_epoch(state),
         )
@@ -552,7 +553,7 @@ def _insert_validator(spec, state, balance):
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
         effective_balance=effective_balance,
     )
-    state.validators.append(validator)
+    append_validator(spec, state, validator)
     state.balances.append(balance)
     if is_post_eip8148(spec):
         state.validator_sweep_thresholds.append(spec.Gwei(0))
@@ -569,7 +570,7 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
     # To make it eligible activation
     transition_to(spec, state, spec.compute_start_slot_at_epoch(2) - 1)
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     yield "pre", state
@@ -581,7 +582,7 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
     blocks.append(signed_block)
 
     assert spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     if initial_balance > spec.MAX_EFFECTIVE_BALANCE:

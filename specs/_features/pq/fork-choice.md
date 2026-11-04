@@ -8,6 +8,10 @@
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
   - [Modified `on_payload_attestation_message`](#modified-on_payload_attestation_message)
+- [Helpers](#helpers)
+  - [Modified `calculate_committee_fraction`](#modified-calculate_committee_fraction)
+  - [Modified `get_attestation_score`](#modified-get_attestation_score)
+  - [Modified `is_head_weak`](#modified-is_head_weak)
 
 <!-- mdformat-toc end -->
 
@@ -126,11 +130,10 @@ def on_payload_attestation_message(
     # Check that the attestation is for the current slot
     assert data.slot == get_current_slot(store)
     # Verify the signature
-    validator = state.validators[ptc_message.validator_index]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
     signing_root = compute_signing_root(data, domain)
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    pubkey = state.pq_validators[ptc_message.validator_index].pubkey
     assert xmss.Verify(pubkey, leaf_index, signing_root, ptc_message.signature)
 
     # Update the votes for the block
@@ -139,4 +142,74 @@ def on_payload_attestation_message(
     for ptc_index in ptc_indices:
         payload_timeliness_vote[ptc_index] = data.payload_present
         payload_data_availability_vote[ptc_index] = data.blob_data_available
+```
+
+## Helpers
+
+### Modified `calculate_committee_fraction`
+
+```python
+def calculate_committee_fraction(state: BeaconState, committee_percent: Uint64) -> Gwei:
+    unslashed_and_active_indices: set[ValidatorIndex] = set()
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        # [Modified in PQ]
+        if not state.pq_validators[index].slashed:
+            unslashed_and_active_indices.add(index)
+    total_balance = get_total_balance(state, unslashed_and_active_indices)
+    committee_weight = total_balance // Uint64(SLOTS_PER_EPOCH)
+    return (committee_weight * committee_percent) // 100
+```
+
+### Modified `get_attestation_score`
+
+```python
+def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
+    unslashed_and_active_indices = [
+        index
+        for index in get_active_validator_indices(state, get_current_epoch(state))
+        # [Modified in PQ]
+        if not state.pq_validators[index].slashed
+    ]
+    return Gwei(
+        sum(
+            # [Modified in PQ]
+            state.pq_validators[index].effective_balance
+            for index in unslashed_and_active_indices
+            if (
+                index in store.latest_messages
+                and index not in store.equivocating_indices
+                and is_ancestor(
+                    store, get_supported_node(store, store.latest_messages[index]), node
+                )
+            )
+        )
+    )
+```
+
+### Modified `is_head_weak`
+
+```python
+def is_head_weak(store: Store, head_root: Root) -> bool:
+    # Calculate weight threshold for weak head
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
+
+    # Compute head weight including equivocations
+    head_state = store.block_states[head_root]
+    head_block = store.blocks[head_root]
+    epoch = compute_epoch_at_slot(head_block.slot)
+    head_node = ForkChoiceNode(root=head_root, payload_status=PAYLOAD_STATUS_PENDING)
+    head_weight = get_attestation_score(store, head_node, justified_state)
+    for index in range(get_committee_count_per_slot(head_state, epoch)):
+        committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
+        head_weight += Gwei(
+            sum(
+                # [Modified in PQ]
+                justified_state.pq_validators[index].effective_balance
+                for index in committee
+                if index in store.equivocating_indices
+            )
+        )
+
+    return head_weight < reorg_threshold
 ```

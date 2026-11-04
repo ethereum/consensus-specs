@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 
 def get_capella_fork_time_ms(spec, store):
@@ -179,7 +180,9 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
 
     seen = get_seen(spec)
     validator_index = len(state.validators) // 2
-    state.validators[validator_index].withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x23" * 20
+    get_validators(spec, state)[validator_index].withdrawal_credentials = (
+        b"\x01" + b"\x00" * 11 + b"\x23" * 20
+    )
     yield "state", state
 
     store, signed_anchor = get_store_from_state(spec, state)

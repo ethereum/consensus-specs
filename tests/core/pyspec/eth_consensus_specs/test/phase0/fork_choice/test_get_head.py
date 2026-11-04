@@ -38,6 +38,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slots,
@@ -384,7 +385,7 @@ def test_proposer_boost_excludes_slashed_validators(spec, state):
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
 
     # Attest to block_1 with just enough weight to outweigh the proposer boost
-    effective_balance = state.validators[committee_1[0]].effective_balance
+    effective_balance = get_validators(spec, state)[committee_1[0]].effective_balance
     participant_num = spec.get_proposer_score(store) // effective_balance + 1
 
     # This weight would not outweigh a proposer boost that included slashed validators
@@ -509,7 +510,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
 
     # Slash those validators in the state
     for val_index in slashed_validators:
-        state.validators[val_index].slashed = True
+        get_validators(spec, state)[val_index].slashed = True
 
     # Store this state as the anchor state
     anchor_state = state.copy()
@@ -574,7 +575,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     # Check that all attesting validators were slashed in the anchor state
     att_comm = spec.get_beacon_committee(block_low_root_post_state, eqv_slot, 0)
     for i in att_comm:
-        assert anchor_state.validators[i].slashed
+        assert get_validators(spec, anchor_state)[i].slashed
     # Add attestation to the store
     yield from add_attestation(spec, store, attestation, test_steps)
     # Check that block with higher root still wins

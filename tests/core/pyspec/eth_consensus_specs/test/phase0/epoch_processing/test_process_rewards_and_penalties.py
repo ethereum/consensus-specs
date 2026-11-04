@@ -23,6 +23,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processi
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.rewards import leaking
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -47,7 +48,7 @@ def validate_resulting_balances(spec, pre_state, post_state, attestations):
     current_epoch = spec.get_current_epoch(post_state)
 
     for index in range(len(pre_state.validators)):
-        if not spec.is_active_validator(pre_state.validators[index], current_epoch):
+        if not spec.is_active_validator(get_validators(spec, pre_state)[index], current_epoch):
             assert post_state.balances[index] == pre_state.balances[index]
         elif not is_post_altair(spec):
             proposer_indices = [a.proposer_index for a in post_state.previous_epoch_attestations]
@@ -158,9 +159,9 @@ def test_full_attestations_misc_balances(spec, state):
     for index in attesting_indices:
         br = spec.get_base_reward(state, index)
         if br in brs:
-            assert brs[br] == state.validators[index].effective_balance
+            assert brs[br] == get_validators(spec, state)[index].effective_balance
         else:
-            brs[br] = state.validators[index].effective_balance
+            brs[br] = get_validators(spec, state)[index].effective_balance
 
 
 @with_all_phases

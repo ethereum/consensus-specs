@@ -26,6 +26,7 @@ from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_min_slashing_penalty_quotient,
     get_whistleblower_reward_quotient,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     get_balance,
     next_epoch_via_block,
@@ -57,11 +58,11 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices
     }
     pre_slashing_effectives = {
-        slashed_index: state.validators[slashed_index].effective_balance
+        slashed_index: get_validators(spec, state)[slashed_index].effective_balance
         for slashed_index in slashed_indices
     }
     pre_withdrawalable_epochs = {
-        slashed_index: state.validators[slashed_index].withdrawable_epoch
+        slashed_index: get_validators(spec, state)[slashed_index].withdrawable_epoch
         for slashed_index in slashed_indices
     }
 
@@ -75,7 +76,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
 
     for slashed_index in slashed_indices:
         pre_withdrawalable_epoch = pre_withdrawalable_epochs[slashed_index]
-        slashed_validator = state.validators[slashed_index]
+        slashed_validator = get_validators(spec, state)[slashed_index]
 
         # Check slashing
         assert slashed_validator.slashed
@@ -232,7 +233,7 @@ def test_already_exited_long_ago(spec, state):
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
-        state.validators[index].withdrawable_epoch = spec.get_current_epoch(state) + 2
+        get_validators(spec, state)[index].withdrawable_epoch = spec.get_current_epoch(state) + 2
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing)
 
@@ -295,7 +296,7 @@ def test_invalid_participants_already_slashed(spec, state):
     # set all indices to slashed
     validator_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
     for index in validator_indices:
-        state.validators[index].slashed = True
+        get_validators(spec, state)[index].slashed = True
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
