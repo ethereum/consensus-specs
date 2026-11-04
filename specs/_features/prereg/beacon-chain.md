@@ -101,9 +101,9 @@ class PQRegistrations(ProgressiveList[PQRegistration]):
 
 ### Execution
 
-| Name                                       | Value                 |
-| ------------------------------------------ | --------------------- |
-| `MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**4)` (= 16) |
+| Name                                       | Value                     |
+| ------------------------------------------ | ------------------------- |
+| `MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**10)` (= 1,024) |
 
 ## Containers
 
