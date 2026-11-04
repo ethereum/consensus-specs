@@ -279,11 +279,11 @@ class XMSSSignature(ByteVector):
 
 ### XMSS
 
-| Name                   | Value                |
-| ---------------------- | -------------------- |
-| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`       |
-| `XMSS_RESERVED_LEAVES` | `Uint64(2**3)` (= 8) |
-| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**3)` (= 8) |
+| Name                   | Value                      |
+| ---------------------- | -------------------------- |
+| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`             |
+| `XMSS_RESERVED_LEAVES` | `Uint64(2**15)` (= 32,768) |
+| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**3)` (= 8)       |
 
 ### VRF
 
@@ -1800,8 +1800,12 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     )
     signing_root = compute_signing_root(voluntary_exit, domain)
     # [Modified in PQ]
-    leaf_index = RESERVED_LEAF_VOLUNTARY_EXIT
-    assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
+    assert xmss.Verify(
+        validator.pubkey,
+        RESERVED_LEAF_VOLUNTARY_EXIT,
+        signing_root,
+        signed_voluntary_exit.signature,
+    )
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
