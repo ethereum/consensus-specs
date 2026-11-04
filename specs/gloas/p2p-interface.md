@@ -27,6 +27,7 @@
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
+  - [New `is_head_reorg_possible`](#new-is_head_reorg_possible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
@@ -395,6 +396,42 @@ def is_gas_limit_target_compatible(
     return gas_limit == target_gas_limit
 ```
 
+### New `is_head_reorg_possible`
+
+```python
+def is_head_reorg_possible(store: Store, head_node: ForkChoiceNode, slot: Slot) -> bool:
+    """
+    Check if the proposer of ``slot`` may re-org out the head, as far as is
+    known before the attestations for the head's slot have been counted. These
+    are the conditions of ``get_proposer_head`` that depend neither on
+    attestation weight nor on the proposer's own timing.
+    """
+    head_block = store.blocks[head_node.root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+
+    # Only re-org the head block if it arrived later than the attestation deadline
+    head_late = is_head_late(store, head_node.root)
+
+    # Ensure that the FFG information of the new head will be competitive with the current head
+    ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org a single slot at most
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot
+    proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+
+    if all([head_late, ffg_competitive, finalization_ok, single_slot_reorg]):
+        return True
+    return current_time_ok and proposer_equivocation
+```
+
 ### New `is_bid_compatible_with_head`
 
 ```python
@@ -410,7 +447,8 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
 
     if builds_on_parent_block and builds_on_parent_payload:
-        return True
+        # The bid can only be selected by a proposer re-orging out the head
+        return is_head_reorg_possible(store, head_node, bid.slot)
 
     if bid.parent_block_root != head_node.root:
         return False
@@ -1036,6 +1074,12 @@ def validate_execution_payload_bid_gossip(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
+
+    # [IGNORE] A bid whose parent is more than one slot behind is received after the attestation deadline of the skipped slot
+    if bid.slot > store.blocks[bid.parent_block_root].slot + 1:
+        skipped_slot_start_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+        if current_time_ms < skipped_slot_start_ms + get_attestation_due_ms():
+            raise GossipIgnore("bid skips a slot before its attestation deadline")
 
     # [IGNORE] The bid is compatible with the current head branch
     if not is_bid_compatible_with_head(store, bid):

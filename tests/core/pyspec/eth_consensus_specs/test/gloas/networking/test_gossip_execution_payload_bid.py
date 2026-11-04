@@ -167,13 +167,13 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
-    """A bid on the head's beacon parent uses that parent's RANDAO mix."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload_bid"
-
+def _setup_store_with_head_on_parent(spec, state, late):
+    """
+    Append a head block to the advanced store, so that ``blocks[-2]`` is the
+    head's beacon parent with its payload recorded. A ``late`` head arrived
+    after its slot's attestation deadline. Returns (store, blocks, parent_root,
+    head_root, parent_state, parent_payload, finalized_checkpoint_meta).
+    """
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
     parent_state = state.copy()
     parent_block = blocks[-1]
@@ -186,7 +186,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         b"\x03" + b"\x00" * 31
     )
     signed_head_block = state_transition_and_sign_block(spec, state, head_block)
-    head_root = record_block_in_store(spec, store, signed_head_block, state.copy())
+    head_root = record_block_in_store(spec, store, signed_head_block, state.copy(), late=late)
     blocks.append(signed_head_block)
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
     parent_state.finalized_checkpoint = state.finalized_checkpoint
@@ -198,11 +198,41 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     store.payloads[parent_root] = parent_payload.message
 
     head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
-    parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
-    head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     assert spec.get_head(store).root == head_root
     assert signed_head_block.message.parent_root == parent_root
     assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    return (
+        store,
+        blocks,
+        parent_root,
+        head_root,
+        parent_state,
+        parent_payload,
+        finalized_checkpoint_meta,
+    )
+
+
+def _run_bid_on_head_parent(spec, state, late, expected, reason=None, for_head_slot=False):
+    """
+    Validate a bid building on the head's beacon parent, which is only selected
+    if the head is re-orged out. The bid is for the slot after the head and is
+    received after the attestation deadline of the head's slot, unless
+    ``for_head_slot`` makes it a bid for the head's own slot.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    (
+        store,
+        blocks,
+        parent_root,
+        head_root,
+        parent_state,
+        parent_payload,
+        finalized_checkpoint_meta,
+    ) = _setup_store_with_head_on_parent(spec, state, late=late)
+    parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
+    head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     assert parent_randao != head_randao
 
     yield "state", anchor_state
@@ -210,13 +240,19 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         yield get_filename(signed), signed
     blocks_meta = get_blocks_meta(blocks)
     blocks_meta[-2]["payload"] = get_filename(parent_payload)
+    if late:
+        blocks_meta[-1]["late"] = True
     yield "blocks", "meta", blocks_meta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    head_slot_start_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
+    # The proposal slot is the one following the state the context is seeded
+    # from: the parent state itself for the head's slot, otherwise the parent
+    # state advanced to the head's slot.
     proposal_state = parent_state.copy()
-    spec.process_slots(proposal_state, state.slot)
+    if not for_head_slot:
+        spec.process_slots(proposal_state, state.slot)
     (
         seen,
         common_fee,
@@ -225,8 +261,9 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         parent_block_hash,
         current_time_ms,
     ) = yield from (
-        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, current_time_ms)
+        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, head_slot_start_ms)
     )
+    assert proposal_slot == (state.slot if for_head_slot else state.slot + 1)
     assert spec.get_shuffling_dependent_root(
         store, head_root, spec.compute_epoch_at_slot(proposal_slot)
     ) == spec.get_shuffling_dependent_root(
@@ -247,25 +284,157 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     )
     yield get_filename(signed_bid), signed_bid
 
-    current_time_ms += 40
-    result, reason = run_validate_gossip(
+    if for_head_slot:
+        current_time_ms += 40
+    else:
+        # The bid skips the head's slot, so it is only propagated from that
+        # slot's attestation deadline on.
+        current_time_ms = head_slot_start_ms + spec.get_attestation_due_ms()
+    result, actual_reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
         current_time_ms=current_time_ms,
     )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_bid),
-            "expected": result,
-        }
-    )
+    assert result == expected
+    assert actual_reason == reason
+    message = {
+        "current_time_ms": int(current_time_ms),
+        "message": get_filename(signed_bid),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
 
     yield "messages", "meta", messages
+
+
+def _run_skip_slot_bid(spec, state, bid_time_offset_ms, expected, reason=None):
+    """
+    Validate a bid for the slot after next on the head, i.e. a bid assuming the
+    next slot is missed, received during the next slot at ``bid_time_offset_ms``
+    from that slot's attestation deadline.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    skipped_slot = state.slot + 1
+    skipped_slot_start_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, skipped_slot)
+    messages = []
+    proposal_state = state.copy()
+    spec.process_slots(proposal_state, skipped_slot)
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        _,
+    ) = yield from (
+        _seed_bid_context(
+            spec, proposal_state, store, head_payload, messages, skipped_slot_start_ms
+        )
+    )
+    assert proposal_slot == skipped_slot + 1
+
+    signed_bid = build_signed_bid(
+        spec,
+        proposal_state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms = skipped_slot_start_ms + spec.get_attestation_due_ms() + bid_time_offset_ms
+    result, actual_reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == expected
+    assert actual_reason == reason
+    message = {
+        "current_time_ms": int(current_time_ms),
+        "message": get_filename(signed_bid),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
+    """A bid on the late head's beacon parent uses that parent's RANDAO mix."""
+    yield from _run_bid_on_head_parent(spec, state, late=True, expected="valid")
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_on_head_parent_timely_head(spec, state):
+    """A bid on the head's beacon parent is ignored if the head arrived on time."""
+    yield from _run_bid_on_head_parent(
+        spec,
+        state,
+        late=False,
+        expected="ignore",
+        reason="bid is not compatible with the current head branch",
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_on_head_parent_for_head_slot(spec, state):
+    """A bid on the head's beacon parent for the head's own slot is ignored."""
+    yield from _run_bid_on_head_parent(
+        spec,
+        state,
+        late=True,
+        expected="ignore",
+        reason="bid is not compatible with the current head branch",
+        for_head_slot=True,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_skips_slot_before_attestation_deadline(spec, state):
+    """A bid assuming the next slot is missed is ignored before that slot's attestation deadline."""
+    yield from _run_skip_slot_bid(
+        spec,
+        state,
+        bid_time_offset_ms=-1,
+        expected="ignore",
+        reason="bid skips a slot before its attestation deadline",
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_skips_slot_after_attestation_deadline(spec, state):
+    """A bid assuming the next slot is missed is valid from that slot's attestation deadline."""
+    yield from _run_skip_slot_bid(spec, state, bid_time_offset_ms=0, expected="valid")
 
 
 @with_gloas_and_later

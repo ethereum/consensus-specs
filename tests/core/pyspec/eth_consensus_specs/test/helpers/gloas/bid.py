@@ -39,14 +39,18 @@ def activate_builders(spec, state, store, blocks):
     return {"epoch": 1, "block": get_filename(signed_block)}
 
 
-def record_block_in_store(spec, store, signed_block, post_state):
+def record_block_in_store(spec, store, signed_block, post_state, late=False):
     """
     Record ``signed_block`` and its post-state in ``store``, including the PTC
-    vote slots that ``on_block`` initializes. Returns the block root.
+    vote slots, the unrealized justification and the timeliness that
+    ``on_block`` records. A ``late`` block was received after its slot's
+    attestation deadline. Returns the block root.
     """
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = post_state
+    store.unrealized_justifications[block_root] = post_state.current_justified_checkpoint
+    store.block_timeliness[block_root] = [not late, not late]
     store.payload_timeliness_vote[block_root] = [None] * spec.PTC_SIZE
     store.payload_data_availability_vote[block_root] = [None] * spec.PTC_SIZE
     return block_root

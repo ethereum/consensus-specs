@@ -258,6 +258,12 @@ def validate_execution_payload_bid_gossip(
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
+    # [IGNORE] A bid whose parent is more than one slot behind is received after the attestation deadline of the skipped slot
+    if bid.slot > store.blocks[bid.parent_block_root].slot + 1:
+        skipped_slot_start_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+        if current_time_ms < skipped_slot_start_ms + get_attestation_due_ms():
+            raise GossipIgnore("bid skips a slot before its attestation deadline")
+
     # [IGNORE] The bid is compatible with the current head branch
     if not is_bid_compatible_with_head(store, bid):
         raise GossipIgnore("bid is not compatible with the current head branch")
