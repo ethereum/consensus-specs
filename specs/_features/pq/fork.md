@@ -74,7 +74,7 @@ def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
         pq_validators.append(
             PQValidator(
                 pubkey=XMSSPubkey(pq_data[:32]),
-                vrf_data=Bytes32(pq_data[32:]),
+                vrf_data=Root(pq_data[32:]),
                 withdrawal_credentials=validator.withdrawal_credentials,
                 effective_balance=validator.effective_balance,
                 slashed=validator.slashed,

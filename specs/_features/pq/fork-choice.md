@@ -22,8 +22,7 @@ This is the modification of the fork-choice accompanying the PQ upgrade.
 
 Blocks no longer carry payload attestations, so the votes of the payload
 timeliness committee reach fork choice only from the wire. Attestations no
-longer carry a signature, so `on_attestation` takes the signature of an
-attestation from the wire separately.
+longer carry a signature, so `on_attestation` no longer checks one.
 
 ## Handlers
 
@@ -95,18 +94,13 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
 ### Modified `on_attestation`
 
-*Note*: An attestation carries no signature. The `stark` of the block that
-includes an attestation proves its signature, so only an attestation from the
-wire comes with a `signature` to check.
+*Note*: An attestation carries no signature. Gossip validation checks the
+signature or `stark` of an attestation from the wire, and `process_stark` proves
+the signatures of the attestations in a block, so `on_attestation` only checks
+that an attestation has attesters.
 
 ```python
-def on_attestation(
-    store: Store,
-    attestation: Attestation,
-    is_from_block: bool = False,
-    # [New in PQ]
-    signature: XMSSAggregateSignature | None = None,
-) -> None:
+def on_attestation(store: Store, attestation: Attestation, is_from_block: bool = False) -> None:
     """
     Run ``on_attestation`` upon receiving a new attestation from either within a block or directly on the wire.
 
@@ -121,10 +115,7 @@ def on_attestation(
     target_state = store.checkpoint_states[attestation.data.target]
     # [Modified in PQ]
     attesting_indices = sorted(get_attesting_indices(target_state, attestation))
-    if not is_from_block:
-        assert signature is not None
-        indexed_attestation = get_indexed_attestation(target_state, attestation, signature)
-        assert is_valid_indexed_attestation(target_state, indexed_attestation)
+    assert len(attesting_indices) > 0
 
     # Update latest messages for attesting indices
     # [Modified in PQ]

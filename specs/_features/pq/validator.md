@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
+  - [New `SelectionProof`](#new-selectionproof)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -39,6 +41,7 @@
     - [Aggregation selection](#aggregation-selection)
     - [Construct aggregate](#construct-aggregate)
       - [Aggregate signature](#aggregate-signature-1)
+      - [Aggregate stark](#aggregate-stark)
     - [Broadcast aggregate](#broadcast-aggregate)
   - [Sync committees](#sync-committees)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
@@ -60,6 +63,20 @@ the XMSS public key it registered with EIP-8483. A validator without a
 registration is exited at the upgrade. See [the fork document](./fork.md) for
 details.
 
+## Types
+
+### New `SelectionProof`
+
+```python
+class SelectionProof(Vector[Bytes32]):
+    """
+    A leaf of the tree whose root is a validator's VRF data, followed by the
+    leaf's Merkle branch.
+    """
+
+    LENGTH = SELECTION_PROOF_DEPTH + 1
+```
+
 ## Constants
 
 ### Misc
@@ -69,6 +86,7 @@ details.
 | Name                                  | Value                |
 | ------------------------------------- | -------------------- |
 | `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` | `Uint64(2**2)` (= 4) |
+| `SELECTION_PROOF_DEPTH`               | `Uint64(31)`         |
 
 *Note*: Aggregates are much larger than with BLS, so fewer validators are
 selected to aggregate. `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` replaces
@@ -85,9 +103,9 @@ class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
     aggregate: Attestation
     # [Modified in PQ]
-    selection_proof: XMSSSignature
+    selection_proof: SelectionProof
     # [New in PQ]
-    aggregate_signature: XMSSAggregateSignature
+    stark: StarkProof
 ```
 
 #### `SignedAggregateAndProof`
@@ -226,21 +244,10 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ##### Stark
 
-The proposer combines the `aggregate_signature` of the network aggregates behind
-each on chain aggregate with `xmss.Aggregate`, in the order of
-`body.attestations`. It then sets `body.stark` to the result of
-`get_block_stark(state, body.attestations, aggregate_signatures)`, where `state`
-is the state at the slot of the block.
-
-```python
-def get_block_stark(
-    state: BeaconState,
-    attestations: Sequence[Attestation],
-    aggregate_signatures: Sequence[XMSSAggregateSignature],
-) -> StarkProof:
-    statements = [get_attestation_statement(state, attestation) for attestation in attestations]
-    return stark.ProveAggregates(statements, aggregate_signatures)
-```
+The proposer sets `body.stark` to `stark.MergeProofs(proofs)`, where `proofs`
+holds the `stark` of each network aggregate behind `body.attestations`, ordered
+as the attestations are and, within each, by committee index. The merged proof
+then proves the statements that `process_stark` checks.
 
 ##### Sync committee
 
@@ -399,22 +406,32 @@ def compute_subnet_for_attestation(
 
 #### Aggregation selection
 
-*Note*: XMSS signatures are not unique. A validator can grind the randomizer of
-its selection proof until `is_aggregator` selects it, which BLS uniqueness used
-to prevent. This is an open issue.
+A validator commits to its selection proofs through the VRF data it registers.
+It builds a Merkle tree of depth `SELECTION_PROOF_DEPTH` whose leaves are secret
+random values, one for each slot, and registers the root of the tree as its VRF
+data. Its selection proof for a slot is the leaf at index `slot`, followed by
+the leaf's Merkle branch. The tree is fixed at registration, so a validator
+cannot grind its selection proofs, and nobody can predict them before they are
+revealed. `get_slot_signature` is deprecated.
 
 ```python
-def get_slot_signature(
+def is_valid_selection_proof(
     state: BeaconState,
+    validator_index: ValidatorIndex,
     slot: Slot,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> XMSSSignature:
-    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
-    signing_root = compute_signing_root(slot, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(slot, LEAF_OFFSET_SELECTION_PROOF)
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    selection_proof: SelectionProof,
+) -> bool:
+    """
+    Check that ``selection_proof`` opens the leaf at index ``slot`` of the tree
+    whose root is the VRF data of the validator at ``validator_index``.
+    """
+    return is_valid_merkle_branch(
+        leaf=selection_proof[0],
+        branch=selection_proof[1:],
+        depth=SELECTION_PROOF_DEPTH,
+        index=slot,
+        root=state.pq_validators[validator_index].vrf_data,
+    )
 ```
 
 ```python
@@ -423,21 +440,21 @@ def is_aggregator(
     slot: Slot,
     index: CommitteeIndex,
     # [Modified in PQ]
-    slot_signature: XMSSSignature,
+    selection_proof: SelectionProof,
 ) -> bool:
     committee = get_beacon_committee(state, slot, index)
     # [Modified in PQ]
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE_PQ)
-    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
+    # [Modified in PQ]
+    return bytes_to_uint64(sha256(selection_proof[0])[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate
 
 ##### Aggregate signature
 
-An attestation carries no signature, so the aggregator obtains the
-`aggregate_signature` of `aggregate_attestation` from the signatures of the
-attestations it aggregates:
+An attestation carries no signature, so the aggregator aggregates the signatures
+of the attestations it aggregates:
 
 ```python
 def get_aggregate_signature(
@@ -448,24 +465,41 @@ def get_aggregate_signature(
     return XMSSAggregateSignature(data=xmss.Aggregate(signatures))
 ```
 
+##### Aggregate stark
+
+The aggregator proves that aggregate signature with a `stark`, which it sends in
+place of the signature:
+
+```python
+def get_aggregate_stark(
+    state: BeaconState, aggregate: Attestation, aggregate_signature: XMSSAggregateSignature
+) -> StarkProof:
+    statements = get_attestation_statements(state, aggregate)
+    return StarkProof(data=stark.ProveAggregates(statements, [aggregate_signature]))
+```
+
 #### Broadcast aggregate
 
 ```python
 def get_aggregate_and_proof(
-    state: BeaconState,
+    # [Modified in PQ]
+    # Removed `state`
     aggregator_index: ValidatorIndex,
     aggregate: Attestation,
     # [Modified in PQ]
-    privkey: Bytes32,
+    # Removed `privkey`
     # [New in PQ]
-    aggregate_signature: XMSSAggregateSignature,
+    selection_proof: SelectionProof,
+    # [New in PQ]
+    stark: StarkProof,
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
-        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
+        # [Modified in PQ]
+        selection_proof=selection_proof,
         # [New in PQ]
-        aggregate_signature=aggregate_signature,
+        stark=stark,
     )
 ```
 

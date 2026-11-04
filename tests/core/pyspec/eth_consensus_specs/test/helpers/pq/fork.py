@@ -3,18 +3,18 @@ from hashlib import sha256
 from eth_consensus_specs.test.helpers.constants import (
     PQ,
 )
-from eth_consensus_specs.test.helpers.keys import xmss_builder_pubkeys, xmss_pubkeys
+from eth_consensus_specs.test.helpers.keys import get_vrf_data, xmss_builder_pubkeys, xmss_pubkeys
 
 PQ_FORK_TEST_META_TAGS = {
     "fork": PQ,
 }
 
 
-def get_registration_pq_data(xmss_pubkey):
+def get_registration_pq_data(xmss_pubkey, vrf_data):
     """
     The PQ material of a registration, the XMSS public key followed by VRF data.
     """
-    return xmss_pubkey + sha256(xmss_pubkey).digest()
+    return xmss_pubkey + vrf_data
 
 
 def register_xmss_pubkeys(spec, state, indices=None):
@@ -28,7 +28,7 @@ def register_xmss_pubkeys(spec, state, indices=None):
             spec.PQRegistration(
                 role=spec.PQ_REGISTRATION_ROLE_VALIDATOR,
                 pubkey=state.validators[index].pubkey,
-                pq_data=get_registration_pq_data(xmss_pubkeys[index]),
+                pq_data=get_registration_pq_data(xmss_pubkeys[index], get_vrf_data(index)),
             )
         )
 
@@ -44,7 +44,9 @@ def register_builder_xmss_pubkeys(spec, state, indices=None):
             spec.PQRegistration(
                 role=spec.PQ_REGISTRATION_ROLE_BUILDER,
                 pubkey=state.builders[index].pubkey,
-                pq_data=get_registration_pq_data(xmss_builder_pubkeys[index]),
+                pq_data=get_registration_pq_data(
+                    xmss_builder_pubkeys[index], sha256(xmss_builder_pubkeys[index]).digest()
+                ),
             )
         )
 

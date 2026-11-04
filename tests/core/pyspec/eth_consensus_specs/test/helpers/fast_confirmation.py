@@ -21,7 +21,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     add_attester_slashing,
     add_block,
     add_execution_payload,
-    call_on_attestation,
     get_attestation_file_name,
     get_basic_store_checks,
     get_genesis_forkchoice_store_and_block,
@@ -415,7 +414,7 @@ class FCRTest:
     def apply_attestations(self, attestations):
         # Apply attestations to the fork choice
         for attestation in attestations:
-            call_on_attestation(self.spec, self.store, attestation, is_from_block=False)
+            self.spec.on_attestation(self.store, attestation, is_from_block=False)
             self.test_steps.append({"attestation": get_attestation_file_name(attestation)})
 
     def run_fast_confirmation(self):

@@ -64,7 +64,7 @@ which were sized for BLS signatures.
 
 | Name                                       | Value                         |
 | ------------------------------------------ | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1069929)` (= ~1 MiB)  |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1068549)` (= ~1 MiB)  |
 | `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(4194584)` (= ~4 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB) |
 
@@ -414,30 +414,27 @@ def validate_beacon_aggregate_and_proof_gossip(
     if aggregator_index not in committee:
         raise GossipReject("aggregator is not a member of the committee")
 
-    # [REJECT] The selection proof signature is valid
-    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
-    signing_root = compute_signing_root(aggregate.data.slot, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_SELECTION_PROOF)
-    pubkey = state.pq_validators[aggregator_index].pubkey
-    if not xmss.Verify(pubkey, leaf_index, signing_root, aggregate_and_proof.selection_proof):
-        raise GossipReject("invalid selection proof signature")
+    # [REJECT] The selection proof is valid
+    if not is_valid_selection_proof(
+        state, aggregator_index, aggregate.data.slot, aggregate_and_proof.selection_proof
+    ):
+        raise GossipReject("invalid selection proof")
 
     # [REJECT] The aggregator signature is valid
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
+    pubkey = state.pq_validators[aggregator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
-    # [REJECT] The aggregate signature is valid
     # [Modified in PQ]
-    indexed_attestation = get_indexed_attestation(
-        state, aggregate, aggregate_and_proof.aggregate_signature
-    )
-    if not is_valid_indexed_attestation(state, indexed_attestation):
-        raise GossipReject("invalid aggregate signature")
+    # [REJECT] The aggregate stark is valid
+    statements = get_attestation_statements(state, aggregate)
+    if not stark.VerifyAggregates(statements, aggregate_and_proof.stark):
+        raise GossipReject("invalid aggregate stark")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
     checkpoint_block = get_checkpoint_block(store, block_root, aggregate.data.target.epoch)

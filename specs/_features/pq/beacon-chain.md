@@ -62,7 +62,7 @@
     - [Modified `is_slashable_validator`](#modified-is_slashable_validator)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
-    - [New `get_attestation_statement`](#new-get_attestation_statement)
+    - [New `get_attestation_statements`](#new-get_attestation_statements)
     - [Modified `get_active_validator_indices`](#modified-get_active_validator_indices)
     - [Modified `get_base_reward`](#modified-get_base_reward)
     - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
@@ -181,8 +181,9 @@ which fork choice uses as before.
 
 Attestations no longer carry a signature. A block instead carries one `stark`
 proof of the aggregate signatures of all its attestations, which replaces
-verifying each attestation's aggregate in turn. Aggregates on the wire carry
-their signature in `AggregateAndProof`.
+verifying each attestation's aggregate in turn. An aggregate on the wire carries
+a `stark` of its own in `AggregateAndProof`, and the proposer merges those into
+the block's `stark`.
 
 *Note*: This specification is built upon [Prereg](../prereg/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -265,13 +266,12 @@ class XMSSSignature(ByteVector):
 | `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)` |
 | `LEAF_OFFSET_RANDAO`                     | `Uint64(1)` |
 | `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)` |
-| `LEAF_OFFSET_SELECTION_PROOF`            | `Uint64(3)` |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(4)` |
-| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(5)` |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(6)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(7)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(8)` |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(9)` |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(3)` |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(4)` |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(5)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(6)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(7)` |
+| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(8)` |
 
 ## Presets
 
@@ -516,7 +516,7 @@ class PQBuilder(Container):
 ```python
 class PQValidator(Container):
     pubkey: XMSSPubkey
-    vrf_data: Bytes32
+    vrf_data: Root
     withdrawal_credentials: Bytes32
     effective_balance: Gwei
     slashed: Boolean
@@ -575,21 +575,23 @@ stands in for a succinct aggregation scheme, which would change the encoding of
 This upgrade adds the following functions to prove many aggregates at once:
 
 - `def ProveAggregates(statements: Sequence[XMSSAggregateStatement], aggregates: Sequence[XMSSAggregateSignature]) -> StarkProof`
+- `def MergeProofs(proofs: Sequence[StarkProof]) -> StarkProof`
 - `def VerifyAggregates(statements: Sequence[XMSSAggregateStatement], proof: StarkProof) -> bool`
 
 `VerifyAggregates` returns `True` only if `proof` proves, for each statement, an
 aggregate that
 `xmss.AggregateVerify(statement.pubkeys, statement.leaf_index, statement.message, aggregate)`
 accepts. `ProveAggregates` takes those aggregates in the order of the
-statements.
+statements. `MergeProofs` turns proofs of lists of statements into one proof of
+their concatenation, in order.
 
 The above functions are accessed through the `stark` module, e.g.
 `stark.VerifyAggregates`.
 
-*Note*: The reference implementation of `ProveAggregates` concatenates the
-aggregates, and `VerifyAggregates` checks each of them in turn. It stands in for
-a STARK, which would change the encoding of `StarkProof` but not how these
-functions are used.
+*Note*: The reference implementations of `ProveAggregates` and `MergeProofs`
+concatenate their inputs, and `VerifyAggregates` checks each aggregate in turn.
+They stand in for a recursive STARK, which would change the encoding of
+`StarkProof` but not how these functions are used.
 
 ### Misc
 
@@ -915,22 +917,37 @@ def get_indexed_attestation(
     )
 ```
 
-#### New `get_attestation_statement`
+#### New `get_attestation_statements`
+
+*Note*: A network aggregate covers one committee, so its `stark` proves one
+statement. Statements are per committee so that the proposer can merge those
+proofs into the block's `stark`.
 
 ```python
-def get_attestation_statement(
+def get_attestation_statements(
     state: BeaconState, attestation: Attestation
-) -> XMSSAggregateStatement:
+) -> Sequence[XMSSAggregateStatement]:
     """
-    Return the statement that the aggregate signature of ``attestation`` proves.
+    Return, for each committee of ``attestation`` in order, the statement that the
+    aggregate signature of its attesters in that committee proves.
     """
-    attesting_indices = sorted(get_attesting_indices(state, attestation))
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    return XMSSAggregateStatement(
-        pubkeys=[state.pq_validators[index].pubkey for index in attesting_indices],
-        leaf_index=compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER),
-        message=compute_signing_root(attestation.data, domain),
-    )
+    message = compute_signing_root(attestation.data, domain)
+    leaf_index = compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    statements = []
+    committee_offset = 0
+    for committee_index in get_committee_indices(attestation.committee_bits):
+        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
+        pubkeys = [
+            state.pq_validators[validator_index].pubkey
+            for i, validator_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + i]
+        ]
+        statements.append(
+            XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=message)
+        )
+        committee_offset += len(committee)
+    return statements
 ```
 
 #### Modified `get_active_validator_indices`
@@ -1656,9 +1673,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
 ```python
 def process_stark(state: BeaconState, body: BeaconBlockBody) -> None:
-    statements = [
-        get_attestation_statement(state, attestation) for attestation in body.attestations
-    ]
+    statements = []
+    for attestation in body.attestations:
+        statements.extend(get_attestation_statements(state, attestation))
     assert stark.VerifyAggregates(statements, body.stark)
 ```
 

@@ -54,9 +54,10 @@ def build_max_size_signed_aggregate_and_proof(spec):
         aggregator_index=spec.ValidatorIndex(0),
         aggregate=build_max_size_attestation(spec),
     )
-    aggregate_and_proof.selection_proof = get_unsigned_signature(spec)
     if is_post_pq(spec):
-        aggregate_and_proof.aggregate_signature = build_max_size_aggregate_signature(spec)
+        aggregate_and_proof.stark = spec.StarkProof(data=b"\x00" * spec.MAX_STARK_PROOF_SIZE)
+    else:
+        aggregate_and_proof.selection_proof = get_unsigned_signature(spec)
     return spec.SignedAggregateAndProof(
         message=aggregate_and_proof,
         signature=get_unsigned_signature(spec),

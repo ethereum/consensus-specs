@@ -238,25 +238,14 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
     yield from add_attestation(spec, store, attestation, test_steps, is_from_block)
 
 
-def call_on_attestation(spec, store, attestation, is_from_block=False):
-    """
-    Run ``on_attestation``, which from PQ onwards takes the signature of an
-    attestation from the wire separately.
-    """
-    kwargs = {"is_from_block": is_from_block}
-    if is_post_pq(spec) and not is_from_block:
-        kwargs["signature"] = spec.XMSSAggregateSignature()
-    spec.on_attestation(store, attestation, **kwargs)
-
-
 def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):
     if not valid:
         expect_assertion_error(
-            lambda: call_on_attestation(spec, store, attestation, is_from_block=is_from_block)
+            lambda: spec.on_attestation(store, attestation, is_from_block=is_from_block)
         )
         return
 
-    call_on_attestation(spec, store, attestation, is_from_block=is_from_block)
+    spec.on_attestation(store, attestation, is_from_block=is_from_block)
 
 
 def get_genesis_forkchoice_store(spec, genesis_state):

@@ -18,6 +18,17 @@ def ProveAggregates(statements, aggregates):
     return b"".join(bytes(aggregate) for aggregate in aggregates)
 
 
+def MergeProofs(proofs):
+    """
+    Merge ``proofs`` of lists of statements into one proof of their
+    concatenation, by concatenation. When XMSS is inactive, a stub proof is
+    returned.
+    """
+    if not xmss.xmss_active:
+        return STUB_PROOF
+    return b"".join(bytes(proof) for proof in proofs)
+
+
 def VerifyAggregates(statements, proof):
     """
     Check that ``proof`` holds, for each of ``statements`` in turn, an aggregate

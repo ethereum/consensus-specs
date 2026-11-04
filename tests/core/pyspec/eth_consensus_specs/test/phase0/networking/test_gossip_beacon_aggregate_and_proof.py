@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_aggregate_and_proof,
     get_aggregator_index,
+    get_selection_proof,
     get_valid_attestation,
     sign_attestation,
 )
@@ -595,8 +596,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     # Find two different aggregators in the same committee
     aggregators = []
     for index in committee:
-        privkey = privkeys[index]
-        selection_proof = spec.get_slot_signature(state, att_1.data.slot, privkey)
+        selection_proof = get_selection_proof(spec, state, index, att_1.data.slot)
         if spec.is_aggregator(state, att_1.data.slot, att_1.data.index, selection_proof):
             aggregators.append(index)
             if len(aggregators) == 2:

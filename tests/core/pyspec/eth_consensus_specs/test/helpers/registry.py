@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.helpers.forks import is_post_pq
-from eth_consensus_specs.test.helpers.keys import xmss_builder_pubkeys, xmss_pubkeys
+from eth_consensus_specs.test.helpers.keys import get_vrf_data, xmss_builder_pubkeys, xmss_pubkeys
 
 
 def get_validators(spec, state):
@@ -20,11 +20,12 @@ def get_builders(spec, state):
 
 def to_pq_validator(spec, validator, index):
     """
-    The PQ record of ``validator``, with the placeholder XMSS public key of the
-    validator at ``index``.
+    The PQ record of ``validator``, with the placeholder XMSS public key and VRF
+    data of the validator at ``index``.
     """
     return spec.PQValidator(
         pubkey=xmss_pubkeys[index],
+        vrf_data=get_vrf_data(index),
         withdrawal_credentials=validator.withdrawal_credentials,
         effective_balance=validator.effective_balance,
         slashed=validator.slashed,
