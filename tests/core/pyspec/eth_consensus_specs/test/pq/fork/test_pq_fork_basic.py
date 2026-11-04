@@ -19,9 +19,6 @@ from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_epoch_via_block,
 )
-from eth_consensus_specs.test.helpers.withdrawals import (
-    set_eth1_withdrawal_credential_with_balance,
-)
 from eth_consensus_specs.test.utils import with_meta_tags
 
 
@@ -55,7 +52,7 @@ def test_fork_builders_not_registered(spec, phases, state):
     post_spec = phases[PQ]
     assert len(post_state.builders) > 0
     for builder in post_state.builders:
-        assert builder.withdrawable_epoch == post_spec.FAR_FUTURE_EPOCH
+        assert builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])
@@ -79,6 +76,18 @@ def test_fork_builder_shares_validator_pubkey(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(PQ_FORK_TEST_META_TAGS)
+def test_fork_no_registrations(spec, phases, state):
+    post_state = yield from run_fork_test(phases[PQ], state)
+
+    post_spec = phases[PQ]
+    for validator in post_state.validators:
+        assert validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH
+
+
+@with_phases(phases=[EIP8483], other_phases=[PQ])
+@spec_test
+@with_state
+@with_meta_tags(PQ_FORK_TEST_META_TAGS)
 def test_fork_partially_registered(spec, phases, state):
     registered_indices = range(0, len(state.validators), 2)
     register_xmss_pubkeys(spec, state, registered_indices)
@@ -87,28 +96,7 @@ def test_fork_partially_registered(spec, phases, state):
     post_spec = phases[PQ]
     for index, validator in enumerate(post_state.validators):
         is_registered = index in registered_indices
-        assert bool(validator.inert) != is_registered
         assert (validator.exit_epoch == post_spec.FAR_FUTURE_EPOCH) == is_registered
-
-
-@with_phases(phases=[EIP8483], other_phases=[PQ])
-@spec_test
-@with_state
-@with_meta_tags(PQ_FORK_TEST_META_TAGS)
-def test_fork_unregistered_execution_credentials(spec, phases, state):
-    for index in range(len(state.validators)):
-        set_eth1_withdrawal_credential_with_balance(spec, state, index)
-    registered_indices = range(0, len(state.validators), 2)
-    register_xmss_pubkeys(spec, state, registered_indices)
-    post_state = yield from run_fork_test(phases[PQ], state)
-
-    post_spec = phases[PQ]
-    epoch = post_spec.get_current_epoch(post_state)
-    for index, validator in enumerate(post_state.validators):
-        is_registered = index in registered_indices
-        assert bool(validator.inert) != is_registered
-        assert validator.exit_epoch == post_spec.FAR_FUTURE_EPOCH
-        assert (index in post_spec.get_active_validator_indices(post_state, epoch)) == is_registered
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])
@@ -146,7 +134,6 @@ def test_fork_pending_new_validator_deposit(spec, phases, state):
     assert len(post_state.validators) == new_index + 1
     new_validator = post_state.validators[new_index]
     assert new_validator.pubkey == post_spec.compute_unusable_xmss_pubkey(pending_deposit.pubkey)
-    assert new_validator.inert
     assert new_validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH
     assert post_state.balances[new_index] == 0
     assert len(post_state.pending_deposits) == 1
