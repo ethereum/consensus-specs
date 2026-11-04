@@ -27,8 +27,8 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### Execution requests
 
-*Note*: The function `get_execution_requests` is modified to parse the PQ
-registration requests.
+*Note*: The function `get_execution_requests` is modified to parse the validator
+and builder PQ registration requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
@@ -38,7 +38,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     builder_deposits = BuilderDepositRequests()
     builder_exits = BuilderExitRequests()
     # [New in Prereg]
-    pq_registrations = PQRegistrationRequests()
+    validator_pq_registrations = ValidatorPQRegistrationRequests()
+    # [New in Prereg]
+    builder_pq_registrations = BuilderPQRegistrationRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,
@@ -47,7 +49,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         BUILDER_DEPOSIT_REQUEST_TYPE,
         BUILDER_EXIT_REQUEST_TYPE,
         # [New in Prereg]
-        PQ_REGISTRATION_REQUEST_TYPE,
+        VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE,
+        # [New in Prereg]
+        BUILDER_PQ_REGISTRATION_REQUEST_TYPE,
     ]
 
     prev_request_type = None
@@ -74,8 +78,13 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         elif request_type == BUILDER_EXIT_REQUEST_TYPE:
             builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
         # [New in Prereg]
-        elif request_type == PQ_REGISTRATION_REQUEST_TYPE:
-            pq_registrations = ssz_deserialize(PQRegistrationRequests, request_data)
+        elif request_type == VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE:
+            validator_pq_registrations = ssz_deserialize(
+                ValidatorPQRegistrationRequests, request_data
+            )
+        # [New in Prereg]
+        elif request_type == BUILDER_PQ_REGISTRATION_REQUEST_TYPE:
+            builder_pq_registrations = ssz_deserialize(BuilderPQRegistrationRequests, request_data)
 
     return ExecutionRequests(
         deposits=deposits,
@@ -84,6 +93,8 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         builder_deposits=builder_deposits,
         builder_exits=builder_exits,
         # [New in Prereg]
-        pq_registrations=pq_registrations,
+        validator_pq_registrations=validator_pq_registrations,
+        # [New in Prereg]
+        builder_pq_registrations=builder_pq_registrations,
     )
 ```

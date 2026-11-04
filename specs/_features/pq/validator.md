@@ -274,7 +274,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         BUILDER_DEPOSIT_REQUEST_TYPE,
         BUILDER_EXIT_REQUEST_TYPE,
         # [Modified in PQ]
-        # Removed `PQ_REGISTRATION_REQUEST_TYPE`
+        # Removed `VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE`
+        # [Modified in PQ]
+        # Removed `BUILDER_PQ_REGISTRATION_REQUEST_TYPE`
     ]
 
     prev_request_type = None
@@ -307,7 +309,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         builder_deposits=builder_deposits,
         builder_exits=builder_exits,
         # [Modified in PQ]
-        # Removed `pq_registrations`
+        # Removed `validator_pq_registrations`
+        # [Modified in PQ]
+        # Removed `builder_pq_registrations`
     )
 ```
 

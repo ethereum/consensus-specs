@@ -96,7 +96,9 @@ def upgrade_to_prereg(pre: gloas.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in Prereg]
-        pq_registrations=PQRegistrations(),
+        validator_pq_registrations=ValidatorPQRegistrations(),
+        # [New in Prereg]
+        builder_pq_registrations=BuilderPQRegistrations(),
     )
 
     return post

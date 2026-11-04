@@ -68,7 +68,8 @@ def run_fork_test(post_spec, pre_state):
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 
-    assert len(post_state.pq_registrations) == 0
+    assert len(post_state.validator_pq_registrations) == 0
+    assert len(post_state.builder_pq_registrations) == 0
 
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.PREREG_FORK_VERSION

@@ -55,12 +55,13 @@ compute_balance_weighted_selection = cache_this(
     @classmethod
     def deprecate_constants(cls) -> set[str]:
         return {
+            "BUILDER_PQ_REGISTRATION_REQUEST_TYPE",
             "CONSOLIDATION_REQUEST_TYPE",
             "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS",
             "G2_POINT_AT_INFINITY",
             "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS",
-            "PQ_REGISTRATION_REQUEST_TYPE",
             "TARGET_AGGREGATORS_PER_COMMITTEE",
+            "VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE",
         }
 
     @classmethod
@@ -70,11 +71,12 @@ compute_balance_weighted_selection = cache_this(
             "MAX_ATTESTATIONS_ELECTRA",
             "MAX_ATTESTER_SLASHING_SIZE",
             "MAX_BLS_TO_EXECUTION_CHANGES",
+            "MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD",
             "MAX_PAYLOAD_ATTESTATIONS",
-            "MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE",
             "MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE",
+            "MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MIN_SYNC_COMMITTEE_PARTICIPANTS",
             "SYNC_COMMITTEE_SIZE",
             "UPDATE_TIMEOUT",
@@ -92,6 +94,10 @@ compute_balance_weighted_selection = cache_this(
         return {
             "BLSToExecutionChange",
             "BLSToExecutionChanges",
+            "BuilderPQRegistration",
+            "BuilderPQRegistrationRequest",
+            "BuilderPQRegistrationRequests",
+            "BuilderPQRegistrations",
             "ConsolidationRequest",
             "ConsolidationRequests",
             "ContributionAndProof",
@@ -107,10 +113,6 @@ compute_balance_weighted_selection = cache_this(
             "LightClientUpdate",
             "LightClientUpdates",
             "NextSyncCommitteeBranch",
-            "PQRegistration",
-            "PQRegistrationRequest",
-            "PQRegistrationRequests",
-            "PQRegistrations",
             "PayloadAttestation",
             "PayloadAttestations",
             "PayloadTimelinessCommitteeBits",
@@ -125,6 +127,10 @@ compute_balance_weighted_selection = cache_this(
             "SyncCommitteeMessage",
             "SyncCommitteePubkeys",
             "SyncSubcommitteeBits",
+            "ValidatorPQRegistration",
+            "ValidatorPQRegistrationRequest",
+            "ValidatorPQRegistrationRequests",
+            "ValidatorPQRegistrations",
         }
 
     @classmethod
@@ -178,16 +184,17 @@ compute_balance_weighted_selection = cache_this(
             "notify_ptc_messages",
             "onboard_builders_from_pending_deposits",
             "process_bls_to_execution_change",
+            "process_builder_pq_registration_request",
             "process_consolidation_request",
             "process_light_client_finality_update",
             "process_light_client_optimistic_update",
             "process_light_client_store_force_update",
             "process_light_client_update",
             "process_payload_attestation",
-            "process_pq_registration_request",
             "process_sync_aggregate",
             "process_sync_committee_contributions",
             "process_sync_committee_updates",
+            "process_validator_pq_registration_request",
             "queue_excess_active_balance",
             "switch_to_compounding_validator",
             "upgrade_attestation_to_gloas",

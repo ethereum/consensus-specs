@@ -7,7 +7,8 @@
 - [Introduction](#introduction)
 - [Configs](#configs)
 - [Helpers](#helpers)
-  - [New `get_registered_pq_data`](#new-get_registered_pq_data)
+  - [New `get_registered_validator_pq_data`](#new-get_registered_validator_pq_data)
+  - [New `get_registered_builder_pq_data`](#new-get_registered_builder_pq_data)
   - [New `compute_pq_validators`](#new-compute_pq_validators)
   - [New `compute_pq_builders`](#new-compute_pq_builders)
 - [Fork to PQ](#fork-to-pq)
@@ -20,18 +21,18 @@
 
 This document describes the process of the PQ upgrade.
 
-Validators and builders register their XMSS public key and VRF data before the
-fork, as the `pq_data` of a [Prereg](../prereg/beacon-chain.md) registration. At
-the fork, every validator is copied into `state.pq_validators` and every builder
-into `state.pq_builders`, at the same index, with its registered XMSS public
-key. Validators also take their registered VRF data, and builders drop theirs.
-`state.validators` and `state.builders` are frozen from then on and only serve
-to find a validator or builder by BLS public key.
+Before the fork, validators register their XMSS public key and VRF data, and
+builders their XMSS public key, through [Prereg](../prereg/beacon-chain.md)
+registrations. At the fork, every validator is copied into `state.pq_validators`
+and every builder into `state.pq_builders`, at the same index, with its
+registered material. `state.validators` and `state.builders` are frozen from
+then on and only serve to find a validator or builder by BLS public key.
 
 A validator or builder without a registration gets the empty XMSS public key,
 which no signature verifies against, and has its exit initiated. Prereg ignores
-a registration whose XMSS public key is already registered, so every registered
-XMSS public key is unique.
+a registration whose XMSS public key is already registered by another validator,
+or by another builder, so no two validators and no two builders share an XMSS
+public key.
 
 *Note*: A validator with `0x00` withdrawal credentials has no withdrawal address
 to register from, so it is exited. `BLSToExecutionChange` is disabled in PQ, so
@@ -49,17 +50,29 @@ Warning: this configuration is not definitive.
 
 ## Helpers
 
-### New `get_registered_pq_data`
+### New `get_registered_validator_pq_data`
 
 ```python
-def get_registered_pq_data(pre: prereg.BeaconState, role: Uint8) -> dict[BLSPubkey, Bytes64]:
+def get_registered_validator_pq_data(pre: prereg.BeaconState) -> dict[ValidatorIndex, Bytes64]:
     """
-    Return the PQ material registered for each BLS public key with ``role``.
+    Return the PQ material registered for each validator index.
     """
-    registered: dict[BLSPubkey, Bytes64] = {}
-    for registration in pre.pq_registrations:
-        if registration.role == role:
-            registered[registration.pubkey] = registration.pq_data
+    registered: dict[ValidatorIndex, Bytes64] = {}
+    for registration in pre.validator_pq_registrations:
+        registered[registration.validator_index] = registration.pq_data
+    return registered
+```
+
+### New `get_registered_builder_pq_data`
+
+```python
+def get_registered_builder_pq_data(pre: prereg.BeaconState) -> dict[BLSPubkey, Bytes32]:
+    """
+    Return the PQ material registered for each builder public key.
+    """
+    registered: dict[BLSPubkey, Bytes32] = {}
+    for registration in pre.builder_pq_registrations:
+        registered[registration.builder_pubkey] = registration.pq_data
     return registered
 ```
 
@@ -67,10 +80,10 @@ def get_registered_pq_data(pre: prereg.BeaconState, role: Uint8) -> dict[BLSPubk
 
 ```python
 def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
-    registered = get_registered_pq_data(pre, PQ_REGISTRATION_ROLE_VALIDATOR)
+    registered = get_registered_validator_pq_data(pre)
     pq_validators = PQValidators()
-    for validator in pre.validators:
-        pq_data = registered.get(validator.pubkey, Bytes64())
+    for index, validator in enumerate(pre.validators):
+        pq_data = registered.get(ValidatorIndex(index), Bytes64())
         pq_validators.append(
             PQValidator(
                 pubkey=XMSSPubkey(pq_data[:32]),
@@ -91,13 +104,12 @@ def compute_pq_validators(pre: prereg.BeaconState) -> PQValidators:
 
 ```python
 def compute_pq_builders(pre: prereg.BeaconState) -> PQBuilders:
-    registered = get_registered_pq_data(pre, PQ_REGISTRATION_ROLE_BUILDER)
+    registered = get_registered_builder_pq_data(pre)
     pq_builders = PQBuilders()
     for builder in pre.builders:
-        pq_data = registered.get(builder.pubkey, Bytes64())
         pq_builders.append(
             PQBuilder(
-                pubkey=XMSSPubkey(pq_data[:32]),
+                pubkey=XMSSPubkey(registered.get(builder.pubkey, Bytes32())),
                 version=builder.version,
                 execution_address=builder.execution_address,
                 balance=builder.balance,
@@ -187,7 +199,9 @@ def upgrade_to_pq(pre: prereg.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [Modified in PQ]
-        # Removed `pq_registrations`
+        # Removed `validator_pq_registrations`
+        # [Modified in PQ]
+        # Removed `builder_pq_registrations`
         # [New in PQ]
         pq_validators=compute_pq_validators(pre),
         # [New in PQ]

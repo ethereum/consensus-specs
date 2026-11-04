@@ -173,7 +173,7 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
         raise GossipReject("too many builder exit requests")
 
     # [Modified in PQ]
-    # Removed the PQ registration request limit
+    # Removed the validator and builder PQ registration request limits
 ```
 
 ### Modified `compute_attestation_subnet_prefix_bits`

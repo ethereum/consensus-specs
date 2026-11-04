@@ -163,13 +163,13 @@ proposer committed to before the fork. The same proof serves as its selection
 proof when it aggregates.
 
 The validator and builder registries move to `state.pq_validators` and
-`state.pq_builders`, whose records carry the XMSS public key registered with
-EIP-8483 before the fork, and for validators the registered VRF data. The fork
-copies every validator and builder into them at the same index. From then on the
-state transition reads and writes only the new registries, and
-`state.validators` and `state.builders` are frozen. Validators and builders that
-did not register are exited at the fork. See [the fork document](./fork.md) for
-details.
+`state.pq_builders`. A validator's record carries the XMSS public key and VRF
+data it registered with EIP-8483 before the fork. The fork copies every
+validator and builder into them at the same index. From then on the state
+transition reads and writes only the new registries, and `state.validators` and
+`state.builders` are frozen. A builder's record carries the XMSS public key it
+registered. Validators and builders that did not register are exited at the
+fork. See [the fork document](./fork.md) for details.
 
 Execution layer requests and deposits still name validators and builders by BLS
 public key. The frozen registries keep those keys, so a request finds its index
@@ -379,7 +379,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=50, gaps=(22, 23, 46))
+    ACTIVE_FIELDS = active_fields(width=51, gaps=(22, 23, 46, 47))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -430,7 +430,9 @@ class BeaconState(ProgressiveContainer):
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
     # [Modified in PQ]
-    # Removed `pq_registrations`
+    # Removed `validator_pq_registrations`
+    # [Modified in PQ]
+    # Removed `builder_pq_registrations`
     # [New in PQ]
     pq_validators: PQValidators
     # [New in PQ]
@@ -452,7 +454,9 @@ class ExecutionRequests(ProgressiveContainer):
     builder_deposits: BuilderDepositRequests
     builder_exits: BuilderExitRequests
     # [Modified in PQ]
-    # Removed `pq_registrations`
+    # Removed `validator_pq_registrations`
+    # [Modified in PQ]
+    # Removed `builder_pq_registrations`
 ```
 
 #### `IndexedAttestation`
@@ -1578,7 +1582,9 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
         (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
         # [Modified in PQ]
-        # Removed `PQ_REGISTRATION_REQUEST_TYPE`
+        # Removed `VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE`
+        # [Modified in PQ]
+        # Removed `BUILDER_PQ_REGISTRATION_REQUEST_TYPE`
     ]
 
     return [
@@ -2068,7 +2074,7 @@ def apply_parent_execution_payload(
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
     # [Modified in PQ]
-    # Removed the PQ registration request limit
+    # Removed the validator and builder PQ registration request limits
 
     # Settle the builder payment before the requests so that a builder exit
     # request is rejected while the payment is pending
@@ -2102,7 +2108,9 @@ def apply_parent_execution_payload(
     for_ops(requests.builder_deposits, process_builder_deposit_request)
     for_ops(requests.builder_exits, process_builder_exit_request)
     # [Modified in PQ]
-    # Removed `process_pq_registration_request`
+    # Removed `process_validator_pq_registration_request`
+    # [Modified in PQ]
+    # Removed `process_builder_pq_registration_request`
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)

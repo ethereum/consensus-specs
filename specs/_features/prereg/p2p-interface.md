@@ -73,7 +73,14 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
         raise GossipReject("too many builder exit requests")
 
     # [New in Prereg]
-    # [REJECT] The PQ registration request count is within the limit
-    if len(execution_requests.pq_registrations) > MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many PQ registration requests")
+    # [REJECT] The validator PQ registration request count is within the limit
+    validator_pq_registrations = execution_requests.validator_pq_registrations
+    if len(validator_pq_registrations) > MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many validator PQ registration requests")
+
+    # [New in Prereg]
+    # [REJECT] The builder PQ registration request count is within the limit
+    builder_pq_registrations = execution_requests.builder_pq_registrations
+    if len(builder_pq_registrations) > MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder PQ registration requests")
 ```

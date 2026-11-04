@@ -22,7 +22,7 @@ XMSS key MUST NOT sign two different messages at the same leaf, because that
 exposes the leaf and lets others forge signatures at it.
 
 At the upgrade, each builder moves to `state.pq_builders` at the same index,
-with the XMSS public key it registered with EIP-8483 using the builder role. A
+with the XMSS public key it registered with a builder PQ registration request. A
 builder without a registration is exited at the upgrade, and there is no way yet
 to register an XMSS public key after it.
 
