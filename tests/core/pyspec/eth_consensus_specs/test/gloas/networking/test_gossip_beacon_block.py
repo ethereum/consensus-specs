@@ -243,7 +243,7 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     """A block whose bid carries more KZG commitments than the per-epoch limit is rejected."""

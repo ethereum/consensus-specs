@@ -126,7 +126,7 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_bid_blob_kzg_commitments_at_limit(spec, state):
     """

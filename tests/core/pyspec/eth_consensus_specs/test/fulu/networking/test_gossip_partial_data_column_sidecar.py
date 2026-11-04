@@ -4,8 +4,8 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
     spec_state_test,
-    with_all_phases_from_except,
     with_all_phases_from_to,
+    with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs,
@@ -17,7 +17,7 @@ from eth_consensus_specs.test.helpers.blob import (
     make_partial_sidecar,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot, sign_block
-from eth_consensus_specs.test.helpers.constants import FULU, GLOAS, PQ
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -263,7 +263,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     """A partial sidecar with no header and no cells is rejected as semantically empty."""
@@ -333,7 +333,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     yield "messages", "meta", [message]
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, state):
     """A partial sidecar whose cell count does not match the set bits is rejected."""
@@ -406,7 +406,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     yield "messages", "meta", [message]
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, state):
     """A partial sidecar whose proof count does not match the set bits is rejected."""
@@ -1656,7 +1656,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec, state):
     """A partial sidecar whose bitmap length does not match the commitment count is rejected."""
@@ -1734,7 +1734,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     yield "messages", "meta", [message]
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     """A partial sidecar whose KZG proofs fail verification is rejected."""

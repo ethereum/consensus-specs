@@ -1801,7 +1801,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     """A bid whose blob KZG commitment count exceeds the per-epoch limit is rejected."""
@@ -1870,7 +1870,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
     """A bid with exactly the per-epoch blob KZG commitment limit is valid.

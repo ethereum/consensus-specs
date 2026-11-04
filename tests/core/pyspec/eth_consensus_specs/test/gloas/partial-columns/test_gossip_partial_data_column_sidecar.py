@@ -1,7 +1,7 @@
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
     spec_state_test,
-    with_all_phases_from_except,
+    with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs_for_next_slot,
@@ -10,7 +10,6 @@ from eth_consensus_specs.test.helpers.blob import (
     make_partial_sidecar,
 )
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -77,7 +76,7 @@ def setup_gloas_partial_failed_block_sidecar(spec, state):
     return store, signed_anchor, signed_failed_block, partial, group_id, sidecar.index
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__valid(spec, state):
     """A well-formed partial sidecar with cells matching the bid passes."""
@@ -127,7 +126,7 @@ def test_gossip_partial_data_column_sidecar__valid(spec, state):
     )
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     """A partial sidecar whose group_id.slot doesn't match the block is rejected."""
@@ -181,7 +180,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     )
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     """A partial sidecar whose group_id references an unknown block is ignored."""
@@ -234,7 +233,7 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     )
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_block_failed_validation(spec, state):
     """A partial sidecar whose referenced block failed state transition is rejected.

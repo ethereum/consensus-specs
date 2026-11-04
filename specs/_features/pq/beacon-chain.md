@@ -138,9 +138,7 @@ adversary.
 This upgrade is meant as an emergency fork for when elliptic curve cryptography
 can no longer be trusted, so it keeps only what consensus needs. It removes sync
 committees, whose hundreds of signatures per slot serve only light clients, and
-with them the light client protocol. It also disables blobs, because KZG
-commitments rely on elliptic curve pairings. The execution layer must reject
-blob transactions from the fork on.
+with them the light client protocol.
 
 XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
@@ -1660,8 +1658,6 @@ def verify_execution_payload_bid_signature(
 
 ##### Modified `process_execution_payload_bid`
 
-*Note*: Blobs are disabled, so a bid must not commit to any blobs.
-
 ```python
 def process_execution_payload_bid(
     state: BeaconState, signed_bid: SignedExecutionPayloadBid
@@ -1686,9 +1682,11 @@ def process_execution_payload_bid(
         # Verify that the bid signature is valid
         assert verify_execution_payload_bid_signature(state, signed_bid)
 
-    # [Modified in PQ]
-    # Verify there are no blob commitments
-    assert len(bid.blob_kzg_commitments) == 0
+    # Verify commitments are under limit
+    assert (
+        len(bid.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
 
     # Verify that the bid is for the current slot
     assert bid.slot == state.slot

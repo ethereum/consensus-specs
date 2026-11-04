@@ -2,14 +2,13 @@ import random
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_deneb_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs_for_next_slot,
     get_max_blob_count,
 )
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import DENEB, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -25,7 +24,7 @@ from eth_consensus_specs.test.helpers.gossip import (
 )
 
 
-@with_all_phases_from_except(DENEB, [PQ])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     """
@@ -80,7 +79,7 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     )
 
 
-@with_all_phases_from_except(DENEB, [PQ])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     """

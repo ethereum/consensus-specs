@@ -1,14 +1,13 @@
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
     spec_state_test,
-    with_all_phases_from_except,
+    with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs_for_next_slot,
     get_data_column_sidecars,
 )
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -75,7 +74,7 @@ def setup_gloas_failed_block_sidecar(spec, state):
     return store, signed_anchor, signed_failed_block, sidecar
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     """A sidecar whose beacon_block_root has no corresponding block in the store is ignored."""
@@ -119,7 +118,7 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_block_failed_validation(spec, state):
     """A sidecar whose referenced block failed state transition is rejected.
@@ -176,7 +175,7 @@ def test_gossip_data_column_sidecar__reject_block_failed_validation(spec, state)
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     """A sidecar already in seen.data_column_sidecar_tuples is ignored."""
@@ -249,7 +248,7 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     """A sidecar whose slot does not match the referenced block's slot is rejected."""
@@ -302,7 +301,7 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
     yield "messages", "meta", messages
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
     """A sidecar whose structural validation fails is rejected."""

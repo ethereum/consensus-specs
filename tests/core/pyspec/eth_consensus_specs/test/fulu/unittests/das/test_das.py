@@ -6,7 +6,6 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_all_phases_from_except,
     with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
@@ -15,7 +14,6 @@ from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob,
 )
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import FULU, PQ
 from eth_consensus_specs.test.helpers.fork_choice import BlobData, with_blob_data
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
@@ -28,7 +26,7 @@ def chunks(lst, n):
     return [lst[i : i + n] for i in range(0, len(lst), n)]
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_compute_matrix(spec):
@@ -51,7 +49,7 @@ def test_compute_matrix(spec):
         assert blob == bytes(input_blobs[blob_index])
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_test
 @single_phase
 def test_recover_matrix(spec):
@@ -85,7 +83,7 @@ def run_is_data_available_peerdas_test(spec, signed_block, blob_data):
     return next(with_blob_data(spec, blob_data, callback))
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_is_data_available_peerdas(spec, state):
     rng = random.Random(1234)
@@ -101,7 +99,7 @@ def test_is_data_available_peerdas(spec, state):
     assert result is True, "Data should be available for the block with blob data"
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_get_data_column_sidecars(spec, state):
     rng = random.Random(1234)
@@ -139,7 +137,7 @@ def test_get_data_column_sidecars_no_blobs(spec, state):
     assert len(sidecars) == 0, "Should return no sidecars for a block without blobs"
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
     rng = random.Random(1234)

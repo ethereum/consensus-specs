@@ -4,7 +4,7 @@ from frozendict import frozendict
 
 from eth_consensus_specs.test.context import (
     spec_configured_state_test,
-    with_all_phases_from_except,
+    with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs,
@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.blob import (
     get_max_blob_count,
 )
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import FULU, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -30,7 +29,7 @@ from eth_consensus_specs.test.helpers.gossip import (
 )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),),
@@ -98,7 +97,7 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (
@@ -166,7 +165,7 @@ def test_gossip_beacon_block__reject_next_epoch_blob_limit_at_epoch_end(spec, st
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (

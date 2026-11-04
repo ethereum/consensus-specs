@@ -297,10 +297,10 @@ def validate_beacon_block_gossip(
     if finalized_checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
-    # [Modified in PQ]
-    # [REJECT] The bid has no blob KZG commitments
-    if len(bid.blob_kzg_commitments) != 0:
-        raise GossipReject("blobs are disabled")
+    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
+    max_blobs = get_blob_parameters(compute_epoch_at_slot(block.slot)).max_blobs_per_block
+    if len(bid.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
 
     # [REJECT] The bid's parent equals the block's parent
     if bid.parent_block_root != block.parent_root:
@@ -667,9 +667,6 @@ not sign two different bids for the same slot. In particular, it cannot bid on
 two different parents in the same slot, even though this topic accepts one bid
 per parent.
 
-*Note*: Blobs are disabled in PQ, so a bid with blob KZG commitments is
-rejected.
-
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
@@ -706,10 +703,11 @@ def validate_execution_payload_bid_gossip(
     if bid.block_hash == bid.parent_block_hash:
         raise GossipReject("bid's block hash equals its parent block hash")
 
-    # [Modified in PQ]
-    # [REJECT] The bid has no blob KZG commitments
-    if len(bid.blob_kzg_commitments) != 0:
-        raise GossipReject("blobs are disabled")
+    # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
+    proposal_epoch = compute_epoch_at_slot(bid.slot)
+    max_blobs = get_blob_parameters(proposal_epoch).max_blobs_per_block
+    if len(bid.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
 
     # [IGNORE] The bid's parent block root is a known beacon block
     # (MAY be queued until parent is retrieved)
@@ -728,7 +726,6 @@ def validate_execution_payload_bid_gossip(
     state = store.block_states[bid.parent_block_root]
 
     # [IGNORE] The bid's slot is within the parent's proposer lookahead
-    proposal_epoch = compute_epoch_at_slot(bid.slot)
     if proposal_epoch > get_current_epoch(state) + MIN_SEED_LOOKAHEAD:
         raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
 

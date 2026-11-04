@@ -4,8 +4,8 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
     spec_state_test,
-    with_all_phases_from_except,
     with_all_phases_from_to,
+    with_fulu_and_later,
 )
 from eth_consensus_specs.test.helpers.blob import (
     build_block_with_blobs,
@@ -14,7 +14,7 @@ from eth_consensus_specs.test.helpers.blob import (
     get_max_blob_count,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot, sign_block
-from eth_consensus_specs.test.helpers.constants import FULU, GLOAS, PQ
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -53,7 +53,7 @@ def resign_sidecar_header(spec, state, sidecar):
     sidecar.signed_block_header.signature = spec.bls.Sign(privkeys[proposer_index], signing_root)
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 15}),),
@@ -247,7 +247,7 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
     """Test that a data column sidecar on the wrong subnet is rejected."""
@@ -316,7 +316,7 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
     """Test that a data column sidecar from a future slot is ignored."""
@@ -371,7 +371,7 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, state):
     """Test that a data column sidecar at the future-slot boundary is valid."""
@@ -947,7 +947,7 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
     )
 
 
-@with_all_phases_from_except(FULU, [PQ])
+@with_fulu_and_later
 @spec_state_test
 def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     """Test that a data column sidecar with invalid KZG cell proofs is rejected."""
