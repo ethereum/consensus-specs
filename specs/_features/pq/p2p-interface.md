@@ -407,7 +407,10 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("aggregate has no participants")
 
     # [REJECT] The selection proof selects the validator as an aggregator
-    if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
+    # [Modified in PQ]
+    if not is_aggregator(
+        state, aggregate.data.slot, index, aggregator_index, aggregate_and_proof.selection_proof
+    ):
         raise GossipReject("validator is not selected as aggregator")
 
     # [REJECT] The aggregator is a member of the committee

@@ -414,6 +414,10 @@ the leaf's Merkle branch. The tree is fixed at registration, so a validator
 cannot grind its selection proofs, and nobody can predict them before they are
 revealed. `get_slot_signature` is deprecated.
 
+`is_aggregator` hashes the leaf with the validator index and the RANDAO mix of
+the finalized epoch. That mix is unknown when the tree is registered, so a
+validator cannot fill its tree with leaves that always select it.
+
 ```python
 def is_valid_selection_proof(
     state: BeaconState,
@@ -439,6 +443,8 @@ def is_aggregator(
     state: BeaconState,
     slot: Slot,
     index: CommitteeIndex,
+    # [New in PQ]
+    validator_index: ValidatorIndex,
     # [Modified in PQ]
     selection_proof: SelectionProof,
 ) -> bool:
@@ -446,7 +452,11 @@ def is_aggregator(
     # [Modified in PQ]
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE_PQ)
     # [Modified in PQ]
-    return bytes_to_uint64(sha256(selection_proof[0])[0:8]) % modulo == 0
+    mix = get_randao_mix(state, state.finalized_checkpoint.epoch)
+    selection = sha256(
+        selection_proof[0] + DOMAIN_SELECTION_PROOF + uint_to_bytes(validator_index) + mix
+    )
+    return bytes_to_uint64(selection[0:8]) % modulo == 0
 ```
 
 #### Construct aggregate

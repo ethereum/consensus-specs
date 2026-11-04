@@ -34,6 +34,17 @@ def get_selection_proof(spec, state, validator_index, slot):
     return spec.get_slot_signature(state, slot, privkeys[validator_index])
 
 
+def is_aggregator(spec, state, slot, committee_index, validator_index):
+    """
+    Whether the validator at ``validator_index`` is selected to aggregate, which
+    from PQ onwards also depends on its index.
+    """
+    selection_proof = get_selection_proof(spec, state, validator_index, slot)
+    if is_post_pq(spec):
+        return spec.is_aggregator(state, slot, committee_index, validator_index, selection_proof)
+    return spec.is_aggregator(state, slot, committee_index, selection_proof)
+
+
 def get_aggregator_index(spec, state, slot, committee_index):
     """
     Return the first committee member selected to aggregate, or the first member
@@ -41,8 +52,7 @@ def get_aggregator_index(spec, state, slot, committee_index):
     """
     committee = spec.get_beacon_committee(state, slot, committee_index)
     for index in committee:
-        selection_proof = get_selection_proof(spec, state, index, slot)
-        if spec.is_aggregator(state, slot, committee_index, selection_proof):
+        if is_aggregator(spec, state, slot, committee_index, index):
             return index
     return committee[0]
 

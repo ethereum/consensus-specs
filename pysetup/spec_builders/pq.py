@@ -57,7 +57,6 @@ compute_balance_weighted_selection = cache_this(
         return {
             "CONSOLIDATION_REQUEST_TYPE",
             "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS",
-            "DOMAIN_SELECTION_PROOF",
             "G2_POINT_AT_INFINITY",
             "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS",
             "PQ_REGISTRATION_REQUEST_TYPE",

@@ -12,8 +12,8 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_aggregate_and_proof,
     get_aggregator_index,
-    get_selection_proof,
     get_valid_attestation,
+    is_aggregator,
     sign_attestation,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -596,8 +596,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     # Find two different aggregators in the same committee
     aggregators = []
     for index in committee:
-        selection_proof = get_selection_proof(spec, state, index, att_1.data.slot)
-        if spec.is_aggregator(state, att_1.data.slot, att_1.data.index, selection_proof):
+        if is_aggregator(spec, state, att_1.data.slot, att_1.data.index, index):
             aggregators.append(index)
             if len(aggregators) == 2:
                 break
