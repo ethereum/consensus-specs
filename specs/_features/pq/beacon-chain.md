@@ -194,11 +194,11 @@ Blocks no longer carry payload attestations, which spares proposers from
 aggregating them. The payload timeliness committee still broadcasts its votes,
 which fork choice uses as before.
 
-Attestations no longer carry a signature. A block instead carries one `stark`
-proof of the aggregate signatures of all its attestations, which replaces
-verifying each attestation's aggregate in turn. An aggregate on the wire carries
-a `stark` of its own in `AggregateAndProof`, and the proposer merges those into
-the block's `stark`.
+Attestations no longer carry a signature. A block instead carries one
+`stark_proof` of the aggregate signatures of all its attestations, which
+replaces verifying each attestation's aggregate in turn. An aggregate on the
+wire carries a `stark_proof` of its own in `AggregateAndProof`, and the proposer
+merges those into the block's `stark_proof`.
 
 *Note*: This specification is built upon [PQReg](../pqreg/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -374,7 +374,7 @@ class BeaconBlockBody(ProgressiveContainer):
     # Removed `payload_attestations`
     parent_execution_requests: ExecutionRequests
     # [New in PQ]
-    stark: StarkProof
+    stark_proof: StarkProof
 ```
 
 #### `BeaconState`
@@ -999,9 +999,9 @@ def get_indexed_attestation(
 
 #### New `get_attestation_statements`
 
-*Note*: A network aggregate covers one committee, so its `stark` proves one
-statement. Statements are per committee so that the proposer can merge those
-proofs into the block's `stark`.
+*Note*: A network aggregate covers one committee, so its `stark_proof` proves
+one statement. Statements are per committee so that the proposer can merge those
+proofs into the block's `stark_proof`.
 
 ```python
 def get_attestation_statements(
@@ -1758,7 +1758,7 @@ def process_stark(state: BeaconState, body: BeaconBlockBody) -> None:
     statements = []
     for attestation in body.attestations:
         statements.extend(get_attestation_statements(state, attestation))
-    assert stark.VerifyAggregates(statements, body.stark)
+    assert stark.VerifyAggregates(statements, body.stark_proof)
 ```
 
 ##### Modified `process_proposer_slashing`

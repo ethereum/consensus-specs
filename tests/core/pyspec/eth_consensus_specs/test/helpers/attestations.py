@@ -60,13 +60,15 @@ def get_aggregator_index(spec, state, slot, committee_index):
 def get_aggregate_and_proof(spec, state, aggregator_index, aggregate, privkey):
     """
     The ``AggregateAndProof`` of ``aggregate``, which from PQ onwards carries a
-    selection proof from the aggregator's VRF tree and a stark of the aggregate.
+    selection proof from the aggregator's VRF tree and a stark proof of the aggregate.
     """
     if is_post_pq(spec):
         selection_proof = get_selection_proof(spec, state, aggregator_index, aggregate.data.slot)
         aggregate_signature = get_attestation_aggregate_signature(spec, state, aggregate)
-        stark = spec.get_aggregate_stark(state, aggregate, aggregate_signature)
-        return spec.get_aggregate_and_proof(aggregator_index, aggregate, selection_proof, stark)
+        stark_proof = spec.get_aggregate_stark(state, aggregate, aggregate_signature)
+        return spec.get_aggregate_and_proof(
+            aggregator_index, aggregate, selection_proof, stark_proof
+        )
     return spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
 
 

@@ -22,7 +22,7 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Randao reveal](#randao-reveal)
       - [Attestations](#attestations)
-      - [Stark](#stark)
+      - [Stark proof](#stark-proof)
       - [Sync committee](#sync-committee)
       - [BLS to execution changes](#bls-to-execution-changes)
       - [Payload attestations](#payload-attestations)
@@ -91,7 +91,7 @@ class AggregateAndProof(Container):
     # [Modified in PQ]
     selection_proof: VRFProof
     # [New in PQ]
-    stark: StarkProof
+    stark_proof: StarkProof
 ```
 
 #### `SignedAggregateAndProof`
@@ -226,12 +226,13 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     )
 ```
 
-##### Stark
+##### Stark proof
 
-The proposer sets `body.stark` to `stark.MergeProofs(proofs)`, where `proofs`
-holds the `stark` of each network aggregate behind `body.attestations`, ordered
-as the attestations are and, within each, by committee index. The merged proof
-then proves the statements that `process_stark` checks.
+The proposer sets `body.stark_proof` to `stark.MergeProofs(proofs)`, where
+`proofs` holds the `stark_proof` of each network aggregate behind
+`body.attestations`, ordered as the attestations are and, within each, by
+committee index. The merged proof then proves the statements that
+`process_stark` checks.
 
 ##### Sync committee
 
@@ -443,8 +444,8 @@ def get_aggregate_signature(
 
 ##### Aggregate stark
 
-The aggregator proves that aggregate signature with a `stark`, which it sends in
-place of the signature:
+The aggregator proves that aggregate signature with a `stark_proof`, which it
+sends in place of the signature:
 
 ```python
 def get_aggregate_stark(
@@ -467,7 +468,7 @@ def get_aggregate_and_proof(
     # [New in PQ]
     selection_proof: VRFProof,
     # [New in PQ]
-    stark: StarkProof,
+    stark_proof: StarkProof,
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
@@ -475,7 +476,7 @@ def get_aggregate_and_proof(
         # [Modified in PQ]
         selection_proof=selection_proof,
         # [New in PQ]
-        stark=stark,
+        stark_proof=stark_proof,
     )
 ```
 

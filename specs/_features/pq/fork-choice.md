@@ -95,9 +95,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 ### Modified `on_attestation`
 
 *Note*: An attestation carries no signature. Gossip validation checks the
-signature or `stark` of an attestation from the wire, and `process_stark` proves
-the signatures of the attestations in a block, so `on_attestation` only checks
-that an attestation has attesters.
+signature or `stark_proof` of an attestation from the wire, and `process_stark`
+proves the signatures of the attestations in a block, so `on_attestation` only
+checks that an attestation has attesters.
 
 ```python
 def on_attestation(store: Store, attestation: Attestation, is_from_block: bool = False) -> None:
