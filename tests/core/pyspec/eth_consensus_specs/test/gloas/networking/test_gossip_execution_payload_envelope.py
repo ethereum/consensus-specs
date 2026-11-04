@@ -650,8 +650,7 @@ def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, st
 
 def _assert_envelope_transactions(spec, state, extra, expected, reason=None):
     """Assert an envelope for a block building on the genesis anchor, whose payload carries the
-    maximum transaction count the anchor bid's gas limit allows plus ``extra``, returns
-    ``expected``."""
+    maximum transaction count the bid's gas limit allows plus ``extra``, returns ``expected``."""
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
@@ -661,9 +660,8 @@ def _assert_envelope_transactions(spec, state, extra, expected, reason=None):
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
-    anchor_gas_limit = anchor_state.latest_execution_payload_bid.gas_limit
-    max_gas_limit = anchor_gas_limit + anchor_gas_limit // 1024 - 1
-    count = max_gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    bid = signed_block.message.body.signed_execution_payload_bid.message
+    count = bid.gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
     yield from _validate_envelope_with_transactions(
         spec, state, store, signed_block, block_root, count, expected, reason
     )
@@ -774,16 +772,16 @@ def _validate_envelope_with_transactions(
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_transactions(spec, state):
-    """An envelope with the maximum transaction count the anchor bid's gas limit allows is valid
-    for a block building on the anchor."""
+    """An envelope with the maximum transaction count the bid's gas limit allows is valid for a
+    block building on the anchor, whose parent payload is not in the store."""
     yield from _assert_envelope_transactions(spec, state, 0, "valid")
 
 
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_too_many_transactions(spec, state):
-    """An envelope with more transactions than the anchor bid's gas limit allows is rejected for
-    a block building on the anchor."""
+    """An envelope with more transactions than the bid's gas limit allows is rejected for a block
+    building on the anchor, whose parent payload is not in the store."""
     yield from _assert_envelope_transactions(spec, state, 1, "reject", "too many transactions")
 
 

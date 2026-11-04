@@ -433,16 +433,15 @@ def get_max_payload_gas_limit(store: Store, block: BeaconBlock) -> Uint64:
     Return the highest gas limit the EIP-1559 transition rule allows for the
     execution payload of ``block``, given the gas limit of the parent payload,
     i.e. the payload of the closest full ancestor. If no ancestor in the store
-    is full, the gas limit of the oldest ancestor's bid is the closest known
-    value.
+    is full, the parent payload is unknown and the bid's gas limit is the bound.
     """
+    bid = block.body.signed_execution_payload_bid.message
     while block.parent_root in store.blocks:
         if is_parent_node_full(store, block):
             parent_gas_limit = store.payloads[block.parent_root].payload.gas_limit
             return parent_gas_limit + saturating_sub(parent_gas_limit // 1024, 1)
         block = store.blocks[block.parent_root]
-    anchor_gas_limit = block.body.signed_execution_payload_bid.message.gas_limit
-    return anchor_gas_limit + saturating_sub(anchor_gas_limit // 1024, 1)
+    return bid.gas_limit
 ```
 
 ### New `verify_attestation_payload_status`
