@@ -7,6 +7,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_deneb,
     is_post_electra,
     is_post_gloas,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.signatures import aggregate, sign
@@ -15,6 +16,26 @@ from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
 )
+
+
+def get_aggregator_index(spec, state, slot, committee_index):
+    """
+    Return the first committee member selected to aggregate, or the first member
+    if none is. From PQ onwards every member may aggregate.
+    """
+    committee = spec.get_beacon_committee(state, slot, committee_index)
+    if not is_post_pq(spec):
+        for index in committee:
+            selection_proof = spec.get_slot_signature(state, slot, privkeys[index])
+            if spec.is_aggregator(state, slot, committee_index, selection_proof):
+                return index
+    return committee[0]
+
+
+def get_aggregate_and_proof(spec, state, aggregator_index, aggregate, privkey):
+    if is_post_pq(spec):
+        return spec.get_aggregate_and_proof(aggregator_index, aggregate)
+    return spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
 
 
 def get_parent_slot(state):

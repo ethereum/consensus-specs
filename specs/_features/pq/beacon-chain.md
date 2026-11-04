@@ -171,13 +171,12 @@ class XMSSSignature(ByteVector):
 | `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)` |
 | `LEAF_OFFSET_RANDAO`                     | `Uint64(1)` |
 | `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)` |
-| `LEAF_OFFSET_SELECTION_PROOF`            | `Uint64(3)` |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(4)` |
-| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(5)` |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(6)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(7)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(8)` |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(9)` |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(3)` |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(4)` |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(5)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(6)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(7)` |
+| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(8)` |
 
 ## Presets
 

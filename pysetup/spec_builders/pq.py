@@ -18,9 +18,11 @@ from eth_consensus_specs.utils import xmss
         return {
             "CONSOLIDATION_REQUEST_TYPE",
             "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS",
+            "DOMAIN_SELECTION_PROOF",
             "G2_POINT_AT_INFINITY",
             "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS",
             "PQ_REGISTRATION_REQUEST_TYPE",
+            "TARGET_AGGREGATORS_PER_COMMITTEE",
         }
 
     @classmethod
@@ -110,6 +112,7 @@ from eth_consensus_specs.utils import xmss
             "get_lc_execution_root",
             "get_next_sync_committee",
             "get_next_sync_committee_indices",
+            "get_slot_signature",
             "get_safety_threshold",
             "get_sync_committee_message",
             "get_sync_committee_selection_proof",
@@ -117,6 +120,7 @@ from eth_consensus_specs.utils import xmss
             "get_sync_subcommittee_pubkeys",
             "initialize_light_client_store",
             "is_assigned_to_sync_committee",
+            "is_aggregator",
             "is_better_update",
             "is_finality_update",
             "is_next_sync_committee_known",

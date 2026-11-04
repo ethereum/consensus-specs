@@ -64,7 +64,7 @@ class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
     aggregate: Attestation
     # [Modified in PQ]
-    selection_proof: XMSSSignature
+    # Removed `selection_proof`
 ```
 
 #### `SignedAggregateAndProof`
@@ -335,36 +335,13 @@ def get_attestation_signature(
 
 #### Aggregation selection
 
-*Note*: XMSS signatures are not unique. A validator can grind the randomizer of
-its selection proof until `is_aggregator` selects it, which BLS uniqueness used
-to prevent. This is an open issue.
+Every member of a committee MAY aggregate, so a validator no longer proves that
+it was selected. `get_slot_signature`, `is_aggregator`, and
+`TARGET_AGGREGATORS_PER_COMMITTEE` are deprecated. A validator that aggregates
+subscribes to the attestation subnet of its committee.
 
-```python
-def get_slot_signature(
-    state: BeaconState,
-    slot: Slot,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> XMSSSignature:
-    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
-    signing_root = compute_signing_root(slot, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(slot, LEAF_OFFSET_SELECTION_PROOF)
-    return xmss.Sign(privkey, leaf_index, signing_root)
-```
-
-```python
-def is_aggregator(
-    state: BeaconState,
-    slot: Slot,
-    index: CommitteeIndex,
-    # [Modified in PQ]
-    slot_signature: XMSSSignature,
-) -> bool:
-    committee = get_beacon_committee(state, slot, index)
-    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
-    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
-```
+*Note*: Every aggregate for a slot is signed at the same leaf, so a validator
+MUST NOT sign more than one `AggregateAndProof`.
 
 #### Construct aggregate
 
@@ -384,16 +361,18 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> XMSSAggregat
 
 ```python
 def get_aggregate_and_proof(
-    state: BeaconState,
+    # [Modified in PQ]
+    # Removed `state`
     aggregator_index: ValidatorIndex,
     aggregate: Attestation,
     # [Modified in PQ]
-    privkey: Bytes32,
+    # Removed `privkey`
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
-        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
+        # [Modified in PQ]
+        # Removed `selection_proof`
     )
 ```
 

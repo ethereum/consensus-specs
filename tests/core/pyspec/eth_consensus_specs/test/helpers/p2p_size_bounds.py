@@ -51,8 +51,9 @@ def build_max_size_signed_aggregate_and_proof(spec):
     aggregate_and_proof = spec.AggregateAndProof(
         aggregator_index=spec.ValidatorIndex(0),
         aggregate=build_max_size_attestation(spec),
-        selection_proof=get_unsigned_signature(spec),
     )
+    if not is_post_pq(spec):
+        aggregate_and_proof.selection_proof = get_unsigned_signature(spec)
     return spec.SignedAggregateAndProof(
         message=aggregate_and_proof,
         signature=get_unsigned_signature(spec),
