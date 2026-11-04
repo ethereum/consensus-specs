@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_attestation_subnet_count,
     get_valid_attestation,
     to_single_attestation,
 )
@@ -210,7 +211,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
 
     # Get correct subnet and use a different one
     correct_subnet = get_correct_subnet_for_attestation(spec, state, attestation)
-    wrong_subnet = spec.Uint64((correct_subnet + 1) % spec.config.ATTESTATION_SUBNET_COUNT)
+    wrong_subnet = spec.Uint64((correct_subnet + 1) % get_attestation_subnet_count(spec))
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation.data.slot)
 
     kwargs = {}

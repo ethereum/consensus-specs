@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Configs](#configs)
 - [Presets](#presets)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Containers](#containers)
@@ -13,6 +14,8 @@
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
   - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
+  - [Modified `compute_attestation_subnet_prefix_bits`](#modified-compute_attestation_subnet_prefix_bits)
+  - [Modified `compute_subscribed_subnet`](#modified-compute_subscribed_subnet)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -39,6 +42,14 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 Sync committees are removed in PQ, and with them the light client protocol, so
 the light client topics and request/response methods are no longer used.
+
+## Configs
+
+*[New in PQ]*
+
+| Name                          | Value                 |
+| ----------------------------- | --------------------- |
+| `ATTESTATION_SUBNET_COUNT_PQ` | `Uint64(2**4)` (= 16) |
 
 ## Presets
 
@@ -161,6 +172,36 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
 
     # [Modified in PQ]
     # Removed the PQ registration request limit
+```
+
+### Modified `compute_attestation_subnet_prefix_bits`
+
+```python
+def compute_attestation_subnet_prefix_bits() -> Uint64:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet.
+    """
+    # [Modified in PQ]
+    return ceillog2(ATTESTATION_SUBNET_COUNT_PQ) + ATTESTATION_SUBNET_EXTRA_BITS
+```
+
+### Modified `compute_subscribed_subnet`
+
+```python
+def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
+    prefix_bits = int(compute_attestation_subnet_prefix_bits())
+    node_id_prefix = node_id >> int(NODE_ID_BITS - prefix_bits)
+    node_offset = Uint64(node_id % Uint256(EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    permutation_seed = sha256(
+        uint_to_bytes(Uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    )
+    permutated_prefix = compute_shuffled_index(
+        Uint64(node_id_prefix),
+        Uint64(1 << prefix_bits),
+        permutation_seed,
+    )
+    # [Modified in PQ]
+    return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT_PQ)
 ```
 
 ## The gossip domain: gossipsub
@@ -834,6 +875,11 @@ def validate_proposer_preferences_gossip(
 #### Attestation subnets
 
 ##### Modified `beacon_attestation_{subnet_id}`
+
+There are `ATTESTATION_SUBNET_COUNT_PQ` attestation subnets. `Attnets` keeps its
+length of `ATTESTATION_SUBNET_COUNT` bits, so `MetaData` and the `attnets` ENR
+entry are unchanged, and only the bits of the `ATTESTATION_SUBNET_COUNT_PQ`
+subnets may be set.
 
 ```python
 def validate_beacon_attestation_gossip(

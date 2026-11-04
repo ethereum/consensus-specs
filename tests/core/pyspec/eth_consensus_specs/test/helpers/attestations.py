@@ -18,6 +18,12 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
+def get_attestation_subnet_count(spec):
+    if is_post_pq(spec):
+        return spec.config.ATTESTATION_SUBNET_COUNT_PQ
+    return spec.config.ATTESTATION_SUBNET_COUNT
+
+
 def get_aggregator_index(spec, state, slot, committee_index):
     """
     Return the first committee member selected to aggregate, or the first member

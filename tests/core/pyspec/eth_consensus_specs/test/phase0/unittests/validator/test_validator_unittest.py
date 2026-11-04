@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import (
     build_attestation_data,
+    get_attestation_subnet_count,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
@@ -399,8 +400,7 @@ def test_compute_subnet_for_attestation(spec, state):
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
             expected_subnet_id = spec.SubnetID(
-                (committees_since_epoch_start + committee_idx)
-                % spec.config.ATTESTATION_SUBNET_COUNT
+                (committees_since_epoch_start + committee_idx) % get_attestation_subnet_count(spec)
             )
 
             assert actual_subnet_id == expected_subnet_id

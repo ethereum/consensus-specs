@@ -241,6 +241,10 @@ MAX_TRANSACTIONS_BYTES_PER_INCLUSION_LIST: 8192
 # 2**12 * 32 * 12,000 (= 1,572,864,000) milliseconds, ~18 days
 MIN_BLOB_DATA_RETENTION_MS: 1572864000
 
+# PQ
+# 2**4 (= 16) subnets
+ATTESTATION_SUBNET_COUNT_PQ: 16
+
 
 # Scheduling
 # ---------------------------------------------------------------

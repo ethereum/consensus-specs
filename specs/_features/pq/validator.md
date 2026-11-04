@@ -29,6 +29,8 @@
   - [Attesting](#attesting)
     - [Construct attestation](#construct-attestation)
       - [Aggregate signature](#aggregate-signature)
+    - [Attestation subnet](#attestation-subnet)
+      - [Modified `compute_subnet_for_attestation`](#modified-compute_subnet_for_attestation)
   - [Attestation aggregation](#attestation-aggregation)
     - [Aggregation selection](#aggregation-selection)
     - [Construct aggregate](#construct-aggregate)
@@ -329,6 +331,24 @@ def get_attestation_signature(
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(attestation_data.slot, LEAF_OFFSET_BEACON_ATTESTER)
     return xmss.Sign(privkey, leaf_index, signing_root)
+```
+
+#### Attestation subnet
+
+##### Modified `compute_subnet_for_attestation`
+
+```python
+def compute_subnet_for_attestation(
+    committees_per_slot: Uint64, slot: Slot, committee_index: CommitteeIndex
+) -> SubnetID:
+    """
+    Compute the correct subnet for an attestation.
+    """
+    slots_since_epoch_start = Uint64(slot % SLOTS_PER_EPOCH)
+    committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
+
+    # [Modified in PQ]
+    return SubnetID((committees_since_epoch_start + committee_index) % ATTESTATION_SUBNET_COUNT_PQ)
 ```
 
 ### Attestation aggregation
