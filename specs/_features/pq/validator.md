@@ -56,7 +56,9 @@ This document represents the changes to be made in the code of an "honest
 validator" to implement PQ.
 
 Validators sign with leanXMSS instead of BLS. Every message is signed at the
-leaf that `compute_xmss_leaf_index` assigns to its slot and type. At the
+leaf that `compute_xmss_leaf_index` assigns to its slot and type, except an
+attestation, which is signed at the leaf that
+`compute_xmss_attestation_leaf_index` assigns to its target epoch. At the
 upgrade, each validator moves to `state.pq_validators` at the same index, with
 the XMSS public key it registered with EIP-8483. A validator without a
 registration is exited at the upgrade. See [the fork document](./fork.md) for
@@ -366,7 +368,7 @@ def get_attestation_signature(
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = compute_signing_root(attestation_data, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(attestation_data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    leaf_index = compute_xmss_attestation_leaf_index(attestation_data.target.epoch)
     return xmss.Sign(privkey, leaf_index, signing_root)
 ```
 

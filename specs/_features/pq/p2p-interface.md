@@ -1025,7 +1025,7 @@ def validate_beacon_attestation_gossip(
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    leaf_index = compute_xmss_attestation_leaf_index(target_epoch)
     pubkey = state.pq_validators[attester_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")

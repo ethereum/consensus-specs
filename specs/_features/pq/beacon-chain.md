@@ -46,6 +46,7 @@
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
   - [Misc](#misc)
+    - [New `compute_xmss_attestation_leaf_index`](#new-compute_xmss_attestation_leaf_index)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
     - [Modified `can_builder_cover_bid`](#modified-can_builder_cover_bid)
     - [Modified `compute_balance_weighted_selection`](#modified-compute_balance_weighted_selection)
@@ -144,11 +145,12 @@ blob transactions from the fork on.
 XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
 therefore assigns every validator message a leaf derived from its slot and its
-type, see `compute_xmss_leaf_index`. A message that a key signs at most once,
-such as a voluntary exit, instead uses one of the first `XMSS_RESERVED_LEAVES`
-leaves. An honest signer that never equivocates never reuses a leaf. Each
-signature carries its leaf index, and verification checks it against the
-expected one.
+type, see `compute_xmss_leaf_index`. An attestation instead uses the leaf of its
+target epoch, see `compute_xmss_attestation_leaf_index`. A message that a key
+signs at most once, such as a voluntary exit, instead uses one of the first
+`XMSS_RESERVED_LEAVES` leaves. An honest signer that never equivocates never
+reuses a leaf. Each signature carries its leaf index, and verification checks it
+against the expected one.
 
 XMSS has no native aggregation. Aggregates are opaque `XMSSAggregateSignature`
 values, produced and checked by `xmss.Aggregate` and `xmss.AggregateVerify`. The
@@ -281,11 +283,12 @@ class XMSSSignature(ByteVector):
 
 ### XMSS
 
-| Name                   | Value                      |
-| ---------------------- | -------------------------- |
-| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`             |
-| `XMSS_RESERVED_LEAVES` | `Uint64(2**15)` (= 32,768) |
-| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**3)` (= 8)       |
+| Name                      | Value                             |
+| ------------------------- | --------------------------------- |
+| `XMSS_SIGNATURE_SIZE`     | `Uint64(2404)`                    |
+| `XMSS_RESERVED_LEAVES`    | `Uint64(2**15)` (= 32,768)        |
+| `XMSS_ATTESTATION_LEAVES` | `Uint64(2**31)` (= 2,147,483,648) |
+| `XMSS_LEAVES_PER_SLOT`    | `Uint64(2**3)` (= 8)              |
 
 ### VRF
 
@@ -298,12 +301,11 @@ class XMSSSignature(ByteVector):
 | Name                                     | Value       |
 | ---------------------------------------- | ----------- |
 | `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)` |
-| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(1)` |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(2)` |
-| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(3)` |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(4)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(5)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(6)` |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(1)` |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(2)` |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(3)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(4)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(5)` |
 
 ### XMSS reserved leaves
 
@@ -637,12 +639,27 @@ They stand in for a recursive STARK, which would change the encoding of
 
 ### Misc
 
-#### New `compute_xmss_leaf_index`
+#### New `compute_xmss_attestation_leaf_index`
 
 *Note*: The first `XMSS_RESERVED_LEAVES` leaves are reserved for messages that a
-key signs at most once, so the leaves of each slot follow them. A key covers
-`2**32` leaves, so it lasts
-`(2**32 - XMSS_RESERVED_LEAVES) // XMSS_LEAVES_PER_SLOT` slots.
+key signs at most once. The next `XMSS_ATTESTATION_LEAVES` leaves hold one
+attestation per target epoch, since a validator that attests twice for the same
+target epoch is slashed for a double vote.
+
+```python
+def compute_xmss_attestation_leaf_index(epoch: Epoch) -> Uint64:
+    """
+    Return the XMSS leaf at which an attestation is signed for target ``epoch``.
+    """
+    return Uint64(XMSS_RESERVED_LEAVES + epoch)
+```
+
+#### New `compute_xmss_leaf_index`
+
+*Note*: The leaves of each slot follow the reserved and attestation leaves. A
+key covers `2**32` leaves, so it lasts
+`(2**32 - XMSS_RESERVED_LEAVES - XMSS_ATTESTATION_LEAVES) // XMSS_LEAVES_PER_SLOT`
+slots.
 
 ```python
 def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
@@ -650,7 +667,9 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     Return the XMSS leaf at which a message of the type given by ``leaf_offset``
     is signed for ``slot``.
     """
-    return Uint64(XMSS_RESERVED_LEAVES + slot * XMSS_LEAVES_PER_SLOT + leaf_offset)
+    return Uint64(
+        XMSS_RESERVED_LEAVES + XMSS_ATTESTATION_LEAVES + slot * XMSS_LEAVES_PER_SLOT + leaf_offset
+    )
 ```
 
 #### Modified `can_builder_cover_bid`
@@ -767,7 +786,7 @@ def is_valid_indexed_attestation(
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(indexed_attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    leaf_index = compute_xmss_attestation_leaf_index(indexed_attestation.data.target.epoch)
     return xmss.AggregateVerify(pubkeys, leaf_index, signing_root, indexed_attestation.signature)
 ```
 
@@ -996,7 +1015,7 @@ def get_attestation_statements(
     """
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     message = compute_signing_root(attestation.data, domain)
-    leaf_index = compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER)
+    leaf_index = compute_xmss_attestation_leaf_index(attestation.data.target.epoch)
     statements = []
     committee_offset = 0
     for committee_index in get_committee_indices(attestation.committee_bits):

@@ -262,7 +262,7 @@ def sign_attestation(spec, state, attestation):
 def get_attestation_signature(spec, state, attestation_data, privkey):
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
-    return sign(spec, privkey, signing_root, attestation_data.slot, "LEAF_OFFSET_BEACON_ATTESTER")
+    return sign(spec, privkey, signing_root, attestation_data.slot, "ATTESTATION")
 
 
 def to_single_attestation(spec, state, attestation, attester_index=None):
