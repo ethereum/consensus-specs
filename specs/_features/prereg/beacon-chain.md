@@ -58,7 +58,9 @@ key.
 *Note*: Unlike EIP-8483 as drafted, a request is ignored if the XMSS public key
 in its `pq_data` is already registered, for either role. The material is public,
 so otherwise anyone could register a copy of someone else's key for their own
-validator or builder, and the migration fork could not give each its own key.
+validator or builder, and the migration fork could not give each its own key. A
+validator request is also ignored if its VRF data is already registered for a
+validator. Builders have no use for VRF data, so theirs is not checked.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -280,6 +282,16 @@ def process_pq_registration_request(
     registered_xmss_pubkeys = [registration.pq_data[:32] for registration in state.pq_registrations]
     if pq_registration_request.pq_data[:32] in registered_xmss_pubkeys:
         return
+
+    # Verify the VRF data in the PQ material is not already registered by a validator
+    if pq_registration_request.role == PQ_REGISTRATION_ROLE_VALIDATOR:
+        registered_vrf_data = [
+            registration.pq_data[32:]
+            for registration in state.pq_registrations
+            if registration.role == PQ_REGISTRATION_ROLE_VALIDATOR
+        ]
+        if pq_registration_request.pq_data[32:] in registered_vrf_data:
+            return
 
     # Overwrite an existing registration for this role and public key
     for registration in state.pq_registrations:

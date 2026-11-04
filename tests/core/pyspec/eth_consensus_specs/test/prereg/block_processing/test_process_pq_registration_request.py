@@ -358,3 +358,33 @@ def test_process_pq_registration_request__xmss_pubkey_already_registered(spec, s
     request = prepare_pq_registration_request(spec, state, 1, b"\x22" * 32 + b"\x33" * 32)
 
     yield from run_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([PREREG])
+@spec_state_test
+def test_process_pq_registration_request__vrf_data_already_registered(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32 + b"\x55" * 32)
+    )
+    # Different XMSS public key, same VRF data
+    request = prepare_pq_registration_request(spec, state, 1, b"\x33" * 32 + b"\x55" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([PREREG])
+@spec_state_test
+def test_process_pq_registration_request__builder_vrf_data_not_checked(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    spec.process_pq_registration_request(
+        state, prepare_pq_registration_request(spec, state, 0, b"\x22" * 32 + b"\x55" * 32)
+    )
+    # Different XMSS public key, same VRF data as the validator
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x33" * 32 + b"\x55" * 32)
+
+    yield from run_pq_registration_request_processing(spec, state, request)
+
+    assert len(state.pq_registrations) == 2
+    assert state.pq_registrations[1].pubkey == state.builders[0].pubkey
