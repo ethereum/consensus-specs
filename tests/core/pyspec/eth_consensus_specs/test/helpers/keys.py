@@ -20,7 +20,7 @@ xmss_builder_pubkeys = [xmss.StubPk(privkey) for privkey in builder_privkeys]
 xmss_pubkeys = [xmss.StubPk(privkey) for privkey in privkeys]
 
 # Depth of the VRF trees whose roots validators register as VRF data
-SELECTION_PROOF_DEPTH = 31
+VRF_TREE_DEPTH = 31
 
 
 @cache
@@ -31,7 +31,7 @@ def get_vrf_tree_nodes(index):
     level is also the sibling of every node at that level.
     """
     nodes = [sha256(b"vrf leaf" + index.to_bytes(8, "little")).digest()]
-    for _ in range(SELECTION_PROOF_DEPTH):
+    for _ in range(VRF_TREE_DEPTH):
         nodes.append(sha256(nodes[-1] + nodes[-1]).digest())
     return tuple(nodes)
 
@@ -43,10 +43,10 @@ def get_vrf_data(index):
     return get_vrf_tree_nodes(index)[-1]
 
 
-def get_vrf_selection_proof(index):
+def get_vrf_proof(index):
     """
-    The selection proof of the validator at ``index`` for any slot, the leaf of
-    its VRF tree followed by the leaf's Merkle branch.
+    The VRF proof of the validator at ``index`` for any slot, the leaf of its VRF
+    tree followed by the leaf's Merkle branch.
     """
     nodes = get_vrf_tree_nodes(index)
-    return (nodes[0], *nodes[:SELECTION_PROOF_DEPTH])
+    return (nodes[0], *nodes[:VRF_TREE_DEPTH])

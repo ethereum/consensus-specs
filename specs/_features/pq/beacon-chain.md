@@ -8,12 +8,14 @@
 - [Types](#types)
   - [New `PQBuilders`](#new-pqbuilders)
   - [New `PQValidators`](#new-pqvalidators)
+  - [New `VRFProof`](#new-vrfproof)
   - [New `StarkProof`](#new-starkproof)
   - [New `XMSSAggregateSignature`](#new-xmssaggregatesignature)
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
 - [Constants](#constants)
   - [XMSS](#xmss)
+  - [VRF](#vrf)
   - [XMSS leaf offsets](#xmss-leaf-offsets)
 - [Presets](#presets)
   - [XMSS](#xmss-1)
@@ -48,6 +50,7 @@
     - [Modified `compute_balance_weighted_selection`](#modified-compute_balance_weighted_selection)
     - [Modified `get_max_effective_balance`](#modified-get_max_effective_balance)
   - [Predicates](#predicates)
+    - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
     - [Modified `has_eth1_withdrawal_credential`](#modified-has_eth1_withdrawal_credential)
@@ -149,6 +152,13 @@ values, produced and checked by `xmss.Aggregate` and `xmss.AggregateVerify`. The
 reference implementation concatenates signatures as a stand-in for a succinct
 aggregation scheme.
 
+XMSS signatures are not unique, so a proposer could grind a signature-based
+RANDAO reveal. Each validator instead registers the root of a Merkle tree of
+secret random values, one for each slot, as its VRF data. Its RANDAO reveal is
+the leaf for the slot with the leaf's Merkle branch, a `VRFProof`, which the
+proposer committed to before the fork. The same proof serves as its selection
+proof when it aggregates.
+
 The validator and builder registries move to `state.pq_validators` and
 `state.pq_builders`, whose records carry the XMSS public key registered with
 EIP-8483 before the fork, and for validators the registered VRF data. The fork
@@ -208,6 +218,18 @@ class PQValidators(ProgressiveList[PQValidator]):
     """
 ```
 
+### New `VRFProof`
+
+```python
+class VRFProof(Vector[Bytes32]):
+    """
+    A leaf of the tree whose root is a validator's VRF data, followed by the
+    leaf's Merkle branch.
+    """
+
+    LENGTH = VRF_TREE_DEPTH + 1
+```
+
 ### New `StarkProof`
 
 ```python
@@ -259,19 +281,24 @@ class XMSSSignature(ByteVector):
 | `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`        |
 | `XMSS_LEAVES_PER_SLOT` | `Uint64(2**4)` (= 16) |
 
+### VRF
+
+| Name             | Value        |
+| ---------------- | ------------ |
+| `VRF_TREE_DEPTH` | `Uint64(31)` |
+
 ### XMSS leaf offsets
 
 | Name                                     | Value       |
 | ---------------------------------------- | ----------- |
 | `LEAF_OFFSET_BEACON_PROPOSER`            | `Uint64(0)` |
-| `LEAF_OFFSET_RANDAO`                     | `Uint64(1)` |
-| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(2)` |
-| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(3)` |
-| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(4)` |
-| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(5)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(6)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(7)` |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(8)` |
+| `LEAF_OFFSET_BEACON_ATTESTER`            | `Uint64(1)` |
+| `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(2)` |
+| `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(3)` |
+| `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(4)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(5)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(6)` |
+| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(7)` |
 
 ## Presets
 
@@ -319,7 +346,7 @@ class BeaconBlockBody(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=14, gaps=(8, 9, 11))
 
     # [Modified in PQ]
-    randao_reveal: XMSSSignature
+    randao_reveal: VRFProof
     eth1_data: Eth1Data
     graffiti: Bytes32
     proposer_slashings: ProposerSlashings
@@ -680,6 +707,25 @@ def get_max_effective_balance(
 ```
 
 ### Predicates
+
+#### New `is_valid_vrf_proof`
+
+```python
+def is_valid_vrf_proof(
+    state: BeaconState, validator_index: ValidatorIndex, slot: Slot, proof: VRFProof
+) -> bool:
+    """
+    Check that ``proof`` opens the leaf at index ``slot`` of the tree whose root
+    is the VRF data of the validator at ``validator_index``.
+    """
+    return is_valid_merkle_branch(
+        leaf=proof[0],
+        branch=proof[1:],
+        depth=VRF_TREE_DEPTH,
+        index=slot,
+        root=state.pq_validators[validator_index].vrf_data,
+    )
+```
 
 #### Modified `is_valid_indexed_attestation`
 
@@ -1485,22 +1531,22 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Modified `process_randao`
 
-*Note*: XMSS signatures are not unique. A proposer can grind the randomizer of
-its reveal to bias the RANDAO mix, which BLS uniqueness used to prevent. A
-hash-based commit-reveal such as EIP-8321 would close this gap.
+*Note*: The reveal is the proposer's VRF proof for the slot. The proposer
+committed to its leaves when it registered its VRF data, so it cannot grind the
+reveal and can only withhold its block, as with BLS.
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
+    # [Modified in PQ]
     # Verify RANDAO reveal
+    assert is_valid_vrf_proof(
+        state, get_beacon_proposer_index(state), state.slot, body.randao_reveal
+    )
     # [Modified in PQ]
-    proposer = state.pq_validators[get_beacon_proposer_index(state)]
-    signing_root = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(state.slot, LEAF_OFFSET_RANDAO)
-    assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, body.randao_reveal)
     # Mix in RANDAO reveal
-    mix = xor(get_randao_mix(state, epoch), sha256(body.randao_reveal))
+    prev_randao = get_randao_mix(state, epoch)
+    mix = sha256(prev_randao + body.randao_reveal[0] + DOMAIN_RANDAO)
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 

@@ -419,7 +419,7 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [Modified in PQ]
     # [REJECT] The selection proof is valid
-    if not is_valid_selection_proof(
+    if not is_valid_vrf_proof(
         state, aggregator_index, aggregate.data.slot, aggregate_and_proof.selection_proof
     ):
         raise GossipReject("invalid selection proof")

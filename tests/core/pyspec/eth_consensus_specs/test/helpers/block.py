@@ -15,8 +15,9 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_heze,
     is_post_pq,
 )
-from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.keys import get_vrf_proof, privkeys
 from eth_consensus_specs.test.helpers.signatures import get_empty_aggregate, sign
+from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.bls import only_with_bls
 
 
@@ -37,7 +38,9 @@ def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
 def apply_randao_reveal(spec, state, block, proposer_index):
     assert state.slot <= block.slot
 
-    if is_post_eip8321(spec) and state.randao_commitments[proposer_index] != spec.Bytes32():
+    if is_post_pq(spec):
+        block.body.randao_reveal = spec.VRFProof(data=get_vrf_proof(proposer_index))
+    elif is_post_eip8321(spec) and state.randao_commitments[proposer_index] != spec.Bytes32():
         # The proposer walks its hash chain instead of signing; the legacy reveal must be empty.
         block.body.randao_reveal = spec.G2_POINT_AT_INFINITY
         block.body.hash_chain_reveal = get_hash_chain_reveal(spec, state, proposer_index)
@@ -52,7 +55,7 @@ def sign_randao_reveal(spec, state, block, proposer_index):
 
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
     signing_root = spec.compute_signing_root(spec.compute_epoch_at_slot(block.slot), domain)
-    block.body.randao_reveal = sign(spec, privkey, signing_root, block.slot, "LEAF_OFFSET_RANDAO")
+    block.body.randao_reveal = bls.Sign(privkey, signing_root)
 
 
 # Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.

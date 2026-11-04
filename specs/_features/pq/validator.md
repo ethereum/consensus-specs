@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Types](#types)
-  - [New `SelectionProof`](#new-selectionproof)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Containers](#containers)
@@ -15,6 +13,7 @@
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
+    - [VRF tree](#vrf-tree)
     - [XMSS public key](#xmss-public-key)
   - [Modified `check_if_validator_active`](#modified-check_if_validator_active)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -63,20 +62,6 @@ the XMSS public key it registered with EIP-8483. A validator without a
 registration is exited at the upgrade. See [the fork document](./fork.md) for
 details.
 
-## Types
-
-### New `SelectionProof`
-
-```python
-class SelectionProof(Vector[Bytes32]):
-    """
-    A leaf of the tree whose root is a validator's VRF data, followed by the
-    leaf's Merkle branch.
-    """
-
-    LENGTH = SELECTION_PROOF_DEPTH + 1
-```
-
 ## Constants
 
 ### Misc
@@ -86,7 +71,6 @@ class SelectionProof(Vector[Bytes32]):
 | Name                                  | Value                |
 | ------------------------------------- | -------------------- |
 | `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` | `Uint64(2**2)` (= 4) |
-| `SELECTION_PROOF_DEPTH`               | `Uint64(31)`         |
 
 *Note*: Aggregates are much larger than with BLS, so fewer validators are
 selected to aggregate. `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` replaces
@@ -103,7 +87,7 @@ class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
     aggregate: Attestation
     # [Modified in PQ]
-    selection_proof: SelectionProof
+    selection_proof: VRFProof
     # [New in PQ]
     stark: StarkProof
 ```
@@ -120,6 +104,17 @@ class SignedAggregateAndProof(Container):
 ## Becoming a validator
 
 ### Initialization
+
+#### VRF tree
+
+A validator builds a Merkle tree of depth `VRF_TREE_DEPTH` whose leaves are
+secret random values, one for each slot, and registers the root of the tree as
+its VRF data with EIP-8483, as the last 32 bytes of the registration's
+`pq_data`. Its VRF proof for a slot is the leaf at index `slot`, followed by the
+leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it proposes
+and as its selection proof when it aggregates. The tree is fixed at
+registration, so a validator cannot grind its proofs, and nobody can predict
+them before they are revealed.
 
 #### XMSS public key
 
@@ -193,22 +188,9 @@ def get_signed_proposer_preferences(
 
 ##### Randao reveal
 
-Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is
-obtained from:
-
-```python
-def get_epoch_signature(
-    state: BeaconState,
-    block: BeaconBlock,
-    # [Modified in PQ]
-    privkey: Bytes32,
-) -> XMSSSignature:
-    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
-    signing_root = compute_signing_root(compute_epoch_at_slot(block.slot), domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_RANDAO)
-    return xmss.Sign(privkey, leaf_index, signing_root)
-```
+Set `block.body.randao_reveal` to the proposer's VRF proof for `block.slot`, the
+leaf at index `block.slot` of its VRF tree followed by the leaf's Merkle branch.
+`get_epoch_signature` is deprecated.
 
 ##### Attestations
 
@@ -406,37 +388,12 @@ def compute_subnet_for_attestation(
 
 #### Aggregation selection
 
-A validator commits to its selection proofs through the VRF data it registers.
-It builds a Merkle tree of depth `SELECTION_PROOF_DEPTH` whose leaves are secret
-random values, one for each slot, and registers the root of the tree as its VRF
-data. Its selection proof for a slot is the leaf at index `slot`, followed by
-the leaf's Merkle branch. The tree is fixed at registration, so a validator
-cannot grind its selection proofs, and nobody can predict them before they are
-revealed. `get_slot_signature` is deprecated.
+A validator's selection proof for a slot is its VRF proof for that slot.
+`get_slot_signature` is deprecated.
 
-`is_aggregator` hashes the leaf with the validator index and the RANDAO mix of
-the finalized epoch. That mix is unknown when the tree is registered, so a
+`is_aggregator` hashes the leaf with the validator index and the root of the
+finalized checkpoint. That root is unknown when the tree is registered, so a
 validator cannot fill its tree with leaves that always select it.
-
-```python
-def is_valid_selection_proof(
-    state: BeaconState,
-    validator_index: ValidatorIndex,
-    slot: Slot,
-    selection_proof: SelectionProof,
-) -> bool:
-    """
-    Check that ``selection_proof`` opens the leaf at index ``slot`` of the tree
-    whose root is the VRF data of the validator at ``validator_index``.
-    """
-    return is_valid_merkle_branch(
-        leaf=selection_proof[0],
-        branch=selection_proof[1:],
-        depth=SELECTION_PROOF_DEPTH,
-        index=slot,
-        root=state.pq_validators[validator_index].vrf_data,
-    )
-```
 
 ```python
 def is_aggregator(
@@ -446,15 +403,18 @@ def is_aggregator(
     # [New in PQ]
     validator_index: ValidatorIndex,
     # [Modified in PQ]
-    selection_proof: SelectionProof,
+    selection_proof: VRFProof,
 ) -> bool:
     committee = get_beacon_committee(state, slot, index)
     # [Modified in PQ]
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE_PQ)
     # [Modified in PQ]
-    mix = get_randao_mix(state, state.finalized_checkpoint.epoch)
+    finalized_root = state.finalized_checkpoint.root
     selection = sha256(
-        selection_proof[0] + DOMAIN_SELECTION_PROOF + uint_to_bytes(validator_index) + mix
+        selection_proof[0]
+        + DOMAIN_SELECTION_PROOF
+        + uint_to_bytes(validator_index)
+        + finalized_root
     )
     return bytes_to_uint64(selection[0:8]) % modulo == 0
 ```
@@ -499,7 +459,7 @@ def get_aggregate_and_proof(
     # [Modified in PQ]
     # Removed `privkey`
     # [New in PQ]
-    selection_proof: SelectionProof,
+    selection_proof: VRFProof,
     # [New in PQ]
     stark: StarkProof,
 ) -> AggregateAndProof:

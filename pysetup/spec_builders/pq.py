@@ -149,6 +149,7 @@ compute_balance_weighted_selection = cache_this(
             "get_contribution_and_proof",
             "get_contribution_and_proof_signature",
             "get_contribution_due_ms",
+            "get_epoch_signature",
             "get_index_for_new_builder",
             "get_index_for_new_validator",
             "get_indexed_payload_attestation",

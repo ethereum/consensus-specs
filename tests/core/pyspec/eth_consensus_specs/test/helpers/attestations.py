@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
     is_post_pq,
 )
-from eth_consensus_specs.test.helpers.keys import get_vrf_selection_proof, privkeys
+from eth_consensus_specs.test.helpers.keys import get_vrf_proof, privkeys
 from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -30,7 +30,7 @@ def get_selection_proof(spec, state, validator_index, slot):
     from PQ onwards opens a leaf of its VRF tree.
     """
     if is_post_pq(spec):
-        return spec.SelectionProof(data=get_vrf_selection_proof(validator_index))
+        return spec.VRFProof(data=get_vrf_proof(validator_index))
     return spec.get_slot_signature(state, slot, privkeys[validator_index])
 
 
