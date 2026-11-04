@@ -387,7 +387,7 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
     assert not _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     """
@@ -472,7 +472,7 @@ def test_invalid_too_many_proposer_slashings(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_payload_attestation_too_old_slot(spec, state):
     """
@@ -749,7 +749,7 @@ def test_invalid_too_many_bls_to_execution_changes(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_max_payload_attestations(spec, state):
     rng = Random(3000)
@@ -771,7 +771,7 @@ def test_max_payload_attestations(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_too_many_payload_attestations(spec, state):
     rng = Random(3000)
@@ -793,7 +793,7 @@ def test_invalid_too_many_payload_attestations(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_invalid_payload_attestation_invalid_signature(spec, state):

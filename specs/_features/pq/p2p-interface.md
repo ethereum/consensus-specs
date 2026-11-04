@@ -130,9 +130,8 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
     # [Modified in PQ]
     # Removed the BLS to execution change limit
 
-    # [REJECT] The payload attestation count is within the limit
-    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
-        raise GossipReject("too many payload attestations")
+    # [Modified in PQ]
+    # Removed the payload attestation limit
 ```
 
 ### Modified `verify_execution_requests_limits`

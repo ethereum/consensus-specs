@@ -22,8 +22,6 @@
     - [`BeaconState`](#beaconstate)
     - [`ExecutionRequests`](#executionrequests)
     - [`IndexedAttestation`](#indexedattestation)
-    - [`IndexedPayloadAttestation`](#indexedpayloadattestation)
-    - [`PayloadAttestation`](#payloadattestation)
     - [`PayloadAttestationMessage`](#payloadattestationmessage)
     - [`SignedBeaconBlock`](#signedbeaconblock)
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
@@ -40,7 +38,6 @@
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
   - [Predicates](#predicates)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
-    - [Modified `is_valid_indexed_payload_attestation`](#modified-is_valid_indexed_payload_attestation)
   - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_xmss_pubkey`](#new-get_xmss_pubkey)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -107,6 +104,10 @@ adds a quantum-safe way to change them.
 
 Consolidation requests are deprecated, so the execution layer must stop
 producing them at the fork. Pending consolidations still complete.
+
+Blocks no longer carry payload attestations, which spares proposers from
+aggregating them. The payload timeliness committee still broadcasts its votes,
+which fork choice uses as before.
 
 *Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -211,7 +212,7 @@ class Attestation(ProgressiveContainer):
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13, gaps=(8, 9))
+    ACTIVE_FIELDS = active_fields(width=13, gaps=(8, 9, 11))
 
     # [Modified in PQ]
     randao_reveal: XMSSSignature
@@ -227,7 +228,8 @@ class BeaconBlockBody(ProgressiveContainer):
     # [Modified in PQ]
     # Removed `bls_to_execution_changes`
     signed_execution_payload_bid: SignedExecutionPayloadBid
-    payload_attestations: PayloadAttestations
+    # [Modified in PQ]
+    # Removed `payload_attestations`
     parent_execution_requests: ExecutionRequests
 ```
 
@@ -315,30 +317,6 @@ class IndexedAttestation(ProgressiveContainer):
 
     attesting_indices: AttestingIndices
     data: AttestationData
-    # [Modified in PQ]
-    signature: XMSSAggregateSignature
-```
-
-#### `IndexedPayloadAttestation`
-
-```python
-class IndexedPayloadAttestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=3)
-
-    attesting_indices: PayloadTimelinessCommitteeIndices
-    data: PayloadAttestationData
-    # [Modified in PQ]
-    signature: XMSSAggregateSignature
-```
-
-#### `PayloadAttestation`
-
-```python
-class PayloadAttestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=3)
-
-    aggregation_bits: PayloadTimelinessCommitteeBits
-    data: PayloadAttestationData
     # [Modified in PQ]
     signature: XMSSAggregateSignature
 ```
@@ -497,34 +475,6 @@ def is_valid_indexed_attestation(
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(indexed_attestation.data.slot, LEAF_OFFSET_BEACON_ATTESTER)
     return xmss.AggregateVerify(pubkeys, leaf_index, signing_root, indexed_attestation.signature)
-```
-
-#### Modified `is_valid_indexed_payload_attestation`
-
-```python
-def is_valid_indexed_payload_attestation(
-    state: BeaconState, attestation: IndexedPayloadAttestation
-) -> bool:
-    """
-    Check if ``attestation`` is non-empty, has sorted indices, and has
-    a valid aggregate signature.
-    """
-    # Verify indices are non-empty and sorted
-    indices = attestation.attesting_indices
-    if len(indices) == 0 or list(indices) != sorted(indices):
-        return False
-
-    # Verify aggregate signature
-    # [Modified in PQ]
-    pubkeys = [
-        get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, state.validators[index].pubkey)
-        for index in indices
-    ]
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
-    signing_root = compute_signing_root(attestation.data, domain)
-    # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    return xmss.AggregateVerify(pubkeys, leaf_index, signing_root, attestation.signature)
 ```
 
 ### Beacon state accessors
@@ -782,7 +732,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
     # [Modified in PQ]
     # Removed the BLS to execution change limit
-    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
+    # [Modified in PQ]
+    # Removed the payload attestation limit
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
@@ -790,7 +741,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     for_ops(body.voluntary_exits, process_voluntary_exit)
     # [Modified in PQ]
     # Removed `process_bls_to_execution_change`
-    for_ops(body.payload_attestations, process_payload_attestation)
+    # [Modified in PQ]
+    # Removed `process_payload_attestation`
 ```
 
 ##### Modified `process_proposer_slashing`

@@ -5,9 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helpers](#helpers)
-  - [Modified `notify_ptc_messages`](#modified-notify_ptc_messages)
 - [Handlers](#handlers)
+  - [Modified `on_block`](#modified-on_block)
   - [Modified `on_payload_attestation_message`](#modified-on_payload_attestation_message)
 
 <!-- mdformat-toc end -->
@@ -16,51 +15,92 @@
 
 This is the modification of the fork-choice accompanying the PQ upgrade.
 
-## Helpers
-
-### Modified `notify_ptc_messages`
-
-```python
-def notify_ptc_messages(
-    store: Store, state: BeaconState, payload_attestations: Sequence[PayloadAttestation]
-) -> None:
-    """
-    Extracts a list of ``PayloadAttestationMessage`` from ``payload_attestations`` and updates the store with them
-    These Payload attestations are assumed to be in the beacon block hence signature verification is not needed
-    """
-    if state.slot == 0:
-        return
-    for payload_attestation in payload_attestations:
-        indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
-        for idx in indexed_payload_attestation.attesting_indices:
-            on_payload_attestation_message(
-                store,
-                PayloadAttestationMessage(
-                    validator_index=idx,
-                    data=payload_attestation.data,
-                    # [Modified in PQ]
-                    signature=XMSSSignature(),
-                ),
-                is_from_block=True,
-            )
-```
+Blocks no longer carry payload attestations, so the votes of the payload
+timeliness committee reach fork choice only from the wire.
 
 ## Handlers
 
+### Modified `on_block`
+
+```python
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+    """
+    block = signed_block.message
+    block_root = hash_tree_root(block)
+
+    # Return early if the block is already known
+    if block_root in store.blocks:
+        return
+
+    # Parent block must be known
+    assert block.parent_root in store.block_states
+
+    # If this block builds on the parent's full payload, that payload must
+    # have been verified by on_execution_payload_envelope
+    if is_parent_node_full(store, block):
+        assert is_payload_verified(store, block.parent_root)
+
+    # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
+    current_slot = get_current_slot(store)
+    assert current_slot >= block.slot
+
+    # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    assert block.slot > finalized_slot
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
+
+    # Make a copy of the state to avoid mutability issues
+    state = store.block_states[block.parent_root].copy()
+
+    # Check the block is valid and compute the post-state
+    state_transition(state, signed_block, validate_result=True)
+
+    # Compute head before applying the block
+    head = get_head(store)
+    # Add new block to the store
+    store.blocks[block_root] = block
+    # Add new state for this block to the store
+    store.block_states[block_root] = state
+    # Add a new PTC voting for this block to the store
+    store.payload_timeliness_vote[block_root] = [None] * PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [None] * PTC_SIZE
+
+    # [Modified in PQ]
+    # Removed `notify_ptc_messages`
+
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, head.root, block_root)
+
+    # Update checkpoints in store if necessary
+    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
+
+    # Eagerly compute unrealized justification and finality.
+    compute_pulled_up_tip(store, block_root)
+```
+
 ### Modified `on_payload_attestation_message`
 
-*Note*: `IndexedPayloadAttestation` now holds an aggregate signature, which a
-single `XMSSSignature` is not. The signature of a message from the wire is
-therefore checked with `xmss.Verify` rather than through
-`is_valid_indexed_payload_attestation`.
+*Note*: A payload attestation message now always comes from the wire, so its
+slot and signature are always checked. The signature is checked with
+`xmss.Verify`, since `IndexedPayloadAttestation` is deprecated.
 
 ```python
 def on_payload_attestation_message(
-    store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
+    store: Store,
+    ptc_message: PayloadAttestationMessage,
+    # [Modified in PQ]
+    # Removed `is_from_block`
 ) -> None:
     """
-    Run ``on_payload_attestation_message`` upon receiving a new payload attestation message
-    from either within a block or directly on the wire.
+    Run ``on_payload_attestation_message`` upon receiving a new payload attestation message.
     """
     data = ptc_message.data
 
@@ -82,18 +122,16 @@ def on_payload_attestation_message(
     # Check that the attester is from the PTC
     assert len(ptc_indices) > 0
 
-    # Verify the signature and check that its for the current slot if it is coming from the wire
-    if not is_from_block:
-        # Check that the attestation is for the current slot
-        assert data.slot == get_current_slot(store)
-        # [Modified in PQ]
-        # Verify the signature
-        validator = state.validators[ptc_message.validator_index]
-        domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
-        signing_root = compute_signing_root(data, domain)
-        leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-        pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
-        assert xmss.Verify(pubkey, leaf_index, signing_root, ptc_message.signature)
+    # [Modified in PQ]
+    # Check that the attestation is for the current slot
+    assert data.slot == get_current_slot(store)
+    # Verify the signature
+    validator = state.validators[ptc_message.validator_index]
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
+    signing_root = compute_signing_root(data, domain)
+    leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
+    pubkey = get_xmss_pubkey(state, PQ_REGISTRATION_ROLE_VALIDATOR, validator.pubkey)
+    assert xmss.Verify(pubkey, leaf_index, signing_root, ptc_message.signature)
 
     # Update the votes for the block
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]

@@ -6,12 +6,12 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test_with_matching_config,
     spec_test,
+    with_all_phases_from_except,
     with_custom_state,
-    with_gloas_and_later,
     with_matching_spec_config,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.signatures import aggregate, sign
@@ -151,7 +151,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_present(spec, state):
@@ -165,7 +165,7 @@ def test_process_payload_attestation_payload_present(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_not_present(spec, state):
@@ -179,7 +179,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_partial_participation(spec, state):
@@ -204,7 +204,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     """
@@ -225,7 +225,7 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_future_slot(spec, state):
     """
@@ -239,7 +239,7 @@ def test_process_payload_attestation_future_slot(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_too_old_slot(spec, state):
     """
@@ -254,7 +254,7 @@ def test_process_payload_attestation_too_old_slot(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_invalid_signature(spec, state):
@@ -269,7 +269,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
@@ -283,7 +283,7 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
@@ -318,7 +318,7 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
@@ -369,7 +369,7 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test

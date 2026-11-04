@@ -20,6 +20,7 @@
       - [Attestations](#attestations)
       - [Sync committee](#sync-committee)
       - [BLS to execution changes](#bls-to-execution-changes)
+      - [Payload attestations](#payload-attestations)
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Execution requests](#execution-requests)
     - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
@@ -204,6 +205,11 @@ Sync committees are removed in PQ, so the block body no longer has a
 
 `BLSToExecutionChange` is disabled in PQ, so the block body no longer has
 `bls_to_execution_changes`.
+
+##### Payload attestations
+
+The block body no longer has `payload_attestations`, so the proposer does not
+aggregate payload attestation messages.
 
 ##### Signed execution payload bid
 

@@ -1,11 +1,13 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test_with_matching_config,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_payload_attestation_message,
     add_payload_vote_checks,
@@ -339,7 +341,7 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
     yield "steps", test_steps
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_on_payload_attestation_message_from_block(spec, state):
     """

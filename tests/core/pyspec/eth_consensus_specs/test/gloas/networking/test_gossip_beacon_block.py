@@ -726,7 +726,7 @@ def test_gossip_beacon_block__reject_too_many_bls_to_execution_changes(spec, sta
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__valid_max_payload_attestations(spec, state):
     """A block with the maximum number of payload attestations is valid."""
@@ -739,7 +739,7 @@ def test_gossip_beacon_block__valid_max_payload_attestations(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_payload_attestations(spec, state):
     """A block with more payload attestations than the limit is rejected."""
