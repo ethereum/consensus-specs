@@ -12,8 +12,8 @@ MAX_ATTESTATIONS_PQ: 16
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 1,067,525 bytes, ~1 MiB
-MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1067525
+# 1,069,929 bytes, ~1 MiB
+MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1069929
 # 4,194,584 bytes, ~4 MiB
 MAX_ATTESTER_SLASHING_SIZE_PQ: 4194584
 # 199,240 bytes, ~195 KiB

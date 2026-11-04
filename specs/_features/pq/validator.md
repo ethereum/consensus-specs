@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
@@ -58,6 +60,20 @@ the XMSS public key it registered with EIP-8483. A validator without a
 registration is exited at the upgrade. See [the fork document](./fork.md) for
 details.
 
+## Constants
+
+### Misc
+
+*[New in PQ]*
+
+| Name                                  | Value                |
+| ------------------------------------- | -------------------- |
+| `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` | `Uint64(2**2)` (= 4) |
+
+*Note*: Aggregates are much larger than with BLS, so fewer validators are
+selected to aggregate. `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` replaces
+`TARGET_AGGREGATORS_PER_COMMITTEE`.
+
 ## Containers
 
 ### Modified containers
@@ -69,7 +85,7 @@ class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
     aggregate: Attestation
     # [Modified in PQ]
-    # Removed `selection_proof`
+    selection_proof: XMSSSignature
     # [New in PQ]
     aggregate_signature: XMSSAggregateSignature
 ```
@@ -383,13 +399,37 @@ def compute_subnet_for_attestation(
 
 #### Aggregation selection
 
-Every member of a committee MAY aggregate, so a validator no longer proves that
-it was selected. `get_slot_signature`, `is_aggregator`, and
-`TARGET_AGGREGATORS_PER_COMMITTEE` are deprecated. A validator that aggregates
-subscribes to the attestation subnet of its committee.
+*Note*: XMSS signatures are not unique. A validator can grind the randomizer of
+its selection proof until `is_aggregator` selects it, which BLS uniqueness used
+to prevent. This is an open issue.
 
-*Note*: Every aggregate for a slot is signed at the same leaf, so a validator
-MUST NOT sign more than one `AggregateAndProof`.
+```python
+def get_slot_signature(
+    state: BeaconState,
+    slot: Slot,
+    # [Modified in PQ]
+    privkey: Bytes32,
+) -> XMSSSignature:
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, compute_epoch_at_slot(slot))
+    signing_root = compute_signing_root(slot, domain)
+    # [Modified in PQ]
+    leaf_index = compute_xmss_leaf_index(slot, LEAF_OFFSET_SELECTION_PROOF)
+    return xmss.Sign(privkey, leaf_index, signing_root)
+```
+
+```python
+def is_aggregator(
+    state: BeaconState,
+    slot: Slot,
+    index: CommitteeIndex,
+    # [Modified in PQ]
+    slot_signature: XMSSSignature,
+) -> bool:
+    committee = get_beacon_committee(state, slot, index)
+    # [Modified in PQ]
+    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE_PQ)
+    return bytes_to_uint64(sha256(slot_signature)[0:8]) % modulo == 0
+```
 
 #### Construct aggregate
 
@@ -412,20 +452,18 @@ def get_aggregate_signature(
 
 ```python
 def get_aggregate_and_proof(
-    # [Modified in PQ]
-    # Removed `state`
+    state: BeaconState,
     aggregator_index: ValidatorIndex,
     aggregate: Attestation,
     # [Modified in PQ]
-    # Removed `privkey`
+    privkey: Bytes32,
     # [New in PQ]
     aggregate_signature: XMSSAggregateSignature,
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
-        # [Modified in PQ]
-        # Removed `selection_proof`
+        selection_proof=get_slot_signature(state, aggregate.data.slot, privkey),
         # [New in PQ]
         aggregate_signature=aggregate_signature,
     )

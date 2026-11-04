@@ -27,21 +27,26 @@ def get_attestation_subnet_count(spec):
 def get_aggregator_index(spec, state, slot, committee_index):
     """
     Return the first committee member selected to aggregate, or the first member
-    if none is. From PQ onwards every member may aggregate.
+    if none is.
     """
     committee = spec.get_beacon_committee(state, slot, committee_index)
-    if not is_post_pq(spec):
-        for index in committee:
-            selection_proof = spec.get_slot_signature(state, slot, privkeys[index])
-            if spec.is_aggregator(state, slot, committee_index, selection_proof):
-                return index
+    for index in committee:
+        selection_proof = spec.get_slot_signature(state, slot, privkeys[index])
+        if spec.is_aggregator(state, slot, committee_index, selection_proof):
+            return index
     return committee[0]
 
 
 def get_aggregate_and_proof(spec, state, aggregator_index, aggregate, privkey):
+    """
+    The ``AggregateAndProof`` of ``aggregate``, which from PQ onwards also carries
+    the aggregate signature of its participants.
+    """
     if is_post_pq(spec):
         aggregate_signature = get_attestation_aggregate_signature(spec, state, aggregate)
-        return spec.get_aggregate_and_proof(aggregator_index, aggregate, aggregate_signature)
+        return spec.get_aggregate_and_proof(
+            state, aggregator_index, aggregate, privkey, aggregate_signature
+        )
     return spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
 
 

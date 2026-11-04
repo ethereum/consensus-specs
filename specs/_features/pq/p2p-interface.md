@@ -64,7 +64,7 @@ which were sized for BLS signatures.
 
 | Name                                       | Value                         |
 | ------------------------------------------ | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1067525)` (= ~1 MiB)  |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1069929)` (= ~1 MiB)  |
 | `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(4194584)` (= ~4 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB) |
 
@@ -406,22 +406,28 @@ def validate_beacon_aggregate_and_proof_gossip(
     if len(attesting_indices) < 1:
         raise GossipReject("aggregate has no participants")
 
-    # [Modified in PQ]
-    # Removed the aggregator selection check
+    # [REJECT] The selection proof selects the validator as an aggregator
+    if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
 
     # [REJECT] The aggregator is a member of the committee
     if aggregator_index not in committee:
         raise GossipReject("aggregator is not a member of the committee")
 
+    # [REJECT] The selection proof signature is valid
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate.data.slot, domain)
     # [Modified in PQ]
-    # Removed the selection proof signature check
+    leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_SELECTION_PROOF)
+    pubkey = state.pq_validators[aggregator_index].pubkey
+    if not xmss.Verify(pubkey, leaf_index, signing_root, aggregate_and_proof.selection_proof):
+        raise GossipReject("invalid selection proof signature")
 
     # [REJECT] The aggregator signature is valid
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
-    pubkey = state.pq_validators[aggregator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
