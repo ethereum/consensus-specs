@@ -359,6 +359,10 @@ class DepositMessage(Container):
 
 #### `DepositRequest`
 
+*Note*: The existing deposit contract only accepts a 48-byte public key and a
+96-byte signature, so it must be updated, or a new one deployed, before deposits
+can carry an XMSS public key and signature.
+
 ```python
 class DepositRequest(Container):
     # [Modified in PQ]
