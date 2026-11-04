@@ -1,13 +1,13 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_gloas_and_later,
+    with_all_phases_from_except,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
@@ -372,7 +372,7 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
     _assert_registry_integrity(spec, state, pre_state)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_full_parent_gap_1_epoch(spec, state):
@@ -383,7 +383,7 @@ def test_epoch_boundary_full_parent_gap_1_epoch(spec, state):
     yield from _run_epoch_boundary_full_parent(spec, state, gap_epochs=1)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_full_parent_gap_2_epochs(spec, state):
@@ -394,7 +394,7 @@ def test_epoch_boundary_full_parent_gap_2_epochs(spec, state):
     yield from _run_epoch_boundary_full_parent(spec, state, gap_epochs=2)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_full_parent_gap_5_epochs(spec, state):
@@ -405,7 +405,7 @@ def test_epoch_boundary_full_parent_gap_5_epochs(spec, state):
     yield from _run_epoch_boundary_full_parent(spec, state, gap_epochs=5)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_empty_parent_gap_1_epoch(spec, state):
@@ -416,7 +416,7 @@ def test_epoch_boundary_empty_parent_gap_1_epoch(spec, state):
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=1)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_empty_parent_gap_2_epochs(spec, state):
@@ -427,7 +427,7 @@ def test_epoch_boundary_empty_parent_gap_2_epochs(spec, state):
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=2)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap requires many empty slots")
 def test_epoch_boundary_empty_parent_gap_5_epochs(spec, state):
@@ -438,7 +438,7 @@ def test_epoch_boundary_empty_parent_gap_5_epochs(spec, state):
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=5)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="epoch boundary timing requires controlled slots")
 def test_switch_to_compounding_across_epoch_boundary(spec, state):
@@ -552,7 +552,7 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     assert state.slot == last_slot + 1
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="long gap and SHARD_COMMITTEE_PERIOD advance")
 def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):

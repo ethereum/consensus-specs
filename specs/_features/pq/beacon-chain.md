@@ -22,7 +22,6 @@
     - [`Builder`](#builder)
     - [`BuilderDepositRequest`](#builderdepositrequest)
     - [`BuilderExitRequest`](#builderexitrequest)
-    - [`ConsolidationRequest`](#consolidationrequest)
     - [`DepositData`](#depositdata)
     - [`DepositMessage`](#depositmessage)
     - [`DepositRequest`](#depositrequest)
@@ -115,6 +114,9 @@ key. Validators that did not register are exited at the fork. See
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 Balances behind `0x00` withdrawal credentials stay locked until a later upgrade
 adds a quantum-safe way to change them.
+
+Consolidation requests are deprecated, so the execution layer must stop
+producing them at the fork. Pending consolidations still complete.
 
 *Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -322,17 +324,6 @@ class BuilderExitRequest(Container):
     pubkey: XMSSPubkey
 ```
 
-#### `ConsolidationRequest`
-
-```python
-class ConsolidationRequest(Container):
-    source_address: ExecutionAddress
-    # [Modified in PQ]
-    source_pubkey: XMSSPubkey
-    # [Modified in PQ]
-    target_pubkey: XMSSPubkey
-```
-
 #### `DepositData`
 
 *Note*: `signature` is over `DepositMessage`.
@@ -378,11 +369,12 @@ class DepositRequest(Container):
 
 ```python
 class ExecutionRequests(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=5)
+    ACTIVE_FIELDS = active_fields(width=5, gaps=(2,))
 
     deposits: DepositRequests
     withdrawals: WithdrawalRequests
-    consolidations: ConsolidationRequests
+    # [Modified in PQ]
+    # Removed `consolidations`
     builder_deposits: BuilderDepositRequests
     builder_exits: BuilderExitRequests
     # [Modified in PQ]
@@ -850,7 +842,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
     requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
-        (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        # [Modified in PQ]
+        # Removed `CONSOLIDATION_REQUEST_TYPE`
         (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
         (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
         # [Modified in PQ]
@@ -1123,7 +1116,8 @@ def apply_parent_execution_payload(
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-    assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+    # [Modified in PQ]
+    # Removed the consolidation request limit
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
     # [Modified in PQ]
@@ -1156,7 +1150,8 @@ def apply_parent_execution_payload(
 
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
+    # [Modified in PQ]
+    # Removed `process_consolidation_request`
     for_ops(requests.builder_deposits, process_builder_deposit_request)
     for_ops(requests.builder_exits, process_builder_exit_request)
     # [Modified in PQ]

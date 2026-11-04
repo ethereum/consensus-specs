@@ -149,9 +149,8 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many withdrawal requests")
 
-    # [REJECT] The consolidation request count is within the limit
-    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many consolidation requests")
+    # [Modified in PQ]
+    # Removed the consolidation request limit
 
     # [REJECT] The builder deposit request count is within the limit
     if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:

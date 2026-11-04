@@ -4,11 +4,11 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_custom_state,
-    with_electra_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.keys import get_filled_pubkey
 from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
 #  ***********************
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -70,7 +70,7 @@ def test_basic_consolidation_in_current_consolidation_epoch(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -120,7 +120,7 @@ def test_basic_consolidation_with_excess_target_balance(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -165,7 +165,7 @@ def test_basic_consolidation_in_new_consolidation_epoch(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -209,7 +209,7 @@ def test_basic_consolidation_with_preexisting_churn(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -256,7 +256,7 @@ def test_basic_consolidation_with_insufficient_preexisting_churn(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -301,7 +301,7 @@ def test_basic_consolidation_with_compounding_credentials(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -349,7 +349,7 @@ def test_consolidation_churn_limit_balance(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -402,7 +402,7 @@ def test_basic_consolidation_source_has_less_than_max_effective_balance(spec, st
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -451,7 +451,7 @@ def test_basic_consolidation_target_has_less_than_min_activation_effective_balan
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -498,7 +498,7 @@ def test_consolidation_balance_larger_than_churn_limit(spec, state):
     assert state.validators[source_index].exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -544,7 +544,7 @@ def test_consolidation_balance_through_two_churn_epochs(spec, state):
     assert state.consolidation_balance_to_consume == expected_balance
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_basic_switch_to_compounding(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for consolidation
@@ -565,7 +565,7 @@ def test_basic_switch_to_compounding(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=True)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_with_excess(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -586,7 +586,7 @@ def test_switch_to_compounding_with_excess(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=True)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state):
     state.pending_consolidations = spec.PendingConsolidations(
@@ -615,7 +615,7 @@ def test_switch_to_compounding_with_pending_consolidations_at_limit(spec, state)
 # Tests that should fail
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -648,7 +648,7 @@ def test_incorrect_same_source_target(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -684,7 +684,7 @@ def test_incorrect_exceed_pending_consolidations_limit(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @single_phase
 def test_incorrect_not_enough_consolidation_churn_available(spec, state):
@@ -726,7 +726,7 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -759,7 +759,7 @@ def test_incorrect_exited_source(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -791,7 +791,7 @@ def test_incorrect_exited_target(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -824,7 +824,7 @@ def test_incorrect_inactive_source(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -857,7 +857,7 @@ def test_incorrect_inactive_target(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -887,7 +887,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -917,7 +917,7 @@ def test_incorrect_target_with_bls_credential(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -951,7 +951,7 @@ def test_incorrect_source_with_bls_credential(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -980,7 +980,7 @@ def test_incorrect_target_with_eth1_credential(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1013,7 +1013,7 @@ def test_incorrect_source_address(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1041,7 +1041,7 @@ def test_incorrect_source_pubkey_is_target_pubkey(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1072,7 +1072,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1103,7 +1103,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1147,7 +1147,7 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -1186,7 +1186,7 @@ def test_incorrect_source_not_active_long_enough(spec, state):
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_exited_source(spec, state):
     # Set up an otherwise correct request
@@ -1209,7 +1209,7 @@ def test_switch_to_compounding_exited_source(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_inactive_source(spec, state):
     # Set up an otherwise correct request
@@ -1232,7 +1232,7 @@ def test_switch_to_compounding_inactive_source(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_source_bls_withdrawal_credential(spec, state):
     # Set up a correct request, but source does have
@@ -1251,7 +1251,7 @@ def test_switch_to_compounding_source_bls_withdrawal_credential(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_source_compounding_withdrawal_credential(spec, state):
     # Set up a correct request, but source does have
@@ -1273,7 +1273,7 @@ def test_switch_to_compounding_source_compounding_withdrawal_credential(spec, st
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_not_authorized(spec, state):
     # Set up an otherwise correct request
@@ -1296,7 +1296,7 @@ def test_switch_to_compounding_not_authorized(spec, state):
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_switch_to_compounding_unknown_source_pubkey(spec, state):
     # Set up an otherwise correct request

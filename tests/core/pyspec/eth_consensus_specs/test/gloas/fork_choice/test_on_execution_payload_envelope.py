@@ -255,7 +255,6 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
             )
         ),
         withdrawals=spec.WithdrawalRequests(),
-        consolidations=spec.ConsolidationRequests(),
     )
 
     envelope = _build_invalid_envelope(

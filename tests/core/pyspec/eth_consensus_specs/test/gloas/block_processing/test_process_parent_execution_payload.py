@@ -1,17 +1,20 @@
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     prepare_process_builder_deposit_request,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.deposits import (
     make_withdrawal_credentials,
     prepare_deposit_request,
 )
 from eth_consensus_specs.test.helpers.execution_requests import get_non_empty_execution_requests
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import get_filled_pubkey, get_pubkeys
 from eth_consensus_specs.test.helpers.signatures import get_filled_signature
 from eth_consensus_specs.test.helpers.withdrawals import set_parent_block_full
@@ -261,14 +264,15 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                 amount=spec.Gwei(16_000_000_000),
             )
         ),
-        consolidations=spec.ConsolidationRequests.of(
+    )
+    if not is_post_pq(spec):
+        requests.consolidations = spec.ConsolidationRequests.of(
             spec.ConsolidationRequest(
                 source_address=spec.ExecutionAddress(b"\x06" * 20),
                 source_pubkey=get_filled_pubkey(spec, b"\x07"),
                 target_pubkey=get_filled_pubkey(spec, b"\x08"),
             )
-        ),
-    )
+        )
 
     _commit_parent_requests(spec, state, requests)
     deposit_request = requests.deposits[0]
@@ -343,7 +347,6 @@ def test_process_parent_execution_payload__builder_credential_deposits_queued(sp
     requests = spec.ExecutionRequests(
         deposits=spec.DepositRequests.of(deposit_request_1, deposit_request_2),
         withdrawals=spec.WithdrawalRequests(),
-        consolidations=spec.ConsolidationRequests(),
     )
 
     _commit_parent_requests(spec, state, requests)
@@ -762,7 +765,7 @@ def test_invalid_too_many_withdrawal_requests(spec, state):
     yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_max_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(
@@ -779,7 +782,7 @@ def test_max_consolidation_requests(spec, state):
     yield from run_parent_execution_payload_processing(spec, state, block)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_invalid_too_many_consolidation_requests(spec, state):
     requests = spec.ExecutionRequests(

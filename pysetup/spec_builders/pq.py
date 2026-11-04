@@ -16,6 +16,7 @@ from eth_consensus_specs.utils import xmss
     @classmethod
     def deprecate_constants(cls) -> set[str]:
         return {
+            "CONSOLIDATION_REQUEST_TYPE",
             "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS",
             "G2_POINT_AT_INFINITY",
             "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS",
@@ -27,6 +28,7 @@ from eth_consensus_specs.utils import xmss
         return {
             "EPOCHS_PER_SYNC_COMMITTEE_PERIOD",
             "MAX_BLS_TO_EXECUTION_CHANGES",
+            "MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD",
             "MAX_ATTESTER_SLASHING_SIZE",
             "MAX_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE",
@@ -48,6 +50,8 @@ from eth_consensus_specs.utils import xmss
         return {
             "BLSToExecutionChange",
             "BLSToExecutionChanges",
+            "ConsolidationRequest",
+            "ConsolidationRequests",
             "ContributionAndProof",
             "CurrentSyncCommitteeBranch",
             "ExecutionBranch",
@@ -81,6 +85,7 @@ from eth_consensus_specs.utils import xmss
         return {
             "apply_light_client_update",
             "block_to_light_client_header",
+            "compute_consolidation_epoch_and_update_churn",
             "compute_subnets_for_sync_committee",
             "compute_sync_committee_period",
             "compute_sync_committee_period_at_slot",
@@ -111,16 +116,19 @@ from eth_consensus_specs.utils import xmss
             "is_sync_committee_aggregator",
             "is_sync_committee_update",
             "is_valid_light_client_header",
+            "is_valid_switch_to_compounding_request",
             "next_sync_committee_gindex_at_slot",
             "process_light_client_finality_update",
             "process_light_client_optimistic_update",
             "process_light_client_store_force_update",
             "process_light_client_update",
             "process_bls_to_execution_change",
+            "process_consolidation_request",
             "process_pq_registration_request",
             "process_sync_aggregate",
             "process_sync_committee_contributions",
             "process_sync_committee_updates",
+            "switch_to_compounding_validator",
             "upgrade_attestation_to_gloas",
             "upgrade_attester_slashing_to_gloas",
             "upgrade_indexed_attestation_to_gloas",

@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -8,6 +9,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -94,7 +96,7 @@ def _advance_to_proposal_slot(spec, state, store):
     return proposal_state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_prepare_execution_payload__extend_payload(spec, state):
     # Give validator[0] 0x01 credentials so the envelope can carry a valid

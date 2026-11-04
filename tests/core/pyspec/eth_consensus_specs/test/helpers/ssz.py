@@ -42,7 +42,8 @@ def get_soft_list_length_limits(spec):
         limits[spec.Withdrawals] = get_max_withdrawals(spec)
     if is_post_electra(spec):
         limits[spec.WithdrawalRequests] = get_max_withdrawal_requests(spec)
-        limits[spec.ConsolidationRequests] = get_max_consolidation_requests(spec)
+        if not is_post_pq(spec):
+            limits[spec.ConsolidationRequests] = get_max_consolidation_requests(spec)
     if is_post_gloas(spec):
         limits[spec.PayloadAttestations] = get_max_payload_attestations(spec)
         limits[spec.BuilderDepositRequests] = get_max_builder_deposit_requests(spec)
