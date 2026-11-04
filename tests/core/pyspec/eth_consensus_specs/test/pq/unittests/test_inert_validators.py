@@ -18,7 +18,7 @@ def test_inert_validator_has_no_duties(spec, state):
 
     assert spec.is_active_validator(state.validators[inert_index], epoch)
     assert inert_index not in spec.get_active_validator_indices(state, epoch)
-    assert inert_index not in spec.compute_proposer_lookahead(state)
+    assert inert_index not in spec.get_beacon_proposer_indices(state, epoch)
     start_slot = spec.compute_start_slot_at_epoch(epoch)
     for offset in range(spec.SLOTS_PER_EPOCH):
         slot = start_slot + offset

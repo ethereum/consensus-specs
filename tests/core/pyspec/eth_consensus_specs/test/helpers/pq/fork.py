@@ -80,6 +80,7 @@ def run_fork_test(post_spec, pre_state):
         "earliest_consolidation_epoch",
         "pending_partial_withdrawals",
         "pending_consolidations",
+        "proposer_lookahead",
         "next_withdrawal_builder_index",
         "execution_payload_availability",
         "builder_pending_payments",
@@ -113,11 +114,10 @@ def run_fork_test(post_spec, pre_state):
         else:
             assert post_validator.exit_epoch == pre_validator.exit_epoch
 
-    # Inert validators have no duties
+    # Inert validators have no PTC duties
     inert_indices = {
         index for index, validator in enumerate(post_state.validators) if validator.inert
     }
-    assert not inert_indices & set(post_state.proposer_lookahead)
     current_epoch_ptcs = post_state.ptc_window[post_spec.SLOTS_PER_EPOCH :]
     assert not inert_indices & {index for ptc in current_epoch_ptcs for index in ptc}
 

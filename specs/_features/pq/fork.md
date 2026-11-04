@@ -10,7 +10,6 @@
   - [New `compute_unusable_xmss_pubkey`](#new-compute_unusable_xmss_pubkey)
   - [New `get_registered_xmss_pubkeys`](#new-get_registered_xmss_pubkeys)
   - [New `upgrade_pending_deposits_to_pq`](#new-upgrade_pending_deposits_to_pq)
-  - [New `compute_proposer_lookahead`](#new-compute_proposer_lookahead)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -118,21 +117,6 @@ def upgrade_pending_deposits_to_pq(pre: eip8483.BeaconState, post: BeaconState) 
         )
 ```
 
-### New `compute_proposer_lookahead`
-
-```python
-def compute_proposer_lookahead(state: BeaconState) -> ProposerLookahead:
-    """
-    Return the proposer indices for the full available lookahead starting from
-    the current epoch.
-    """
-    current_epoch = get_current_epoch(state)
-    lookahead: list[ValidatorIndex] = []
-    for i in range(MIN_SEED_LOOKAHEAD + 1):
-        lookahead.extend(get_beacon_proposer_indices(state, current_epoch + i))
-    return ProposerLookahead(data=lookahead)
-```
-
 ## Fork to PQ
 
 ### Fork trigger
@@ -145,8 +129,10 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == PQ_FORK_EPOCH`, an irregular state change
 is made to upgrade to PQ.
 
-*Note*: The proposer lookahead and the PTC window were computed before the fork,
-when inert validators still had duties, so they are recomputed.
+*Note*: The proposer lookahead is kept, so an inert validator in it cannot
+propose its blocks in the first epochs after the fork. The PTC window was
+computed before the fork, when inert validators still had duties, so it is
+recomputed.
 
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
@@ -266,8 +252,6 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         if validator.withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX:
             initiate_validator_exit(post, ValidatorIndex(index))
 
-    # [New in PQ]
-    post.proposer_lookahead = compute_proposer_lookahead(post)
     # [New in PQ]
     post.ptc_window = initialize_ptc_window(post)
 
