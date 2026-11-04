@@ -17,6 +17,7 @@
   - [XMSS](#xmss)
   - [VRF](#vrf)
   - [XMSS leaf offsets](#xmss-leaf-offsets)
+  - [XMSS reserved leaves](#xmss-reserved-leaves)
 - [Presets](#presets)
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
@@ -143,9 +144,11 @@ blob transactions from the fork on.
 XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
 therefore assigns every validator message a leaf derived from its slot and its
-type, see `compute_xmss_leaf_index`. An honest signer that never equivocates
-never reuses a leaf. Each signature carries its leaf index, and verification
-checks it against the expected one.
+type, see `compute_xmss_leaf_index`. A message that a key signs at most once,
+such as a voluntary exit, instead uses one of the first `XMSS_RESERVED_LEAVES`
+leaves. An honest signer that never equivocates never reuses a leaf. Each
+signature carries its leaf index, and verification checks it against the
+expected one.
 
 XMSS has no native aggregation. Aggregates are opaque `XMSSAggregateSignature`
 values, produced and checked by `xmss.Aggregate` and `xmss.AggregateVerify`. The
@@ -276,10 +279,11 @@ class XMSSSignature(ByteVector):
 
 ### XMSS
 
-| Name                   | Value                 |
-| ---------------------- | --------------------- |
-| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`        |
-| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**4)` (= 16) |
+| Name                   | Value                |
+| ---------------------- | -------------------- |
+| `XMSS_SIGNATURE_SIZE`  | `Uint64(2404)`       |
+| `XMSS_RESERVED_LEAVES` | `Uint64(2**3)` (= 8) |
+| `XMSS_LEAVES_PER_SLOT` | `Uint64(2**3)` (= 8) |
 
 ### VRF
 
@@ -298,7 +302,12 @@ class XMSSSignature(ByteVector):
 | `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(4)` |
 | `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(5)` |
 | `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(6)` |
-| `LEAF_OFFSET_VOLUNTARY_EXIT`             | `Uint64(7)` |
+
+### XMSS reserved leaves
+
+| Name                           | Value       |
+| ------------------------------ | ----------- |
+| `RESERVED_LEAF_VOLUNTARY_EXIT` | `Uint64(0)` |
 
 ## Presets
 
@@ -624,8 +633,10 @@ They stand in for a recursive STARK, which would change the encoding of
 
 #### New `compute_xmss_leaf_index`
 
-*Note*: A key covers `2**32` leaves, so it lasts `2**32 // XMSS_LEAVES_PER_SLOT`
-slots.
+*Note*: The first `XMSS_RESERVED_LEAVES` leaves are reserved for messages that a
+key signs at most once, so the leaves of each slot follow them. A key covers
+`2**32` leaves, so it lasts
+`(2**32 - XMSS_RESERVED_LEAVES) // XMSS_LEAVES_PER_SLOT` slots.
 
 ```python
 def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
@@ -633,7 +644,7 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     Return the XMSS leaf at which a message of the type given by ``leaf_offset``
     is signed for ``slot``.
     """
-    return Uint64(slot * XMSS_LEAVES_PER_SLOT + leaf_offset)
+    return Uint64(XMSS_RESERVED_LEAVES + slot * XMSS_LEAVES_PER_SLOT + leaf_offset)
 ```
 
 #### Modified `can_builder_cover_bid`
@@ -1783,9 +1794,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     )
     signing_root = compute_signing_root(voluntary_exit, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
-    )
+    leaf_index = RESERVED_LEAF_VOLUNTARY_EXIT
     assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)

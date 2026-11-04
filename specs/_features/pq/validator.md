@@ -536,3 +536,6 @@ keeps a local record of the signing root signed at each leaf, refuses to sign a
 different signing root at a recorded leaf, and records each new signing root
 before signing it. Like the slashing protection database, this record must
 survive restarts and move with the key.
+
+A voluntary exit is signed at `RESERVED_LEAF_VOLUNTARY_EXIT`, a leaf that a key
+uses only once, so a validator MUST NOT sign more than one voluntary exit.

@@ -517,9 +517,7 @@ def validate_voluntary_exit_gossip(
     )
     signing_root = compute_signing_root(voluntary_exit, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(
-        compute_start_slot_at_epoch(voluntary_exit.epoch), LEAF_OFFSET_VOLUNTARY_EXIT
-    )
+    leaf_index = RESERVED_LEAF_VOLUNTARY_EXIT
     pubkey = state.pq_validators[validator_index].pubkey
     if not xmss.Verify(pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
         raise GossipReject("invalid voluntary exit signature")

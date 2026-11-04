@@ -40,11 +40,9 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None)
         )
 
     signing_root = spec.compute_signing_root(voluntary_exit, domain)
-    # The exit epoch may be far in the future, so its start slot can overflow a `Slot`
-    slot = int(voluntary_exit.epoch) * int(spec.SLOTS_PER_EPOCH)
     return spec.SignedVoluntaryExit(
         message=voluntary_exit,
-        signature=sign(spec, privkey, signing_root, slot, "LEAF_OFFSET_VOLUNTARY_EXIT"),
+        signature=sign(spec, privkey, signing_root, None, "RESERVED_LEAF_VOLUNTARY_EXIT"),
     )
 
 

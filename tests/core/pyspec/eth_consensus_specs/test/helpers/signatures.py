@@ -2,16 +2,19 @@ from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.utils import bls, xmss
 
 
-def sign(spec, privkey, signing_root, slot, leaf_offset):
+def sign(spec, privkey, signing_root, slot, leaf_name):
     """
-    Sign ``signing_root`` with BLS, or from PQ onwards with XMSS at the leaf of
-    ``slot`` for the ``leaf_offset`` constant named by its string.
+    Sign ``signing_root`` with BLS, or from PQ onwards with XMSS at the leaf named
+    by ``leaf_name``, a reserved leaf or the leaf offset of ``slot``.
     """
     if is_post_pq(spec):
-        # The stub ignores the leaf, and a message far in the future has no leaf
+        # The stub ignores the leaf
         leaf_index = 0
         if xmss.xmss_active:
-            leaf_index = spec.compute_xmss_leaf_index(slot, getattr(spec, leaf_offset))
+            if leaf_name.startswith("RESERVED_LEAF_"):
+                leaf_index = getattr(spec, leaf_name)
+            else:
+                leaf_index = spec.compute_xmss_leaf_index(slot, getattr(spec, leaf_name))
         return spec.XMSSSignature(xmss.Sign(privkey, leaf_index, signing_root))
     return bls.Sign(privkey, signing_root)
 
