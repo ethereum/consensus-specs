@@ -9,6 +9,10 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.gloas.bid import (
+    record_block_in_store,
+    record_head_payload,
+)
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -642,3 +646,182 @@ def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, st
     """An envelope whose payload carries more withdrawals than the limit is rejected."""
     count = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1
     yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")
+
+
+def _assert_envelope_transactions(spec, state, extra, expected, reason=None):
+    """Assert an envelope for a block building on the genesis anchor, whose payload carries the
+    maximum transaction count the bid's gas limit allows plus ``extra``, returns ``expected``."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    bid = signed_block.message.body.signed_execution_payload_bid.message
+    count = bid.gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    yield from _validate_envelope_with_transactions(
+        spec, state, store, signed_block, block_root, count, expected, reason
+    )
+
+
+def setup_store_with_parent_payload(spec, state, parent_gas_limit, gas_limit, withheld_parent):
+    """Apply a block whose payload of ``parent_gas_limit`` is revealed to the genesis store,
+    then the block under test, whose bid builds on that payload and commits to ``gas_limit``.
+    With ``withheld_parent``, a block that builds on the payload but withholds its own sits
+    in between. Returns store, blocks, parent payload envelope, signed_block, block_root."""
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    blocks = [wrap_genesis_block(spec, anchor_block)]
+
+    parent_block_hash = spec.Hash32(b"\x01" * 32)
+    parent = build_empty_block_for_next_slot(spec, state)
+    parent.body.signed_execution_payload_bid.message.gas_limit = parent_gas_limit
+    parent.body.signed_execution_payload_bid.message.block_hash = parent_block_hash
+    signed_parent = state_transition_and_sign_block(spec, state, parent)
+    record_block_in_store(spec, store, signed_parent, state.copy())
+    blocks.append(signed_parent)
+    parent_payload = record_head_payload(spec, state, store, blocks)
+
+    if withheld_parent:
+        withholding = build_empty_block_for_next_slot(spec, state)
+        withholding.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+        withholding.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x02" * 32)
+        withholding.body.signed_execution_payload_bid.message.gas_limit = gas_limit
+        signed_withholding = state_transition_and_sign_block(spec, state, withholding)
+        record_block_in_store(spec, store, signed_withholding, state.copy())
+        blocks.append(signed_withholding)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+    block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x03" * 32)
+    block.body.signed_execution_payload_bid.message.gas_limit = gas_limit
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    block_root = record_block_in_store(spec, store, signed_block, state.copy())
+    blocks.append(signed_block)
+    return store, blocks, parent_payload, signed_block, block_root
+
+
+def _assert_envelope_transactions_with_parent(
+    spec, state, extra, expected, reason=None, withheld_parent=False
+):
+    """Assert an envelope for a block whose bid commits to twice the parent payload's gas
+    limit, carrying the maximum transaction count the parent payload's gas limit allows plus
+    ``extra``, returns ``expected``."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    parent_gas_limit = spec.Uint64(30_000_000)
+    store, blocks, parent_payload, signed_block, block_root = setup_store_with_parent_payload(
+        spec, state, parent_gas_limit, parent_gas_limit * 2, withheld_parent
+    )
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield get_filename(parent_payload), parent_payload
+    blocks_meta = [{"block": get_filename(b)} for b in blocks]
+    blocks_meta[1]["payload"] = get_filename(parent_payload)
+    yield "blocks", "meta", blocks_meta
+
+    max_gas_limit = parent_gas_limit + parent_gas_limit // 1024 - 1
+    count = max_gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    yield from _validate_envelope_with_transactions(
+        spec, state, store, signed_block, block_root, count, expected, reason
+    )
+
+
+def _validate_envelope_with_transactions(
+    spec, state, store, signed_block, block_root, count, expected, reason
+):
+    """Validate an envelope for ``signed_block`` whose payload carries ``count`` transactions
+    and assert it returns ``expected``."""
+    seen = get_seen(spec)
+    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    # Set the payload's transactions, then re-sign so the transaction count is the only
+    # check under test.
+    envelope = signed_envelope.message
+    envelope.payload.transactions = make_progressive_list(spec.Transactions, count)
+    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        privkey = privkeys[signed_block.message.proposer_index]
+    else:
+        privkey = builder_privkeys[envelope.builder_index]
+    signed_envelope.signature = spec.get_execution_payload_envelope_signature(
+        state, envelope, privkey
+    )
+    yield get_filename(signed_envelope), signed_envelope
+
+    messages = []
+
+    result, reason_out = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == expected
+    assert reason_out == reason
+    message = {
+        "message": get_filename(signed_envelope),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_transactions(spec, state):
+    """An envelope with the maximum transaction count the bid's gas limit allows is valid for a
+    block building on the anchor, whose parent payload is not in the store."""
+    yield from _assert_envelope_transactions(spec, state, 0, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_transactions(spec, state):
+    """An envelope with more transactions than the bid's gas limit allows is rejected for a block
+    building on the anchor, whose parent payload is not in the store."""
+    yield from _assert_envelope_transactions(spec, state, 1, "reject", "too many transactions")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_transactions_parent_gas_limit(spec, state):
+    """An envelope with the maximum transaction count the parent payload's gas limit allows is
+    valid, although the bid commits to a higher gas limit."""
+    yield from _assert_envelope_transactions_with_parent(spec, state, 0, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_transactions_parent_gas_limit(
+    spec, state
+):
+    """An envelope with more transactions than the parent payload's gas limit allows is rejected,
+    although the bid's gas limit would allow them."""
+    yield from _assert_envelope_transactions_with_parent(
+        spec, state, 1, "reject", "too many transactions"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_transactions_withheld_parent(spec, state):
+    """An envelope for a block whose parent withheld its payload is bounded by the gas limit of
+    the payload it builds on, not by the parent's bid."""
+    yield from _assert_envelope_transactions_with_parent(
+        spec, state, 0, "valid", withheld_parent=True
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_transactions_withheld_parent(
+    spec, state
+):
+    """An envelope for a block whose parent withheld its payload is rejected when it exceeds the
+    limit of the payload it builds on, although the parent's bid would allow it."""
+    yield from _assert_envelope_transactions_with_parent(
+        spec, state, 1, "reject", "too many transactions", withheld_parent=True
+    )
