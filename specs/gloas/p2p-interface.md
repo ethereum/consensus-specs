@@ -410,7 +410,11 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
 
     if builds_on_parent_block and builds_on_parent_payload:
-        return True
+        # A proposer only builds on the head's parent to re-org the head
+        current_time_ok = head_block.slot + 1 == bid.slot
+        head_late = is_head_late(store, head_node.root)
+        proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+        return current_time_ok and (head_late or proposer_equivocation)
 
     if bid.parent_block_root != head_node.root:
         return False
@@ -979,6 +983,12 @@ def validate_execution_payload_bid_gossip(
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
+
+    # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
+    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+    if current_time_ms < payload_attestation_due_time_ms:
+        raise GossipIgnore("bid is received before the payload attestation deadline")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
