@@ -201,6 +201,12 @@ def validate_execution_payload_bid_gossip(
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
 
+    # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
+    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+    if current_time_ms < payload_attestation_due_time_ms:
+        raise GossipIgnore("bid is received before the payload attestation deadline")
+
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
         raise GossipReject("bid's execution payment must be zero")
@@ -257,12 +263,6 @@ def validate_execution_payload_bid_gossip(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
-
-    # [IGNORE] A bid whose parent is more than one slot behind is received after the attestation deadline of the skipped slot
-    if bid.slot > store.blocks[bid.parent_block_root].slot + 1:
-        skipped_slot_start_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
-        if current_time_ms < skipped_slot_start_ms + get_attestation_due_ms():
-            raise GossipIgnore("bid skips a slot before its attestation deadline")
 
     # [IGNORE] The bid is compatible with the current head branch
     if not is_bid_compatible_with_head(store, bid):
