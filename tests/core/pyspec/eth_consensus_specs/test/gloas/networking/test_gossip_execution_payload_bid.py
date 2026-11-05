@@ -167,40 +167,61 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     yield "messages", "meta", messages
 
 
-def _setup_store_with_head_on_parent(spec, state, late):
+def _append_block(spec, state, store, blocks, parent_block_hash, block_hash, late=False):
     """
-    Append a head block to the advanced store, so that ``blocks[-2]`` is the
-    head's beacon parent with its payload recorded. A ``late`` head arrived
-    after its slot's attestation deadline. Returns (store, blocks, parent_root,
-    head_root, parent_state, parent_payload, finalized_checkpoint_meta).
+    Advance ``state`` with a block for the next slot whose bid builds on
+    ``parent_block_hash`` and commits to ``block_hash``, record the block in
+    ``store`` and append it to ``blocks``. Returns the block root.
+    """
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+    block.body.signed_execution_payload_bid.message.block_hash = block_hash
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    blocks.append(signed_block)
+    return record_block_in_store(spec, store, signed_block, state.copy(), late=late)
+
+
+def _setup_store_with_head_on_parent(spec, state, late, equivocation=False):
+    """
+    Append a head block to the advanced store, with the payload of the head's
+    beacon parent recorded. A ``late`` head arrived after its slot's attestation
+    deadline. With ``equivocation``, the head's proposer has published a second
+    block for the head's slot, and either block may be the head. Returns (store,
+    blocks, parent_root, head_root, parent_state, parent_payload,
+    finalized_checkpoint_meta).
     """
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
     parent_state = state.copy()
     parent_block = blocks[-1]
+    parent_block_hash = parent_block.message.body.signed_execution_payload_bid.message.block_hash
 
-    head_block = build_empty_block_for_next_slot(spec, state)
-    head_block.body.signed_execution_payload_bid.message.parent_block_hash = (
-        parent_block.message.body.signed_execution_payload_bid.message.block_hash
+    head_slot_roots = []
+    if equivocation:
+        block_hash = spec.Hash32(b"\x04" + b"\x00" * 31)
+        head_slot_roots.append(
+            _append_block(spec, parent_state.copy(), store, blocks, parent_block_hash, block_hash)
+        )
+    block_hash = spec.Hash32(b"\x03" + b"\x00" * 31)
+    head_slot_roots.append(
+        _append_block(spec, state, store, blocks, parent_block_hash, block_hash, late=late)
     )
-    head_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
-        b"\x03" + b"\x00" * 31
-    )
-    signed_head_block = state_transition_and_sign_block(spec, state, head_block)
-    head_root = record_block_in_store(spec, store, signed_head_block, state.copy(), late=late)
-    blocks.append(signed_head_block)
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
     parent_state.finalized_checkpoint = state.finalized_checkpoint
-    store.block_states[parent_root].finalized_checkpoint = state.finalized_checkpoint
+    for root in (parent_root, *head_slot_roots):
+        store.block_states[root].finalized_checkpoint = state.finalized_checkpoint
 
     parent_payload = build_signed_execution_payload_envelope(
         spec, parent_state, parent_root, parent_block
     )
     store.payloads[parent_root] = parent_payload.message
 
-    head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
-    assert spec.get_head(store).root == head_root
-    assert signed_head_block.message.parent_root == parent_root
+    head_root = spec.get_head(store).root
+    head_block = store.blocks[head_root]
+    head_bid = head_block.body.signed_execution_payload_bid.message
+    assert head_root in head_slot_roots
+    assert head_block.parent_root == parent_root
     assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    assert spec.is_proposer_equivocation(store, head_root) == equivocation
     return (
         store,
         blocks,
@@ -212,11 +233,13 @@ def _setup_store_with_head_on_parent(spec, state, late):
     )
 
 
-def _run_bid_on_head_parent(spec, state, late, expected, reason=None, for_head_slot=False):
+def _run_bid_on_head_parent(
+    spec, state, late, expected, reason=None, for_head_slot=False, equivocation=False
+):
     """
     Validate a bid building on the head's beacon parent, which is only selected
-    if the head is re-orged out. The bid is for the slot after the head and is
-    received after the attestation deadline of the head's slot, unless
+    in a re-org of the head. The bid is for the slot after the head and is
+    received at the attestation deadline of the head's slot, unless
     ``for_head_slot`` makes it a bid for the head's own slot.
     """
     anchor_state = state.copy()
@@ -230,7 +253,7 @@ def _run_bid_on_head_parent(spec, state, late, expected, reason=None, for_head_s
         parent_state,
         parent_payload,
         finalized_checkpoint_meta,
-    ) = _setup_store_with_head_on_parent(spec, state, late=late)
+    ) = _setup_store_with_head_on_parent(spec, state, late=late, equivocation=equivocation)
     parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
     head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     assert parent_randao != head_randao
@@ -239,7 +262,8 @@ def _run_bid_on_head_parent(spec, state, late, expected, reason=None, for_head_s
     for signed in blocks:
         yield get_filename(signed), signed
     blocks_meta = get_blocks_meta(blocks)
-    blocks_meta[-2]["payload"] = get_filename(parent_payload)
+    parent_index = [signed.message.hash_tree_root() for signed in blocks].index(parent_root)
+    blocks_meta[parent_index]["payload"] = get_filename(parent_payload)
     if late:
         blocks_meta[-1]["late"] = True
     yield "blocks", "meta", blocks_meta
@@ -388,6 +412,13 @@ def _run_skip_slot_bid(spec, state, bid_time_offset_ms, expected, reason=None):
 def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
     """A bid on the late head's beacon parent uses that parent's RANDAO mix."""
     yield from _run_bid_on_head_parent(spec, state, late=True, expected="valid")
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_on_head_parent_proposer_equivocation(spec, state):
+    """A bid on the timely head's beacon parent is valid if the head's proposer equivocated."""
+    yield from _run_bid_on_head_parent(spec, state, late=False, expected="valid", equivocation=True)
 
 
 @with_gloas_and_later
