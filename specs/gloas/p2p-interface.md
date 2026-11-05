@@ -80,10 +80,16 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                     | Description                                                   |
-| ---------------------- | ------------------------- | ------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    | Maximum number of execution payloads in a single request      |
-| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) | Lower bound on the gas used by a single execution transaction |
+*Note*: `MIN_TRANSACTION_GAS` is a lower bound on the gas used by a single
+transaction, it bounds the number of transactions an execution payload can
+contain for a given gas limit. The value is set well below the cheapest
+transaction in Glamsterdam (12,000 gas). It may need to be changed in a future
+fork if the execution layer reduces the cost of a transaction below this value.
+
+| Name                   | Value                     |
+| ---------------------- | ------------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    |
+| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) |
 
 ## Types
 
@@ -896,7 +902,9 @@ def validate_execution_payload_envelope_gossip(
         raise GossipReject("too many withdrawals")
 
     # [REJECT] The number of transactions is within the limit implied by the parent payload's gas limit
-    if len(payload.transactions) > get_max_payload_gas_limit(store, block) // MIN_TRANSACTION_GAS:
+    max_gas_limit = get_max_payload_gas_limit(store, block)
+    max_payload_transactions = max_gas_limit // MIN_TRANSACTION_GAS
+    if len(payload.transactions) > max_payload_transactions:
         raise GossipReject("too many transactions")
 
     # [REJECT] The envelope signature is valid
