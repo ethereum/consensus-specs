@@ -739,11 +739,11 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state):
-    """A second bid from the same builder for the same slot and parent is ignored.
+def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, state):
+    """A bid past the builder's bid limit for the same slot and parent is ignored.
 
-    The first bid is fully valid, seeding the seen-bids cache, so the second
-    (higher-value) bid from the same builder hits the duplicate check.
+    Each bid up to the builder's limit is fully valid, filling its bid count, so
+    the next (higher-value) bid from the same builder hits the bid limit check.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -769,7 +769,45 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     builder_index = spec.BuilderIndex(0)
-    first_bid = build_signed_bid(
+    bid_limit = spec.get_builder_bid_limit(state, builder_index)
+    assert 1 < bid_limit < spec.config.MAX_BIDS_PER_BUILDER_PER_SLOT
+
+    current_time_ms += 30
+    for value in range(1, bid_limit + 1):
+        bid = build_signed_bid(
+            spec,
+            state,
+            builder_index=builder_index,
+            slot=proposal_slot,
+            parent_block_hash=parent_block_hash,
+            parent_block_root=parent_root,
+            fee_recipient=common_fee,
+            gas_limit=parent_gas_limit,
+            value=spec.Gwei(value),
+        )
+        yield get_filename(bid), bid
+
+        current_time_ms += 10
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            signed_execution_payload_bid=bid,
+            current_time_ms=current_time_ms,
+        )
+        assert result == "valid"
+        assert reason is None
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(bid),
+                "expected": result,
+            }
+        )
+
+    # One more bid from the same builder for the same slot and parent, with a
+    # higher value so only the bid limit check can trigger the ignore.
+    extra_bid = build_signed_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -778,57 +816,24 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
-        value=spec.Gwei(1),
+        value=spec.Gwei(bid_limit + 1),
     )
-    yield get_filename(first_bid), first_bid
-
-    current_time_ms += 40
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_execution_payload_bid=first_bid,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(first_bid),
-            "expected": result,
-        }
-    )
-
-    # A second bid from the same builder for the same slot and parent, with a
-    # higher value so only the duplicate check can trigger the ignore.
-    duplicate_bid = build_signed_bid(
-        spec,
-        state,
-        builder_index=builder_index,
-        slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
-        parent_block_root=parent_root,
-        fee_recipient=common_fee,
-        gas_limit=parent_gas_limit,
-        value=spec.Gwei(2),
-    )
-    yield get_filename(duplicate_bid), duplicate_bid
+    yield get_filename(extra_bid), extra_bid
 
     current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        signed_execution_payload_bid=duplicate_bid,
+        signed_execution_payload_bid=extra_bid,
         current_time_ms=current_time_ms,
     )
     assert result == "ignore"
-    assert reason == "already seen valid bid for this slot, parent, and builder"
+    assert reason == "builder has reached its bid limit for this slot and parent"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
-            "message": get_filename(duplicate_bid),
+            "message": get_filename(extra_bid),
             "expected": result,
             "reason": reason,
         }
@@ -899,7 +904,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
         }
     )
 
-    # A lower-value bid from a different builder (so the duplicate check does
+    # A lower-value bid from a different builder (so the bid limit check does
     # not apply) is not the highest bid for this slot and parent.
     lower_bid = build_signed_bid(
         spec,
@@ -999,7 +1004,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
         }
     )
 
-    # A second bid from a different builder (so the duplicate check does not
+    # A second bid from a different builder (so the bid limit check does not
     # apply) with value exactly equal to the best is not strictly higher.
     equal_bid = build_signed_bid(
         spec,
@@ -1098,7 +1103,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
         }
     )
 
-    # A second bid from a different builder (so the duplicate check does not
+    # A second bid from a different builder (so the bid limit check does not
     # apply) with a strictly higher value is the new highest bid.
     higher_bid = build_signed_bid(
         spec,
@@ -1207,12 +1212,12 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     """A bid whose value exceeds what the builder can cover is ignored."""
-    # Zero out the builder's balance so it cannot cover even a tiny bid. This
-    # is baked into the anchor state so replaying the blocks preserves it.
-    # Builder activity does not depend on balance, so this is the only
-    # failing condition.
+    # Leave the builder with only the minimum balance, so it cannot cover even
+    # a tiny bid but is still allowed one bid. This is baked into the anchor
+    # state so replaying the blocks preserves it. Builder activity does not
+    # depend on balance, so this is the only failing condition.
     builder_index = spec.BuilderIndex(0)
-    state.builders[builder_index].balance = spec.Gwei(0)
+    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
