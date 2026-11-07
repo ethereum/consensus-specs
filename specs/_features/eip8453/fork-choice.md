@@ -11,6 +11,7 @@
   - [Time parameters](#time-parameters)
   - [Misc](#misc)
 - [Helpers](#helpers)
+  - [New `ACLock`](#new-aclock)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `get_head_vote_due_ms`](#new-get_head_vote_due_ms)
@@ -43,7 +44,10 @@
     - [New `compute_merged_view`](#new-compute_merged_view)
     - [New `get_combined_local_view`](#new-get_combined_local_view)
     - [New `get_equivocating_indices`](#new-get_equivocating_indices)
+    - [New `get_viable_ancestor`](#new-get_viable_ancestor)
     - [New `get_live_locks`](#new-get_live_locks)
+    - [New `conflicts_with_lock`](#new-conflicts_with_lock)
+    - [New `compute_fast_lock_expiry`](#new-compute_fast_lock_expiry)
     - [New `compute_ghost_head`](#new-compute_ghost_head)
     - [New `compute_head_walk_score`](#new-compute_head_walk_score)
     - [New `is_eligible_for_head_walk`](#new-is_eligible_for_head_walk)
@@ -57,7 +61,7 @@
     - [New `compute_slow_lock`](#new-compute_slow_lock)
   - [Store mutators](#store-mutators)
     - [New `update_finality`](#new-update_finality)
-    - [New `add_lock`](#new-add_lock)
+    - [New `add_locks`](#new-add_locks)
     - [New `update_locks_and_confirmation`](#new-update_locks_and_confirmation)
     - [New `record_block_receipt_time`](#new-record_block_receipt_time)
     - [New `record_payload_receipt_time`](#new-record_payload_receipt_time)
@@ -110,11 +114,30 @@ This document specifies the fork choice store and handlers accompanying the
 
 ### Misc
 
-| Name               | Value        | Description                        |
-| ------------------ | ------------ | ---------------------------------- |
-| `SLOW_LOCK_WINDOW` | `Slot(2**2)` | Slow-confirmation window, in slots |
+| Name                  | Value        | Description                                              |
+| --------------------- | ------------ | -------------------------------------------------------- |
+| `SLOW_LOCK_WINDOW`    | `Slot(2**2)` | Slow-confirmation window and max lock duration, in slots |
+| `FAST_LOCK_EXTENSION` | `Slot(2)`    | Slots added to the latest live fast expiry               |
+
+Both `SLOW_LOCK_WINDOW` and `FAST_LOCK_EXTENSION` must be at least two.
 
 ## Helpers
+
+### New `ACLock`
+
+*Note*: A lock records its node, confirmation slot, whether it is fast, and its
+last live slot. It expires at the start of `expiry_slot + 1`. Moving the lock to
+an ancestor preserves its other fields. Fast and slow locks remain separate,
+even when they lock the same node or have the same expiry.
+
+```python
+@dataclass(eq=True, frozen=True)
+class ACLock:
+    node: ForkChoiceNode
+    slot: Slot
+    fast: bool
+    expiry_slot: Slot
+```
 
 ### Modified `Store`
 
@@ -153,7 +176,7 @@ class Store:
     fast_confirmed_path: set[ForkChoiceNode]
     latest_confirmed: ForkChoiceNode
     saved_confirmations: dict[Slot, ForkChoiceNode]
-    locks: dict[Uint64, ForkChoiceNode]
+    locks: set[ACLock]
     head_vote_messages: dict[Slot, list[HeadVoteMessage]]
     head_vote_message_receipt_times: dict[Root, Uint64]
     head_vote_committees: dict[Slot, HeadVoteCommittee]
@@ -201,7 +224,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
             root=finalized_checkpoint.root, payload_status=PAYLOAD_STATUS_PENDING
         ),
         saved_confirmations={},
-        locks={},
+        locks=set(),
         head_vote_messages={},
         head_vote_message_receipt_times={},
         head_vote_committees={},
@@ -781,20 +804,74 @@ def get_equivocating_indices(votes: set[ACVote]) -> set[ValidatorIndex]:
     return equivocating_indices
 ```
 
-#### New `get_live_locks`
+#### New `get_viable_ancestor`
 
 ```python
-def get_live_locks(
-    store: Store, fg_frame: FGFrame, time_ms: Uint64
-) -> list[tuple[Uint64, ForkChoiceNode]]:
+def get_viable_ancestor(store: Store, fg_frame: FGFrame, node: ForkChoiceNode) -> ForkChoiceNode:
     """
-    Return (deadline, node) tuples for unexpired locks in ``fg_frame.tree``.
+    Return the deepest ancestor that is viable or an ancestor of the forkchoice root.
     """
-    return [
-        (deadline, lock)
-        for deadline, lock in store.locks.items()
-        if deadline > time_ms and lock in fg_frame.tree
-    ]
+    viable_tree = get_viable_subtree(store, fg_frame, fg_frame.tree)
+    return get_deepest_node(
+        store,
+        {
+            ancestor
+            for ancestor in fg_frame.tree
+            if is_ancestor(store, node, ancestor)
+            and (ancestor in viable_tree or is_ancestor(store, fg_frame.forkchoice_root, ancestor))
+        },
+    )
+```
+
+#### New `get_live_locks`
+
+*Note*: Every lock read uses its viable ancestor. Lock updates store this
+ancestor so that a later change to the FG frame cannot restore the old node.
+
+```python
+def get_live_locks(store: Store, fg_frame: FGFrame, time_ms: Uint64) -> set[ACLock]:
+    """
+    Return unexpired locks in the frame, each moved to its viable ancestor.
+    """
+    return {
+        ACLock(
+            node=get_viable_ancestor(store, fg_frame, lock.node),
+            slot=lock.slot,
+            fast=lock.fast,
+            expiry_slot=lock.expiry_slot,
+        )
+        for lock in store.locks
+        if lock.node in fg_frame.tree
+        and time_ms < compute_time_at_slot_ms(store.genesis_time_ms, lock.expiry_slot + 1)
+    }
+```
+
+#### New `conflicts_with_lock`
+
+```python
+def conflicts_with_lock(store: Store, fg_frame: FGFrame, node: ForkChoiceNode) -> bool:
+    return any(
+        not is_compatible(store, lock.node, node)
+        for lock in get_live_locks(store, fg_frame, store.time_ms)
+    )
+```
+
+#### New `compute_fast_lock_expiry`
+
+*Note*: Only live fast locks from slots before `slot` extend the expiry. Their
+nodes need not be on the new lock's branch. A lock moved to the finalized node
+still contributes. Locks from the same or a newer slot do not contribute.
+
+```python
+def compute_fast_lock_expiry(store: Store, fg_frame: FGFrame, slot: Slot) -> Slot:
+    expiries = {
+        lock.expiry_slot
+        for lock in get_live_locks(store, fg_frame, store.time_ms)
+        if lock.fast and lock.slot < slot
+    }
+    if len(expiries) == 0:
+        return slot + 2
+    return min(slot + SLOW_LOCK_WINDOW, max(slot + 2, max(expiries) + FAST_LOCK_EXTENSION))
 ```
 
 #### New `compute_ghost_head`
@@ -921,28 +998,19 @@ def is_eligible_for_head_walk(
 
 #### New `get_head_walk_anchor`
 
-*Note*: The anchor is the deepest locked node in the full viable subtree of the
-FG frame, or the forkchoice root if no such node exists. Ancestors of live lock
-tips are also considered locked.
+*Note*: Use the full FG frame even when the caller selects votes and blocks from
+a restricted view.
 
 ```python
 def get_head_walk_anchor(store: Store, fg_frame: FGFrame) -> ForkChoiceNode:
     """
-    Return the head-walk anchor.
+    Return the deepest live lock node or the forkchoice root.
     """
-    live_locks = get_live_locks(store, fg_frame, store.time_ms)
-    locked_viable_nodes = {
-        node
-        for node in get_viable_subtree(store, fg_frame, fg_frame.tree)
-        if any(is_ancestor(store, lock, node) for _, lock in live_locks)
-    }
-
-    # Set anchor to the deepest locked viable node if exists,
-    # otherwise, fork choice root
-    if len(locked_viable_nodes) > 0:
-        return get_deepest_node(store, locked_viable_nodes)
-    else:
-        return fg_frame.forkchoice_root
+    return get_deepest_node(
+        store,
+        {lock.node for lock in get_live_locks(store, fg_frame, store.time_ms)}
+        | {fg_frame.forkchoice_root},
+    )
 ```
 
 #### New `get_head_in_tree`
@@ -1076,7 +1144,8 @@ def get_confirmed_head(
 #### New `compute_confirmed_path_and_lock`
 
 *Note*: Computes the confirmed path and the lock as the deepest node in the
-confirmed path. Candidate nodes are selected from FG frame, genesis is excluded.
+confirmed path. Candidate nodes are selected from the FG frame, excluding
+genesis and nodes that conflict with a live lock.
 
 ```python
 def compute_confirmed_path_and_lock(
@@ -1093,6 +1162,7 @@ def compute_confirmed_path_and_lock(
         for node in fg_frame.tree
         if is_ancestor(store, confirmed, node)
         and store.blocks[node.root].slot > GENESIS_SLOT
+        and not conflicts_with_lock(store, fg_frame, node)
         and test_predicate(node)
     }
 
@@ -1138,7 +1208,7 @@ def compute_fast_path_and_lock(
 
 *Note*: The slow lock requires:
 
-- Saved confirmations in the FG frame for each of the preceding
+- Saved confirmations in the FG frame for each of the previous
   `SLOW_LOCK_WINDOW - 1` slots.
 - A non-genesis node in the FG frame that is an ancestor of or equal to both the
   current candidate and every saved confirmation in that window.
@@ -1226,18 +1296,15 @@ def update_finality(store: Store, state: BeaconState) -> None:
         store.finalized_checkpoint = state.finalized_checkpoint
 ```
 
-#### New `add_lock`
-
-*Note*: Locks can have multiple producers. The fast and slow confirmation locks
-below are two; other producers, such as a lock seeded at a fork transition,
-register locks the same way.
+#### New `add_locks`
 
 ```python
-def add_lock(store: Store, deadline: Uint64, node: ForkChoiceNode) -> None:
+def add_locks(store: Store, fg_frame: FGFrame, locks: set[ACLock]) -> None:
     """
-    Register ``node`` as a lock that expires at ``deadline``.
+    Add locks, remove expired or out-of-frame locks, and store their viable ancestors.
     """
-    store.locks[deadline] = node
+    store.locks |= locks
+    store.locks = get_live_locks(store, fg_frame, store.time_ms)
 ```
 
 #### New `update_locks_and_confirmation`
@@ -1253,38 +1320,38 @@ def update_locks_and_confirmation(
     slow_lock: ForkChoiceNode | None,
 ) -> None:
     """
-    Update locks and confirmed head information.
+    Record the candidate and separate fast and slow locks, even when confirmation is vetoed.
     """
-
-    # Update fast confirmed path
-    store.fast_confirmed_path = fast_confirmed_path
-
-    # Save the confirmation for slot
     store.saved_confirmations[slot] = confirmed
+    vetoed = conflicts_with_lock(store, fg_frame, confirmed)
 
-    # Select the deepest node passing either test
-    if fast_lock is not None and slow_lock is not None:
-        lock = get_deepest_node(store, {fast_lock, slow_lock})
-    elif fast_lock is not None:
-        lock = fast_lock
-    else:
-        lock = slow_lock
+    # A veto still clears the fast-confirmed path used for FG source selection.
+    store.fast_confirmed_path = set() if vetoed else fast_confirmed_path
 
-    # Compute deadline and add lock
-    if lock is not None:
-        deadline = (
-            compute_time_at_slot_ms(store.genesis_time_ms, slot + SLOW_LOCK_WINDOW + 1)
-            + get_head_vote_due_ms()
+    locks = set()
+    if fast_lock is not None:
+        locks.add(
+            ACLock(
+                node=fast_lock,
+                slot=slot,
+                fast=True,
+                expiry_slot=compute_fast_lock_expiry(store, fg_frame, slot),
+            )
         )
-        add_lock(store, deadline, lock)
+    if slow_lock is not None:
+        locks.add(
+            ACLock(node=slow_lock, slot=slot, fast=False, expiry_slot=slot + SLOW_LOCK_WINDOW)
+        )
 
-    # Keep latest_confirmed if it remains in the FG frame and extends or equals confirmed.
-    # Otherwise, replace it with confirmed.
-    if not (
+    # A veto stops the confirmation record, not locks on compatible ancestors.
+    if not vetoed and not (
         store.latest_confirmed in fg_frame.tree
         and is_ancestor(store, store.latest_confirmed, confirmed)
     ):
         store.latest_confirmed = confirmed
+
+    # Store viable ancestors even when neither test creates a new lock.
+    add_locks(store, fg_frame, locks)
 ```
 
 #### New `record_block_receipt_time`
@@ -1353,11 +1420,12 @@ def record_head_vote_message(store: Store, state: BeaconState, message: HeadVote
 
 *Notes*: This function:
 
-- Computes a confirmation candidate using all locally known votes for the slot
-  and support resolved before the cutoff.
-- Saves the candidate even if a live lock vetoes it.
-- Without a veto, updates confirmation and creates a lock on the deepest node
-  passing either the fast or slow test, if any.
+- Computes and records a confirmation candidate using all locally known votes
+  for the slot and support resolved before the cutoff.
+- Updates the confirmed head only when no live lock conflicts with the
+  candidate.
+- Adds separate fast and slow locks on qualifying ancestors that conflict with
+  no live lock, even when the candidate itself is vetoed.
 - Clears the fast-confirmed path when no candidate exists or a live lock vetoes
   it.
 
@@ -1372,18 +1440,7 @@ def update_confirmation(store: Store, slot: Slot) -> None:
 
     # Return if there is no confirmation
     if confirmed is None:
-        # Clear the fast confirmed path and return
-        store.fast_confirmed_path = set()
-        return
-
-    # Return if the confirmation is not compatible with one of the live locks
-    if any(
-        not is_compatible(store, lock, confirmed)
-        for _, lock in get_live_locks(store, fg_frame, store.time_ms)
-    ):
-        # Save the candidate even when a live lock vetoes it,
-        # clear the fast-confirmed path, and return
-        store.saved_confirmations[slot] = confirmed
+        store.saved_confirmations.pop(slot, None)
         store.fast_confirmed_path = set()
         return
 
@@ -1411,15 +1468,14 @@ def update_confirmation(store: Store, slot: Slot) -> None:
 
 #### New `unlock`
 
-*Note*: Uses locally resolved votes for `slot` to reconsider locks live at
-`time_ms`. If non-equivocating validators holding at least half of all committee
-seats support nodes conflicting with a lock, moves it to its deepest ancestor in
-the FG frame with opposition below half. The lock's deadline is preserved.
+*Note*: Equivocators count as opposition to every node. Other validators count
+when their resolved vote supports a conflicting node. Count each validator's
+committee seats once. Only locks from slots before the vote slot can move.
 
 ```python
 def unlock(store: Store, slot: Slot, time_ms: Uint64) -> None:
     """
-    Move opposed live locks to ancestors with opposition below half of all committee seats.
+    Move older locks to ancestors opposed by fewer than half the committee seats.
     """
     fg_frame = get_fg_frame(store)
     votes, support_votes = get_combined_local_view(
@@ -1428,32 +1484,35 @@ def unlock(store: Store, slot: Slot, time_ms: Uint64) -> None:
     equivocating_indices = get_equivocating_indices(votes)
 
     def is_opposed_by_majority(node: ForkChoiceNode) -> bool:
-        # Find non-equivocating validators whose resolved votes support conflicting nodes
-        opposing_voters = {
+        opposing_voters = equivocating_indices | {
             vote.validator_index
             for vote in support_votes
-            if vote.validator_index not in equivocating_indices
+            if vote.slot == slot
+            and vote.supported_node in fg_frame.tree
             and not is_compatible(store, vote.supported_node, node)
         }
         opposing_score = sum(
             get_validator_seats_count(store, slot, validator_index)
             for validator_index in opposing_voters
         )
-        # Opposition must account for at least half of all committee seats
         return 2 * opposing_score >= get_head_vote_committee_seats_count()
 
-    # Consider locks whose deadlines are strictly later than time_ms
-    for deadline, lock in get_live_locks(store, fg_frame, time_ms):
-        # Only locks in the FG frame with sufficient opposition need a fallback
-        if is_opposed_by_majority(lock):
-            # Find ancestors in the FG frame opposed by fewer than half of all committee seats
+    locks = set()
+    for lock in get_live_locks(store, fg_frame, time_ms):
+        node = lock.node
+        if lock.slot < slot:
             fallback_path = {
-                node
-                for node in fg_frame.tree
-                if is_ancestor(store, lock, node) and not is_opposed_by_majority(node)
+                ancestor
+                for ancestor in fg_frame.tree
+                if is_ancestor(store, node, ancestor) and not is_opposed_by_majority(ancestor)
             }
-            # Move to the deepest qualifying ancestor, preserving the deadline
-            add_lock(store, deadline, get_deepest_node(store, fallback_path))
+            node = (
+                get_deepest_node(store, fallback_path)
+                if len(fallback_path) > 0
+                else fg_frame.finalized_node
+            )
+        locks.add(ACLock(node=node, slot=lock.slot, fast=lock.fast, expiry_slot=lock.expiry_slot))
+    store.locks = locks
 ```
 
 ### `on_head_vote_message` helpers
@@ -1489,12 +1548,14 @@ def is_valid_head_vote_message(state: BeaconState, message: HeadVoteMessage) -> 
 
 ### Modified `on_tick`
 
-*Note*: Runs an unlocking or confirmation duty if scheduled at `time_ms`, then
-updates the store time. Callers must process this tick before other events at
+*Note*: Updates the store time, then runs an unlocking or confirmation duty if
+scheduled at `time_ms`. Callers must process this tick before other events at
 the same timestamp.
 
 ```python
 def on_tick(store: Store, time_ms: Uint64) -> None:
+    # Lock expiry reads must use the time of this tick.
+    store.time_ms = time_ms
     time_into_slot_ms = (time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
     slot = compute_slot_at_time_ms(store.genesis_time_ms, time_ms)
 
@@ -1503,9 +1564,6 @@ def on_tick(store: Store, time_ms: Uint64) -> None:
 
     if slot > GENESIS_SLOT and time_into_slot_ms == get_support_cutoff_ms():
         update_confirmation(store, slot - 1)
-
-    # Update store time
-    store.time_ms = time_ms
 ```
 
 ### Modified `on_block`
