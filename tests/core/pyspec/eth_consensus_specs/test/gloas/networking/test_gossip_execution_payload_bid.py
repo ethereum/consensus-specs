@@ -770,7 +770,7 @@ def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, st
 
     builder_index = spec.BuilderIndex(0)
     bid_limit = spec.get_builder_bid_limit(state, builder_index)
-    assert 1 < bid_limit < spec.config.MAX_BIDS_PER_BUILDER_PER_SLOT
+    assert bid_limit > 1
 
     current_time_ms += 30
     for value in range(1, bid_limit + 1):

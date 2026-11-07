@@ -80,10 +80,9 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                            | Value                  |
-| ------------------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS`          | `Uint64(2**7)` (= 128) |
-| `MAX_BIDS_PER_BUILDER_PER_SLOT` | `Uint64(2**5)` (= 32)  |
+| Name                   | Value                  |
+| ---------------------- | ---------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
 
 ## Types
 
@@ -350,8 +349,7 @@ def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Ui
     """
     Return the number of bids the builder may submit for each slot and parent.
     """
-    balance_in_eth = state.builders[builder_index].balance // ETH_TO_GWEI
-    return min(Uint64(balance_in_eth), MAX_BIDS_PER_BUILDER_PER_SLOT)
+    return Uint64(state.builders[builder_index].balance // ETH_TO_GWEI)
 ```
 
 ### New `is_current_or_next_slot`
