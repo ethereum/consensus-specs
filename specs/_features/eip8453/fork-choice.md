@@ -55,6 +55,7 @@
     - [New `get_head_in_tree`](#new-get_head_in_tree)
     - [New `get_voter_subtree`](#new-get_voter_subtree)
     - [New `compute_confirmation_score`](#new-compute_confirmation_score)
+    - [New `compute_optimistic_confirmation_score`](#new-compute_optimistic_confirmation_score)
     - [New `get_confirmed_head`](#new-get_confirmed_head)
     - [New `compute_confirmed_path_and_lock`](#new-compute_confirmed_path_and_lock)
     - [New `compute_fast_path_and_lock`](#new-compute_fast_path_and_lock)
@@ -62,7 +63,9 @@
   - [Store mutators](#store-mutators)
     - [New `update_finality`](#new-update_finality)
     - [New `add_locks`](#new-add_locks)
+    - [New `update_latest_confirmed`](#new-update_latest_confirmed)
     - [New `update_locks_and_confirmation`](#new-update_locks_and_confirmation)
+    - [New `update_optimistic_confirmation`](#new-update_optimistic_confirmation)
     - [New `record_block_receipt_time`](#new-record_block_receipt_time)
     - [New `record_payload_receipt_time`](#new-record_payload_receipt_time)
     - [New `record_head_vote_committee`](#new-record_head_vote_committee)
@@ -180,12 +183,22 @@ class Store:
     head_vote_messages: dict[Slot, list[HeadVoteMessage]]
     head_vote_message_receipt_times: dict[Root, Uint64]
     head_vote_committees: dict[Slot, HeadVoteCommittee]
+    observation_start_time_ms: Uint64 | None
 ```
 
 ### Modified `get_forkchoice_store`
 
 *Note*: The caller trusts the anchor block as justified and finalized at its
 post-state’s target height.
+
+Before processing messages or blocks, the caller must call `on_tick` with the
+current time. The first tick records when observation began, independently of
+the anchor block's age. On restart or after interrupted observation, reset
+`observation_start_time_ms` to `None` before the next tick. Optimistic
+confirmation requires observation since the start of the previous slot.
+
+*TODO*: Specify the remaining restart behavior, including recovery of locks and
+confirmation records.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
@@ -228,6 +241,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         head_vote_messages={},
         head_vote_message_receipt_times={},
         head_vote_committees={},
+        observation_start_time_ms=None,
     )
 ```
 
@@ -1099,6 +1113,37 @@ def compute_confirmation_score(
     )
 ```
 
+#### New `compute_optimistic_confirmation_score`
+
+*Note*: Count a validator's committee seats once for each candidate it voted for
+or whose descendant it voted for. Equivocators are included, but receive no
+score on branches they did not vote for. Only vote heads in the FG frame count,
+so a *full* vote needs a verified payload. This is separate from the
+confirmation score, which excludes equivocators.
+
+```python
+def compute_optimistic_confirmation_score(
+    store: Store,
+    fg_frame: FGFrame,
+    votes: set[ACVote],
+    slot: Slot,
+    node: ForkChoiceNode,
+) -> Uint64:
+    voting_indices = {
+        vote.validator_index
+        for vote in votes
+        if vote.slot == slot
+        and vote.supported_node in fg_frame.tree
+        and is_ancestor(store, vote.supported_node, node)
+    }
+    return Uint64(
+        sum(
+            get_validator_seats_count(store, slot, validator_index)
+            for validator_index in voting_indices
+        )
+    )
+```
+
 #### New `get_confirmed_head`
 
 *Note*: Runs a confirmation walk using the confirmation score, requiring
@@ -1307,6 +1352,20 @@ def add_locks(store: Store, fg_frame: FGFrame, locks: set[ACLock]) -> None:
     store.locks = get_live_locks(store, fg_frame, store.time_ms)
 ```
 
+#### New `update_latest_confirmed`
+
+```python
+def update_latest_confirmed(store: Store, fg_frame: FGFrame, confirmed: ForkChoiceNode) -> None:
+    """
+    Update the record unless it is still in the tree and extends the candidate.
+    """
+    if not (
+        store.latest_confirmed in fg_frame.tree
+        and is_ancestor(store, store.latest_confirmed, confirmed)
+    ):
+        store.latest_confirmed = confirmed
+```
+
 #### New `update_locks_and_confirmation`
 
 ```python
@@ -1344,14 +1403,60 @@ def update_locks_and_confirmation(
         )
 
     # A veto stops the confirmation record, not locks on compatible ancestors.
-    if not vetoed and not (
-        store.latest_confirmed in fg_frame.tree
-        and is_ancestor(store, store.latest_confirmed, confirmed)
-    ):
-        store.latest_confirmed = confirmed
+    if not vetoed:
+        update_latest_confirmed(store, fg_frame, confirmed)
 
     # Store viable ancestors even when neither test creates a new lock.
     add_locks(store, fg_frame, locks)
+```
+
+#### New `update_optimistic_confirmation`
+
+*Note*: After a block, payload, or head vote is processed, check for optimistic
+confirmation before the current slot's support cutoff (2Δ). At least three
+quarters of all committee seats must vote for the candidate or its descendants,
+including equivocators. Select the deepest qualifying node that conflicts with
+no live lock, add a fast lock, and update the confirmation record.
+
+This does not update `saved_confirmations` or `fast_confirmed_path`. The normal
+confirmation update still runs at 2Δ of the next slot. Locally signed head votes
+must also be processed through `on_head_vote_message`.
+
+```python
+def update_optimistic_confirmation(store: Store) -> None:
+    slot = get_current_slot(store)
+    if slot == GENESIS_SLOT or get_time_into_slot_ms(store) >= get_support_cutoff_ms():
+        return
+
+    # Require uninterrupted observation of the entire previous slot.
+    previous_slot_start_ms = compute_time_at_slot_ms(store.genesis_time_ms, slot - 1)
+    if (
+        store.observation_start_time_ms is None
+        or store.observation_start_time_ms > previous_slot_start_ms
+    ):
+        return
+
+    fg_frame = get_fg_frame(store)
+    votes, _ = get_combined_local_view(store, slot, INFINITE_TIME_MS, INFINITE_TIME_MS)
+    candidates = {
+        node
+        for node in fg_frame.tree
+        if 4 * compute_optimistic_confirmation_score(store, fg_frame, votes, slot, node)
+        >= 3 * get_head_vote_committee_seats_count()
+        and not conflicts_with_lock(store, fg_frame, node)
+    }
+    if len(candidates) == 0:
+        return
+
+    confirmed = get_deepest_node(store, candidates)
+    lock = ACLock(
+        node=confirmed,
+        slot=slot,
+        fast=True,
+        expiry_slot=compute_fast_lock_expiry(store, fg_frame, slot),
+    )
+    add_locks(store, fg_frame, {lock})
+    update_latest_confirmed(store, fg_frame, confirmed)
 ```
 
 #### New `record_block_receipt_time`
@@ -1556,6 +1661,8 @@ the same timestamp.
 def on_tick(store: Store, time_ms: Uint64) -> None:
     # Lock expiry reads must use the time of this tick.
     store.time_ms = time_ms
+    if store.observation_start_time_ms is None:
+        store.observation_start_time_ms = time_ms
     time_into_slot_ms = (time_ms - store.genesis_time_ms) % SLOT_DURATION_MS
     slot = compute_slot_at_time_ms(store.genesis_time_ms, time_ms)
 
@@ -1626,6 +1733,9 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
+
+    # A newly known block can make votes already in the pool count.
+    update_optimistic_confirmation(store)
 ```
 
 ### Modified `on_execution_payload_envelope`
@@ -1669,6 +1779,9 @@ def on_execution_payload_envelope(
 
     # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
+
+    # FULL votes can count once their payload is verified.
+    update_optimistic_confirmation(store)
 ```
 
 ### New `on_head_vote_message`
@@ -1693,6 +1806,7 @@ def on_head_vote_message(store: Store, message: HeadVoteMessage) -> None:
 
     # Record the message
     record_head_vote_message(store, state, message)
+    update_optimistic_confirmation(store)
 ```
 
 ## Internal API
